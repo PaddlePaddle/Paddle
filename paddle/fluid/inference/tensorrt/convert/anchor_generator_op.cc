@@ -45,7 +45,7 @@ class AnchorGeneratorOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<float>, op_desc.GetAttr("variances"));
     const auto offset = PADDLE_GET_CONST(float, op_desc.GetAttr("offset"));
     const int num_anchors = aspect_ratios.size() * anchor_sizes.size();
-    bool is_dynamic = engine_->with_dynamic_shape();
+    bool is_dynamic = true;
     const auto height = input_dims.d[1];
     const auto width = input_dims.d[2];
     const int box_num = width * height * num_anchors;

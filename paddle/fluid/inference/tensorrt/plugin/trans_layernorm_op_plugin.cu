@@ -198,22 +198,22 @@ bool TransLayerNormPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_GE(
       feature_size,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The feature size of layernorm feature_size must be positive,"
           "but got:%d",
           feature_size));
 
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of layernorm plugin shoule not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
@@ -259,7 +259,7 @@ void TransLayerNormPluginDynamic::configurePlugin(
   PADDLE_ENFORCE_EQ(
       begin_norm_axis_,
       3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The transpose_LayerNorm Plugin only has begin_norm_axis_ = 3"
           "but get %d.",
           begin_norm_axis_));
@@ -276,15 +276,15 @@ nvinfer1::DataType TransLayerNormPluginDynamic::getOutputDataType(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The transpose_LayerNorm Plugin only has one input, so the "
           "nb_inputs value should be 1, but get %d.",
           nb_inputs));
-  PADDLE_ENFORCE_EQ(
-      (input_types[0] == nvinfer1::DataType::kFLOAT ||
-       input_types[0] == nvinfer1::DataType::kHALF),
-      true,
-      phi::errors::InvalidArgument("The input type should be half or float"));
+  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
+                     input_types[0] == nvinfer1::DataType::kHALF),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The input type should be half or float"));
   return input_types[0];
 }
 
@@ -309,28 +309,28 @@ int TransLayerNormPluginDynamic::enqueue(
   }
   PADDLE_ENFORCE_EQ(1,
                     mean_shape_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Size of mean_shape vector should be equal to 1,"
                         "but got Size of mean_shape vector:%d",
                         mean_shape_.size()));
   PADDLE_ENFORCE_EQ(1,
                     variance_shape_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Size of variance_shape vector should be equal to 1,"
                         "but got Size of mean_shape vector:%d",
                         mean_shape_.size()));
-  PADDLE_ENFORCE_GE(
-      mean_shape_[0],
-      0,
-      phi::errors::InvalidArgument("The size of mean vector should be positive,"
-                                   "but got:%d",
-                                   mean_shape_[0]));
-  PADDLE_ENFORCE_GE(
-      variance_shape_[0],
-      0,
-      phi::errors::InvalidArgument("The size of mean vector should be positive,"
-                                   "but got:%d",
-                                   variance_shape_[0]));
+  PADDLE_ENFORCE_GE(mean_shape_[0],
+                    0,
+                    common::errors::InvalidArgument(
+                        "The size of mean vector should be positive,"
+                        "but got:%d",
+                        mean_shape_[0]));
+  PADDLE_ENFORCE_GE(variance_shape_[0],
+                    0,
+                    common::errors::InvalidArgument(
+                        "The size of mean vector should be positive,"
+                        "but got:%d",
+                        variance_shape_[0]));
 
   // transpose do not change numel
   int trans_result_numel = input_numel;
@@ -341,14 +341,14 @@ int TransLayerNormPluginDynamic::enqueue(
   int feature_size = static_cast<int>(input_ddim[1]);
   PADDLE_ENFORCE_EQ(feature_size,
                     scale_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "scale's size should be equal to the feature_size,"
                         "but got feature_size:%d, scale's size:%d.",
                         feature_size,
                         scale_.size()));
   PADDLE_ENFORCE_EQ(feature_size,
                     bias_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "bias's size should be equal to the feature_size,"
                         "but got feature_size:%d, bias's size:%d.",
                         feature_size,
@@ -356,11 +356,12 @@ int TransLayerNormPluginDynamic::enqueue(
 
   int device_id = -1;
   cudaGetDevice(&device_id);
-  PADDLE_ENFORCE_GE(device_id,
-                    0,
-                    phi::errors::InvalidArgument("device_id should be positive,"
-                                                 "but got:%d",
-                                                 device_id));
+  PADDLE_ENFORCE_GE(
+      device_id,
+      0,
+      common::errors::InvalidArgument("device_id should be positive,"
+                                      "but got:%d",
+                                      device_id));
 
   auto input_type = input_desc[0].type;
 
@@ -507,7 +508,7 @@ int TransLayerNormPluginDynamic::enqueue(
               HALF2_RESIDUAL_LAYERNORM_OPT2(8);
               break;
             default:
-              PADDLE_THROW(phi::errors::Fatal(
+              PADDLE_THROW(common::errors::Fatal(
                   "Invalid UNROLL_FACTOR in transpose_layernorm trt plugin."));
           }
         } else {
@@ -543,8 +544,8 @@ int TransLayerNormPluginDynamic::enqueue(
     }
   } else {
     PADDLE_THROW(
-        phi::errors::Fatal("The TransLayerNormPluginDynamic TRT Plugin's "
-                           "input type should be float or half."));
+        common::errors::Fatal("The TransLayerNormPluginDynamic TRT Plugin's "
+                              "input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }

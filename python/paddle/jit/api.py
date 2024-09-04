@@ -88,8 +88,23 @@ from .translated_layer import (
 )
 
 if TYPE_CHECKING:
+    from paddle import Tensor
     from paddle._typing import NestedStructure
     from paddle.static import InputSpec
+
+    class _SaveOptions(TypedDict):
+        output_spec: NotRequired[Sequence[Tensor | int]]
+        with_hook: NotRequired[bool]
+        combine_params: NotRequired[bool]
+        clip_extra: NotRequired[bool]
+        skip_forward: NotRequired[bool]
+        input_names_after_prune: NotRequired[list[str]]
+        skip_prune_program: NotRequired[bool]
+
+    class _LoadOptions(TypedDict):
+        model_filename: NotRequired[str]
+        params_filename: NotRequired[str]
+
 
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
@@ -168,14 +183,12 @@ class _ToStaticOptions(TypedDict):
 
 class _ToStaticDecorator(Protocol):
     @overload
-    def __call__(self, function: _LayerT) -> _LayerT:
-        ...
+    def __call__(self, function: _LayerT) -> _LayerT: ...
 
     @overload
     def __call__(
         self, function: Callable[_InputT, _RetT]
-    ) -> StaticFunction[_InputT, _RetT]:
-        ...
+    ) -> StaticFunction[_InputT, _RetT]: ...
 
 
 @overload
@@ -185,8 +198,7 @@ def to_static(
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
     **kwargs: Unpack[_ToStaticOptions],
-) -> _LayerT:
-    ...
+) -> _LayerT: ...
 
 
 @overload
@@ -196,8 +208,7 @@ def to_static(
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
     **kwargs: Unpack[_ToStaticOptions],
-) -> StaticFunction[_InputT, _RetT]:
-    ...
+) -> StaticFunction[_InputT, _RetT]: ...
 
 
 @overload
@@ -207,8 +218,7 @@ def to_static(
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
     **kwargs: Unpack[_ToStaticOptions],
-) -> _ToStaticDecorator:
-    ...
+) -> _ToStaticDecorator: ...
 
 
 def to_static(
@@ -336,22 +346,20 @@ class _NotToStaticDecorator(Protocol):
     @overload
     def __call__(
         self, func: Callable[_InputT, _RetT]
-    ) -> Callable[_InputT, _RetT]:
-        ...
+    ) -> Callable[_InputT, _RetT]: ...
 
     @overload
-    def __call__(self, func: None = ...) -> _NotToStaticDecorator:
-        ...
+    def __call__(self, func: None = ...) -> _NotToStaticDecorator: ...
 
 
 @overload
-def not_to_static(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-    ...
+def not_to_static(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]: ...
 
 
 @overload
-def not_to_static(func: None = ...) -> _NotToStaticDecorator:
-    ...
+def not_to_static(func: None = ...) -> _NotToStaticDecorator: ...
 
 
 def not_to_static(func=None):
@@ -493,17 +501,7 @@ class _SaveLoadConfig:
         self._keep_name_table = value
 
 
-class _SaveLoadOptions(TypedDict):
-    output_spec: NotRequired[Sequence[InputSpec]]
-    with_hook: NotRequired[bool]
-    combine_params: NotRequired[bool]
-    clip_extra: NotRequired[bool]
-    skip_forward: NotRequired[bool]
-    input_names_after_prune: NotRequired[list[str]]
-    skip_prune_program: NotRequired[bool]
-
-
-def _parse_save_configs(configs: _SaveLoadOptions):
+def _parse_save_configs(configs: _SaveOptions) -> _SaveLoadConfig:
     supported_configs = [
         "output_spec",
         "with_hook",
@@ -536,7 +534,7 @@ def _parse_save_configs(configs: _SaveLoadOptions):
     return inner_config
 
 
-def _parse_load_config(configs):
+def _parse_load_config(configs: _LoadOptions) -> _SaveLoadConfig:
     supported_configs = ['model_filename', 'params_filename']
 
     # input check
@@ -876,10 +874,9 @@ class _SaveFunction(Protocol):
         self,
         layer: Layer | Callable[..., Any],
         path: str,
-        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = ...,
-        **configs: Unpack[_SaveLoadOptions],
-    ) -> None:
-        ...
+        input_spec: Sequence[InputSpec | Tensor | object] | None = ...,
+        **configs: Unpack[_SaveOptions],
+    ) -> None: ...
 
 
 @wrap_decorator
@@ -887,8 +884,8 @@ def _run_save_pre_hooks(func: _SaveFunction) -> _SaveFunction:
     def wrapper(
         layer: Layer | Callable[..., Any],
         path: str,
-        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
-        **configs: Unpack[_SaveLoadOptions],
+        input_spec: Sequence[InputSpec | Tensor | object] | None = None,
+        **configs: Unpack[_SaveOptions],
     ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
@@ -949,8 +946,8 @@ def _get_function_names_from_layer(layer: Layer) -> list[str]:
 def save(
     layer: Layer | Callable[..., Any],
     path: str,
-    input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
-    **configs: Unpack[_SaveLoadOptions],
+    input_spec: Sequence[InputSpec | Tensor | object] | None = None,
+    **configs: Unpack[_SaveOptions],
 ) -> None:
     """
     Saves input Layer or function as ``paddle.jit.TranslatedLayer``
@@ -1331,16 +1328,16 @@ def save(
                     if param_or_buffer.name not in extra_var_info:
                         extra_info_dict = {}
                         if param_or_buffer.name in state_names_dict:
-                            extra_info_dict[
-                                'structured_name'
-                            ] = state_names_dict[param_or_buffer.name]
-                        extra_info_dict[
-                            'stop_gradient'
-                        ] = param_or_buffer.stop_gradient
+                            extra_info_dict['structured_name'] = (
+                                state_names_dict[param_or_buffer.name]
+                            )
+                        extra_info_dict['stop_gradient'] = (
+                            param_or_buffer.stop_gradient
+                        )
                         if isinstance(param_or_buffer, EagerParamBase):
-                            extra_info_dict[
-                                'trainable'
-                            ] = param_or_buffer.trainable
+                            extra_info_dict['trainable'] = (
+                                param_or_buffer.trainable
+                            )
                         extra_var_info[param_or_buffer.name] = extra_info_dict
         # 4. build input & output of save_inference_model
         # NOTE(chenweihang): [ Get input variables name ]
@@ -1517,7 +1514,7 @@ def save(
 
 @dygraph_only
 def load(
-    path: str, **configs: Unpack[_SaveLoadOptions]
+    path: str, **configs: Unpack[_LoadOptions]
 ) -> TranslatedLayer | PirTranslatedLayer:
     """
     :api_attr: imperative

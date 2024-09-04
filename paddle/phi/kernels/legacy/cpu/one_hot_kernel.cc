@@ -44,14 +44,14 @@ struct OneHotV2OpFunctor {
       PADDLE_ENFORCE_GE(
           p_in_data[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Illegal index value, Input(input) value should be at least 0, "
               "but received input (%d) less than 0",
               p_in_data[i]));
       PADDLE_ENFORCE_LT(
           p_in_data[i],
           depth_,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Illegal index value, Input(input) value should be less than "
               "Input(depth), "
               "but received input (%d) not less than depth (%d)",

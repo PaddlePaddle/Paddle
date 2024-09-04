@@ -133,14 +133,14 @@ class VarBase {
   const framework::Variable& GradVar() const {
     PADDLE_ENFORCE_NOT_NULL(
         grad_var_,
-        phi::errors::NotFound("Gradient of %s does not exist", Name()));
+        common::errors::NotFound("Gradient of %s does not exist", Name()));
     return grad_var_->Var();
   }
 
   framework::Variable* MutableGradVar() {
     PADDLE_ENFORCE_NOT_NULL(
         grad_var_,
-        phi::errors::NotFound("Gradient of %s does not exist", Name()));
+        common::errors::NotFound("Gradient of %s does not exist", Name()));
     return grad_var_->MutableVar();
   }
 

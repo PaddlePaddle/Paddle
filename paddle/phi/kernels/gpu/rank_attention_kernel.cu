@@ -45,15 +45,15 @@ void RankAttentionCUDAKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       rank_offset_dims[0],
       ins_num,
-      phi::errors::InvalidArgument("Input(RankOffset) has wrong rows."));
+      common::errors::InvalidArgument("Input(RankOffset) has wrong rows."));
   PADDLE_ENFORCE_EQ(
       (rank_offset_dims[1] - 1) / 2,
       max_rank,
-      phi::errors::InvalidArgument("Input(RankOffset) has wrong columns."));
+      common::errors::InvalidArgument("Input(RankOffset) has wrong columns."));
   PADDLE_ENFORCE_EQ(
       max_rank * max_rank * x_fea_dim,
       para_row,
-      phi::errors::InvalidArgument("Input(RankParam) has wrong rows."));
+      common::errors::InvalidArgument("Input(RankParam) has wrong rows."));
 
   int block_matrix_row = max_rank * x_fea_dim;
   int max_ins = std::max(ins_num, static_cast<int64_t>(max_size));

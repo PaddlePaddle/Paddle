@@ -665,8 +665,21 @@ PD_REGISTER_KERNEL(cos,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    pow, XPU, ALL_LAYOUT, phi::PowKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(pow,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::PowKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(rsqrt,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RsqrtKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
@@ -676,4 +689,3 @@ PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)

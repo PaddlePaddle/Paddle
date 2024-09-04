@@ -49,7 +49,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     bool with_reshape_xshape,
     bool with_transpose_xshape) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init("reshape_transpose_" + matmul_type + "_onednn_fuse_pass",
                      graph);
@@ -97,7 +97,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     } else if (matmul_desc->Inputs().at("Y").at(0) == input_var_name) {
       matmul_input_name = "Y";
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unexpected input to %s encountered.", matmul_type));
     }
 

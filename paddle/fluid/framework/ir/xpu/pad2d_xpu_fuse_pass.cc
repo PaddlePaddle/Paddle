@@ -151,7 +151,7 @@ class Pad2dXpuFusePattern : public FusePassBase {
 
 void Pad2dXpuFusePattern::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   int found_subgraph_count = 0;
   found_subgraph_count += FusedUnsqueezePadOps(graph);
@@ -176,7 +176,7 @@ int Pad2dXpuFusePattern::FusedUnsqueezePadOps(ir::Graph* graph) const {
 
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     // pad2d
     auto* block = pad3d->Op()->Block();

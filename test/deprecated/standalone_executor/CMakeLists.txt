@@ -8,3 +8,6 @@ string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 foreach(target ${TEST_INTERP_CASES})
   py_test_modules(${target} MODULES ${target})
 endforeach()
+
+set_tests_properties(test_standalone_executor_aot_choose_kernel_deprecated
+                     PROPERTIES TIMEOUT 60)

@@ -39,7 +39,7 @@ static void nll_loss_1D(T* out_data,
       }
       PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes,
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Label value is out of range. "
                             "Expected label value in range of [0, %d), but "
                             "received value is %d.",
@@ -65,7 +65,7 @@ static void nll_loss_1D(T* out_data,
     PADDLE_ENFORCE_EQ(
         cur_label >= 0 && cur_label < n_classes,
         true,
-        phi::errors::InvalidArgument("label should not be out of bounds."));
+        common::errors::InvalidArgument("label should not be out of bounds."));
 
     const auto cur_weight =
         weight_data ? weight_data[cur_label] : static_cast<T>(1);
@@ -105,7 +105,7 @@ static void nll_loss_2D(T* out_data,
           }
           PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "label should not be out of bounds."));
           const auto cur_weight =
               weight_data ? weight_data[cur_label] : static_cast<T>(1);
@@ -130,10 +130,10 @@ static void nll_loss_2D(T* out_data,
           out_data[index] = 0;
           continue;
         }
-        PADDLE_ENFORCE_EQ(
-            cur_label >= 0 && cur_label < n_classes,
-            true,
-            phi::errors::InvalidArgument("label should not be out of bounds."));
+        PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes,
+                          true,
+                          common::errors::InvalidArgument(
+                              "label should not be out of bounds."));
         const auto cur_weight =
             weight_data ? weight_data[cur_label] : static_cast<T>(1);
         total_weight_val += cur_weight;

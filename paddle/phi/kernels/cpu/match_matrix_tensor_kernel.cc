@@ -39,20 +39,20 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
   const auto& x_lod = x->lod();
   PADDLE_ENFORCE_EQ(x_lod.empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input(X) should hold LoD information, but "
                         "received Input(X).lod() is empty."));
   const auto& x_lod_0 = x_lod[0];
   PADDLE_ENFORCE_GE(x_lod_0.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The dimensions of Input(X)'s LoD data should be "
                         "equal to 2, but received %d.",
                         x_lod_0.size()));
   auto x_dims = x->dims();
   PADDLE_ENFORCE_EQ(x_dims[0],
                     static_cast<int64_t>(x_lod_0.back()),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The last element of Input(X)'s LoD data should be "
                         "equal to the first dimension of Input(X). "
                         "But received the last element of Input(X)'s LoD "
@@ -62,20 +62,20 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
   const auto& y_lod = y->lod();
   PADDLE_ENFORCE_EQ(y_lod.empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input(Y) should hold LoD information, but "
                         "received Input(Y).lod() is empty."));
   const auto& y_lod_0 = y_lod[0];
   PADDLE_ENFORCE_GE(y_lod_0.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The dimensions of Input(Y)'s LoD data should be "
                         "equal to 2, but received %d.",
                         y_lod_0.size()));
   auto y_dims = y->dims();
   PADDLE_ENFORCE_EQ(y_dims[0],
                     static_cast<int64_t>(y_lod_0.back()),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The last element of Input(Y)'s LoD data should be "
                         "equal to the first dimension of Input(Y). "
                         "But received the last element of Input(Y)'s LoD "
@@ -85,7 +85,7 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(x_lod_0.size(),
                     y_lod_0.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The dimensions of Input(X)'s and Input(Y)'s LoD "
                         "data should be equal. "
                         "But received the dimensions of Input(X)'s LoD is "

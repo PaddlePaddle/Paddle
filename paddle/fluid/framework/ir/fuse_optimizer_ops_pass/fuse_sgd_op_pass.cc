@@ -41,7 +41,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     PADDLE_ENFORCE_GT(
         sgd_ops.size(),
         static_cast<size_t>(0),
-        phi::errors::InvalidArgument("SGD ops must not be empty."));
+        common::errors::InvalidArgument("SGD ops must not be empty."));
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.

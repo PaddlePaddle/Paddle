@@ -146,7 +146,7 @@ class MatrixMultiplyOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         y_num_col_dims,
         y_rank - 1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The matrix_multiply op'y_num_col_dims should be equal "
             "to y'rank - 1, but got y_num_col_dims = %d, and y_rank = %d",
             y_num_col_dims,

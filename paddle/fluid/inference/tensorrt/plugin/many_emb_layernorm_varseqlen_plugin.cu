@@ -432,7 +432,7 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
           mIdsVocabSize[3],
           output);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support 2,3,4 lookup_tables fused "));
     }
   } else if (mType == nvinfer1::DataType::kHALF) {
@@ -495,11 +495,11 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
           mIdsVocabSize[3],
           output);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support 2,3,4 lookup_tables fused "));
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported type error, expected [kHALF,kFLOAT]"));
   }
   return STATUS_SUCCESS;
@@ -598,7 +598,7 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
           output,
           skip);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support 2,3,4 lookup_tables fused "));
     }
   } else if (mType == nvinfer1::DataType::kHALF) {
@@ -665,11 +665,11 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
           output,
           skip);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support 2,3,4 lookup_tables fused "));
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported type error, expected [kHALF,kFLOAT]"));
   }
   return STATUS_SUCCESS;

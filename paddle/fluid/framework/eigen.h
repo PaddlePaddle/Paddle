@@ -31,7 +31,7 @@ struct EigenDim {
   static Type From(const DDim& dims) {
     PADDLE_ENFORCE_EQ(arity(dims),
                       D,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input dimension size should be equal to %d, but "
                           "received dimension size is %d.",
                           arity(dims),
@@ -83,7 +83,7 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
     int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input dimension number(num_col_dims) must be "
                           "between 0 and %d, but received number is %d.",
                           rank,
@@ -97,7 +97,7 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
     int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input dimension number(num_col_dims) must be "
                           "between 0 and %d, but received number is %d.",
                           rank,

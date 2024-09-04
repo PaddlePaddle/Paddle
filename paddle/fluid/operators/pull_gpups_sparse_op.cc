@@ -24,21 +24,21 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ctx->Inputs("Ids").size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Inputs(Ids) of PullGpuPSSparseOp should not be empty."));
     PADDLE_ENFORCE_GE(
         ctx->Outputs("Out").size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Outputs(Out) of PullGpuPSSparseOp should not be empty."));
     auto embedding_size_vec = ctx->Attrs().Get<std::vector<int>>("size");
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("Ids").size(),
         embedding_size_vec.size(),
-        phi::errors::InvalidArgument("The ids size: %lu must be equal to "
-                                     "the length of embedding size: %lu.",
-                                     ctx->Inputs("Ids").size(),
-                                     embedding_size_vec.size()));
+        common::errors::InvalidArgument("The ids size: %lu must be equal to "
+                                        "the length of embedding size: %lu.",
+                                        ctx->Inputs("Ids").size(),
+                                        embedding_size_vec.size()));
     auto all_ids_dim = ctx->GetInputsDim("Ids");
     const size_t n_ids = all_ids_dim.size();
     std::vector<phi::DDim> outs_dims;
@@ -49,7 +49,7 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
       int ids_rank = ids_dims.size();
       PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
                         1,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Shape error in %lu id, the last dimension of the "
                             "'Ids' tensor must be 1.",
                             i));

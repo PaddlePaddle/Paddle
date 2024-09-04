@@ -80,7 +80,7 @@ class SelectedRowsImpl {
   int64_t Index(int64_t key) const {
     auto it = std::find(rows_.begin(), rows_.end(), key);
     if (it == rows_.end()) {
-      PADDLE_THROW(phi::errors::NotFound(
+      PADDLE_THROW(common::errors::NotFound(
           "Input id (%lld) is not in current rows table.", key));
     }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));

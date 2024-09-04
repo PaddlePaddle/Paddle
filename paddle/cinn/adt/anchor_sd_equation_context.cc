@@ -31,7 +31,7 @@ void GenerateScheduleMeshEquationsImpl(const List<ScheduleDim>& sched_dims,
   PADDLE_ENFORCE_EQ(
       input_iterators->size() == output_iterators->size(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of input iterators and output iterators should be equal, "
           "but got input iterators size = %d, output iterators size = %d.",
           input_iterators->size(),
@@ -53,7 +53,7 @@ void GenerateScheduleMeshEquationsImpl(
   PADDLE_ENFORCE_EQ(
       shape.value()->size() == output_iterators->size(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of shape and output iterators should be equal, but got "
           "shape size = %d, output iterators size = %d.",
           shape.value()->size(),
@@ -75,7 +75,7 @@ void GenerateScheduleMeshEquationsImpl(
   const auto& [sched_mesh, perm] = sched_transpose.tuple();
   PADDLE_ENFORCE_EQ(GetOutputRank(sched_mesh) == output_iterators->size(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of output iterators should be equal to the "
                         "rank of the schedule mesh, but got output iterators "
                         "size = %d, rank of the schedule mesh = %d.",
@@ -99,7 +99,7 @@ void GenerateScheduleMeshEquationsImpl(
   const auto& [sched_mesh, _] = sched_padding.tuple();
   PADDLE_ENFORCE_EQ(GetOutputRank(sched_mesh) == output_iterators->size(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of output iterators should be equal to the "
                         "rank of the schedule mesh, but got output iterators "
                         "size = %d, rank of the schedule mesh = %d.",

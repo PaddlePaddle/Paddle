@@ -59,7 +59,7 @@ TEST(Relu6FusePass, basic) {
   auto clip_num = GetNumOpNodes(graph, "clip");
   PADDLE_ENFORCE_EQ(clip_num,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "clip should be mapped to relu6 after pass."));
 }
 

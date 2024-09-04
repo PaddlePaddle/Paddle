@@ -171,7 +171,7 @@ void BindDistCommunicator(py::module* m) {
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(
-              phi::errors::InvalidArgument("unsupported communicator MODE"));
+              common::errors::InvalidArgument("unsupported communicator MODE"));
         }
         return Communicator::GetInstancePtr();
       }))
@@ -446,8 +446,8 @@ void BindIndexSampler(py::module* m) {
         if (mode == "by_layerwise") {
           return IndexSampler::Init<LayerWiseSampler>(name);
         } else {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("Unsupported IndexSampler Type!"));
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Unsupported IndexSampler Type!"));
         }
       }))
       .def("init_layerwise_conf", &IndexSampler::init_layerwise_conf)

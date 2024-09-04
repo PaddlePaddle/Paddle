@@ -79,7 +79,7 @@ TEST(ApplyCastSoftmaxPass, basic) {
   PADDLE_ENFORCE_EQ(
       GetOpNum(graph->GetSubGraph(0), "cast"),
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should have 0 cast after xpu_delete_cast_op_pass, "
           "but actually has %d.",
           cast_num_in_graph));
@@ -106,7 +106,7 @@ TEST(ApplyCastLayerNormPass, basic) {
   PADDLE_ENFORCE_EQ(
       GetOpNum(graph->GetSubGraph(0), "cast"),
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should have 0 cast after xpu_delete_cast_op_pass, "
           "but actually has %d.",
           cast_num_in_graph));
@@ -188,18 +188,18 @@ TEST(ApplyCastCacheKVInitializationPass, basic) {
   PADDLE_ENFORCE_EQ(
       GetOpNum(graph->GetSubGraph(0), "shape"),
       1,
-      phi::errors::PreconditionNotMet("graph should have 1 shape after "
-                                      "xpu_delete_cast_op_pass, "
-                                      "but actually has %d.",
-                                      shape_num_in_graph));
+      common::errors::PreconditionNotMet("graph should have 1 shape after "
+                                         "xpu_delete_cast_op_pass, "
+                                         "but actually has %d.",
+                                         shape_num_in_graph));
   int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
   PADDLE_ENFORCE_EQ(
       GetOpNum(graph->GetSubGraph(0), "cast"),
       1,
-      phi::errors::PreconditionNotMet("graph should have 1 cast after "
-                                      "xpu_delete_cast_op_pass, "
-                                      "but actually has %d.",
-                                      cast_num_in_graph));
+      common::errors::PreconditionNotMet("graph should have 1 cast after "
+                                         "xpu_delete_cast_op_pass, "
+                                         "but actually has %d.",
+                                         cast_num_in_graph));
 }
 
 }  // namespace ir

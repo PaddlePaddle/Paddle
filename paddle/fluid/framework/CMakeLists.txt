@@ -123,7 +123,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS fluid_memory data_type device_context phi common)
+  DEPS data_type device_context phi common)
 
 cc_library(
   lod_tensor
@@ -133,7 +133,7 @@ cc_library(
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context allocator phi common glog)
+  DEPS device_context phi common glog)
 
 cc_library(
   reader
@@ -144,12 +144,6 @@ cc_library(
   var_type_traits
   SRCS var_type_traits.cc
   DEPS framework_proto scope phi common)
-if(WITH_GPU)
-  target_link_libraries(var_type_traits dynload_cuda)
-endif()
-if(WITH_XPU)
-  target_link_libraries(var_type_traits dynload_xpti)
-endif()
 
 # every source file that includes "dnnl.h" must depends on onednn
 # or, the first one should depends on onednn
@@ -243,7 +237,7 @@ cc_library(
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto enforce common)
+  DEPS framework_proto phi common)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -326,7 +320,6 @@ if(WITH_XPU)
          shape_inference
          data_transform
          lod_tensor
-         profiler
          transfer_scope_cache
          op_kernel_type
          op_call_stack
@@ -353,7 +346,6 @@ else()
          shape_inference
          data_transform
          lod_tensor
-         profiler
          transfer_scope_cache
          op_kernel_type
          op_call_stack
@@ -408,7 +400,7 @@ cc_library(
 cc_library(
   op_call_stack
   SRCS op_call_stack.cc
-  DEPS op_proto_maker enforce common)
+  DEPS op_proto_maker phi common)
 
 cc_library(
   program_utils
@@ -947,7 +939,6 @@ cc_library(
        framework_proto
        op_registry
        operator
-       dynamic_loader
        string_helper
        phi
        common
@@ -971,7 +962,8 @@ set(FLUID_FRAMEWORK_MODULES
     executor
     data_feed_proto
     layer
-    dynamic_loader
+    phi
+    common
     custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})

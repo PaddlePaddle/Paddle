@@ -92,9 +92,7 @@ class TestAST2Func(Dy2StTestBase):
     def test_ast2func_error(self):
         with self.assertRaises(Exception) as e:
             self.assertRaises(TypeError, ast_to_func("x = a + b", 'foo'))
-        self.assertTrue(
-            "Type of ast_root should be gast.AST or ast.AST" in str(e.exception)
-        )
+        self.assertIn("'foo' is not a Python function", str(e.exception))
 
 
 if __name__ == '__main__':

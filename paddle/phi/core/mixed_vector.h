@@ -152,7 +152,7 @@ class MixVector {
       PADDLE_ENFORCE_EQ(
           place.GetType() == phi::AllocationType::GPU,
           true,
-          phi::errors::Unavailable(
+          common::errors::Unavailable(
               "Place mismatch, CUDA Data must be on CUDA place."));
       ImmutableCUDA(place);
       return reinterpret_cast<T *>(gpu_->ptr());
@@ -209,7 +209,7 @@ class MixVector {
           SetFlag(kDataInCUDA);
         } else if (IsInCUDA() && !(place == gpu_->place())) {
           PADDLE_THROW(
-              phi::errors::Unavailable("Unexpected data place mismatch."));
+              common::errors::Unavailable("Unexpected data place mismatch."));
           // Still dirty
         } else {
           // Dirty && DataInCUDA && Device is same
@@ -222,7 +222,7 @@ class MixVector {
           SetFlag(kDataInCUDA);
         } else if (!(place == gpu_->place())) {
           PADDLE_THROW(
-              phi::errors::Unavailable("Unexpected data place mismatch."));
+              common::errors::Unavailable("Unexpected data place mismatch."));
         } else {
           // Not Dirty && DataInCUDA && Device is same
           // Do nothing.

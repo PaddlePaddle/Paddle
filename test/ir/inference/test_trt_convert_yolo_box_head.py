@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -25,7 +27,7 @@ import paddle.inference as paddle_infer
 
 class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
-        def generate_input(attrs: List[Dict[str, Any]], batch, shape):
+        def generate_input(attrs: list[dict[str, Any]], batch, shape):
             gen_shape = shape.copy()
             gen_shape.insert(0, batch)
             return np.random.uniform(0, 1, gen_shape).astype("float32")
@@ -76,11 +78,11 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         # for static_shape
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), [1, 2], 1e-5
+        yield self.create_inference_config(), [0, 3], 1e-5
 
     def test(self):
         self.run_test()

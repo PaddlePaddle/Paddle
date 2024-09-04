@@ -73,7 +73,8 @@ def vec_to_tril_matrix(
     # Calculate the dimension of the square matrix based on the last but one dimension of `p`
     # Define the output shape, which adds two dimensions for the square matrix
     shape0 = flatten_shape // last_dim
-    output_shape = sample_shape + (
+    output_shape = (
+        *sample_shape,
         shape0 // reduce(operator.mul, sample_shape),
         dim,
         dim,
@@ -251,7 +252,7 @@ class LKJCholesky(distribution.Distribution):
         # u_hypersphere[..., 0, :].fill_(0.0)
         # u_hypersphere[..., 0, :] = 0.0
         u_hypersphere_other = u_hypersphere[..., 1:, :]
-        zero_shape = tuple(u_hypersphere.shape[:-2]) + (1, self.dim)
+        zero_shape = (*tuple(u_hypersphere.shape[:-2]), 1, self.dim)
         zero_row = paddle.zeros(shape=zero_shape, dtype=u_hypersphere.dtype)
         u_hypersphere = paddle.concat([zero_row, u_hypersphere_other], axis=-2)
 
@@ -259,9 +260,7 @@ class LKJCholesky(distribution.Distribution):
 
         # Fill diagonal elements; clamp for numerical stability
         eps = paddle.finfo(w.dtype).tiny
-        diag_elems = paddle.clip(
-            1 - paddle.sum(w**2, axis=-1), min=eps
-        ).sqrt()
+        diag_elems = paddle.clip(1 - paddle.sum(w**2, axis=-1), min=eps).sqrt()
 
         w += paddle.diag_embed(diag_elems)
         return w

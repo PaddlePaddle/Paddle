@@ -474,11 +474,11 @@ void TrtEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
       VLOG(3) << "start trt_embedding_eltwise_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
-          phi::errors::Fatal("Use transformer'varseqlen need config: "
-                             "use_varseqlen, set pos_id, set "
-                             "mask_id. Or not use varseqlen, do not set "
-                             "pos_id. Please "
-                             "reconfig"));
+          common::errors::Fatal("Use transformer'varseqlen need config: "
+                                "use_varseqlen, set pos_id, set "
+                                "mask_id. Or not use varseqlen, do not set "
+                                "pos_id. Please "
+                                "reconfig"));
     }
     graph->Set(kEmbEltwiseLayernormPass, new bool(true));
   }

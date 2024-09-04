@@ -65,7 +65,7 @@ List<std::optional<Index>> GetMaskedOutIndexes(
   PADDLE_ENFORCE_EQ(
       in_msg_out_indexes->size(),
       out_msg_out_indexes->size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of in_msg_out_indexes and out_msg_out_indexes "
           "should be equal, but got in_msg_out_indexes size = %d, "
           "out_msg_out_indexes size = %d.",

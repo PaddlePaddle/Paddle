@@ -132,31 +132,31 @@ class EmbSeqPoolCreator : public JitCodeCreator<emb_seq_pool_attr_t> {
       const emb_seq_pool_attr_t& attr) const override {
     PADDLE_ENFORCE_GT(attr.table_height,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The attribute table_height of EmbSeqPool should "
                           "be larger than 0. But it is %d.",
                           attr.table_height));
     PADDLE_ENFORCE_GT(attr.table_width,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The attribute table_width of EmbSeqPool should "
                           "be larger than 0. But it is %d.",
                           attr.table_width));
     PADDLE_ENFORCE_GT(attr.index_height,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The attribute index_height of EmbSeqPool should "
                           "be larger than 0. But it is %d.",
                           attr.index_height));
     PADDLE_ENFORCE_GT(attr.index_width,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The attribute index_width of EmbSeqPool should "
                           "be larger than 0. But it is %d.",
                           attr.index_width));
     PADDLE_ENFORCE_GT(attr.out_width,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The attribute out_width of EmbSeqPool should be "
                           "larger than 0. But it is %d.",
                           attr.out_width));

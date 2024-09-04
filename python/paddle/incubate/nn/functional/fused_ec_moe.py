@@ -12,12 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle.base.layer_helper import LayerHelper
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 def fused_ec_moe(
-    x, gate, bmm0_weight, bmm0_bias, bmm1_weight, bmm1_bias, act_type
-):
+    x: Tensor,
+    gate: Tensor,
+    bmm0_weight: Tensor,
+    bmm0_bias: Tensor,
+    bmm1_weight: Tensor,
+    bmm1_bias: Tensor,
+    act_type: str,
+) -> Tensor:
     """
     Applies fused ec_moe kernel.
     This method requires SM_ARCH in sm75, sm80, sm86.
@@ -52,7 +65,7 @@ def fused_ec_moe(
             >>> print(out.shape)
             [10, 128, 1024]
     """
-    helper = LayerHelper('fused_moe', **locals())
+    helper = LayerHelper('fused_ec_moe', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='moe',

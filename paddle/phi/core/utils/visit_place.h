@@ -29,7 +29,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       phi::GPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           ("Paddle is not compiled with CUDA. Cannot visit cuda_pinned")));
       return typename Visitor::result_type();
 #endif
@@ -39,7 +39,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       phi::GPUPinnedPlace p;
       return visitor(p);
 #else
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           ("Paddle is not compiled with CUDA. Cannot visit cuda_pinned")));
       return typename Visitor::result_type();
 #endif
@@ -49,7 +49,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       phi::XPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           ("Paddle is not compiled with XPU. Cannot visit xpu device")));
       return typename Visitor::result_type();
 #endif
@@ -59,7 +59,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       phi::IPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           ("Paddle is not compiled with IPU. Cannot visit ipu device")));
       return typename Visitor::result_type();
 #endif
@@ -69,7 +69,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       phi::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
       return visitor(p);
 #else
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           ("Paddle is not compiled with CUSTOM. Cannot visit custom device")));
 #endif
     }

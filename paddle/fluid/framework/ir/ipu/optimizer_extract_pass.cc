@@ -115,27 +115,27 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
         auto type = std::string{"sgd"};
         // auto LearningRate = op->Input("LearningRate");
         auto use_nesterov = PADDLE_GET_CONST(bool, op->GetAttr("use_nesterov"));
-        PADDLE_ENFORCE_EQ(
-            use_nesterov,
-            false,
-            phi::errors::Unimplemented("ipu does not support nesterov mode."));
+        PADDLE_ENFORCE_EQ(use_nesterov,
+                          false,
+                          common::errors::Unimplemented(
+                              "ipu does not support nesterov mode."));
         auto regularization_method =
             PADDLE_GET_CONST(std::string, op->GetAttr("regularization_method"));
-        PADDLE_ENFORCE_NE(
-            regularization_method,
-            "l1_decay",
-            phi::errors::Unimplemented("ipu does not support l1_decay mode."));
+        PADDLE_ENFORCE_NE(regularization_method,
+                          "l1_decay",
+                          common::errors::Unimplemented(
+                              "ipu does not support l1_decay mode."));
         auto multi_precision =
             PADDLE_GET_CONST(bool, op->GetAttr("multi_precision"));
         PADDLE_ENFORCE_EQ(multi_precision,
                           false,
-                          phi::errors::Unimplemented(
+                          common::errors::Unimplemented(
                               "ipu does not support multi_precision mode."));
         auto rescale_grad =
             PADDLE_GET_CONST(float, op->GetAttr("rescale_grad"));
         PADDLE_ENFORCE_EQ(rescale_grad,
                           1.0,
-                          phi::errors::Unimplemented(
+                          common::errors::Unimplemented(
                               "ipu does not support rescale_grad mode."));
         auto regularization_coeff =
             PADDLE_GET_CONST(float, op->GetAttr("regularization_coeff"));
@@ -155,13 +155,13 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
         auto lazy_mode = PADDLE_GET_CONST(bool, op->GetAttr("lazy_mode"));
         auto multi_precision =
             PADDLE_GET_CONST(bool, op->GetAttr("multi_precision"));
-        PADDLE_ENFORCE_EQ(
-            lazy_mode,
-            false,
-            phi::errors::Unimplemented("ipu does not support lazy_mode mode."));
+        PADDLE_ENFORCE_EQ(lazy_mode,
+                          false,
+                          common::errors::Unimplemented(
+                              "ipu does not support lazy_mode mode."));
         PADDLE_ENFORCE_EQ(multi_precision,
                           false,
-                          phi::errors::Unimplemented(
+                          common::errors::Unimplemented(
                               "ipu does not support multi_precision mode."));
         new_op.SetAttr("type", type);
         new_op.SetAttr("lr_var", lr_var);
@@ -269,7 +269,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       } else if (ignored_ops.count(op_type)) {
         VLOG(10) << "Ignore optimizer related op: " << op_type;
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Unknown optimizer related op_type: %s", op_type));
       }
     } else if (op_role == OpRole::kLoss) {
@@ -278,12 +278,12 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       PADDLE_ENFORCE_EQ(
           outputs.size(),
           1,
-          phi::errors::InvalidArgument("Can only support one loss key"));
+          common::errors::InvalidArgument("Can only support one loss key"));
       auto losses = outputs.begin()->second;
       PADDLE_ENFORCE_EQ(
           losses.size(),
           1,
-          phi::errors::InvalidArgument("Can only support one loss name"));
+          common::errors::InvalidArgument("Can only support one loss name"));
       auto loss_var = losses.front();
       new_op.SetAttr("loss_var", loss_var);
     } else if (op_role == OpRole::kLRSched) {
@@ -305,7 +305,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       // L1Decay
       // sign + scale + sum
       PADDLE_THROW(
-          phi::errors::Unimplemented("Unsupported L1Decay regularizer"));
+          common::errors::Unimplemented("Unsupported L1Decay regularizer"));
     } else {
       // L2Decay
       // scale + sum
@@ -318,10 +318,10 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   // setup grad clip
   if (set_ops.count("clip")) {
     // ClipGradByValue
-    PADDLE_THROW(phi::errors::Unimplemented("Unsupported ClipGradByValue"));
+    PADDLE_THROW(common::errors::Unimplemented("Unsupported ClipGradByValue"));
   } else if (set_ops.count("clip_by_norm")) {
     // ClipGradByNorm
-    PADDLE_THROW(phi::errors::Unimplemented("Unsupported ClipGradByNorm"));
+    PADDLE_THROW(common::errors::Unimplemented("Unsupported ClipGradByNorm"));
   }
 
   // ClipGradByGlobalNorm
@@ -335,7 +335,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(10) << "New Optimizer Node:";
     VLOG(10) << DebugString(new_node);
   } else {
-    PADDLE_THROW(phi::errors::NotFound(
+    PADDLE_THROW(common::errors::NotFound(
         "No optimizer found, optimizer must be one of these types: sgd, "
         "momentum, adam, adamw, adamax, lamb, adadelta, adagrad or rmsprop"));
   }

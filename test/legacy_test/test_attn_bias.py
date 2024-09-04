@@ -80,7 +80,7 @@ def check_split_tensor_without_batch_sizes(seqinfo, extra_shape):
     seqlens = []
     for i in range(len(seqinfo.seqstart_py) - 1):
         seqlens.append(seqinfo.seqstart_py[i + 1] - seqinfo.seqstart_py[i])
-    shape = [1, seqinfo.seqstart_py[-1]] + list(extra_shape)
+    shape = [1, seqinfo.seqstart_py[-1], *extra_shape]
 
     x = paddle.rand(shape)
     tensors = seqinfo.split(x)
@@ -108,7 +108,7 @@ def check_split_tensor_with_batch_sizes(seqinfo, extra_shape, batch_sizes):
         cumsum_bs += bs
         uniq_seqlens.append(seqlens[start])
 
-    x = paddle.rand(shape=[1, sum(seqlens)] + extra_shape)
+    x = paddle.rand(shape=[1, sum(seqlens), *extra_shape])
     tensors = seqinfo.split(x, batch_sizes)
     assert len(tensors) == len(batch_sizes)
     for i, t in enumerate(tensors):
@@ -145,7 +145,7 @@ class TestSeqLenInfo(unittest.TestCase):
     def test_seq_len_info(self):
         n = 100
         seqlens = np.random.randint(2, 100, size=[n]).tolist()
-        cumsum_seqlens = [0] + np.cumsum(seqlens).tolist()
+        cumsum_seqlens = [0, *np.cumsum(seqlens).tolist()]
         info = SeqLenInfo.from_seqlens(seqlens)
         self.assertEqual(max(seqlens), info.max_seqlen)
         np.testing.assert_equal(cumsum_seqlens, info.seqstart.numpy())
@@ -242,8 +242,8 @@ class TestBlockDiagonalMask(unittest.TestCase):
         q_seqlens = []
         kv_seqlens = []
         for i, bs in enumerate(batch_sizes):
-            q_shape = [bs, q_uniq_seqlens[i]] + extra_shape
-            kv_shape = [bs, k_uniq_seqlens[i]] + extra_shape
+            q_shape = [bs, q_uniq_seqlens[i], *extra_shape]
+            kv_shape = [bs, k_uniq_seqlens[i], *extra_shape]
             tensors_q.append(paddle.rand(q_shape))
             tensors_k.append(paddle.rand(kv_shape))
             q_seqlens.extend([q_shape[1]] * q_shape[0])
@@ -272,7 +272,7 @@ class TestBlockDiagonalMask(unittest.TestCase):
     ):
         total_q_tokens = sum(q_seqlen)
         total_kv_tokens = sum(kv_seqlen)
-        shape = extra_shape + [total_q_tokens, total_kv_tokens]
+        shape = [*extra_shape, total_q_tokens, total_kv_tokens]
         mask_value = mask.materialize(shape=shape)
         self.assertEqual(mask_value.shape, shape)
 
@@ -373,7 +373,7 @@ class TestBlockDiagonalCausalWithOffsetPaddedKeysMask(unittest.TestCase):
             q_seqlen, kv_padding, kv_seqlen, causal_diagonal
         )
 
-        shape = extra_shape + [q_ntokens, kv_ntokens]
+        shape = [*extra_shape, q_ntokens, kv_ntokens]
         mask_np = mask.materialize(shape).numpy()
         self.assertEqual(list(mask_np.shape[: len(extra_shape)]), extra_shape)
         mask_np = mask_np.reshape([-1, *mask_np.shape[2:]])

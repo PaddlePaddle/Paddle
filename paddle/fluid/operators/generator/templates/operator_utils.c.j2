@@ -811,7 +811,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
     {% if "tensor_name" in attr_dict[attrs[i]] %}
     auto {{'tensor_' + attrs[i]}} = this->GetOptionalSingleForwardInput("{{attr_dict[attrs[i]]['tensor_name']}}");
     if ({{'tensor_' + attrs[i]}}) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "We don't support dynamic tensor attribute {{attr_dict[attrs[i]]['tensor_name']}} for {{op_name}} composite"
           "for now. "));
     }
@@ -819,7 +819,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
     {% if "tensors_name" in attr_dict[attrs[i]] %}
     auto {{'tensors_' + attrs[i]}} = this->GetOptionalMultiForwardInput("{{attr_dict[attrs[i]]['tensors_name']}}");
     if ({{'tensors_' + attrs[i]}}) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "We don't support dynamic tensors attribute {{attr_dict[attrs[i]]['tensor_name']}} for {{op_name}} composite "
           "for now. "));
     }

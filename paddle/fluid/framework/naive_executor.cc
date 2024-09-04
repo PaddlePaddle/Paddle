@@ -160,9 +160,9 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
                                     int block_id,
                                     bool persistable,
                                     Scope *scope) {
-  PADDLE_ENFORCE_NOT_NULL(
-      scope,
-      phi::errors::InvalidArgument("The Scope to hold variables is nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(scope,
+                          common::errors::InvalidArgument(
+                              "The Scope to hold variables is nullptr."));
 
   auto &global_block = desc.Block(block_id);
 
@@ -170,7 +170,7 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
   PADDLE_ENFORCE_NE(
       anc->parent(),
       anc,
-      phi::errors::InvalidArgument("Input scope should be child scope."));
+      common::errors::InvalidArgument("Input scope should be child scope."));
   while (anc->parent()) {
     anc = anc->parent();
   }
@@ -214,11 +214,12 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id) {
 
 phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "Need to init scope in NaiveExecutor firstly."));
   auto *var = scope_->FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, phi::errors::NotFound("No variable [%s] in current scope.", name));
+      var,
+      common::errors::NotFound("No variable [%s] in current scope.", name));
   auto *tensor = const_cast<phi::DenseTensor *>(&var->Get<phi::DenseTensor>());
   return tensor;
 }

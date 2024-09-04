@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+import os
 import random
 import unittest
 from functools import partial
@@ -154,7 +155,13 @@ class TestRegularizer(unittest.TestCase):
         ]
 
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places

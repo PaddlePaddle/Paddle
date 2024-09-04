@@ -400,9 +400,11 @@ def optional_inplace_vector_dynamic_add(
         [t.numpy() for t in outy] if outy is not None else None,
         out.numpy(),
         x.grad.numpy(),
-        [y.grad.numpy() for y in inputs]
-        if np_inputs is not None and inputs[0].grad is not None
-        else None,
+        (
+            [y.grad.numpy() for y in inputs]
+            if np_inputs is not None and inputs[0].grad is not None
+            else None
+        ),
     )
 
 
