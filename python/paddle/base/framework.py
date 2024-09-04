@@ -8445,6 +8445,7 @@ def auto_complete_op_role(program, op_role):
     block = program.global_block()
 
     if paddle.framework.in_pir_mode() and is_dist_block(block):
+        assert op_role != -1, "Can't set op_role to -1 for new added ops"
         validate_op_roles(block)
 
     try:

@@ -1319,6 +1319,8 @@ class Engine:
                             op.operand(0).set_source(reshard_var)
                 for del_op in del_ops:
                     del_op.erase()
+
+                set_all_ops_op_role(startup_prog, OpRole.Forward)
                 apply_reshard_pass(startup_prog)
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
