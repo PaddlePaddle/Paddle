@@ -8414,38 +8414,37 @@ def process_type_promotion(program):
 
 # complete the op_role of the new added ops
 @signature_safe_contextmanager
-def auto_complete_op_role(program, op_role, insert_point=None):
-    if paddle.framework.in_pir_mode():
-        initial_num_ops = program.num_ops()
-        origin_insert_point = insert_point
+def auto_complete_op_role(program, op_role):
+    def is_dist_block(block):
+        return any(op.dist_attr is not None for op in block.ops)
+
+    def validate_op_roles(block):
+        for op in block.ops:
+            if op.op_role is None:
+                raise ValueError(
+                    f"All ops' op_role should be set before the completion. However, {op.name()}'s op_role is None"
+                )
+
+    def set_op_roles(block, op_role, always_forward_ops):
+        for op in block.ops:
+            set_op_role = (
+                op_role
+                if op.name() not in always_forward_ops
+                else int(core.op_proto_and_checker_maker.OpRole.Forward)
+            )
+            if op.op_role is None:
+                op.op_role = set_op_role
+            for sub_block in op.blocks():
+                set_op_roles(sub_block, op_role, always_forward_ops)
+
+    block = program.global_block()
+
+    if paddle.framework.in_pir_mode() and is_dist_block(block):
+        validate_op_roles(block)
 
     try:
         yield
     finally:
-        if paddle.framework.in_pir_mode():
-            if insert_point is None:
-                paddle.pir.set_insertion_point_to_block_end(
-                    program.global_block()
-                )
-                insert_point = paddle.pir.get_current_insertion_point()
-
-            current_num_ops = program.num_ops()
-            if op_role is not None and current_num_ops > initial_num_ops:
-                new_added_op_num = current_num_ops - initial_num_ops
-                while new_added_op_num > 0:
-                    new_added_op = insert_point.prev()
-                    if new_added_op.op_role is not None:
-                        continue
-
-                    new_added_op.op_role = op_role
-                    for sub_block in new_added_op.blocks():
-                        for sub_op in sub_block.ops:
-                            sub_op.op_role = op_role
-                            new_added_op_num -= 1
-
-                    paddle.pir.set_insertion_point(new_added_op)
-                    insert_point = paddle.pir.get_current_insertion_point()
-                    new_added_op_num -= 1
-
-            if origin_insert_point:
-                paddle.pir.set_insertion_point(origin_insert_point)
+        if paddle.framework.in_pir_mode() and is_dist_block(block):
+            always_forward_ops = ["pd_op.data", "builtin.parameter"]
+            set_op_roles(block, op_role, always_forward_ops)

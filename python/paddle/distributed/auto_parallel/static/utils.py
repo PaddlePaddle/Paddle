@@ -2515,3 +2515,5 @@ def set_all_ops_op_role(main_program, op_role):
     for op in all_ops:
         if op.op_role is None:
             op.op_role = op_role
+        for sub_block in op.blocks():
+            set_all_ops_op_role(sub_block, op_role)
