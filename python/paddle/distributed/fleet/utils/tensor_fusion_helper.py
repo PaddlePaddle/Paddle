@@ -560,13 +560,6 @@ class FusedCommBuffer:
         tmp_var.add_(grad_var)
         tmp_var.get_tensor()._set_dims(param.shape)
 
-        #        if self.use_main_grad:
-        #            param.main_grad._clear()
-        #            param.main_grad = tmp_var
-        #            param.main_grad.name = "main_grad@" + param.name
-        #        else:
-        #            param._copy_gradient_from(tmp_var)
-        #
         if self.use_main_grad:
             param.main_grad._clear()
             if not self._free_grads_in_comm:
