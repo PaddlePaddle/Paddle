@@ -346,8 +346,7 @@ def remove_other_rank_input_output_pass(dist_program):
         result = op.operand_source(0).get_defining_op().result(0)
         paddle.pir.set_insertion_point_after(combine_op)
         res = paddle._C_ops.builtin_combine(new_vars)
-        if op.op_role is not None:
-            res.get_defining_op().op_role = op.op_role
+        res.get_defining_op().op_role = op.op_role
         result.replace_all_uses_with(res)
         combine_op.erase()
         # since it is inplace op, set type of output as the same as input
@@ -403,8 +402,7 @@ def eliminate_transpose_by_reshape(program):
                 paddle.pir.set_insertion_point(op)
                 transpose_var = op.result(0)
                 reshape_var = paddle._C_ops.reshape(var, transpose_var.shape)
-                if op.op_role is not None:
-                    reshape_var.get_defining_op().op_role = op.op_role
+                reshape_var.get_defining_op().op_role = op.op_role
                 transpose_var.replace_all_uses_with(reshape_var)
                 op.erase()
     return program
