@@ -88,16 +88,12 @@ class Pool2dOpConverter : public OpConverter {
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     nvinfer1::ReduceOperation reduce_operation =
         nvinfer1::ReduceOperation::kMAX;
-    plugin::PoolPlugin::PoolType plugin_pool_type =
-        plugin::PoolPlugin::PoolType::max;
     if (pool_type == "max") {
       nv_pool_type = nvinfer1::PoolingType::kMAX;
       reduce_operation = nvinfer1::ReduceOperation::kMAX;
-      plugin_pool_type = plugin::PoolPlugin::PoolType::max;
     } else if (pool_type == "avg") {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
       reduce_operation = nvinfer1::ReduceOperation::kAVG;
-      plugin_pool_type = plugin::PoolPlugin::PoolType::avg;
     }
     if (global_pooling || adaptive) {
       std::fill(paddings.begin(), paddings.end(), 0);
@@ -170,213 +166,68 @@ class Pool2dOpConverter : public OpConverter {
       std::fill(real_paddings.begin(), real_paddings.end(), 0);
     }
 
-    if (global_pooling == true && !engine_->with_dynamic_shape()) {
-      nv_ksize.d[0] = input_shape.d[input_dims - 2];
-      nv_ksize.d[1] = input_shape.d[input_dims - 1];
-      ksize[0] = input_shape.d[input_dims - 2];
-      ksize[1] = input_shape.d[input_dims - 1];
-    }
-
-    if (engine_->with_dynamic_shape()) {
-      if (!adaptive && !global_pooling && !ceil_mode) {
-        // input_shape.d < 0 means we can't get shape info here.
-        // we may suffer from issue if shape is not met finally.
-        if ((padding_algorithm != "SAME") &&
-            ((g_post_pad.w() > 0 && input_shape.d[input_dims - 2] > 0) ||
-             (g_post_pad.h() > 0 && input_shape.d[input_dims - 1] > 0))) {
-          auto *pad_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, PaddingNd, *input1, g_pre_pad, g_post_pad);
-          PADDLE_ENFORCE_NOT_NULL(
-              pad_layer,
-              common::errors::Fatal(
-                  "Pad layer in poolOp converter could not be "
-                  "created. The pointer to pad layer is `NULL`."));
-          input1 = pad_layer->getOutput(0);
-        }
-
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
-        pool_layer->setStrideNd(nv_strides);
-        pool_layer->setPaddingNd(nv_paddings);
-        pool_layer->setAverageCountExcludesPadding(exclusive);
-        if (padding_algorithm == "SAME") {
-          pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
-        }
-        layer = pool_layer;
-      } else if (!adaptive && !global_pooling && ceil_mode) {
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
-        pool_layer->setStrideNd(nv_strides);
-        pool_layer->setPaddingNd(nv_paddings);
-        pool_layer->setAverageCountExcludesPadding(exclusive);
-        if (padding_algorithm == "SAME") {
-          pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
-        } else {
-          pool_layer->setPaddingMode(nvinfer1::PaddingMode::kEXPLICIT_ROUND_UP);
-        }
-        layer = pool_layer;
-      } else if (global_pooling && !adaptive) {
-        auto *reduce_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Reduce, *input1, reduce_operation, 12, true);
-        layer = reduce_layer;
-      } else {
-#if IS_TRT_VERSION_GE(6000)
-        plugin::PoolPluginDynamic *plugin =
-            new plugin::PoolPluginDynamic(ceil_mode,
-                                          pool_type,
-                                          adaptive,
-                                          exclusive,
-                                          ksize,
-                                          strides,
-                                          paddings,
-                                          global_pooling);
-        layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
-#endif
+    if (!adaptive && !global_pooling && !ceil_mode) {
+      // input_shape.d < 0 means we can't get shape info here.
+      // we may suffer from issue if shape is not met finally.
+      if ((padding_algorithm != "SAME") &&
+          ((g_post_pad.w() > 0 && input_shape.d[input_dims - 2] > 0) ||
+           (g_post_pad.h() > 0 && input_shape.d[input_dims - 1] > 0))) {
+        auto *pad_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, PaddingNd, *input1, g_pre_pad, g_post_pad);
+        PADDLE_ENFORCE_NOT_NULL(
+            pad_layer,
+            common::errors::Fatal(
+                "Pad layer in poolOp converter could not be "
+                "created. The pointer to pad layer is `NULL`."));
+        input1 = pad_layer->getOutput(0);
       }
-      auto output_name = op_desc.Output("Out")[0];
-      layer->setName(("pool2d (Output: " + output_name + ")").c_str());
-      layer->getOutput(0)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, layer->getOutput(0));
-      if (test_mode) {
-        engine_->DeclareOutput(output_name);
-      }
-      return;
-    }
 
-    if (global_pooling == true && adaptive == false) {
       auto *pool_layer = TRT_ENGINE_ADD_LAYER(
           engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
-      PADDLE_ENFORCE_NOT_NULL(
-          pool_layer,
-          common::errors::Fatal(
-              "trt pool layer in converter could not be created."));
-      auto output_name = op_desc.Output("Out")[0];
-      pool_layer->setName(("pool2d (Output: " + output_name + ")").c_str());
-      pool_layer->getOutput(0)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, pool_layer->getOutput(0));
-      layer = pool_layer;
-      if (test_mode) {
-        engine_->DeclareOutput(output_name);
+      pool_layer->setStrideNd(nv_strides);
+      pool_layer->setPaddingNd(nv_paddings);
+      pool_layer->setAverageCountExcludesPadding(exclusive);
+      if (padding_algorithm == "SAME") {
+        pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
       }
-      return;
-    }
-
-    if (!adaptive) {
-      if (ceil_mode) {
-        if (nv_ksize.d[0] % nv_strides.d[0] == 0 &&
-            nv_ksize.d[1] % nv_strides.d[1] == 0) {
-          nvinfer1::DimsHW pre_pad(0, 0);
-          nvinfer1::DimsHW post_pad(0, 0);
-          // If ceil mode is true, we will pad the appropriate size to the
-          // input.
-          DealCeilMode(input_shape,
-                       ksize,
-                       strides,
-                       paddings,
-                       &pre_pad,
-                       &post_pad,
-                       input_dims);
-          auto *pad_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, PaddingNd, *input1, pre_pad, post_pad);
-
-          PADDLE_ENFORCE_NOT_NULL(
-              pad_layer,
-              common::errors::Fatal(
-                  "Pad layer in poolOp converter could not be "
-                  "created. The pointer to pad layer is `NULL`."));
-          input1 = pad_layer->getOutput(0);
-
-          auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
-          PADDLE_ENFORCE_NOT_NULL(
-              pool_layer,
-              common::errors::Fatal(
-                  "trt pool layer in converter could not be created."));
-          pool_layer->setStrideNd(nv_strides);
-          pool_layer->setPaddingNd(nv_paddings);
-          if (padding_algorithm == "SAME") {
-            pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
-          }
-          pool_layer->setAverageCountExcludesPadding(exclusive);
-          layer = pool_layer;
-        } else {
-          std::vector<int> input_shape_v;
-          for (int i = 0; i < input_dims; i++) {
-            input_shape_v.push_back(input_shape.d[i]);
-          }
-          plugin::PoolPlugin *plugin = new plugin::PoolPlugin(ceil_mode,
-                                                              plugin_pool_type,
-                                                              adaptive,
-                                                              exclusive,
-                                                              ksize,
-                                                              strides,
-                                                              paddings,
-                                                              input_shape_v,
-                                                              real_paddings);
-          auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
-          PADDLE_ENFORCE_NOT_NULL(
-              pool_layer,
-              common::errors::Fatal(
-                  "trt pool plugin layer in converter could not be created."));
-          layer = pool_layer;
-        }
+      layer = pool_layer;
+    } else if (!adaptive && !global_pooling && ceil_mode) {
+      auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
+      pool_layer->setStrideNd(nv_strides);
+      pool_layer->setPaddingNd(nv_paddings);
+      pool_layer->setAverageCountExcludesPadding(exclusive);
+      if (padding_algorithm == "SAME") {
+        pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
       } else {
-#if IS_TRT_VERSION_GE(8000)
-        // Exclude padding pixels from the average mean is not supported well by
-        // TRT
-        // so enable padding for trt8.0 above.
-        if ((g_post_pad.w() > 0 || g_post_pad.h() > 0) &&
-            (padding_algorithm != "SAME") && !ceil_mode) {
-          auto *pad_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, PaddingNd, *input1, g_pre_pad, g_post_pad);
-          PADDLE_ENFORCE_NOT_NULL(
-              pad_layer,
-              common::errors::Fatal(
-                  "Pad layer in poolOp converter could not be "
-                  "created. The pointer to pad layer is `NULL`."));
-          input1 = pad_layer->getOutput(0);
-        }
-#endif
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
-        PADDLE_ENFORCE_NOT_NULL(
-            pool_layer,
-            common::errors::Fatal(
-                "trt pool layer in converter could not be created."));
-        pool_layer->setStrideNd(nv_strides);
-        pool_layer->setPaddingNd(nv_paddings);
-        if (padding_algorithm == "SAME") {
-          pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
-        }
-        pool_layer->setAverageCountExcludesPadding(exclusive);
-        layer = pool_layer;
+        pool_layer->setPaddingMode(nvinfer1::PaddingMode::kEXPLICIT_ROUND_UP);
       }
-    } else {
-      // Average pooling needs to exclude the padding pixels from the average
-      // mean.
-      // It is not supported well by TRT, we use a plugin here
-      std::vector<int> input_shape_v;
-      for (int i = 0; i < input_dims; i++) {
-        input_shape_v.push_back(input_shape.d[i]);
-      }
-      plugin::PoolPlugin *plugin = new plugin::PoolPlugin(ceil_mode,
-                                                          plugin_pool_type,
-                                                          adaptive,
-                                                          exclusive,
-                                                          ksize,
-                                                          strides,
-                                                          paddings,
-                                                          input_shape_v,
-                                                          real_paddings);
-      auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
-      PADDLE_ENFORCE_NOT_NULL(
-          pool_layer,
-          common::errors::Fatal(
-              "trt pool plugin layer in converter could not be created."));
       layer = pool_layer;
+    } else if (global_pooling && !adaptive) {
+      auto *reduce_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *input1, reduce_operation, 12, true);
+      layer = reduce_layer;
+    } else {
+#if IS_TRT_VERSION_GE(6000)
+      plugin::PoolPluginDynamic *plugin =
+          new plugin::PoolPluginDynamic(ceil_mode,
+                                        pool_type,
+                                        adaptive,
+                                        exclusive,
+                                        ksize,
+                                        strides,
+                                        paddings,
+                                        global_pooling);
+      layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
+#endif
     }
     auto output_name = op_desc.Output("Out")[0];
-    ReplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
+    layer->setName(("pool2d (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
+    engine_->SetITensor(output_name, layer->getOutput(0));
+    if (test_mode) {
+      engine_->DeclareOutput(output_name);
+    }
   }
 };
 
