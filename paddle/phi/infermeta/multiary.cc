@@ -4714,7 +4714,7 @@ void RmsNormInferMeta(const MetaTensor& x,
   }
   PADDLE_ENFORCE_EQ(normalized_dims,
                     norm_weight.dims()[0],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The normalized size of Input(X) must equal to be "
                         "the size of Weight, but received "
                         "normalized size of Input(X) is [%d], received size "

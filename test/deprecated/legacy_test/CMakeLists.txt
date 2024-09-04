@@ -81,12 +81,9 @@ list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
-  list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
@@ -240,6 +237,15 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
+    string(REGEX MATCH "_deprecated\.py$" DEPRECATED_MODULES
+                 "${py_test_modules_MODULES}")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+    set(FLAGS_PIR_MODE "")
+    if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
+       OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
+      set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+    endif()
+
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       if(WITH_ASCEND_CL)
@@ -248,7 +254,7 @@ function(py_test_modules TARGET_NAME)
           COMMAND
             ${CMAKE_COMMAND} -E env
             PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
             COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             ${PYTHON_EXECUTABLE} -m coverage run --branch -p
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
@@ -258,7 +264,7 @@ function(py_test_modules TARGET_NAME)
           NAME ${TARGET_NAME}
           COMMAND
             ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
             COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             ${PYTHON_EXECUTABLE} -m coverage run --branch -p
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
@@ -271,7 +277,7 @@ function(py_test_modules TARGET_NAME)
           COMMAND
             ${CMAKE_COMMAND} -E env
             PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       else()
@@ -279,7 +285,7 @@ function(py_test_modules TARGET_NAME)
           NAME ${TARGET_NAME}
           COMMAND
             ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       endif()
@@ -310,13 +316,19 @@ function(bash_test_modules TARGET_NAME)
     set(timeout ${bash_test_modules_TIMEOUT})
   endif()
 
+  string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+  set(FLAGS_PIR_MODE "")
+  if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
+    set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+  endif()
+
   if(WITH_COVERAGE)
     add_test(
       NAME ${TARGET_NAME}
       COMMAND
         ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
         TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} WITH_COVERAGE=ON
+        ${bash_test_modules_ENVS} WITH_COVERAGE=ON ${FLAGS_PIR_MODE}
         COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data bash
         ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -326,7 +338,7 @@ function(bash_test_modules TARGET_NAME)
       COMMAND
         ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
         TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} bash
+        ${bash_test_modules_ENVS} ${FLAGS_PIR_MODE} bash
         ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
@@ -711,7 +723,7 @@ endif()
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=false)
+    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=0)
 endforeach()
 
 set_tests_properties(test_decoupled_py_reader_deprecated_static_build
