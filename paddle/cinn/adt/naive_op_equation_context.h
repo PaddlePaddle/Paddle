@@ -86,13 +86,13 @@ class NaiveOpEquationContext final : public OpEquationContext {
   }
 
   void Equal(const IteratorTuple& lhs, const IteratorTuple& rhs) override {
-    PADDLE_ENFORCE_EQ(
-        lhs->size(),
-        rhs->size(),
-        phi::errors::InvalidArgument("The sizes of lhs and rhs must be equal. "
-                                     "lhs size: %d, rhs size: %d",
-                                     lhs->size(),
-                                     rhs->size()));
+    PADDLE_ENFORCE_EQ(lhs->size(),
+                      rhs->size(),
+                      ::common::errors::InvalidArgument(
+                          "The sizes of lhs and rhs must be equal. "
+                          "lhs size: %d, rhs size: %d",
+                          lhs->size(),
+                          rhs->size()));
     for (std::size_t i = 0; i < lhs->size(); ++i) {
       this->Equal(lhs->at(i), rhs->at(i));
     }
@@ -259,7 +259,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
         const auto& opt_expr = GetSymbolicInDim_(i, j);
         PADDLE_ENFORCE_EQ(opt_expr.has_value(),
                           true,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The optional expression must have a value."));
         vec->at(i)->emplace_back(opt_expr.value());
       }
@@ -274,7 +274,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
         const auto& opt_expr = GetSymbolicOutDim_(i, j);
         PADDLE_ENFORCE_EQ(opt_expr.has_value(),
                           true,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The optional expression must have a value at "
                               "tensor index %d and dimension index %d.",
                               i,
@@ -288,7 +288,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
                  const DimTuple& dim_tuple) {
     PADDLE_ENFORCE_EQ(iterator_tuple->size(),
                       dim_tuple->size(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The sizes of iterator_tuple and dim_tuple must be "
                           "equal. iterator_tuple size: %d, dim_tuple size: %d",
                           iterator_tuple->size(),
@@ -343,8 +343,8 @@ class NaiveOpEquationContext final : public OpEquationContext {
     PADDLE_ENFORCE_EQ(
         iter != attr_map_type_.end(),
         true,
-        phi::errors::InvalidArgument("Can't find Attribute with this name: %s",
-                                     name.c_str()));
+        ::common::errors::InvalidArgument(
+            "Can't find Attribute with this name: %s", name.c_str()));
     return iter->second;
   }
 

@@ -228,11 +228,6 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     return false;
   }
 
-  if (op_type == "distributed_fused_lamb" && parameter_name == "ParamOut") {
-    VLOG(2) << "Skip fake initialization for: " << parameter_name;
-    return false;
-  }
-
   if (op_type == "fused_bias_residual_layernorm" &&
       parameter_name == "residual_out") {
     if (op.HasInputs("residual")) {
@@ -626,7 +621,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
       if (var->IsType<phi::DenseTensor>()) {
         // Clear all lod information for all lod_tensors.
         auto* t = var->GetMutable<phi::DenseTensor>();
-        framework::LoD empty_lod;
+        phi::LoD empty_lod;
         t->set_lod(empty_lod);
       } else if (var->IsType<phi::TensorArray>()) {
         // Clear elements of all tensor arrays.

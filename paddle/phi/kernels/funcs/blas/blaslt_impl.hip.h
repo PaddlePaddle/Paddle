@@ -304,11 +304,17 @@ struct MatmulDescriptor {
   void SetFusedEpiloguePtr(phi::funcs::MatmulPlanner* planner) {
     if (planner->bias != nullptr) {
       const T* bias_data = static_cast<const T*>(planner->bias);
+      hipDataType_t bias_type = phi::backends::gpu::ToHipBlasLtDataType<T>();
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::hipblasLtMatmulDescSetAttribute(
           op_desc,
           HIPBLASLT_MATMUL_DESC_BIAS_POINTER,
           &bias_data,
           sizeof(bias_data)));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::hipblasLtMatmulDescSetAttribute(
+          op_desc,
+          HIPBLASLT_MATMUL_DESC_BIAS_DATA_TYPE,
+          &bias_type,
+          sizeof(bias_type)));
     }
     if (planner->aux_data != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::hipblasLtMatmulDescSetAttribute(
@@ -337,14 +343,29 @@ struct MatmulDescriptor {
     out << "]\n";                                    \
   } while (0);
 
+#define GET_ALGO_DATA_STRING(algo)                                 \
+  do {                                                             \
+    out << "  " << #algo << " = [";                                \
+    for (int i = 0; i < 16; ++i) {                                 \
+      if (i == 0) {                                                \
+        out << static_cast<int>(algo->data[i]);                    \
+      } else {                                                     \
+        out << ", " << static_cast<int>(algo->data[i]);            \
+      }                                                            \
+    }                                                              \
+    out << ", max_workspace_bytes: " << algo->max_workspace_bytes; \
+    out << "]\n";                                                  \
+  } while (0);
+
     if (has_algo) {
-      GET_DESC_DATA_STRING(algo);
+      GET_ALGO_DATA_STRING(algo);
     }
     GET_DESC_DATA_STRING(x_desc);
     GET_DESC_DATA_STRING(y_desc);
     GET_DESC_DATA_STRING(out_desc);
     GET_DESC_DATA_STRING(op_desc);
 #undef GET_DESC_DATA_STRING
+#undef GET_ALGO_DATA_STRING
     return out.str();
   }
 
@@ -382,7 +403,7 @@ struct MatmulDescriptor {
           op_desc,
           HIPBLASLT_MATMUL_DESC_EPILOGUE,
           &hipblaslt_fused_type,
-          sizeof(fused_type)));
+          sizeof(hipblaslt_fused_type)));
     }
     if (planner->aux_data) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::hipblasLtMatmulDescSetAttribute(
@@ -502,7 +523,7 @@ struct CublasLtBase {
     MT beta = planner->UseAddTo() ? static_cast<MT>(1) : static_cast<MT>(0);
     hipblasLtHandle_t hipblaslt_handle = ctx.cublaslt_handle();
 
-    // NOTE(wangyanpeng04): For gfx928, the blaslt is paddling due to memory
+    // NOTE(wangyanpeng04): For gfx928, the blaslt is padding due to memory
     // access conflicts, and the corresponding blas workspace size needs to be
     // increased by 512MB. Otherwise, blaslt memory alloc will fail
     size_t workspace_size = static_cast<size_t>(512) * 1024 * 1024;
@@ -527,10 +548,44 @@ struct CublasLtBase {
 
         auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
+      } else {
+        int returned_results = 0;
+        hipblasLtMatmulHeuristicResult_t heuristic_results;
+        hipblasLtMatmulPreference_t preference;
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::hipblasLtMatmulPreferenceCreate(&preference));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::hipblasLtMatmulPreferenceSetAttribute(
+                preference,
+                HIPBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+                &workspace_size,
+                sizeof(workspace_size)));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::hipblasLtMatmulAlgoGetHeuristic(hipblaslt_handle,
+                                                     desc->op_desc,
+                                                     desc->x_desc,
+                                                     desc->y_desc,
+                                                     desc->out_desc,
+                                                     desc->out_desc,
+                                                     preference,
+                                                     1,
+                                                     &heuristic_results,
+                                                     &returned_results));
+        PADDLE_ENFORCE_GT(
+            returned_results,
+            0,
+            common::errors::Unavailable("No GEMM algorithm available."));
+        hipblasLtMatmulAlgo_t* algo = desc->SetAlgo();
+        *algo = heuristic_results.algo;
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::hipblasLtMatmulPreferenceDestroy(preference));
+        VLOG(4) << desc->GetDescResultString(
+            "[Searched Single HipblasltDescriptor] ");
       }
+      VLOG(4) << "CublasLtBase<> doesn't searched";
     }
 
-    VLOG(7) << desc->GetDescResultString("[Impl HipblasltDescriptor] ");
+    VLOG(4) << desc->GetDescResultString("[Impl HipblasltDescriptor] ");
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::hipblasLtMatmul(hipblaslt_handle,
                                  desc->op_desc,

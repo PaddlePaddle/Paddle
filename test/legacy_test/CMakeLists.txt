@@ -15,10 +15,6 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-if((NOT WITH_GPU) AND (NOT WITH_XPU))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
-endif()
-
 # The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
 ###### start ######
 list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
@@ -28,11 +24,6 @@ if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
-list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
-list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
-list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
-list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
-list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -49,9 +40,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
-
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -92,23 +81,14 @@ list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
   list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
   list(REMOVE_ITEM TEST_OPS test_fleet_perf_test)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
-  list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
-  list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
   list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
 endif()
 
@@ -206,10 +186,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_serial)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -287,6 +263,15 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
+    string(REGEX MATCH "_deprecated\.py$" DEPRECATED_MODULES
+                 "${py_test_modules_MODULES}")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+    set(FLAGS_PIR_MODE "")
+    if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
+       OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
+      set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+    endif()
+
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       if(WITH_ASCEND_CL)
@@ -295,7 +280,7 @@ function(py_test_modules TARGET_NAME)
           COMMAND
             ${CMAKE_COMMAND} -E env
             PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
             COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             ${PYTHON_EXECUTABLE} -m coverage run --branch -p
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
@@ -305,7 +290,7 @@ function(py_test_modules TARGET_NAME)
           NAME ${TARGET_NAME}
           COMMAND
             ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
             COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             ${PYTHON_EXECUTABLE} -m coverage run --branch -p
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
@@ -318,7 +303,7 @@ function(py_test_modules TARGET_NAME)
           COMMAND
             ${CMAKE_COMMAND} -E env
             PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       else()
@@ -326,7 +311,7 @@ function(py_test_modules TARGET_NAME)
           NAME ${TARGET_NAME}
           COMMAND
             ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       endif()
@@ -532,7 +517,6 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_stride")
@@ -648,14 +632,6 @@ if(WITH_DISTRIBUTE)
   endif()
 
   if(NOT APPLE)
-    if(NOT WIN32)
-      py_test_modules(test_auto_parallel_reshard_serial MODULES
-                      test_auto_parallel_reshard_serial ENVS ${dist_ENVS})
-
-    endif()
-  endif()
-
-  if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
       py_test_modules(test_launch_coverage MODULES test_launch_coverage)
     endif()
@@ -757,11 +733,6 @@ endif()
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
-set_tests_properties(
-  test_sync_batch_norm_op test_distributed_fused_lamb_op_with_clip
-  test_distributed_fused_lamb_op_without_clip
-  test_distributed_fused_lamb_op_with_gradient_merge
-  PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
   set_tests_properties(test_imperative_signal_handler
@@ -790,8 +761,6 @@ if(WITH_DISTRIBUTE)
   set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
                                                                        200)
   set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
-                       PROPERTIES TIMEOUT 60)
   set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
 endif()
 
@@ -800,7 +769,6 @@ set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
@@ -869,12 +837,6 @@ set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
-                                                                         240)
-set_tests_properties(test_distributed_fused_lamb_op_without_clip
-                     PROPERTIES TIMEOUT 120)
-set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
-                     PROPERTIES TIMEOUT 240)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 if(NOT WITH_COVERAGE)
@@ -925,6 +887,14 @@ set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
+set_tests_properties(test_model PROPERTIES TIMEOUT 300)
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+
+if(APPLE)
+  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
+endif()
+
 set_tests_properties(test_dataset_cifar PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_movielens PROPERTIES TIMEOUT 120)
 set_tests_properties(test_datasets PROPERTIES TIMEOUT 300)
@@ -950,14 +920,6 @@ if(APPLE)
 endif()
 set_tests_properties(test_decorator PROPERTIES TIMEOUT 120)
 
-if(WITH_DISTRIBUTE
-   AND WITH_GPU
-   AND WITH_NCCL)
-  set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
-endif()
-
 if(APPLE)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 300)
@@ -965,10 +927,6 @@ endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   if(WITH_DISTRIBUTE)
-    set_tests_properties(test_static_model_parallel_fused_feedforward
-                         PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_static_model_parallel_fused_attention
-                         PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
                                                            "RUN_TYPE=DIST")
     set_tests_properties(test_fleet_perf_test PROPERTIES LABELS "RUN_TYPE=DIST")
@@ -1128,7 +1086,6 @@ set(STATIC_BUILD_TESTS
     test_sgd_op_bf16
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_pooling_op
-    test_sync_batch_norm_op
     test_unique
     test_shuffle_batch_op
     test_update_loss_scaling_op
@@ -1182,23 +1139,6 @@ endforeach()
 
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
-set_tests_properties(test_sync_batch_norm_op_static_build
-                     PROPERTIES LABELS "RUN_TYPE=DIST")
-set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
-                                                                     250)
-
-if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
-  # These UTs are specially designed for FleetExecutor
-  set_tests_properties(
-    test_fleet_executor PROPERTIES ENVIRONMENT
-                                   "FLAGS_new_executor_micro_batching=False")
-  set_tests_properties(
-    test_fleet_executor_origin_scheduler
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-  set_tests_properties(
-    test_fleet_executor_with_task_nodes
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-endif()
 
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
 py_test_modules(test_stride MODULES test_stride ENVS

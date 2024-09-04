@@ -168,19 +168,18 @@ bool FileTileConfigDatabase::ToFile(const common::Target& target,
 
 std::vector<std::string> ReadLinesFromFile(const std::string& file_path) {
   std::ifstream is(file_path);
+  std::vector<std::string> json_strs;
   if (is.good()) {
-    std::vector<std::string> json_strs;
     for (std::string str; std::getline(is, str);) {
       if (str != "") {
         json_strs.push_back(str);
       }
     }
     VLOG(3) << "The size of json_lines is: " << json_strs.size();
-    return json_strs;
   } else {
-    PADDLE_THROW(
-        ::common::errors::InvalidArgument("File doesn't exist: %s", file_path));
+    VLOG(3) << "File doesn't exist: " << file_path;
   }
+  return json_strs;
 }
 
 void JsonStringToMessageOfTileConfig(

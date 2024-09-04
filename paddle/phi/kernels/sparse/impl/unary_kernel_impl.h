@@ -103,7 +103,6 @@ namespace sparse {
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
   }
 
-DEFINE_SPARSE_UNARY_KERNEL(Tan)
 DEFINE_SPARSE_UNARY_KERNEL(Asin)
 DEFINE_SPARSE_UNARY_KERNEL(Atan)
 DEFINE_SPARSE_UNARY_KERNEL(Sinh)
@@ -120,6 +119,7 @@ DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Abs)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Sin)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Tan)
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
