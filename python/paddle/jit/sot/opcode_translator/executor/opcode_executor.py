@@ -86,6 +86,7 @@ from .variables import (
     ListVariable,
     MethodVariable,
     NullVariable,
+    RangeVariable,
     SequenceIterVariable,
     SliceVariable,
     SymbolicVariable,
@@ -1056,9 +1057,11 @@ class OpcodeExecutorBase:
 
         retval = []
         for item in unpack_values:
-            if not isinstance(item, (TupleVariable, ListVariable)):
+            if not isinstance(
+                item, (TupleVariable, ListVariable, RangeVariable)
+            ):
                 raise BreakGraphError(f"{type(item)} not support unpack")
-            retval.extend(item.get_wrapped_items())
+            retval.extend(item.get_iter().to_list())
 
         if instr.opname in {
             "BUILD_TUPLE_UNPACK_WITH_CALL",

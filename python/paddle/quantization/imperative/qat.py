@@ -294,9 +294,10 @@ class ImperativeQuantAware:
         return model
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
-        self._quantize_outputs.save_quantized_model(
-            layer, path, input_spec, **config
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self._quantize_outputs.save_quantized_model(
+                layer, path, input_spec, **config
+            )
 
 
 class ImperativeQuantizeInputs:
