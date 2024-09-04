@@ -138,7 +138,7 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
                           "The proof result should have a value and "
                           "the proof result is false."));
     PADDLE_ENFORCE_EQ(
-        prove_eq.has_value() && !prove_eq.value(),
+        prove_eq.has_value() && prove_eq.value() != false,
         true,
         ::common::errors::InvalidArgument(
             "Extent of loop in Expr Param(loop) and extent of loop in Expr "
