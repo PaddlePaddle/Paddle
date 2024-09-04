@@ -334,6 +334,25 @@
   optional : skip_update, master_params, master_params_out
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
+- op : fused_gate_attention
+  args: (Tensor query, Tensor key, Tensor query_weight, Tensor key_weight, Tensor
+    value_weight, Tensor qkv_weight, Tensor nonbatched_bias, Tensor src_mask, Tensor
+    gate_weight, Tensor gate_bias, Tensor out_linear_weight, Tensor out_linear_bias,
+    bool has_gating = true, bool merge_qkv = true, bool use_flash_attn = false)
+  output: Tensor (query_transpose_out), Tensor (key_transpose_out), Tensor (value_transpose_out),
+    Tensor (qkv_transpose_out), Tensor (softmax_out), Tensor (softmax_lse), Tensor
+    (fmha_out), Tensor (gate_out), Tensor (out)
+  infer_meta:
+    func: FusedGateAttentionInferMeta
+  kernel:
+    func: fused_gate_attention
+  optional: key, query_weight, key_weight, value_weight, qkv_weight, nonbatched_bias,
+    gate_weight, gate_bias, query_transpose_out, key_transpose_out, value_transpose_out,
+    qkv_transpose_out, softmax_lse, gate_out
+  intermediate: query_transpose_out, key_transpose_out, value_transpose_out, qkv_transpose_out,
+    softmax_out, softmax_lse, fmha_out, gate_out
+  backward: fused_gate_attention_grad
+
 - op : fused_multi_transformer_int8
   args: (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkv_w, Tensor[]
     qkv_bias, Tensor[] cache_kv, Tensor time_step, Tensor src_mask, Tensor[] out_linear_w,

@@ -17,7 +17,7 @@ import random
 import unittest
 
 import numpy as np
-from auto_parallel_pass_test_base import AutoParallelPassTestBase
+from auto_parallel_pass_test_base_deprecated import AutoParallelPassTestBase
 
 import paddle
 import paddle.nn.functional as F

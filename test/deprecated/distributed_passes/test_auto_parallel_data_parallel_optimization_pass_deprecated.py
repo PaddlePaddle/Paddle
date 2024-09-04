@@ -17,7 +17,7 @@ import sys
 import unittest
 
 import numpy as np
-from auto_parallel_pass_test_base import AutoParallelPassTestBase
+from auto_parallel_pass_test_base_deprecated import AutoParallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
@@ -29,7 +29,7 @@ from paddle.distributed.auto_parallel.static.operators.common import (
 )
 from paddle.distributed.passes import PassContext, new_pass
 
-sys.path.append("..")
+sys.path.append("../..")
 
 
 class TestDataParallelPassWithScale1(AutoParallelPassTestBase):

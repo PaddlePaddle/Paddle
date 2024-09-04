@@ -1337,7 +1337,7 @@
     func: detection_map
     data_type: detect_res
   optional: has_state, pos_count, true_pos, false_pos
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dgc
   args : (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor nranks, float m=0.9, bool use_nesterov=true, float[] sparsity={}, float rampup_begin_step=0.0, float rampup_step=0.0, float regular_coeff=0.0, int regular_type=0)
@@ -1451,6 +1451,7 @@
   kernel :
     func : dist
   backward : dist_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dot
   args : (Tensor x, Tensor y)
@@ -2908,6 +2909,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_and
     data_type : x
@@ -2921,6 +2923,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalNotInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : logical_not
     data_type : x
@@ -2934,6 +2937,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_or
     data_type : x
@@ -2947,6 +2951,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_xor
     data_type : x
@@ -2995,6 +3000,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
+    spmd_rule : LogSumExpInferSpmd
   kernel :
     func : logsumexp
   backward : logsumexp_grad
@@ -3140,6 +3146,15 @@
     param : [x, use_default_tol, hermitian]
   kernel :
     func : matrix_rank
+
+- op : matrix_rank_atol_rtol
+  args : (Tensor x, Tensor atol, Tensor rtol, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankAtolRtolInferMeta
+  kernel :
+    func : matrix_rank_atol_rtol
+  optional : rtol
 
 - op : matrix_rank_tol
   args : (Tensor x, Tensor atol_tensor, bool use_default_tol=true, bool hermitian=false)
