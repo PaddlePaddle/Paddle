@@ -121,16 +121,6 @@ def sync_rotate_logger():
 
 
 def check_memory_usage(msg=""):
-    """
-    检查内存使用情况。
-
-    Args:
-        msg (str): 附加到输出消息前缀的字符串。默认为空字符串。
-
-    Returns:
-        None
-
-    """
     GB = 1024.0 * 1024.0 * 1024.0
     mem_dict = {}
     mem_dict['max_memory_allocated_size'] = (
