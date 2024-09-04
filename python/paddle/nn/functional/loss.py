@@ -112,8 +112,8 @@ def dice_loss(
         input.shape[:-1] == label.shape[:-1]
     ), "All dimensions should be equal except the last one."
     assert (
-        functools.reduce(operator.mul, input.shape) > 0
-        and functools.reduce(operator.mul, label.shape) > 0
+        functools.reduce(operator.mul, input.shape) != 0
+        and functools.reduce(operator.mul, label.shape) != 0
     ), "Any dimension of input and label cannot be equal to 0."
 
     label = paddle.squeeze(label, [-1])
