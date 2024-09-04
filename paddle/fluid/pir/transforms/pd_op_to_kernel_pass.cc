@@ -52,6 +52,11 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#endif
+
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
@@ -2056,8 +2061,20 @@ void HandleForSpecialOp(
 
     auto dst_backend = phi::TransToPhiBackend(place);
     auto exec_backend = paddle::dialect::PlaceAttribute::get(ctx, place);
-    if (CanGroupOpRunCpuKernel(in_temps, op_item->results())) {
+
+    bool run_cpu_kernel = CanGroupOpRunCpuKernel(in_temps, op_item->results());
+#ifdef PADDLE_WITH_CINN
+
+    cinn::dialect::JitKernelOp jit_kernel_op =
+        op_item->dyn_cast<cinn::dialect::JitKernelOp>();
+    const cinn::hlir::framework::pir::CINNKernelInfo& kernel_info =
+        jit_kernel_op.cinn_kernel_info();
+    if (kernel_info.CX86_fn_ptr != nullptr) {
       // change dst_backend to cpu
+      run_cpu_kernel = true;
+    }
+#endif
+    if (run_cpu_kernel) {
       dst_backend = phi::Backend::CPU;
 
       exec_backend = paddle::dialect::PlaceAttribute::get(
