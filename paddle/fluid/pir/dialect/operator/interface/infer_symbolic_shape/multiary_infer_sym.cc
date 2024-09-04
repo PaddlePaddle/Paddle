@@ -1747,7 +1747,7 @@ bool NearestInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
-bool MaskedMultiheadAttentionOpInferSymbolicShape(
+bool MaskedMultiheadAttention_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
@@ -1798,11 +1798,6 @@ bool MaskedMultiheadAttentionOpInferSymbolicShape(
   }
 
   return true;
-}
-
-bool MaskedMultiheadAttention_OpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return MaskedMultiheadAttentionOpInferSymbolicShape(op, infer_context);
 }
 
 bool MemoryEfficientAttentionOpInferSymbolicShape(
