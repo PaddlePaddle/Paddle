@@ -48,7 +48,7 @@ class TestLayer2(paddle.nn.Layer):
 
     def forward(self, x_list, bool_value, my_dict={}):
         x = x_list[0]
-        y = my_dict["y"]
+        y = my_dict["y"] + my_dict["x"]
         y = paddle.nn.functional.relu(y)
         x = x + y
         for i in range(5):
@@ -125,7 +125,7 @@ class TestToStaticInputListModel(Dy2StTestBase):
         dtype = "float32"
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer2(hidd)
-        my_dict = {"y": x + x}
+        my_dict = {"y": x + x, "x": 2 * x}
         result0 = my_layer([x, x], bool_value=True, my_dict=my_dict).numpy()
         my_static_layer = paddle.incubate.jit.inference(my_layer)
         my_static_layer = paddle.incubate.jit.inference(my_layer)
