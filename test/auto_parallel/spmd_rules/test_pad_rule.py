@@ -53,7 +53,7 @@ class TestPadSPMDRule(unittest.TestCase):
     def test_infer_forward(self):
         inputs = self.build_inputs()
         rule = core.get_phi_spmd_rule("pad")
-        infered_dist_attrs = rule.infer_forward(inputs, self.paddings, 0.0)
+        infered_dist_attrs = rule.infer_forward(inputs, self.paddings, 0)
 
         infered_output_dist_attrs = infered_dist_attrs[1]
         self.assertEqual(len(infered_output_dist_attrs), 1)
@@ -64,7 +64,7 @@ class TestPadSPMDRule(unittest.TestCase):
         output = self.build_outputs()
         rule = core.get_phi_spmd_rule("pad")
         infered_dist_attrs = rule.infer_backward(
-            inputs, output, self.paddings, 0.0
+            inputs, output, self.paddings, 0
         )
 
         infered_input_dist_attrs = infered_dist_attrs[0]
