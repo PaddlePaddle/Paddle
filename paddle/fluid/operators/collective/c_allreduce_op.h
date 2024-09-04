@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/memory/memory.h"
@@ -142,26 +142,26 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
-      phi::distributed::ProcessGroup* pg = map->get(rid);
-      phi::distributed::AllreduceOptions opts;
+      distributed::ProcessGroup* pg = map->get(rid);
+      distributed::AllreduceOptions opts;
       switch (red_type) {
         case kRedSum:
-          opts.reduce_op = phi::distributed::ReduceOp::SUM;
+          opts.reduce_op = distributed::ReduceOp::SUM;
           break;
 
         case kRedMax:
-          opts.reduce_op = phi::distributed::ReduceOp::MAX;
+          opts.reduce_op = distributed::ReduceOp::MAX;
           break;
 
         case kRedMin:
-          opts.reduce_op = phi::distributed::ReduceOp::MIN;
+          opts.reduce_op = distributed::ReduceOp::MIN;
           break;
 
         case kRedProd:
-          opts.reduce_op = phi::distributed::ReduceOp::PRODUCT;
+          opts.reduce_op = distributed::ReduceOp::PRODUCT;
           break;
 
         default:
@@ -287,26 +287,26 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
-      phi::distributed::ProcessGroup* pg = map->get(rid);
-      phi::distributed::AllreduceOptions opts;
+      distributed::ProcessGroup* pg = map->get(rid);
+      distributed::AllreduceOptions opts;
       switch (red_type) {
         case kRedSum:
-          opts.reduce_op = phi::distributed::ReduceOp::SUM;
+          opts.reduce_op = distributed::ReduceOp::SUM;
           break;
 
         case kRedMax:
-          opts.reduce_op = phi::distributed::ReduceOp::MAX;
+          opts.reduce_op = distributed::ReduceOp::MAX;
           break;
 
         case kRedMin:
-          opts.reduce_op = phi::distributed::ReduceOp::MIN;
+          opts.reduce_op = distributed::ReduceOp::MIN;
           break;
 
         case kRedProd:
-          opts.reduce_op = phi::distributed::ReduceOp::PRODUCT;
+          opts.reduce_op = distributed::ReduceOp::PRODUCT;
           break;
 
         default:
