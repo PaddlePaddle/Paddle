@@ -3742,8 +3742,7 @@ bool WeightQuantizeOpInferSymbolicShape(
       x_shape.size(),
       2UL,
       platform::errors::InvalidArgument(
-          "The x tensor of quant op must be 2D, but got[%d]",
-          x_dims.size()));
+          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
 
   int group_size = op->attribute<pir::Int32Attribute>("group_size").data();
   std::string algo = op->attribute<pir::StrAttribute>("algo").AsString();
