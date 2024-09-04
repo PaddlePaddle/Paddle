@@ -1120,7 +1120,7 @@ struct DropoutOpTranscriber : public OpTranscriber {
                                   const OpAttributeInfo& info) override {
     if (info.name == "mode") {
       (*attribute_map)[info.name] =
-          pir::StrAttribute::get(ctx, "upscale_in_train");
+          pir::StrAttribute::get(ctx, "downscale_in_infer");
     }
   }
 };
