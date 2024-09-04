@@ -176,6 +176,7 @@ TEST(Analyzer_seq_conv1, fuse_statis) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
 
   auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
+
   // pir not support
   // ASSERT_TRUE(fuse_statis.count("fc_fuse"));
   // ASSERT_TRUE(fuse_statis.count("seqconv_eltadd_relu_fuse"));
