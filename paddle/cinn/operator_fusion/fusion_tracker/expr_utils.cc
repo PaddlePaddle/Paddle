@@ -17,6 +17,15 @@
 
 namespace cinn::fusion {
 
+std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops) {
+  std::vector<ir::Expr> exprs;
+  for (auto& fusion_op : fusion_ops) {
+    auto expr = std::visit(FusibleOp2Expr(), fusion_op).front();
+    exprs.push_back(expr);
+  }
+  return exprs;
+}
+
 // tmp transform for reduce_tree and reduce_tree_trivial.
 std::vector<ir::Tensor> GetOutputTensors(const ir::Expr& op_expr) {
   using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
@@ -150,6 +159,7 @@ static std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
   return vars;
 }
 
+static int counter = 0;
 ir::Expr UnSqueezeExpr(const ir::Expr& expr,
                        const std::vector<int>& padding_vec) {
   using cinn::hlir::framework::pir::trivial_fusion_detail::AppendBound;
@@ -169,8 +179,7 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
           << "\npadding vector: " << utils::Join(padding_vec, ", ");
   const auto& vars_in_expr = AppendBound(GetAllForIters(expr), expr);
   // get the all vars.
-  int counter = 0;
-  auto GenNextName = [&counter]() {
+  auto GenNextName = []() {
     counter += 1;
     return "expand_var_" + std::to_string(counter);
   };

@@ -363,9 +363,9 @@ class TensorVariable(VariableBase):
                 1,
                 f"Start analyse dynamic axes for {tracker.trace_value_from_frame().inlined_expr} in {self.graph.pycode_gen._origin_code}\n",
             )
-            for key in symbolic_inputs:
+            for key, symbolic_input in symbolic_inputs.items():
                 if key.startswith(tracker_expr):
-                    log(1, f"  {key}: {symbolic_inputs[key]}\n")
+                    log(1, f"  {key}: {symbolic_input}\n")
             log(
                 1,
                 f"  -> Tensor {tracker_expr} with dynamic axes {dynamic_axes}\n",
@@ -666,6 +666,7 @@ class SymbolicVariable(VariableBase):
 
     var_name_generator = NameGenerator("symint_")
     value: int | SymbolicValue
+    mutable_attrs = ["need_guard_value"]
 
     def __init__(
         self,
@@ -685,8 +686,32 @@ class SymbolicVariable(VariableBase):
                 [], paddle.int64, True, self.var_name, False, None, None
             )
         self.need_guard_value = False
+        self.graph.side_effects.record_mutable_variable(self)
 
-    def get_py_value(self, allow_tensor=False):
+    def to_constant(self):
+        from ..executor_cache import (
+            OpcodeExecutorCache,
+        )
+
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            self.graph.pycode_gen._origin_code
+        )
+
+        def disable_symbolic(var: VariableBase):
+            if var.tracker.is_traceable():
+                tracker_expr = var.tracker.trace_value_from_frame().inlined_expr
+                symbolic_inputs[tracker_expr] = None
+                return
+            for input_var in var.tracker.inputs:
+                disable_symbolic(input_var)
+
+        disable_symbolic(self)
+        self.graph.need_cache = False
+        return ConstantVariable(
+            self.get_py_value(), self.graph, DummyTracker([self])
+        )
+
+    def get_py_value(self, allow_tensor: bool = False) -> bool | int | float:
         self.need_guard_value = True
         if isinstance(self.value, SymbolicValue):
             assert isinstance(
@@ -698,6 +723,7 @@ class SymbolicVariable(VariableBase):
             self.value = getattr(
                 inputs[0].get_py_value(), self.tracker.method_name
             )(*other_inputs_value)
+            assert isinstance(self.value, (bool, int, float))
         return self.value
 
     def get_py_type(self):
@@ -713,6 +739,18 @@ class SymbolicVariable(VariableBase):
 
     def bool(self):
         return ConstantVariable(bool(self), self.graph, DummyTracker([self]))
+
+    def __int__(self) -> int:
+        return int(self.get_py_value())
+
+    def int(self):
+        return ConstantVariable(int(self), self.graph, DummyTracker([self]))
+
+    def __float__(self) -> float:
+        return float(self.get_py_value())
+
+    def float(self):
+        return ConstantVariable(float(self), self.graph, DummyTracker([self]))
 
     @property
     def out_var_name(self):
@@ -735,11 +773,6 @@ class SymbolicVariable(VariableBase):
 
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
-        # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
-        if isinstance(self.value, int):
-            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
-            symbolic_input.setdefault(self.value, 0)
-            symbolic_input[self.value] += 1
         if self.need_guard_value:
             return super().make_stringified_guard()
         return [
@@ -752,12 +785,16 @@ class SymbolicVariable(VariableBase):
 
     @staticmethod
     def should_create_symbolic_variable(
-        value: Any, tracker: Tracker, symbolic_inputs: dict[str, dict[int, int]]
+        value: Any,
+        tracker: Tracker,
+        symbolic_inputs: dict[str, dict[int, int] | None],
     ):
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
             symbolic_input = symbolic_inputs[tracker_expr]
+            if symbolic_input is None:
+                return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
             if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
@@ -915,18 +952,16 @@ class SliceVariable(VariableBase):
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        result = (
-            [
-                StringifiedExpression(
-                    "isinstance({}, slice)",
-                    [frame_value_tracer],
-                    frame_value_tracer.free_vars,
-                ),
-            ]
-            + self.getattr("start").make_stringified_guard()
-            + self.getattr("stop").make_stringified_guard()
-            + self.getattr("step").make_stringified_guard()
-        )
+        result = [
+            StringifiedExpression(
+                "isinstance({}, slice)",
+                [frame_value_tracer],
+                frame_value_tracer.free_vars,
+            ),
+            *self.getattr("start").make_stringified_guard(),
+            *self.getattr("stop").make_stringified_guard(),
+            *self.getattr("step").make_stringified_guard(),
+        ]
         return result
 
     def _reconstruct(self, codegen: PyCodeGen):

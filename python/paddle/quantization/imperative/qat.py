@@ -294,9 +294,10 @@ class ImperativeQuantAware:
         return model
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
-        self._quantize_outputs.save_quantized_model(
-            layer, path, input_spec, **config
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self._quantize_outputs.save_quantized_model(
+                layer, path, input_spec, **config
+            )
 
 
 class ImperativeQuantizeInputs:
@@ -658,8 +659,9 @@ class ImperativeQuantizeOutputs:
 
         def _gather_input_scale():
             target_ops = []
-            skip_ops = utils.fake_quantize_dequantize_op_types + [
-                "moving_average_abs_max_scale"
+            skip_ops = [
+                *utils.fake_quantize_dequantize_op_types,
+                "moving_average_abs_max_scale",
             ]
             for block in program.blocks:
                 for op in block.ops:

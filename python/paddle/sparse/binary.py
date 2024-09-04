@@ -26,8 +26,6 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 
-from .unary import cast
-
 if TYPE_CHECKING:
     from paddle import Tensor
 
@@ -58,7 +56,6 @@ _pir_int_dtype_ = {
 }
 
 
-@dygraph_only
 def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Note:
@@ -133,10 +130,12 @@ def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                     [2., 2.],
                     [3., 3.]])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_matmul(x, y)
 
 
-@dygraph_only
 def masked_matmul(
     x: Tensor, y: Tensor, mask: Tensor, name: str | None = None
 ) -> Tensor:
@@ -199,10 +198,12 @@ def masked_matmul(
                    values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_masked_matmul(x, y, mask)
 
 
-@dygraph_only
 def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
     """
     Note:
@@ -257,6 +258,9 @@ def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
                    [-3.85499096, -2.42975140, -1.75087738])
 
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_mv(x, vec)
 
 
@@ -297,8 +301,6 @@ def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 [ 6.,  8.,  4.,  8.]])
 
     """
-    if y.dtype != x.dtype:
-        y = cast(y, None, x.dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.sparse_add(x, y)
@@ -351,8 +353,6 @@ def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
 
-    if y.dtype != x.dtype:
-        y = _C_ops.sparse_cast(y, None, x.dtype)
     if in_dygraph_mode():
         return _C_ops.sparse_subtract(x, y)
     elif in_pir_mode():
@@ -404,8 +404,6 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if isinstance(y, (int, float)):
         return _C_ops.sparse_scale(x, float(y), 0.0, True)
     else:
-        if y.dtype != x.dtype:
-            y = _C_ops.sparse_cast(y, None, x.dtype)
         if in_dygraph_mode():
             return _C_ops.sparse_multiply(x, y)
         elif in_pir_mode():
@@ -454,16 +452,9 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
 
-    if x.dtype in _int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
-    if x.dtype in _pir_int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.DataType.FLOAT32)
-
     if isinstance(y, (int, float)):
         return _C_ops.sparse_divide_scalar(x, float(y))
     else:
-        if y.dtype != x.dtype:
-            y = _C_ops.sparse_cast(y, None, x.dtype)
         if in_dygraph_mode():
             return _C_ops.sparse_divide(x, y)
         elif in_pir_mode():
@@ -474,7 +465,6 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             )
 
 
-@dygraph_only
 def is_same_shape(x: Tensor, y: Tensor) -> bool:
     """
     Return the results of shape comparison between two Tensors, check whether x.shape equal to y.shape.
@@ -504,6 +494,9 @@ def is_same_shape(x: Tensor, y: Tensor) -> bool:
             False
 
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return x.is_same_shape(y)
 
 

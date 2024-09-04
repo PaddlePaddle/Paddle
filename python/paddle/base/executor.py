@@ -62,6 +62,9 @@ if TYPE_CHECKING:
     from paddle._typing import PlaceLike
     from paddle._typing.device_like import _Place
     from paddle.base.dataset import DatasetBase
+    from paddle.distributed.fleet.dataset.dataset import (
+        DatasetBase as _FleetDatasetBase,
+    )
     from paddle.static import CompiledProgram
 
 __all__ = []
@@ -71,7 +74,7 @@ InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 
 
-def global_scope() -> core.Scope:
+def global_scope() -> core._Scope:
     """
     :api_attr: Static Graph
 
@@ -93,7 +96,7 @@ def global_scope() -> core.Scope:
     return g_scope
 
 
-def _switch_scope(scope: core.Scope) -> core.Scope:
+def _switch_scope(scope: core._Scope) -> core._Scope:
     global g_scope
     ex = g_scope
     g_scope = scope
@@ -101,7 +104,7 @@ def _switch_scope(scope: core.Scope) -> core.Scope:
 
 
 @signature_safe_contextmanager
-def scope_guard(scope: core.Scope) -> Generator[None, None, None]:
+def scope_guard(scope: core._Scope) -> Generator[None, None, None]:
     """
 
     This function switches scope through python `with` statement.
@@ -422,7 +425,7 @@ def has_fetch_operators(
     return fetch_count > 0
 
 
-def has_fetch_operations(
+def has_fetch_operations_and_is_startup_program(
     block, fetch_targets, fetch_holder_name, fetch_op='pd_op.fetch'
 ):
     """Check whether the block already has fetch operation.
@@ -444,11 +447,14 @@ def has_fetch_operations(
     """
     from paddle.autograd.backward_utils import ValueSet
 
+    is_startup_program = False
     fetch_info = [[], []]
     for op in block.ops:
         if op.name() == fetch_op:
             fetch_info[0].append(op.operand_source(0))
             fetch_info[1].append(op.attrs()["name"])
+        elif op.name() == "builtin.set_parameter":
+            is_startup_program = True
 
     need_fetch_info = []
     for i, fetch_var in enumerate(fetch_targets):
@@ -460,7 +466,7 @@ def has_fetch_operations(
         elif fetch_var not in ValueSet(fetch_info[0]):
             need_fetch_info.append(fetch_var)
 
-    return need_fetch_info
+    return need_fetch_info, is_startup_program
 
 
 def _add_feed_fetch_ops(
@@ -532,8 +538,10 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    need_fetch_info = has_fetch_operations(
-        global_block, fetch_list, fetch_var_name, fetch_op
+    need_fetch_info, is_startup_program = (
+        has_fetch_operations_and_is_startup_program(
+            global_block, fetch_list, fetch_var_name, fetch_op
+        )
     )
     if need_fetch_info:
         with paddle.static.program_guard(program):
@@ -541,6 +549,8 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
                 assert isinstance(
                     fetch_input, Value
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
+                if is_startup_program:
+                    fetch_input = paddle._pir_ops.parameter(fetch_input.name)
                 out = paddle._pir_ops.fetch(
                     fetch_input, fetch_var_name + str(i), i
                 )
@@ -552,11 +562,15 @@ def _add_single_pir_fetch_op(program, fetch_value, fetch_name, fetch_col):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    need_fetch_info = has_fetch_operations(
-        global_block, [fetch_value], fetch_name, fetch_op
+    need_fetch_info, is_startup_program = (
+        has_fetch_operations_and_is_startup_program(
+            global_block, [fetch_value], fetch_name, fetch_op
+        )
     )
     if need_fetch_info:
         with paddle.static.program_guard(program):
+            if is_startup_program:
+                fetch_value = paddle._pir_ops.parameter(fetch_value.name)
             out = paddle._pir_ops.fetch(fetch_value, fetch_name, fetch_col)
             out.persistable = True
 
@@ -601,7 +615,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
-        scope(core.Scope|None): scope object. It should be the scope where
+        scope(core._Scope|None): scope object. It should be the scope where
             you pass to Executor.run() when running your program.
             If None, global_scope() will be used. Default None.
         return_numpy(bool): whether convert the tensor to numpy.ndarray.
@@ -1096,6 +1110,12 @@ class _ExecutorCache:
                         pir_program, param_mapping, new_program._grad_var_to_var
                     )
 
+                    if core._enable_auto_recompute():
+                        logging.info("apply auto_recompute in executor")
+                        pir_program = decomp.auto_recompute_pir_program(
+                            pir_program, None
+                        )
+
                     if in_cinn_mode():
                         apply_cinn_pass(pir_program)
 
@@ -1204,7 +1224,13 @@ class _ExecutorCache:
 
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
-                decomp.decompose_dist_program(program)
+                pir_grad_var_to_var = decomp.decompose_dist_program(program)
+            if core._enable_auto_recompute():
+                print("apply auto_recompute in executor", flush=True)
+                program = decomp.auto_recompute_pir_program(
+                    program, pir_grad_var_to_var
+                )
+
         if in_cinn_mode():
             apply_cinn_pass(program)
         return program, new_exe, data_op_infos
@@ -1678,7 +1704,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: Literal[True] = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -1692,7 +1718,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: Literal[False] = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -1706,7 +1732,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: bool = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -3156,8 +3182,8 @@ class Executor:
     def infer_from_dataset(
         self,
         program: Program | CompiledProgram | None = None,
-        dataset: DatasetBase | None = None,
-        scope: core.Scope | None = None,
+        dataset: DatasetBase | _FleetDatasetBase | None = None,
+        scope: core._Scope | None = None,
         thread: int = 0,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,
@@ -3235,7 +3261,7 @@ class Executor:
     def start_heter_trainer(
         self,
         program: Program | None = None,
-        scope: core.Scope | None = None,
+        scope: core._Scope | None = None,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,
         fetch_info: list[str] | None = None,
@@ -3279,8 +3305,8 @@ class Executor:
     def train_from_dataset(
         self,
         program: Program | CompiledProgram | None = None,
-        dataset: DatasetBase | None = None,
-        scope: core.Scope | None = None,
+        dataset: DatasetBase | _FleetDatasetBase | None = None,
+        scope: core._Scope | None = None,
         thread: int = 0,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,

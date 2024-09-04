@@ -206,9 +206,9 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
             Tensor(shape=[8], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [1, 3, 3, 3, -1, 2, 1, 1])
     """
-    if in_dynamic_mode():
-        return _legacy_C_ops.prune_gate_by_capacity(
-            gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker
+    if in_dynamic_or_pir_mode():
+        return _C_ops.prune_gate_by_capacity(
+            gate_idx, expert_count, n_expert, n_worker
         )
     else:
         check_variable_and_dtype(

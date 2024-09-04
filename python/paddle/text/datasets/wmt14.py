@@ -183,7 +183,7 @@ class WMT14(Dataset):
                     src_words = src_seq.split()
                     src_ids = [
                         self.src_dict.get(w, UNK_IDX)
-                        for w in [START] + src_words + [END]
+                        for w in [START, *src_words, END]
                     ]
 
                     trg_seq = line_split[1]  # one target sequence
@@ -193,8 +193,8 @@ class WMT14(Dataset):
                     # remove sequence whose length > 80 in training mode
                     if len(src_ids) > 80 or len(trg_ids) > 80:
                         continue
-                    trg_ids_next = trg_ids + [self.trg_dict[END]]
-                    trg_ids = [self.trg_dict[START]] + trg_ids
+                    trg_ids_next = [*trg_ids, self.trg_dict[END]]
+                    trg_ids = [self.trg_dict[START], *trg_ids]
 
                     self.src_ids.append(src_ids)
                     self.trg_ids.append(trg_ids)

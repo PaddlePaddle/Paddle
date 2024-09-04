@@ -1631,9 +1631,17 @@ void AddShadowFeedForValue(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  phi::Backend backend = phi::Backend::GPU;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  backend = phi::Backend::GPU;
+#endif
+#if defined(PADDLE_WITH_XPU)
+  backend = phi::Backend::XPU;
+#endif
+
   if (op_item->result(index).type().isa<DenseTensorType>()) {
     phi::KernelKey shadow_key{
-        phi::Backend::GPU,
+        backend,
         phi::DataLayout::ANY,
         TransToPhiDataType(
             op_item->result(index).type().dyn_cast<DenseTensorType>().dtype())};
@@ -1668,7 +1676,7 @@ void AddShadowFeedForValue(
     }
     // Add ShadowFeedTensors Op
     phi::KernelKey shadow_key{
-        phi::Backend::GPU,
+        backend,
         phi::DataLayout::ANY,
         TransToPhiDataType(vec_type[0].dyn_cast<DenseTensorType>().dtype())};
 
@@ -1723,7 +1731,8 @@ void AddShadowFeedForTuplePopOp(
   }
 
   // if value place not gpu, add shadow feed op
-  if (phi::is_gpu_place(place) && add_shadow_feed) {
+  if ((phi::is_gpu_place(place) || phi::is_xpu_place(place)) &&
+      add_shadow_feed) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       AddShadowFeedForValue(i,
                             op_item,
@@ -2137,8 +2146,11 @@ void HandleForSpecialOp(
 
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
   // Generate new op
+
   pir::Operation* op = pir::Operation::Create(
       vec_inputs, op_item->attributes(), op_output_types, op_info);
+  op->set_attribute("origin_id", pir::Int64Attribute::get(ctx, op_item->id()));
+
   block->push_back(op);
   (*map_op_pair)[op_item] = op;
   // only deal with single output
@@ -2307,6 +2319,9 @@ void HandleForCustomOp(
   if (op_item->HasTrait<InplaceTrait>()) {
     op_attribute.emplace("is_inplace", pir::BoolAttribute::get(ctx, true));
   }
+
+  op_attribute.emplace("origin_id",
+                       pir::Int64Attribute::get(ctx, op_item->id()));
 
   VLOG(6) << "Lower custom op: " << op_item->name()
           << " to : " << CustomKernelOp::name();
@@ -2949,9 +2964,11 @@ void AddShadowFeedOpForDataOrFeed(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   bool feed_op_add_shadow_feed =
-      (op_item->isa<FeedOp>()) && phi::is_gpu_place(place);
+      (op_item->isa<FeedOp>()) &&
+      (phi::is_gpu_place(place) || phi::is_xpu_place(place));
   bool data_op_add_shadow_feed =
-      (op_item->isa<DataOp>()) && phi::is_gpu_place(place) &&
+      (op_item->isa<DataOp>()) &&
+      (phi::is_gpu_place(place) || phi::is_xpu_place(place)) &&
       (kernel_op->attributes()
            .at("place")
            .dyn_cast<PlaceAttribute>()
@@ -2991,6 +3008,9 @@ pir::Operation* BuildKernelOp(
   if (op_item->HasTrait<InplaceTrait>()) {
     op_attribute.emplace("is_inplace", pir::BoolAttribute::get(ctx, true));
   }
+
+  op_attribute.emplace("origin_id",
+                       pir::Int64Attribute::get(ctx, op_item->id()));
 
   pir::Operation* op = nullptr;
 #ifdef PADDLE_WITH_DNNL
@@ -3170,7 +3190,7 @@ void ProcessBlock(
           AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
     }
   }
-  if (phi::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place) || phi::is_xpu_place(place)) {
     for (auto& [keyword, arg] : block->kwargs()) {
       if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
         auto dtype = dense_tensor_type.dtype();

@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename Context>
 void FlattenGradStridedKernel(const Context& dev_ctx,
-                              const DenseTensor& xshape,
+                              const DenseTensor& x,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad) {
   if (!FLAGS_use_stride_kernel) {
@@ -31,10 +31,11 @@ void FlattenGradStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
-  auto xshape_dims = xshape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   ReshapeStridedKernel<Context>(
-      dev_ctx, out_grad, IntArray(common::vectorize<int64_t>(x_dims)), x_grad);
+      dev_ctx,
+      out_grad,
+      IntArray(common::vectorize<int64_t>(x_grad->dims())),
+      x_grad);
 }
 
 }  // namespace phi

@@ -123,7 +123,7 @@ class Namespace:
                         satisfied_function_keys.remove(func_key)
                         break
         if len(satisfied_function_keys) == 1:
-            key = list(satisfied_function_keys)[0]
+            key = next(iter(satisfied_function_keys))
         elif len(args) >= 3 and isinstance(args[2], float):
             key = FunctionType.FP16_ONLY
         else:

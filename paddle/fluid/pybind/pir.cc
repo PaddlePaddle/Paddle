@@ -800,7 +800,7 @@ void BindOperation(py::module *m) {
       .def("num_operands", &Operation::num_operands)
       .def("num_results", &Operation::num_results)
       .def("num_regions", &Operation::num_regions)
-
+      .def("id", &Operation::id)
       .def("operand", &Operation::operand)
       .def("result",
            [](Operation &self, uint32_t index) {
@@ -1322,7 +1322,6 @@ void BindValue(py::module *m) {
           "get_defining_op",
           [](Value self) -> pir::Operation * { return self.defining_op(); },
           return_value_policy::reference)
-      .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
       .def("index",
            [](Value self) -> uint32_t {

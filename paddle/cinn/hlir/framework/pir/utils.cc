@@ -159,7 +159,10 @@ std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
   }
   auto op_name = name.substr(pos + 1);
   VLOG(7) << "GetOpName: " << name << " -> " << op_name;
-  CHECK(op_name != "") << "Not Allow op name is empty";
+  PADDLE_ENFORCE_NE(
+      op_name,
+      "",
+      ::common::errors::InvalidArgument("Not Allow op name is empty"));
   return op_name;
 }
 
@@ -227,25 +230,10 @@ bool HaveUnkDim(const ::pir::Operation& op) {
 }
 
 bool AllInputDenseTensor(const ::pir::Operation& op) {
-  const auto& IsDenseTensor = [](const ::pir::Type& type) -> bool {
-    return type.isa<::pir::DenseTensorType>();
-  };
-
-  // Judge for vector<Type>
-  const auto& IsAllDenseTensor =
-      [&](const std::vector<::pir::Type>& types) -> bool {
-    for (auto& type : types) {
-      if (!IsDenseTensor(type)) return false;
-    }
-    return true;
-  };
-
   for (size_t i = 0; i < op.num_operands(); ++i) {
     auto value = op.operand_source(i);
     if (!value || !value.type()) continue;
-    if (auto vector_type = value.type().dyn_cast<::pir::VectorType>()) {
-      if (!IsAllDenseTensor(vector_type.data())) return false;
-    } else if (!IsDenseTensor(value.type())) {
+    if (!value.type().isa<::pir::DenseTensorType>()) {
       return false;
     }
   }
@@ -436,7 +424,7 @@ bool IsSupportInCinn(const ::pir::Operation& op) {
 }  // namespace
 
 bool CompatibleInfo::IsDeniedForCinn(const ::pir::Operation& op) {
-  bool flag = IsDeniedInCinn(op);
+  bool flag = IsDeniedInCinn(op) || CauseNewSymbolicShape(op);
   VLOG(4) << "CompatibleInfo::IsDeniedForCinn of " << op.name()
           << " is: " << flag;
   return flag;
@@ -641,7 +629,14 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
     return hlir::framework::kElementWise;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
-  CHECK(op_pattern_dict.Find(cinn_op));
+  PADDLE_ENFORCE_EQ(
+      op_pattern_dict.Find(cinn_op),
+      true,
+      ::common::errors::PreconditionNotMet(
+          "Failed to find the op pattern kind for the operator in "
+          "Operator::GetAttrs<OpPatternKind>. "
+          "Ensure that the operator is registered "
+          "and its pattern is available."));
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be

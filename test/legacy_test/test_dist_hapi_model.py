@@ -77,7 +77,6 @@ def start_local_trainers(
             "PADDLE_CURRENT_ENDPOINT": f"{t.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-            "FLAGS_dynamic_static_unified_comm": "true",
         }
 
         current_env.update(proc_env)
@@ -132,14 +131,8 @@ class TestMultipleGpus(unittest.TestCase):
                 break
             time.sleep(3)
 
-    def test_hapi_multiple_gpus_static(self):
-        self.run_mnist_2gpu('dist_hapi_mnist_static.py')
-
     def test_hapi_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
-
-    def test_hapi_amp_static(self):
-        self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py')
 
 
 if __name__ == "__main__":

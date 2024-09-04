@@ -362,7 +362,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
         "now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
-  framework::LoD lod;
+  phi::LoD lod;
   for (auto &level : pt.lod) {
     lod.emplace_back(level);
   }
@@ -899,6 +899,15 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
           }
         }
+        if (config_.mkldnn_bfloat16_enabled()) {
+          for (const auto &mkldnn_pass : kPirMkldnnBf16Passes) {
+            if (std::find(config_.deleted_passes_.begin(),
+                          config_.deleted_passes_.end(),
+                          mkldnn_pass) == config_.deleted_passes_.end()) {
+              pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+            }
+          }
+        }
       }
 #endif
     } else {
@@ -1082,7 +1091,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
         phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
         const phi::DeviceContext *dev_ctx = nullptr;
-        dev_ctx = pool.Get(place_);
+        dev_ctx = pool.Get(phi::CPUPlace());
         pir::Type type_ = pir::GetDataTypeFromValue(value);
         phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
         dev_ctx->Alloc(tensor_temp, type_data);
@@ -1735,7 +1744,16 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
 #endif
   VLOG(3) << "predict start";
   // set feed variable
-  framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  framework::Scope *scope{nullptr};
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
+    scope = scope_.get();
+  } else {
+    scope = executor_->GetScope();
+  }
+#else
+  scope = executor_->GetScope();
+#endif
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       common::errors::PreconditionNotMet("The scope should not be nullptr."));
@@ -1783,6 +1801,18 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 #endif
 
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
+    VLOG(3) << "ZeroCopyRun will use the fleet executor.";
+    fleet_exe_->Run(config_.dist_config().carrier_id());
+  } else if (config_.new_executor_enabled()) {  // NOLINT
+    executor_->RunInterpreterCore();
+  } else {
+    // Run the inference program
+    // if share variables, we need not create variables
+    executor_->Run();
+  }
+#else
   if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
   } else {
@@ -1790,6 +1820,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     // if share variables, we need not create variables
     executor_->Run();
   }
+#endif
 
   inference::DisplayMemoryInfo(place_, "after run");
 #ifdef PADDLE_WITH_XPU
@@ -3618,6 +3649,7 @@ USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(p_norm)
 USE_TRT_CONVERTER(unbind)
+USE_TRT_CONVERTER(index_put)
 USE_TRT_CONVERTER(flip)
 USE_TRT_CONVERTER(isnan_v2)
 USE_TRT_CONVERTER(share_data)

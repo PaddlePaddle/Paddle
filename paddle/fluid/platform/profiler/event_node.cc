@@ -18,7 +18,7 @@ limitations under the License. */
 #include <set>
 #include <stack>
 
-#include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/platform/profiler/utils.h"
 
 namespace paddle::platform {
 
