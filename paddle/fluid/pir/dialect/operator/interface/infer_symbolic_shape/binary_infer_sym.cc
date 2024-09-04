@@ -1275,7 +1275,8 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
 
   const symbol::DimExpr seq_length = x_shape[x_rank - 1];
   const symbol::DimExpr n_frames =
-      1 + (seq_length - symbol::DimExpr{n_fft}) / symbol::DimExpr{hop_length};
+      (symbol::DimExpr{1}) +
+      (seq_length - symbol::DimExpr{n_fft}) / symbol::DimExpr{hop_length};
 
   if (seq_length.isa<int64_t>()) {
     PADDLE_ENFORCE_LE(n_fft,
