@@ -2231,23 +2231,38 @@ def matrix_rank(
     x: Tensor,
     tol: float | Tensor | None = None,
     hermitian: bool = False,
+    atol: float | Tensor | None = None,
+    rtol: float | Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
     Computes the rank of a matrix.
 
-    The rank of a matrix is the number of singular values that are greater than the specified `tol` threshold when hermitian=False,
-    or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold when hermitian=True.
+    Notes:
+        1. Support the use of attribute `tol` alone or the use of attributes `atol` and `rtol` together without `tol`.
+
+        2. When `tol` is used alone, it will return the rank of a matrix is the number of singular values that are greater than the specified `tol`
+        threshold when hermitian=False, or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold
+        when hermitian=True. It is compatible with numpy API.
+
+        3. When `atol` and `rtol` are used, the tolerance value is computed as `max(atol, sigma_1 * rtol)`, where sigma_1 is largest
+        singular value (or eigenvalues in absolute value).
+
+        4. When `atol` and `rtol` are used: If `rtol` is not specified, then it is set to be `max(m,n) * eps`, where `x` has dimension(m, n) and
+        `eps` is the epsilon value for the dtype of `x`; If `rtol` is not specified and `atol` is specified to be greater than 0, then it
+        is set to be 0.
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch
             of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64.
-        tol (float|Tensor, optional): the tolerance value. If `tol` is not specified, and `sigma` is the largest singular value
+        tol (float|Tensor, optional): The tolerance value. If `tol` is not specified, and `sigma` is the largest singular value
             (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed with formula
             `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch. Default: None.
-        hermitian (bool, optional): indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian,
+        hermitian (bool, optional): Indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian,
             enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use
             the lower triangular of the matrix to compute. Default: False.
+        atol (float|Tensor, optional): The absolute tolerance value. When None it is considered to be 0. Default: None.
+        rtol (float|Tensor, optional): The relative tolerance value. See above Notes for the value it takes when None. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2273,50 +2288,103 @@ def matrix_rank(
              [1, 1, 1, 1]])
 
     """
-    if in_dynamic_or_pir_mode():
-        if isinstance(tol, (Variable, paddle.pir.Value)):
-            if tol.dtype != x.dtype:
-                tol_tensor = cast(tol, x.dtype)
-            else:
-                tol_tensor = tol
-            use_default_tol = False
-            return _C_ops.matrix_rank_tol(
-                x, tol_tensor, use_default_tol, hermitian
+    use_atol_rtol = False
+    if (atol is not None) or (rtol is not None):
+        if tol is not None:
+            raise ValueError(
+                "Only support to use tol alone or use atol and rtol without tol."
             )
+        use_atol_rtol = True
 
-        if tol is None:
-            tol_attr = 0.0
-            use_default_tol = True
+    if use_atol_rtol:
+        if atol is None:
+            atol = full([], 0.0, x.dtype)
+        if isinstance(atol, (float, int)):
+            atol = full([], atol, x.dtype)
+        if atol.dtype != x.dtype:
+            atol = cast(atol, x.dtype)
+
+        if rtol is not None:
+            if isinstance(rtol, (float, int)):
+                rtol = full([], rtol, x.dtype)
+            if rtol.dtype != x.dtype:
+                rtol = cast(rtol, x.dtype)
+
+            atol, rtol = paddle.broadcast_tensors([atol, rtol])
+
+        if in_dynamic_or_pir_mode():
+            return _C_ops.matrix_rank_atol_rtol(x, atol, rtol, hermitian)
         else:
-            tol_attr = float(tol)
-            use_default_tol = False
-        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
+            inputs = {}
+            attrs = {}
+            check_variable_and_dtype(
+                x, 'x', ['float32', 'float64'], 'matrix_rank_atol_rtol'
+            )
+            inputs['x'] = x
+            inputs['atol'] = atol
+            inputs['rtol'] = rtol
+            check_type(hermitian, 'hermitian', bool, 'matrix_rank_atol_rtol')
+            attrs['hermitian'] = hermitian
+
+            helper = LayerHelper('matrix_rank_atol_rtol', **locals())
+            out = helper.create_variable_for_type_inference(dtype='int32')
+            helper.append_op(
+                type='matrix_rank_atol_rtol',
+                inputs=inputs,
+                outputs={'out': out},
+                attrs=attrs,
+            )
+            return out
     else:
-        inputs = {}
-        attrs = {}
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'matrix_rank')
-        inputs['X'] = x
-        if tol is None:
-            attrs['use_default_tol'] = True
-        elif isinstance(tol, Variable):
-            attrs['use_default_tol'] = False
-            if tol.dtype != x.dtype:
-                inputs['TolTensor'] = cast(tol, x.dtype)
-            else:
-                inputs['TolTensor'] = tol
-        else:
-            check_type(tol, 'tol', float, 'matrix_rank')
-            attrs['use_default_tol'] = False
-            attrs['tol'] = tol
-        check_type(hermitian, 'hermitian', bool, 'matrix_rank')
-        attrs['hermitian'] = hermitian
+        if in_dynamic_or_pir_mode():
+            if isinstance(tol, (Variable, paddle.pir.Value)):
+                if tol.dtype != x.dtype:
+                    tol_tensor = cast(tol, x.dtype)
+                else:
+                    tol_tensor = tol
+                use_default_tol = False
+                return _C_ops.matrix_rank_tol(
+                    x, tol_tensor, use_default_tol, hermitian
+                )
 
-        helper = LayerHelper('matrix_rank', **locals())
-        out = helper.create_variable_for_type_inference(dtype='int32')
-        helper.append_op(
-            type='matrix_rank', inputs=inputs, outputs={'Out': out}, attrs=attrs
-        )
-        return out
+            if tol is None:
+                tol_attr = 0.0
+                use_default_tol = True
+            else:
+                tol_attr = float(tol)
+                use_default_tol = False
+            return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
+        else:
+            inputs = {}
+            attrs = {}
+            check_variable_and_dtype(
+                x, 'x', ['float32', 'float64'], 'matrix_rank'
+            )
+            inputs['X'] = x
+            if tol is None:
+                attrs['use_default_tol'] = True
+            elif isinstance(tol, Variable):
+                attrs['use_default_tol'] = False
+                if tol.dtype != x.dtype:
+                    inputs['TolTensor'] = cast(tol, x.dtype)
+                else:
+                    inputs['TolTensor'] = tol
+            else:
+                check_type(tol, 'tol', float, 'matrix_rank')
+                attrs['use_default_tol'] = False
+                attrs['tol'] = tol
+            check_type(hermitian, 'hermitian', bool, 'matrix_rank')
+            attrs['hermitian'] = hermitian
+
+            helper = LayerHelper('matrix_rank', **locals())
+            out = helper.create_variable_for_type_inference(dtype='int32')
+            helper.append_op(
+                type='matrix_rank',
+                inputs=inputs,
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            return out
 
 
 def bmm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:

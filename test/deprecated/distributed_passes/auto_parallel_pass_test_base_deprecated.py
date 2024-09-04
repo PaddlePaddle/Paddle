@@ -18,13 +18,16 @@ import sys
 from collections import OrderedDict
 
 import numpy as np
+
+sys.path.append("../../distributed_passes")
 from dist_pass_test_base import DistPassTestBase
 
 import paddle
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
 
-sys.path.append("../legacy_test")
+sys.path.append("../../legacy_test")
+
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,

@@ -17,7 +17,7 @@ import unittest
 
 import paddle
 
-sys.path.append("../legacy_test")
+sys.path.append("../../legacy_test")
 
 import paddle.nn.functional as F
 from paddle import nn, static, utils

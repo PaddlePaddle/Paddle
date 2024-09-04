@@ -1,16 +1,16 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
 
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -26,8 +28,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 __global__ void SimleScaleKernel(int64_t numel, float scale, T* inout) {
@@ -37,11 +39,11 @@ __global__ void SimleScaleKernel(int64_t numel, float scale, T* inout) {
 }
 
 inline std::string MemoryDebugString(const phi::DenseTensor& t) {
-  int device_id = platform::GetCurrentDeviceId();
+  int device_id = phi::backends::gpu::GetCurrentDeviceId();
   int64_t allocated =
-      memory::DeviceMemoryStatCurrentValue("Allocated", device_id);
+      phi::memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
   int64_t reserved =
-      memory::DeviceMemoryStatCurrentValue("Reserved", device_id);
+      phi::memory_utils::DeviceMemoryStatCurrentValue("Reserved", device_id);
 
   std::stringstream ss;
   ss << "shape=[" << t.dims()
@@ -1270,5 +1272,5 @@ class FlashAttnWithGating {
   bool fa_zero_tensors_{false};
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

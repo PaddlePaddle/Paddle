@@ -214,21 +214,22 @@ class TestImperativeQat(unittest.TestCase):
             else:
                 place = core.CPUPlace()
             exe = paddle.static.Executor(place)
-            [
-                inference_program,
-                feed_target_names,
-                fetch_targets,
-            ] = paddle.static.load_inference_model(
-                tmpdir,
-                executor=exe,
-                model_filename="lenet" + INFER_MODEL_SUFFIX,
-                params_filename="lenet" + INFER_PARAMS_SUFFIX,
-            )
-            (quant_out,) = exe.run(
-                inference_program,
-                feed={feed_target_names[0]: test_data},
-                fetch_list=fetch_targets,
-            )
+            with paddle.pir_utils.OldIrGuard():
+                [
+                    inference_program,
+                    feed_target_names,
+                    fetch_targets,
+                ] = paddle.static.load_inference_model(
+                    tmpdir,
+                    executor=exe,
+                    model_filename="lenet" + INFER_MODEL_SUFFIX,
+                    params_filename="lenet" + INFER_PARAMS_SUFFIX,
+                )
+                (quant_out,) = exe.run(
+                    inference_program,
+                    feed={feed_target_names[0]: test_data},
+                    fetch_list=fetch_targets,
+                )
             paddle.disable_static()
             quant_out = paddle.to_tensor(quant_out)
             quant_acc = paddle.metric.accuracy(quant_out, label).numpy()
