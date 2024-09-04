@@ -47,8 +47,7 @@ static void AllReduce(const phi::DenseTensor &src,
   const void *src_ptr = src.data();
   dst->Resize(src.dims());
   auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
-  auto bkcl_dtype =
-      platform::ToBKCLDataType(framework::TransToProtoVarType(src.dtype()));
+  auto bkcl_dtype = phi::ToBKCLDataType(src.dtype());
 
   PADDLE_ENFORCE_EQ(
       bkcl_all_reduce(comm->comm(),

@@ -42,7 +42,7 @@ GuardedFunctions = List[GuardedFunction]
 
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"
-dummy_guard.lambda_expr = "lambda frame: True"
+dummy_guard.inlined_expr = "lambda frame: True"
 
 
 class OpcodeExecutorCache(metaclass=Singleton):
@@ -58,14 +58,16 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_CACHE_SIZE = 20
     cache: dict[types.CodeType, GuardedFunctions]
     translate_count: int
-    code_symbolic_inputs: dict[types.CodeType, dict[str, dict[int, int]]]
+    code_symbolic_inputs: dict[types.CodeType, dict[str, None | dict[int, int]]]
 
     def __init__(self):
         self.cache = {}
         self.translate_count = 0
         self.code_symbolic_inputs = {}
 
-    def get_symbolic_inputs(self, code: types.CodeType):
+    def get_symbolic_inputs(
+        self, code: types.CodeType
+    ) -> dict[str, dict[int, int] | None]:
         self.code_symbolic_inputs.setdefault(code, {})
         return self.code_symbolic_inputs[code]
 
@@ -131,6 +133,11 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     )
             except Exception as e:
                 log(2, f"[Cache]: Guard function error: {e}\n")
+                log(
+                    2,
+                    f"[Cache]: Guard string is: {getattr(guard_fn, 'expr', 'None')}\n",
+                )
+
                 continue
 
         log(2, "[Cache]: all guards missed\n")
@@ -171,7 +178,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
     def analyse_guard_error(self, guard_fn, frame):
         def inner():
-            guard_expr = guard_fn.lambda_expr
+            guard_expr = guard_fn.inlined_expr
             lambda_head = "lambda frame: "
             guard_expr = guard_expr.replace(lambda_head, "")
             guards = guard_expr.split(" and ")
