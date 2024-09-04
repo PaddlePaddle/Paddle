@@ -657,21 +657,24 @@ bool BroadcastTensorsOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0))
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  int target_rank = 0;
+  size_t target_rank = 0;
   for (const auto &input_shape_or_data : input_shape_or_data_list) {
     size_t tmp_rank = input_shape_or_data.shape().size();
     target_rank = std::max(int64_t(target_rank), int64_t(tmp_rank));
   }
 
-  symbol::DimExprBuilder builder;
   std::vector<symbol::DimExpr> out_shape;
-  for (int i = 0; i < target_rank; i++) {
-    symbol::DimExpr tmp_dim = input_shape_or_data_list[0].shape()[i];
-    for (size_t j = 1; j < input_shape_or_data_list.size(); j++) {
-      tmp_dim =
-          builder.Broadcast(input_shape_or_data_list[j].shape()[i], tmp_dim);
+  for (size_t i = 0; i < target_rank; i++) {
+    out_shape.push_back(symbol::DimExpr{1});
+  }
+
+  symbol::DimExprBuilder builder;
+  for (size_t i = 0; i < input_shape_or_data_list.size(); i++) {
+    for (size_t j = 0; j < input_shape_or_data_list[i].shape().size(); j++) {
+      out_shape[target_rank - j - 1] =
+          builder.Broadcast(input_shape_or_data_list[i].shape()[j],
+                            out_shape[target_rank - j - 1]);
     }
-    out_shape.push_back(tmp_dim);
   }
 
   symbol::TensorListShapeOrDataDimExprs out_shapes;
