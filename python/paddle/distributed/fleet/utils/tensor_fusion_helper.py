@@ -566,6 +566,7 @@ class FusedCommBuffer:
                 param.main_grad = tmp_var
                 param.main_grad.name = "main_grad@" + param.name
         else:
+            param.grad._clear()
             if not self._free_grads_in_comm:
                 param._copy_gradient_from(tmp_var)
 
