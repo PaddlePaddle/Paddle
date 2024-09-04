@@ -174,10 +174,13 @@ class AdamFunctor<T, GPUAdam> {
   T* moment1_out_;
   const T* moment2_;
   T* moment2_out_;
+  const T* moment2_max_;
+  T* moment2_max_out_;
   const T* lr_;
   const T* grad_;
   const T* param_;
   T* param_out_;
+  bool amsgrad_;
 
  public:
   AdamFunctor(T beta1,
@@ -189,10 +192,13 @@ class AdamFunctor<T, GPUAdam> {
               T* mom1_out,
               const T* mom2,
               T* mom2_out,
+              const T* mom2_max,
+              T* mom2_max_out,
               const T* lr,
               const T* grad,
               const T* param,
-              T* param_out)
+              T* param_out,
+              bool amsgrad)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -202,16 +208,20 @@ class AdamFunctor<T, GPUAdam> {
         moment1_out_(mom1_out),
         moment2_(mom2),
         moment2_out_(mom2_out),
+        moment2_max_(mom2_max),
+        moment2_max_out_(mom2_max_out),
         lr_(lr),
         grad_(grad),
         param_(param),
-        param_out_(param_out) {}
+        param_out_(param_out),
+        amsgrad_(amsgrad) {}
 
   inline HOSTDEVICE void operator()(size_t i) const {
     // Merge all memory access together.
     T g = grad_[i];
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
+    T mom2_max = moment2_max_[i];
     T lr = *lr_;
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
@@ -222,7 +232,16 @@ class AdamFunctor<T, GPUAdam> {
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-    p -= lr * (mom1 / (sqrt(mom2) + epsilon_ * sqrt(1 - beta2_pow)));
+
+    T mom2_max_;
+    if (amsgrad_) {
+      mom2_max_ = std::max(mom2, mom2_max);
+      moment2_max_out_[i] = mom2_max_;
+    } else {
+      mom2_max_ = mom2;
+    }
+
+    p -= lr * (mom1 / (sqrt(mom2_max_) + epsilon_ * sqrt(1 - beta2_pow)));
 
     // Write back to global memory
     moment1_out_[i] = mom1;
@@ -293,6 +312,8 @@ class AdamFunctor<T, CPUAdam> {
         moment1_, static_cast<Eigen::Index>(numel)};
     Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom2{
         moment2_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom2_max{
+        moment2_max_, static_cast<Eigen::Index>(numel)};
     Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> param{
         param_, static_cast<Eigen::Index>(numel)};
 
@@ -302,6 +323,8 @@ class AdamFunctor<T, CPUAdam> {
         moment1_out_, static_cast<Eigen::Index>(numel)};
     Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment2_out{
         moment2_out_, static_cast<Eigen::Index>(numel)};
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment2_max_out{
+        moment2_max_out_, static_cast<Eigen::Index>(numel)};
 
     T lr = *lr_;
     T beta1_pow = *beta1_pow_;
@@ -312,8 +335,15 @@ class AdamFunctor<T, CPUAdam> {
 
     moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
     moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
-    param_out = param - lr * (moment1_out / (moment2_out.sqrt() +
-                                             epsilon_ * sqrt(1 - beta2_pow)));
+
+    if (amsgrad_) {
+      moment2_max_out = moment2_out.cwiseMax(mom2_max);
+      param_out = param - lr * (moment1_out / (moment2_max_out.sqrt() +
+                                               epsilon_ * sqrt(1 - beta2_pow)));
+    } else {
+      param_out = param - lr * (moment1_out / (moment2_out.sqrt() +
+                                               epsilon_ * sqrt(1 - beta2_pow)));
+    }
   }
 };
 
