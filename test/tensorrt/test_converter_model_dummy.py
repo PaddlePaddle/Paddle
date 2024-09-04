@@ -23,6 +23,7 @@ import paddle
 from paddle.tensorrt.converter import PaddleToTensorRTConverter
 from paddle.tensorrt.util import (
     run_pir_pass,
+    warmup_shape_infer,
 )
 
 
@@ -44,12 +45,11 @@ class TestConverterDummy(unittest.TestCase):
                         fetch_list=[output_var],
                     )
 
-                # Run the program with input_data_max_shape (fake max_shape input)
-                executor.run(
-                    program,
-                    feed={"input": input_data_max_shape},
-                    fetch_list=[output_var],
-                )
+        warmup_shape_infer(
+            program,
+            min_shape_feed={"input": input_data},
+            max_shape_feed={"input": input_data_max_shape},
+        )
         # Apply PIR pass to the program
         program_with_pir = run_pir_pass(program, partition_mode=True)
 

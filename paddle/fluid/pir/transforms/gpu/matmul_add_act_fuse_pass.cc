@@ -175,7 +175,7 @@ class MatmulAddActPattern : public paddle::drr::DrrPatternBase {
       if (!act_type.empty()) return false;
       if (act_type_ == "gelu") {
         bool Attr_approx = match_ctx.Attr<bool>("approximate");
-        if (Attr_approx) return false;
+        if (!Attr_approx) return false;
       }
       return true;
     });

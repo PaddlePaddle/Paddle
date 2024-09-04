@@ -1330,33 +1330,31 @@ void ExpandInferMeta(const MetaTensor& x,
                         "must be a positive integer.",
                         expand_shape.size()));
 
-  auto out_rank =
-      std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
-  std::vector<int64_t> out_shape(out_rank);
-  for (int i = 0; i < static_cast<int>(expand_shape.size()); ++i) {
-    if (x_dims[i] == -1) {  // NOLINT
-      out_shape[i] = -1;
-    } else if (expand_shape[i] == -1) {
-      if (static_cast<int>(x_dims.size()) > i) {
-        out_shape[i] = x_dims[i];
-      } else {
-        out_shape[i] = -1;
+  int out_rank = expand_shape.size();
+  const auto& out_shape = [&]() -> std::vector<int64_t> {
+    std::vector<int64_t> res = expand_shape;
+    int x_rank = x_dims.size();
+    const auto& DealWithMinusOne = [&]() {
+      for (int x_idx = x_rank - 1, out_idx = out_rank - 1; x_idx >= 0;
+           x_idx--, out_idx--) {
+        if (res[out_idx] == -1) {
+          res[out_idx] = x_dims[x_idx];
+        }
       }
-    } else if (expand_shape[i] == -2) {
+    };
+    const auto& DealWithMinusTwo = [&]() {
       // We use -2 to represent the element in expand_shape is a var.
-      out_shape[i] = -1;
-    } else {
-      PADDLE_ENFORCE_GT(
-          expand_shape[i],
-          0,
-          common::errors::InvalidArgument(
-              "The %uth element of 'shape' for expand_v2 op must be "
-              "greater than 0, but the value given is %d.",
-              i,
-              expand_shape[i]));
-      out_shape[i] = expand_shape[i];
-    }
-  }
+      for (int x_idx = x_rank - 1, out_idx = out_rank - 1; out_idx >= 0;
+           x_idx--, out_idx--) {
+        if (res[out_idx] == -2) {
+          res[out_idx] = -1;
+        }
+      }
+    };
+    DealWithMinusOne();
+    DealWithMinusTwo();
+    return res;
+  }();
 
   out->set_dims(common::make_ddim(out_shape));
   out->set_dtype(x.dtype());

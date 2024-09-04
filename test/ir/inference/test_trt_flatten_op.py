@@ -39,6 +39,12 @@ class TRTFlattenTest(InferencePassTest):
         self.trt_parameters = TRTFlattenTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = TRTFlattenTest.DynamicShapeParam(
+            {'data': [1, 6, 64, 64]},
+            {'data': [32, 6, 64, 64]},
+            {'data': [1, 6, 64, 64]},
+            False,
+        )
         self.fetch_list = [out]
 
     def append_flatten(self, data):

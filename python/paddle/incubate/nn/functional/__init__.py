@@ -17,6 +17,7 @@ from .block_multihead_attention import (
     block_multihead_attention,
     block_multihead_attention_xpu,  # noqa: F401
 )
+from .fused_bias_act import fused_bias_act
 from .fused_dot_product_attention import (
     cudnn_flash_attention,  # noqa: F401
     fused_dot_product_attention,  # noqa: F401
@@ -60,6 +61,7 @@ __all__ = [
     'variable_length_memory_efficient_attention',
     "fused_rms_norm",
     "fused_layer_norm",
+    "fused_bias_act",
     "masked_multihead_attention",
     "blha_get_max_len",
     "block_multihead_attention",
