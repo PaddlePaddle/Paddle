@@ -8428,15 +8428,24 @@ def auto_complete_op_role(program, op_role, insert_point=None):
                     program.global_block()
                 )
                 insert_point = paddle.pir.get_current_insertion_point()
+
             current_num_ops = program.num_ops()
             if op_role is not None and current_num_ops > initial_num_ops:
-                for _ in range(current_num_ops - initial_num_ops):
+                new_added_op_num = current_num_ops - initial_num_ops
+                while new_added_op_num > 0:
                     new_added_op = insert_point.prev()
                     if new_added_op.op_role is not None:
                         continue
 
                     new_added_op.op_role = op_role
+                    for sub_block in new_added_op.blocks():
+                        for sub_op in sub_block.ops:
+                            sub_op.op_role = op_role
+                            new_added_op_num -= 1
+
                     paddle.pir.set_insertion_point(new_added_op)
                     insert_point = paddle.pir.get_current_insertion_point()
+                    new_added_op_num -= 1
+
             if origin_insert_point:
                 paddle.pir.set_insertion_point(origin_insert_point)
