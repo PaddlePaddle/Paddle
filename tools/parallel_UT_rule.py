@@ -563,7 +563,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_pow2_warmup_op',
     'test_dlpack',
     'test_ops_roi_align',
-    'test_auto_parallel_parallelizer',
+    'test_auto_parallel_parallelizer_deprecated',
     'test_ops_roi_pool',
     'test_backward_infer_var_data_type_shape_deprecated',
     'test_auto_parallel_completion_deprecated',
