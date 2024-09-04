@@ -3744,9 +3744,6 @@ bool WeightQuantizeOpInferSymbolicShape(
       common::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_shape.size()));
 
-  int group_size = op->attribute<pir::Int32Attribute>("group_size").data();
-  std::string algo = op->attribute<pir::StrAttribute>("algo").AsString();
-
   std::vector<symbol::DimExpr> out_shape = {x_shape[1], x_shape[0]};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
