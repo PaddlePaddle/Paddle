@@ -679,7 +679,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
   }
 
   symbol::TensorListShapeOrDataDimExprs out_shapes;
-  for (int i = 0; i < target_rank; i++) {
+  for (size_t i = 0; i < target_rank; i++) {
     out_shapes.emplace_back(out_shape);
   }
 
