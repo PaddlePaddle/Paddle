@@ -20,6 +20,8 @@
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/collective/common.h"
+#include "paddle/phi/core/distributed/comm_async_recorder.h"
+#include "paddle/phi/core/distributed/comm_async_time_profiler.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
@@ -36,6 +38,7 @@ COMMON_DECLARE_bool(nccl_blocking_wait);
 COMMON_DECLARE_bool(use_stream_safe_cuda_allocator);
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(enable_async_trace);
+COMMON_DECLARE_bool(enable_async_time_profiler);
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
@@ -156,6 +159,9 @@ ProcessGroupNCCL::~ProcessGroupNCCL() {
   if (FLAGS_enable_async_trace) {
     auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
     comm_task_manager.Stop();
+  }
+  if (FLAGS_enable_async_time_profiler) {
+    phi::distributed::CommAsyncTimeProfiler::GetInstance().Stop();
   }
 }
 
@@ -866,9 +872,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
   auto nccl_comm_ctx = this->GetCommContext(&store_key);
 
-  if (!FLAGS_enable_async_trace) {
+  if (FLAGS_enable_async_time_profiler && profile_enabled_) {
+    auto recoder = std::make_shared<phi::distributed::CommAsyncRecorder>(
+        place, gid_, nccl_stream);
+    recoder->StartRecord();
     fn(nccl_comm_ctx, nccl_stream);
-  } else {
+    recoder->EndRecord();
+    auto& profiler = phi::distributed::CommAsyncTimeProfiler::GetInstance();
+    profiler.AddRecorder(std::move(recoder));
+  } else if (FLAGS_enable_async_trace) {
     std::string group_key = place_to_group_key_.at(key);
     auto comm_task =
         std::make_shared<phi::distributed::NCCLCommTask>(place,
@@ -891,6 +903,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
     auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
     comm_task_manager.CommTaskEnqueue(std::move(comm_task));
+  } else {
+    fn(nccl_comm_ctx, nccl_stream);
   }
 
   if (!use_calc_stream) {
