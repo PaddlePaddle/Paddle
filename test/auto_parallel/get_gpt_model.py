@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import sys
 
-sys.path.append("../legacy_test")
+cur_path = os.path.dirname(__file__)
+sys.path.append(cur_path + "/../legacy_test")
 import auto_parallel_gpt_model as modeling
 import numpy as np
 from auto_parallel_gpt_model import (

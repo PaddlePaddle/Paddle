@@ -317,8 +317,12 @@ class PaddleToTensorRTConverter:
             outs = converter_func(network, paddle_op, inputs)
         if isinstance(outs, tuple):
             return outs
+        elif isinstance(outs, trt.ITensor):
+            return (outs,)
         else:
-            return tuple(outs)
+            raise TypeError(
+                f"Expected outputs to be a tuple or ITensor, but got {type(outs)}"
+            )
 
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
