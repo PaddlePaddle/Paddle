@@ -670,10 +670,11 @@ bool BroadcastTensorsOpInferSymbolicShape(
 
   symbol::DimExprBuilder builder;
   for (size_t i = 0; i < input_shape_or_data_list.size(); i++) {
-    for (size_t j = 0; j < input_shape_or_data_list[i].shape().size(); j++) {
-      out_shape[target_rank - j - 1] =
-          builder.Broadcast(input_shape_or_data_list[i].shape()[j],
-                            out_shape[target_rank - j - 1]);
+    size_t tmp_bound = input_shape_or_data_list[i].shape().size();
+    for (size_t j = 0; j < tmp_bound; j++) {
+      out_shape[target_rank - j - 1] = builder.Broadcast(
+          input_shape_or_data_list[i].shape()[tmp_bound - j - 1],
+          out_shape[target_rank - j - 1]);
     }
   }
 
