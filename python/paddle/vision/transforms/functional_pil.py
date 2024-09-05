@@ -40,6 +40,7 @@ except:
         'hamming': Image.HAMMING,
     }
 
+
 __all__ = []
 
 
@@ -63,16 +64,16 @@ def to_tensor(pic, data_format='CHW'):
 
     # PIL Image
     if pic.mode == 'I':
-        img = paddle.to_tensor(np.asarray(pic, np.int32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.int32))
     elif pic.mode == 'I;16':
         # cast and reshape not support int16
-        img = paddle.to_tensor(np.asarray(pic, np.int32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.int32))
     elif pic.mode == 'F':
-        img = paddle.to_tensor(np.asarray(pic, np.float32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.float32))
     elif pic.mode == '1':
-        img = 255 * paddle.to_tensor(np.asarray(pic, np.uint8, copy=False))
+        img = 255 * paddle.to_tensor(np.asarray(pic, np.uint8))
     else:
-        img = paddle.to_tensor(np.asarray(pic, copy=False))
+        img = paddle.to_tensor(np.asarray(pic))
 
     if pic.mode == 'YCbCr':
         nchannel = 3
@@ -268,7 +269,7 @@ def center_crop(img, output_size):
         img (PIL.Image): Image to be cropped. (0,0) denotes the top left corner of the image.
         output_size (sequence or int): (height, width) of the crop box. If int,
             it is used for both directions
-        backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'.
+        backend (str, optional): The image process backend type. Options are `pil`, `cv2`. Default: 'pil'.
 
     Returns:
         PIL.Image: Cropped image.
@@ -292,7 +293,7 @@ def hflip(img):
         img (PIL.Image): Image to be flipped.
 
     Returns:
-        PIL.Image:  Horizontall flipped image.
+        PIL.Image:  Horizontally flipped image.
 
     """
 
@@ -406,7 +407,6 @@ def adjust_hue(img, hue_factor):
     np_h = (np_h + int(hue_factor * 255)) % 256
     np_h = np_h.astype(np.uint8)
     h = Image.fromarray(np_h, 'L')
-
     img = Image.merge('HSV', (h, s, v)).convert(input_mode)
     return img
 
@@ -520,7 +520,7 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image): Image to be converted to grayscale.
-        backend (str, optional): The image proccess backend type. Options are `pil`,
+        backend (str, optional): The image process backend type. Options are `pil`,
                     `cv2`. Default: 'pil'.
 
     Returns:
