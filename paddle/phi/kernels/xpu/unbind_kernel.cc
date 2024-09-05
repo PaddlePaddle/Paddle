@@ -24,19 +24,25 @@ void UnbindKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   std::vector<DenseTensor*> outs) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto x_dims = x.dims();
   axis = axis < 0 ? x_dims.size() + axis : axis;
 
-  std::vector<T*> y_ptrs;
+  std::vector<XPUType*> y_ptrs;
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);
-    y_ptrs.emplace_back(outs[j]->data<T>());
+    y_ptrs.emplace_back(reinterpret_cast<XPUType*>(outs[j]->data<T>()));
   }
   auto x_shape = common::vectorize<int>(x.dims());
-  int r = xpu::unbind(dev_ctx.x_context(), x.data<T>(), y_ptrs, x_shape, axis);
+  int r = xpu::unbind(dev_ctx.x_context(),
+                      reinterpret_cast<const XPUType*>(x.data<T>()),
+                      y_ptrs,
+                      x_shape,
+                      axis);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "unbind");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(unbind, XPU, ALL_LAYOUT, phi::UnbindKernel, float) {}
+PD_REGISTER_KERNEL(
+    unbind, XPU, ALL_LAYOUT, phi::UnbindKernel, float, phi::dtype::bfloat16) {}

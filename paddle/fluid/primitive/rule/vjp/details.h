@@ -2519,6 +2519,121 @@ void softsign_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void put_along_axis_grad(const Tensor& x,
+                         const Tensor& index,
+                         const Tensor& value,
+                         const Tensor& out,
+                         const Tensor& out_grad,
+                         int axis,
+                         const std::string& reduce,
+                         bool include_self,
+                         Tensor* x_grad,
+                         Tensor* value_grad) {
+  if (x_grad) {
+    Tensor x_grad_tmp = out_grad;
+    if (include_self == false || reduce == "assign") {
+      Tensor zero_tensor = full<T>(index.shape(), 0, out_grad.dtype());
+      x_grad_tmp = put_along_axis<T>(out_grad, index, zero_tensor, axis);
+    } else if (reduce == "multiply" || reduce == "mul") {
+      Tensor zero_tensor_x = full<T>(x.shape(), 0, x.dtype());
+      Tensor one_tensor_idx = full<T>(index.shape(), 1, x.dtype());
+      Tensor mask =
+          put_along_axis<T>(zero_tensor_x, index, one_tensor_idx, axis);
+      x_grad_tmp = where<T>(mask > zero_tensor_x, out_grad * out / x, out_grad);
+    } else if (reduce == "amin" || reduce == "amax") {
+      Tensor zero_tensor = full<T>(x.shape(), 0, x.dtype());
+      Tensor one_tensor = full<T>(x.shape(), 1, x.dtype());
+
+      auto zero_result = cast<T>(equal<T>(out, x), x.dtype());
+
+      Tensor num = zero_tensor;
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      for (int64_t i = 0; i < select_num; i++) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor sub_value = slice<T>(value, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor sub_out = take_along_axis<T>(out, sub_index, axis);
+        Tensor sub_count = cast<T>(equal<T>(sub_out, sub_value), x.dtype());
+        num = num + put_along_axis<T>(zero_tensor, sub_index, sub_count, axis);
+      }
+      x_grad_tmp = zero_result * out_grad / (num + 1);
+    } else if (reduce == "mean") {
+      Tensor zero_tensor_x = full<T>(x.shape(), 0, x.dtype());
+
+      Tensor num = zero_tensor_x;
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      for (int64_t i = 0; i < select_num; i++) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor sub_one_tensor = full<T>(sub_index.shape(), 1, x.dtype());
+        num = num +
+              put_along_axis<T>(zero_tensor_x, sub_index, sub_one_tensor, axis);
+      }
+      x_grad_tmp =
+          where<T>(num > zero_tensor_x, out_grad / (num + 1), out_grad);
+    }
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+  if (value_grad) {
+    Tensor value_grad_tmp = full<T>(index.shape(), 0, x.dtype());
+    if (reduce == "assign") {
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      Tensor mask = full<T>(out_grad.shape(), 1, out_grad.dtype());
+      Tensor zero = full<T>(out_grad.shape(), 0, out_grad.dtype());
+      std::vector<Tensor> res(select_num);
+      for (int64_t i = select_num - 1; i >= 0; i--) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor tmp_grad = out_grad * mask;
+        res[i] = take_along_axis<T>(tmp_grad, sub_index, axis);
+        mask = put_along_axis<T>(out_grad, sub_index, zero, axis);
+      }
+      value_grad_tmp = concat<T>(res, axis);
+    } else if (reduce == "add") {
+      value_grad_tmp = take_along_axis<T>(out_grad, index, axis);
+    } else if (reduce == "mean") {
+      Tensor one_tensor = full<T>(out_grad.shape(), 1, out_grad.dtype());
+      Tensor zero_tensor = full<T>(out_grad.shape(), 0, out_grad.dtype());
+      Tensor num = include_self ? one_tensor : zero_tensor;
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      for (int64_t i = 0; i < select_num; i++) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        num = num + put_along_axis<T>(zero_tensor, sub_index, one_tensor, axis);
+      }
+      Tensor grad_result = out_grad / num;
+      value_grad_tmp = take_along_axis<T>(grad_result, index, axis);
+    } else if (reduce == "mul" || reduce == "multiply") {
+      Tensor out_grad_select = take_along_axis<T>(out_grad, index, axis);
+      Tensor out_select = take_along_axis<T>(out, index, axis);
+      value_grad_tmp = out_grad_select * (out_select / value);
+    } else if (reduce == "amin" || reduce == "amax") {
+      Tensor one_tensor_out = full<T>(out_grad.shape(), 1, out_grad.dtype());
+      Tensor zero_tensor_out = full<T>(out_grad.shape(), 0, out_grad.dtype());
+      Tensor num = zero_tensor_out;
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      for (int64_t i = 0; i < select_num; i++) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor sub_value = slice<T>(value, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor one_tensor_idx = full<T>(sub_index.shape(), 1, out_grad.dtype());
+        Tensor sub_mask =
+            put_along_axis<T>(zero_tensor_out, sub_index, one_tensor_idx, axis);
+        Tensor sub_put_res =
+            put_along_axis<T>(zero_tensor_out, sub_index, sub_value, axis);
+        num = num +
+              cast<T>(equal<T>(out, sub_put_res), out_grad.dtype()) * sub_mask;
+      }
+      Tensor select_out = take_along_axis<T>(out, index, axis);
+      Tensor mask = cast<T>(equal<T>(select_out, value), out_grad.dtype());
+      Tensor select_out_grad = take_along_axis<T>(out_grad, index, axis);
+      Tensor select_cnt = take_along_axis<T>(num, index, axis);
+      Tensor select_x = take_along_axis<T>(x, index, axis);
+      Tensor res = where<T>(select_out == select_x,
+                            select_out_grad / (select_cnt + 1),
+                            select_out_grad / select_cnt);
+      value_grad_tmp = res * mask;
+    }
+    set_output<T>(value_grad_tmp, value_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

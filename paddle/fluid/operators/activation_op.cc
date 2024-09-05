@@ -376,18 +376,6 @@ namespace ops = paddle::operators;
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name)                \
-  PD_REGISTER_STRUCT_KERNEL(                                             \
-      act_type, CPU, ALL_LAYOUT, ops::op_name##Kernel, float, double) {} \
-  PD_REGISTER_STRUCT_KERNEL(act_type##_grad,                             \
-                            CPU,                                         \
-                            ALL_LAYOUT,                                  \
-                            ops::op_name##GradKernel,                    \
-                            float,                                       \
-                            double) {}
-
-REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
-
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 
 /* ==========================  register checkpoint ===========================*/

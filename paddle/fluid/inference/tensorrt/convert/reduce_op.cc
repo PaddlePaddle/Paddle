@@ -77,7 +77,6 @@ class ReduceOpConverter : public OpConverter {
           if (x < 0) {
             res |= 1 << (x + input_dims);
           } else {
-            if (!engine_->with_dynamic_shape()) x = x - 1;
             res |= 1 << x;
           }
         }
@@ -193,7 +192,6 @@ class ReduceAnyOpConverter : public ReduceOpConverter {
           if (x < 0) {
             res |= 1 << (x + input_dims);
           } else {
-            if (!engine_->with_dynamic_shape()) x = x - 1;
             res |= 1 << x;
           }
         }

@@ -39,6 +39,12 @@ class TRTTileTest(InferencePassTest):
         self.trt_parameters = TRTTileTest.TensorRTParam(
             1 << 30, 16, 1, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = TRTTileTest.DynamicShapeParam(
+            {'data': [4, 3, 224, 256]},
+            {'data': [4, 3, 224, 256]},
+            {'data': [4, 3, 224, 256]},
+            False,
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -65,6 +71,12 @@ class TRTTileExpandTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TRTTileExpandTest.TensorRTParam(
             1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = TRTTileTest.DynamicShapeParam(
+            {'data': [1, 1, 1, 1]},
+            {'data': [1, 1, 1, 1]},
+            {'data': [1, 1, 1, 1]},
+            False,
         )
         self.fetch_list = [out]
 
@@ -93,6 +105,12 @@ class TRTTileExpandStaticTest(InferencePassTest):
         self.trt_parameters = TRTTileExpandStaticTest.TensorRTParam(
             1 << 30, 1, 1, AnalysisConfig.Precision.Float32, True, False
         )
+        self.dynamic_shape_params = TRTTileExpandStaticTest.DynamicShapeParam(
+            {'data': [1, 1, 1, 1]},
+            {'data': [1, 1, 1, 1]},
+            {'data': [1, 1, 1, 1]},
+            False,
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -119,6 +137,12 @@ class TRTTileExpandHalfTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TRTTileExpandHalfTest.TensorRTParam(
             1 << 30, 1, 1, AnalysisConfig.Precision.Half, False, False
+        )
+        self.dynamic_shape_params = TRTTileTest.DynamicShapeParam(
+            {'data': [1, 1, 1, 1]},
+            {'data': [1, 1, 1, 1]},
+            {'data': [1, 1, 1, 1]},
+            False,
         )
         self.fetch_list = [out]
 
