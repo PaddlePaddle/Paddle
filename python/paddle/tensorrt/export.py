@@ -41,11 +41,6 @@ class Input:
         self.input_range = input_range
 
     def generate_input_data(self):
-        if self.min_input_shape is None or self.max_input_shape is None:
-            raise ValueError(
-                "min_input_shape and max_input_shape must be provided and cannot be None."
-            )
-
         if self.input_data_type is None:
             self.input_data_type = 'float32'
 
@@ -81,10 +76,6 @@ class Input:
 
 
 class TensorRTConfig:
-    """
-    TensorRT config.
-    """
-
     def __init__(
         self,
         inputs,
@@ -108,6 +99,7 @@ class TensorRTConfig:
                 op.set_bool_attr("__l_trt__", False)
 
 
+# return an optimized program with pd_op.tensorrt_engine operations.
 def converter_to_trt(program, trt_config, scope):
     if not isinstance(program, paddle.base.libpaddle.pir.Program):
         raise TypeError(
