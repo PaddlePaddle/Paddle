@@ -43,11 +43,11 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   std::string primitive = "ComputeAt";
   std::ostringstream os;
   PADDLE_ENFORCE_EQ(block.As<ir::ScheduleBlockRealize>(),
-                    True,
+                    true,
                     ::common::errors::InvalidArgument(
                         "Expr param(block) should be a ScheduleBlockRealize!"));
   PADDLE_ENFORCE_EQ(loop.As<ir::For>(),
-                    True,
+                    true,
                     ::common::errors::InvalidArgument(
                         "Expr param(loop) should be a For node!"));
   Expr root = this->GetRootBlock(block);
@@ -80,11 +80,11 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   std::ostringstream os;
   PADDLE_ENFORCE_EQ(
       block.As<ScheduleBlockRealize>(),
-      True,
+      true,
       ::common::errors::InvalidArgument(
           "The block argument must be of type ScheduleBlockRealize."));
   PADDLE_ENFORCE_EQ(loop.As<ir::For>(),
-                    True,
+                    true,
                     ::common::errors::InvalidArgument(
                         "The loop argument must be of type For."));
 
@@ -266,7 +266,7 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
   std::ostringstream os;
   PADDLE_ENFORCE_EQ(
       schedule_block.As<ScheduleBlockRealize>(),
-      True,
+      true,
       ::common::errors::InvalidArgument(
           "Expr param(schedule_block) should be a ScheduleBlockRealize!"));
   Expr root = this->GetRootBlock(schedule_block);
@@ -275,7 +275,7 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
 
   PADDLE_ENFORCE_EQ(
       inliner.src_stmt.As<ir::Store>(),
-      True,
+      true,
       ::common::errors::InvalidArgument(
           "Current IR can't meets the requirements of ComputeInline!"));
 
@@ -305,7 +305,7 @@ void DyScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
       target_store);
   PADDLE_ENFORCE_EQ(
       inliner.BodyPatternAllowInline(),
-      True,
+      true,
       ::common::errors::InvalidArgument(
           "Current IR can't meets the requirements of ReverseComputeInline!"));
   // Create a plan that removes the block to be inlined
