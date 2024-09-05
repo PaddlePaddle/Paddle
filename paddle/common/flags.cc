@@ -176,7 +176,7 @@ PHI_DEFINE_EXPORTED_string(
     "share-memory only.");
 #endif
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * CUDA related FLAG
  * Name: FLAGS_cublaslt_exhaustive_search_times

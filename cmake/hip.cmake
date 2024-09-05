@@ -75,6 +75,7 @@ endmacro()
 
 find_package_and_include(miopen)
 find_package_and_include(rocblas)
+find_package_and_include(hipblaslt)
 find_package_and_include(hiprand)
 find_package_and_include(rocrand)
 find_package_and_include(rccl)
@@ -87,9 +88,10 @@ find_package_and_include(rocfft)
 
 # set CXX flags for HIP
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -DROCM_NO_WRAPPER_HEADER_WARNING")
+    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -DROCM_NO_WRAPPER_HEADER_WARNING"
+)
 set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -DROCM_NO_WRAPPER_HEADER_WARNING"
+    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -DROCM_NO_WRAPPER_HEADER_WARNING"
 )
 set(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
