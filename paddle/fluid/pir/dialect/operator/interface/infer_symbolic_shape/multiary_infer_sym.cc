@@ -3072,10 +3072,11 @@ bool WeightOnlyLinearOpInferSymbolicShape(
       (group_size == -1 || group_size == 64 || group_size == 128),
       common::errors::InvalidArgument("group_size must be -1, 64 or 128."));
 
-  auto weight_scale_shape = weight_scale_shape_or_data.shape();
-  auto x_shape = x_shape_or_data.shape();
-  auto weight_shape = weight_shape_or_data.shape();
-  auto n = group_size == -1 ? weight_scale_shape[0] : weight_scale_shape[1];
+  ExprVec weight_scale_shape = weight_scale_shape_or_data.shape();
+  ExprVec x_shape = x_shape_or_data.shape();
+  ExprVec weight_shape = weight_shape_or_data.shape();
+  symbol::DimExpr n =
+      group_size == -1 ? weight_scale_shape[0] : weight_scale_shape[1];
   PADDLE_ENFORCE(weight_dtype == "int8" || weight_dtype == "int4",
                  common::errors::InvalidArgument(
                      "quant_method must be 'int8' or 'int4'."));
@@ -3083,29 +3084,11 @@ bool WeightOnlyLinearOpInferSymbolicShape(
                     2UL,
                     common::errors::InvalidArgument(
                         "The input(weight) must be a 2D Tensor."));
-  // can not use % between symbol::DimExpr and int
-  // PADDLE_ENFORCE_EQ(
-  //     weight_shape[0] % 16,
-  //     0,
-  //     common::errors::InvalidArgument(
-  //         "The first dimension of input must be divisible by 16, but
-  //         got[%d]", weight_shape[0]));
-  // PADDLE_ENFORCE_EQ(
-  //     weight_shape[1] % 16,
-  //     0,
-  //     common::errors::InvalidArgument(
-  //         "The second dimension of input must be divisible by 16, but
-  //         got[%d]", weight_shape[1]));
-  PADDLE_ENFORCE_EQ(
-      x_shape[x_shape.size() - 1],
-      weight_shape[1],
-      common::errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[1] should be equal."
-          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
-          x_shape[x_shape.size() - 1],
-          weight_shape[1]));
+  // TODO(Jeff114514): can not use % between symbol::DimExpr and int, need to
+  // make sure weight_shape[0] and weight_shape[1] is divisible by 16
+  infer_context->AddEqualCstr(x_shape[x_shape.size() - 1], weight_shape[1]);
   if (!bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
-    auto bias_shape = bias_shape_or_data.shape();
+    ExprVec bias_shape = bias_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(
         bias_shape.size(),
         1UL,
@@ -3126,14 +3109,9 @@ bool WeightOnlyLinearOpInferSymbolicShape(
                       common::errors::InvalidArgument(
                           "The input(weight_scale) must be a 2D Tensor"
                           " in groupwise mode."));
-    PADDLE_ENFORCE_EQ(weight_scale_shape[0],
-                      (weight_shape[1] + (group_size - 1)) / group_size,
-                      common::errors::InvalidArgument(
-                          "The input(weight_scale) dim[0] must be equal "
-                          "to Input(weight) dim[1] / group_size"
-                          "But receive %d and %d",
-                          weight_scale_shape[0],
-                          (weight_shape[1] + (group_size - 1)) / group_size));
+    infer_context->AddEqualCstr(
+        weight_scale_shape[0],
+        (weight_shape[1] + (group_size - 1)) / group_size);
   }
   ExprVec out_shape = x_shape;
   out_shape[out_shape.size() - 1] = n;
