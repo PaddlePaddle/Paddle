@@ -100,6 +100,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
   if(NOT WIN32)
     set_tests_properties(test_trt_inference_fp16_io_deprecated
                          PROPERTIES TIMEOUT 500)
+    set_tests_properties(
+      test_trt_pool3d_op_deprecated
+      PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
+                 450)
   endif()
   if(WITH_NV_JETSON)
     set_tests_properties(
@@ -115,10 +119,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
       test_trt_pool_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
                  300)
-    set_tests_properties(
-      test_trt_pool3d_op_deprecated
-      PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 450)
+
   endif()
 
   set_tests_properties(test_trt_tile_op_deprecated PROPERTIES TIMEOUT 60)
