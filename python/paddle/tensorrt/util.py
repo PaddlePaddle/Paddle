@@ -116,7 +116,7 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
                 executor._executor_cache.get_pir_program_and_executor(
                     program,
                     feed=max_shape_feed,
-                    etch_list=[output_var],
+                    fetch_list=[output_var],
                     feed_var_name='feed',
                     fetch_var_name='fetch',
                     place=paddle.framework._current_expected_place_(),
