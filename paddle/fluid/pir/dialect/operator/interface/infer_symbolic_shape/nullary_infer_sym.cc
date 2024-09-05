@@ -163,22 +163,37 @@ bool CudnnLstmOpInferSymbolicShape(
   return true;
 }
 
-bool CreateOpInferSymbolicShape(pir::Operation *op, pir::InferSymbolicShapeConftext *infer_context) {
-  const auto &shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(0));
+bool CreateOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeConftext *infer_context) {
+  const auto &shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &data = shape_or_data.shape();
   std::vector<symbol::DimExpr> dims(data.begin(), data.end());
-  PADDLE_ENFORCE_EQ(dims.size(), 2, common::errors::InvalidArgument(
-      "The Input(X)'s dimension of Op must be equal to 2. But received: %zu-D Tensor, which shape is [%s].",
-      dims.size(), common::make_ddim(dims).to_str().c_str()));
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The Input(X)'s dimension of Op must be equal to 2. "
+                        "But received: %zu-D Tensor, which shape is [%s].",
+                        dims.size(),
+                        common::make_ddim(dims).to_str().c_str()));
 
   for (size_t i = 0; i < dims.size(); ++i) {
-    PADDLE_ENFORCE_GE(dims[i], 0, common::errors::InvalidArgument(
-        "Each value of attribute 'shape' is expected to be no less than 0. But received: shape[%zu] = %d; shape = [%s].",
-        i, dims[i], common::make_ddim(dims).to_str().c_str()));
+    PADDLE_ENFORCE_GE(
+        dims[i],
+        0,
+        common::errors::InvalidArgument(
+            "Each value of attribute 'shape' is expected to be no less than 0. "
+            "But received: shape[%zu] = %d; shape = [%s].",
+            i,
+            dims[i],
+            common::make_ddim(dims).to_str().c_str()));
   }
 
   std::vector<symbol::DimExpr> output_shape = dims;
-  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(output_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
 
   return true;
 }
