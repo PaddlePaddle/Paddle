@@ -118,7 +118,7 @@ def get_cinn_version() -> str:
     return "0.3.0"
 
 def get_cuda_archs() -> list[int]:
-    compiled_cuda_archs = env_dict.get("COMPILED_CUDA_ARCHS")
+    compiled_cuda_archs = '@COMPILED_CUDA_ARCHS@'
     if isinstance(compiled_cuda_archs, str):
         return [int(arch) for arch in compiled_cuda_archs.split()]
     else:
