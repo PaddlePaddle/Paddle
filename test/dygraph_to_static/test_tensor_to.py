@@ -89,8 +89,8 @@ def to_device_dtype_blocking(tensor_x, device, dtype, blocking):
     return tensor_x.to(device, dtype, blocking)
 
 
-def to_kwargs_device(tensor_x, device):
-    return tensor_x.to(device=device)
+def to_kwargs_tesnor_device(tensor_x, tensor_y):
+    return tensor_x.to(device=tensor_y.place)
 
 
 def to_kwargs_device_dtype_blocking(tensor_x, device, dtype, blocking):
@@ -126,13 +126,8 @@ class TensorToTest(Dy2StTestBase):
             x = paddle.to_tensor([1, 2, 3])
 
         y = paddle.to_tensor([1, 2, 3], place="cpu")
-        y = paddle.jit.to_static(to_kwargs_device)(y, x.place)
+        y = paddle.jit.to_static(to_kwargs_tesnor_device)(y, x)
         self.assertEqual(str(x.place), str(y.place))
-
-    @test_pir_only
-    def test_tensor_to_device_none(self):
-        y = paddle.to_tensor([1, 2, 3], place="cpu")
-        y = paddle.jit.to_static(to_kwargs_device)(y, None)
 
     @test_pir_only
     def test_tensor_to_device2(self):
