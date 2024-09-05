@@ -1101,12 +1101,62 @@ bool LuUnpackOpInferSymbolicShape(
   return true;
 }
 
-// bool MatrixRankTolOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MatrixRankTolOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  size_t x_rank = x_shape.size();
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      common::errors::InvalidArgument(
+          "The dims of input must be greater than or equal to 2"));
+
+  bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").data();
+  if (hermitian) {
+    infer_context->AddEqualCstr(x_shape[x_rank - 2], x_shape[x_rank - 1]);
+  }
+
+  const auto &atol_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &atol_shape = atol_shape_or_data.shape();
+  auto dim_tol = atol_shape;
+
+  if (x_shape.size() == 2) {
+    std::vector<symbol::DimExpr> x_batch_dims = {};
+  } else {
+    std::vector<symbol::DimExpr> x_batch_dims = x_shape;
+    x_batch_dims.erase(x_batch_dims.end() - 2, x_batch_dims.end())
+  }
+
+  if (x_batch_dims == dim_tol) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::ShapeOrDataDimExprs(x_batch_dims));
+  } else {
+    size_t max_dim = std::max(x_batch_dims.size(), dim_tol.size());
+    size_t axis =
+        std::abs(static_cast<int>(x_batch_dims.size() - dim_tol.size()));
+
+    std::vector<symbol::DimExpr> out_dims(max_dim);
+    std::vector<symbol::DimExpr> x_batch_dims_array(max_dim);
+    std::vector<symbol::DimExpr> tol_dims_array(max_dim);
+
+    phi::funcs::GetBroadcastDimsArrays(x_batch_dims,
+                                       dim_tol,
+                                       x_batch_dims_array.data(),
+                                       tol_dims_array.data(),
+                                       out_dims.data(),
+                                       max_dim,
+                                       axis);
+
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::ShapeOrDataDimExprs(out_dims));
+  }
+
+  return true;
+}
 
 bool MaskedSelectOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

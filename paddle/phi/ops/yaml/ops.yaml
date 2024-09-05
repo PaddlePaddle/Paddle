@@ -3164,6 +3164,7 @@
     func : MatrixRankTolInferMeta
   kernel :
     func : matrix_rank_tol
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : max
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
