@@ -62,8 +62,8 @@ def TopPProcess(probs, top_p):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA/XPU ",
+    not core.is_compiled_with_xpu(),
+    "core is not compiled with XPU ",
 )
 class TestTopPAPI(unittest.TestCase):
     def setUp(self):
@@ -162,15 +162,15 @@ class TestTopPAPI(unittest.TestCase):
             )
 
     def test_dygraph(self):
-        if core.is_compiled_with_cuda():
-            places = [core.CUDAPlace(0)]
+        if core.is_compiled_with_xpu():
+            places = [core.XPUPlace(0)]
             for place in places:
                 self.run_dygraph(place)
 
     @test_with_pir_api
     def test_static(self):
-        if core.is_compiled_with_cuda():
-            places = [core.CUDAPlace(0)]
+        if core.is_compiled_with_xpu():
+            places = [core.XPUPlace(0)]
             for place in places:
                 self.run_static(place)
 
