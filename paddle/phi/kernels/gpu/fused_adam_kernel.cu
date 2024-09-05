@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO(megemini):
-
 #include "paddle/phi/kernels/fused_adam_kernel.h"
 #include <vector>
 #include "glog/logging.h"

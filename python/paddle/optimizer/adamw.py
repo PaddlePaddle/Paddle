@@ -380,9 +380,17 @@ class AdamW(Optimizer):
                 self._add_accumulator(
                     self._moment2_acc_str, p, dtype=core.VarDesc.VarType.FP16
                 )
+                self._add_accumulator(
+                    self._moment2_acc_max_str,
+                    p,
+                    dtype=core.VarDesc.VarType.FP16,
+                )
             else:
                 self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
                 self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+                self._add_accumulator(
+                    self._moment2_acc_max_str, p, dtype=acc_dtype
+                )
         else:
             self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
             self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)

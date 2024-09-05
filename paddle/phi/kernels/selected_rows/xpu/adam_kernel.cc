@@ -34,6 +34,7 @@ void AdamDenseParamSparseGradKernel(
     const DenseTensor& learning_rate,
     const DenseTensor& moment1,
     const DenseTensor& moment2,
+    const DenseTensor& moment2_max UNUSED,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
     const paddle::optional<DenseTensor>& master_param,
@@ -45,9 +46,11 @@ void AdamDenseParamSparseGradKernel(
     int64_t min_row_size_to_use_multithread,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad UNUSED,
     DenseTensor* param_out,
     DenseTensor* moment1_out,
     DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out UNUSED,
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
@@ -347,9 +350,9 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    float,
                    phi::dtype::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }
