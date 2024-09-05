@@ -70,10 +70,10 @@ void FusedGemmEpilogueXPUGradKernel(
   } else if (activation == "gelu") {
     r = xpu::gelu_grad(xpu_ctx,
                        reserve_space_ptr,
-                       reserve_space_ptr,
                        dout_ptr,
                        d_act_input_ptr,
-                       out_grad.numel());
+                       out_grad.numel(),
+                       false);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
   }
   auto x_mat_dims =

@@ -158,8 +158,11 @@ void FFN(const phi::XPUContext& dev_ctx,
 
   // act
   if (act_method == "gelu") {
-    r = xpu::gelu(
-        xpu_ctx, linear1_out_ptr, linear2_before_tmp_ptr, linear1_out->numel());
+    r = xpu::gelu(xpu_ctx,
+                  linear1_out_ptr,
+                  linear2_before_tmp_ptr,
+                  linear1_out->numel(),
+                  false);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu");
   } else if (act_method == "relu") {
     r = xpu::relu(
