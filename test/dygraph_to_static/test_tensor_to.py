@@ -152,11 +152,11 @@ class TensorToTest(Dy2StTestBase):
                 tensor_x = paddle.jit.to_static(to_device_dtype)(
                     tensor_x, place, dtype
                 )
-                placex_str = str(tensor_x.place)
+                place_x_str = str(tensor_x.place)
                 if "gpu" == place:
-                    self.assertEqual(placex_str, _gpu_place)
+                    self.assertEqual(place_x_str, _gpu_place)
                 else:
-                    self.assertEqual(placex_str, _cpu_place)
+                    self.assertEqual(place_x_str, _cpu_place)
                 type_x_str = str(tensor_x.dtype)
                 self.assertEqual(type_x_str, "paddle." + dtype)
 
