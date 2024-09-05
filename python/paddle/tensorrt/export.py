@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle.tensorrt.converter import PaddleToTensorRTConverter
 from paddle.tensorrt.util import (
-    forbid_op_lower_trt,
     run_pir_pass,
     warmup_shape_infer,
 )
@@ -101,10 +100,12 @@ class TensorRTConfig:
             {'FLAGS_trt_min_group_size': min_subgraph_size}
         )
 
-        def forbid_op_lower_trt(self, program, disabled_ops):
-            for op in program.global_block().ops:
-                if op.name() == disabled_ops:
-                    op.set_bool_attr("__l_trt__", False)
+    def forbid_op_lower_trt(self, program, disabled_ops):
+        if isinstance(disabled_ops, str):
+            disabled_ops = [disabled_ops]
+        for op in program.global_block().ops:
+            if op.name() in disabled_ops:
+                op.set_bool_attr("__l_trt__", False)
 
 
 def converter_to_trt(program, trt_config, scope):
@@ -139,7 +140,9 @@ def converter_to_trt(program, trt_config, scope):
 
         program_with_pir = run_pir_pass(program, partition_mode=False)
         # Step3: run pir pass (including trt_op_marker_pass)
-        forbid_op_lower_trt(program, "pd_op.dropout")
+
+        if trt_config.disable_ops:
+            trt_config.forbid_op_lower_trt(program, trt_config.disable_ops)
 
         program_with_pir = run_pir_pass(program, partition_mode=True)
         trt_output_var = []

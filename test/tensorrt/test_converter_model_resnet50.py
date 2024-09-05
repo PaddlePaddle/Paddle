@@ -54,7 +54,7 @@ class TestConverterResNet50(unittest.TestCase):
             program, {"input": input_optim_data}, [output_var]
         )
 
-        program_with_trt, _ = converter_to_trt(program, trt_config, scope)
+        program_with_trt = converter_to_trt(program, trt_config, scope)
         output_var = program_with_trt.list_vars()[-1]
 
         # Step6: run inference(converted_program)

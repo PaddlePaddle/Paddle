@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle.framework import use_pir_api
 from paddle.tensorrt.export import (
     Input,
     TensorRTConfig,
@@ -67,33 +66,27 @@ class TestConverterCumsumOp(unittest.TestCase):
                 paddle.static.save_inference_model(
                     self.save_path, [x], [out], exe
                 )
-                # Print the saved model path
-                print(f"Model saved at: {self.save_path}")
 
-                if use_pir_api():
-                    config = paddle_infer.Config(
-                        self.save_path + '.json', self.save_path + '.pdiparams'
-                    )
+                config = paddle_infer.Config(
+                    self.save_path + '.json', self.save_path + '.pdiparams'
+                )
+                config.enable_new_ir()
+                config.enable_new_executor()
+                config.use_optimized_model(True)
 
-                    config.enable_new_ir()
-                    config.enable_new_executor()
-                    config.use_optimized_model(True)
-                else:
-                    config = paddle_infer.Config(
-                        self.save_path + '.pdmodel',
-                        self.save_path + '.pdiparams',
-                    )
+            print("main_prog", main_prog)
 
             input_config = Input(
                 min_input_shape=(9, 10, 11),
                 optim_input_shape=(9, 10, 11),
                 max_input_shape=(9, 10, 11),
             )
+
             trt_config = TensorRTConfig(inputs=[input_config])
 
             trt_save_path = os.path.join(self.temp_dir.name, 'trt')
-            print("trt_save_path", trt_save_path)
             trt_config.save_model_dir = trt_save_path
+            trt_config.disable_ops = "pd_op.matmul"
 
             model_dir = self.save_path
             program_with_trt = export_loaded_model(model_dir, trt_config)
@@ -112,14 +105,10 @@ class TestConverterCumsumOp(unittest.TestCase):
 
         paddle.disable_static()
         for i, input_instrance in enumerate(trt_config.inputs):
-            print("i", i)
             min_data, _, max_data = input_instrance[i].generate_input_data()
             # print("min_data",min_data)
             model_inputs = paddle.to_tensor(min_data)
-            print("type(model_inputs)", type(model_inputs))
-
-            output = predictor.run([model_inputs])
-            print("output", output)
+            output_converted = predictor.run([model_inputs])
 
 
 if __name__ == "__main__":

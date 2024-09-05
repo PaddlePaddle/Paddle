@@ -51,7 +51,7 @@ class TestConverterDummy(unittest.TestCase):
             program, {"input": input_optim_data}, [output_var]
         )
         # get tensorrt_engine_op(converted_program)
-        program_with_trt, _ = converter_to_trt(program, trt_config, scope)
+        program_with_trt = converter_to_trt(program, trt_config, scope)
         output_var = program_with_trt.list_vars()[-1]
 
         # run inference(converted_program)

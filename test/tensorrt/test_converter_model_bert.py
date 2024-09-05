@@ -45,6 +45,8 @@ class TestConverterBert(unittest.TestCase):
 
         # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
+        trt_config.disable_ops = "pd_op.dropout"
+        trt_config.forbid_op_lower_trt(program, "pd_op.dropout")
 
         output_var = program.list_vars()[-1]
         # get original results(for tests only)
@@ -52,7 +54,7 @@ class TestConverterBert(unittest.TestCase):
             program, {"input_ids": input_min_data}, [output_var]
         )
         # get tensorrt_engine_op(converted_program)
-        program_with_trt, _ = converter_to_trt(program, trt_config, scope)
+        program_with_trt = converter_to_trt(program, trt_config, scope)
         output_var = program_with_trt.list_vars()[-1]
 
         # run inference(converted_program)
