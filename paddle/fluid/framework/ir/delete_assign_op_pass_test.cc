@@ -35,7 +35,7 @@ TEST(delete_assign_op_pass, basic) {
   PADDLE_ENFORCE_EQ(
       assign_num,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should have 0 assign after delete_assign_op_pass, "
           "but actually has %d.",
           assign_num));

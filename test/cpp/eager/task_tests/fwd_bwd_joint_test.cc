@@ -206,11 +206,11 @@ TEST(FwdBwdJoint, BranchedNodes) {
     auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out2.impl());
     float* ptr = dense_out->mutable_data<float>(phi::CPUPlace());
     for (int i = 0; i < 20; i++) {
-      PADDLE_ENFORCE(
-          ptr[i] == 150.0,
-          phi::errors::Fatal("Detected numerical Error, Expected %f but got %f",
-                             150.0,
-                             ptr[i]));
+      PADDLE_ENFORCE(ptr[i] == 150.0,
+                     common::errors::Fatal(
+                         "Detected numerical Error, Expected %f but got %f",
+                         150.0,
+                         ptr[i]));
     }
   }
 

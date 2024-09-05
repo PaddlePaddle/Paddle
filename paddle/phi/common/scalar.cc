@@ -27,7 +27,7 @@ ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
     : dtype_(tensor_in.dtype()) {  // NOLINT
   PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Scalar only supports Tensor with 1 element, but "
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));

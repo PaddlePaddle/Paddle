@@ -64,7 +64,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_LT(
               ids[i],
               row_number,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
@@ -73,7 +73,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GE(
               ids[i],
               0,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
@@ -98,7 +98,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GE(
               ids[i],
               0,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0. But received %ld",
                   ids[i]));
@@ -128,14 +128,14 @@ class LookupTableKernel : public framework::OpKernel<T> {
             PADDLE_ENFORCE_GE(
                 ids[i],
                 0,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "Variable value (input) of OP(fluid.layers.embedding) "
                     "expected >= 0. But received %ld",
                     ids[i]));
             PADDLE_ENFORCE_GE(
                 id_index,
                 0,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "the input key should be exists. But received %d.",
                     id_index));
 
@@ -172,7 +172,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto *table_t = context.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The parameter W of a LookupTable "
           "must be either phi::DenseTensor or SelectedRows"));
     }
@@ -209,7 +209,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
           common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(),
                         d_output_dims_2d,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
                             "output@Grad should be same. "
                             "But received lookup_table@Grad's shape = [%s], "
@@ -242,7 +242,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_LT(
               ids_data[i],
               N,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
@@ -251,7 +251,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GE(
               ids_data[i],
               0,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input"
                   "value.",

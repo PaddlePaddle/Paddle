@@ -61,7 +61,7 @@ def generate_code(
     dct = {}
     map_dct = {}
     for op_path in [ops_yaml_path, ops_legacy_yaml_path]:
-        pattern = re.compile(r'[(](.*)[)]', re.S)
+        pattern = re.compile(r'[(](.*)[)]', re.DOTALL)
         with open(op_path, "rt") as f:
             ops = yaml.safe_load(f)
             for item in ops:

@@ -77,21 +77,21 @@ void Pow2DecayWithLinearWarmupKernel(const Context& dev_ctx,
                                      DenseTensor* step_out) {
   PADDLE_ENFORCE_EQ(&lr,
                     lr_out,
-                    phi::errors::InvalidArgument("Input(LearningRate) and "
-                                                 "Output(LearningRateOut) "
-                                                 "must be the same."));
+                    common::errors::InvalidArgument("Input(LearningRate) and "
+                                                    "Output(LearningRateOut) "
+                                                    "must be the same."));
   PADDLE_ENFORCE_EQ(&step,
                     step_out,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Step) and Output(StepOut) must be the same."));
   PADDLE_ENFORCE_EQ(
       step.initialized(),
       true,
-      phi::errors::InvalidArgument("Input(Step) must be initialized."));
+      common::errors::InvalidArgument("Input(Step) must be initialized."));
 
   PADDLE_ENFORCE_LE(warmup_steps,
                     total_steps,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "warmup_steps must not be larger than total_steps."));
 
   auto* lr_data = lr_out->data<T>();

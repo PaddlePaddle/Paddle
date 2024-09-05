@@ -46,7 +46,7 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
     PADDLE_ENFORCE_EQ(
         names.count(name),
         0,
-        phi::errors::AlreadyExists("Attribute [%s] is duplicated.", name));
+        common::errors::AlreadyExists("Attribute [%s] is duplicated.", name));
     names.insert(name);
   };
   for (auto& attr : proto_->attrs()) {

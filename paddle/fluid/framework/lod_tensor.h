@@ -133,7 +133,7 @@ phi::DenseTensor LodExpand(const phi::DenseTensor& source,
   PADDLE_ENFORCE_EQ(
       num_instances,
       lod_level.size() - 1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input phi::DenseTensor instance number should be equal to the "
           "LoD "
           "level size minus 1."

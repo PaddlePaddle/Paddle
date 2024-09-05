@@ -96,21 +96,21 @@ void Tensor::copy_(const Tensor &src,
   if (initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
                       src.dtype(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s, "
                           "Tensor Copy cannot be performed!",
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(impl()->type_info().id(),
                       src.impl()->type_info().id(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "Copy cannot be performed!",
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(target_place,
                       place(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Place is different of dst tensor and args %s, which "
                           "current tensor holds %s "
                           "Copy cannot be performed!",
@@ -154,7 +154,7 @@ void Tensor::copy_(const Tensor &src,
       PADDLE_ENFORCE_EQ((meta_dist_input_x.dist_attr() == this_dist_attr
                         || this_dist_attr.empty()),
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "DistAttr is different of dst "
                             "tensor and args %s, which "
                             "current tensor holds %s "
@@ -237,7 +237,7 @@ void Tensor::copy_(const Tensor &src,
               blocking,
               static_cast<phi::SparseCsrTensor *>(impl_.get()));
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "We currently only support dense tensor copy for now and if u need to "
         "copy selected rows please raise a issue."));
   }

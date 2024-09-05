@@ -77,7 +77,7 @@ struct DataTypeNamer {
     PADDLE_ENFORCE_GT(
         dic_.count(x),
         0,
-        phi::errors::PreconditionNotMet("unknown type for representation"));
+        common::errors::PreconditionNotMet("unknown type for representation"));
     return dic_.at(x);
   }
 
@@ -85,7 +85,7 @@ struct DataTypeNamer {
     PADDLE_ENFORCE_GT(
         dic_.count(type),
         0,
-        phi::errors::PreconditionNotMet("unknown type for representation"));
+        common::errors::PreconditionNotMet("unknown type for representation"));
     return dic_.at(type);
   }
 
@@ -125,7 +125,7 @@ class OrderedRegistry {
   T *Register(const std::string &name, T *x) {
     PADDLE_ENFORCE_EQ(dic_.count(name),
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "There exists duplicate key [%s]", name));
     dic_[name] = elements_.size();
     elements_.emplace_back(std::unique_ptr<T>(x));
@@ -148,7 +148,7 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   framework::Variable *var = scope.FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
       var,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The var which name is %s should not be nullptr.", name));
   return *var->GetMutable<T>();
 }
@@ -190,7 +190,7 @@ static void MakeDirIfNotExists(const std::string &path) {
     PADDLE_ENFORCE_NE(
         MKDIR(path.c_str()),
         -1,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Can not create optimize cache directory: %s, Make sure you "
             "have permission to write",
             path));

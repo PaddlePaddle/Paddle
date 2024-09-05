@@ -42,5 +42,3 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
 endforeach()
 
 set_tests_properties(test_standalone_cross_step_overlap PROPERTIES TIMEOUT 30)
-set_tests_properties(test_standalone_executor_aot_choose_kernel
-                     PROPERTIES TIMEOUT 60)

@@ -52,10 +52,12 @@ class AddOp : public pir::Op<AddOp> {
 };
 void AddOp::VerifySig() {
   if (num_operands() != 2) {
-    PADDLE_THROW(phi::errors::Fatal("The size of inputs must be equal to 2."));
+    PADDLE_THROW(
+        common::errors::Fatal("The size of inputs must be equal to 2."));
   }
   if (num_results() != 1) {
-    PADDLE_THROW(phi::errors::Fatal("The size of outputs must be equal to 1."));
+    PADDLE_THROW(
+        common::errors::Fatal("The size of outputs must be equal to 1."));
   }
 }
 void AddOp::Build(pir::Builder &,

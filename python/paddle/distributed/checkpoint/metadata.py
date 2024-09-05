@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 
 @dataclass
@@ -22,8 +22,8 @@ class LocalTensorMetadata:
     The location of a local tensor in the global tensor.
     """
 
-    global_offset: Tuple[int]
-    local_shape: Tuple[int]
+    global_offset: tuple[int]
+    local_shape: tuple[int]
     dtype: str
 
 
@@ -34,11 +34,11 @@ class LocalTensorIndex:
     """
 
     tensor_key: str
-    global_offset: Tuple[int]
+    global_offset: tuple[int]
 
 
 @dataclass
 class Metadata:
-    state_dict_metadata: Dict[str, List[LocalTensorMetadata]] = None
-    storage_metadata: Dict[LocalTensorIndex, str] = None
-    flat_mapping: Dict[str, Tuple[str]] = None
+    state_dict_metadata: dict[str, list[LocalTensorMetadata]] = None
+    storage_metadata: dict[LocalTensorIndex, str] = None
+    flat_mapping: dict[str, tuple[str]] = None

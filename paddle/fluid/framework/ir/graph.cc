@@ -36,15 +36,15 @@ Graph::Graph(const ProgramDesc &program,
              const int64_t start_op_index,
              const int64_t end_op_index)
     : program_(program), main_graph_(nullptr) {
-  PADDLE_ENFORCE_GE(
-      start_op_index,
-      0,
-      phi::errors::InvalidArgument("Required start_op_index >= 0, but received "
-                                   "start_op_index = %d",
-                                   start_op_index));
+  PADDLE_ENFORCE_GE(start_op_index,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Required start_op_index >= 0, but received "
+                        "start_op_index = %d",
+                        start_op_index));
   PADDLE_ENFORCE_GE(end_op_index,
                     start_op_index,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required end_op_index >= start_op_index, but received "
                         "end_op_index: %d < start_op_index: %d",
                         end_op_index,
@@ -52,14 +52,14 @@ Graph::Graph(const ProgramDesc &program,
   PADDLE_ENFORCE_GE(
       program_.Size(),
       1,
-      phi::errors::InvalidArgument("Can't construct a graph from this "
-                                   "program, it doesn't have a block"));
+      common::errors::InvalidArgument("Can't construct a graph from this "
+                                      "program, it doesn't have a block"));
 
   const int64_t block_op_size =
       static_cast<int64_t>(program_.Block(0).AllOps().size());
   PADDLE_ENFORCE_LE(end_op_index,
                     block_op_size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required end_op_index <= block_op_size, but received "
                         "end_op_index: %d > block_op_size: %d",
                         end_op_index,
@@ -139,7 +139,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
   PADDLE_ENFORCE_LE(
       end_op_index,
       all_ops.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Required end_op_index <= %d, but received end_op_index = %d",
           all_ops.size(),
           end_op_index));
@@ -178,7 +178,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
       if (each_var_name != kEmptyVarName) {
         PADDLE_ENFORCE_EQ(out_arg_set.count(each_var_name),
                           0,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The input Program is invalid. Variable %s occurs"
                               " in output of %s multiple times.",
                               each_var_name,
@@ -254,8 +254,9 @@ void Graph::ResolveHazard(
 
       PADDLE_ENFORCE_NOT_NULL(
           write_op,
-          phi::errors::NotFound("The generate operator of variable %s is null.",
-                                (*it_new)->Name()));
+          common::errors::NotFound(
+              "The generate operator of variable %s is null.",
+              (*it_new)->Name()));
 
       // Add write after write dependence
       ir::Node *upstream_op =
@@ -303,7 +304,7 @@ std::shared_ptr<Graph> Graph::Clone() {
   PADDLE_ENFORCE_EQ(
       this->IsMainGraph(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "This graph is a sub_graph, and can't be cloned individually"));
   if (FLAGS_convert_all_blocks) {
     auto cloned_graph = std::make_shared<Graph>(this->program_);
@@ -320,7 +321,8 @@ std::shared_ptr<Graph> Graph::Clone() {
     std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
     for (auto *n : this->node_set_) {
       PADDLE_ENFORCE_NOT_NULL(
-          n, phi::errors::InvalidArgument("The node to be cloned is nullptr."));
+          n,
+          common::errors::InvalidArgument("The node to be cloned is nullptr."));
       ir::Node *cloned_node = nullptr;
       if (n->IsCtrlVar()) {
         cloned_node = cloned_graph->CreateControlDepVar();
@@ -333,7 +335,7 @@ std::shared_ptr<Graph> Graph::Clone() {
       }
       PADDLE_ENFORCE_NOT_NULL(
           cloned_node,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Failed to clone new node from original node in graph."));
       origin_to_cloned[n] = cloned_node;
     }
@@ -353,10 +355,10 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
   PADDLE_ENFORCE_EQ(
       this->IsMainGraph(),
       true,
-      phi::errors::InvalidArgument("This graph is not main_graph"));
+      common::errors::InvalidArgument("This graph is not main_graph"));
   PADDLE_ENFORCE_LT(idx,
                     this->sub_graphs_.size(),
-                    phi::errors::InvalidArgument("Invalid sub_graph index"));
+                    common::errors::InvalidArgument("Invalid sub_graph index"));
   std::unique_ptr<Graph> cloned_sub_graph =
       std::make_unique<Graph>(this->program_.Block(idx), this);
   cloned_sub_graph->ReleaseNodes();
@@ -365,7 +367,8 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
   std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
   for (auto *n : this->sub_graphs_.at(idx)->Nodes()) {
     PADDLE_ENFORCE_NOT_NULL(
-        n, phi::errors::InvalidArgument("The node to be cloned is nullptr."));
+        n,
+        common::errors::InvalidArgument("The node to be cloned is nullptr."));
     ir::Node *cloned_node = nullptr;
     if (n->IsCtrlVar()) {
       cloned_node = cloned_sub_graph->CreateControlDepVar();
@@ -378,7 +381,7 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
     }
     PADDLE_ENFORCE_NOT_NULL(
         cloned_node,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Failed to clone new node from original node in graph."));
     origin_to_cloned[n] = cloned_node;
   }

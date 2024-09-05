@@ -123,8 +123,8 @@ const bool is_float_equal(float a, float b, float eps) {
 
 const ONNXDataType GetVarDType(const Node *node) {
   auto var = node->Var();
-  PADDLE_ENFORCE_NOT_NULL(var,
-                          phi::errors::Unavailable("Node is not a variable."));
+  PADDLE_ENFORCE_NOT_NULL(
+      var, common::errors::Unavailable("Node is not a variable."));
   auto proto_var_type = var->GetDataType();
   return VarType2OnnxDType(proto_var_type);
 }
@@ -133,7 +133,7 @@ const ONNXDataType GetOutputVarDType(const Node *node,
                                      const std::string &output_name) {
   auto out_node = GetOutputVarNode(output_name, node);
   PADDLE_ENFORCE_NOT_NULL(
-      out_node, phi::errors::Unavailable("Node's out node does not exist."));
+      out_node, common::errors::Unavailable("Node's out node does not exist."));
   return GetVarDType(out_node);
 }
 
@@ -186,7 +186,7 @@ int ConvertToPopartReduction(const std::string &reduction) {
   } else if (reduction == "none") {
     return 2;
   }
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "reduction %s is not supported on ipu.", reduction));
 }
 

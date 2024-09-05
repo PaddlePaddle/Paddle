@@ -30,7 +30,7 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front(),
                       framework::proto::VarType::SELECTED_ROWS,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The input X(%s)'s type should be SelectedRows, "
                           "but the received is %s",
                           ctx->Inputs("X").front(),
@@ -38,7 +38,7 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->GetOutputsVarType("Out").front(),
         framework::proto::VarType::LOD_TENSOR,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output Out(%s)'s type should be phi::DenseTensor, "
             "but the received is %s",
             ctx->Outputs("Out").front(),

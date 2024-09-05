@@ -101,9 +101,9 @@ void compare(bool use_mkldnn = false) {
   PADDLE_ENFORCE_EQ(
       result,
       true,
-      ::phi::errors::Fatal("Results of model run independently "
-                           "differs from results of the same model "
-                           "run as a sequence of models"));
+      ::common::errors::Fatal("Results of model run independently "
+                              "differs from results of the same model "
+                              "run as a sequence of models"));
 }
 
 TEST(Analyzer_mmp, compare) { compare(); }

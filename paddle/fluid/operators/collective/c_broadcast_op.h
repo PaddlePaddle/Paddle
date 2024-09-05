@@ -59,7 +59,7 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           gloo->IsInitialized(),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "You must initialize the gloo environment first to use it."));
       gloo::BroadcastOptions opts(gloo->GetContext());
       opts.setOutput(recv_buff, send_numel);
@@ -67,7 +67,7 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
       gloo::broadcast(opts);
     }
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }

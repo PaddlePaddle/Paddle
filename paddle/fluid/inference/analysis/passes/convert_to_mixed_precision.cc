@@ -49,7 +49,7 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
     case phi::Backend::GPU:
       PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16 ||
                          mixed_precision_ == phi::DataType::BFLOAT16,
-                     phi::errors::InvalidArgument(
+                     common::errors::InvalidArgument(
                          "mixed_precision of %s currently only supported fp16 "
                          "and bf16, not support %s.",
                          experimental::BackendToString(backend_),
@@ -58,14 +58,14 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
     case phi::Backend::XPU:
     case phi::Backend::CUSTOM:
       PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16,
-                     phi::errors::InvalidArgument(
+                     common::errors::InvalidArgument(
                          "mixed_precision of %s currently only supported fp16 "
                          "and bf16, not support %s.",
                          experimental::BackendToString(backend_),
                          phi::DataTypeToString(mixed_precision_)));
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "mixed_precision currently not supported place GPU or XPU or CUSTOM, "
           "not support %s.",
           experimental::BackendToString(backend_)));

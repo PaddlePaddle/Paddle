@@ -98,14 +98,15 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), name##_tmp); \
   argument.AddAttribute(#name, attr_##name)
 
-#define VERIFY_ATTRIBUTE(type, name)                                         \
-  PADDLE_ENFORCE_GT(attributes.count(#name),                                 \
-                    0,                                                       \
-                    phi::errors::InvalidArgument(#name " does not exist.")); \
-  PADDLE_ENFORCE_EQ(attributes.at(#name).isa<type>(),                        \
-                    true,                                                    \
-                    phi::errors::InvalidArgument("Type of attribute: " #name \
-                                                 " is not " #type))
+#define VERIFY_ATTRIBUTE(type, name)                              \
+  PADDLE_ENFORCE_GT(                                              \
+      attributes.count(#name),                                    \
+      0,                                                          \
+      common::errors::InvalidArgument(#name " does not exist.")); \
+  PADDLE_ENFORCE_EQ(attributes.at(#name).isa<type>(),             \
+                    true,                                         \
+                    common::errors::InvalidArgument(              \
+                        "Type of attribute: " #name " is not " #type))
 
 void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
                              pir::OperationArgument &argument,  // NOLINT
@@ -184,13 +185,17 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
   std::vector<pir::Type> argument_outputs;
   std::vector<pir::Type> out_types;
   for (size_t i = 0; i < static_cast<size_t>(outputs_shape.size()); i++) {
-    out_types.push_back(pir::DenseTensorType::get(
-        pir::IrContext::Instance(),
-        TransToIrDataType(outputs_dtype[i]),
-        phi::DDim(outputs_shape[i].data(), outputs_shape[i].size()),
-        phi::DataLayout::ALL_LAYOUT,
-        phi::LoD(),
-        0));
+    if (outputs_dtype[i] == phi::DataType::UNDEFINED) {
+      out_types.push_back(pir::Type());
+    } else {
+      out_types.push_back(pir::DenseTensorType::get(
+          pir::IrContext::Instance(),
+          TransToIrDataType(outputs_dtype[i]),
+          phi::DDim(outputs_shape[i].data(), outputs_shape[i].size()),
+          phi::DataLayout::ALL_LAYOUT,
+          phi::LoD(),
+          0));
+    }
   }
   pir::Type out_vector_type =
       pir::VectorType::get(pir::IrContext::Instance(), out_types);
@@ -212,7 +217,7 @@ void TensorRTEngineOp::VerifySig() {
                           "The size of inputs must be equal to 1."));
     PADDLE_ENFORCE_EQ((*this)->operand_source(0).type().isa<pir::VectorType>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Type validation failed for the 0th input, got %s.",
                           (*this)->operand_source(0).type()));
     if (auto vec_type =
@@ -221,7 +226,7 @@ void TensorRTEngineOp::VerifySig() {
         PADDLE_ENFORCE_EQ(
             vec_type[i].isa<pir::DenseTensorType>(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Type validation failed for the 0th input, got %s.",
                 (*this)->operand_source(0).type()));
       }
@@ -256,16 +261,8 @@ void TensorRTEngineOp::VerifySig() {
 
     PADDLE_ENFORCE_EQ(output_type.isa<pir::VectorType>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Type validation failed for the 0th output."));
-    if (auto vec_type = output_type.dyn_cast<pir::VectorType>()) {
-      for (size_t i = 0; i < vec_type.size(); i++) {
-        PADDLE_ENFORCE_EQ(vec_type[i].isa<pir::DenseTensorType>(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "Type validation failed for the 0th output."));
-      }
-    }
   }
   VLOG(4) << "End Verifying for: TensorRTEngineOp.";
 }

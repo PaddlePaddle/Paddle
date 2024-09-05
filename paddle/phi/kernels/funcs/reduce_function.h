@@ -75,7 +75,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
   if (rank % 2 == 0) {
     PADDLE_ENFORCE_EQ(reduce_rank,
                       rank / 2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ReduceOp: invalid reduce rank. When rank = %d, "
                           "reduce_rank must be %d, but got %d.",
                           rank,
@@ -87,7 +87,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
     PADDLE_ENFORCE_EQ(
         reduce_rank == lower_rank || reduce_rank == upper_rank,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ReduceOp: invalid reduce rank. When rank = %d, reduce_rank "
             "must be %d or %d, but got %d.",
             rank,
@@ -111,7 +111,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
     for (auto e : dims) {
       PADDLE_ENFORCE_LT(e,
                         dim_size,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "ReduceOp: invalid axis, when x_dims is %d, "
                             "axis[i] should less than x_dims, but got %d.",
                             dim_size,
@@ -981,7 +981,7 @@ CubTensorReduceImpl(const Tx* x_data,
                     int reduce_num,
                     const KPDevice& dev_ctx,
                     KPStream stream) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 template <typename Tx,
@@ -997,7 +997,7 @@ CubTensorReduceImpl(const Tx* x_data,
                     int reduce_num,
                     const KPDevice& dev_ctx,
                     KPStream stream) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Tx should not be bfloat16 when using cub::DeviceReduce::Reduce()."));
 }
 #endif  // PADDLE_WITH_XPU_KP
@@ -1049,10 +1049,10 @@ void ReduceKernel(const KPDevice& dev_ctx,
                   phi::DenseTensor* y,
                   const TransformOp& transform,
                   const std::vector<int>& origin_reduce_dims) {
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
+  PADDLE_ENFORCE_GT(x.numel(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "Tensor need be reduced must not empty."));
 #ifdef PADDLE_WITH_XPU_KP
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
@@ -1332,7 +1332,7 @@ void HandleLargeDim(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       unreduced * reduced,
       input_numel,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Reducing failed in HandleLargeDim, when try to transpose (%d) "
           "operands into 2D tensor with shape (%d, %d).",
           input_numel,
@@ -1357,10 +1357,10 @@ void ReduceKernelImpl(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
-  PADDLE_ENFORCE_GT(
-      input.numel(),
-      0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
+  PADDLE_ENFORCE_GT(input.numel(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "Tensor need be reduced must not empty."));
 
   dev_ctx.template Alloc<OutT>(output);
 

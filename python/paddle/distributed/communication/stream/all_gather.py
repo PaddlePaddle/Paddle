@@ -12,16 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 import paddle.distributed as dist
 from paddle import framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import _get_global_group
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
+
+from paddle.distributed.utils.stream_utils import ExecutionStreamType
+
 
 def _all_gather_into_tensor_in_dygraph(
-    out_tensor, in_tensor, group, sync_op, use_calc_stream
-):
+    out_tensor: Tensor,
+    in_tensor: Tensor,
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+) -> task:
     group = _get_global_group() if group is None else group
 
     if use_calc_stream:
@@ -40,8 +55,12 @@ def _all_gather_into_tensor_in_dygraph(
 
 
 def _all_gather_in_dygraph(
-    tensor_list, tensor, group, sync_op, use_calc_stream
-):
+    tensor_list: list[Tensor],
+    tensor: Tensor,
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+) -> task:
     group = _get_global_group() if group is None else group
 
     if len(tensor_list) == 0:
@@ -59,7 +78,9 @@ def _all_gather_in_dygraph(
     return task
 
 
-def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
+def _all_gather_in_static_mode(
+    tensor_list: list[Tensor], tensor: Tensor, group: Group, sync_op: bool
+) -> None:
     op_type = 'all_gather'
     helper = framework.LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
@@ -111,7 +132,7 @@ def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
         },
     )
     if sync_op:
-        op.dist_attr.execution_stream = "default"
+        op.dist_attr.execution_stream = ExecutionStreamType.DefaultStream.value
     tensor_list.clear()
     # 0-D use stack/unstack while others use concat/split
     if len(tensor.shape) == 0:
@@ -121,12 +142,12 @@ def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
 
 
 def all_gather(
-    tensor_or_tensor_list,
-    tensor,
-    group=None,
-    sync_op=True,
-    use_calc_stream=False,
-):
+    tensor_or_tensor_list: Tensor | list[Tensor],
+    tensor: Tensor,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Gather tensors across devices to a correctly-sized tensor or a tensor list.
@@ -162,7 +183,7 @@ def all_gather(
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> task = dist.stream.all_gather(tensor_list, data, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> print(tensor_list)
             [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
     """

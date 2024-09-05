@@ -114,7 +114,7 @@ void CastKernel(const Context& dev_ctx,
       CastXPUKernelImpl<T, int16_t, Context>(dev_ctx, x, out);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
 }

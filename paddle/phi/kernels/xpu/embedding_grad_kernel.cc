@@ -44,7 +44,7 @@ void EmbeddingGradKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       ids_numel <= std::numeric_limits<int32_t>::max(),
       true,
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "Number of ids greater than int32_t::max , please check "
           "number of ids in LookupTableV2GradXPUKernel."));
 
@@ -112,7 +112,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
                        sizeof(int64_t) * input.numel());
     ids = CopyIdsToVector<int, int64_t>(ids_cpu);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "embedding input only support int32 and int64"));
   }
 
@@ -138,7 +138,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
       flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
   PADDLE_ENFORCE_EQ(d_table_value->dims(),
                     d_output_dims_2d,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "ShapeError: The shape of lookup_table@Grad and "
                         "output@Grad should be same. "
                         "But received lookup_table@Grad's shape = [%s], "

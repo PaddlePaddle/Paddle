@@ -485,9 +485,9 @@ class DistributedFusedLamb(Optimizer):
                 'FP32AccFusedGrad': fp32_acc_fused_grad,
                 'FP16AccFusedGrad': fp16_acc_fused_grad,
                 'AccStep': acc_step,
-                'StopUpdate': self._stop_update
-                if self._stop_update is not None
-                else [],
+                'StopUpdate': (
+                    self._stop_update if self._stop_update is not None else []
+                ),
                 'Step': [step],
             },
             attrs={

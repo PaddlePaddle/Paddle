@@ -58,12 +58,12 @@ class AssertOp : public framework::OperatorBase {
         scope.FindVar(Input(kCond.data()));
     PADDLE_ENFORCE_NOT_NULL(
         cond_var_ptr,
-        phi::errors::NotFound("Input(Condition) of AssertOp is not found."));
+        common::errors::NotFound("Input(Condition) of AssertOp is not found."));
     const phi::DenseTensor &cond = cond_var_ptr->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         cond.numel(),
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The numel of Input(Condition) of AssertOp must be 1. But now "
             "the Condition's shape is %s.",
             cond.dims().to_str()));
@@ -83,7 +83,7 @@ class AssertOp : public framework::OperatorBase {
       formatter.Print(x_tensor, name);
     }
 
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The condition variable '%s' of AssertOp must be "
         "true, but received false",
         Input(kCond.data())));

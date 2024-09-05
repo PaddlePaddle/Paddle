@@ -214,5 +214,19 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
 TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
                                        const TensorDistAttr& grad);
 
+#define LogInputDistAttr(name, shape, src_dist_attr, dst_dist_attr)          \
+  VLOG(4) << name << " shape: [" << str_join(shape) << "] "                  \
+          << "src_dims_mapping: [" << str_join(src_dist_attr.dims_mapping()) \
+          << "] "                                                            \
+          << "dst_dims_mapping: [" << str_join(dst_dist_attr.dims_mapping()) \
+          << "] "                                                            \
+          << "src_partial: " << src_dist_attr.partial_status_string()        \
+          << " dst_partial: " << dst_dist_attr.partial_status_string();
+
+#define LogOutputDistAttr(name, dst_dist_attr)              \
+  VLOG(4) << name << " dims mapping: ["                     \
+          << str_join(dst_dist_attr.dims_mapping()) << "] " \
+          << "partial: " << dst_dist_attr.partial_status_string();
+
 }  // namespace distributed
 }  // namespace phi

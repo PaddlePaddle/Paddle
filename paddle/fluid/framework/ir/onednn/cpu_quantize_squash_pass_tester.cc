@@ -85,7 +85,7 @@ void SetOp(ProgramDesc* prog,
     op->SetInput("Input", {inputs[0]});
     PADDLE_ENFORCE_EQ(inputs.size(),
                       2UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The fc inputs should contain input and weights, but "
                           "now the size of inputs is %d.",
                           inputs.size()));

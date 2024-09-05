@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle import _C_ops
-from paddle.base.framework import dygraph_only
+from paddle.base.framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-@dygraph_only
 def addmm(
     input: Tensor,
     x: Tensor,
@@ -94,4 +93,7 @@ def addmm(
             >>> out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
 
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_addmm(input, x, y, beta, alpha)

@@ -86,8 +86,7 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
     const auto &full_1 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
                                 {{"value", pat.Attr("full_1_value")}});
 
-    unsqueeze({&pat.Tensor("Out"), &full_1()},
-              {&pat.Tensor("Unsqueeze_out"), &pat.Tensor("Xshape")});
+    unsqueeze({&pat.Tensor("Out"), &full_1()}, {&pat.Tensor("Unsqueeze_out")});
 
     if (fusable_ops_ == paddle::onednn::dialect::FusedTransposeOp::name() ||
         fusable_ops_ ==

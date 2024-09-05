@@ -77,7 +77,7 @@ class OperationMap {
   static OperationMap& Instance() {
     PADDLE_ENFORCE_NOT_NULL(
         map,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Please initialize OperationMap first, by calling "
             "framework::fusion_group::OperationMap::Init()!"));
     return *map;
@@ -100,7 +100,7 @@ class OperationMap {
     auto iter = operations_.find(op_type);
     PADDLE_ENFORCE_NE(iter,
                       operations_.end(),
-                      phi::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "Operation %s is not supported yet.", op_type));
     return iter->second;
   }

@@ -817,7 +817,7 @@ static void parse_attrs(PyObject *obj,
         CastPyArg2Floats(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "list of int, float, bool or Tensor, but got %s",
         infer_spmd_string,
@@ -847,7 +847,7 @@ static void parse_attr(PyObject *obj,
         CastPyArg2Float(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else {  // TODO(ljz) support other types
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "int, float, bool or Tensor, but got %s",
         infer_spmd_string,

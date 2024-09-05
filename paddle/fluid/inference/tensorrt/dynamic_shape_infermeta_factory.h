@@ -48,7 +48,7 @@ class DynamicMetaFnFactory {
     PADDLE_ENFORCE_NE(
         Contains(op_name),
         true,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "`%s` op's DynamicInferMetaFn has been registered.", op_name));
     meta_fn_map_.insert({std::move(op_name), std::move(infer_meta_fn)});
   }
@@ -58,7 +58,7 @@ class DynamicMetaFnFactory {
     PADDLE_ENFORCE_NE(
         it,
         meta_fn_map_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "`%s` op's DynamicInferMetaFn has been registered.", op_name));
     return it->second;
   }

@@ -42,7 +42,7 @@ Node *GetInputNode(const Node *op, const std::string &name) {
   }
 
   PADDLE_ENFORCE_NOT_NULL(
-      out, phi::errors::InvalidArgument("Input's name cannot be found."));
+      out, common::errors::InvalidArgument("Input's name cannot be found."));
 
   return out;
 }
@@ -58,7 +58,7 @@ Node *GetOutputNode(const Node *op, const std::string &name) {
   }
 
   PADDLE_ENFORCE_NOT_NULL(
-      out, phi::errors::InvalidArgument("Output's name cannot be found."));
+      out, common::errors::InvalidArgument("Output's name cannot be found."));
 
   return out;
 }
@@ -254,7 +254,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
                                        const bool with_decay,
                                        const bool multi_precision) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
 
   VLOG(4) << "handle fuse AdadW";
 
