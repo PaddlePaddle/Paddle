@@ -313,33 +313,35 @@ bool BmmOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// Given two batch dimensions x and y, return the broadcasted batch dimension of
-// x and y
 static inline std::vector<symbol::DimExpr> MatrixGetBroadcastBatchPortion(
     const std::vector<symbol::DimExpr> &x,
     const std::vector<symbol::DimExpr> &y,
     pir::InferSymbolicShapeContext *infer_context) {
-  size_t size_x = x.size();
-  size_t size_y = y.size();
-  size_t size = std::max(size_x, size_y);
-  std::vector<symbol::DimExpr> batchPortion(size);
+  // use int to avoid underflow for minus
+  int size_x = x.size();
+  int size_y = y.size();
+  int max_size = std::max(size_x, size_y);
+  std::vector<symbol::DimExpr> batchPortion(max_size);
+
+  int size_diff = size_x - size_y;
+  if (size_diff > 0) {
+    for (int i = 0; i < diff; i++) {
+      batchPortion[i] = x[i];
+    }
+  } else {
+    size_diff = -size_diff;
+    for (int i = 0; i < size_diff; i++) {
+      batchPortion[i] = y[i];
+    }
+  }
 
   symbol::DimExprBuilder builder;
-  // cast to int to avoid size_t underflow
-  for (int i = std::static_cast<int>(size) - 1; i >= 0; --i) {
-    int offset = size - i - 1;
-    int dim_x = size_x - offset - 1;
-    int dim_y = size_y - offset - 1;
-
-    if (dim_x < 0) {
-      batchPortion[i] = y[dim_y];
-    } else if (dim_y < 0) {
-      batchPortion[i] = x[dim_x];
-    } else if (dim_x >= 0 && dim_y >= 0) {
-      infer_context->AddBroadcastableCstr(x[dim_x], y[dim_y]);
-      batchPortion[i] = builder.broadcast(x[dim_x], y[dim_y]);
-    }
-    // dim x and dim y will be less than zero at the same time
+  for (int i = diff; i < max_size; i++) {
+    int offset = max_size - i;
+    int dim_x = size_x - offset;
+    int dim_y = size_y - offset;
+    infer_context->AddBroadcastableCstr(x[dim_x], y[dim_y]);
+    batchPortion[i] = builder.Broadcast(x[dim_x], y[dim_y]);
   }
   return batchPortion;
 }
@@ -371,19 +373,10 @@ bool CholeskySolveOpInferSymbolicShape(
   std::vector<symbol::DimExpr> x_batch_dims(x_shape.begin(), x_shape.end() - 2);
   std::vector<symbol::DimExpr> y_batch_dims(y_shape.begin(), y_shape.end() - 2);
 
-  // Batch dimensions should be broadcastable
-  // Get batch size, which is possibly broadcasted
-  PADDLE_ENFORCE_EQ(
-      (x_batch_dims.size() == 0 && y_batch_dims.size != 0) ||
-          (x_batch_dims.size() != 0 && y_batch_dims.size == 0),
-      false,
-      common::errors::InvalidArgument(
-          "One of x and y have batch dimension yet the other do not."));
-  std::vector<symbol::DimExpr> expand_batch_portion =
+  std::vector<symbol::DimExpr> output_shape =
       MatrixGetBroadcastBatchPortion(x_batch_dims, y_batch_dims, infer_context);
 
   // append the size of x to batch dimentions
-  std::vector<symbol::DimExpr> output_shape({expand_batch_portion});
   output_shape.insert(output_shape.end(),
                       {x_shape[x_shape_size - 2], x_shape[x_shape_size - 1]});
   infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
