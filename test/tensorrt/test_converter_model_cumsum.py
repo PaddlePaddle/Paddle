@@ -85,7 +85,6 @@ class TestConverterCumsumOp(unittest.TestCase):
 
             trt_save_path = os.path.join(self.temp_dir.name, 'trt')
             trt_config.save_model_dir = trt_save_path
-            trt_config.disable_ops = "pd_op.matmul"
 
             model_dir = self.save_path
             # Obtain tensorrt_engine_op by passing the model path and trt_config.(converted_program)
