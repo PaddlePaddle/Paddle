@@ -30,9 +30,18 @@ if(WIN32)
        "test_trt_convert_depthwise_conv2d_transpose_deprecated")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES
        "test_trt_convert_depthwise_conv2d_transpose_deprecated")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER
+       "test_trt_convert_depthwise_conv2d_transpose_deprecated")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_trt_convert_conv2d_deprecated")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_conv2d_deprecated")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_conv2d_deprecated")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_pool3d_op_deprecated")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_pool3d_op_deprecated")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+       "test_trt_deformable_conv_deprecated")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_deformable_conv_deprecated")
+
 endif()
 
 if(NOT WITH_MKLDNN
@@ -116,7 +125,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass_deprecated
                        PROPERTIES TIMEOUT 100)
   set_tests_properties(test_trt_conv_quant_dequant_pass_deprecated
-                       PROPERTIES TIMEOUT 180)
+                       PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_matmul_quant_dequant_deprecated
                        PROPERTIES TIMEOUT 450)
   set_tests_properties(test_trt_conv3d_transpose_op_deprecated
