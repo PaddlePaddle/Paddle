@@ -384,7 +384,15 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
         )
     else:
         indent = len(prefix) + 1
-        data = _format_dense_tensor(tensor, indent)
+
+        # If we print a dist_tensor with bf16 dtype and Partial placement, it is essential to ensure that the AllReduce communication
+        # is performed in bf16. After completing the communication, convert it to fp32, and then convert it into a numpy array.
+        from paddle.distributed import Replicate, reshard
+
+        placements = [Replicate() for _ in range(tensor.process_mesh.ndim)]
+        global_tensor = reshard(tensor, tensor.process_mesh, placements)
+
+        data = _format_dense_tensor(global_tensor, indent)
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, process_mesh={process_mesh}, placements={placements}, GlobalDenseTensor=\n{indent}{data})"
         return _template.format(
             prefix=prefix,

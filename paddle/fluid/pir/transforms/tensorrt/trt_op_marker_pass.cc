@@ -1110,7 +1110,6 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Full)
     ADD_PATTERN(Fused_gemm_epilogue)
     ADD_PATTERN(Add)
-    ADD_PATTERN(Layer_norm)
     ADD_PATTERN(Silu)
     ADD_PATTERN(Conv2d)
     ADD_PATTERN(FusedConv2dAddAct)
@@ -1120,7 +1119,9 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Shape)
     ADD_PATTERN(Expand)
     ADD_PATTERN(Sigmoid)
-
+#if IS_TRT_VERSION_GE(8600)
+    ADD_PATTERN(Layer_norm)
+#endif
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));

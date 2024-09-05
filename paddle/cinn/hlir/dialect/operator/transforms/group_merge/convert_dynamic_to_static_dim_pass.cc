@@ -118,13 +118,13 @@ class DynamicToStaticConverter {
     PADDLE_ENFORCE_EQ(
         map->has_value(),
         true,
-        phi::errors::InvalidArgument("The map must have a value."));
+        ::common::errors::InvalidArgument("The map must have a value."));
     return
         [map](
             const std::string& symbol_name) -> std::optional<symbol::DimExpr> {
           PADDLE_ENFORCE_NE(map->value().find(symbol_name),
                             map->value().end(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "The symbol '%s' must be present in the map.",
                                 symbol_name.c_str()));
           return map->value().at(symbol_name);
@@ -166,7 +166,7 @@ class DynamicToStaticConverter {
           cinn::dialect::SubstituteDimExpr(dim_expr, DimExpr4SymbolName_));
       PADDLE_ENFORCE_EQ(static_shape.Has<std::int64_t>(),
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The static_shape must have an int64_t type."));
       static_shapes.push_back(static_shape.Get<std::int64_t>());
     });
@@ -199,7 +199,7 @@ class DynamicToStaticConverter {
         PADDLE_ENFORCE_EQ(
             origin_shape.at(i),
             target_shape.at(i),
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The shape at index %d must be equal in both origin_shape and "
                 "target_shape, but got origin_shape[%d] = %d and "
                 "target_shape[%d] = %d.",

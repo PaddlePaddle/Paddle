@@ -160,7 +160,9 @@ std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
   auto op_name = name.substr(pos + 1);
   VLOG(7) << "GetOpName: " << name << " -> " << op_name;
   PADDLE_ENFORCE_NE(
-      op_name, "", phi::errors::InvalidArgument("Not Allow op name is empty"));
+      op_name,
+      "",
+      ::common::errors::InvalidArgument("Not Allow op name is empty"));
   return op_name;
 }
 
@@ -630,7 +632,7 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   PADDLE_ENFORCE_EQ(
       op_pattern_dict.Find(cinn_op),
       true,
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "Failed to find the op pattern kind for the operator in "
           "Operator::GetAttrs<OpPatternKind>. "
           "Ensure that the operator is registered "
