@@ -98,6 +98,21 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         return false;
       }
     }
+
+    int i = 0;
+    for (auto& value : op->operands_source()) {
+      pir::Type type = op->operand_type(i++);
+      if (!type.isa<paddle::dialect::DenseTensorType>()) {
+        // We skip pir::VectorType
+        // TODO(Lirong, Xinyi): Support pir::VectorType in bf16
+        return false;
+      }
+      pir::Type op_dtype = pir::GetDataTypeFromValue(value);
+      // Only float input can be converted to bfloat16
+      if (!op_dtype.isa<pir::Float32Type>()) {
+        return false;
+      }
+    }
     return true;
   }
 
@@ -338,7 +353,12 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
     }
 
     bool unsupported_op = false;
+    int i = 0;
     for (auto& value : op->operands_source()) {
+      pir::Type type = op->operand_type(i++);
+      if (!type.isa<paddle::dialect::DenseTensorType>()) {
+        return false;
+      }
       pir::Type op_dtype = pir::GetDataTypeFromValue(value);
       // Only float input can be converted to bfloat16
       if (!op_dtype.isa<pir::Float32Type>()) {
@@ -346,6 +366,7 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         break;
       }
     }
+
     if (!unsupported_op) {
       return false;
     }
