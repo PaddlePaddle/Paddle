@@ -2069,9 +2069,9 @@ void HandleForSpecialOp(
         op_item->dyn_cast<cinn::dialect::JitKernelOp>();
     const cinn::hlir::framework::pir::CINNKernelInfo& kernel_info =
         jit_kernel_op.cinn_kernel_info();
-    if (kernel_info.CX86_fn_ptr != nullptr) {
+    if (run_cpu_kernel && kernel_info.CX86_fn_ptr == nullptr) {
       // change dst_backend to cpu
-      run_cpu_kernel = true;
+      run_cpu_kernel = false;
     }
 #endif
     if (run_cpu_kernel) {
