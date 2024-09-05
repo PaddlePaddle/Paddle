@@ -14,10 +14,10 @@
 
 import paddle
 from paddle.autograd.backward_utils import ValueDict
+from paddle.base.framework import auto_complete_op_role
 from paddle.distributed.passes.pass_base import PassContext, new_pass
 from paddle.pir import get_current_insertion_point
 
-from ...passes.pass_utils import auto_complete_op_role
 from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
@@ -364,6 +364,7 @@ def remove_other_rank_input_output_pass(dist_program):
         result = op.operand_source(0).get_defining_op().result(0)
         paddle.pir.set_insertion_point_after(combine_op)
         res = paddle._C_ops.builtin_combine(new_vars)
+        res.get_defining_op().op_role = op.op_role
         result.replace_all_uses_with(res)
         combine_op.erase()
         # since it is inplace op, set type of output as the same as input
@@ -419,6 +420,7 @@ def eliminate_transpose_by_reshape(program):
                 paddle.pir.set_insertion_point(op)
                 transpose_var = op.result(0)
                 reshape_var = paddle._C_ops.reshape(var, transpose_var.shape)
+                reshape_var.get_defining_op().op_role = op.op_role
                 transpose_var.replace_all_uses_with(reshape_var)
                 op.erase()
     return program

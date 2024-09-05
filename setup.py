@@ -26,6 +26,7 @@ import subprocess
 import sys
 import time
 from contextlib import contextmanager
+from pathlib import Path
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
@@ -957,6 +958,7 @@ def get_setup_requires():
                 or '<"3.7"' in setup_requires_i
                 or '<="3.7"' in setup_requires_i
                 or '<"3.8"' in setup_requires_i
+                or setup_requires_i.strip().endswith('[build]')
             ):
                 continue
             setup_requires_tmp += [setup_requires_i]
@@ -1140,6 +1142,27 @@ def get_cinn_config_jsons():
         json = json[prefix_len:]
         json_path_list += [json]
     return json_path_list
+
+
+def extend_type_hints_package_data(package_data):
+    type_hints_files = {
+        'paddle': ['py.typed', '*.pyi'],
+        'paddle.framework': ['*.pyi'],
+        'paddle.base': ['*.pyi'],
+        'paddle.tensor': ['tensor.pyi'],
+        'paddle._typing': ['*.pyi'],
+        'paddle._typing.libs': ['*.pyi', '*.md'],
+        'paddle._typing.libs.libpaddle': ['*.pyi'],
+        'paddle._typing.libs.libpaddle.pir': ['*.pyi'],
+        'paddle._typing.libs.libpaddle.eager': ['*.pyi'],
+        'paddle._typing.libs.libpaddle.eager.ops': ['*.pyi'],
+    }
+    for pkg, files in type_hints_files.items():
+        if pkg not in package_data:
+            package_data[pkg] = []
+        package_data[pkg] += files
+
+    return package_data
 
 
 def get_package_data_and_package_dir():
@@ -1513,19 +1536,7 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    package_data['paddle'] = [*package_data.get('paddle', []), 'py.typed']
-    package_data['paddle.framework'] = [
-        *package_data.get('paddle.framework', []),
-        '*.pyi',
-    ]
-    package_data['paddle.base'] = [
-        *package_data.get('paddle.base', []),
-        '*.pyi',
-    ]
-    package_data['paddle.tensor'] = [
-        *package_data.get('paddle.tensor', []),
-        'tensor.pyi',
-    ]
+    package_data = extend_type_hints_package_data(package_data)
 
     return package_data, package_dir, ext_modules
 
@@ -1887,6 +1898,11 @@ def get_setup_parameters():
         'paddle.pir',
         'paddle.decomposition',
         'paddle._typing',
+        'paddle._typing.libs',
+        'paddle._typing.libs.libpaddle',
+        'paddle._typing.libs.libpaddle.pir',
+        'paddle._typing.libs.libpaddle.eager',
+        'paddle._typing.libs.libpaddle.eager.ops',
     ]
 
     paddle_bins = ''
@@ -2017,10 +2033,11 @@ def check_submodules():
             sys.exit(1)
 
 
-def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
-    print('-' * 2, 'Generate stub file tensor.pyi ... ')
+def generate_stub_files(paddle_binary_dir, paddle_source_dir):
     script_path = paddle_source_dir + '/tools/'
     sys.path.append(script_path)
+
+    print('-' * 2, 'Generate stub file tensor.pyi ... ')
     import gen_tensor_stub
 
     gen_tensor_stub.generate_stub_file(
@@ -2034,6 +2051,40 @@ def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
         paddle_source_dir + '/python/paddle/tensor/tensor.pyi',
     )
     print('-' * 2, 'End Generate stub file tensor.pyi ... ')
+
+    print('-' * 2, 'Generate stub file for python binding APIs ... ')
+    import gen_pybind11_stub
+
+    gen_pybind11_stub.generate_stub_file(
+        output_dir=str(Path(paddle_binary_dir) / 'python/paddle/_typing/libs/'),
+        module_name='paddle.base.libpaddle',
+        ignore_all_errors=True,
+        ops_yaml=[
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/ops.yaml;paddle.base.libpaddle.eager.ops",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/ops.yaml;paddle.base.libpaddle.pir.ops",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/sparse_ops.yaml;paddle.base.libpaddle.eager.ops;sparse",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/sparse_ops.yaml;paddle.base.libpaddle.pir.ops;sparse",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.eager.ops;strings",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.pir.ops;strings",
+        ],
+    )
+
+    libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'
+    if Path(libpaddle_dst).exists():
+        shutil.rmtree(libpaddle_dst)
+
+    shutil.copytree(
+        paddle_binary_dir + '/python/paddle/_typing/libs/libpaddle',
+        libpaddle_dst,
+    )
+
+    print('-' * 2, 'End Generate stub for python binding APIs ... ')
 
 
 def main():
@@ -2124,7 +2175,7 @@ def main():
         'on',
         '1',
     ]:
-        generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+        generate_stub_files(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,

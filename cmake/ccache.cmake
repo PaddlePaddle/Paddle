@@ -4,7 +4,7 @@ if(NOT WIN32)
   find_program(CCACHE_PATH ccache)
   if(CCACHE_PATH)
     execute_process(COMMAND ccache -V OUTPUT_VARIABLE ccache_output)
-    execute_process(COMMAND ccache -s cache directory
+    execute_process(COMMAND ccache -v -s cache directory
                     OUTPUT_VARIABLE cache_directory)
     string(REGEX MATCH "[0-9]+.[0-9]+" ccache_version ${ccache_output})
     message(STATUS "ccache is founded, use ccache to speed up compile on Unix.")
@@ -14,6 +14,7 @@ if(NOT WIN32)
     set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PATH})
     set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PATH})
     set(CMAKE_CUDA_COMPILER_LAUNCHER ${CCACHE_PATH})
+    set(CMAKE_HIP_COMPILER_LAUNCHER ${CCACHE_PATH})
   endif()
 elseif("${CMAKE_GENERATOR}" STREQUAL "Ninja")
   # (Note:zhouwei25) Only Ninja Generator can support sccache now

@@ -56,18 +56,18 @@ struct DataRecord {
       data.lod3.push_back(0);
       PADDLE_ENFORCE_EQ(!data.link_step_data_all.empty(),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "link_step_data_all should not be empty."));
 
-      PADDLE_ENFORCE_EQ(
-          !data.week_data_all.empty(),
-          true,
-          phi::errors::InvalidArgument("week_data_all should not be empty."));
+      PADDLE_ENFORCE_EQ(!data.week_data_all.empty(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "week_data_all should not be empty."));
 
-      PADDLE_ENFORCE_EQ(
-          !data.minute_data_all.empty(),
-          true,
-          phi::errors::InvalidArgument("minute_data_all should not be empty."));
+      PADDLE_ENFORCE_EQ(!data.minute_data_all.empty(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "minute_data_all should not be empty."));
       PADDLE_ENFORCE_EQ(
           data.link_step_data_all.size(),
           data.week_data_all.size(),
