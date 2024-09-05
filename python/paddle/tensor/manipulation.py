@@ -4556,7 +4556,7 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     The following diagram illustrates how a one-dimensional tensor is transformed into a tensor with a shape of [2,3] through the expand_as operation. The target tensor has a shape of [2,3], and through expand_as, the one-dimensional tensor is expanded into a tensor with a shape of [2,3].
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/expand_as.png
-        :width: 800
+        :width: 500
         :alt: expand_as API
         :align: center
 
