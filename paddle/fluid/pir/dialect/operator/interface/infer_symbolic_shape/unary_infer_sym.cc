@@ -3222,15 +3222,15 @@ bool TraceOpInferSymbolicShape(pir::Operation *op,
       2,
       common::errors::OutOfRange(
           "Input(x)'s dim is out of range (expected at least 2, but got %ld).",
-          rank.size()));
+          rank));
   PADDLE_ENFORCE_LT(
       dim1_,
-      rank.size(),
+      rank,
       common::errors::OutOfRange(
           "axis1 is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
-          -(rank.size()),
-          (rank.size() - 1),
+          -(rank),
+          (rank - 1),
           axis1));
   PADDLE_ENFORCE_GE(
       dim1_,
@@ -3238,17 +3238,17 @@ bool TraceOpInferSymbolicShape(pir::Operation *op,
       common::errors::OutOfRange(
           "axis1 is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
-          -(rank.size()),
-          (rank.size() - 1),
+          -(rank),
+          (rank - 1),
           axis1));
   PADDLE_ENFORCE_LT(
       dim2_,
-      rank.size(),
+      rank,
       common::errors::OutOfRange(
           "axis2 is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
-          -(rank.size()),
-          (rank.size() - 1),
+          -(rank),
+          (rank - 1),
           axis2));
   PADDLE_ENFORCE_GE(
       dim2_,
@@ -3256,8 +3256,8 @@ bool TraceOpInferSymbolicShape(pir::Operation *op,
       common::errors::OutOfRange(
           "axis2 is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
-          -(rank.size()),
-          (rank.size() - 1),
+          -(rank),
+          (rank - 1),
           axis2));
   PADDLE_ENFORCE_NE(
       dim1_,
