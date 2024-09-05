@@ -193,21 +193,22 @@ class PaddleToTensorRTConverter:
                 if not source.initialized():
                     _logger.warning(f"Skipping uninitialized source: {source}")
                     continue
-                define_op_name = source.get_defining_op().name()
-                if define_op_name == "builtin.combine":
-                    for (
-                        combined_operand
-                    ) in source.get_defining_op().operands():
-                        combined_source = combined_operand.source()
-                        combined_source_id = combined_source.id
-                        if combined_source_id in value_to_trt_tensor:
-                            operands.append(
-                                value_to_trt_tensor[combined_source_id]
-                            )
-                        else:
-                            raise RuntimeError(
-                                f'{combined_source_id} not found in value_to_trt_tensor'
-                            )
+                else:
+                    define_op_name = source.get_defining_op().name()
+                    if define_op_name == "builtin.combine":
+                        for (
+                            combined_operand
+                        ) in source.get_defining_op().operands():
+                            combined_source = combined_operand.source()
+                            combined_source_id = combined_source.id
+                            if combined_source_id in value_to_trt_tensor:
+                                operands.append(
+                                    value_to_trt_tensor[combined_source_id]
+                                )
+                            else:
+                                raise RuntimeError(
+                                    f'{combined_source_id} not found in value_to_trt_tensor'
+                                )
                     else:
                         source_id = source.id
                         if source_id in value_to_trt_tensor:

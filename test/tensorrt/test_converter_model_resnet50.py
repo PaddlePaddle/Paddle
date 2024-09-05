@@ -34,6 +34,7 @@ class TestConverterResNet50(unittest.TestCase):
         # Step1: get program and init fake inputs
         program, scope, param_dict = get_r50_program()
 
+        # Set input
         input_config = Input(
             min_input_shape=(1, 3, 224, 224),
             optim_input_shape=(2, 3, 224, 224),
@@ -41,9 +42,9 @@ class TestConverterResNet50(unittest.TestCase):
             input_data_type='float32',
         )
         _, input_optim_data, _ = input_config.generate_input_data()
-        trt_config = TensorRTConfig()
-        trt_config.inputs = [input_config]
-        trt_config.is_save_program = False
+
+        # Create a TensorRTConfig with inputs as a required field.
+        trt_config = TensorRTConfig(inputs=[input_config])
 
         output_var = program.list_vars()[-2]
 
@@ -61,13 +62,13 @@ class TestConverterResNet50(unittest.TestCase):
             program_with_trt, {"input": input_optim_data}, [output_var]
         )
 
-        # Check that the results are close to each other within a tolerance of 1e-3
+        # Check that the results are close to each other within a tolerance of 2e-1
         np.testing.assert_allclose(
             output_expected[0],
             output_converted[0],
-            rtol=2e-1,
-            atol=2e-1,
-            err_msg="Outputs are not within the 2e-1 tolerance",
+            rtol=0.2,
+            atol=0.2,
+            err_msg="Outputs are not within the 0.2 tolerance",
         )
 
 

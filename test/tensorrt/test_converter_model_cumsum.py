@@ -23,7 +23,7 @@ from paddle.framework import use_pir_api
 from paddle.tensorrt.export import (
     Input,
     TensorRTConfig,
-    get_trt_program,
+    export_loaded_model,
 )
 
 
@@ -67,11 +67,14 @@ class TestConverterCumsumOp(unittest.TestCase):
                 paddle.static.save_inference_model(
                     self.save_path, [x], [out], exe
                 )
+                # Print the saved model path
+                print(f"Model saved at: {self.save_path}")
 
                 if use_pir_api():
                     config = paddle_infer.Config(
                         self.save_path + '.json', self.save_path + '.pdiparams'
                     )
+
                     config.enable_new_ir()
                     config.enable_new_executor()
                     config.use_optimized_model(True)
@@ -81,22 +84,23 @@ class TestConverterCumsumOp(unittest.TestCase):
                         self.save_path + '.pdiparams',
                     )
 
-        with paddle.pir_utils.IrGuard():
             input_config = Input(
                 min_input_shape=(9, 10, 11),
                 optim_input_shape=(9, 10, 11),
                 max_input_shape=(9, 10, 11),
             )
-            trt_config = TensorRTConfig()
-            trt_config.inputs = [input_config]
-            trt_config.save_model_dir = self.temp_dir.name
-            trt_config.save_model_prefix = 'trt'
-            program_with_trt, trt_save_path = get_trt_program(
-                self.temp_dir.name, "tensor_axis_cumsum", trt_config, True
-            )
+            trt_config = TensorRTConfig(inputs=[input_config])
+
+            trt_save_path = os.path.join(self.temp_dir.name, 'trt')
+            print("trt_save_path", trt_save_path)
+            trt_config.save_model_dir = trt_save_path
+
+            model_dir = self.save_path
+            program_with_trt = export_loaded_model(model_dir, trt_config)
 
             config = paddle_infer.Config(
-                trt_save_path + '.json', trt_save_path + '.pdiparams'
+                trt_config.save_model_dir + '.json',
+                trt_config.save_model_dir + '.pdiparams',
             )
 
             if paddle.is_compiled_with_cuda():
@@ -106,17 +110,16 @@ class TestConverterCumsumOp(unittest.TestCase):
             predictor = paddle_infer.create_predictor(config)
             input_names = predictor.get_input_names()
 
-            input_handle = predictor.get_input_handle(input_names[0])
-            for input_instrance in trt_config.inputs:
-                min_data, _, max_data = input_instrance.generate_input_data()
+        paddle.disable_static()
+        for i, input_instrance in enumerate(trt_config.inputs):
+            print("i", i)
+            min_data, _, max_data = input_instrance[i].generate_input_data()
+            # print("min_data",min_data)
+            model_inputs = paddle.to_tensor(min_data)
+            print("type(model_inputs)", type(model_inputs))
 
-                fake_input = min_data
-                input_handle.reshape(min_data.shape)
-                input_handle.copy_from_cpu(fake_input)
-                predictor.run()
-                output_names = predictor.get_output_names()
-                output_handle = predictor.get_output_handle(output_names[0])
-                infer_out = output_handle.copy_to_cpu()
+            output = predictor.run([model_inputs])
+            print("output", output)
 
 
 if __name__ == "__main__":

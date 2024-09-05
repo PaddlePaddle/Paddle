@@ -91,9 +91,9 @@ def batch_norm_converter(network, paddle_op, inputs):
     scale_np = scale.numpy() / np.sqrt(variance.numpy() + epsilon)
     bias_np = bias.numpy() - mean.numpy() * scale_np
 
-    scale_trt = trt.Weights(scale_np.astype('float32'))
-    bias_trt = trt.Weights(bias_np.astype('float32'))
-    power = np.ones(scale_shape, dtype='float32')
+    scale_trt = trt.Weights(scale_np)
+    bias_trt = trt.Weights(bias_np)
+    power = np.ones_like(scale_np)
     power_trt = trt.Weights(power)
     input_tensor_shape = paddle_op.operands()[0].source().shape
     if has_dynamic_shape(input_tensor_shape):
@@ -123,6 +123,7 @@ def batch_norm_converter(network, paddle_op, inputs):
                 1,
             )
         input_tensor = reshape_layer.get_output(0)
+
     # (self: tensorrt.tensorrt.INetworkDefinition, input: tensorrt.tensorrt.ITensor, mode: tensorrt.tensorrt.ScaleMode, shift: tensorrt.tensorrt.Weights = None, scale: tensorrt.tensorrt.Weights = None, power: tensorrt.tensorrt.Weights = None) -> tensorrt.tensorrt.IScaleLayer
     batch_norm_layer = network.add_scale(
         input_tensor, trt.ScaleMode.CHANNEL, bias_trt, scale_trt, power_trt
@@ -135,4 +136,4 @@ def batch_norm_converter(network, paddle_op, inputs):
         reshape_output_layer.reshape_dims = tuple(output_shape)
         batch_norm_layer = reshape_output_layer
 
-    return batch_norm_layer
+    return batch_norm_layer.get_output(0)

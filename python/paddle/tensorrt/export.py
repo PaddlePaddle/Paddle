@@ -88,76 +88,23 @@ class TensorRTConfig:
 
     def __init__(
         self,
-        program=None,
-        use_tensorrt=None,
-        workspace_size=None,
-        min_group_size=3,
-        precision_mode=None,
-        tensorrt_use_cuda_graph=None,
-        tensorrt_with_interleaved=None,
-        trt_mark_output=None,
-        trt_output_tensor_names=None,
-        trt_parameters_run_fp16=None,
-        trt_parameters_run_int8=None,
-        trt_parameters_run_bfp16=None,
-        tensorrt_transformer_posid=None,
-        tensorrt_transformer_maskid=None,
-        trt_disabled_ops=None,
-        disable_trt_plugin_fp16=None,
-        trt_use_inspector=None,
-        trt_inspector_serialize=None,
-        trt_use_explicit_quantization=None,
-        trt_optimization_level=None,
-        collect_shape_range_info=None,
-        enable_memory_optim=None,
-        trt_engine_memory_sharing=None,
-        trt_ops_run_float=None,
+        inputs,
+        min_subgraph_size=3,
         save_model_dir=None,
-        save_model_prefix=None,
-        is_save_program=True,
-        input_min_data=None,
-        input_max_data=None,
-        input_optim_data=None,
-        use_executor=None,
-        inputs=None,
+        disable_ops=None,
     ):
-        self.program = program
-        self.use_tensorrt = use_tensorrt
-        self.workspace_size = workspace_size
-        self.min_group_size = min_group_size
-        self.precision_mode = precision_mode
-        self.tensorrt_use_cuda_graph = tensorrt_use_cuda_graph
-        self.tensorrt_with_interleaved = tensorrt_with_interleaved
-        self.trt_mark_output = trt_mark_output
-        self.trt_output_tensor_names = trt_output_tensor_names
-        self.trt_parameters_run_fp16 = trt_parameters_run_fp16
-        self.trt_parameters_run_int8 = trt_parameters_run_int8
-        self.trt_parameters_run_bfp16 = trt_parameters_run_bfp16
-        self.tensorrt_transformer_posid = tensorrt_transformer_posid
-        self.tensorrt_transformer_maskid = tensorrt_transformer_maskid
-        self.trt_disabled_ops = trt_disabled_ops
-        self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
-        self.trt_use_inspector = trt_use_inspector
-        self.trt_inspector_serialize = trt_inspector_serialize
-        self.trt_use_explicit_quantization = trt_use_explicit_quantization
-        self.trt_optimization_level = trt_optimization_level
-        self.collect_shape_range_info = collect_shape_range_info
-        self.enable_memory_optim = enable_memory_optim
-        self.trt_engine_memory_sharing = trt_engine_memory_sharing
-        self.trt_ops_run_float = trt_ops_run_float
-        self.is_save_program = is_save_program
-        self.input_min_data = input_min_data
-        self.input_max_data = input_max_data
-        self.input_optim_data = input_optim_data
-        if not self.is_save_program:
-            self.save_model_dir = None
-            self.save_model_prefix = None
-        self.inputs = inputs
+        self.inputs = (inputs,)
+        self.min_subgraph_size = min_subgraph_size
+        self.save_model_dir = save_model_dir
+        self.disable_ops = disable_ops
+        paddle.framework.set_flags(
+            {'FLAGS_trt_min_group_size': min_subgraph_size}
+        )
 
-    def forbid_op_lower_trt(self, program, trt_disabled_ops):
-        for op in program.global_block().ops:
-            if op.name() == trt_disabled_ops:
-                op.set_bool_attr("__l_trt__", False)
+        def forbid_op_lower_trt(self, program, disabled_ops):
+            for op in program.global_block().ops:
+                if op.name() == disabled_ops:
+                    op.set_bool_attr("__l_trt__", False)
 
 
 def converter_to_trt(program, trt_config, scope):
@@ -168,7 +115,6 @@ def converter_to_trt(program, trt_config, scope):
 
     output_var = []
     feed_name = []
-    trt_save_path = None
 
     for op in program.global_block().ops:
         if op.name() == "pd_op.fetch":
@@ -180,25 +126,16 @@ def converter_to_trt(program, trt_config, scope):
             feed_name.append(param_name)
 
     with paddle.pir_utils.IrGuard():
-        if trt_config.inputs:
-            for input_instance in trt_config.inputs:
-                min_data, _, max_data = input_instance.generate_input_data()
-                program_with_output = program.list_vars()[-1]
+        for i, input_instance in enumerate(trt_config.inputs):
+            min_data, _, max_data = input_instance[i].generate_input_data()
+            program_with_output = program.list_vars()[-1]
 
-                if trt_config.is_save_program:
-                    warmup_shape_infer(
-                        program,
-                        min_shape_feed={feed_name[0]: min_data},
-                        max_shape_feed={feed_name[0]: max_data},
-                        fetch_var_list=output_var,
-                    )
-                else:
-                    warmup_shape_infer(
-                        program,
-                        min_shape_feed={feed_name[0]: min_data},
-                        max_shape_feed={feed_name[0]: max_data},
-                        fetch_var_list=program_with_output,
-                    )
+            warmup_shape_infer(
+                program,
+                min_shape_feed={feed_name[0]: min_data},
+                max_shape_feed={feed_name[0]: max_data},
+                fetch_var_list=output_var,
+            )
 
         program_with_pir = run_pir_pass(program, partition_mode=False)
         # Step3: run pir pass (including trt_op_marker_pass)
@@ -218,7 +155,7 @@ def converter_to_trt(program, trt_config, scope):
         converter.convert_program_to_trt()
 
         # Save PIR program as JSON,using predictor.run requires setting is_save_program to True
-        if trt_config.is_save_program:
+        if trt_config.save_model_dir:
             input_values = []
             input_values.extend(
                 result
@@ -228,33 +165,52 @@ def converter_to_trt(program, trt_config, scope):
             )
             place = paddle.CUDAPlace(0)
             exe = paddle.static.Executor(place)
-            trt_save_path = os.path.join(
-                trt_config.save_model_dir, trt_config.save_model_prefix
-            )
+
             paddle.static.save_inference_model(
-                trt_save_path,
+                trt_config.save_model_dir,
                 input_values,
                 trt_output_var,
                 exe,
                 program=program_with_pir,
             )
+        return program_with_pir
 
-        return program_with_pir, trt_save_path
+
+# Obtain a program with tensorrt_op for dynamic-to-static scenarios.
+def export(funtion=None, input_spec=None, config=None, **kwargs):
+    # Converts dynamic graph APIs into static graph
+    static_net = paddle.jit.to_static(
+        funtion,
+        input_spec=input_spec,
+        **kwargs,
+    )
+    main_program = static_net.main_program
+    scope = paddle.static.global_scope()
+    return converter_to_trt(main_program, config, scope)
 
 
-def get_trt_program(model_dir, prefix, trt_config, load_json=True):
+# Obtain a program with tensorrt_op by directly loading the model.
+def export_loaded_model(model_dir, trt_config):
+    if os.path.abspath(trt_config.save_model_dir) == os.path.abspath(model_dir):
+        raise ValueError(
+            "The `trt_config.save_model_dir` and `model_dir` cannot be the same. Please specify a different directory for saving the model."
+        )
+
     scope = paddle.static.global_scope()
     place = paddle.CUDAPlace(0)
     exe = paddle.static.Executor(place)
 
-    # Check if we should use PIR API
-    if load_json:
-        # Use PIR API context manager if required
-        model_filename = os.path.join(model_dir, prefix + ".json")
-        params_filename = os.path.join(model_dir, prefix + ".pdiparams")
+    model_filename = model_dir + '.json'
+    if os.path.exists(model_dir + '.json'):
+        model_filename = model_dir + '.json'
+    elif os.path.exists(model_dir + '.pdmodel'):
+        model_filename = model_dir + '.pdmodel'
     else:
-        model_filename = os.path.join(model_dir, prefix + ".pdmodel")
-        params_filename = os.path.join(model_dir, prefix + ".pdiparams")
+        raise ValueError(
+            f"No valid model file found in the directory '{model_dir}'. Expected either 'json' or 'pdmodel'. Please ensure that the directory contains one of these files."
+        )
+
+    params_filename = model_dir + '.pdiparams'
 
     with paddle.pir_utils.IrGuard():
         # Load the model
@@ -267,7 +223,4 @@ def get_trt_program(model_dir, prefix, trt_config, load_json=True):
             )
         )
 
-    program_with_trt, trt_save_path = converter_to_trt(
-        program, trt_config, scope
-    )
-    return program_with_trt, trt_save_path
+    return converter_to_trt(program, trt_config, scope)
