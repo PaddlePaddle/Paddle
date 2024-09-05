@@ -66,7 +66,7 @@ class LBFGS(Optimizer):
         line_search_fn (string, optional): either 'strong_wolfe' or None. The default value is strong_wolfe.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. The default value is None.
-        weight_decay (int|float|WeightDecayRegularizer, optional): The strategy of regularization. \
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
