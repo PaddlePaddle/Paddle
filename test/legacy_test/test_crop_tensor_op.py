@@ -119,7 +119,7 @@ class TestCase4(TestCropTensorOp):
         self.crop_shape = [-1, 3, -1, 4]
         self.offsets = [0, 0, 1, 0]
         self.shape_by_input = True
-    
+
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
@@ -206,7 +206,6 @@ class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
         self.shape_attr = [-1, -1, 3]
 
 
-
 class TestCropTensorOpTensorAttrCase2(TestCropTensorOpTensorAttr):
     def initTestCase(self):
         self.x_shape = (4, 8, 16, 8)
@@ -223,8 +222,10 @@ class TestCropTensorOpTensorAttrCase3(TestCropTensorOpTensorAttr):
         self.offsets_attr = [-1, -1, 3]
         self.ShapeTensor = False
         self.OffsetsTensor = True
+
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=True)
+
 
 class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
     def initTestCase(self):
@@ -234,8 +235,10 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
         self.offsets = [1, 5, 3]
         self.offsets_attr = [-1, -1, 3]
         self.OffsetsTensor = True
+
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=True)
+
 
 class TestCropTensorException(unittest.TestCase):
     @test_with_pir_api
