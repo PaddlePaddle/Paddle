@@ -1712,12 +1712,69 @@ bool TdmChildOpInferSymbolicShape(
   return true;
 }
 
-// bool TriangularSolveOpInferSymbolicShape(pir::Operation *op,
-//                                          pir::InferSymbolicShapeContext
-//                                          *infer_context) {
-//   // pass
-//   return true;
-// }
+bool TriangularSolveOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &y_shape = y_shape_or_data.shape();
+
+  const auto &x_rank = x_shape.size();
+  const auto &y_rank = y_shape.size();
+
+  infer_context->AddEqualCstr(x_shape[x_rank - 2], x_shape[x_rank - 1]);
+
+  std::vector<symbol::DimExpr> x_shape_cut(x_shape.begin(), x_shape.end() - 2);
+  std::vector<symbol::DimExpr> y_shape_cut(y_shape.begin(), y_shape.end() - 2);
+
+  size_t size_x_cut = x_shape_cut.size();
+  size_t size_y_cut = y_shape_cut.size();
+  int64_t size = std::max(size_x_cut, size_y_cut);
+  std::vector<symbol::DimExpr> expand_batch_portion(size);
+  for (int64_t i = size - 1; i >= 0; --i) {
+    int64_t offset = size - i - 1;
+    int64_t dim_x = size_x_cut - offset - 1;
+    int64_t dim_y = size_y_cut - offset - 1;
+    int64_t x_cut_size = 0, y_cut_size = 0;
+    if (dim_x >= 0) {
+      if (x_shape_cut[dim_x].isa<int64_t>()) {
+        x_cut_size =
+            static_cast<int64_t>(x_shape_cut[dim_x].Get<std::int64_t>());
+      } else {
+        PADDLE_THROW("x shape's dtype should be int64, but got %s.",
+                     symbol::ToString(x_shape_cut[dim_x]));
+      }
+    } else {
+      x_cut_size = 1;
+    }
+    if (dim_y >= 0) {
+      if (y_shape_cut[dim_y].isa<int64_t>()) {
+        y_cut_size =
+            static_cast<int64_t>(y_shape_cut[dim_y].Get<std::int64_t>());
+      } else {
+        PADDLE_THROW("y shape's dtype should be int64, but got %s.",
+                     symbol::ToString(y_shape_cut[dim_y]));
+      }
+    } else {
+      y_cut_size = 1;
+    }
+    expand_batch_portion[i] = x_cut_size != 1 ? symbol::DimExpr(x_cut_size)
+                                              : symbol::DimExpr(y_cut_size);
+  }
+
+  std::vector<symbol::DimExpr> output_shape({expand_batch_portion});
+  output_shape.insert(output_shape.end(),
+                      {y_shape[y_rank - 2], y_shape[y_rank - 1]});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
 
 bool Unpool3dOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
