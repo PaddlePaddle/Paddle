@@ -67,8 +67,7 @@ static void AllReduce(const phi::DenseTensor &src,
   const void *src_ptr = src.data();
   dst->Resize(src.dims());
   auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
-  auto nccl_dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(src.dtype()));
+  auto nccl_dtype = phi::ToNCCLDataType(src.dtype());
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(src_ptr,
                                                          dst_ptr,
                                                          src.numel(),
@@ -94,7 +93,7 @@ static void AllReduce(const phi::SelectedRows &src,
           "Imperative mode does not support multi-CPU training yet."));
 
   auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
-  auto nccl_dtype = platform::ToNCCLDataType(dtype);
+  auto nccl_dtype = phi::ToNCCLDataType(src_tensor.dtype());
   auto *dev_ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
 
