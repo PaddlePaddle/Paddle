@@ -248,7 +248,7 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   Json quant_attrs_json = Json::array();
   for (auto key : GetOpQuantAttr()) {
     if (op.attributes().count(key) > 0) {
-      dist_attrs_json.emplace_back(
+      quant_attrs_json.emplace_back(
           WriteAttribute(key, op.attributes().at(key)));
     }
   }
