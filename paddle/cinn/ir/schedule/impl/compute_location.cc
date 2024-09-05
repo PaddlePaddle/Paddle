@@ -264,7 +264,7 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "ComputeInline";
   std::ostringstream os;
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       schedule_block.As<ScheduleBlockRealize>(),
       true,
       ::common::errors::InvalidArgument(
@@ -273,9 +273,8 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
   Expr store = CheckComputeInlineValidationAndGetStore(schedule_block, root);
   ComputeInliner inliner(store.As<ir::Store>()->tensor.as_tensor_ref(), store);
 
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       inliner.src_stmt.As<ir::Store>(),
-      true,
       ::common::errors::InvalidArgument(
           "Current IR can't meets the requirements of ComputeInline!"));
 
