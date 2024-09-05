@@ -54,7 +54,7 @@ class VersionTest(unittest.TestCase):
             self.assertTrue(isinstance(base_version.cuda(), str))
             self.assertTrue(isinstance(base_version.cuda_archs(), List))
         else:
-            self.assertEqual(base_version.cuda, "False")
+            self.assertEqual(base_version.cuda(), "False")
 
 
 if __name__ == '__main__':
