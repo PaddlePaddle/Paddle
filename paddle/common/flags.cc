@@ -1936,3 +1936,20 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_bool(enable_auto_parallel_align_mode,
                          false,
                          "Enable align mode for auto parallel");
+
+/**
+ * fused_multi_transformer_op related FLAG
+ * Name: fused_multi_transformer_op_use_mbfmha
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable flash decoding for mmha kernels in fused_multi_transformer_op.
+ */
+PHI_DEFINE_EXPORTED_bool(fused_multi_transformer_op_use_mbfmha,
+                         false,
+                         "Enable flash decoding for mmha kernels in "
+                         "fused_multi_transformer_op.");
+
+PHI_DEFINE_EXPORTED_int64(multi_block_attention_min_partition_size,
+                          1024,
+                          "The minimum partition size for flash decoding");
