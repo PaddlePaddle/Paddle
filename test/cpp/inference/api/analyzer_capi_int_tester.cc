@@ -36,10 +36,10 @@ void zero_copy_run() {
   PD_SetModel(config, model_dir.c_str(), nullptr);
   bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(config);
   PADDLE_ENFORCE_EQ(
-      use_feed_fetch, false, phi::errors::PreconditionNotMet("NO"));
+      use_feed_fetch, false, common::errors::PreconditionNotMet("NO"));
   bool specify_input_names = PD_SpecifyInputName(config);
   PADDLE_ENFORCE_EQ(
-      specify_input_names, true, phi::errors::PreconditionNotMet("NO"));
+      specify_input_names, true, common::errors::PreconditionNotMet("NO"));
   const int batch_size = 1;
   const int channels = 3;
   const int height = 224;

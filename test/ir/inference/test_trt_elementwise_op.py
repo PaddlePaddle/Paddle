@@ -47,6 +47,14 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
                 1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False
             )
         )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassElementwiseBroadcastTest.DynamicShapeParam(
+                {'data1': [1, 3, 64, 64], 'data2': [1, 3, 64, 1]},
+                {'data1': [32, 3, 64, 64], 'data2': [32, 3, 64, 1]},
+                {'data1': [1, 3, 64, 64], 'data2': [1, 3, 64, 1]},
+                False,
+            )
+        )
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):

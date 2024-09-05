@@ -31,6 +31,8 @@ class TestPutAlongAxisOp(OpTest):
         self.init_data()
         self.reduce_op = "assign"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -54,7 +56,9 @@ class TestPutAlongAxisOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["Input", "Value"], "Result", check_pir=True)
+        self.check_grad(
+            ["Input", "Value"], "Result", check_pir=True, check_prim_pir=True
+        )
 
     def init_data(self):
         self.dtype = 'float64'
@@ -86,6 +90,8 @@ class TestPutAlongAxisOpCase2(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "assign"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -126,6 +132,8 @@ class TestPutAlongAxisOpMul(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "mul"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -166,6 +174,8 @@ class TestPutAlongAxisOpMulNotIncludeSelf(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "mul"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -213,6 +223,8 @@ class TestPutAlongAxisOpAdd(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "add"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -255,6 +267,8 @@ class TestPutAlongAxisOpAddNotIncludeSelf(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "add"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -302,6 +316,8 @@ class TestPutAlongAxisOpMean(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "mean"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -348,6 +364,8 @@ class TestPutAlongAxisOpMeanNotIncludeSelf(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "mean"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -402,6 +420,8 @@ class TestPutAlongAxisOpMin(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "amin"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -445,6 +465,8 @@ class TestPutAlongAxisOpMinNotIncludeSelf(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "amin"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -492,6 +514,8 @@ class TestPutAlongAxisOpMax(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "amax"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -535,6 +559,8 @@ class TestPutAlongAxisOpMaxNotIncludeSelf(TestPutAlongAxisOp):
         self.init_data()
         self.reduce_op = "amax"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -587,6 +613,8 @@ class TestPutAlongAxisBF16Op(OpTest):
         self.init_data()
         self.reduce_op = "assign"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -616,7 +644,11 @@ class TestPutAlongAxisBF16Op(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ["Input", "Value"], "Result", check_pir=True
+            self.place,
+            ["Input", "Value"],
+            "Result",
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_data(self):
@@ -1058,6 +1090,8 @@ class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
         self.axis = 1
         self.axis_type = "int64"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -1108,6 +1142,8 @@ class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
         self.axis = 1
         self.axis_type = "int64"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.target = copy.deepcopy(self.xnp)
@@ -1159,6 +1195,8 @@ class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
         self.axis = 1
         self.axis_type = "int64"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.randint(1, 5, self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -1208,6 +1246,8 @@ class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
         self.axis = 1
         self.axis_type = "int64"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.randint(1, 5, self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.
@@ -1257,6 +1297,8 @@ class TestPutAlongAxisAPIMulUint8(unittest.TestCase):
         self.axis = 1
         self.axis_type = "int64"
         self.op_type = "put_along_axis"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.randint(1, 5, self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace operation.

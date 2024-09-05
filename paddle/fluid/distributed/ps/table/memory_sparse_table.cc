@@ -88,7 +88,7 @@ int32_t MemorySparseTable::InitializeValue() {
     PADDLE_ENFORCE_LE(
         _m_avg_local_shard_num,
         _avg_local_shard_num,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The calculated '_m_avg_local_shard_num' (%d) must be less than or "
             "equal to '_avg_local_shard_num' (%d).",
             _m_avg_local_shard_num,
@@ -99,7 +99,7 @@ int32_t MemorySparseTable::InitializeValue() {
     PADDLE_ENFORCE_LE(
         _m_real_local_shard_num,
         _real_local_shard_num,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The calculated '_m_real_local_shard_num' (%d) must be less than "
             "or equal to '_real_local_shard_num' (%d).",
             _m_real_local_shard_num,
@@ -966,7 +966,7 @@ int32_t MemorySparseTable::Pull(TableContext &context) {
   PADDLE_ENFORCE_EQ(
       context.value_type,
       Sparse,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The 'value_type' in context must be 'Sparse', but received %d.",
           context.value_type));
   if (context.use_ptr) {
@@ -985,7 +985,7 @@ int32_t MemorySparseTable::Push(TableContext &context) {
   PADDLE_ENFORCE_EQ(
       context.value_type,
       Sparse,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The 'value_type' in context must be 'Sparse', but received %d.",
           context.value_type));
   if (!context.use_ptr) {

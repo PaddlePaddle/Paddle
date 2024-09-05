@@ -202,20 +202,20 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
     const ir::Expr& lhs, const ir::Expr& rhs) const {
   PADDLE_ENFORCE_EQ(rhs.is_var(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Rhs in ProveDivisible must be a var temporarily!\n"));
-  PADDLE_ENFORCE_EQ(
-      lhs.defined(),
-      true,
-      phi::errors::InvalidArgument("Lhs in ProveDivisible must be defined."));
-  PADDLE_ENFORCE_EQ(
-      rhs.defined(),
-      true,
-      phi::errors::InvalidArgument("Rhs in ProveDivisible must be defined."));
+  PADDLE_ENFORCE_EQ(lhs.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Lhs in ProveDivisible must be defined."));
+  PADDLE_ENFORCE_EQ(rhs.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Rhs in ProveDivisible must be defined."));
   PADDLE_ENFORCE_EQ(
       cinn::common::IsPureMath(lhs),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Lhs in ProveDivisible must be a pure math expression."));
 
   ir::Expr lhs_copy = ir::ir_utils::IRCopy(lhs);
@@ -261,7 +261,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
       ops = lhs.As<ir::Sum>()->operands();
       PADDLE_ENFORCE_NE(ops.empty(),
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "Operands in Sum node should not be empty."));
       std::for_each(ops.begin(), ops.end(), [&](const ir::Expr& expr) {
         res = OptionalAnd(res, this->ProveDivisible(expr, rhs));
@@ -273,7 +273,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
       ops = lhs.As<ir::Product>()->operands();
       PADDLE_ENFORCE_NE(ops.empty(),
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "Operands in Sum node should not be empty."));
       std::for_each(ops.begin(), ops.end(), [&](const ir::Expr& expr) {
         res = OptionalOr(res, this->ProveDivisible(expr, rhs));

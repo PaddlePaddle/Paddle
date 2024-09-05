@@ -66,22 +66,26 @@ class TestMultiLoad(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_multi_load(self):
-        x = paddle.full([2, 4], 2)
-        model = Net()
-        with enable_to_static_guard(False):
-            forward_out1 = model.forward(x)
-            infer_out1 = model.infer(x)
-        model_path = os.path.join(self.temp_dir.name, 'multi_program')
-        paddle.jit.save(model, model_path, combine_params=True)
-        place = paddle.CPUPlace()
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-        jit_layer = Layer()
-        jit_layer.load(model_path, place)
-        forward_out2 = jit_layer.forward(x)
-        infer_out2 = jit_layer.infer(x)
-        np.testing.assert_allclose(forward_out1, forward_out2[0], rtol=1e-05)
-        np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
+        with paddle.pir_utils.OldIrGuard():
+            paddle.disable_static()
+            x = paddle.full([2, 4], 2)
+            model = Net()
+            with enable_to_static_guard(False):
+                forward_out1 = model.forward(x)
+                infer_out1 = model.infer(x)
+            model_path = os.path.join(self.temp_dir.name, 'multi_program')
+            paddle.jit.save(model, model_path, combine_params=True)
+            place = paddle.CPUPlace()
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            jit_layer = Layer()
+            jit_layer.load(model_path, place)
+            forward_out2 = jit_layer.forward(x)
+            infer_out2 = jit_layer.infer(x)
+            np.testing.assert_allclose(
+                forward_out1, forward_out2[0], rtol=1e-05
+            )
+            np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
 
     @test_with_dygraph_pir
     def test_multi_jit_load(self):
@@ -122,18 +126,20 @@ class TestMKLOutput(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_mkl_output(self):
-        with _dygraph_place_guard(place=paddle.CPUPlace()):
-            net = SaveLinear()
-            model_path = os.path.join(self.temp_dir.name, 'save_linear')
-            paddle.jit.save(net, model_path, combine_params=True)
+        with paddle.pir_utils.OldIrGuard():
+            paddle.disable_static()
+            with _dygraph_place_guard(place=paddle.CPUPlace()):
+                net = SaveLinear()
+                model_path = os.path.join(self.temp_dir.name, 'save_linear')
+                paddle.jit.save(net, model_path, combine_params=True)
 
-            layer = Layer()
-            print("load ", model_path)
-            layer.load(model_path, paddle.CPUPlace())
-            x = paddle.ones([498, 80])
-            out = layer.forward(x)
-            out = paddle.unsqueeze(out[0], 0)
-            np.testing.assert_equal(out.shape, [1, 498, 80])
+                layer = Layer()
+                print("load ", model_path)
+                layer.load(model_path, paddle.CPUPlace())
+                x = paddle.ones([498, 80])
+                out = layer.forward(x)
+                out = paddle.unsqueeze(out[0], 0)
+                np.testing.assert_equal(out.shape, [1, 498, 80])
 
     @test_with_dygraph_pir
     def test_mkl_jit_output(self):

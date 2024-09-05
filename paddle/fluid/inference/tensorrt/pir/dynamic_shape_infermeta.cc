@@ -26,7 +26,7 @@ nvinfer1::DimsExprs UnchangedInferMeta(
     const ::pir::AttributeMap& op_attributes) {
   PADDLE_ENFORCE_EQ(nb_inputs,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "inputs of UnchangedInferMeta should be equal to 1, "
                         "But received (%s)",
                         nb_inputs));
@@ -80,9 +80,9 @@ nvinfer1::DimsExprs UnfoldInferMeta(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
-      phi::errors::InvalidArgument("inputs of unfold should be equal to 1, "
-                                   "But received (%s)",
-                                   nb_inputs));
+      common::errors::InvalidArgument("inputs of unfold should be equal to 1, "
+                                      "But received (%s)",
+                                      nb_inputs));
 
   const nvinfer1::DimsExprs in_dims = inputs[0];
   std::vector<const nvinfer1::IDimensionExpr*> out_dims;

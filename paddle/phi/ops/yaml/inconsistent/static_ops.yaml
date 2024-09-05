@@ -220,16 +220,6 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : distributed_fused_lamb
-  args : (Tensor[] param, Tensor[] grad, Tensor fp32_fused_param, Tensor fp32_fused_grad, Tensor fp16_fused_param, Tensor fp16_fused_grad, Tensor moment1, Tensor moment2, Tensor beta1pow, Tensor beta2pow, Tensor fused_param_offsets, Tensor fp32_shard_fused_param_offsets, Tensor fp16_shard_fused_param_offsets, Tensor param_info, Tensor param_order, Tensor learning_rate, Tensor global_scale, float beta1, float beta2, float epsilon, float max_global_grad_norm, float weight_decay, bool clip_after_allreduce, int[] ring_ids= {}, int acc_steps = 1, bool use_master_param_norm = true, bool use_master_acc_grad = true, bool is_grad_scaled_by_nranks = true, int64_t nranks = 1, bool use_hierarchical_allreduce = false)
-  output : Tensor(fp32_fused_param_out), Tensor(fp16_fused_param_out), Tensor(fp32_acc_fused_grad), Tensor(fp16_acc_fused_grad), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1pow_out), Tensor(beta2pow_out), Tensor[](param_out){param.size()}, Tensor(found_inf), Tensor(acc_step), Tensor(stop_update), Tensor(step)
-  kernel :
-    func : distributed_fused_lamb
-    data_type : DataType::FLOAT32
-    param : [param, grad, fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad, moment1, moment2, beta1pow, beta2pow, fused_param_offsets, fp32_shard_fused_param_offsets, fp16_shard_fused_param_offsets, param_info, param_order, learning_rate, global_scale, acc_steps, beta1, beta2, epsilon, max_global_grad_norm, weight_decay, clip_after_allreduce, use_master_param_norm, use_master_acc_grad, is_grad_scaled_by_nranks, use_hierarchical_allreduce, nranks, ring_ids]
-  optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad, fp32_fused_param_out, fp16_fused_param_out, fp32_acc_fused_grad, fp16_acc_fused_grad, acc_step, stop_update
-  inplace : (fp32_fused_param -> fp32_fused_param_out), (fp16_fused_param -> fp16_fused_param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1pow -> beta1pow_out), (beta2pow -> beta2pow_out), (param -> param_out)
-
 - op : distributed_lookup_table
   args : (Tensor[] ids, Tensor w, int table_id = 0, bool is_distributed = false, str lookup_table_version = "lookup_table", int64_t padding_idx = -1, DataType dtype = DataType::FLOAT32, bool is_test = false)
   output : Tensor[](outputs){ids.size()}
@@ -344,6 +334,25 @@
   optional : skip_update, master_params, master_params_out
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
+- op : fused_gate_attention
+  args: (Tensor query, Tensor key, Tensor query_weight, Tensor key_weight, Tensor
+    value_weight, Tensor qkv_weight, Tensor nonbatched_bias, Tensor src_mask, Tensor
+    gate_weight, Tensor gate_bias, Tensor out_linear_weight, Tensor out_linear_bias,
+    bool has_gating = true, bool merge_qkv = true, bool use_flash_attn = false)
+  output: Tensor (query_transpose_out), Tensor (key_transpose_out), Tensor (value_transpose_out),
+    Tensor (qkv_transpose_out), Tensor (softmax_out), Tensor (softmax_lse), Tensor
+    (fmha_out), Tensor (gate_out), Tensor (out)
+  infer_meta:
+    func: FusedGateAttentionInferMeta
+  kernel:
+    func: fused_gate_attention
+  optional: key, query_weight, key_weight, value_weight, qkv_weight, nonbatched_bias,
+    gate_weight, gate_bias, query_transpose_out, key_transpose_out, value_transpose_out,
+    qkv_transpose_out, softmax_lse, gate_out
+  intermediate: query_transpose_out, key_transpose_out, value_transpose_out, qkv_transpose_out,
+    softmax_out, softmax_lse, fmha_out, gate_out
+  backward: fused_gate_attention_grad
+
 - op : fused_multi_transformer_int8
   args: (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkv_w, Tensor[]
     qkv_bias, Tensor[] cache_kv, Tensor time_step, Tensor src_mask, Tensor[] out_linear_w,
@@ -431,6 +440,7 @@
   kernel :
     func : hardswish
   backward : hardswish_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hash
   args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
@@ -856,7 +866,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : soft_relu
-  args : (Tensor x, float threshold = 20.0f)
+  args : (Tensor x, float threshold = 40.0f)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -864,6 +874,7 @@
   kernel :
     func : soft_relu
   backward : soft_relu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softmax
   args : (Tensor x, int axis)

@@ -20,7 +20,6 @@ from functools import reduce
 import paddle
 from paddle.base import core
 from paddle.base.framework import Parameter, Program
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
@@ -35,7 +34,8 @@ from paddle.distributed.auto_parallel.static.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     use_new_executor,
 )
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..auto_parallel.static.utils import OpRole
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -747,30 +747,6 @@ def forward_complete_op_role(main_program):
                     iop = right_idx + 1
     if first_left_op_role is None and first_right_op_role is None:
         raise ValueError("all the ops don't have the op_role.")
-
-
-# complete the op_role of the new added ops
-@signature_safe_contextmanager
-def auto_complete_op_role(program, op_role, insert_point):
-    initial_num_ops = program.num_ops()
-    origin_insert_point = insert_point
-
-    try:
-        yield
-    finally:
-        current_num_ops = program.num_ops()
-
-        if op_role is not None and current_num_ops > initial_num_ops:
-            for _ in range(current_num_ops - initial_num_ops):
-                new_added_op = insert_point.prev()
-                if new_added_op.op_role is not None:
-                    break
-
-                new_added_op.op_role = op_role
-                paddle.pir.set_insertion_point(new_added_op)
-                insert_point = paddle.pir.get_current_insertion_point()
-
-            paddle.pir.set_insertion_point(origin_insert_point)
 
 
 def infer_chunk_id(op_idx, ops, with_dist=True):

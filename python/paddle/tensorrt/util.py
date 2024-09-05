@@ -95,6 +95,7 @@ def predict_program(program, feed_data, fetch_var_list):
 
 
 def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
+    paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
@@ -110,3 +111,4 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
                 executor.run(
                     program, feed=max_shape_feed, fetch_list=[output_var]
                 )
+    paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
