@@ -276,16 +276,30 @@ class TensorDtypeVariable(DataVariable):
                 self.tracker.obj.tracker.trace_value_from_frame()
             )
             dtype_str, dtype_free_vars = stringify_pyobject(self.value)
+            # TODO(cleanup-legacy-ir): Remove this branch after we remove legacy IR
+            if not paddle.framework.use_pir_api():
+                return [
+                    StringifiedExpression(
+                        f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
+                        [tensor_value_tracer],
+                        union_free_vars(
+                            {"MetaInfo": MetaInfo},
+                            tensor_value_tracer.free_vars,
+                            dtype_free_vars,
+                        ),
+                    )
+                ]
             return [
                 StringifiedExpression(
-                    f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
+                    f"{{}}.dtype == {dtype_str}",
                     [tensor_value_tracer],
                     union_free_vars(
-                        {"MetaInfo": MetaInfo},
+                        tensor_value_tracer.free_vars,
                         dtype_free_vars,
                     ),
                 )
             ]
+
         else:
             return object_equal_stringified_guard(self)
 
@@ -418,19 +432,55 @@ class TensorVariable(VariableBase):
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-            str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
-        else:
-            str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
+        # TODO(cleanup-legacy-ir): Remove this branch after we remove legacy IR
+        if not paddle.framework.use_pir_api():
+            if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+                str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
+            else:
+                str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
+            return [
+                StringifiedExpression(
+                    f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
+                    [frame_value_tracer],
+                    union_free_vars(
+                        {"MetaInfo": MetaInfo},
+                        frame_value_tracer.free_vars,
+                    ),
+                )
+            ]
+
+        # A quick check path for PIR, we don't need dtype conversion for AMP in PIR
+        meta = self.origin_meta
+        dtype_str, dtype_free_vars = stringify_pyobject(meta.dtype)
         return [
+            # Check rank
             StringifiedExpression(
-                f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
+                f"len({{}}.shape) == {len(meta.shape)}",
                 [frame_value_tracer],
-                union_free_vars(
-                    {"MetaInfo": MetaInfo},
-                    frame_value_tracer.free_vars,
-                ),
-            )
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            # Check each dim except dynamic dim
+            *[
+                StringifiedExpression(
+                    f"{{}}.shape[{i}] == {meta.shape[i]}",
+                    [frame_value_tracer],
+                    union_free_vars(frame_value_tracer.free_vars),
+                )
+                for i in range(len(meta.shape))
+                if not isinstance(meta.shape[i], SymbolicInt)
+            ],
+            # Check dtype
+            StringifiedExpression(
+                f"{{}}.dtype == {dtype_str}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars, dtype_free_vars),
+            ),
+            # Check stop_gradient
+            StringifiedExpression(
+                f"{{}}.stop_gradient == {meta.stop_gradient!r}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
         ]
 
     def get_iter(self):
