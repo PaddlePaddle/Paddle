@@ -62,8 +62,7 @@ def TopPProcess(probs, top_p):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA/XPU ",
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
 )
 class TestTopPAPI(unittest.TestCase):
     def setUp(self):
