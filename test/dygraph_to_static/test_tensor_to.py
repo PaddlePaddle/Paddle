@@ -89,6 +89,10 @@ def to_device_dtype_blocking(tensorx, device, dtype, blocking):
     return tensorx.to(device, dtype, blocking)
 
 
+def to_kwargs_device(tensorx, device):
+    return tensorx.to(device=device)
+
+
 def to_kwargs_device_dtype_blocking(tensorx, device, dtype, blocking):
     return tensorx.to(device=device, dtype=dtype, blocking=blocking)
 
@@ -113,6 +117,17 @@ class TensorToTest(Dy2StTestBase):
             t = paddle.jit.to_static(to_dtype)(tensorx, dtype)
             typex_str = str(t.dtype)
             self.assertEqual(typex_str, "paddle." + dtype)
+
+    @test_pir_only
+    def test_tensor_to_device(self):
+        if paddle.is_compiled_with_cuda():
+            x = paddle.to_tensor([1, 2, 3], place="gpu")
+        else:
+            x = paddle.to_tensor([1, 2, 3])
+
+        y = paddle.to_tensor([1, 2, 3], place="cpu")
+        y = paddle.jit.to_static(to_kwargs_device)(y, x.place)
+        self.assertEqual(str(x.place), str(y.place))
 
     @test_pir_only
     def test_tensor_to_device2(self):
