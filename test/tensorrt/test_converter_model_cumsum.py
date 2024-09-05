@@ -38,7 +38,6 @@ class TestConverterCumsumOp(unittest.TestCase):
         )
 
     def test_paddle_to_tensorrt_conversion_cumsum(self):
-        # Step1: get program and init fake inputs
         paddle.enable_static()
         np_x = np.random.randn(9, 10, 11).astype('float32')
 
@@ -74,14 +73,14 @@ class TestConverterCumsumOp(unittest.TestCase):
                 config.enable_new_executor()
                 config.use_optimized_model(True)
 
-            print("main_prog", main_prog)
+            # Set input
 
             input_config = Input(
                 min_input_shape=(9, 10, 11),
                 optim_input_shape=(9, 10, 11),
                 max_input_shape=(9, 10, 11),
             )
-
+            # Create a TensorRTConfig with inputs as a required field.
             trt_config = TensorRTConfig(inputs=[input_config])
 
             trt_save_path = os.path.join(self.temp_dir.name, 'trt')
@@ -89,8 +88,10 @@ class TestConverterCumsumOp(unittest.TestCase):
             trt_config.disable_ops = "pd_op.matmul"
 
             model_dir = self.save_path
+            # Obtain tensorrt_engine_op by passing the model path and trt_config.(converted_program)
             program_with_trt = export_loaded_model(model_dir, trt_config)
 
+            # Create a config for inference.
             config = paddle_infer.Config(
                 trt_config.save_model_dir + '.json',
                 trt_config.save_model_dir + '.pdiparams',
@@ -106,7 +107,6 @@ class TestConverterCumsumOp(unittest.TestCase):
         paddle.disable_static()
         for i, input_instrance in enumerate(trt_config.inputs):
             min_data, _, max_data = input_instrance[i].generate_input_data()
-            # print("min_data",min_data)
             model_inputs = paddle.to_tensor(min_data)
             output_converted = predictor.run([model_inputs])
 

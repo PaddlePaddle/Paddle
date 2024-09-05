@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .converter import PaddleToTensorRTConverter
+from .export import Input, TensorRTConfig, export, export_loaded_model
 
-__all__ = ['PaddleToTensorRTConverter']
+__all__ = [
+    'Input',
+    'TensorRTConfig',
+    'export',
+    'export_loaded_model',
+]

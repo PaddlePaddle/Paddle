@@ -128,9 +128,11 @@ def converter_to_trt(program, trt_config, scope):
 
     with paddle.pir_utils.IrGuard():
         for i, input_instance in enumerate(trt_config.inputs):
+            # get fake inputs
             min_data, _, max_data = input_instance[i].generate_input_data()
             program_with_output = program.list_vars()[-1]
 
+            # run warmup for collecting shape
             warmup_shape_infer(
                 program,
                 min_shape_feed={feed_name[0]: min_data},
@@ -138,12 +140,14 @@ def converter_to_trt(program, trt_config, scope):
                 fetch_var_list=output_var,
             )
 
+        # run pir pass (including trt_op_marker_pass)
         program_with_pir = run_pir_pass(program, partition_mode=False)
-        # Step3: run pir pass (including trt_op_marker_pass)
 
+        # specify certain operators to be excluded from entering TensorRT
         if trt_config.disable_ops:
             trt_config.forbid_op_lower_trt(program, trt_config.disable_ops)
 
+        # run pir pass (including trt_sub_graph_extract_pass)
         program_with_pir = run_pir_pass(program, partition_mode=True)
         trt_output_var = []
 
@@ -157,7 +161,7 @@ def converter_to_trt(program, trt_config, scope):
         converter = PaddleToTensorRTConverter(program_with_pir, scope)
         converter.convert_program_to_trt()
 
-        # Save PIR program as JSON,using predictor.run requires setting is_save_program to True
+        # Save PIR program as JSON
         if trt_config.save_model_dir:
             input_values = []
             input_values.extend(
@@ -216,7 +220,6 @@ def export_loaded_model(model_dir, trt_config):
     params_filename = model_dir + '.pdiparams'
 
     with paddle.pir_utils.IrGuard():
-        # Load the model
         [program, feed_target_names, fetch_targets] = (
             paddle.static.io.load_inference_model(
                 model_dir,
