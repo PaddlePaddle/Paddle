@@ -21,10 +21,43 @@ namespace optim {
 
 /**
  * Check if blocks can merge.
+ * @param source The expr to check.
+ * @param block_name1 The block name.
+ * @param block_name2 Another block name.
+ * @return Return if two block's for extents equal currently.
+ */
+/**
+ * Example 1: CanMergeBlocks(source, "var_B", "var_C")
+ * block(var_B)
+ *   for(i, 0, 10)
+ *     for(j, 0, 10)
+ *        B[i,j] = A[i,j]
+ *
+ * block(var_C)
+ *   for(i, 0, 10)
+ *     for(j, 0, 10)
+ *        C[i,j] = A[i,j]
+ * =>
+ * Return value:
+ * true
+ *
+ * Example 2: CanMergeBlocks(source, "var_B", "var_C")
+ * block(var_B)
+ *   for(i, 0, 10)
+ *     for(j, 0, 10)
+ *        B[i,j] = A[i,j]
+ *
+ * block(var_C)
+ *   for(i, 0, 3)
+ *     for(j, 0, 4)
+ *        C[i,j] = A[i,j]
+ * =>
+ * Return value:
+ * false
  */
 bool CanMergeBlocks(ir::Expr* source,
-                    const ir::ScheduleBlock* block1,
-                    const ir::ScheduleBlock* block2);
+                    const std::string& block_name1,
+                    const std::string& block_name2);
 
 }  // namespace optim
 }  // namespace cinn

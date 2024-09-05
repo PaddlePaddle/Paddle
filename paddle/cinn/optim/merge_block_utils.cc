@@ -29,9 +29,8 @@ struct ForVarExtent {
 
 struct ForInfoChecker : public ir::IRMutator<Expr*> {
  public:
-  ForInfoChecker(const ir::ScheduleBlock* block1,
-                 const ir::ScheduleBlock* block2)
-      : block1_(block1), block2_(block2) {}
+  ForInfoChecker(const std::string& block_name1, const std::string& block_name2)
+      : block_name1_(block_name1), block_name2_(block_name2) {}
 
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -55,13 +54,13 @@ struct ForInfoChecker : public ir::IRMutator<Expr*> {
     if (block_name_to_for_var_extents_.size() <= 1) {
       return false;
     }
-    if (block_name_to_for_var_extents_.count(block1_->name) == 0 ||
-        block_name_to_for_var_extents_.count(block2_->name) == 0) {
+    if (block_name_to_for_var_extents_.count(block_name1_) == 0 ||
+        block_name_to_for_var_extents_.count(block_name2_) == 0) {
       return false;
     }
 
-    return ForVarExtentEqual(block_name_to_for_var_extents_[block1_->name],
-                             block_name_to_for_var_extents_[block2_->name]);
+    return ForVarExtentEqual(block_name_to_for_var_extents_[block_name1_],
+                             block_name_to_for_var_extents_[block_name2_]);
   }
 
  private:
@@ -74,7 +73,7 @@ struct ForInfoChecker : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::ScheduleBlock* op, ir::Expr* expr) {
     auto* node = expr->As<ir::ScheduleBlock>();
-    if (node->name == block1_->name || node->name == block2_->name) {
+    if (node->name == block_name1_ || node->name == block_name2_) {
       block_name_to_for_var_extents_[node->name] = for_var_extents_;
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -84,14 +83,14 @@ struct ForInfoChecker : public ir::IRMutator<Expr*> {
   std::unordered_map<std::string, std::vector<ForVarExtent>>
       block_name_to_for_var_extents_;
 
-  const ir::ScheduleBlock* block1_;
-  const ir::ScheduleBlock* block2_;
+  const std::string& block_name1_;
+  const std::string& block_name2_;
 };
 
 bool CanMergeBlocks(ir::Expr* source,
-                    const ir::ScheduleBlock* block1,
-                    const ir::ScheduleBlock* block2) {
-  ForInfoChecker for_info_checker(block1, block2);
+                    const std::string& block_name1,
+                    const std::string& block_name2) {
+  ForInfoChecker for_info_checker(block_name1, block_name2);
   for_info_checker(source);
   return for_info_checker.IsBlockForEqual();
 }
