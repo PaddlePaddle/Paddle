@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO(megemini):
+
 #include "paddle/phi/kernels/fused_adam_kernel.h"
 #include <vector>
 #include "glog/logging.h"
@@ -70,6 +72,7 @@ template <typename T,
           bool IsMultiPrecision,
           bool IsCPUBetaPow,
           bool UseAdamW,
+          bool AMSGrad,
           int N,
           int MaxTensorSize,
           int MaxBlockSize>
@@ -88,7 +91,9 @@ struct FusedAdamFunctor {
     MT beta2_pow = beta_pow.GetBeta2PowValue();
     T* __restrict__ p_ptr;
     const T* __restrict__ g_ptr;
-    MT* __restrict__ mom1_ptr, * __restrict__ mom2_ptr;
+    MT* __restrict__ mom1_ptr;
+    MT* __restrict__ mom2_ptr;
+    MT* __restrict__ mom2_max_ptr;
     MT* __restrict__ mp_ptr;
     int n;
 
@@ -102,9 +107,11 @@ struct FusedAdamFunctor {
       p_ptr = static_cast<T*>(t_info.tensor_addrs[0][tensor_id]) + offset;
       mom1_ptr = static_cast<MT*>(t_info.tensor_addrs[1][tensor_id]) + offset;
       mom2_ptr = static_cast<MT*>(t_info.tensor_addrs[2][tensor_id]) + offset;
+      mom2_max_ptr =
+          static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]) + offset;
       mp_ptr =
           IsMultiPrecision
-              ? static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]) + offset
+              ? static_cast<MT*>(t_info.tensor_addrs[4][tensor_id]) + offset
               : nullptr;
 
       n -= offset;
@@ -122,6 +129,7 @@ struct FusedAdamFunctor {
       phi::AlignedVector<MT, VecSize> mp_vec;
       phi::AlignedVector<MT, VecSize> mom1_vec;
       phi::AlignedVector<MT, VecSize> mom2_vec;
+      phi::AlignedVector<MT, VecSize> mom2_max_vec;
       if (idx <= n - VecSize) {
         if (IsMultiPrecision) {
           phi::Load<MT, VecSize>(mp_ptr + idx, &mp_vec);
@@ -131,6 +139,7 @@ struct FusedAdamFunctor {
         phi::Load<T, VecSize>(g_ptr + idx, &g_vec);
         phi::Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
         phi::Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
+        phi::Load<MT, VecSize>(mom2_max_ptr + idx, &mom2_max_vec);
       } else {
         int size = n - idx;
         for (int j = 0; j < size; j++) {
@@ -142,6 +151,7 @@ struct FusedAdamFunctor {
           g_vec[j] = g_ptr[idx + j];
           mom1_vec[j] = static_cast<MT>(mom1_ptr[idx + j]);
           mom2_vec[j] = static_cast<MT>(mom2_ptr[idx + j]);
+          mom2_max_vec[j] = static_cast<MT>(mom2_max_ptr[idx + j]);
         }
 #pragma unroll
         for (int j = size; j < VecSize; j++) {
@@ -150,6 +160,7 @@ struct FusedAdamFunctor {
           mp_vec[j] = MT(0);
           mom1_vec[j] = MT(0);
           mom2_vec[j] = MT(0);
+          mom2_max_vec[j] = MT(0);
         }
       }
 
@@ -158,12 +169,14 @@ struct FusedAdamFunctor {
         MT p = IsMultiPrecision ? mp_vec[j] : static_cast<MT>(p_vec[j]);
         UpdateMoments(&mom1_vec[j],
                       &mom2_vec[j],
+                      &mom2_max_vec[j],
                       static_cast<MT>(g_vec[j]),
                       beta1,
                       beta2);
         mp_vec[j] = UpdateParameter(p,
                                     mom1_vec[j],
                                     mom2_vec[j],
+                                    mom2_max_vec[j],
                                     beta1_pow,
                                     beta2_pow,
                                     lr,
@@ -174,6 +187,7 @@ struct FusedAdamFunctor {
       if (idx <= n - VecSize) {
         phi::Store<MT, VecSize>(mom1_vec, mom1_ptr + idx);
         phi::Store<MT, VecSize>(mom2_vec, mom2_ptr + idx);
+        phi::Store<MT, VecSize>(mom2_max_vec, mom2_max_ptr + idx);
         if (IsMultiPrecision) {
           phi::Store<MT, VecSize>(mp_vec, mp_ptr + idx);
         }
@@ -189,6 +203,7 @@ struct FusedAdamFunctor {
           p_ptr[idx + j] = static_cast<T>(mp_vec[j]);
           mom1_ptr[idx + j] = mom1_vec[j];
           mom2_ptr[idx + j] = mom2_vec[j];
+          mom2_max_ptr[idx + j] = mom2_max_vec[j];
         }
       }
     }
@@ -198,21 +213,26 @@ struct FusedAdamFunctor {
   static __device__ __forceinline__ void UpdateMoments(
       MT* __restrict__ mom1_ptr,
       MT* __restrict__ mom2_ptr,
+      MT* __restrict__ mom2_max_ptr,
       MT g,
       MT beta1,
       MT beta2) {
     MT mom1 = static_cast<MT>(mom1_ptr[0]);
     MT mom2 = static_cast<MT>(mom2_ptr[0]);
+    MT mom2_max = static_cast<MT>(mom2_max_ptr[0]);
+
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
     mom1_ptr[0] = mom1;
     mom2_ptr[0] = mom2;
+    mom2_max_ptr[0] = std::max(mom2, mom2_max);
   }
 
   static __device__ __forceinline__ MT UpdateParameter(MT p,
                                                        MT mom1,
                                                        MT mom2,
+                                                       MT mom2_max,
                                                        MT beta1_pow,
                                                        MT beta2_pow,
                                                        MT lr,
@@ -221,7 +241,15 @@ struct FusedAdamFunctor {
     if (UseAdamW) {
       p *= (static_cast<MT>(1.0) - lr * decay);
     }
-    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+
+    MT denom;
+    if (AMSGrad) {
+      denom =
+          (sqrt(mom2_max) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    } else {
+      denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    }
+
     p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
     return p;
   }
@@ -350,7 +378,7 @@ void FusedAdamKernel(
   MPDType beta2_tmp = beta2.to<MPDType>();
 
   std::vector<std::vector<DenseTensor*>> input_vector;
-  input_vector.reserve(4);
+  input_vector.reserve(5);
 
   input_vector.push_back(params_out);
   input_vector.push_back(moments1_out);
@@ -364,9 +392,9 @@ void FusedAdamKernel(
   VLOG(4) << "multi_precision: " << multi_precision;
 
 #define PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(                       \
-    __multi_precision, __is_cpu_betapow, __use_adamw, __vec_size)            \
+    __multi_precision, __is_cpu_betapow, __use_adamw, __amsgrad, __vec_size) \
   do {                                                                       \
-    constexpr int kInputNum = __multi_precision ? 5 : 4;                     \
+    constexpr int kInputNum = __multi_precision ? 6 : 5;                     \
     constexpr int kMaxTensorSize = __multi_precision ? 48 : 60;              \
     constexpr int kMaxBlockSize = __multi_precision ? 320 : 320;             \
     constexpr int kBlockSize = 512;                                          \
@@ -378,6 +406,7 @@ void FusedAdamKernel(
                      __multi_precision,                                      \
                      __is_cpu_betapow,                                       \
                      __use_adamw,                                            \
+                     __amsgrad,                                              \
                      kInputNum,                                              \
                      kMaxTensorSize,                                         \
                      kMaxBlockSize>                                          \
@@ -404,37 +433,77 @@ void FusedAdamKernel(
     if (multi_precision) {                                   \
       if (is_cpu_betapow) {                                  \
         if (use_adamw) {                                     \
-          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
-              true, true, true, __vec_size);                 \
+          if (amsgrad) {                                     \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                true, true, true, true, __vec_size);         \
+          } else {                                           \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                true, true, true, false, __vec_size);        \
+          }                                                  \
         } else {                                             \
-          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
-              true, true, false, __vec_size);                \
+          if (amsgrad) {                                     \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                true, true, false, true, __vec_size);        \
+          } else {                                           \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                true, true, false, false, __vec_size);       \
+          }                                                  \
         }                                                    \
       } else {                                               \
         if (use_adamw) {                                     \
-          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
-              true, false, true, __vec_size);                \
+          if (amsgrad) {                                     \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                true, false, true, true, __vec_size);        \
+          } else {                                           \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                true, false, true, false, __vec_size);       \
+          }                                                  \
         } else {                                             \
-          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
-              true, false, false, __vec_size);               \
+          if (amsgrad) {                                     \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                true, false, false, true, __vec_size);       \
+          } else {                                           \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                true, false, false, false, __vec_size);      \
+          }                                                  \
         }                                                    \
       }                                                      \
     } else {                                                 \
       if (is_cpu_betapow) {                                  \
         if (use_adamw) {                                     \
-          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
-              false, true, true, __vec_size);                \
+          if (amsgrad) {                                     \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                false, true, true, true, __vec_size);        \
+          } else {                                           \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                false, true, true, false, __vec_size);       \
+          }                                                  \
         } else {                                             \
-          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
-              false, true, false, __vec_size);               \
+          if (amsgrad) {                                     \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                false, true, false, true, __vec_size);       \
+          } else {                                           \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                false, true, false, false, __vec_size);      \
+          }                                                  \
         }                                                    \
       } else {                                               \
         if (use_adamw) {                                     \
-          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
-              false, false, true, __vec_size);               \
+          if (amsgrad) {                                     \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                false, false, true, true, __vec_size);       \
+          } else {                                           \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                false, false, true, false, __vec_size);      \
+          }                                                  \
         } else {                                             \
-          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
-              false, false, false, __vec_size);              \
+          if (amsgrad) {                                     \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                false, false, false, true, __vec_size);      \
+          } else {                                           \
+            PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(   \
+                false, false, false, false, __vec_size);     \
+          }                                                  \
         }                                                    \
       }                                                      \
     }                                                        \
@@ -443,7 +512,6 @@ void FusedAdamKernel(
   int vec_size = GetVecSizeFromTensors<T>(params_out);
   vec_size = GetVecSizeFromTensors<MPDType>(moments1_out, vec_size);
   vec_size = GetVecSizeFromTensors<MPDType>(moments2_out, vec_size);
-  // TODO(megemini):
   vec_size = GetVecSizeFromTensors<MPDType>(moments2_max_out, vec_size);
   if (master_params) {
     vec_size = GetVecSizeFromTensors<MPDType>(master_params_out, vec_size);
@@ -503,12 +571,13 @@ PD_REGISTER_KERNEL(fused_adam,
                    float,
                    double) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(5).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(6).SetDataType(phi::DataType::UNDEFINED);
 }
