@@ -455,7 +455,7 @@ class TestINT64GetitemInDygraph(TestGetitemInDygraph):
 class TestBOOLGetitemInDygraph(TestGetitemInDygraph):
     def setUp(self):
         paddle.disable_static()
-        self.ndtype = np.bool8
+        self.ndtype = np.bool_
         self.dtype = 'bool'
 
 
@@ -762,7 +762,7 @@ class TestFP32GetitemGradInDygraph(TestGetitemGrad):
 class TestBOOLGetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
-        self.ndtype = np.bool8
+        self.ndtype = np.bool_
         self.dtype = 'bool'
 
 

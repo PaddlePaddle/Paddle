@@ -413,9 +413,9 @@ class TestFillConstantImperative(unittest.TestCase):
 
     def test_ninf(self):
         with base.dygraph.guard():
-            res = paddle.tensor.fill_constant([1], 'float32', np.NINF)
+            res = paddle.tensor.fill_constant([1], 'float32', -np.inf)
             self.assertTrue(np.isinf(res.numpy().item(0)))
-            self.assertEqual(np.NINF, res.numpy().item(0))
+            self.assertEqual(-np.inf, res.numpy().item(0))
 
 
 class TestFillConstantOpError(unittest.TestCase):
