@@ -346,7 +346,7 @@ def sinh(x: Tensor, name: str | None = None) -> Tensor:
         out = sinh(x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
