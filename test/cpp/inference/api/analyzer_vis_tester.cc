@@ -50,14 +50,14 @@ Record ProcessALine(const std::string &line) {
   for (auto &s : shape_strs) {
     record.shape.push_back(std::stoi(s));
   }
-  std::cout << "data size " << record.data.size();
-  std::cout << "data shape size " << record.shape.size();
+  VLOG(3) << "data size " << record.data.size();
+  VLOG(3) << "data shape size " << record.shape.size();
   return record;
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
-                FLAGS_infer_model + "/inference.pdiparams");
+  cfg->SetModel(FLAGS_infer_model + "/__model__",
+                FLAGS_infer_model + "/__params__");
   cfg->DisableGpu();
   cfg->SwitchIrDebug();
   cfg->SwitchSpecifyInputNames(false);

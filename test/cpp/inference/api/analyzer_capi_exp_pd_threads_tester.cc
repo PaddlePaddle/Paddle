@@ -75,8 +75,8 @@ void threads_run(int thread_num) {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
   PD_ConfigSetModel(config,
-                    (model_dir + "/inference.pdmodel").c_str(),
-                    (model_dir + "/inference.pdiparams").c_str());
+                    (model_dir + "/__model__").c_str(),
+                    (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
 
   std::vector<pthread_t> threads(thread_num);

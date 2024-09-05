@@ -38,8 +38,8 @@ void PD_run() {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
   PD_ConfigSetModel(config,
-                    (model_dir + "/inference.pdmodel").c_str(),
-                    (model_dir + "/inference.pdiparams").c_str());
+                    (model_dir + "/__model__").c_str(),
+                    (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
@@ -92,8 +92,8 @@ TEST(PD_Tensor, int32) {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
   PD_ConfigSetModel(config,
-                    (model_dir + "/inference.pdmodel").c_str(),
-                    (model_dir + "/inference.pdiparams").c_str());
+                    (model_dir + "/__model__").c_str(),
+                    (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
@@ -123,8 +123,8 @@ TEST(PD_Tensor, int64) {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
   PD_ConfigSetModel(config,
-                    (model_dir + "/inference.pdmodel").c_str(),
-                    (model_dir + "/inference.pdiparams").c_str());
+                    (model_dir + "/__model__").c_str(),
+                    (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
@@ -154,8 +154,8 @@ TEST(PD_Tensor, uint8) {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
   PD_ConfigSetModel(config,
-                    (model_dir + "/inference.pdmodel").c_str(),
-                    (model_dir + "/inference.pdiparams").c_str());
+                    (model_dir + "/__model__").c_str(),
+                    (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
@@ -189,8 +189,8 @@ std::string read_file(std::string filename) {
 
 TEST(PD_Tensor, from_buffer) {
   PD_Config* config = PD_ConfigCreate();
-  std::string prog_file = FLAGS_infer_model + "/inference.pdmodel";
-  std::string params_file = FLAGS_infer_model + "/inference.pdiparams";
+  std::string prog_file = FLAGS_infer_model + "/__model__";
+  std::string params_file = FLAGS_infer_model + "/__params__";
 
   std::string prog_str = read_file(prog_file);
   std::string params_str = read_file(params_file);

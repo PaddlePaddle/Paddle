@@ -414,6 +414,16 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model
     --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
 
+  # ocr
+  set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
+  if(NOT EXISTS ${OCR_INSTALL_DIR}/ocr.tar.gz)
+    inference_download_and_uncompress_without_verify(
+      ${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
+      "inference-vis-demos/ocr.tar.gz")
+  endif()
+  inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR}
+                              analyzer_vis_tester.cc EXTRA_DEPS common)
+
   ### Image classification tests with fake data
   set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
   set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
