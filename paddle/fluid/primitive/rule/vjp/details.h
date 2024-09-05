@@ -2520,6 +2520,57 @@ void softsign_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void where_grad(const Tensor& condition,
+                const Tensor& x,
+                const Tensor& y,
+                const Tensor& out_grad,
+                Tensor* x_grad,
+                Tensor* y_grad) {
+  Tensor zero;
+  if (has_dynamic_shape(out_grad.shape())) {
+    zero =
+        backend::full_with_tensor<T>(shape<T>(out_grad), 0.0, out_grad.dtype());
+  } else {
+    zero = full<T>(common::vectorize(out_grad.dims()), 0.0, out_grad.dtype());
+  }
+
+  if (x_grad) {
+    Tensor x_grad_tmp = where<T>(condition, out_grad, zero);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+  if (y_grad) {
+    Tensor y_grad_tmp = where<T>(condition, zero, out_grad);
+    set_output<T>(y_grad_tmp, y_grad);
+  }
+}
+
+template <typename T>
+void expm1_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    Tensor x_grad_tmp = out_grad * out + out_grad;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void atan2_grad(const Tensor& x,
+                const Tensor& y,
+                const Tensor& out_grad,
+                Tensor* x_grad,
+                Tensor* y_grad) {
+  Tensor tmp = x * x + y * y;
+  if (x_grad) {
+    Tensor x_grad_tmp = (out_grad * y) / tmp;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (y_grad) {
+    Tensor y_grad_tmp = (-out_grad * x) / tmp;
+    set_output<T>(y_grad_tmp, y_grad);
+  }
+}
+
+template <typename T>
 void put_along_axis_grad(const Tensor& x,
                          const Tensor& index,
                          const Tensor& value,
@@ -2631,6 +2682,15 @@ void put_along_axis_grad(const Tensor& x,
       value_grad_tmp = res * mask;
     }
     set_output<T>(value_grad_tmp, value_grad);
+  }
+}
+
+template <typename T>
+void atan_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    const Tensor one = full_scalar<T>(1.0, x.dtype());
+    Tensor x_grad_tmp = out_grad / (one + x * x);
+    set_output<T>(x_grad_tmp, x_grad);
   }
 }
 
