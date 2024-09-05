@@ -13,8 +13,10 @@
 # limitations under the License.
 
 
+import sys
 import unittest
 
+sys.path.append("../../legacy_test")
 import auto_parallel_gpt_model as modeling
 import numpy as np
 from auto_parallel_gpt_model import (
