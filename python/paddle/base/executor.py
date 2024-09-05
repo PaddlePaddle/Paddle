@@ -1233,7 +1233,11 @@ class _ExecutorCache:
                 type_to_program[job_type] = program
                 value_map_list.append(value_map)
 
-            plan = core.Plan(cached_data.plan.job_list, type_to_program)
+            job_list = []
+            for job in cached_data.plan.job_list():
+                job_list.append(job)
+
+            plan = core.Plan(job_list, type_to_program)
             update_fetch_list = self._update_pir_fetch_list(
                 fetch_list, value_map_list
             )
