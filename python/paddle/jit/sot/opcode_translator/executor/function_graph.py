@@ -30,6 +30,7 @@ import paddle
 from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten
 
+from .....utils.layers_utils import NotSupportedTensorArgumentError
 from ...infer_meta import (
     InferMetaCache,
     LayerInferMetaCache,
@@ -40,6 +41,8 @@ from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Reference, StatementIR, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    BreakGraphError,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -162,6 +165,15 @@ def get_params_and_non_param_symbol(*args, **kwargs):
     return params, non_params
 
 
+def replace_symbolic_var_with_constant_var(inputs):
+    def func(x):
+        if isinstance(x, SymbolicVariable):
+            return x.to_constant()
+        return x
+
+    return map_variables(func, inputs, restore_variable=True)
+
+
 class VariableLoader:
     def __init__(self, store_var_info, pycode_gen):
         self._store_var_info = store_var_info
@@ -194,6 +206,7 @@ class FunctionGraph:
             "side_effects_state",
             "print_variables",
             "inplace_tensors",
+            "need_cache",
         ],
     )
 
@@ -203,6 +216,7 @@ class FunctionGraph:
         self.input_variables = []  # Store variables required within a function
         self.pycode_gen = PyCodeGen(frame, disable_eval_frame=True)
         self.side_effects = SideEffects()
+        self.need_cache = True
         self._global_guarded_variables: OrderedSet[VariableBase] = OrderedSet()
         self._print_variables = []
         self._inplace_tensors = OrderedSet()
@@ -261,6 +275,7 @@ class FunctionGraph:
             side_effects_state=self.side_effects.get_state(),
             print_variables=list(self._print_variables),
             inplace_tensors=OrderedSet(self._inplace_tensors),
+            need_cache=self.need_cache,
         )
 
     def restore_memo(self, memo: FunctionGraph.Memo):
@@ -278,6 +293,7 @@ class FunctionGraph:
         self.side_effects.restore_state(memo.side_effects_state)
         self._print_variables = memo.print_variables
         self._inplace_tensors = memo.inplace_tensors
+        self.need_cache = memo.need_cache
 
     def collect_input_variables(self, inputs: list[VariableBase]):
         """
@@ -432,11 +448,9 @@ class FunctionGraph:
         from ..breakpoint import BreakpointManager
 
         BreakpointManager().on_event("compile_function")
-        graph_fn, (
-            statement_ir,
-            symbolic_inputs,
-            symbolic_outputs,
-        ) = compile_graph_result
+        graph_fn, (statement_ir, symbolic_inputs, symbolic_outputs) = (
+            compile_graph_result
+        )
         compiled_fn_name = f"___graph_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(graph_fn, compiled_fn_name)
@@ -617,13 +631,49 @@ class FunctionGraph:
             compute_fn   : function for add stmt to sir, (func, input_symbols, outputs_symbols, stacks) -> None
             func         : the logical function which will be represent as a stmt
         """
+
+        def try_infer_meta_fn(args, kwargs) -> Any:
+            try:
+                metas = convert_to_meta(args)
+                kwmetas = convert_to_meta(kwargs)
+                return args, kwargs, infer_meta_fn(func, *metas, **kwmetas)
+            except NotSupportedTensorArgumentError as e:
+                bound_arguments = inspect.signature(func).bind(*args, **kwargs)
+                bound_arguments.apply_defaults()
+                if e.name not in bound_arguments.arguments:
+                    # TODO(zrr1999): fallback static shape for all symbolic variables
+                    raise BreakGraphError(
+                        f"Can't find {e.name} in bound arguments."
+                    )
+                original_var = bound_arguments.arguments[e.name]
+                flatten_vars = original_var.flatten_items()
+
+                if not any(
+                    isinstance(arg, SymbolicVariable) for arg in flatten_vars
+                ):
+                    raise e
+
+                args, kwargs = map_if(
+                    (args, kwargs),
+                    pred=lambda x: x is original_var,
+                    true_fn=lambda x: replace_symbolic_var_with_constant_var(x),
+                    false_fn=lambda x: x,
+                )
+
+                metas = convert_to_meta(args)
+                kwmetas = convert_to_meta(kwargs)
+                return args, kwargs, infer_meta_fn(func, *metas, **kwmetas)
+
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            args, kwargs, out_metas = try_infer_meta_fn(args, kwargs)
+        else:
+            metas = convert_to_meta(args)
+            kwmetas = convert_to_meta(kwargs)
+            out_metas = infer_meta_fn(func, *metas, **kwmetas)
+
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))
 
-        metas = convert_to_meta(args)
-        kwmetas = convert_to_meta(kwargs)
-
-        out_metas = infer_meta_fn(func, *metas, **kwmetas)
         inputs_symbols = (
             convert_to_symbol(args),
             convert_to_symbol(kwargs),
