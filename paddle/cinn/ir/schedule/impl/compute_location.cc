@@ -42,14 +42,13 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "ComputeAt";
   std::ostringstream os;
-  PADDLE_ENFORCE_EQ(block.As<ir::ScheduleBlockRealize>(),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "Expr param(block) should be a ScheduleBlockRealize!"));
-  PADDLE_ENFORCE_EQ(loop.As<ir::For>(),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "Expr param(loop) should be a For node!"));
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>(),
+      ::common::errors::InvalidArgument(
+          "Expr param(block) should be a ScheduleBlockRealize!"));
+  PADDLE_ENFORCE_NOT_NULL(loop.As<ir::For>(),
+                          ::common::errors::InvalidArgument(
+                              "Expr param(loop) should be a For node!"));
   Expr root = this->GetRootBlock(block);
 
   VLOG(3) << "Begin ComputeAt of loop:\n" << loop << "\nat block:\n" << root;
@@ -78,15 +77,13 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SimpleComputeAt";
   std::ostringstream os;
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(),
-      true,
       ::common::errors::InvalidArgument(
           "The block argument must be of type ScheduleBlockRealize."));
-  PADDLE_ENFORCE_EQ(loop.As<ir::For>(),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "The loop argument must be of type For."));
+  PADDLE_ENFORCE_NOT_NULL(loop.As<ir::For>(),
+                          ::common::errors::InvalidArgument(
+                              "The loop argument must be of type For."));
 
   std::vector<Expr> block_loops = this->GetLoops(block);
   Expr root = this->GetRootBlock(block);
@@ -137,12 +134,6 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
                       ::common::errors::InvalidArgument(
                           "The proof result should have a value and "
                           "the proof result is false."));
-    PADDLE_ENFORCE_EQ(
-        prove_eq.has_value() && prove_eq.value() != false,
-        true,
-        ::common::errors::InvalidArgument(
-            "Extent of loop in Expr Param(loop) and extent of loop in Expr "
-            "Param(block) should be equal correspondingly."));
     if (block_loops[i].As<ir::For>()->bind_info().valid() &&
         !loops[i].As<ir::For>()->bind_info().valid()) {
       loops[i].As<ir::For>()->set_bind_info(
@@ -266,7 +257,6 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
   std::ostringstream os;
   PADDLE_ENFORCE_NOT_NULL(
       schedule_block.As<ScheduleBlockRealize>(),
-      true,
       ::common::errors::InvalidArgument(
           "Expr param(schedule_block) should be a ScheduleBlockRealize!"));
   Expr root = this->GetRootBlock(schedule_block);
