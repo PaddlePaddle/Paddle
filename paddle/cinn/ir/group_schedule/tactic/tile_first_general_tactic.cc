@@ -269,6 +269,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
 
   // Vectorize
   const auto DoVectorize = [&](const std::vector<ir::Expr>& loops) {
+    VLOG(-1) << "loops in vectorize " << loops[0];
     std::vector<size_t> unroll_loops_idx = [&] {
       if (!vec_flatten_axis_.empty() && sp_thread > 1) {
         if (vec_reduce_axis_.empty()) {
@@ -416,6 +417,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
         //    do nothing
         if (!vec_flatten_axis_.empty()) {
           if (sp_loop > 1 && sp_thread > 1) {
+            VLOG(-1) << "enter First condition";
             do_flatten_vec = true;
             bool is_merge_threads = sp_loop < vec_factor;
             if (is_merge_threads) {
@@ -425,9 +427,8 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
                 auto loops = sch->GetLoops(block_id);
                 sch->Split(
                     loops[1],
-                    std::vector<int>({-1,
-                                      (sp_thread / (vec_factor / sp_loop)),
-                                      vec_factor}));
+                    std::vector<int>(
+                        {(sp_thread / (vec_factor / sp_loop)), vec_factor}));
                 current_reduce_axis = 3;
 
                 loops = sch->GetLoops(block_id);
@@ -446,12 +447,12 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
               do_flatten_vec = true;
               // fuse the sp_loop and sp_threads, and resplit with [-1,
               // sp_loop/factor, sp_thread, factor]
+
               sch->Fuse(block_id, std::vector<int>({1, 2}));
               auto loops = sch->GetLoops(block_id);
-              sch->Split(
-                  loops[1],
-                  std::vector<int>(
-                      {-1, (sp_loop / vec_factor), sp_thread, vec_factor}));
+              sch->Split(loops[1],
+                         std::vector<int>(
+                             {(sp_loop / vec_factor), sp_thread, vec_factor}));
               current_reduce_axis = 4;
 
               loops = sch->GetLoops(block_id);
@@ -467,6 +468,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
               }
             }
           } else if (sp_loop > 1 || sp_thread > 1) {
+            VLOG(-1) << "enter Second condition";
             // is_merge_threads always be true
             do_flatten_vec = true;
 
@@ -475,7 +477,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
               auto loops = sch->GetLoops(block_id);
               sch->Split(
                   loops[1],
-                  std::vector<int>({-1, thread_dim / vec_factor, vec_factor}));
+                  std::vector<int>({thread_dim / vec_factor, vec_factor}));
 
               current_reduce_axis = 3;
 
@@ -494,6 +496,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
           }
         }
       } else {
+        VLOG(-1) << "enter Third condition";
         // reduce
         //   shape[rd_thread, rd_loop]
         //   condition:
