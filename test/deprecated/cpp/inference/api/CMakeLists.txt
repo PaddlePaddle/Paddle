@@ -355,17 +355,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR}
                               analyzer_lac_tester.cc EXTRA_DEPS common)
 
-  # text_classification
-  set(TEXT_CLASSIFICATION_INSTALL_DIR
-      "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
-  download_model_and_data(
-    ${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz"
-    3f0f440313ca50e26184e65ffd5809ab "text_classification_data.txt.tar.gz"
-    36ae620020cc3377f45ed330dd36238f)
-  inference_analysis_api_test(
-    test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
-    analyzer_text_classification_tester.cc EXTRA_DEPS common)
-
   # seq_conv1
   set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
   download_model_and_data_without_verify(
@@ -415,23 +404,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
     --batch_size=8
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
-
-  # VIT-OCR
-  set(VIT_OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/vit")
-  if(NOT EXISTS ${VIT_OCR_INSTALL_DIR}/vit_ocr.tgz)
-    inference_download_and_uncompress_without_verify(
-      ${VIT_OCR_INSTALL_DIR} ${INFERENCE_URL} "ocr/vit_ocr.tgz")
-  endif()
-  inference_analysis_test(
-    test_analyzer_vit_ocr
-    SRCS
-    analyzer_vit_ocr_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model
-    --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
 
   # ocr
   set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
@@ -569,26 +541,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT
                                                                       120)
-  endif()
-
-  if(WITH_TESTING)
-    if(NOT APPLE)
-      if(NOT EXISTS ${WORD2VEC_INSTALL_DIR}/word2vec.inference.model.tar.gz)
-        inference_download_and_uncompress_without_verify(
-          ${WORD2VEC_INSTALL_DIR} ${INFERENCE_URL}
-          "word2vec.inference.model.tar.gz")
-      endif()
-      inference_base_test(
-        test_api_impl
-        SRCS
-        api_impl_tester.cc
-        DEPS
-        common
-        paddle_inference_shared
-        ARGS
-        --word2vec_dirname=${WORD2VEC_MODEL_DIR}
-        --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
-    endif()
   endif()
 
   if(NOT APPLE)

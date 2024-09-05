@@ -1091,6 +1091,16 @@ struct Conv2dOpTranscriber : public OpTranscriber {
   }
 };
 
+struct SequencePoolOp : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "pad_value") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0f);
+    }
+  }
+};
+
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
 
@@ -3836,6 +3846,7 @@ OpTranslator::OpTranslator() {
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
+  special_handlers["sequence_pool"] = SequencePoolOp();
   special_handlers["cross_entropy_with_softmax"] =
       CrossEntropyWithSoftmaxOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
