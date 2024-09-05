@@ -45,7 +45,6 @@ RUN rm -rf /usr/bin/python3 && ln -s /usr/bin/python${PY_VERSION} /usr/bin/pytho
 RUN pip3.8 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
     pip3.9 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
     pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
-
 RUN pip3.8 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
     pip3.9 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
     pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0
