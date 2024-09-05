@@ -30,7 +30,6 @@ set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
-list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_ps_gpu)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
@@ -513,8 +512,6 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
   endif()
 
-  py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
-                  ${dist_ENVS})
   py_test_modules(test_communicator_geo_deprecated MODULES
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)
