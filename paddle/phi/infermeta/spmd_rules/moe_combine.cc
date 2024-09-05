@@ -59,15 +59,13 @@ SpmdInfo MoECombineFwdInferSpmd(const DistMetaTensor& x,
                         scatter_index.size()));
 
   // Step 1: infer sharding
-  std::string x_axes = "eh", combine_weights_axes = "sk",
+  std::string x_axes = "sh", combine_weights_axes = "sk",
               scatter_index_axes = "sk", out_axes = "sh";
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
           {{x_axes, x_dims_mapping_src},
            {combine_weights_axes, combine_weights_dims_mapping_src},
            {scatter_index_axes, scatter_index_dims_mapping_src}});
-
-  axis_to_dim_map["e"] = -1;
 
   if (axis_to_dim_map["k"] != -1) {
     axis_to_dim_map["h"] =
@@ -158,8 +156,8 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
           grad_y_shape.size()));
 
   // step 1 : infer sharding
-  std::string x_axes = "eh", combine_weights_axes = "sk",
-              scatter_index_axes = "sk", grad_y_axes = "sh", grad_x_axes = "eh",
+  std::string x_axes = "sh", combine_weights_axes = "sk",
+              scatter_index_axes = "sk", grad_y_axes = "sh", grad_x_axes = "sh",
               grad_combine_weights_axes = "sk";
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
@@ -168,8 +166,7 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
            {scatter_index_axes, scatter_index_dims_mapping_src},
            {grad_y_axes, grad_y_dims_mapping_src}});
 
-  // e-dim and k-dim should be replicated
-  axis_to_dim_map["e"] = -1;
+  // k-dim should be replicated
   axis_to_dim_map["k"] = -1;
 
   std::vector<int64_t> grad_x_dims_mapping =
