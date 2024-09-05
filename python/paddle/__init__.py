@@ -899,6 +899,7 @@ __all__ = [
     'flip',
     'rot90',
     'bincount',
+    'histogram_bin_edges',
     'histogram',
     'histogramdd',
     'multiplex',
