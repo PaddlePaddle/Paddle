@@ -193,6 +193,7 @@ class Engine:
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
             )
+        self._parameter_name_list = [p.name for p in optimizer._parameter_list]
         self._optimizer = auto_utils.validate_opt(optimizer)
 
         metrics = metrics or []
@@ -712,6 +713,11 @@ class Engine:
                             dtype=self._strategy.amp.dtype,
                         )
                         self._optimizer._sorted = False
+                        parameter_value_list = [
+                            dist_program.get_parameter_value_by_name(pname)
+                            for pname in self._parameter_name_list
+                        ]
+
                         self._optimizer = paddle.static.amp.decorator.OptimizerWithMixedPrecision(
                             optimizer=self._optimizer,
                             amp_lists=amp_lists,
@@ -741,7 +747,9 @@ class Engine:
                         scaled = scaler.scale(loss)
                         last_forward_op = dist_program.global_block().ops[-1]
                         optimizer_ops, params_grads = scaler.minimize(
-                            self._optimizer, scaled
+                            self._optimizer,
+                            scaled,
+                            parameter_list=parameter_value_list,
                         )
                         first_opt_op = optimizer_ops[0]
                         backward_op_start_idx = (
