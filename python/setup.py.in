@@ -17,7 +17,6 @@ from setuptools import Command
 from setuptools import setup, Distribution, Extension
 from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.egg_info import egg_info
-from typing import List
 
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
@@ -118,9 +117,12 @@ def get_cinn_version() -> str:
         return "False"
     return "0.3.0"
 
-def get_cuda_archs() -> List[int]:
-    compiled_cuda_archs = '@COMPILED_CUDA_ARCHS@'
-    return [int(arch) for arch in compiled_cuda_archs.split()]
+def get_cuda_archs() -> list[int]:
+    compiled_cuda_archs = env_dict.get("COMPILED_CUDA_ARCHS")
+    if isinstance(compiled_cuda_archs, str):
+        return [int(arch) for arch in compiled_cuda_archs.split()]
+    else:
+        return []
 
 def get_tensorrt_version() -> str:
 
@@ -434,7 +436,7 @@ def cuda_archs():
     """Get compiled cuda archs of paddle package.
 
     Returns:
-        List[int]: Return the compiled cuda archs if with gpu. If paddle package is not compiled with gpu, it will return "".
+        list[int]: Return the compiled cuda archs if with gpu. If paddle package is not compiled with gpu, it will return "".
 
     Examples:
         .. code-block:: python
