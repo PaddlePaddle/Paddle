@@ -257,9 +257,11 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
   const auto& downstream_free_dims = GatherVectorExcept(
       GetValueUsage(downstream->sink_op()->result(0), 0), fakes);
 
-  bool res =
-      ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
-      IsProductSmallerOrEqual(downstream_free_dims, upstream_non_reduce_dims);
+  // TODO(huangjiyi): support fusion when fake_reduce.size < reduce.size
+  bool res = ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
+             (IsProductSmallerOrEqual(downstream_free_dims,
+                                      upstream_non_reduce_dims) &&
+              fakes.size() == upstream_reduce_dims.size());
 
   if (res && downstream_free_dims.empty() && !fakes.empty()) {
     res = false;

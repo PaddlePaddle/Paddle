@@ -287,8 +287,6 @@ static std::vector<pir::Operation*> GetOutputOpsInPattern(
   return std::visit(Visitor(), pattern);
 }
 
-using LoopFramework = std::vector<symbol::DimExpr>;
-using MaybeLoopFramework = LoopFramework;
 using LoopValueDims = std::vector<ValueDim>;
 
 static std::vector<LoopValueDims> GetLoopValueDims(const StmtPattern& pattern);
@@ -388,30 +386,65 @@ static std::vector<LoopValueDims> GetLoopValueDims(const StmtPattern& pattern) {
   return std::visit(LoopValueDimsVisitor(), pattern);
 }
 
-using MaybeLoopFramework = LoopFramework;
+using LoopExprs = std::vector<symbol::DimExpr>;
+
+struct MaybeLoopFramework {
+  LoopExprs loop;
+  std::vector<bool> is_reduce;
+};
 
 static MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern);
 
-static MaybeLoopFramework SqueezeLoopFramework(
-    const MaybeLoopFramework& loop_framework) {
-  MaybeLoopFramework result;
-  for (int i = 0; i < loop_framework.size(); i++) {
-    if (loop_framework[i] == 1) {
+static LoopExprs SqueezeLoopFramework(const LoopExprs& loop) {
+  LoopExprs result;
+  for (int i = 0; i < loop.size(); i++) {
+    if (loop[i] == 1) {
       continue;  // skip 1
     } else {
-      result.push_back(loop_framework[i]);
+      result.push_back(loop[i]);
     }
   }
   return result;
 }
 
+static std::pair<LoopExprs, LoopExprs> SplitReduceLoop(
+    const MaybeLoopFramework& loops) {
+  LoopExprs non_reduce_loops;
+  LoopExprs reduce_loops;
+  for (int i = 0; i < loops.is_reduce.size(); ++i) {
+    if (loops.is_reduce[i]) {
+      reduce_loops.push_back(loops.loop[i]);
+    } else {
+      non_reduce_loops.push_back(loops.loop[i]);
+    }
+  }
+  return {non_reduce_loops, reduce_loops};
+}
+
+static std::vector<bool> CreateIsReduceVector(const size_t& nums_flatten,
+                                              const size_t& nums_reduce) {
+  return ConcatVector(std::vector<bool>(nums_flatten, false),
+                      std::vector<bool>(nums_reduce, true));
+}
+
 static bool IsLoopFrameworkEqual(const StmtPattern& lhs,
                                  const StmtPattern& rhs) {
-  auto lhs_loop = GetLoopFramework(lhs);
-  auto rhs_loop = GetLoopFramework(rhs);
-  VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loop, ",");
-  VLOG(4) << "rhs loop range is:" << utils::Join(rhs_loop, ",");
-  return SqueezeLoopFramework(lhs_loop) == SqueezeLoopFramework(rhs_loop);
+  const auto& lhs_loops = GetLoopFramework(lhs);
+  const auto& rhs_loops = GetLoopFramework(rhs);
+  VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loops.loop, ",")
+          << ", is_reduce: " << utils::Join(lhs_loops.is_reduce, ",");
+  VLOG(4) << "rhs loop range is:" << utils::Join(rhs_loops.loop, ",")
+          << ", is_reduce: " << utils::Join(rhs_loops.is_reduce, ",");
+  const auto& [lhs_non_reduce_loops, lhs_reduce_loops] =
+      SplitReduceLoop(lhs_loops);
+  const auto& [rhs_non_reduce_loops, rhs_reduce_loops] =
+      SplitReduceLoop(rhs_loops);
+  bool non_reduce_euqal = SqueezeLoopFramework(lhs_non_reduce_loops) ==
+                          SqueezeLoopFramework(rhs_non_reduce_loops);
+  bool reduce_equal = lhs_reduce_loops.empty() || rhs_reduce_loops.empty() ||
+                      (SqueezeLoopFramework(lhs_reduce_loops) ==
+                       SqueezeLoopFramework(rhs_reduce_loops));
+  return non_reduce_euqal && reduce_equal;
 }
 
 struct LoopFrameworkVisitor {
@@ -421,7 +454,10 @@ struct LoopFrameworkVisitor {
     const auto& reduce_axes = GetReduceAxisIdx(reduce_op);
     const auto& reduce_loops = GatherVector(
         GetDimExprsFromValue(reduce_op->operand(0).source()), reduce_axes);
-    return ConcatVector(flatten_loops, reduce_loops);
+    const auto& loop = ConcatVector(flatten_loops, reduce_loops);
+    const auto& is_reduce =
+        CreateIsReduceVector(flatten_loops.size(), reduce_loops.size());
+    return {loop, is_reduce};
   }
 
   MaybeLoopFramework operator()(const ReduceTreePattern& pattern) {
@@ -430,48 +466,42 @@ struct LoopFrameworkVisitor {
 
   MaybeLoopFramework operator()(const TrivialPattern& pattern) {
     pir::Operation* t_op = pattern.sink_op();
-    const auto& exprs = GetDimExprsFromValue(t_op->result(0));
-    return exprs;
+    const auto& loop = GetDimExprsFromValue(t_op->result(0));
+    return {loop, std::vector<bool>(loop.size(), false)};
   }
 
   MaybeLoopFramework operator()(const HorizontalFusionPattern& pattern) {
     // Horizontal Fusion must have the same loop framework.
     VLOG(4) << "Get horizontal fusion pattern for loop framework.";
-    const auto& base_exprs =
+    const auto& [base_loop, base_is_reduce] =
         GetLoopFramework(pattern.padding_patterns_.back().pattern);
     const auto& padding_vector = pattern.padding_patterns_.back().padding_pos;
-    std::vector<symbol::DimExpr> exprs(
-        base_exprs.size() + padding_vector.size(), 1);
+    const auto& padded_size = base_loop.size() + padding_vector.size();
+    LoopExprs loop(padded_size, 1);
+    std::vector<bool> is_reduce(padded_size, false);
     int pointer = 0;
-    for (int i = 0; i < exprs.size(); i++) {
+    for (int i = 0; i < loop.size(); i++) {
       if (std::find(padding_vector.begin(), padding_vector.end(), i) ==
           padding_vector.end()) {
-        exprs[i] = base_exprs[pointer++];
+        loop[i] = base_loop[pointer++];
+        is_reduce[i] = base_is_reduce[pointer++];
       }
     }
-    return exprs;
+    return {loop, is_reduce};
   }
 
   MaybeLoopFramework operator()(const ReduceTreePlusTrivialPattern& pattern) {
     const auto& sink_trivial = pattern.sink_trivial;
-    const auto& trivial_loop = GetLoopFramework(pattern.sink_trivial);
-    if (pattern.fake_reduce_iter_idx.empty()) {
-      // we add reduce loop to the end;
-      int reduce_axes_len =
-          GetReduceAxisIdx(pattern.tree.GetRootPattern().GetReduceOp()).size();
-      const auto& reduce_loop = GetLoopFramework(pattern.tree.GetRootPattern());
-      return ConcatVector(
-          trivial_loop,
-          SliceVector(reduce_loop, -reduce_axes_len, reduce_loop.size()));
-    } else {
-      // we always put fake into the end to make the loop framework consistent.
-      const auto& non_fake = GatherVector(
+    auto trivial_loop = GetLoopFramework(pattern.sink_trivial).loop;
+    if (!pattern.fake_reduce_iter_idx.empty()) {
+      trivial_loop = GatherVector(
           trivial_loop,
           ExcludeIndex(trivial_loop.size(), pattern.fake_reduce_iter_idx));
-      const auto& fake =
-          GatherVector(trivial_loop, pattern.fake_reduce_iter_idx);
-      return ConcatVector(non_fake, fake);
     }
+    const auto& [_UNUSED, reduce_loop] =
+        SplitReduceLoop(GetLoopFramework(pattern.tree.GetRootPattern()));
+    return {ConcatVector(trivial_loop, reduce_loop),
+            CreateIsReduceVector(trivial_loop.size(), reduce_loop.size())};
   }
 
   MaybeLoopFramework operator()(const UnsupportPattern& pattern) {
@@ -486,9 +516,10 @@ struct LoopFrameworkVisitor {
       const auto& reduce_axes = GetReduceAxisIdx(anchor_op);
       const auto& reduce_loops = GatherVector(
           GetDimExprsFromValue(anchor_op->operand(0).source()), reduce_axes);
-      return ConcatVector(loops, reduce_loops);
+      return {ConcatVector(loops, reduce_loops),
+              CreateIsReduceVector(loops.size(), reduce_loops.size())};
     }
-    return loops;
+    return {loops, std::vector<bool>(loops.size(), false)};
   }
 };
 
@@ -496,8 +527,8 @@ static MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
   return std::visit(LoopFrameworkVisitor(), pattern);
 }
 
-static inline auto GetPaddingVector(const MaybeLoopFramework& first,
-                                    const MaybeLoopFramework& second) {
+static inline auto GetPaddingVector(const LoopExprs& first,
+                                    const LoopExprs& second) {
   // two pointer to get the padding body.
   std::vector<int> padding_f;
   std::vector<int> padding_s;
@@ -539,8 +570,8 @@ static inline auto GetPaddingVector(const MaybeLoopFramework& first,
 
 static StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
                                     const HorizontalFusionPattern& second) {
-  const auto& [f, s] =
-      GetPaddingVector(GetLoopFramework(first), GetLoopFramework(second));
+  const auto& [f, s] = GetPaddingVector(GetLoopFramework(first).loop,
+                                        GetLoopFramework(second).loop);
   typename HorizontalFusionPattern::PaddingStmtPattern pad_first = {first, f};
   typename HorizontalFusionPattern::PaddingStmtPattern pad_second = {second, s};
   return HorizontalFusionPattern(
