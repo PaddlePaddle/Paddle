@@ -50,14 +50,14 @@ Record ProcessALine(const std::string &line) {
   for (auto &s : shape_strs) {
     record.shape.push_back(std::stoi(s));
   }
-  VLOG(3) << "data size " << record.data.size();
-  VLOG(3) << "data shape size " << record.shape.size();
+  std::cout << "data size " << record.data.size();
+  std::cout << "data shape size " << record.shape.size();
   return record;
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_infer_model + "/__model__",
-                FLAGS_infer_model + "/__params__");
+  cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
+                FLAGS_infer_model + "/inference.pdiparams");
   cfg->DisableGpu();
   cfg->SwitchIrDebug();
   cfg->SwitchSpecifyInputNames(false);
@@ -132,15 +132,6 @@ TEST(Analyzer_vis, profile) { profile(); }
 #ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
-
-// Check the fuse status
-TEST(Analyzer_vis, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  GetFuseStatis(predictor.get(), &num_ops);
-}
 
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {

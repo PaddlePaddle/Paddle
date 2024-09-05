@@ -1091,6 +1091,40 @@ struct Conv2dOpTranscriber : public OpTranscriber {
   }
 };
 
+struct SequencePoolOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "pad_value") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0f);
+    }
+  }
+};
+
+struct DropoutOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "mode") {
+      (*attribute_map)[info.name] =
+          pir::StrAttribute::get(ctx, "downscale_in_infer");
+    }
+  }
+};
+
+struct ScaleOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "bias") {
+      (*attribute_map)[info.name] =
+          paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0.0));
+    } else if (info.name == "bias_after_scale") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
+    }
+  }
+};
+
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
 
@@ -3874,6 +3908,9 @@ OpTranslator::OpTranslator() {
   special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["share_buffer"] = ShareBufferOpTranscriber();
+  special_handlers["sequence_pool"] = SequencePoolOpTranscriber();
+  special_handlers["dropout"] = DropoutOpTranscriber();
+  special_handlers["scale"] = ScaleOpTranscriber();
   special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();

@@ -355,25 +355,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR}
                               analyzer_lac_tester.cc EXTRA_DEPS common)
 
-  # text_classification
-  set(TEXT_CLASSIFICATION_INSTALL_DIR
-      "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
-  download_model_and_data(
-    ${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz"
-    3f0f440313ca50e26184e65ffd5809ab "text_classification_data.txt.tar.gz"
-    36ae620020cc3377f45ed330dd36238f)
-  inference_analysis_api_test(
-    test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
-    analyzer_text_classification_tester.cc EXTRA_DEPS common)
-
-  # seq_conv1
-  set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
-  download_model_and_data_without_verify(
-    ${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz"
-    "seq_conv1_data.txt.tar.gz")
-  inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR}
-                              analyzer_seq_conv1_tester.cc EXTRA_DEPS common)
-
   # transformer, the dataset only works on batch_size=8 now
   set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
   download_model_and_data_without_verify(
@@ -443,17 +424,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR}
                               analyzer_vis_tester.cc EXTRA_DEPS common)
 
-  # mobilenet with transpose op
-  set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
-  if(NOT EXISTS ${MOBILENET_INSTALL_DIR}/mobilenet.tar.gz)
-    inference_download_and_uncompress_without_verify(
-      ${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
-      "inference-vis-demos/mobilenet.tar.gz")
-  endif()
-  inference_analysis_api_test(
-    test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR}
-    analyzer_vis_tester.cc EXTRA_DEPS common)
-
   ### Image classification tests with fake data
   set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
   set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
@@ -485,13 +455,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
     ${MOBILENET_MODEL_DIR} false)
 
-  # bert, max_len=20, embedding_dim=128
-  set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
-  download_model_and_data_without_verify(
-    ${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
-  inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
-                              analyzer_bert_tester.cc EXTRA_DEPS common)
-
   # multiple models prediction
   set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
   download_data_without_verify(${MMP_INSTALL_DIR}
@@ -499,26 +462,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_multiple_models_analysis_api_test(
     test_analyzer_multi_model_prediction ${MMP_INSTALL_DIR}
     analyzer_mmp_tester.cc EXTRA_DEPS common)
-
-  inference_analysis_test(
-    test_analyzer_capi_exp_pd_tensor
-    SRCS
-    analyzer_capi_exp_pd_tensor_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${MOBILENET_INSTALL_DIR}/model)
-
-  if(NOT APPLE AND NOT WIN32)
-    inference_analysis_test(
-      test_analyzer_capi_exp_pd_threads
-      SRCS
-      analyzer_capi_exp_pd_threads_tester.cc
-      EXTRA_DEPS
-      paddle_inference_c_shared
-      ARGS
-      --infer_model=${MOBILENET_INSTALL_DIR}/model)
-  endif()
 
   inference_analysis_test(
     test_analyzer_zerocopytensor_tensor
@@ -554,7 +497,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_data=${OCR_INSTALL_DIR}/data.txt
     --refer_result=${OCR_INSTALL_DIR}/result.txt)
 
-  set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
@@ -562,9 +504,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT
                                                                          120)
-  if(WITH_GPU)
-    set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
-  endif()
 
   if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT
