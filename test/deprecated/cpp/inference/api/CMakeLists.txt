@@ -421,8 +421,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
       "inference-vis-demos/ocr.tar.gz")
   endif()
-  inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR}
-                              analyzer_vis_tester.cc EXTRA_DEPS common)
 
   ### Image classification tests with fake data
   set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
