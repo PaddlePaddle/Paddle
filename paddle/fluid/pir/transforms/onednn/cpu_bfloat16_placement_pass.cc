@@ -195,6 +195,15 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
       return false;
     }
+    auto op_attr = op->attributes();
+    if (op_attr.find("mkldnn_data_type") != op_attr.end()) {
+      auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
+      if (mkldnn_data_type != "bfloat16") {
+        return false;
+      }
+    }
 
     bool prev_fp32 = false;
     bool next_fp32 = false;
@@ -342,6 +351,15 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::FusedConv2dOp>() &&
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
       return false;
+    }
+    auto op_attr = op->attributes();
+    if (op_attr.find("mkldnn_data_type") != op_attr.end()) {
+      auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
+      if (mkldnn_data_type != "bfloat16") {
+        return false;
+      }
     }
 
     uint32_t num_operands = op->num_operands();
