@@ -336,7 +336,7 @@ static inline std::vector<symbol::DimExpr> MatrixGetBroadcastBatchPortion(
   }
 
   symbol::DimExprBuilder builder;
-  for (int i = diff; i < max_size; i++) {
+  for (int i = size_diff; i < max_size; i++) {
     int offset = max_size - i;
     int dim_x = size_x - offset;
     int dim_y = size_y - offset;
