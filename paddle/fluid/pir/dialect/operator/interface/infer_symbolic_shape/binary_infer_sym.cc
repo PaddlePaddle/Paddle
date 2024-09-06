@@ -1124,16 +1124,18 @@ bool MatrixRankTolOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &atol_shape = atol_shape_or_data.shape();
   auto dim_tol = atol_shape;
 
-  if (x_shape.size() == 2) {
-    std::vector<symbol::DimExpr> x_batch_dims = {};
-  } else {
-    std::vector<symbol::DimExpr> x_batch_dims = x_shape;
-    x_batch_dims.erase(x_batch_dims.end() - 2, x_batch_dims.end())
+  std::vector<symbol::DimExpr> x_batch_dims = {};
+
+  if (x_shape.size() != 2) {
+    x_batch_dims = x_shape;
+    x_batch_dims.erase(x_batch_dims.end() - 2, x_batch_dims.end());
   }
 
   if (x_batch_dims == dim_tol) {
     infer_context->SetShapeOrDataForValue(
-        op->result(0), symbol::ShapeOrDataDimExprs(x_batch_dims));
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_batch_dims)});
   } else {
     size_t max_dim = std::max(x_batch_dims.size(), dim_tol.size());
     size_t axis =
@@ -1152,7 +1154,8 @@ bool MatrixRankTolOpInferSymbolicShape(
                                        axis);
 
     infer_context->SetShapeOrDataForValue(
-        op->result(0), symbol::ShapeOrDataDimExprs(out_dims));
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{symbol::ShapeOrDataDimExprs(out_dims)});
   }
 
   return true;
