@@ -1647,16 +1647,30 @@ bool GenerateProposalsOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(rpn_roi_probs_shape)});
 
-  const symbol::ShapeOrDataDimExprs &score_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  // NOTE(gongshaotian): In the training task, the isFakeValue() interface can
+  // be used to determine whether rpn_rois_num needs to be output. However, in
+  // the inference task of executing the old model that has already been
+  // trained, since the InferMeta() function will no longer be executed, it is
+  // impossible to determine whether rpn_rois_num is a Fake value through
+  // isFakeValue(), so it is necessary to judge based on the dimension of
+  // DenseTensor.
+  if (paddle::dialect::details::IsFakeValue(op->result(2)) ||
+      op->result(2)
+              .type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dims()
+              .size() == 0) {
+    infer_context->SetSymbolForValueByStaticShape(op->result(2));
+  } else {
+    const std::vector<symbol::DimExpr> &score_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+    std::vector<symbol::DimExpr> rpn_rois_num_shape = {score_shape[0]};
 
-  std::vector<symbol::DimExpr> score_shape = score_shape_or_data.shape();
-  auto rpn_rois_num_shape = std::vector<symbol::DimExpr>{score_shape[0]};
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(2),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(rpn_rois_num_shape)});
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(rpn_rois_num_shape)});
+  }
 
   return true;
 }
