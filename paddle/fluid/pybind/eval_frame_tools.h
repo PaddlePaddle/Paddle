@@ -21,6 +21,7 @@ extern "C" {
 #include <Python.h>
 #include <frameobject.h>
 #include <string.h>
+#include "paddle/fluid/pybind/cpython_internals.h"
 
 #if EVAL_FRAME_IS_SUPPORTED
 
