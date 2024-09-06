@@ -65,10 +65,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_optimization_tuner_api_deprecated)
   set_tests_properties(test_optimization_tuner_api_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_pass_recompute_deprecated MODULES
-                  test_pass_recompute_deprecated)
-  set_tests_properties(test_pass_recompute_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_relaunch_with_planner_deprecated MODULES
                   test_relaunch_with_planner_deprecated)
   set_tests_properties(test_relaunch_with_planner_deprecated
