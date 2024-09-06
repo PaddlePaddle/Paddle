@@ -1006,6 +1006,7 @@ class TestConvTransposeOpBf16Pass(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 class TestCastBf16Pass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -1019,7 +1020,7 @@ class TestCastBf16Pass(PassTest):
                     name='x1', shape=[1, 30], dtype='float32'
                 )
 
-                out= paddle.cast(x1, 'float32')
+                out = paddle.cast(x1, 'float32')
                 out = paddle.assign(out)
                 self.pass_attr_list = [
                     {'onednn_placement_pass': {}},
