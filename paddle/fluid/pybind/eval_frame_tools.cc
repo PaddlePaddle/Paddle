@@ -22,6 +22,8 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/enforce.h"
 
+#if EVAL_FRAME_IS_SUPPORTED
+
 /*============================ Dict Tree ================================*/
 
 class TreeNode {
@@ -282,3 +284,5 @@ PyObject* skip_file_prefix(PyObject* filepath_tuple) {
   }
   return Py_None;
 }
+
+#endif

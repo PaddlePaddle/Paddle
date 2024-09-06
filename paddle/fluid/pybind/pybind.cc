@@ -1098,7 +1098,9 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+#if EVAL_FRAME_IS_SUPPORTED
   BindEvalFrame(&m);
+#endif
   BindCustomDevicePy(&m);
   BindEagerUtils(m.ptr());
 

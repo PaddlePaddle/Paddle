@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <frameobject.h>
 
+#if EVAL_FRAME_IS_SUPPORTED
+
 #if PY_VERSION_HEX >= 0x030b0000
 #include <internal/pycore_code.h>
 #include <internal/pycore_frame.h>
@@ -622,3 +624,5 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
 }
 
 #endif  // Python 3.11, Python 3.12
+
+#endif  // Eval frame is supported

@@ -19,8 +19,12 @@ extern "C" {
 
 #include <Python.h>
 
+#if EVAL_FRAME_IS_SUPPORTED
+
 PyObject *set_eval_frame_py(PyObject *callback);
 PyMODINIT_FUNC PyInit__eval_frame();
+
+#endif
 
 #ifdef __cplusplus
 }

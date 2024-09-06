@@ -58,6 +58,8 @@ void BindJit(pybind11::module *m) {
   });
 }
 
+#if EVAL_FRAME_IS_SUPPORTED
+
 void BindEvalFrame(pybind11::module *m) {
   PyInit__eval_frame();
   m->def(
@@ -106,6 +108,8 @@ void BindEvalFrame(pybind11::module *m) {
       },
       py::arg("py_codes"));
 }
+
+#endif
 
 }  // namespace pybind
 }  // namespace paddle

@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eval_frame.h"
+
+#if EVAL_FRAME_IS_SUPPORTED
+
 #include "paddle/fluid/pybind/cpython_internals.h"
 #include "paddle/fluid/pybind/eval_frame_tools.h"
 
@@ -505,3 +508,5 @@ PyMODINIT_FUNC PyInit__eval_frame() {
 
   return NULL;
 }
+
+#endif
