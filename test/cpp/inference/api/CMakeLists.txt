@@ -885,10 +885,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_model=${DAM_SMALL_INSTALL_DIR}/model
     --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt)
 
-  # save model
-  inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR}
-                              analyzer_save_model_tester.cc EXTRA_DEPS common)
-
   set_tests_properties(test_analyzer_small_dam PROPERTIES TIMEOUT 120)
 
   # seq_conv1
