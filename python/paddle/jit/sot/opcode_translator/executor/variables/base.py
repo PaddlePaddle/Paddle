@@ -90,7 +90,12 @@ def find_traceable_vars(
     return results
 
 
-def map_variables(map_func, variables: list[VariableBase]):
+def map_variables(
+    map_func,
+    variables: list[VariableBase],
+    *,
+    restore_variable=False,
+) -> list[VariableBase]:
     """
     This function maps the given map_func to the given list of variables in a recursive manner.
     Args:
@@ -100,23 +105,42 @@ def map_variables(map_func, variables: list[VariableBase]):
     Returns:
         tuple: The result of applying the map_func to the variables.
     """
+    from .basic import SliceVariable
+    from .container import ContainerVariable
+
+    def _map_container_variable(variable: VariableBase | object):
+        if not isinstance(variable, ContainerVariable):
+            return variable
+        new_container = paddle.utils.map_structure(
+            _map_variable, variable.get_wrapped_items()
+        )
+        if not restore_variable:
+            return new_container
+        return VariableFactory.from_value(
+            new_container,
+            variable.graph,
+            DummyTracker(paddle.utils.flatten(new_container)),
+        )
+
+    def _map_slice_variable(variable: VariableBase | object):
+        if not isinstance(variable, SliceVariable):
+            return variable
+        new_slice = slice(
+            map_func(variable.getattr("start")),
+            map_func(variable.getattr("stop")),
+            map_func(variable.getattr("step")),
+        )
+        if not restore_variable:
+            return new_slice
+        return VariableFactory.from_value(
+            new_slice,
+            variable.graph,
+            DummyTracker([new_slice.start, new_slice.stop, new_slice.step]),
+        )
 
     def _map_variable(variable: VariableBase | object):
-        from .basic import SliceVariable
-        from .container import ContainerVariable
-
-        if isinstance(variable, ContainerVariable):
-            return paddle.utils.map_structure(
-                _map_variable, variable.get_wrapped_items()
-            )
-
-        if isinstance(variable, SliceVariable):
-            return slice(
-                map_func(variable.getattr("start")),
-                map_func(variable.getattr("stop")),
-                map_func(variable.getattr("step")),
-            )
-
+        variable = _map_container_variable(variable)
+        variable = _map_slice_variable(variable)
         return map_func(variable)
 
     return paddle.utils.map_structure(_map_variable, variables)

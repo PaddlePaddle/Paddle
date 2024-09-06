@@ -41,6 +41,14 @@ class ShuffleChannelFuseTRTPassTest(InferencePassTest):
         self.trt_parameters = ShuffleChannelFuseTRTPassTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = (
+            ShuffleChannelFuseTRTPassTest.DynamicShapeParam(
+                {'data': [1, 6, 64, 64]},
+                {'data': [32, 6, 64, 64]},
+                {'data': [1, 6, 64, 64]},
+                False,
+            )
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
