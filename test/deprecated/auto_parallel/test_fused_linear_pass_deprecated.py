@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../auto_parallel")
+sys.path.append("../../legacy_test")
 from get_gpt_model import FakeDataset, generate_model
 from test_sparse_addmm_op import get_cuda_version
 

@@ -75,6 +75,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.swiglu",
     "pd_op.transpose",
     "pd_op.tanh",
+    "pd_op.where",
 ]
 
 

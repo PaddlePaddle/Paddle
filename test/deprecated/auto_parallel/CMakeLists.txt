@@ -28,6 +28,23 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_selective_recompute_deprecated)
   set_tests_properties(test_selective_recompute_deprecated PROPERTIES TIMEOUT
                                                                       50)
+  py_test_modules(test_parallel_tuner_deprecated MODULES
+                  test_parallel_tuner_deprecated)
+  set_tests_properties(test_parallel_tuner_deprecated PROPERTIES TIMEOUT 120)
+  py_test_modules(test_parallel_tuner_full_deprecated MODULES
+                  test_parallel_tuner_full_deprecated)
+  set_tests_properties(test_parallel_tuner_full_deprecated PROPERTIES TIMEOUT
+                                                                      120)
+  py_test_modules(test_parallel_tuner_predict_deprecated MODULES
+                  test_parallel_tuner_predict_deprecated)
+  set_tests_properties(test_parallel_tuner_predict_deprecated PROPERTIES TIMEOUT
+                                                                         120)
+  py_test_modules(test_fused_linear_pass_deprecated MODULES
+                  test_fused_linear_pass_deprecated)
+  set_tests_properties(test_fused_linear_pass_deprecated PROPERTIES TIMEOUT 40)
+  py_test_modules(test_fuse_adamw_pass_deprecated MODULES
+                  test_fuse_adamw_pass_deprecated)
+  set_tests_properties(test_fuse_adamw_pass_deprecated PROPERTIES TIMEOUT 20)
   py_test_modules(test_while_op_completion_deprecated MODULES
                   test_while_op_completion_deprecated)
   py_test_modules(test_while_op_partition_deprecated MODULES
@@ -40,6 +57,21 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_shard_layer_api_deprecated MODULES
                   test_shard_layer_api_deprecated)
   # End of unittests WITH single card WITHOUT timeout
+
+  # NOTE(zyl): unittests WITH single card and WITHOUT timeout
+  py_test_modules(test_serialization_deprecated MODULES
+                  test_serialization_deprecated)
+  py_test_modules(test_process_mesh_deprecated MODULES
+                  test_process_mesh_deprecated)
+  py_test_modules(test_new_cost_model_deprecated MODULES
+                  test_new_cost_model_deprecated)
+  py_test_modules(test_lr_grad_clip_deprecated MODULES
+                  test_lr_grad_clip_deprecated)
+  py_test_modules(test_interface_deprecated MODULES test_interface_deprecated)
+  py_test_modules(test_group_operators_deprecated MODULES
+                  test_group_operators_deprecated)
+  py_test_modules(test_fp16_assign_deprecated MODULES
+                  test_fp16_assign_deprecated)
 
 endif()
 

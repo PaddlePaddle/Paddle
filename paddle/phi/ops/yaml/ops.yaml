@@ -2075,6 +2075,7 @@
     param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_int_array
   args : (int64_t[] value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -3096,7 +3097,7 @@
     data_type : x
   optional : bias, src_mask, cum_offsets, sequence_lengths, rotary_tensor, beam_cache_offset, qkv_out_scale, out_shift, out_smooth
   inplace : (cache_kv -> cache_kv_out), (beam_cache_offset -> beam_cache_offset_out)
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : masked_select
   args : (Tensor x, Tensor mask)
@@ -4530,6 +4531,7 @@
   kernel :
     func : squared_l2_norm
   backward : squared_l2_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : squeeze
   args : (Tensor x, IntArray axis={})
@@ -4739,6 +4741,7 @@
     func : temporal_shift
     data_type : x
   backward : temporal_shift_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tensor_unfold
   args : (Tensor input, int64_t axis, int64_t size, int64_t step)
