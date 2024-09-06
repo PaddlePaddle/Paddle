@@ -207,6 +207,7 @@ bool StackCreateOp::InferSymbolicShape(
   infer_context->SetShapeOrDataForValue(result(0), null_shape_or_data);
   infer_context->SetShapeOrDataForValue(result(1), null_shape_or_data);
   infer_context->SetShapeOrDataForValue(result(2), null_shape_or_data);
+  return true;
 }
 
 size_t StackCreateOp::tuple_size() { return tuple_push_op().tuple_size(); }
