@@ -65,4 +65,5 @@ NEED_TO_FIX_OP_LIST = [
     'smooth_l1_loss',
     'spectral_norm',
     'complex',
+    'fake_quantize_dequantize_lsqplus',
 ]

@@ -80,6 +80,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'fake_channel_wise_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
+    'fake_quantize_dequantize_lsqplus',
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [
