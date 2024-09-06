@@ -218,26 +218,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
 
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    feed_sparse_coo_tensor,
-    CPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::CPUContext>) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    feed_sparse_coo_tensor,
-    GPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::GPUContext>) {}
-#elif defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    feed_sparse_coo_tensor,
-    XPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::XPUContext>) {}
-#endif
-
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(
     feed_dense_tensor, ALL_LAYOUT, paddle::operators::FeedDenseTensorKernel) {}
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(feed_strings,
