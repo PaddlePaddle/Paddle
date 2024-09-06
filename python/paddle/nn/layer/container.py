@@ -595,6 +595,20 @@ class Sequential(Layer):
             >>> model2.add_sublayer('l3', paddle.nn.Linear(3, 3))  # add sublayer
             >>> res2 = model2(data)  # sequential execution
 
+            >>> # append single layer at the end of sequential
+            >>> model2 = paddle.nn.Sequential(paddle.nn.Linear(10, 20))
+            >>> model2.append(paddle.nn.Linear(20, 30))
+            >>> res2 = model2(data)  # [30, 30]
+
+            >>> # insert single layer at the given position
+            >>> model2 = paddle.nn.Sequential(paddle.nn.Linear(20, 30))
+            >>> model2.insert(0, paddle.nn.Linear(10, 20))
+            >>> res2 = model2(data)  # [30, 30]
+
+            >>> # extend sequential with given sequence of layer(s) at the end
+            >>> model2 = paddle.nn.Sequential()
+            >>> model2.extend([paddle.nn.Linear(10, 20), paddle.nn.Linear(20, 30)])
+            >>> res2 = model2(data)  # [30, 30]
     """
 
     def __init__(self, *layers: Layer | tuple[str, Layer] | list[Any]) -> None:
@@ -654,7 +668,7 @@ class Sequential(Layer):
         self._sub_layers[str(index)] = module
         return self
 
-    def extend(self, sequential) -> Sequential:
+    def extend(self, sequential: Sequence[Layer]) -> Sequential:
         for layer in sequential:
             self.append(layer)
         return self
