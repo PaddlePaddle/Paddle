@@ -4307,7 +4307,7 @@
   traits : pir::SideEffectTrait
   data_transform :
     skip_transform : seed
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shuffle_channel
   args : (Tensor x, int group = 1)
