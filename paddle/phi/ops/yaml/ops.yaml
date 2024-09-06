@@ -4113,6 +4113,7 @@
   output : Tensor
   infer_meta :
     func : ScatterNdAddInferMeta
+    spmd_rule : ScatterNdAddInferSpmd
   kernel :
     func : scatter_nd_add
     data_type : x
