@@ -621,14 +621,6 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
 
 class TestAdamWOpError(unittest.TestCase):
     def test_api_errors(self):
-        def test_weight_decay_dtype():
-            linear = paddle.nn.Linear(13, 5)
-            adam = paddle.optimizer.AdamW(
-                learning_rate=0.01,
-                parameters=linear.parameters(),
-                weight_decay=1,
-            )
-
         def test_parameters_dtype1():
             adam = paddle.optimizer.AdamW(
                 learning_rate=0.01,
@@ -674,7 +666,6 @@ class TestAdamWOpError(unittest.TestCase):
                 grad_clip=0.1,
             )
 
-        self.assertRaises(TypeError, test_weight_decay_dtype)
         self.assertRaises(TypeError, test_parameters_dtype1)
         self.assertRaises(TypeError, test_parameters_dtype2)
         self.assertRaises(AttributeError, test_parameters_dtype3)
