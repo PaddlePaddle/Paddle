@@ -45,6 +45,20 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_fuse_adamw_pass_deprecated MODULES
                   test_fuse_adamw_pass_deprecated)
   set_tests_properties(test_fuse_adamw_pass_deprecated PROPERTIES TIMEOUT 20)
+  py_test_modules(test_engine_callbacks_deprecated MODULES
+                  test_engine_callbacks_deprecated)
+  set_tests_properties(test_engine_callbacks_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_align_tool_deprecated MODULES test_align_tool_deprecated)
+  set_tests_properties(test_align_tool_deprecated PROPERTIES TIMEOUT 20)
+  py_test_modules(test_pass_recompute_deprecated MODULES
+                  test_pass_recompute_deprecated)
+  set_tests_properties(test_pass_recompute_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_sharding_deprecated MODULES
+                  test_pass_sharding_deprecated)
+  set_tests_properties(test_pass_sharding_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_while_op_completion_deprecated MODULES
                   test_while_op_completion_deprecated)
   py_test_modules(test_while_op_partition_deprecated MODULES
@@ -72,6 +86,28 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_group_operators_deprecated)
   py_test_modules(test_fp16_assign_deprecated MODULES
                   test_fp16_assign_deprecated)
+  py_test_modules(test_engine_save_load_deprecated MODULES
+                  test_engine_save_load_deprecated)
+  py_test_modules(test_engine_api_error_deprecated MODULES
+                  test_engine_api_error_deprecated)
+  py_test_modules(test_dist_split_deprecated MODULES test_dist_split_deprecated)
+  py_test_modules(test_dist_slice_deprecated MODULES test_dist_slice_deprecated)
+  py_test_modules(test_dist_shape_deprecated MODULES test_dist_shape_deprecated)
+  py_test_modules(test_dist_saver_deprecated MODULES test_dist_saver_deprecated)
+  py_test_modules(test_dist_reshape_deprecated MODULES
+                  test_dist_reshape_deprecated)
+  py_test_modules(test_dist_pnorm_deprecated MODULES test_dist_pnorm_deprecated)
+  py_test_modules(test_dist_embedding_deprecated MODULES
+                  test_dist_embedding_deprecated)
+  py_test_modules(test_dist_op_cost_deprecated MODULES
+                  test_dist_op_cost_deprecated)
+  py_test_modules(test_cost_interface_deprecated MODULES
+                  test_cost_interface_deprecated)
+  py_test_modules(test_conditional_block_reshard_deprecated MODULES
+                  test_conditional_block_reshard_deprecated)
+  py_test_modules(test_base_cost_deprecated MODULES test_base_cost_deprecated)
+  py_test_modules(test_auto_conditional_block_deprecated MODULES
+                  test_auto_conditional_block_deprecated)
 
 endif()
 

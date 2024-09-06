@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_dist_pnorm import parallelizer
+from test_dist_pnorm_deprecated import parallelizer
 
 import paddle
 from paddle.distributed.fleet import auto
