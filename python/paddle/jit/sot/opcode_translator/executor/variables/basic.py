@@ -689,6 +689,24 @@ class SymbolicVariable(VariableBase):
         self.graph.side_effects.record_mutable_variable(self)
 
     def to_constant(self):
+        from ..executor_cache import (
+            OpcodeExecutorCache,
+        )
+
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            self.graph.pycode_gen._origin_code
+        )
+
+        def disable_symbolic(var: VariableBase):
+            if var.tracker.is_traceable():
+                tracker_expr = var.tracker.trace_value_from_frame().inlined_expr
+                symbolic_inputs[tracker_expr] = None
+                return
+            for input_var in var.tracker.inputs:
+                disable_symbolic(input_var)
+
+        disable_symbolic(self)
+        self.graph.need_cache = False
         return ConstantVariable(
             self.get_py_value(), self.graph, DummyTracker([self])
         )

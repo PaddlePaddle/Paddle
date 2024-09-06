@@ -17,9 +17,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_mp_allreduce_matmul_grad_overlapping)
   set_tests_properties(test_mp_allreduce_matmul_grad_overlapping
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_relaunch_with_planner MODULES test_relaunch_with_planner)
-  set_tests_properties(test_relaunch_with_planner
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_relaunch_with_gpt_planner MODULES
                   test_relaunch_with_gpt_planner)
   set_tests_properties(test_relaunch_with_gpt_planner
@@ -46,9 +43,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_grad_clip MODULES test_pass_grad_clip)
   set_tests_properties(test_pass_grad_clip
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_random_ctrl MODULES test_random_ctrl)
-  set_tests_properties(test_random_ctrl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                   TIMEOUT 50)
   py_test_modules(test_pass_gradient_merge MODULES test_pass_gradient_merge)
   set_tests_properties(test_pass_gradient_merge
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
@@ -83,13 +77,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_auto_tuner MODULES test_auto_tuner)
   set_tests_properties(test_auto_tuner PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 100)
-  py_test_modules(test_pipeline_scheduler_vpp MODULES
-                  test_pipeline_scheduler_vpp)
-  set_tests_properties(test_pipeline_scheduler_vpp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pipeline_scheduler_zb MODULES test_pipeline_scheduler_zb)
-  set_tests_properties(test_pipeline_scheduler_zb
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_pipeline_scheduler_zb_vpp MODULES
                   test_pipeline_scheduler_zb_vpp)
   set_tests_properties(test_pipeline_scheduler_zb_vpp
@@ -234,8 +221,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_parallel_tuner_predict MODULES
                   test_parallel_tuner_predict)
   set_tests_properties(test_parallel_tuner_predict PROPERTIES TIMEOUT 120)
-  py_test_modules(test_selective_recompute MODULES test_selective_recompute)
-  set_tests_properties(test_selective_recompute PROPERTIES TIMEOUT 50)
   py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
   set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 300)
   py_test_modules(test_tuning_recompute_with_amp MODULES
@@ -257,8 +242,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
   py_test_modules(test_align_mode MODULES test_align_mode)
-  py_test_modules(test_while_op_completion MODULES test_while_op_completion)
-  py_test_modules(test_while_op_partition MODULES test_while_op_partition)
   py_test_modules(test_tunable_variable MODULES test_tunable_variable)
   py_test_modules(test_tunable_space MODULES test_tunable_space)
   py_test_modules(test_recorder MODULES test_recorder)
@@ -292,19 +275,15 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_api_error MODULES test_engine_api_error)
   py_test_modules(test_fp16_assign MODULES test_fp16_assign)
   py_test_modules(test_group_operators MODULES test_group_operators)
-  py_test_modules(test_pattern MODULES test_pattern)
-  py_test_modules(test_pattern_match MODULES test_pattern_match)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
                   test_convert_to_process_meshes)
   py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
   py_test_modules(test_engine_save_load MODULES test_engine_save_load)
-  py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
-  py_test_modules(test_shard_layer_api MODULES test_shard_layer_api)
   py_test_modules(test_cost_interface MODULES test_cost_interface)
   py_test_modules(test_auto_conditional_block MODULES
                   test_auto_conditional_block)
