@@ -61,21 +61,21 @@ __global__ void AdamKernelREG(MT beta1,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
-    MT mom2_max = static_cast<MT>(moment2_max[id]);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-    MT mom2_max_;
+    MT denom;
     if (amsgrad) {
-      mom2_max_ = std::max(mom2, mom2_max);
+      MT mom2_max = static_cast<MT>(moment2_max[id]);
+      MT mom2_max_ = std::max(mom2, mom2_max);
       moment2_max_out[id] = mom2_max_;
+      denom =
+          (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     } else {
-      mom2_max_ = mom2;
+      denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     }
 
-    MT denom =
-        (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
     moment1_out[id] = mom1;
@@ -118,21 +118,21 @@ __global__ void AdamKernelMEM(MT beta1,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
-    MT mom2_max = static_cast<MT>(moment2_max[id]);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-    MT mom2_max_;
+    MT denom;
     if (amsgrad) {
-      mom2_max_ = std::max(mom2, mom2_max);
+      MT mom2_max = static_cast<MT>(moment2_max[id]);
+      MT mom2_max_ = std::max(mom2, mom2_max);
       moment2_max_out[id] = mom2_max_;
+      denom =
+          (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     } else {
-      mom2_max_ = mom2;
+      denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     }
 
-    MT denom =
-        (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
     moment1_out[id] = mom1;

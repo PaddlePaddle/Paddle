@@ -36,6 +36,7 @@ def adamw_step(inputs, attributes):
     grad = inputs['Grad']
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
+    moment2_max = inputs['Moment2Max']
     lr = inputs['LearningRate']
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
@@ -60,11 +61,20 @@ def adamw_step(inputs, attributes):
     else:
         beta2 = inputs['Beta2Tensor'][0]
 
+    amsgrad = attributes['amsgrad']
+
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
-    denom = (np.sqrt(moment2_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
+
+    if amsgrad:
+        moment2_max_out = np.maximum(moment2_out, moment2_max)
+        denom = (np.sqrt(moment2_max_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
+    else:
+        moment2_max_out = np.zeros_like(moment2_out)
+        denom = (np.sqrt(moment2_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
+
     param_out = param + ((moment1_out / denom) * (-(lr / (1.0 - beta1_pow))))
-    return param_out, moment1_out, moment2_out
+    return param_out, moment1_out, moment2_out, moment2_max_out
 
 
 def simple_lr_setting(param, decay_rate, n_layers):
@@ -94,6 +104,7 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")
             # The second moment is positive
             moment2 = np.random.random(self.shape).astype("float32")
+            moment2_max = np.zeros(self.shape).astype("float32")
 
             learning_rate = 0.004
             beta1 = 0.78
@@ -109,6 +120,7 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'Grad': grad,
                 'Moment1': moment1,
                 'Moment2': moment2,
+                'Moment2Max': moment2_max,
                 'LearningRate': np.array([learning_rate]).astype("float32"),
                 'Beta1Pow': np.array([beta1_pow]).astype("float32"),
                 'Beta2Pow': np.array([beta2_pow]).astype("float32"),
@@ -120,15 +132,17 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'beta2': beta2,
                 "coeff": 0.5,
                 "with_decay": True,
+                "amsgrad": False,  # Currently, xpu NOT support amsgrad.
             }
 
-            param_out, moment1_out, moment2_out = adamw_step(
+            param_out, moment1_out, moment2_out, moment2_max_out = adamw_step(
                 self.inputs, self.attrs
             )
 
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
+                'Moment2MaxOut': moment2_max_out,
                 'ParamOut': param_out,
                 'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
                 'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
@@ -357,16 +371,20 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             fc1_w = np.array(linear1.weight)
             fc1_w_mon1 = np.zeros_like(fc1_w)
             fc1_w_mon2 = np.zeros_like(fc1_w)
+            fc1_w_mon2_max = np.zeros_like(fc1_w)
             fc1_b = np.array(linear1.bias)
             fc1_b_mon1 = np.zeros_like(fc1_b)
             fc1_b_mon2 = np.zeros_like(fc1_b)
+            fc1_b_mon2_max = np.zeros_like(fc1_b)
 
             fc2_w = np.array(linear2.weight)
             fc2_w_mon1 = np.zeros_like(fc2_w)
             fc2_w_mon2 = np.zeros_like(fc2_w)
+            fc2_w_mon2_max = np.zeros_like(fc2_w)
             fc2_b = np.array(linear2.bias)
             fc2_b_mon1 = np.zeros_like(fc2_b)
             fc2_b_mon2 = np.zeros_like(fc2_b)
+            fc2_b_mon2_max = np.zeros_like(fc2_b)
 
             simple_lr_fun = partial(
                 simple_lr_setting, decay_rate=0.8, n_layers=2
@@ -389,12 +407,15 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 lr_ratio=simple_lr_fun,
             )
 
-            def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
+            def get_numpy_output(
+                param, grad, moment1, moment2, moment2_max, lr_ratio, t
+            ):
                 np_inputs = {
                     'Param': param,
                     'Grad': grad,
                     'Moment1': moment1,
                     'Moment2': moment2,
+                    'Moment2Max': moment2_max,
                     'LearningRate': np.array([learning_rate]).astype("float32"),
                     'Beta1Pow': np.array([beta1**t]).astype("float32"),
                     'Beta2Pow': np.array([beta2**t]).astype("float32"),
@@ -407,11 +428,12 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     "lr_ratio": lr_ratio,
                     "coeff": weight_decay,
                     "with_decay": True,
+                    "amsgrad": False,  # Currently, xpu NOT support amsgrad.
                 }
-                param_out, moment1_out, moment2_out = adamw_step(
+                param_out, moment1_out, moment2_out, moment2_max = adamw_step(
                     np_inputs, np_attrs
                 )
-                return param_out, moment1_out, moment2_out
+                return param_out, moment1_out, moment2_out, moment2_max
 
             for i in range(5):
                 a = paddle.to_tensor(
@@ -422,37 +444,49 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 out = paddle.mean(out)
                 out.backward()
 
-                fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
-                    fc1_w,
-                    np.array(linear1.weight.grad),
-                    fc1_w_mon1,
-                    fc1_w_mon2,
-                    simple_lr_fun(linear1.weight),
-                    i + 1,
+                fc1_w, fc1_w_mon1, fc1_w_mon2, fc1_w_mon2_max = (
+                    get_numpy_output(
+                        fc1_w,
+                        np.array(linear1.weight.grad),
+                        fc1_w_mon1,
+                        fc1_w_mon2,
+                        fc1_w_mon2_max,
+                        simple_lr_fun(linear1.weight),
+                        i + 1,
+                    )
                 )
-                fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
-                    fc1_b,
-                    np.array(linear1.bias.grad),
-                    fc1_b_mon1,
-                    fc1_b_mon2,
-                    simple_lr_fun(linear1.bias),
-                    i + 1,
+                fc1_b, fc1_b_mon1, fc1_b_mon2, fc1_b_mon2_max = (
+                    get_numpy_output(
+                        fc1_b,
+                        np.array(linear1.bias.grad),
+                        fc1_b_mon1,
+                        fc1_b_mon2,
+                        fc1_b_mon2_max,
+                        simple_lr_fun(linear1.bias),
+                        i + 1,
+                    )
                 )
-                fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
-                    fc2_w,
-                    np.array(linear2.weight.grad),
-                    fc2_w_mon1,
-                    fc2_w_mon2,
-                    simple_lr_fun(linear2.weight),
-                    i + 1,
+                fc2_w, fc2_w_mon1, fc2_w_mon2, fc2_w_mon2_max = (
+                    get_numpy_output(
+                        fc2_w,
+                        np.array(linear2.weight.grad),
+                        fc2_w_mon1,
+                        fc2_w_mon2,
+                        fc2_w_mon2_max,
+                        simple_lr_fun(linear2.weight),
+                        i + 1,
+                    )
                 )
-                fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
-                    fc2_b,
-                    np.array(linear2.bias.grad),
-                    fc2_b_mon1,
-                    fc2_b_mon2,
-                    simple_lr_fun(linear2.bias),
-                    i + 1,
+                fc2_b, fc2_b_mon1, fc2_b_mon2, fc2_b_mon2_max = (
+                    get_numpy_output(
+                        fc2_b,
+                        np.array(linear2.bias.grad),
+                        fc2_b_mon1,
+                        fc2_b_mon2,
+                        fc2_b_mon2_max,
+                        simple_lr_fun(linear2.bias),
+                        i + 1,
+                    )
                 )
 
                 opt.step()
@@ -523,16 +557,28 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     fc1_w_mon2 = np.zeros(linear1.weight.shape).astype(
                         "float32"
                     )
+                    fc1_w_mon2_max = np.zeros(linear1.weight.shape).astype(
+                        "float32"
+                    )
                     fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
                     fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc1_b_mon2_max = np.zeros(linear1.bias.shape).astype(
+                        "float32"
+                    )
                     fc2_w_mon1 = np.zeros(linear2.weight.shape).astype(
                         "float32"
                     )
                     fc2_w_mon2 = np.zeros(linear2.weight.shape).astype(
                         "float32"
                     )
+                    fc2_w_mon2_max = np.zeros(linear2.weight.shape).astype(
+                        "float32"
+                    )
                     fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
                     fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
+                    fc2_b_mon2_max = np.zeros(linear2.bias.shape).astype(
+                        "float32"
+                    )
 
                     cost = paddle.nn.functional.square_error_cost(
                         input=out, label=y
@@ -553,12 +599,15 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     )
                     _, params_grads = opt.minimize(avg_cost)
 
-            def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
+            def get_numpy_output(
+                param, grad, moment1, moment2, moment2_max, lr_ratio, t
+            ):
                 np_inputs = {
                     'Param': param,
                     'Grad': grad,
                     'Moment1': moment1,
                     'Moment2': moment2,
+                    'Moment2Max': moment2_max,
                     'LearningRate': np.array([learning_rate]).astype("float32"),
                     'Beta1Pow': np.array([beta1**t]).astype("float32"),
                     'Beta2Pow': np.array([beta2**t]).astype("float32"),
@@ -571,11 +620,12 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     "lr_ratio": lr_ratio,
                     "coeff": weight_decay,
                     "with_decay": True,
+                    "amsgrad": False,  # Currently, xpu NOT support amsgrad.
                 }
-                param_out, moment1_out, moment2_out = adamw_step(
+                param_out, moment1_out, moment2_out, moment2_max = adamw_step(
                     np_inputs, np_attrs
                 )
-                return param_out, moment1_out, moment2_out
+                return param_out, moment1_out, moment2_out, moment2_max
 
             if paddle.framework.in_pir_mode():
                 fetch_list1 = [
@@ -640,37 +690,49 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 fc2_b = param[3]
                 fc2_b_grad = params_and_gras[7]
 
-                fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
-                    fc1_w,
-                    fc1_w_grad,
-                    fc1_w_mon1,
-                    fc1_w_mon2,
-                    simple_lr_fun(linear1.weight),
-                    i + 1,
+                fc1_w, fc1_w_mon1, fc1_w_mon2, fc1_w_mon2_max = (
+                    get_numpy_output(
+                        fc1_w,
+                        fc1_w_grad,
+                        fc1_w_mon1,
+                        fc1_w_mon2,
+                        fc1_w_mon2_max,
+                        simple_lr_fun(linear1.weight),
+                        i + 1,
+                    )
                 )
-                fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
-                    fc1_b,
-                    fc1_b_grad,
-                    fc1_b_mon1,
-                    fc1_b_mon2,
-                    simple_lr_fun(linear1.bias),
-                    i + 1,
+                fc1_b, fc1_b_mon1, fc1_b_mon2, fc1_b_mon2_max = (
+                    get_numpy_output(
+                        fc1_b,
+                        fc1_b_grad,
+                        fc1_b_mon1,
+                        fc1_b_mon2,
+                        fc1_b_mon2_max,
+                        simple_lr_fun(linear1.bias),
+                        i + 1,
+                    )
                 )
-                fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
-                    fc2_w,
-                    fc2_w_grad,
-                    fc2_w_mon1,
-                    fc2_w_mon2,
-                    simple_lr_fun(linear2.weight),
-                    i + 1,
+                fc2_w, fc2_w_mon1, fc2_w_mon2, fc2_w_mon2_max = (
+                    get_numpy_output(
+                        fc2_w,
+                        fc2_w_grad,
+                        fc2_w_mon1,
+                        fc2_w_mon2,
+                        fc2_w_mon2_max,
+                        simple_lr_fun(linear2.weight),
+                        i + 1,
+                    )
                 )
-                fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
-                    fc2_b,
-                    fc2_b_grad,
-                    fc2_b_mon1,
-                    fc2_b_mon2,
-                    simple_lr_fun(linear2.bias),
-                    i + 1,
+                fc2_b, fc2_b_mon1, fc2_b_mon2, fc2_b_mon2_max = (
+                    get_numpy_output(
+                        fc2_b,
+                        fc2_b_grad,
+                        fc2_b_mon1,
+                        fc2_b_mon2,
+                        fc2_b_mon2_max,
+                        simple_lr_fun(linear2.bias),
+                        i + 1,
+                    )
                 )
 
                 np.testing.assert_allclose(
@@ -718,6 +780,7 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
         main_grad = grad.astype(paddle.float32)
         moment1 = paddle.randn(shape).astype(paddle.float32)
         moment2 = paddle.randn(shape).astype(paddle.float32).abs()
+        moment2_max = paddle.zeros(shape).astype(paddle.float32)
         lr = paddle.zeros([1]).astype(paddle.float32)
         lr[0] = lr_rate
         beta1_pow_acc = paddle.ones([1]).astype(paddle.float32)
@@ -730,14 +793,16 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
         ref_beta2_pow_acc = beta2_pow_acc.astype(paddle.float32)
         ref_moment_1 = moment1.astype(paddle.float32)
         ref_moment_2 = moment2.astype(paddle.float32)
+        ref_moment_2_max = moment2_max.astype(paddle.float32)
 
         # reference code
-        _, _, _, _, _, _ = paddle._C_ops.adamw_(
+        _, _, _, _, _, _, _ = paddle._C_ops.adamw_(
             ref_param,
             main_grad,
             lr,
             ref_moment_1,
             ref_moment_2,
+            ref_moment_2_max,
             ref_beta1_pow_acc,
             ref_beta2_pow_acc,
             master_weight,
@@ -752,15 +817,17 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
             1000,
             False,
             False,
+            False,  # Currently, xpu NOT support amsgrad.
         )
 
         if use_main_grad:
-            _, _, _, _, _, _ = paddle._C_ops.adamw_(
+            _, _, _, _, _, _, _ = paddle._C_ops.adamw_(
                 param,
                 main_grad,
                 lr,
                 moment1,
                 moment2,
+                moment2_max,
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
@@ -775,6 +842,7 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
                 1000,
                 find_master,
                 False,
+                False,  # Currently, xpu NOT support amsgrad.
             )
             np.testing.assert_allclose(
                 param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
@@ -783,12 +851,13 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
                 master_weight.numpy(), ref_param.numpy(), rtol=1e-6
             )
         else:
-            _, _, _, _, _, _ = paddle._C_ops.adamw_(
+            _, _, _, _, _, _, _ = paddle._C_ops.adamw_(
                 param,
                 grad,
                 lr,
                 moment1,
                 moment2,
+                moment2_max,
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
@@ -803,6 +872,7 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
                 1000,
                 find_master,
                 False,
+                False,  # Currently, xpu NOT support amsgrad.
             )
             np.testing.assert_allclose(
                 param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2

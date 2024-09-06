@@ -217,14 +217,17 @@ struct FusedAdamFunctor {
       MT beta2) {
     MT mom1 = static_cast<MT>(mom1_ptr[0]);
     MT mom2 = static_cast<MT>(mom2_ptr[0]);
-    MT mom2_max = static_cast<MT>(mom2_max_ptr[0]);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
     mom1_ptr[0] = mom1;
     mom2_ptr[0] = mom2;
-    mom2_max_ptr[0] = std::max(mom2, mom2_max);
+
+    if (AMSGrad) {
+      MT mom2_max = static_cast<MT>(mom2_max_ptr[0]);
+      mom2_max_ptr[0] = std::max(mom2, mom2_max);
+    }
   }
 
   static __device__ __forceinline__ MT UpdateParameter(MT p,

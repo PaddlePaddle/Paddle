@@ -74,7 +74,6 @@ __global__ void SparseAdamCUDAKernelREG(MT beta1,
     } else {
       MT mom1 = mom1_[id];
       MT mom2 = mom2_[id];
-      MT mom2_max = mom2_max_[id];
       MT p = master_param ? master_param[id] : static_cast<MT>(param_[id]);
       MT g = row_idx >= 0
                  ? static_cast<MT>(grad_[row_idx * row_numel + id % row_numel])
@@ -82,16 +81,17 @@ __global__ void SparseAdamCUDAKernelREG(MT beta1,
       mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
       mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-      MT moment2_max_;
+      MT denom;
       if (amsgrad) {
-        moment2_max_ = std::max(mom2, mom2_max);
+        MT mom2_max = mom2_max_[id];
+        MT moment2_max_ = std::max(mom2, mom2_max);
         mom2_max_out_[id] = moment2_max_;
+        denom = (sqrt(moment2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) +
+                epsilon;
       } else {
-        moment2_max_ = mom2;
+        denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
       }
 
-      MT denom = (sqrt(moment2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) +
-                 epsilon;
       p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
       // Write back to global memory

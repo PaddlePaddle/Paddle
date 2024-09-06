@@ -30,6 +30,7 @@ def adam_wrapper(
     LearningRate,
     moment1,
     moment2,
+    moment2_max,
     beta1_pow,
     beta2_pow,
     master_weight=None,
@@ -38,13 +39,15 @@ def adam_wrapper(
     beta2=0.836,
     epsilon=1e-4,
     lazy_mode=False,
+    amsgrad=False,
 ):
-    _, _, _, _, _, _ = paddle._C_ops.adam_(
+    _, _, _, _, _, _, _ = paddle._C_ops.adam_(
         param,
         grad,
         LearningRate,
         moment1,
         moment2,
+        moment2_max,
         beta1_pow,
         beta2_pow,
         master_weight,
@@ -56,6 +59,7 @@ def adam_wrapper(
         1000,
         False,
         False,
+        amsgrad,
     )
 
 
@@ -70,6 +74,7 @@ class TestAdamOp1(OpTest):
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The second moment is positive
         moment2 = np.random.random((102, 105)).astype("float32")
+        moment2_max = np.zeros((102, 105)).astype("float32")
 
         learning_rate = 0.004
         beta1 = 0.78
@@ -77,24 +82,34 @@ class TestAdamOp1(OpTest):
         epsilon = 1e-4
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        amsgrad = False
 
         self.inputs = {
             'Param': param,
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
+            'Moment2Max': moment2_max,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
 
-        self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            'amsgrad': amsgrad,
+        }
 
-        param_out, moment1_out, moment2_out = adam_step(self.inputs, self.attrs)
+        param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
+            self.inputs, self.attrs
+        )
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
+            'Moment2MaxOut': moment2_max_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
             'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
@@ -119,6 +134,7 @@ class TestAdamOp2(OpTest):
         moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")
         # The second moment is positive
         moment2 = np.random.random(self.shape).astype("float32")
+        moment2_max = np.zeros(self.shape).astype("float32")
 
         learning_rate = 0.001
         beta1 = 0.9
@@ -126,24 +142,34 @@ class TestAdamOp2(OpTest):
         epsilon = 1e-8
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        amsgrad = False
 
         self.inputs = {
             'Param': param,
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
+            'Moment2Max': moment2_max,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
 
-        attributes = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+        attributes = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            'amsgrad': amsgrad,
+        }
 
-        param_out, moment1_out, moment2_out = adam_step(self.inputs, attributes)
+        param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
+            self.inputs, attributes
+        )
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
+            'Moment2MaxOut': moment2_max_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
             'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
@@ -171,6 +197,7 @@ class TestAdamOpMultipleSteps(OpTest):
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The second moment is positive
         moment2 = np.random.random((102, 105)).astype("float32")
+        moment2_max = np.zeros((102, 105)).astype("float32")
 
         learning_rate = 0.001
         self.beta1 = 0.9
@@ -178,12 +205,14 @@ class TestAdamOpMultipleSteps(OpTest):
         epsilon = 1e-8
         self.beta1_pow = self.beta1**10
         self.beta2_pow = self.beta2**10
+        self.amsgrad = False
 
         self.inputs = {
             'Param': param,
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
+            'Moment2Max': moment2_max,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([self.beta2_pow]).astype("float32"),
@@ -193,11 +222,12 @@ class TestAdamOpMultipleSteps(OpTest):
             'epsilon': epsilon,
             'beta1': self.beta1,
             'beta2': self.beta2,
+            'amsgrad': self.amsgrad,
         }
 
     def test_check_output(self):
         for _ in range(self.num_steps):
-            param_out, moment1_out, moment2_out = adam_step(
+            param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
                 self.inputs, self.attrs
             )
 
@@ -206,6 +236,7 @@ class TestAdamOpMultipleSteps(OpTest):
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
+                'Moment2MaxOut': moment2_max_out,
                 'ParamOut': param_out,
                 'Beta1PowOut': beta1_pow_out,
                 'Beta2PowOut': beta2_pow_out,
@@ -218,6 +249,7 @@ class TestAdamOpMultipleSteps(OpTest):
             self.inputs['Param'] = param_out
             self.inputs['Moment1'] = moment1_out
             self.inputs['Moment2'] = moment2_out
+            self.inputs['Moment2Max'] = moment2_max_out
 
             # Update powers of Beta1 and Beta2 for next time step
             self.inputs['Beta1Pow'] = beta1_pow_out
@@ -241,6 +273,7 @@ def adam_step(inputs, attributes):
     grad = inputs['Grad']
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
+    moment2_max = inputs['Moment2Max']
     lr = inputs['LearningRate']
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
@@ -256,11 +289,25 @@ def adam_step(inputs, attributes):
     else:
         beta2 = inputs['Beta2Tensor'][0]
 
+    amsgrad = attributes['amsgrad']
+
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
+
     lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-    param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon))
-    return param_out, moment1_out, moment2_out
+
+    if amsgrad:
+        moment2_max_out = np.maximum(moment2_out, moment2_max)
+        param_out = param - lr_t * (
+            moment1_out / (np.sqrt(moment2_max_out) + epsilon)
+        )
+    else:
+        moment2_max_out = np.zeros_like(moment2_out)
+        param_out = param - lr_t * (
+            moment1_out / (np.sqrt(moment2_out) + epsilon)
+        )
+
+    return param_out, moment1_out, moment2_out, moment2_max_out
 
 
 def adamw_step(inputs, attributes):
@@ -275,6 +322,7 @@ def adamw_step(inputs, attributes):
     grad = inputs['Grad']
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
+    moment2_max = inputs['Moment2Max']
     lr = inputs['LearningRate']
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
@@ -294,12 +342,25 @@ def adamw_step(inputs, attributes):
     else:
         beta2 = inputs['Beta2Tensor'][0]
 
+    amsgrad = attributes["amsgrad"]
+
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
-    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-    param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon))
 
-    return param_out, moment1_out, moment2_out
+    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+
+    if amsgrad:
+        moment2_max_out = np.maximum(moment2_out, moment2_max)
+        param_out = param - lr_t * (
+            moment1_out / (np.sqrt(moment2_max_out) + epsilon)
+        )
+    else:
+        moment2_max_out = np.zeros_like(moment2_out)
+        param_out = param - lr_t * (
+            moment1_out / (np.sqrt(moment2_out) + epsilon)
+        )
+
+    return param_out, moment1_out, moment2_out, moment2_max_out
 
 
 def adam_step_sparse(
@@ -316,6 +377,7 @@ def adam_step_sparse(
     # grad = inputs['Grad']
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
+    moment2_max = inputs['Moment2Max']
     lr = inputs['LearningRate']
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
@@ -323,9 +385,11 @@ def adam_step_sparse(
     beta1 = attributes['beta1']
     beta2 = attributes['beta2']
     epsilon = attributes['epsilon']
+    amsgrad = attributes['amsgrad']
 
     moment1_out = np.zeros(shape=[height, row_numel])
     moment2_out = np.zeros(shape=[height, row_numel])
+    moment2_max_out = np.zeros(shape=[height, row_numel])
     param_out = np.zeros(shape=[height, row_numel])
 
     def update_row(row_id, update_value):
@@ -336,9 +400,19 @@ def adam_step_sparse(
             update_value
         )
         lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-        param_out[row_id] = param[row_id] - lr_t * (
-            moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
-        )
+
+        if amsgrad:
+            moment2_max_out[row_id] = np.maximum(
+                moment2_out[row_id], moment2_max[row_id]
+            )
+            param_out[row_id] = param[row_id] - lr_t * (
+                moment1_out[row_id]
+                / (np.sqrt(moment2_max_out[row_id]) + epsilon)
+            )
+        else:
+            param_out[row_id] = param[row_id] - lr_t * (
+                moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
+            )
 
     if lazy_mode:
         for idx, row_id in enumerate(rows):
@@ -350,7 +424,7 @@ def adam_step_sparse(
                 update_value = np_grad[rows.index(row_id)]
             update_row(row_id, update_value)
 
-    return param_out, moment1_out, moment2_out
+    return param_out, moment1_out, moment2_out, moment2_max_out
 
 
 class TestSparseAdamOp(unittest.TestCase):
@@ -370,6 +444,7 @@ class TestSparseAdamOp(unittest.TestCase):
             "Param": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment1": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
+            "Moment2Max": np.zeros((height, row_numel)).astype("float32"),
             'Beta1Pow': beta1_pow,
             'Beta2Pow': beta2_pow,
             "LearningRate": np.full((1), 2.0).astype("float32"),
@@ -380,6 +455,7 @@ class TestSparseAdamOp(unittest.TestCase):
             'beta1': beta1,
             'beta2': beta2,
             'min_row_size_to_use_multithread': 2,
+            'amsgrad': False,
         }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
@@ -394,7 +470,7 @@ class TestSparseAdamOp(unittest.TestCase):
 
         self.sparse_inputs = ["Grad"]
 
-        param_out, mom1, mom2 = adam_step_sparse(
+        param_out, mom1, mom2, mom2_max = adam_step_sparse(
             self.dense_inputs,
             self.attrs,
             height,
@@ -407,6 +483,7 @@ class TestSparseAdamOp(unittest.TestCase):
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2,
+            "Moment2MaxOut": mom2_max,
             'Beta1PowOut': beta1_pow * beta1,
             'Beta2PowOut': beta2_pow * beta2,
         }
@@ -469,6 +546,8 @@ class TestAdamOpBetaVariable(OpTest):
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The second moment is positive
         moment2 = np.random.random((102, 105)).astype("float32")
+        moment2_max = np.zeros((102, 105)).astype("float32")
+
         beta1 = 0.85
         beta2 = 0.95
 
@@ -482,6 +561,7 @@ class TestAdamOpBetaVariable(OpTest):
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
+            'Moment2Max': moment2_max,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
@@ -489,13 +569,16 @@ class TestAdamOpBetaVariable(OpTest):
             "Beta2Tensor": np.array([beta2]).astype("float32"),
         }
 
-        attributes = {'epsilon': epsilon}
+        attributes = {'epsilon': epsilon, 'amsgrad': False}
 
-        param_out, moment1_out, moment2_out = adam_step(self.inputs, attributes)
+        param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
+            self.inputs, attributes
+        )
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
+            'Moment2MaxOut': moment2_max_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
             'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
@@ -516,6 +599,8 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The second moment is positive
         moment2 = np.random.random((102, 105)).astype("float32")
+        moment2_max = np.zeros((102, 105)).astype("float32")
+
         beta1 = 0.85
         beta2 = 0.95
 
@@ -529,6 +614,7 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
+            'Moment2Max': moment2_max,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
@@ -537,13 +623,16 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
             "EpsilonTensor": np.array([epsilon]).astype("float32"),
         }
 
-        attributes = {'epsilon': epsilon}
+        attributes = {'epsilon': epsilon, 'amsgrad': False}
 
-        param_out, moment1_out, moment2_out = adam_step(self.inputs, attributes)
+        param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
+            self.inputs, attributes
+        )
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
+            'Moment2MaxOut': moment2_max_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
             'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
@@ -564,6 +653,8 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The second moment is positive
         moment2 = np.random.random((102, 105)).astype("float32")
+        moment2_max = np.zeros((102, 105)).astype("float32")
+
         beta1 = 0.85
         beta2 = 0.95
 
@@ -577,6 +668,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
+            'Moment2Max': moment2_max,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
@@ -585,9 +677,11 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
             "EpsilonTensor": np.array([epsilon]).astype("float32"),
         }
 
-        attributes = {'epsilon': epsilon}
+        attributes = {'epsilon': epsilon, 'amsgrad': False}
 
-        param_out, moment1_out, moment2_out = adam_step(self.inputs, attributes)
+        param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
+            self.inputs, attributes
+        )
 
         self.attrs = {'use_global_beta_pow': True}
 
@@ -595,6 +689,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
+            'Moment2MaxOut': moment2_max_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([]),
             'Beta2PowOut': np.array([]),
@@ -615,6 +710,8 @@ class TestAdamOpWithSkipUpdate(OpTest):
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The second moment is positive
         moment2 = np.random.random((102, 105)).astype("float32")
+        moment2_max = np.zeros((102, 105)).astype("float32")
+
         beta1 = 0.85
         beta2 = 0.95
 
@@ -628,6 +725,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
+            'Moment2Max': moment2_max,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
@@ -637,14 +735,15 @@ class TestAdamOpWithSkipUpdate(OpTest):
             "SkipUpdate": np.array([True]).astype("bool"),
         }
 
-        attributes = {'epsilon': epsilon}
+        attributes = {'epsilon': epsilon, 'amsgrad': False}
 
-        self.attrs = {'use_global_beta_pow': True}
+        self.attrs = {'use_global_beta_pow': True, 'amsgrad': False}
 
         # use_global_beta_pow=True, Beta1PowOut and Beta2PowOut are empty.
         self.outputs = {
             'Moment1Out': moment1,
             'Moment2Out': moment2,
+            'Moment2MaxOut': moment2_max,
             'ParamOut': param,
             'Beta1PowOut': np.array([]),
             'Beta2PowOut': np.array([]),
@@ -1055,6 +1154,8 @@ class TestMultiTensorAdam(unittest.TestCase):
                 for use_amp in use_amp_list:
                     self._check_with_place_amp(place, use_amp)
 
+
+# TODO(megemini): AMSGrad
 
 if __name__ == "__main__":
     paddle.enable_static()
