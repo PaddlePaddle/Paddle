@@ -96,6 +96,37 @@ if(WITH_GPU AND TENSORRT_FOUND)
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_optimization_level_deprecated PROPERTIES TIMEOUT
                                                                          300)
+  set_tests_properties(test_trt_elementwise_op_deprecated PROPERTIES TIMEOUT
+                                                                     300)
+  set_tests_properties(test_trt_fc_fuse_pass_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_flatten_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_gather_nd_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_gather_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_instance_norm_op_deprecated PROPERTIES TIMEOUT
+                                                                       300)
+  set_tests_properties(test_trt_matmul_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_nearest_interp_op_deprecated PROPERTIES TIMEOUT
+                                                                        300)
+  set_tests_properties(test_trt_ops_fp16_mix_precision_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_pad_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_reduce_sum_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_reshape_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_scale_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_shuffle_channel_detect_pass_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_skip_layernorm_fuse_pass_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_slice_dynamic_plugin_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_support_nhwc_pass_deprecated PROPERTIES TIMEOUT
+                                                                        300)
+  set_tests_properties(test_trt_transpose_flatten_concat_fuse_pass_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_tuned_dynamic_shape_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_while_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_yolo_box_op_deprecated PROPERTIES TIMEOUT 300)
 
   if(NOT WIN32)
     set_tests_properties(test_trt_inference_fp16_io_deprecated
@@ -104,6 +135,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
       test_trt_pool3d_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
                  450)
+    set_tests_properties(test_trt_deformable_conv_deprecated PROPERTIES TIMEOUT
+                                                                        500)
   endif()
   if(WITH_NV_JETSON)
     set_tests_properties(
