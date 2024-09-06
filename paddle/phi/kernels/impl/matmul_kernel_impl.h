@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/funcs/cublaslt.h"
 #endif
@@ -2185,4 +2186,17 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
       dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
 }
 
+template <typename T, typename Context>
+void LegacyMatmulKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        bool transpose_x,
+                        bool transpose_y,
+                        float alpha,
+                        DenseTensor* out) {
+  MatmulKernel<T, Context>(ctx, x, y, transpose_x, transpose_y, out);
+  if (std::fabs(alpha - 1.f) > 1e-6f) {
+    ScaleKernel<T, Context>(ctx, *out, Scalar(alpha), Scalar(0), false, out);
+  }
+}
 }  // namespace phi

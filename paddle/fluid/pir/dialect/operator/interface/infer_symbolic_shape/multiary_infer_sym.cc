@@ -2252,6 +2252,75 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
 
   return true;
 }
+
+bool NllLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const symbol::ShapeOrDataDimExprs &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &label_shape = label_shape_or_data.shape();
+  PADDLE_ENFORCE_EQ(x_shape.size() == 2 || x_shape.size() == 4,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The tensor rank of Input(X) must be 2 or 4."));
+  infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
+
+  if (op->operand_source(2)) {
+    const symbol::ShapeOrDataDimExprs &w_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const std::vector<symbol::DimExpr> &w_shape = w_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        w_shape.size(),
+        1,
+        phi::errors::InvalidArgument("Input(Weight) should be a 1D tensor."));
+
+    infer_context->AddEqualCstr(x_shape[1], w_shape[0]);
+  }
+
+  const std::string &reduction =
+      op->attribute<pir::StrAttribute>("reduction").AsString();
+
+  std::vector<symbol::DimExpr> out_shape;
+  if (x_shape.size() == 2) {
+    if (reduction == "none") {
+      out_shape = {x_shape[0]};
+    } else {
+      out_shape = std::vector<symbol::DimExpr>{};
+    }
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
+  } else if (x_shape.size() == 4) {
+    PADDLE_ENFORCE_EQ(label_shape.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "Expected Input(Label) dimensions=3, received %d.",
+                          label_shape.size()));
+
+    infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
+    infer_context->AddEqualCstr(x_shape[2], label_shape[1]);
+    infer_context->AddEqualCstr(x_shape[3], label_shape[2]);
+
+    if (reduction == "none") {
+      out_shape = {x_shape[0], x_shape[2], x_shape[3]};
+    } else {
+      out_shape = std::vector<symbol::DimExpr>{};
+    }
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{})});
+  return true;
+}
+
 bool RoiPoolOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
@@ -3264,12 +3333,74 @@ bool WarprnntOpInferSymbolicShape(
   return true;
 }
 
-// bool WeightOnlyLinearOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool WeightOnlyLinearOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &weight_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const auto &weight_scale_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const std::string &weight_dtype =
+      op->attribute<pir::StrAttribute>("weight_dtype").AsString();
+  const int group_size =
+      op->attribute<pir::Int32Attribute>("group_size").data();
+
+  PADDLE_ENFORCE(
+      (group_size == -1 || group_size == 64 || group_size == 128),
+      common::errors::InvalidArgument("group_size must be -1, 64 or 128."));
+
+  ExprVec weight_scale_shape = weight_scale_shape_or_data.shape();
+  ExprVec x_shape = x_shape_or_data.shape();
+  ExprVec weight_shape = weight_shape_or_data.shape();
+  symbol::DimExpr n =
+      group_size == -1 ? weight_scale_shape[0] : weight_scale_shape[1];
+  PADDLE_ENFORCE(weight_dtype == "int8" || weight_dtype == "int4",
+                 common::errors::InvalidArgument(
+                     "quant_method must be 'int8' or 'int4'."));
+  PADDLE_ENFORCE_EQ(weight_shape.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "The input(weight) must be a 2D Tensor."));
+  // TODO(Jeff114514): can not use % between symbol::DimExpr and int, need to
+  // make sure weight_shape[0] and weight_shape[1] is divisible by 16
+  infer_context->AddEqualCstr(x_shape[x_shape.size() - 1], weight_shape[1]);
+  if (!bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    ExprVec bias_shape = bias_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        bias_shape.size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            bias_shape.size()));
+  }
+
+  if (group_size == -1) {
+    PADDLE_ENFORCE_EQ(weight_scale_shape.size(),
+                      1UL,
+                      common::errors::InvalidArgument(
+                          "The input(weight_scale) must be a 1D Tensor."
+                          "in per-channel mode."));
+  } else {
+    PADDLE_ENFORCE_EQ(weight_scale_shape.size(),
+                      2UL,
+                      common::errors::InvalidArgument(
+                          "The input(weight_scale) must be a 2D Tensor"
+                          " in groupwise mode."));
+    infer_context->AddEqualCstr(
+        weight_scale_shape[0],
+        (weight_shape[1] + (group_size - 1)) / group_size);
+  }
+  ExprVec out_shape = x_shape;
+  out_shape[out_shape.size() - 1] = n;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
 
 bool WeightedSampleNeighborsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
