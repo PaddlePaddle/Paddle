@@ -20,7 +20,7 @@ from tensorrt_test_base import TensorRTBaseTest
 import paddle
 
 
-class TestMeanTRTPattern0(TensorRTBaseTest):
+class TestMean0TRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.mean
         self.api_args = {
@@ -36,7 +36,7 @@ class TestMeanTRTPattern0(TensorRTBaseTest):
         self.check_trt_result()
 
 
-class TestMeanTRTPattern1(TensorRTBaseTest):
+class TestMean1TRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.mean
         self.api_args = {
