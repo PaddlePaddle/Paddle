@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.w
 
+import os
 import sys
 import unittest
 
@@ -744,8 +745,14 @@ class TestTriangularSolveOpCp12854b(TestTriangularSolveOp):
 class TestTriangularSolveAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.dtype = "float64"
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 

@@ -36,7 +36,7 @@ void BNActXPUKernel(const Context& dev_ctx,
   const auto data_layout = common::StringToDataLayout(data_layout_str);
   PADDLE_ENFORCE_EQ(data_layout_str == "NCHW" || data_layout_str == "NHWC",
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The 'data_layout' attribute must be NCHW or NHWC. "
                         "But received 'data_layout' is [%s].",
                         data_layout_str));
@@ -45,7 +45,7 @@ void BNActXPUKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x_dims.size() >= 2 && x_dims.size() <= 5,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input's dimensions should be between 2 and 5"
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
@@ -67,7 +67,7 @@ void BNActXPUKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));

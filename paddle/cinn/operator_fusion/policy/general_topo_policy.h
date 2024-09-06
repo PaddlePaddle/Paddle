@@ -13,15 +13,16 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
+#include "paddle/cinn/operator_fusion/pattern_node.h"
+#include "paddle/cinn/operator_fusion/policy/policy_base.h"
 
 namespace cinn::fusion {
 
-template <typename T>
-class GeneralTopoPolicy final : virtual public Policy<T> {
+class GeneralTopoPolicy final : public PolicyBase {
  public:
-  bool CanFuse(const PatternNodePtr<T>& upstream,
-               const PatternNodePtr<T>& downstream) override;
+  static constexpr PolicyKind Kind = PolicyKind::GeneralTopo;
+  bool CanFuse(const PatternNodePtr& upstream,
+               const PatternNodePtr& downstream);
   std::string Name() { return "GeneralTopoPolicy"; }
 };
 

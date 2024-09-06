@@ -119,7 +119,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_EQ(
           phi::math::bloomfilter_check(_filter),
           1,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The white filter is not loaded successfully, please make sure "
               "'white_list_len': %d is valid for Input(WhiteList).",
               white_list_len));
@@ -129,7 +129,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_EQ(
           phi::math::bloomfilter_check(_black_filter),
           1,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The black filter is not loaded successfully, please make sure "
               "'black_list_len': %d is valid for Input(BlackList).",
               black_list_len));

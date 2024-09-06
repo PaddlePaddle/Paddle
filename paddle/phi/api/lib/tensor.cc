@@ -47,9 +47,9 @@ using DefaultAllocator = experimental::DefaultAllocator;
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
     : impl_(std::move(tensor_impl)) {
-  PADDLE_ENFORCE_NOT_NULL(
-      impl_,
-      phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
+  PADDLE_ENFORCE_NOT_NULL(impl_,
+                          common::errors::InvalidArgument(
+                              "TensorImpl with nullptr is not supported"));
 }
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
@@ -58,9 +58,9 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
     : impl_(std::move(tensor_impl)),
       autograd_meta_(std::move(autograd_meta)),
       name_(name) {
-  PADDLE_ENFORCE_NOT_NULL(
-      impl_,
-      phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
+  PADDLE_ENFORCE_NOT_NULL(impl_,
+                          common::errors::InvalidArgument(
+                              "TensorImpl with nullptr is not supported"));
 }
 
 Tensor::Tensor(const Place &place) {
@@ -122,7 +122,7 @@ const phi::DDim &Tensor::strides() const {
         ->value()
         .strides();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support strides operation on DenseTensor and DistTensor now."));
   }
 }
@@ -141,7 +141,7 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
     static_cast<phi::DenseTensor *>(impl_.get())
         ->Resize(common::make_ddim(shape));
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));
   }
 }
@@ -178,7 +178,7 @@ bool Tensor::is_string_tensor() const {
 const Place &Tensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       impl_,
-      phi::errors::PermissionDenied(
+      common::errors::PermissionDenied(
           "Null pointer error, the impl_ of Tensor should not be "
           "Null when calling Tensor::place()."));
   return impl_->place();
@@ -379,7 +379,7 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
             begin_idx,
             end_idx)));
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support slice operation on DenseTensor now."));
   }
 }
@@ -464,9 +464,9 @@ void Tensor::bump_inplace_version() {
             ->InplaceVersionCounter();
     inplace_version_counter.Bump();
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("bump_inplace_version is only supported on "
-                                   "DenseTensor and DistTensor now."));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "bump_inplace_version is only supported on "
+        "DenseTensor and DistTensor now."));
   }
 }
 

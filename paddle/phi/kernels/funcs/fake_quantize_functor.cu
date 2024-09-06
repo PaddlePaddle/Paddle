@@ -324,9 +324,9 @@ void FindChannelAbsMaxFunctor<Context, T>::operator()(
   PADDLE_ENFORCE_EQ(
       quant_axis == 0 || quant_axis == 1,
       true,
-      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                   "the received is %d",
-                                   quant_axis));
+      common::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                      "the received is %d",
+                                      quant_axis));
   const int num = in_tensor.numel();
   auto in_dims = in_tensor.dims();
   const T *in_data = in_tensor.data<T>();

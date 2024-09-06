@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import TYPE_CHECKING, Any, Sequence, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -48,6 +48,8 @@ from ..framework import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle._typing import (
         DTypeLike,
         NestedNumbericSequence,
@@ -67,9 +69,9 @@ def _complex_to_real_dtype(dtype: DTypeLike) -> DTypeLike:
     elif dtype == core.VarDesc.VarType.COMPLEX128:
         return core.VarDesc.VarType.FP64
     elif dtype == paddle.pir.core.DataType.COMPLEX64:
-        return paddle.pir.core.DataType.FP32
+        return paddle.pir.core.DataType.FLOAT32
     elif dtype == paddle.pir.core.DataType.COMPLEX128:
-        return paddle.pir.core.DataType.FP64
+        return paddle.pir.core.DataType.FLOAT64
     else:
         return dtype
 
@@ -79,9 +81,9 @@ def _real_to_complex_dtype(dtype: DTypeLike) -> DTypeLike:
         return core.VarDesc.VarType.COMPLEX64
     elif dtype == core.VarDesc.VarType.FP64:
         return core.VarDesc.VarType.COMPLEX128
-    elif dtype == paddle.pir.core.DataType.FP32:
+    elif dtype == paddle.pir.core.DataType.FLOAT32:
         return paddle.pir.core.DataType.COMPLEX64
-    elif dtype == paddle.pir.core.DataType.FP64:
+    elif dtype == paddle.pir.core.DataType.FLOAT64:
         return paddle.pir.core.DataType.COMPLEX128
     else:
         return dtype
@@ -554,7 +556,42 @@ def logspace(
     if not isinstance(base, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.logspace(
+            tensor_start,
+            tensor_stop,
+            tensor_num,
+            tensor_base,
+            dtype,
+            _current_expected_place(),
+        )
+    elif in_pir_mode():
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        base_dtype = convert_dtype(tensor_base.dtype)
+        out_dtype = convert_dtype(dtype)
+        if (
+            (
+                stop_dtype == "float64"
+                or start_dtype == "float64"
+                or base_dtype == "float64"
+            )
+            and out_dtype in ["float32", "int32"]
+        ) or (
+            (
+                stop_dtype == "int64"
+                or start_dtype == "int64"
+                or base_dtype == "int64"
+            )
+            and out_dtype == "int32"
+        ):
+            raise ValueError(
+                f"The dtype of start/stop/base is {start_dtype}/{stop_dtype}/{base_dtype} but the attr(dtype) of logspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of logspace."
+            )
+        if isinstance(num, paddle.pir.Value):
+            check_dtype(num.dtype, 'num', ['int32'], 'logspace')
+
         return _C_ops.logspace(
             tensor_start,
             tensor_stop,
@@ -903,7 +940,7 @@ def to_tensor(
 
     # call assign for static graph
     else:
-        re_exp = re.compile(r'[(](.+?)[)]', re.S)
+        re_exp = re.compile(r'[(](.+?)[)]', re.DOTALL)
         place_str = re.findall(re_exp, str(place))[0]
         with paddle.static.device_guard(place_str):
             return _to_tensor_static(data, dtype, stop_gradient)
@@ -1005,6 +1042,7 @@ def fill_constant(
     out: paddle.Tensor | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
+    shape = [shape] if isinstance(shape, int) else shape
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
@@ -1695,7 +1733,31 @@ def tril(
              [5 , 0 , 0 , 0 ],
              [9 , 10, 0 , 0 ]])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.tril(x, diagonal)
+    elif in_pir_mode():
+        op_type = 'tril'
+        assert x is not None, f'x cannot be None in {op_type}'
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            op_type,
+        )
+        if len(x.shape) < 2:
+            raise ValueError(f"x shape in {op_type} must be at least 2-D")
+        if not isinstance(diagonal, (int,)):
+            raise TypeError(f"diagonal in {op_type} must be a python Int")
         return _C_ops.tril(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1776,7 +1838,31 @@ def triu(
              [0 , 10, 11, 12]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.triu(x, diagonal)
+    elif in_pir_mode():
+        op_type = 'triu'
+        assert x is not None, f'x cannot be None in {op_type}'
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            op_type,
+        )
+        if len(x.shape) < 2:
+            raise ValueError(f"x shape in {op_type} must be at least 2-D")
+        if not isinstance(diagonal, (int,)):
+            raise TypeError(f"diagonal in {op_type} must be a python Int")
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -1798,15 +1884,13 @@ def triu_(
 @overload
 def meshgrid(
     args: Sequence[paddle.Tensor], name: str | None = None
-) -> list[paddle.Tensor]:
-    ...
+) -> list[paddle.Tensor]: ...
 
 
 @overload
 def meshgrid(
     *args: paddle.Tensor, name: str | None = None
-) -> list[paddle.Tensor]:
-    ...
+) -> list[paddle.Tensor]: ...
 
 
 def meshgrid(*args, **kwargs):

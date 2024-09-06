@@ -102,7 +102,7 @@ class GradOpDescMakerBase {
     PADDLE_ENFORCE_LE(
         var_names.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "BUG from operator developer:"
             " for input argument with a list of variables, "
             " drop_empty_grad is not allowed because it makes"
@@ -171,7 +171,7 @@ class GradOpDescMakerBase {
     PADDLE_ENFORCE_NE(
         it,
         map.end(),
-        phi::errors::NotFound("Cannot find attribute (%s).", name));
+        common::errors::NotFound("Cannot find attribute (%s).", name));
     return it->second;
   }
 
@@ -238,12 +238,12 @@ class SingleGradOpMaker<imperative::OpBase>
     auto it = Attrs().find(name);
     if (it == Attrs().end()) {
       it = this->DefaultAttrsMap().find(name);
-      PADDLE_ENFORCE_EQ(
-          it != this->DefaultAttrsMap().end(),
-          true,
-          phi::errors::NotFound("Cannot find attribute [%s] in operator [%s]",
-                                name,
-                                this->ForwardOpType()));
+      PADDLE_ENFORCE_EQ(it != this->DefaultAttrsMap().end(),
+                        true,
+                        common::errors::NotFound(
+                            "Cannot find attribute [%s] in operator [%s]",
+                            name,
+                            this->ForwardOpType()));
     }
 
     return it->second;

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import tempfile
 import unittest
 
@@ -20,6 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.checkpoint.load_state_dict import get_checkpoint_files
 from paddle.distributed.checkpoint.utils import (
     flatten_state_dict,
     unflatten_state_dict,
@@ -111,6 +113,15 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             "w2": paddle.to_tensor([3, 4]),
         }
         dist.save_state_dict(state_dict, ckpt_dir)
+
+        metadata_files, local_load_files = get_checkpoint_files(ckpt_dir)
+        metadata_list = []
+
+        for metadata_file in metadata_files:
+            metadata_list.append(
+                paddle.load(os.path.join(ckpt_dir, metadata_file))
+            )
+
         new_state_dict = {
             "w1": paddle.to_tensor([1, 2]),
             "w2": paddle.to_tensor([3, 4]),
@@ -119,7 +130,11 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
         ) = dist.checkpoint.load_state_dict.get_rank_to_files(
-            ckpt_dir, new_state_dict, process_group, use_dist
+            metadata_list,
+            local_load_files,
+            new_state_dict,
+            process_group,
+            use_dist,
         )
         self.assertTrue(len(rank_to_files) == 1 and 0 in rank_to_files)
         self.assertTrue(rank_to_files[0] == ["0_0.distcp"])
@@ -133,7 +148,11 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
         ) = dist.checkpoint.load_state_dict.get_rank_to_files(
-            ckpt_dir, new_state_dict, process_group, use_dist
+            metadata_list,
+            local_load_files,
+            new_state_dict,
+            process_group,
+            use_dist,
         )
         self.assertTrue(len(rank_to_files) == 1 and 0 in rank_to_files)
         self.assertTrue(rank_to_files[0] == ["0_0.distcp"])
@@ -148,7 +167,11 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
         ) = dist.checkpoint.load_state_dict.get_rank_to_files(
-            ckpt_dir, new_state_dict, process_group, use_dist
+            metadata_list,
+            local_load_files,
+            new_state_dict,
+            process_group,
+            use_dist,
         )
         self.assertTrue(len(rank_to_files) == 0)
         self.assertTrue(len(missing_keys) == 2)

@@ -74,7 +74,7 @@ class TestReshardSToR:
                 'builtin.parameter',
                 'pd_op.data',
                 'dist_op.shard_tensor',
-                'pd_op.c_allgather',
+                'pd_op.all_gather',
             ]
             np.testing.assert_equal(
                 ops,
@@ -86,7 +86,7 @@ class TestReshardSToR:
                 'builtin.parameter',
                 'pd_op.data',
                 'dist_op.shard_tensor',
-                'pd_op.c_allgather',
+                'pd_op.all_gather',
                 'pd_op.full',
                 'pd_op.split_with_num',
                 'pd_op.full',
@@ -99,7 +99,7 @@ class TestReshardSToR:
             )
 
         for op in main_program.global_block().ops:
-            if op.name() == 'pd_op.c_allgather':
+            if op.name() == 'pd_op.all_gather':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1

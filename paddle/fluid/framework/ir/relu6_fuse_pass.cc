@@ -70,7 +70,7 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
 
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     const auto& clip_max_t =
         scope->GetVar(clip_max_node->Name())->Get<phi::DenseTensor>();
@@ -78,18 +78,18 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_EQ(
         clip_max_t_dims.size(),
         1,
-        phi::errors::InvalidArgument("the size(%d) of clip max tensor "
-                                     "must equal 1",
-                                     clip_max_t_dims.size()));
+        common::errors::InvalidArgument("the size(%d) of clip max tensor "
+                                        "must equal 1",
+                                        clip_max_t_dims.size()));
     const auto& clip_min_t =
         scope->GetVar(clip_min_node->Name())->Get<phi::DenseTensor>();
     auto clip_min_t_dims = clip_min_t.dims();
     PADDLE_ENFORCE_EQ(
         clip_min_t_dims.size(),
         1,
-        phi::errors::InvalidArgument("the size(%d) of clip max tensor "
-                                     "must equal 1",
-                                     clip_min_t_dims.size()));
+        common::errors::InvalidArgument("the size(%d) of clip max tensor "
+                                        "must equal 1",
+                                        clip_min_t_dims.size()));
     auto tensor_type = clip_max_t.dtype();
     float max_val_ = 0.f;
     float min_val_ = 1.f;
@@ -104,7 +104,7 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
       max_val_ = clip_max_t_fp32_ptr[0];
       min_val_ = clip_min_t_fp32_ptr[0];
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "relu6_fuse_pass do not supported weight dtype. "
           "we now only support fp32/fp16."));
     }

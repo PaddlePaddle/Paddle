@@ -76,9 +76,11 @@ class TestDy2StaticAutoRecomputeRmsNorm(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.inputs = [
-            x.astype(cls.dtype)
-            if cls.dtype != "bfloat16"
-            else x.astype("float32")
+            (
+                x.astype(cls.dtype)
+                if cls.dtype != "bfloat16"
+                else x.astype("float32")
+            )
             for x in cls.inputs
         ]
 

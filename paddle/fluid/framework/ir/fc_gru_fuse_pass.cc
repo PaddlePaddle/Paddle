@@ -222,18 +222,18 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
       PADDLE_ENFORCE_NE(
           gru_bias_var,
           nullptr,
-          phi::errors::NotFound("GRU bias var has not been found."));
+          common::errors::NotFound("GRU bias var has not been found."));
       PADDLE_ENFORCE_NE(
           fc_bias_var,
           nullptr,
-          phi::errors::NotFound("FC bias var has not been found."));
+          common::errors::NotFound("FC bias var has not been found."));
 
       auto* gru_bias_tensor = gru_bias_var->GetMutable<phi::DenseTensor>();
       auto* fc_bias_tensor = fc_bias_var->GetMutable<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           gru_bias_tensor->numel(),
           fc_bias_tensor->numel(),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "GRU and FC biases have to have equal number of elements."));
 
       auto gru_bias_data =

@@ -38,7 +38,7 @@ void SaveKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
           file_path,
           overwrite));
@@ -48,10 +48,10 @@ void SaveKernel(const Context& dev_ctx,
   // FIXME(yuyang18): We save variable to local file now, but we should change
   // it to save an output stream.
   std::ofstream fout(file_path, std::ios::binary);
-  PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fout),
-      true,
-      phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                    true,
+                    common::errors::Unavailable(
+                        "Cannot open %s to save variables.", file_path));
 
   auto in_dtype = x.dtype();
   auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
@@ -74,13 +74,13 @@ void SaveSelectedRowsKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
           file_path,
           overwrite));
   PADDLE_ENFORCE_EQ(save_as_fp16,
                     false,
-                    phi::errors::Unimplemented(
+                    common::errors::Unimplemented(
                         "SelectedRows is not supported to save as float16."));
 
   MkDirRecursively(DirName(file_path).c_str());
@@ -88,10 +88,10 @@ void SaveSelectedRowsKernel(const Context& dev_ctx,
   // FIXME(yuyang18): We save variable to local file now, but we should change
   // it to save an output stream.
   std::ofstream fout(file_path, std::ios::binary);
-  PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fout),
-      true,
-      phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                    true,
+                    common::errors::Unavailable(
+                        "Cannot open %s to save variables.", file_path));
   framework::SerializeToStream(fout, x, dev_ctx);
   fout.close();
 }
@@ -110,7 +110,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     auto iname = _iname.data();
     PADDLE_ENFORCE_NOT_NULL(
         input_var,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The variable %s to be saved cannot be found.", iname));
 
     auto filename = ctx.Attr<std::string>("file_path");
@@ -129,7 +129,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
       auto& selectedRows = input_var->Get<phi::SelectedRows>();
       SaveSelectedRowsKernel<T>(dev_ctx, selectedRows, filename);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Save operator only supports saving phi::DenseTensor and "
           "SelectedRows "
           "variable, %s has wrong type",

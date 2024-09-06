@@ -102,7 +102,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           auto bias_qk_dims = bias_qk_tensor->getDimensions();
           PADDLE_ENFORCE_EQ(bias_qk_dims.nbDims,
                             4,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "The rank of Multihead Matmul'BiasQK must be "
                                 "4, but got rank is %d.",
                                 bias_qk_dims.nbDims));
@@ -191,7 +191,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                      "with_interleaved";
           if (!op_desc.HasAttr("Input_scale")) {
             PADDLE_THROW(
-                phi::errors::Fatal("use with_interleaved must be int8."));
+                common::errors::Fatal("use with_interleaved must be int8."));
           }
           nvinfer1::ILayer* fc_layer = nullptr;
           float dp_probs = 1.0 / 127.0;
@@ -205,7 +205,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("fc_out_threshold"),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "must have out_threshold in multihead layers in int8 mode"));
           float out_scale =
               PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
@@ -378,7 +378,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           if (op_desc.HasAttr("fc_out_threshold")) {
             PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
                               true,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "must have out threshold in multihead layers "
                                   "in int8 mode"));
             float out_scale =
@@ -593,7 +593,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           if (op_desc.HasAttr("Input_scale")) {
             PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
                               true,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "must have out threshold in multihead layers "
                                   "in int8 mode"));
             float out_scale =
@@ -637,7 +637,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                      bias);
             PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
                               true,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "must have out threshold in multihead layers "
                                   "in int8 mode"));
             float out_scale =
@@ -789,7 +789,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               input->getDimensions().nbDims,
               3,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The Input dim of the MultiheadMatMul should be 3, "
                   "but it's (%d) now.",
                   input->getDimensions().nbDims));
@@ -833,7 +833,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           if (op_desc.HasAttr("Input_scale")) {
             PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
                               true,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "must have out threshold in multihead layers "
                                   "in int8 mode"));
             float out_scale =
@@ -902,7 +902,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           if (op_desc.HasAttr("fc_out_threshold")) {
             PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
                               true,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "must have out threshold in multihead layers "
                                   "in int8 mode"));
             float out_scale =
@@ -949,7 +949,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         }
       }
     } else {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "You are running the Ernie(Bert) model in static shape mode, which "
           "is not supported for the time being.\n"
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "

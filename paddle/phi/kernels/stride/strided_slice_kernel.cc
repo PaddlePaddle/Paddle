@@ -35,9 +35,9 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
                                   const std::vector<int>& decrease_axis,
                                   DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
@@ -120,7 +120,8 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   auto tmp_dim = DDim(output_dims.data(), static_cast<int>(output_dims.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
-  //       phi::errors::Fatal("Striede_slice kernel stride compute diff, infer "
+  //       common::errors::Fatal("Striede_slice kernel stride compute diff,
+  //       infer "
   //                          "shape is %s, but compute is %s.",
   //                          meta.dims,
   //                          tmp_dim));
@@ -142,9 +143,9 @@ void StridedSliceStridedKernel(const Context& dev_ctx,
                                const IntArray& strides,
                                DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;

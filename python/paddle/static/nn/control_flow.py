@@ -753,6 +753,25 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             # Create a fake value for create WhileOp, it's type will be reset after body is executed.
             return paddle.full(shape=[], fill_value=0)
 
+        def cast_value_in_amp(in_vars, out_vars, idx):
+            amp_attrs = core._get_amp_attrs()
+            amp_level = amp_attrs._amp_level
+            apply_amp_level_list = [
+                core.AmpLevel.O1,
+                core.AmpLevel.O2,
+            ]
+            if amp_level not in apply_amp_level_list:
+                return out_vars
+            assert len(in_vars) == len(out_vars)
+            ret = []
+            for i, (in_var, out_var) in enumerate(zip(in_vars, out_vars)):
+                if i not in idx and in_var.dtype != out_var.dtype:
+                    cast_out_var = paddle.cast(out_var, in_var.dtype)
+                    ret.append(cast_out_var)
+                else:
+                    ret.append(out_var)
+            return ret
+
         flattened_loop_vars = flatten(loop_vars)
 
         undefined_var_mapping = {
@@ -804,6 +823,11 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             unified_next_vars = create_container_by_items_and_indices(
                 (variable_next_vars, variable_next_var_indices),
                 (fake_constant_next_vars, constant_next_var_indices),
+            )
+            unified_next_vars = cast_value_in_amp(
+                unified_loop_vars,
+                unified_next_vars,
+                undefined_var_mapping.keys(),
             )
             cf_yield([next_cond, *unified_next_vars])
 
@@ -903,7 +927,7 @@ def _deal_with_undefined_var(output_vars, loop_vars):
 
     def create_var_like(o_var):
         if (
-            isinstance(o_var, (Variable,) + support_ret_buildin_type)
+            isinstance(o_var, (Variable, *support_ret_buildin_type))
             or o_var is None
         ):
             return create_undefined_variable()
@@ -1456,7 +1480,7 @@ class OutputSelector:
                 ]
 
         if any(isinstance(out, paddle.pir.Value) for out in outs) and all(
-            isinstance(out, (paddle.pir.Value,) + promotion_builtin_types)
+            isinstance(out, (paddle.pir.Value, *promotion_builtin_types))
             for out in outs
         ):
             warnings.warn(
@@ -1950,10 +1974,10 @@ def select_input_with_buildin_type(inputs, mask, name):
         )
     elif (
         isinstance(false_var, UndefinedVar)
-        and isinstance(true_var, (Variable,) + support_ret_buildin_type)
+        and isinstance(true_var, (Variable, *support_ret_buildin_type))
     ) or (
         isinstance(true_var, UndefinedVar)
-        and isinstance(false_var, (Variable,) + support_ret_buildin_type)
+        and isinstance(false_var, (Variable, *support_ret_buildin_type))
     ):
         true_var, false_var = to_static_variable(true_var), to_static_variable(
             false_var

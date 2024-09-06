@@ -92,7 +92,7 @@ class CudnnFrontendPlanCache {
     auto it = local_map.find(GetExtendedFeature(feature, handle));
     PADDLE_ENFORCE_NE(it,
                       local_map.end(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "[cudnn_frontend] Cached Plan Not Found."));
 
     *plan = &(it->second);

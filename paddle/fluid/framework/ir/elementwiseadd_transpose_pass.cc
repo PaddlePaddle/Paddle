@@ -78,7 +78,7 @@ namespace paddle::framework::ir {
 int ElementwiseAddTransposeFusePass::ApplyEleTransPattern(
     ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("eleadd_transpose_fuse", graph);
   int found_subgraph_count = 0;
   GraphPatternDetector gpd;
@@ -183,7 +183,7 @@ int ElementwiseAddTransposeFusePass::ApplyEleTransPattern(
 }
 void ElementwiseAddTransposeFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init("elementwiseadd_transpose_fuse_pass", graph);
   int found_subgraph_count = ApplyEleTransPattern(graph);

@@ -1097,26 +1097,26 @@ void RmsNormKernel(const Context& dev_ctx,
       out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
     PADDLE_ENFORCE_EQ(quant_scale != 0.0f,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Quant rms_norm'output, must has quant_scale, "
                           "quant_scale!=0, but quant_scale = %f ",
                           quant_scale));
     PADDLE_ENFORCE_EQ(quant_round_type == 0 || quant_round_type == 1,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Quant rms_norm'output, must has quant_round_type, "
                           "quant_round_type = 0 or quant_round_type = 1, but "
                           "quant_scale = %d ",
                           quant_scale));
     PADDLE_ENFORCE_EQ(quant_max_bound != 0.0f,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Quant rms_norm'output, must has quant_max_bound and "
                           "quant_max_bound!=0, but quant_max_bound = %f ",
                           quant_scale));
     PADDLE_ENFORCE_EQ(quant_min_bound != 0.0f,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Quant rms_norm'output, must has quant_min_bound and "
                           "quant_min_bound!=0, but quant_min_bound = %f ",
                           quant_scale));

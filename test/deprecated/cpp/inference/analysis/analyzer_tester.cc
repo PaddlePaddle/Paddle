@@ -77,16 +77,19 @@ void TestWord2vecPrediction(const std::string& model_path) {
   // For simplicity, we set all the slots with the same data.
   std::vector<PaddleTensor> slots(4, tensor);
   std::vector<PaddleTensor> outputs;
-  CHECK(predictor->Run(slots, &outputs));
+  PADDLE_ENFORCE_EQ(
+      predictor->Run(slots, &outputs),
+      true,
+      common::errors::Fatal("Paddle predictor failed runing, please check"));
 
   PADDLE_ENFORCE_EQ(outputs.size(),
                     1UL,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Output size should be 1, but got %d", outputs.size()));
   // Check the output buffer size and result of each tid.
   PADDLE_ENFORCE_EQ(outputs.front().data.length(),
                     33168UL,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Output's data length should be 33168 but got %d",
                         outputs.front().data.length()));
   std::array<float, 5> result = {

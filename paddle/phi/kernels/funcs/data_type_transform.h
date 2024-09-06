@@ -50,7 +50,7 @@ phi::DenseTensor TransDataType(const Context& dev_ctx,
     case DataType::UINT8:
       return phi::Cast<uint8_t>(dev_ctx, x, dtype);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
           x.dtype()));
   }

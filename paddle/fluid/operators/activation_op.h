@@ -53,13 +53,13 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
                                     phi::DenseTensor** Out) {
   auto x_var = context.InputVar("X");
   auto out_var = context.OutputVar("Out");
-  PADDLE_ENFORCE_NOT_NULL(
-      x_var,
-      phi::errors::NotFound("Cannot get input Variable X, variable name = %s",
-                            context.InputName("X")));
+  PADDLE_ENFORCE_NOT_NULL(x_var,
+                          common::errors::NotFound(
+                              "Cannot get input Variable X, variable name = %s",
+                              context.InputName("X")));
   PADDLE_ENFORCE_NOT_NULL(
       out_var,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Cannot get output Variable Out, variable name = %s",
           context.OutputName("Out")));
   if (CanBeUsedBySelectedRows.count(context.Type())) {
@@ -73,9 +73,9 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
 
   PADDLE_ENFORCE_NOT_NULL(
       *Out,
-      phi::errors::NotFound("Cannot get the tensor from the Variable "
-                            "Output(Out), variable name = %s",
-                            context.OutputName("Out")));
+      common::errors::NotFound("Cannot get the tensor from the Variable "
+                               "Output(Out), variable name = %s",
+                               context.OutputName("Out")));
 }
 
 template <ActBwdOpFwdDeps kDepValue>
@@ -94,21 +94,23 @@ inline void ExtractActivationGradTensor(
     out_var = context.InputVar("Out");
     PADDLE_ENFORCE_NOT_NULL(
         out_var,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Cannot get input Variable Out, variable name = %s",
             context.InputName("Out")));
   }
 
   PADDLE_ENFORCE_NOT_NULL(
       out_grad_var,
-      phi::errors::NotFound("Cannot get input Variable %s, variable name = %s",
-                            framework::GradVarName("Out"),
-                            context.InputName(framework::GradVarName("Out"))));
+      common::errors::NotFound(
+          "Cannot get input Variable %s, variable name = %s",
+          framework::GradVarName("Out"),
+          context.InputName(framework::GradVarName("Out"))));
   PADDLE_ENFORCE_NOT_NULL(
       x_grad_var,
-      phi::errors::NotFound("Cannot get output Variable %s, variable name = %s",
-                            framework::GradVarName("X"),
-                            context.OutputName(framework::GradVarName("X"))));
+      common::errors::NotFound(
+          "Cannot get output Variable %s, variable name = %s",
+          framework::GradVarName("X"),
+          context.OutputName(framework::GradVarName("X"))));
 
   if (CanBeUsedBySelectedRows.count(context.Type())) {
     *dOut = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(
@@ -135,19 +137,19 @@ inline void ExtractActivationGradTensor(
     }
   }
 
-  PADDLE_ENFORCE_NOT_NULL(
-      *dX,
-      phi::errors::NotFound("Cannot get the tensor from the Variable "
-                            "Output(Out), variable name = %s",
-                            context.OutputName(framework::GradVarName("X"))));
+  PADDLE_ENFORCE_NOT_NULL(*dX,
+                          common::errors::NotFound(
+                              "Cannot get the tensor from the Variable "
+                              "Output(Out), variable name = %s",
+                              context.OutputName(framework::GradVarName("X"))));
 
   if (static_cast<int>(kDepValue) & static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
     auto x_var = context.InputVar("X");
     PADDLE_ENFORCE_NOT_NULL(
         x_var,
-        phi::errors::NotFound("Cannot get the tensor from the "
-                              "Variable Input(X), variable name = %s",
-                              context.InputName("X")));
+        common::errors::NotFound("Cannot get the tensor from the "
+                                 "Variable Input(X), variable name = %s",
+                                 context.InputName("X")));
     if (CanBeUsedBySelectedRows.count(context.Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     } else {
@@ -261,11 +263,6 @@ struct BaseActivationFunctor {
   template <typename T>                   \
   using name##TripleGradFunctor = phi::funcs::name##TripleGradFunctor<T>;
 
-template <typename T>
-using BReluFunctor = phi::funcs::HardTanhFunctor<T>;
-template <typename T>
-using BReluGradFunctor = phi::funcs::HardTanhGradFunctor<T>;
-
 USE_PHI_FUNCTOR(Tanh)
 USE_PHI_FUNCTOR(Relu6)
 USE_PHI_FUNCTOR(HardShrink)
@@ -276,37 +273,6 @@ USE_PHI_FUNCTOR(Swish)
 USE_PHI_FUNCTOR(HardSwish)
 USE_PHI_FUNCTOR(Pow)
 USE_PHI_FUNCTOR(Mish)
-
-template <typename T>
-using ELUGradNegativeAlphaFunctor = phi::funcs::ELUGradNegativeAlphaFunctor<T>;
-
-template <typename T>
-using RoundFunctor = phi::funcs::RoundFunctor<T>;
-
-template <typename T>
-using FloorFunctor = phi::funcs::FloorFunctor<T>;
-
-template <typename T>
-using CeilFunctor = phi::funcs::CeilFunctor<T>;
-
-template <typename T>
-using ZeroGradFunctor = phi::funcs::ZeroGradFunctor<T>;
-
-template <typename T>
-using ELUGradNegativeAlphaFunctor = phi::funcs::ELUGradNegativeAlphaFunctor<T>;
-
-// relu(x) = max(x, 0)
-
-template <typename T>
-using ReluCPUFunctor = phi::funcs::ReluCPUFunctor<T>;
-template <typename T>
-using ReluGradFunctor = phi::funcs::ReluGradFunctor<T>;
-
-template <typename T>
-using ReluGradGradFunctor = phi::funcs::ReluGradGradFunctor<T>;
-
-template <typename T>
-using ReluCUDAFunctor = phi::funcs::ReluCUDAFunctor<T>;
 
 template <typename T>
 struct SoftReluFunctor : public BaseActivationFunctor<T> {
@@ -344,76 +310,6 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
     return ActBwdOpFwdDeps::kDepOut;
   }
 };
-
-template <typename T>
-struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device>
-  void operator()(const Device& dev,
-                  const phi::DenseTensor* X,
-                  const phi::DenseTensor* Out,
-                  const phi::DenseTensor* ddX,
-                  phi::DenseTensor* ddOut,
-                  phi::DenseTensor* dOut,
-                  phi::DenseTensor* dX) const {
-    auto* d = dev.eigen_device();
-    auto ddx = phi::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "DDX", "AbsGradGrad"));
-    auto x = phi::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(X, "Input", "X", "AbsGradGrad"));
-    if (ddOut) {
-      auto ddout = phi::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "AbsGradGrad"));
-      ddout.device(*d) = ddx * x.sign();
-    }
-  }
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-// TODO(dengkaipeng): double gradient calculation for Square/Sqrt need
-// DOut(dy) as input(not output), tensor extraction is different from
-// others. Implement extraction kernel separately here.
-inline void ExtractDoubleGradTensorWithInputDOut(
-    const framework::ExecutionContext& ctx,
-    const phi::DenseTensor** X,
-    const phi::DenseTensor** ddX,
-    phi::DenseTensor** dX,
-    const phi::DenseTensor** dOut,
-    phi::DenseTensor** ddOut) {
-  // extract ddX(output), ddOut(input)
-  auto ddx_var = ctx.InputVar("DDX");
-  auto ddo_var = ctx.OutputVar("DDOut");
-  PADDLE_ENFORCE_NOT_NULL(
-      ddx_var,
-      phi::errors::NotFound("Cannot get input Variable Out, variable name = %s",
-                            ctx.InputName("DDX")));
-  *ddX = ctx.Input<phi::DenseTensor>("DDX");
-  if (ddo_var) {
-    *ddOut = ctx.Output<phi::DenseTensor>("DDOut");
-  }
-  PADDLE_ENFORCE_NOT_NULL(
-      ddX,
-      phi::errors::NotFound(
-          "Cannot get the tensor from the Variable DDX, variable name = %s",
-          ctx.OutputName("DDX")));
-
-  // extract x(input), dx(output)
-  auto x_var = ctx.InputVar("X");
-  PADDLE_ENFORCE_NOT_NULL(
-      x_var,
-      phi::errors::NotFound("Cannot get input Variable Out, variable name = %s",
-                            ctx.InputName("X")));
-  auto dx_var = ctx.OutputVar("DX");
-  *X = ctx.Input<phi::DenseTensor>("X");
-  if (dx_var) {
-    *dX = ctx.Output<phi::DenseTensor>("DX");
-  }
-
-  // extract dOut(input)
-  auto dout_var = ctx.InputVar("DOut");
-  if (dout_var) {
-    *dOut = ctx.Input<phi::DenseTensor>("DOut");
-  }
-}
 
 }  // namespace operators
 }  // namespace paddle

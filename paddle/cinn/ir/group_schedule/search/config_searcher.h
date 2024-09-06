@@ -83,14 +83,14 @@ class CandidateGenerator {
 class ScheduleConfigSearcher {
  public:
   ScheduleConfigSearcher(
-      std::unique_ptr<BaseObjectiveFunc> objective_func,
+      std::vector<std::unique_ptr<BaseObjectiveFunc>> objective_funcs,
       const std::vector<std::pair<int, int>>& candidate_range,
       const std::vector<ConstraintFunc>& contraints = {});
 
   std::pair<ScoreType, CandidateType> Search(bool is_search_minimun = true);
 
  private:
-  std::unique_ptr<BaseObjectiveFunc> objective_func_;
+  std::vector<std::unique_ptr<BaseObjectiveFunc>> objective_funcs_;
   std::vector<ConstraintFunc> contraints_;
   std::vector<std::pair<int, int>> candidate_range_;
 

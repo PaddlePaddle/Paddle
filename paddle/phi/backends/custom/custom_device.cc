@@ -31,8 +31,8 @@ static bool operator==(const C_Device_st& d1, const C_Device_st& d2) {
 
 namespace phi {
 
-#define INTERFACE_UNIMPLEMENT              \
-  PADDLE_THROW(phi::errors::Unimplemented( \
+#define INTERFACE_UNIMPLEMENT                 \
+  PADDLE_THROW(common::errors::Unimplemented( \
       "%s is not implemented on %s device.", __func__, Type()));
 #define CHECK_PTR(x)       \
   if (x == nullptr) {      \
@@ -183,7 +183,7 @@ class CustomDevice : public DeviceInterface {
                    stream::Stream* stream,
                    stream::Stream::Callback* callback) override {
     if (!pimpl_->stream_add_callback) {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "AddCallback is not supported on %s.", Type()));
     } else {
       const auto device = &devices_pool[dev_id];
@@ -384,7 +384,7 @@ class CustomDevice : public DeviceInterface {
     const auto device = &devices_pool[dev_id];
 
     if (!pimpl_->host_memory_allocate) {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "MemoryAllocateHost is not supported on %s.", Type()));
     } else {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
@@ -397,7 +397,7 @@ class CustomDevice : public DeviceInterface {
     const auto device = &devices_pool[dev_id];
 
     if (!pimpl_->host_memory_deallocate) {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "MemoryDeallocateHost is not supported on %s.", Type()));
     } else {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
@@ -410,7 +410,7 @@ class CustomDevice : public DeviceInterface {
     const auto device = &devices_pool[dev_id];
 
     if (!pimpl_->unified_memory_allocate) {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "MemoryAllocateUnified is not supported on %s.", Type()));
     } else {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
@@ -423,7 +423,7 @@ class CustomDevice : public DeviceInterface {
     const auto device = &devices_pool[dev_id];
 
     if (!pimpl_->unified_memory_deallocate) {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "MemoryDeallocateUnified is not supported on %s.", Type()));
     } else {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
@@ -580,7 +580,7 @@ class CustomDevice : public DeviceInterface {
       return_result(MIN, MIN);
       return_result(PRODUCT, PRODUCT);
       default: {
-        PADDLE_THROW(phi::errors::Unavailable(
+        PADDLE_THROW(common::errors::Unavailable(
             "ReduceOp is not supported on %s.", Type()));
       }
     }
@@ -608,7 +608,7 @@ class CustomDevice : public DeviceInterface {
       return_result(phi::DataType::COMPLEX64, COMPLEX64);
       return_result(phi::DataType::COMPLEX128, COMPLEX128);
       default: {
-        PADDLE_THROW(phi::errors::Unavailable(
+        PADDLE_THROW(common::errors::Unavailable(
             "DataType is not supported on %s.", Type()));
         return C_DataType::UNDEFINED;
       }
@@ -854,7 +854,7 @@ class CustomDevice : public DeviceInterface {
                               reinterpret_cast<C_Stream>(stream.raw_stream())));
       }
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "CCLAllToAll is not supported on %s.", Type()));
     }
   }
@@ -934,7 +934,7 @@ class CustomDevice : public DeviceInterface {
     int dev_id = PlaceToIdNoCheck(place);
     PADDLE_ENFORCE_NE(devices_pool.find(dev_id),
                       devices_pool.end(),
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "Cannot found %s %d, please check visible devices",
                           Type(),
                           dev_id));

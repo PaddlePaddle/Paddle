@@ -36,7 +36,7 @@ void ScatterGradKernel(const Context &ctx,
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "scatter_op index holds the wrong type, it holds [%s],"
                         "but desires to be [%s] or [%s]",
                         index_type,

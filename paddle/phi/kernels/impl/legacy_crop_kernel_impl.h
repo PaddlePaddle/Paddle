@@ -62,14 +62,14 @@ void CropKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_GE(
       rank,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of dimensions of the Input(X) for CropOp must be "
           "greater than or equal to 1, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
       6,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of dimensions of the Input(X) for CropOp must be "
           "less than or equal to 6, but the value received is %d.",
           rank));
@@ -130,14 +130,14 @@ void CropGradKernel(const Context &dev_ctx,
   size_t rank = out_grad.dims().size();
   PADDLE_ENFORCE_GE(rank,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of dimensions of the input 'Out@GRAD' for "
                         "CropGrad must be greater than or equal "
                         "to 1, but the value received is %d.",
                         rank));
   PADDLE_ENFORCE_LE(rank,
                     6,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of dimensions of the input 'Out@GRAD' for "
                         "CropGrad must be less than or equal "
                         "to 6, but the value received is %d.",

@@ -194,7 +194,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     PADDLE_ENFORCE_NE(
         nodes_keep_counter->find(dequant_out),
         nodes_keep_counter->end(),
-        phi::errors::NotFound("The dequant output node is not found."));
+        common::errors::NotFound("The dequant output node is not found."));
 
     // check if dequantize op should be kept or removed, decrease the counter
     bool keep_dequant = (*nodes_keep_counter)[dequant_out]-- > 1;
@@ -274,9 +274,9 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
       PADDLE_ENFORCE_NE(
           any_op_output_name.empty(),
           true,
-          phi::errors::NotFound("Operator before requantize operator(%s) "
-                                "should have requantize input as output.",
-                                requant_in->Name()));
+          common::errors::NotFound("Operator before requantize operator(%s) "
+                                   "should have requantize input as output.",
+                                   requant_in->Name()));
 
       float requant_scale_out =
           PADDLE_GET_CONST(float, requant_op->Op()->GetAttr("Scale_out"));
@@ -318,9 +318,9 @@ void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
       PADDLE_ENFORCE_NE(
           any_op_input_name.empty(),
           true,
-          phi::errors::NotFound("The operator after requantize operator(%s) "
-                                "should have requantize output as input.",
-                                requant_out->Name()));
+          common::errors::NotFound("The operator after requantize operator(%s) "
+                                   "should have requantize output as input.",
+                                   requant_out->Name()));
       float requant_scale_in =
           paddle::get<float>(requant_op->Op()->GetAttr("Scale_in"));
 
@@ -331,7 +331,7 @@ void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
       PADDLE_ENFORCE_EQ(
           requant_op->Op()->GetAttrIfExists<float>("Scale_out"),
           any_op->Op()->GetAttrIfExists<float>(scale_name),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The operator after requantize should have input "
               "scale(%f) equal to requantize output scale(%f).",
               any_op->Op()->GetAttrIfExists<float>(scale_name),
@@ -423,7 +423,7 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
 
     PADDLE_ENFORCE_NE(scale,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Quantize scale(%f) should not be equal 0.", scale));
 
     for (int iter = static_cast<int>(prev_out->outputs.size()) - 1; iter >= 0;
@@ -443,9 +443,9 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
         PADDLE_ENFORCE_NE(
             last_op_input_name.empty(),
             true,
-            phi::errors::NotFound("Operator after quantize operator(%s) "
-                                  "should have quantize output as input.",
-                                  quant_out->Name()));
+            common::errors::NotFound("Operator after quantize operator(%s) "
+                                     "should have quantize output as input.",
+                                     quant_out->Name()));
 
         // update the next operator input,
         // by replacing quant_out with first_quant_out
@@ -498,14 +498,14 @@ void CPUQuantizeSquashPass::DequantScaleSquash(Graph* graph) const {
 
       PADDLE_ENFORCE_GT(dequant_scale,
                         0.0f,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Dequantize scale(%f) should have positive value.",
                             dequant_scale));
       PADDLE_ENFORCE_NE(
           scale_scale,
           0.0f,
-          phi::errors::InvalidArgument("Scale(%f) should have a non-zero value",
-                                       scale_scale));
+          common::errors::InvalidArgument(
+              "Scale(%f) should have a non-zero value", scale_scale));
 
       dequant_op->Op()->SetAttr("Scale", dequant_scale / scale_scale);
       dequant_op->Op()->SetOutput(
@@ -551,13 +551,13 @@ void CPUQuantizeSquashPass::ScaleQuantSquash(Graph* graph) const {
       PADDLE_ENFORCE_GT(
           quant_scale,
           0.0f,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Quantize scale(%f) should have positive value.", quant_scale));
       PADDLE_ENFORCE_NE(
           scale_scale,
           0.0f,
-          phi::errors::InvalidArgument("Scale(%f) should have a non-zero value",
-                                       scale_scale));
+          common::errors::InvalidArgument(
+              "Scale(%f) should have a non-zero value", scale_scale));
 
       quant_op->Op()->SetAttr("Scale", quant_scale * scale_scale);
       quant_op->Op()->SetInput("Input",
@@ -619,7 +619,7 @@ void CPUQuantizeSquashPass::QuantizeBf16ConvImpl(
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The graph in function CPUQuantizeSquashPass::ApplyImpl is null."));
   FusePassBase::Init("cpu_quantize_squash_pass", graph);
 

@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <vector>
+#include "paddle/phi/common/bfloat16.h"
 
 #include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/gemm_epilogue_decl.h"
 

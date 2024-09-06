@@ -73,6 +73,10 @@ class BKCLCommContext final : public CommContext {
                  BKCLOp reduce_type,
                  XPUStream stream);
 
+  void AllToAll(phi::DenseTensor* out_tensor,
+                const phi::DenseTensor& in_tensor,
+                XPUStream stream);
+
   void Reduce(phi::DenseTensor* out_tensor,
               const phi::DenseTensor& in_tensor,
               BKCLOp reduce_type,

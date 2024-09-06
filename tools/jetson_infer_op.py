@@ -24,7 +24,6 @@ black_list = [
     'test_custom_relu_op_setup',
     'test_custom_relu_op_jit',
     'test_python_operator_overriding',
-    'test_c_comm_init_all_op',
     'test_c_embedding_op',
     # train op
     'test_imperative_optimizer',
@@ -33,8 +32,6 @@ black_list = [
     'test_sgd_op',
     'test_sgd_op_bf16',
     'test_warpctc_op',
-    # sync op
-    'test_sync_batch_norm_op',
     # case too large
     'test_reduce_op',
     'test_transpose_op',
@@ -166,7 +163,7 @@ def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
         + atol
         + ",inplace_atol="
         + inplace_atol
-        + ",/g\' "
+        + ",/g' "
         + file
     )
 
@@ -270,7 +267,7 @@ def run_test_first(op_list_file):
     old_list = get_op_list(op_list_file)
     new_list = filter(lambda x: x not in black_list, old_list)
     op_test = transform_list_to_str(new_list)
-    os.system("ctest -R \"(" + op_test + ")\" >& test_op_log.txt")
+    os.system(f'ctest -R "({op_test})" >& test_op_log.txt')
 
 
 def run_test_second():
@@ -289,7 +286,7 @@ def run_test_second():
             + " op(s) need to rerun!!!-------"
         )
         for failed_op in rerun_list:
-            os.system("ctest -R \"(" + failed_op + ")\" ")
+            os.system(f'ctest -R "({failed_op})" ')
     else:
         print("-------all op passed successfully!!!-------")
 

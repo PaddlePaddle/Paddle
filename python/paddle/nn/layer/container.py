@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import typing
 from collections import OrderedDict
-from collections.abc import Iterable, Mapping
-from typing import Any, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from typing import Any
 
 from typing_extensions import Self
 

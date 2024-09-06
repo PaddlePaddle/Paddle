@@ -19,9 +19,9 @@ class Scope;
 }  // namespace paddle::framework
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -40,7 +40,7 @@ class CWaitComputeOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         place.GetType() == phi::AllocationType::GPU,
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "wait_compute op can run on gpu place only for now, but got %s",
             place.DebugString()));
 
@@ -59,7 +59,7 @@ class CWaitComputeOp : public framework::OperatorBase {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -91,7 +91,7 @@ class CWaitComputeOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
 #endif
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }

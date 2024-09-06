@@ -19,8 +19,8 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/cupti_data_process.h"
+#include "paddle/phi/core/os_info.h"
 
 #define CUPTI_CALL(call)                                                     \
   do {                                                                       \
@@ -36,7 +36,7 @@
 namespace paddle::platform::details {
 std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
   std::unordered_map<uint32_t, uint64_t> mapping;
-  std::unordered_map<uint64_t, ThreadId> ids = GetAllThreadIds();
+  std::unordered_map<uint64_t, phi::ThreadId> ids = phi::GetAllThreadIds();
   for (const auto& id : ids) {
     mapping[id.second.cupti_tid] = id.second.sys_tid;
   }
@@ -51,7 +51,7 @@ void CudaTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
       true,
-      phi::errors::PreconditionNotMet("Tracer must be UNINITED"));
+      common::errors::PreconditionNotMet("Tracer must be UNINITED"));
   EnableCuptiActivity();
   state_ = TracerState::READY;
 }
@@ -60,24 +60,26 @@ void CudaTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY,
       true,
-      phi::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
+      common::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
   ConsumeBuffers();
-  tracing_start_ns_ = PosixInNsec();
+  tracing_start_ns_ = phi::PosixInNsec();
   state_ = TracerState::STARTED;
 }
 
 void CudaTracer::StopTracing() {
-  PADDLE_ENFORCE_EQ(state_,
-                    TracerState::STARTED,
-                    phi::errors::PreconditionNotMet("Tracer must be STARTED"));
+  PADDLE_ENFORCE_EQ(
+      state_,
+      TracerState::STARTED,
+      common::errors::PreconditionNotMet("Tracer must be STARTED"));
   DisableCuptiActivity();
   state_ = TracerState::STOPED;
 }
 
 void CudaTracer::CollectTraceData(TraceEventCollector* collector) {
-  PADDLE_ENFORCE_EQ(state_,
-                    TracerState::STOPED,
-                    phi::errors::PreconditionNotMet("Tracer must be STOPED"));
+  PADDLE_ENFORCE_EQ(
+      state_,
+      TracerState::STOPED,
+      common::errors::PreconditionNotMet("Tracer must be STOPED"));
   ProcessCuptiActivity(collector);
 }
 
