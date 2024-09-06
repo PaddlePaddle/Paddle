@@ -5234,16 +5234,6 @@
   optional: seq_length
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op: moe
-  args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
-    str act_type = "gelu")
-  output: Tensor (out)
-  infer_meta:
-    func: MoeInferMeta
-  kernel:
-    func: moe
-  interfaces: paddle::dialect::InferSymbolicShapeInterface
-
 - op: number_count
   args: (Tensor numbers, int upper_range)
   output: Tensor(out)
