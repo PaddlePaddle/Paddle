@@ -33,7 +33,7 @@ namespace imperative {
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
 // div the nranks
-void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
+void Group::DivNRanks(const phi::DeviceContext &context, int64_t nranks) {
   phi::DenseTensor *tensor =
       is_sparse_
           ? sparse_contents_->GetMutable<phi::SelectedRows>()->mutable_value()
@@ -48,8 +48,8 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
 #ifdef PADDLE_WITH_HIP
     if (dtype_ == paddle::framework::proto::VarType_Type_BF16) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Unsupport BF16 in DataParallel for now"));
+      PADDLE_THROW(
+          common::errors::Fatal("Unsupport BF16 in DataParallel for now"));
     }
     framework::VisitDataTypeForHIP(
         dtype_,
@@ -63,8 +63,8 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   } else if (phi::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
     PADDLE_THROW(
-        platform::errors::Unimplemented("DivNRanks is not supported on XPU / "
-                                        "XPU_BKCL, use EagerReducer instead."));
+        common::errors::Unimplemented("DivNRanks is not supported on XPU / "
+                                      "XPU_BKCL, use EagerReducer instead."));
 #endif
   }
 }
@@ -116,7 +116,7 @@ static void ConcatTensorsWithType(
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
-      ConcatTensorsForAllReduce<DeviceContext, platform::float16>(
+      ConcatTensorsForAllReduce<DeviceContext, phi::dtype::float16>(
           context, dense_tensors_, p_dense_contents);
       break;
     case framework::proto::VarType::FP32:
@@ -128,7 +128,7 @@ static void ConcatTensorsWithType(
           context, dense_tensors_, p_dense_contents);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
           framework::DataTypeToString(type)));
@@ -143,7 +143,7 @@ static void SplitTensorsWithType(const DeviceContext &context,
                                  framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
-      SplitTensorsForAllReduce<DeviceContext, platform::float16>(
+      SplitTensorsForAllReduce<DeviceContext, phi::dtype::float16>(
           context, p_dense_contents, p_dense_tensors);
       break;
     case framework::proto::VarType::FP32:
@@ -155,7 +155,7 @@ static void SplitTensorsWithType(const DeviceContext &context,
           context, p_dense_contents, p_dense_tensors);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
           framework::DataTypeToString(type)));
@@ -164,8 +164,8 @@ static void SplitTensorsWithType(const DeviceContext &context,
 
 #ifdef PADDLE_WITH_XPU_BKCL
 template <>
-void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
-    const platform::XPUDeviceContext &context,
+void SplitTensorsForAllReduce<phi::XPUContext, float>(
+    const phi::XPUContext &context,
     framework::Variable *p_dense_contents,
     std::vector<phi::DenseTensor> *p_dense_tensors) {
   auto *in = p_dense_contents->GetMutable<phi::DenseTensor>();
@@ -179,24 +179,24 @@ void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
     outs.emplace_back(&tensor);
     shape_refer.emplace_back(&tensor);
   }
-  phi::funcs::SplitFunctor<platform::XPUDeviceContext, float> split_functor_;
+  phi::funcs::SplitFunctor<phi::XPUContext, float> split_functor_;
   split_functor_(context, *in, shape_refer, 0, &outs);
 }
 
 // context is used to select the stream for concat
 template <>
-void ConcatTensorsWithType<platform::XPUDeviceContext>(
-    const platform::XPUDeviceContext &context,
+void ConcatTensorsWithType<phi::XPUContext>(
+    const phi::XPUContext &context,
     const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents,
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP32:
-      ConcatTensorsForAllReduce<platform::XPUDeviceContext, float>(
+      ConcatTensorsForAllReduce<phi::XPUContext, float>(
           context, dense_tensors_, p_dense_contents);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
           framework::DataTypeToString(type)));
@@ -205,18 +205,18 @@ void ConcatTensorsWithType<platform::XPUDeviceContext>(
 
 // context is used to select the stream for split
 template <>
-void SplitTensorsWithType<platform::XPUDeviceContext>(
-    const platform::XPUDeviceContext &context,
+void SplitTensorsWithType<phi::XPUContext>(
+    const phi::XPUContext &context,
     framework::Variable *p_dense_contents,
     std::vector<phi::DenseTensor> *p_dense_tensors,
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP32:
-      SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
+      SplitTensorsForAllReduce<phi::XPUContext, float>(
           context, p_dense_contents, p_dense_tensors);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
           framework::DataTypeToString(type)));
@@ -224,7 +224,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 }
 #endif
 
-void Group::ConcatTensors(const platform::DeviceContext &context) {
+void Group::ConcatTensors(const phi::DeviceContext &context) {
   auto place = context.GetPlace();
   if (phi::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -233,19 +233,18 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
                           &dense_contents_,
                           dtype_);
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
   } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
-    ConcatTensorsWithType(
-        static_cast<const platform::XPUDeviceContext &>(context),
-        dense_tensors_,
-        &dense_contents_,
-        dtype_);
+    ConcatTensorsWithType(static_cast<const phi::XPUContext &>(context),
+                          dense_tensors_,
+                          &dense_contents_,
+                          dtype_);
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't concat xpu grads since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
@@ -255,12 +254,12 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
                           &dense_contents_,
                           dtype_);
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Concat grad tensor not supported on place (%s)", place));
   }
 }
 
-void Group::SplitTensors(const platform::DeviceContext &context) {
+void Group::SplitTensors(const phi::DeviceContext &context) {
   auto place = context.GetPlace();
   if (phi::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -269,19 +268,18 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
                          &dense_tensors_,
                          dtype_);
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
   } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
-    SplitTensorsWithType(
-        static_cast<const platform::XPUDeviceContext &>(context),
-        &dense_contents_,
-        &dense_tensors_,
-        dtype_);
+    SplitTensorsWithType(static_cast<const phi::XPUContext &>(context),
+                         &dense_contents_,
+                         &dense_tensors_,
+                         dtype_);
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't split xpu grad since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
@@ -291,7 +289,7 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
                          &dense_tensors_,
                          dtype_);
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Split grad tensor not supported on place (%s)", place));
   }
 }
@@ -364,7 +362,7 @@ void Reducer::InitializeDenseGroups(
     const auto &var_name = var->Name();
     PADDLE_ENFORCE_EQ(is_sparse_gradient_[variable_index],
                       false,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s's GRAD must be LoDTensor, but received "
                           "GRAD is SelectedRows",
                           var_name));
@@ -372,13 +370,13 @@ void Reducer::InitializeDenseGroups(
     auto lod_tensor = var->MutableVar()->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(lod_tensor->IsInitialized(),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s is not initialized.", var_name));
     const auto size = lod_tensor->numel();
     PADDLE_ENFORCE_GT(
         size,
         0,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of tensor %s's elements is 0.", var_name));
     all_length += size;
 
@@ -394,7 +392,7 @@ void Reducer::InitializeDenseGroups(
       PADDLE_ENFORCE_EQ(
           dtype,
           p_group->dtype_,
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Tensor %s has different dtype. Expected dtype is %s, but actual "
               "dtype is %s",
               var_name,
@@ -402,7 +400,7 @@ void Reducer::InitializeDenseGroups(
               framework::DataTypeToString(dtype)));
       PADDLE_ENFORCE_EQ(place,
                         place_,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Tensor %s has different place. Expected place is "
                             "%s, but actual place is %s",
                             var_name,
@@ -435,7 +433,7 @@ void Reducer::InitializeGroups(
     PADDLE_ENFORCE_GT(
         variable_indices_.size(),
         0,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of group[%d]'s elements is 0.", group_index));
     Group group;
 
@@ -470,7 +468,7 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
   PADDLE_ENFORCE_EQ(
       node_deps_.empty(),
       true,
-      platform::errors::AlreadyExists("Op deps must be initialized here"));
+      common::errors::AlreadyExists("Op deps must be initialized here"));
 
   std::queue<GradOpNode *> q;
   std::unordered_set<GradOpNode *> visited;
@@ -488,7 +486,7 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
     for (auto &grad_pending_node : grad_pending_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
           grad_pending_node,
-          platform::errors::NotFound("Grad pending node should not be null"));
+          common::errors::NotFound("Grad pending node should not be null"));
       // py_layer is not supported in DataParallel
       auto begin = grad_pending_node->begin();
       auto end = grad_pending_node->end();
@@ -496,7 +494,7 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
         PADDLE_ENFORCE_EQ(
             op_base->Type() != "py_layer",
             true,
-            platform::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "Note: Currently PyLayer is not supported in DataParallel. For "
                 "using PyLayer in a DataParallel model, you can skip gradient "
                 "synchronization among multiple cards by 'no_sync', and "
@@ -559,9 +557,9 @@ void Reducer::TraverseBackwardGraph(
       }
     }
     for (const auto &grad_pending_node : cur_node->GradPendingNodes()) {
-      PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
-                              platform::errors::NotFound(
-                                  "Grad pending node should not be nullptr"));
+      PADDLE_ENFORCE_NOT_NULL(
+          grad_pending_node,
+          common::errors::NotFound("Grad pending node should not be nullptr"));
       auto iter = node_deps_.find(grad_pending_node.get());
       if (iter == node_deps_.end()) {
         continue;
@@ -600,7 +598,7 @@ void Reducer::PrepareForBackward(
   PADDLE_ENFORCE_EQ(
       groups_need_finalize_,
       false,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "A serious error has occurred here. Please "
           "set find_unused_parameters=True to traverse backward graph "
           "in each step to prepare reduce in advance. If you have "
@@ -654,13 +652,13 @@ void Reducer::PrepareForBackward(
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(size_t var_index) {
-  PADDLE_ENFORCE_LT(var_index,
-                    variable_locators_.size(),
-                    platform::errors::OutOfRange(
-                        "Out of bounds variable index. it must be less"
-                        "than %d, but it is %d",
-                        variable_locators_.size(),
-                        var_index));
+  PADDLE_ENFORCE_LT(
+      var_index,
+      variable_locators_.size(),
+      common::errors::OutOfRange("Out of bounds variable index. it must be less"
+                                 "than %d, but it is %d",
+                                 variable_locators_.size(),
+                                 var_index));
 
   // gradient synchronization is not required when grad_need_hooks_ is false.
   if (!grad_need_hooks_) {
@@ -712,7 +710,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
     PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
                       false,
-                      platform::errors::PreconditionNotMet(error_info));
+                      common::errors::PreconditionNotMet(error_info));
 
     error_info +=
         "3) Unused parameters retrieval is incorrect. "
@@ -728,7 +726,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
     PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
                       true,
-                      platform::errors::PreconditionNotMet(error_info));
+                      common::errors::PreconditionNotMet(error_info));
   } else {
     vars_marked_ready_[var_index] = true;
   }
@@ -755,7 +753,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
 #ifdef PADDLE_WITH_XPU_BKCL
       if (phi::is_xpu_place(group_tensor.place())) {
-        auto dev_ctx = static_cast<platform::XPUDeviceContext *>(
+        auto dev_ctx = static_cast<phi::XPUContext *>(
             phi::DeviceContextPool::Instance().Get(place_));
         if (HasGrad(var_index)) {
           auto var_base = vars_[var_index]->GradVarBase();
@@ -790,7 +788,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     PADDLE_ENFORCE_EQ(
         HasGrad(var_index),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The sparse parameter[%d][%s] should have gradient. "
             "Currently, DataParallel does not support sparse "
             "parameters without generating gradients during training. "
@@ -804,7 +802,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     PADDLE_ENFORCE_EQ(
         var_base->Var().IsType<phi::SelectedRows>(),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The sparse parameter[%d][%s] must have a selectedrows gradient. "
             "Before forward pass, the parameter type is inferred to be "
             "SelectedRows, but after backward pass, its actual type becomes "
@@ -833,7 +831,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
   PADDLE_ENFORCE_GE(
       group_index,
       next_group_,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The index of the incoming group must be greater "
           "than or equal to the previously synchronized group index, "
           "expect it to greater than or equal to %d, but got %d.",
@@ -901,7 +899,7 @@ std::vector<std::vector<size_t>> Reducer::RebuildGroups() {
   PADDLE_ENFORCE_EQ(
       rebuild_vars_.size(),
       vars_.size(),
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Rebuild vars's number should be equal to original vars'number, "
           "expect it to be %d, but got %d.",
           vars_.size(),
@@ -1000,7 +998,7 @@ bool Reducer::HasGrad(size_t var_index) {
       return true;
     }
   } else {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Only support LoDTensor and SelectedRows for gradient var"));
   }
   return false;
@@ -1057,7 +1055,7 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<int64_t> &tensor_indices) {
   PADDLE_ENFORCE_EQ(vars.size(),
                     is_sparse_gradient.size(),
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "vars len must be equal to is_sparse_gradient len, but "
                         "[%lu] != [%lu]",
                         vars.size(),
@@ -1075,7 +1073,7 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
   };
   PADDLE_ENFORCE_EQ(true,
                     check_perm(tensor_indices),
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "tensor_indices must be a permutation from 0 to %lu",
                         tensor_indices.size()));
   // the return vector
@@ -1146,7 +1144,7 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
     PADDLE_ENFORCE_NE(
         group_index.empty(),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "AssignGroupBySize construct empty group, please check."));
   }
   if (tensor_indices.empty()) {

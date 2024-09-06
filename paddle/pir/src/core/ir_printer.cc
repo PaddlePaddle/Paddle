@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -189,7 +190,7 @@ void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
 
   os << " \"" << op->name() << "\"";
 
-  if (FLAGS_pir_debug) {
+  if (VLOG_IS_ON(1) || FLAGS_pir_debug) {
     os << " [id:" << op->id() << "]";
   }
 
@@ -369,7 +370,7 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   const void* key = v.impl();
   PADDLE_ENFORCE_EQ(aliases_.find(key),
                     aliases_.end(),
-                    phi::errors::InvalidArgument("Value already has alias"));
+                    common::errors::InvalidArgument("Value already has alias"));
   aliases_[key] = alias;
 }
 

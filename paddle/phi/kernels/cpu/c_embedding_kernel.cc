@@ -73,7 +73,7 @@ void CEmbeddingKernel(const Context& ctx,
                     width,
                     output_data);
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "CPU c_embedding ids only support int32 or int64."));
   }
 }

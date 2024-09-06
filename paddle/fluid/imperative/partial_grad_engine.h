@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/imperative/engine.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace imperative {

@@ -17,8 +17,11 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
@@ -40,7 +43,7 @@ static T* DynLoad(void* handle, std::string name) {
 #endif  // !_WIN32
   PADDLE_ENFORCE_NOT_NULL(
       func,
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Failed to load dynamic operator library, error message(%s).",
           errorno));
   return func;
@@ -203,7 +206,7 @@ static void CheckDefaultInferShapeDtype(
     PADDLE_ENFORCE_EQ(
         OpMetaInfoHelper::GetInputs(custom_op_meta).size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple inputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the "
@@ -216,7 +219,7 @@ static void CheckDefaultInferShapeDtype(
     PADDLE_ENFORCE_EQ(
         OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple outputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the "
@@ -230,7 +233,7 @@ static void CheckDefaultInferShapeDtype(
     PADDLE_ENFORCE_EQ(
         inplace_map.size(),
         OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator uses `SetInplaceMap` without setting the "
             "InferShapeFn/InferDtypeFn. However, `Outputs` size = %d does not "
             "match the "
@@ -291,7 +294,7 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
           PADDLE_ENFORCE_EQ(
               bwd_inputs_name.size() == 1UL && bwd_outputs_name.size() == 1UL,
               true,
-              paddle::platform::errors::Unavailable(
+              common::errors::Unavailable(
                   "Custom grad operator infershape error. "
                   "If a custom grad operator contains only one input and "
                   "only one output, the input shape will be directly set "
@@ -315,7 +318,7 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
     } else if (vec_input_shapes.size() == 1) {
       output_shapes = vec_input_shapes[0];
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "We only allow a custom operator that contains only one input "
           "and only one output without setting the InferShapeFn. "));
     }
@@ -396,7 +399,7 @@ static std::vector<DataType> RunDefaultInferDtype(
     } else if (vec_input_dtypes.size() == 1) {
       output_dtypes = vec_input_dtypes[0];
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "We only allow a custom operator that contains only one input "
           "and only one output without setting the InferDtypeFn. "));
     }
@@ -447,7 +450,7 @@ static std::vector<std::vector<int64_t>> RunInferShape(
       if (paddle::framework::detail::IsDuplicableVar(out_name)) {
         PADDLE_ENFORCE(
             inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator only supports `paddle::Vec(...)` inputs and "
                 "cannot support `paddle::Vec(...)` output without setting "
                 "InplaceMap. If you have to use `paddle::Vec(...)` output, "
@@ -516,7 +519,7 @@ static std::vector<DataType> RunInferDtype(
       if (paddle::framework::detail::IsDuplicableVar(out_name)) {
         PADDLE_ENFORCE(
             inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator only supports `paddle::Vec(...)` inputs and "
                 "cannot support `paddle::Vec(...)` output without setting "
                 "InplaceMap. If you have to use `paddle::Vec(...)` output, "
@@ -559,6 +562,93 @@ static std::vector<DataType> RunInferDtype(
                                 vec_input_dtypes,
                                 vec_input_name2id_map);
   }
+}
+
+static phi::distributed::SpmdInfo RunInferSpmd(
+    const paddle::OpMetaInfo& op_info,
+    const std::string& op_type,
+    const paddle::dialect::ProcessMeshAttribute& op_mesh,
+    const std::vector<pir::Value>& argument_inputs,
+    const std::vector<paddle::any>& custom_attrs) {  // NOLINT
+#ifdef PADDLE_WITH_DISTRIBUTE
+  auto& infer_spmd_func = paddle::OpMetaInfoHelper::GetInferSpmdFn(op_info);
+  if (infer_spmd_func == nullptr) {
+    // TODO(Q4): support replicated rule for custom op
+    PADDLE_THROW(common::errors::Unavailable(
+        "We only allow a custom operator with specific SPMD rule in auto "
+        "parallel mode, please register a SPMD for [%s] Op first.",
+        op_type));
+  }
+
+  std::vector<paddle::CustomSpmdInferTensorArg> dist_meta_tensors;
+  dialect::CvtAllInputsToDist(argument_inputs, op_mesh);
+  for (auto& value : argument_inputs) {
+    // optional value
+    if (!value || !value.type()) {
+      phi::distributed::DistMetaTensor meta_tensor;
+      dist_meta_tensors.emplace_back(std::move(meta_tensor));
+      // single value
+    } else if (auto dist_type =
+                   value.type().dyn_cast<dialect::DistTypeInterface>()) {
+      auto meta_tensor = dialect::CvtToDistMetaTensor(
+          value.type().dyn_cast<dialect::DistDenseTensorType>());
+      dist_meta_tensors.emplace_back(std::move(meta_tensor));
+      // vector values
+    } else if (auto vec_type = value.type().dyn_cast<pir::VectorType>()) {
+      std::vector<phi::distributed::DistMetaTensor> meta_tensors;
+      for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+        auto meta_tensor = dialect::CvtToDistMetaTensor(
+            vec_type[idx].dyn_cast<dialect::DistDenseTensorType>());
+        meta_tensors.emplace_back(std::move(meta_tensor));
+      }
+      dist_meta_tensors.emplace_back(std::move(meta_tensors));
+    } else {
+      std::ostringstream print_stream;
+      print_stream << value.type();
+      PADDLE_THROW(common::errors::Unavailable(
+          "We only allow a custom operator with optional/single/vector inputs "
+          "in auto parallel mode. %s",
+          print_stream.str()));
+    }
+  }
+
+  auto spmd_info_tmp = infer_spmd_func(dist_meta_tensors, custom_attrs);
+  phi::distributed::SpmdInfo spmd_info;
+
+  // NOTE not need to flatten input
+  spmd_info.first = spmd_info_tmp.first;
+  // for (auto& e : spmd_info_tmp.first) {
+  //   if (paddle::holds_alternative<phi::distributed::TensorDistAttr>(e)) {
+  //     spmd_info.first.push_back(
+  //         std::move(PADDLE_GET(phi::distributed::TensorDistAttr, e)));
+  //   } else {
+  //     for (auto& ee :
+  //          PADDLE_GET(std::vector<phi::distributed::TensorDistAttr>, e)) {
+  //       spmd_info.first.push_back(std::move(ee));
+  //     }
+  //   }
+  // }
+
+  // flatten output
+  for (auto& e : spmd_info_tmp.second) {
+    if (paddle::holds_alternative<phi::distributed::TensorDistAttr>(e)) {
+      spmd_info.second.push_back(
+          std::move(PADDLE_GET(phi::distributed::TensorDistAttr, e)));
+    } else {
+      for (auto& ee :
+           PADDLE_GET(std::vector<phi::distributed::TensorDistAttr>, e)) {
+        spmd_info.second.push_back(std::move(ee));
+      }
+    }
+  }
+
+  return spmd_info;
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "The parsing of `RunInferSpmd` is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
 }
 
 }  // namespace framework

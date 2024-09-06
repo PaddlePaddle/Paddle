@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -95,6 +95,8 @@ from .ops import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
@@ -442,7 +444,12 @@ def multiplex(
              [3., 4.]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.multiplex(inputs, index)
+    elif in_pir_mode():
+        check_variable_and_dtype(
+            index, "index", ['int32', 'int64'], 'multiplex'
+        )
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
@@ -944,10 +951,10 @@ def divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
-    Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
+    Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward negative infinite. The equation is:
 
     .. math::
-        out = trunc(x / y)
+        out = floor(x / y)
 
     - :math:`x`: Multidimensional Tensor.
     - :math:`y`: Multidimensional Tensor.
@@ -957,7 +964,6 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
-        Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
     Args:
         x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
@@ -980,6 +986,12 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [2, 0, 2, 2])
 
+            >>> x = paddle.to_tensor([2, 3, 8, 7])
+            >>> y = paddle.to_tensor([1, -5, -3, -3])
+            >>> z = paddle.floor_divide(x, y)
+            >>> print(z)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, -1, -3, -3])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.floor_divide(x, y)
@@ -2310,9 +2322,9 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
-            x_shape = [1] + x_shape
+            x_shape = [1, *x_shape]
         if len(y_shape) == 1:
-            y_shape = y_shape + [1]
+            y_shape = [*y_shape, 1]
 
         # check the inner 2 dimensions
         if x_shape[-1] != y_shape[-2]:
@@ -5024,7 +5036,7 @@ def all(
     Computes the ``logical and`` of tensor elements over the given dimension.
 
     Args:
-        x (Tensor): An N-D Tensor, the input data type should be `bool`.
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64'.
         axis (int|list|tuple|None, optional): The dimensions along which the ``logical and`` is compute. If
             :attr:`None`, and all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -5115,7 +5127,7 @@ def any(
     Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
 
     Args:
-        x (Tensor): An N-D Tensor, the input data type should be `bool`.
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64'.
         axis (int|list|tuple|None, optional): The dimensions along which the ``logical or`` is compute. If
             :attr:`None`, and all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -6299,6 +6311,16 @@ def diff(
             Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 3,  1, -3,  5,  2])
 
+            >>> out = paddle.diff(x, n=2, append=y)
+            >>> out
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-2, -4,  8, -3])
+
+            >>> out = paddle.diff(x, n=3, append=y)
+            >>> out
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-2 ,  12, -11])
+
             >>> z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             >>> out = paddle.diff(z, axis=0)
             >>> out
@@ -6443,7 +6465,7 @@ def diff(
     if n > 1:
         for _ in range(n - 1):
             out = _diff_handler(
-                out, n=1, axis=axis, prepend=prepend, append=append, name=name
+                out, n=1, axis=axis, prepend=None, append=None, name=name
             )
     return out
 
@@ -7523,7 +7545,7 @@ def ldexp_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if not isinstance(y, (paddle.Tensor, Variable)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
-        out_dtype = paddle.float64
+        out_dtype = "float64"
     else:
         out_dtype = paddle.get_default_dtype()
     x = paddle.cast_(x, dtype=out_dtype)
@@ -7616,7 +7638,7 @@ def bitwise_left_shift(
                 [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
     return _bitwise_op(
         op_name="bitwise_left_shift",
@@ -7703,7 +7725,7 @@ def bitwise_right_shift(
                 [[123, 59 , 27 , 11 ],
                     [60 , 29 , 56 , 95 ]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
 
     return _bitwise_op(
@@ -7806,7 +7828,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
+    if out_shape != list(x.shape):
         warnings.warn(
             f"The shape of broadcast output {out_shape} is different from the input tensor x with shape: {x.shape}, please make sure you are using copysign api correctly."
         )

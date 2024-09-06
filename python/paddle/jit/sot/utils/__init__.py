@@ -24,6 +24,7 @@ from .envs import (  # noqa: F401
     ENV_STRICT_MODE,
     cost_model_guard,
     min_graph_size_guard,
+    sot_step_profiler_guard,
     strict_mode_guard,
     with_allow_dynamic_shape_guard,
     with_control_flow_guard,
@@ -38,10 +39,10 @@ from .exceptions import (  # noqa: F401
 )
 from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
 from .paddle_api_config import (  # noqa: F401
+    get_tensor_methods,
     is_break_graph_tensor_methods,
     is_inplace_api,
     is_not_supported_paddle_layer,
-    paddle_tensor_methods,
 )
 from .utils import (  # noqa: F401
     Cache,
@@ -54,7 +55,7 @@ from .utils import (  # noqa: F401
     StepInfoManager,
     StepState,
     count_if,
-    current_tmp_name_records,
+    current_symbol_registry,
     execute_time,
     flatten,
     flatten_extend,
@@ -78,5 +79,5 @@ from .utils import (  # noqa: F401
     meta_str,
     no_eval_frame,
     printable,
-    tmp_name_guard,
+    switch_symbol_registry,
 )

@@ -46,7 +46,7 @@ class ShuffleChannelDetectPattern : public paddle::drr::DrrPatternBase {
 
     const auto &reshape_0 = pat.Op(paddle::dialect::ReshapeOp::name());
     reshape_0({&pat.Tensor("x"), &pat.Tensor("shape_0")},
-              {&pat.Tensor("reshape_0_out"), &pat.Tensor("Xshape_0")});
+              {&pat.Tensor("reshape_0_out")});
 
     const auto &transpose = pat.Op(paddle::dialect::TransposeOp::name(),
                                    {{"perm", pat.Attr("perm")}});
@@ -59,7 +59,7 @@ class ShuffleChannelDetectPattern : public paddle::drr::DrrPatternBase {
 
     const auto &reshape = pat.Op(paddle::dialect::ReshapeOp::name());
     reshape({&pat.Tensor("transpose_out"), &pat.Tensor("shape_1")},
-            {&pat.Tensor("out"), &pat.Tensor("Xshape_1")});
+            {&pat.Tensor("out")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));

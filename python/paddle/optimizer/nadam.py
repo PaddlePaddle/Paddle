@@ -15,9 +15,9 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.base.libpaddle import DataType
 
 from ..base import core, framework
@@ -28,6 +28,8 @@ from ..base.framework import (
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -236,8 +238,8 @@ class NAdam(Optimizer):
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
 
     def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
@@ -263,8 +265,8 @@ class NAdam(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)

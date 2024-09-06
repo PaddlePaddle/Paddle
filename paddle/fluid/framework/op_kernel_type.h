@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
@@ -142,7 +142,7 @@ inline bool NeedTransformBackend(const phi::Backend& type_for_var_backend,
   // NOTE(jiahongyu): KernelKey does not hold place information, so we need to
   // explicitly transform CUDAPinnedPlace->CUDAPlace
   if (type_for_var_backend != phi::Backend::ALL_BACKEND &&
-      paddle::platform::is_cuda_pinned_place(tensor.place()) &&
+      phi::is_cuda_pinned_place(tensor.place()) &&
       expected_backend != phi::Backend::CPU) {
     VLOG(3) << "Transform Variable " << tensor.name() << " from "
             << tensor.place() << " to "

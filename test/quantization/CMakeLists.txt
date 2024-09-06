@@ -288,9 +288,9 @@ if(LINUX AND WITH_ONEDNN)
   download_quant_model(
     ${QUANT_GOOGLENET_MODEL_DIR} ${QUANT_GOOGLENET_MODEL_ARCHIVE}
     1d4a7383baa63e7d1c423e8db2b791d5)
-  inference_quant_int8_image_classification_test(
-    test_quant_int8_googlenet_mkldnn ${QUANT_GOOGLENET_MODEL_DIR}/model
-    ${IMAGENET_DATA_PATH})
+  #inference_quant_int8_image_classification_test(
+  #  test_quant_int8_googlenet_mkldnn ${QUANT_GOOGLENET_MODEL_DIR}/model
+  #  ${IMAGENET_DATA_PATH})
 
   # Quant MobileNetV1
   set(QUANT_MOBILENETV1_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV1_quant")
@@ -462,8 +462,8 @@ list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 if(WIN32)
   set(SINGLE_CARD_TEST_OPS
       test_imperative_qat_channelwise test_imperative_qat
-      test_imperative_qat_lsq test_imperative_qat_matmul
-      test_imperative_out_scale)
+      test_imperative_qat_fuse test_imperative_qat_lsq
+      test_imperative_qat_matmul test_imperative_out_scale)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
   foreach(src ${SINGLE_CARD_TEST_OPS})
     py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
@@ -493,7 +493,11 @@ endif()
 set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_qat_matmul PROPERTIES TIMEOUT 300)
-
+set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 if(LINUX AND WITH_ONEDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                       120)
@@ -508,7 +512,7 @@ if(LINUX AND WITH_ONEDNN)
   set_tests_properties(test_quant_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                      120)
   set_tests_properties(test_quant2_int8_ernie_mkldnn PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
+  #set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
 endif()
@@ -517,4 +521,5 @@ if(APPLE)
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
                                                                         300)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 endif()

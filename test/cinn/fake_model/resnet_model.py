@@ -23,15 +23,31 @@ resnet_input = static.data(
 )
 label = static.data(name="label", shape=[1, 960, 7, 7], dtype='float32')
 d = paddle.nn.functional.relu6(resnet_input)
-f = static.nn.conv2d(
-    input=d, num_filters=960, filter_size=1, stride=1, padding=0, dilation=1
-)
-g = static.nn.conv2d(
-    input=f, num_filters=160, filter_size=1, stride=1, padding=0, dilation=1
-)
-i = static.nn.conv2d(
-    input=g, num_filters=960, filter_size=1, stride=1, padding=0, dilation=1
-)
+f = paddle.nn.Conv2D(
+    in_channels=d.shape[1],
+    out_channels=960,
+    kernel_size=1,
+    stride=1,
+    dilation=1,
+    padding=0,
+)(d)
+
+g = paddle.nn.Conv2D(
+    in_channels=f.shape[1],
+    out_channels=160,
+    kernel_size=1,
+    stride=1,
+    dilation=1,
+    padding=0,
+)(f)
+i = paddle.nn.Conv2D(
+    in_channels=g.shape[1],
+    out_channels=960,
+    kernel_size=1,
+    stride=1,
+    dilation=1,
+    padding=0,
+)(g)
 j1 = paddle.scale(i, scale=2.0, bias=0.5)
 j = paddle.scale(j1, scale=2.0, bias=0.5)
 temp7 = paddle.nn.functional.relu(j)
@@ -49,4 +65,7 @@ exe.run(static.default_startup_program())
 
 static.io.save_inference_model("./resnet_model", [resnet_input], [temp7], exe)
 static.io.save_inference_model("./resnet_model_1", [resnet_input], [temp7], exe)
-print('res', temp7.name)
+if paddle.framework.use_pir_api():
+    print('res', temp7)
+else:
+    print('res', temp7.name)

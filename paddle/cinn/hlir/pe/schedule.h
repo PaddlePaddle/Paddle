@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/pe/schedule_param.pb.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/compute.h"

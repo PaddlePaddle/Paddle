@@ -181,7 +181,7 @@ void InitGpuProperties(Place place,
       (local_cuda_version / 10 < compile_cuda_version / 10) &&
           (local_cudnn_major < compile_cudnn_major),
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The installed Paddle is compiled with CUDA%d/cuDNN%d,"
           "but CUDA/cuDNN version in your machine is CUDA%d/cuDNN%d. "
           "which will cause serious incompatible bug. "

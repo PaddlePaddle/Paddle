@@ -42,7 +42,7 @@ HasElementsInstruction::HasElementsInstruction(
 
   type_ = OpFuncType::kCpuSync;
 
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* bool_tensor = value_exe_info_->GetVarByValue(op_->result(0))
                           ->GetMutable<phi::DenseTensor>();
   bool_tensor->Resize(phi::make_ddim({1}));

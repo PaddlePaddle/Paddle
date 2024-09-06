@@ -51,18 +51,18 @@ void FusionSeqExpandConcatFCKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       ref_lod.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Only support input lod size is 1, but received value is: %d.",
           ref_lod.size()));
   PADDLE_ENFORCE_EQ(
       in1_lod.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Only support input lod size is 1, but received value is: %d.",
           in1_lod.size()));
   PADDLE_ENFORCE_EQ(static_cast<int>(in1_lod[0].size() - 1),
                     N,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Batch size of all inputs should be equal to %d, but "
                         "received value is: %d.",
                         N,
@@ -70,28 +70,28 @@ void FusionSeqExpandConcatFCKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       static_cast<int>(in1_lod[0][N]),
       N,
-      phi::errors::InvalidArgument("Seq_length of other inputs should "
-                                   "be %d, but received value is: %d.",
-                                   N,
-                                   static_cast<int>(in1_lod[0][N])));
+      common::errors::InvalidArgument("Seq_length of other inputs should "
+                                      "be %d, but received value is: %d.",
+                                      N,
+                                      static_cast<int>(in1_lod[0][N])));
   PADDLE_ENFORCE_EQ(
       in1_dims[0],
       N,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "input height should be batch size: %d, but received value is %d.",
           N,
           in1_dims[0]));
   for (size_t i = 2; i < x.size(); ++i) {
     PADDLE_ENFORCE_EQ(x[i]->dims()[0],
                       N,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "All other inputs height should be equal to %d, "
                           "but received value is: %d.",
                           N,
                           x[i]->dims()[0]));
     PADDLE_ENFORCE_EQ(x[i]->lod(),
                       in1_lod,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "All other inputs should have same lod: %d, but "
                           "received value is: %d.",
                           in1_lod,

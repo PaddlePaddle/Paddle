@@ -47,7 +47,7 @@ class XPUTestIndexSelect(XPUOpTestWrapper):
             self.inputs = {'X': x_np, 'Index': index_np}
             self.attrs = {'dim': self.dim}
             outer_loop = np.prod(self.x_shape[: self.dim])
-            x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+            x_reshape = [outer_loop, *self.x_shape[self.dim :]]
             x_np_reshape = np.reshape(x_np, tuple(x_reshape))
             out_list = []
             for i in range(outer_loop):
@@ -104,7 +104,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             exe = base.Executor(base.XPUPlace(0))
             (res,) = exe.run(
                 feed={'x': self.data_x, 'index': self.data_index},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(
@@ -120,7 +120,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             exe = base.Executor(base.XPUPlace(0))
             (res,) = exe.run(
                 feed={'x': self.data_x, 'index': self.data_index},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(

@@ -29,15 +29,14 @@ class TRTDynamicShapeTest(InferencePassTest):
             data = paddle.static.data(
                 name="data", shape=[-1, 3, 16, 16], dtype="float32"
             )
-            out = paddle.static.nn.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
+            out = paddle.nn.Conv2D(
+                in_channels=data.shape[1],
+                out_channels=3,
+                kernel_size=3,
                 groups=1,
                 padding=[1, 1],
                 bias_attr=False,
-                act=None,
-            )
+            )(data)
 
         self.feeds = self.set_feeds()
         self.enable_trt = True

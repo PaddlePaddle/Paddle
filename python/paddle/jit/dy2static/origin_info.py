@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import textwrap
 from collections.abc import Sequence
 
 from paddle.base import core
@@ -149,7 +150,7 @@ def create_and_update_origin_info_map(
     """
 
     origin_info_map = {}
-    static_source = inspect.getsource(static_func)
+    static_source = textwrap.dedent(inspect.getsource(static_func))
     static_node = gast.parse(static_source)
     static_node = attach_origin_info(static_node, static_func)
 

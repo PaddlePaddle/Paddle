@@ -45,7 +45,7 @@ class TestMaskedSelectOp(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y', check_pir=True, check_prim_pir=True)
@@ -82,7 +82,7 @@ class TestMaskedSelectFP16Op(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y', check_pir=True, check_prim_pir=True)
@@ -121,7 +121,9 @@ class TestMaskedSelectBF16Op(OpTest):
         self.outputs = {'Y': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(

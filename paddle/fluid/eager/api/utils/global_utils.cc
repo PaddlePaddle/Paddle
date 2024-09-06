@@ -36,7 +36,7 @@ bool Controller::UseLayoutAutoTune() {
   bool use_autotune = false;
 #if defined(PADDLE_WITH_CUDA)
   auto place = tracer_->ExpectedPlace();
-  bool is_gpu_place = paddle::platform::is_gpu_place(place);
+  bool is_gpu_place = phi::is_gpu_place(place);
   if (is_gpu_place) {
     use_autotune = tracer_->UseLayoutAutoTune();
   }

@@ -39,7 +39,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
   PADDLE_ENFORCE_GT(
       axis_dim,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis dimension should be larger than 0, but received "
           "axis dimension is %d.",
           axis_dim));
@@ -50,7 +50,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
   PADDLE_ENFORCE_GT(
       n,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of axis should be larger than 0, but received "
           "SizeToAxis of softmax is %d.",
           n));

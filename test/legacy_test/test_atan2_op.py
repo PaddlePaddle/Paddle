@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -34,7 +35,9 @@ def atan2_grad(x1, x2, dout):
 class TestAtan2(OpTest):
     def setUp(self):
         self.op_type = "atan2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.atan2
+        self.public_python_api = paddle.atan2
         self.check_cinn = True
         self.init_dtype()
 
@@ -47,7 +50,11 @@ class TestAtan2(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X1', 'X2'], 'Out', check_cinn=self.check_cinn, check_pir=True
+            ['X1', 'X2'],
+            'Out',
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):
@@ -73,6 +80,7 @@ class TestAtan2_float(TestAtan2):
                 ),
                 check_cinn=self.check_cinn,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -100,7 +108,13 @@ class TestAtan2API(unittest.TestCase):
         self.init_dtype()
         self.x1 = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         self.x2 = np.random.uniform(-1, -0.1, self.shape).astype(self.dtype)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -144,7 +158,9 @@ class TestAtan2API(unittest.TestCase):
 class TestAtan2BF16OP(OpTest):
     def setUp(self):
         self.op_type = 'atan2'
+        self.prim_op_type = 'prim'
         self.python_api = paddle.atan2
+        self.public_python_api = paddle.atan2
         self.dtype = np.uint16
         self.check_cinn = True
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
@@ -171,6 +187,7 @@ class TestAtan2BF16OP(OpTest):
             'Out',
             check_cinn=self.check_cinn,
             check_pir=True,
+            check_prim_pir=True,
         )
 
 

@@ -20,7 +20,7 @@ from paddle.distributed import save_state_dict
 
 
 def get_global_state_dict():
-    w1 = paddle.arange(32).reshape([4, 8])
+    w1 = paddle.arange(104).reshape([13, 8])
     w2 = paddle.arange(32, 36).reshape([2, 2])
     return {"w1": w1, "w2": w2}
 

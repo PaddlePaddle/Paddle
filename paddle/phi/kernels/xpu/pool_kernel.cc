@@ -42,16 +42,16 @@ void Pool2dKernel(const Context& ctx,
 
   PADDLE_ENFORCE_EQ(kernel_size.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Pool2d XPU OP only support 2 dimension pooling!"));
 
   // old model's data_format maybe AnyLayout
   PADDLE_ENFORCE_NE(
       data_format,
       "NHWC",
-      phi::errors::InvalidArgument("The Pool2d XPU OP does not support "
-                                   "data_format is 'NHWC', but received %s",
-                                   data_format));
+      common::errors::InvalidArgument("The Pool2d XPU OP does not support "
+                                      "data_format is 'NHWC', but received %s",
+                                      data_format));
 
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size.size(); ++i) {
@@ -126,7 +126,7 @@ void Pool2dKernel(const Context& ctx,
           !exclusive,
           true);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
   } else {
@@ -156,7 +156,7 @@ void Pool2dKernel(const Context& ctx,
           out_w,
           true);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
   }
@@ -260,7 +260,7 @@ void Pool3dKernel(const Context& ctx,
           !exclusive,
           data_format == "NCDHW");
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
   } else {
@@ -294,7 +294,7 @@ void Pool3dKernel(const Context& ctx,
           out_w,
           data_format == "NCDHW");
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
   }
@@ -323,11 +323,11 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
 
   PADDLE_ENFORCE_EQ(ksize.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Pool2d XPU OP only support 2 dimension pooling!"));
   PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Pool2d XPU OP does not support (adaptive == "
                         "true && output_size != 1)"));
   global_pooling = global_pooling || (adaptive && (ksize[0] * ksize[1] == 1));

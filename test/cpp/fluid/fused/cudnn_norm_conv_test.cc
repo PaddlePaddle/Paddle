@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cu.h"
@@ -427,13 +427,13 @@ TEST(CudnnNormConvFp16, K1S1) {
   int output_channels = 32;
   int kernel_size = 1;
   int stride = 1;
-  CudnnNormConvolutionTester<paddle::platform::float16> test(batch_size,
-                                                             height,
-                                                             width,
-                                                             input_channels,
-                                                             output_channels,
-                                                             kernel_size,
-                                                             stride);
+  CudnnNormConvolutionTester<phi::dtype::float16> test(batch_size,
+                                                       height,
+                                                       width,
+                                                       input_channels,
+                                                       output_channels,
+                                                       kernel_size,
+                                                       stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
@@ -457,13 +457,13 @@ TEST(CudnnNormConvFp16, K3S1) {
   int output_channels = 32;
   int kernel_size = 3;
   int stride = 1;
-  CudnnNormConvolutionTester<paddle::platform::float16> test(batch_size,
-                                                             height,
-                                                             width,
-                                                             input_channels,
-                                                             output_channels,
-                                                             kernel_size,
-                                                             stride);
+  CudnnNormConvolutionTester<phi::dtype::float16> test(batch_size,
+                                                       height,
+                                                       width,
+                                                       input_channels,
+                                                       output_channels,
+                                                       kernel_size,
+                                                       stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
@@ -487,13 +487,13 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   int output_channels = 128;
   int kernel_size = 1;
   int stride = 1;
-  CudnnNormConvolutionTester<paddle::platform::float16> test(batch_size,
-                                                             height,
-                                                             width,
-                                                             input_channels,
-                                                             output_channels,
-                                                             kernel_size,
-                                                             stride);
+  CudnnNormConvolutionTester<phi::dtype::float16> test(batch_size,
+                                                       height,
+                                                       width,
+                                                       input_channels,
+                                                       output_channels,
+                                                       kernel_size,
+                                                       stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
@@ -517,13 +517,13 @@ TEST(CudnnNormConvFp16, K1S2O4) {
   int output_channels = 128;
   int kernel_size = 1;
   int stride = 2;
-  CudnnNormConvolutionTester<paddle::platform::float16> test(batch_size,
-                                                             height,
-                                                             width,
-                                                             input_channels,
-                                                             output_channels,
-                                                             kernel_size,
-                                                             stride);
+  CudnnNormConvolutionTester<phi::dtype::float16> test(batch_size,
+                                                       height,
+                                                       width,
+                                                       input_channels,
+                                                       output_channels,
+                                                       kernel_size,
+                                                       stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 

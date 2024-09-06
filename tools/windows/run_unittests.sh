@@ -31,10 +31,8 @@ disable_wingpu_test="^test_model$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
-^test_reader_reset$|\
+^test_reader_reset_deprecated$|\
 ^test_imperative_se_resnext$|\
-^test_sync_batch_norm_op$|\
-^test_sync_batch_norm_op_static_build$|\
 ^test_dataloader_keep_order_deprecated$|\
 ^test_dataloader_unkeep_order_deprecated$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -73,8 +71,8 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_multi_precision_fp16_train$|\
 ^test_imperative_skip_op$|\
 ^test_qat$|\
-^test_standalone_cuda_graph_multi_stream$|\
-^test_standalone_cuda_graph_multi_stream_static_build$|\
+^test_standalone_cuda_graph_multi_stream_deprecated$|\
+^test_standalone_cuda_graph_multi_stream_deprecated_static_build$|\
 ^test_save_load$|\
 ^test_conv_transpose_nn_grad$|\
 ^test_dygraph_spectral_norm$|\
@@ -222,9 +220,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_decoupled_py_reader_deprecated$|\
 ^test_generator_dataloader_deprecated$|\
 ^test_py_reader_combination$|\
-^test_reader_reset$|\
-^test_sync_batch_norm_op$|\
-^test_sync_batch_norm_op_static_build$|\
+^test_reader_reset_deprecated$|\
 ^test_decoupled_py_reader_deprecated_static_build$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -392,7 +388,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_model$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_push_pop$|\
-^test_reader_reset$|\
+^test_reader_reset_deprecated$|\
 ^test_py_reader_pin_memory$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -405,8 +401,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_py_reader_using_executor$|\
 ^test_dataloader_keep_order_deprecated$|\
 ^test_dataloader_unkeep_order_deprecated$|\
-^test_sync_batch_norm_op$|\
-^test_sync_batch_norm_op_static_build$|\
 ^test_fuse_bn_act_pass_deprecated$|\
 ^test_fuse_bn_act_pass_deprecated_static_build$|\
 ^test_fuse_bn_add_act_pass$|\

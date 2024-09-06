@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {

@@ -23,7 +23,7 @@
 #include "paddle/common/performance_statistician.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/program.h"
 
 namespace cinn {

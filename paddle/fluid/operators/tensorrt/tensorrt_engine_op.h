@@ -35,12 +35,11 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/string_helper.h"
@@ -76,7 +75,7 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
   PADDLE_ENFORCE_EQ(
       model_input_shape == runtime_input_shape,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input shapes are inconsistent with the model. Expect [%s] in "
           "model description, but got [%s] in runtime. TRT 5 "
           "or lower version "
@@ -102,7 +101,7 @@ static phi::DataType TRT2FluidDataType(nvinfer1::DataType type) {
       return phi::DataType::BOOL;
 #endif
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
       return phi::DataType::FLOAT32;
   }
@@ -115,7 +114,7 @@ static void RuntimeDynamicShapeCheck(
     const std::vector<int32_t> &max_input_shape) {
   // PADDLE_ENFORCE_EQ(
   //     runtime_input_shape.size(), min_input_shape.size(),
-  //     phi::errors::InvalidArgument(
+  //     common::errors::InvalidArgument(
   //         "TRT engine runtime input %s dims size(%d) inconsistent "
   //         "with the dynamic shape size(%d)",
   //         x, runtime_input_shape.size(), min_input_shape.size()));
@@ -140,7 +139,7 @@ static void RuntimeDynamicShapeCheck(
   PADDLE_ENFORCE_EQ(is_input_shape_valid(
                         runtime_input_shape, min_input_shape, max_input_shape),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT runtime input shape of %s is invalid. Expect "
                         "runtime input shape to be within min/max input shape "
                         "configured in SetTRTDynamicShapeInfo(),"
@@ -366,12 +365,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
           PADDLE_ENFORCE_EQ(
               min_input_shape.count(x),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Input %s not found in TRT engine min_input_shape.", x));
           PADDLE_ENFORCE_EQ(
               max_input_shape.count(x),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Input %s not found in TRT engine max_input_shape.", x));
           RuntimeDynamicShapeCheck(x,
                                    runtime_input_shape[x],
@@ -474,6 +473,47 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                &params.min_shape_tensor,
                                                &params.max_shape_tensor,
                                                &params.optim_shape_tensor);
+        } else {
+          if (HasAttr("dynamic_shape_names") &&
+              HasAttr("min_input_shape_vector") &&
+              HasAttr("max_input_shape_vector") &&
+              HasAttr("opt_input_shape_vector")) {
+            std::vector<std::string> dynamic_shape_names;
+            std::vector<std::vector<int>> min_input_shapes;
+            std::vector<std::vector<int>> max_input_shapes;
+            std::vector<std::vector<int>> opt_input_shapes;
+            std::vector<int> dynamic_shape_lens;
+            dynamic_shape_names =
+                Attr<std::vector<std::string>>("dynamic_shape_names");
+            std::vector<int> min_shapes =
+                Attr<std::vector<int>>("min_input_shape_vector");
+            std::vector<int> max_shapes =
+                Attr<std::vector<int>>("max_input_shape_vector");
+            std::vector<int> opt_shapes =
+                Attr<std::vector<int>>("opt_input_shape_vector");
+            dynamic_shape_lens = Attr<std::vector<int>>("dynamic_shape_lens");
+            int idx = 0;
+            for (size_t i = 0; i < dynamic_shape_lens.size(); ++i) {
+              std::vector<int> tmp1, tmp2, tmp3;
+              for (int j = 0; j < dynamic_shape_lens[i]; ++j) {
+                tmp1.push_back(min_shapes[idx]);
+                tmp2.push_back(max_shapes[idx]);
+                tmp3.push_back(opt_shapes[idx++]);
+              }
+              min_input_shapes.emplace_back(tmp1);
+              max_input_shapes.emplace_back(tmp2);
+              opt_input_shapes.emplace_back(tmp3);
+            }
+
+            for (size_t i = 0; i < dynamic_shape_names.size(); ++i) {
+              params.min_input_shape.insert(
+                  std::make_pair(dynamic_shape_names[i], min_input_shapes[i]));
+              params.max_input_shape.insert(
+                  std::make_pair(dynamic_shape_names[i], max_input_shapes[i]));
+              params.optim_input_shape.insert(
+                  std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
+            }
+          }
         }
         params.context_memory_sharing = Attr<bool>("context_memory_sharing");
         params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
@@ -548,7 +588,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE_GT(
           t.numel(),
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The input tensor named %s of trt-subgraph must "
               "have >0 elements, but now have %d elements. "
               "It's likely that this tensor is connected to a Concat op inside "
@@ -571,7 +611,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         PADDLE_ENFORCE_EQ(
             t.numel(),
             1UL,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "This tensor must have one element, but got %ld.", t.numel()));
         t_shape.push_back(1);
       }
@@ -587,7 +627,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE_LT(
           bind_index,
           num_bindings,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Wrong TRT engine input binding index. Expected The "
               "binding index of TRT engine input to be less than "
               "the number of inputs and outputs. Received binding "
@@ -608,7 +648,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             PADDLE_ENFORCE_EQ(
                 runtime_batch,
                 t_shape[0],
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "Inputs of trt subgraphs has different batchsize. "
                     "It's not allowed in static shape mode. "
                     "Check whether the model you are running has multiple trt "
@@ -714,7 +754,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       PADDLE_ENFORCE_EQ(indata_type,
                         intrt_type,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The TRT Engine OP's input type [%d] should equal "
                             "to the input data type [%d].",
                             static_cast<int>(intrt_type),
@@ -754,7 +794,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<bool>());
 #endif
       } else {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "The TRT Engine OP only support "
             "float/double/int32_t/int64_t/float16/bool input."));
       }
@@ -784,7 +824,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #else
         auto dims = engine->engine()->getBindingDimensions(bind_index);
 #endif
-        ddim.push_back(runtime_batch);
         for (int i = 0; i < dims.nbDims; i++) {
           ddim.push_back(dims.d[i]);
         }
@@ -819,14 +858,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(
           fluid_v,
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
       fluid_t->Resize(common::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index,
                         num_bindings,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The binding index in TRT engine should be less "
                             "than the number of bindings, but got binding "
                             "index = %d, number of bindings = %d.",
@@ -850,7 +889,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE_LE(
           runtime_batch,
           max_batch_size_,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The runtime batch size (%d) is greater than the max batch "
               "size(%d).\n"
               "There are two possible causes for this problem: \n"
@@ -1020,7 +1059,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE_NOT_NULL(
         trt_engine_,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "The pointer to tensorrt engine should not be null."));
     return trt_engine_;
   }

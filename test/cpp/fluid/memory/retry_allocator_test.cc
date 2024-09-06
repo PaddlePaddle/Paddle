@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/retry_allocator.h"
+#include "paddle/phi/core/memory/allocation/retry_allocator.h"
 
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/best_fit_allocator.h"
-#include "paddle/fluid/memory/allocation/cpu_allocator.h"
+#include "paddle/phi/core/memory/allocation/best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/cpu_allocator.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/memory/allocation/cuda_allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_allocator.h"
 #endif
 
 namespace paddle {
@@ -93,7 +93,7 @@ class DummyAllocator : public Allocator {
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
-    PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
+    PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
         "Here is a test exception, always BadAlloc."));
   }
 

@@ -92,7 +92,6 @@ class Hogwild(DeviceWorker):
             trainer_desc.hogwild_param.skip_ops.extend(
                 [
                     "feed",
-                    "push_sparse",
                     "push_sparse_v2",
                     "push_dense",
                     "distributed_push_sparse",

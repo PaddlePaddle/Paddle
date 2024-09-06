@@ -304,7 +304,9 @@ class TestBilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(
+            check_pir=True, check_symbol_infer=(self.out_size is None)
+        )
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
@@ -515,7 +517,11 @@ class TestBilinearInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output(atol=1e-2, check_pir=True)
+        self.check_output(
+            atol=1e-2,
+            check_pir=True,
+            check_symbol_infer=(self.out_size is None),
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -655,7 +661,10 @@ class TestBilinearInterpOpUint8(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CPUPlace(), atol=1, check_pir=True
+            place=core.CPUPlace(),
+            atol=1,
+            check_pir=True,
+            check_symbol_infer=(self.out_size is None),
         )
 
     def init_test_case(self):
@@ -830,7 +839,9 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(
+            check_pir=True, check_symbol_infer=(self.out_size is None)
+        )
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', in_place=True, check_pir=True)

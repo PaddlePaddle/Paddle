@@ -14,12 +14,14 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution import dirichlet, exponential_family
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 
@@ -150,7 +152,7 @@ class Beta(exponential_family.ExponentialFamily):
             shape (Sequence[int], optional): Sample shape.
 
         Returns:
-            Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
         """
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         return paddle.squeeze(self._dirichlet.sample(shape)[..., 0], axis=-1)

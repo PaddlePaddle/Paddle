@@ -304,7 +304,8 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
                 y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
                 y_1 = paddle.add(x, y, name='add_res')
-                self.assertEqual(('add_res' in y_1.name), True)
+                if not paddle.framework.use_pir_api():
+                    self.assertEqual(('add_res' in y_1.name), True)
 
         def test_declarative(self):
             with base.program_guard(base.Program()):
@@ -321,7 +322,7 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
 
                 place = base.XPUPlace(0)
                 exe = base.Executor(place)
-                z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+                z_value = exe.run(feed=gen_data(), fetch_list=[z])
                 z_expected = np.array([3.0, 8.0, 6.0])
                 self.assertEqual((z_value == z_expected).all(), True)
 

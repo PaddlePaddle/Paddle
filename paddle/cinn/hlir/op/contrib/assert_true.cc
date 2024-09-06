@@ -17,7 +17,6 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -27,6 +26,8 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace hlir {
@@ -43,11 +44,20 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
     const Target &target) {
   framework::CINNCompute assert_true_compute([=](lang::Args args,
                                                  lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of assert_true is empty! Please check.";
+    PADDLE_ENFORCE_EQ(!args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of assert_true is "
+                          "empty! Please check."));
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U)
-        << "Two input tensors are required for the computation of assert_true.";
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        2U,
+        ::common::errors::InvalidArgument("Two input tensors are required "
+                                          "for the computation of assert_true, "
+                                          "but received size %d.",
+                                          pack_args.size()));
+
     Expr a_expr = pack_args[0];
     Expr b_expr = pack_args[1];
     ir::Tensor a = a_expr.as_tensor_ref();

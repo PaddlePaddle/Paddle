@@ -18,10 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
@@ -42,8 +42,8 @@ static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("Variable with name %s is not found",
-                              var_name.c_str()));
+        common::errors::NotFound("Variable with name %s is not found",
+                                 var_name.c_str()));
     auto nccl_id = var->GetMutable<ncclUniqueId>();
     memcpy(nccl_id, &nccl_ids[i], sizeof(ncclUniqueId));
   }

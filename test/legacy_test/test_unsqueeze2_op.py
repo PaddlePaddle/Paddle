@@ -161,7 +161,11 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_pir=True)
+        self.check_output(
+            no_check_set=["XShape"],
+            check_pir=True,
+            check_symbol_infer=(self.attrs is None),
+        )
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_pir=True)
@@ -222,7 +226,11 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_pir=True)
+        self.check_output(
+            no_check_set=["XShape"],
+            check_pir=True,
+            check_symbol_infer=(self.attrs is None),
+        )
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_pir=True)

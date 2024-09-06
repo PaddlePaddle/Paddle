@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/framework/archive.h"
@@ -32,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace framework {
@@ -287,8 +287,10 @@ class FleetWrapper {
                                              const std::string& msg);
 
   std::string GetDistDesc() const {
-    CHECK(is_initialized_ == true)
-        << "FleetWrapper should be initialized first!!!";
+    PADDLE_ENFORCE_EQ(is_initialized_,
+                      true,
+                      common::errors::PermissionDenied(
+                          "FleetWrapper should be initialized first!!!"));
     return dist_desc_;
   }
 
@@ -333,7 +335,7 @@ class FleetWrapper {
   size_t GetAbsoluteSum(size_t start,
                         size_t end,
                         size_t level,
-                        const framework::LoD& lod);
+                        const phi::LoD& lod);
 
  protected:
   static bool is_initialized_;

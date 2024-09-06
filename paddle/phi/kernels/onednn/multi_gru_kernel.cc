@@ -76,29 +76,29 @@ class MultiGRUHandler {
     PADDLE_ENFORCE_EQ(
         weights_x_.size(),
         layers_ * 2,
-        phi::errors::InvalidArgument("The number of WeightX inputs does "
-                                     "not match the number of layers."));
+        common::errors::InvalidArgument("The number of WeightX inputs does "
+                                        "not match the number of layers."));
     PADDLE_ENFORCE_EQ(
         weights_h_.size(),
         layers_ * 2,
-        phi::errors::InvalidArgument("The number of WeightH inputs does "
-                                     "not match the number of layers."));
+        common::errors::InvalidArgument("The number of WeightH inputs does "
+                                        "not match the number of layers."));
     if (!biases_.empty())
       PADDLE_ENFORCE_EQ(
           biases_.size(),
           layers_ * 2,
-          phi::errors::InvalidArgument("The number of Bias inputs does "
-                                       "not match the number of layers."));
+          common::errors::InvalidArgument("The number of Bias inputs does "
+                                          "not match the number of layers."));
     // oneDNN kernel has hardcoded activation functions
     PADDLE_ENFORCE_EQ(
         gate_activation,
         "sigmoid",
-        phi::errors::Unimplemented(
+        common::errors::Unimplemented(
             "oneDNN fusion_gru supports only sigmoid as a gate activation."));
     PADDLE_ENFORCE_EQ(
         activation,
         "tanh",
-        phi::errors::Unimplemented(
+        common::errors::Unimplemented(
             "oneDNN fusion_gru supports only tanh as an activation."));
 
     N_ = x_lod_.size() - 1;  // Number of sentences (batches)
@@ -139,7 +139,7 @@ class MultiGRUHandler {
       PADDLE_ENFORCE_EQ(
           scale_weights.size(),
           layers_ * 2,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The number of weight scale inputs does "
               "not match the number of layers. Expected: %d. Actual: %d",
               layers_ * 2,
@@ -215,7 +215,7 @@ class MultiGRUHandler {
           attrs_[2 * layer + (dir == R2L)]);
       PADDLE_ENFORCE_NOT_NULL(
           pd,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Primitive descriptor for gru_forward cannot be null."));
       dev_ctx_.SetBlob(pd_key, pd);
     }

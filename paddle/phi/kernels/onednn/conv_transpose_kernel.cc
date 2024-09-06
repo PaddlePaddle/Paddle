@@ -67,7 +67,7 @@ class ConvTransposeOneDNNHandlerT
                      : false) {
     PADDLE_ENFORCE_EQ(is_test_,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ConvTransposeOneDNN works only for inference. "
                           "The attribute \'is_test\' value should be set to "
                           "True, but got is_test=False."));
@@ -75,13 +75,13 @@ class ConvTransposeOneDNNHandlerT
     PADDLE_ENFORCE_EQ(
         x->layout(),
         DataLayout::ONEDNN,
-        phi::errors::InvalidArgument("Got wrong layout = %d for Input tensor.",
-                                     x->layout()));
+        common::errors::InvalidArgument(
+            "Got wrong layout = %d for Input tensor.", x->layout()));
 
     PADDLE_ENFORCE_EQ(
         filter->layout(),
         DataLayout::ONEDNN,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The filter tensor's layout should be %d, but got %d.",
             DataLayout::ONEDNN,
             filter->layout()));
@@ -89,21 +89,21 @@ class ConvTransposeOneDNNHandlerT
     PADDLE_ENFORCE_EQ(
         x->dims().size(),
         4,
-        phi::errors::InvalidArgument("Input must be with 4 dimensions, "
-                                     "i.e. NCHW. but got dimension =%d",
-                                     x->dims().size()));
+        common::errors::InvalidArgument("Input must be with 4 dimensions, "
+                                        "i.e. NCHW. but got dimension =%d",
+                                        x->dims().size()));
     PADDLE_ENFORCE_EQ(
         filter->dims().size(),
         4,
-        phi::errors::InvalidArgument("Filter must be with 4 dimensions, "
-                                     "i.e. OIHW, but got dimension =%d",
-                                     filter->dims().size()));
+        common::errors::InvalidArgument("Filter must be with 4 dimensions, "
+                                        "i.e. OIHW, but got dimension =%d",
+                                        filter->dims().size()));
 
     if (bias) {
       PADDLE_ENFORCE_EQ(
           bias->layout(),
           DataLayout::ONEDNN,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The bias tensor's laytout should be %d, but got %d.",
               DataLayout::ONEDNN,
               bias->layout()));
@@ -111,9 +111,9 @@ class ConvTransposeOneDNNHandlerT
       PADDLE_ENFORCE_EQ(
           bias->dims().size(),
           1,
-          phi::errors::InvalidArgument("Bias must only have 1 dimension, "
-                                       "i.e. X, but got dimension = %d .",
-                                       bias->dims().size()));
+          common::errors::InvalidArgument("Bias must only have 1 dimension, "
+                                          "i.e. X, but got dimension = %d .",
+                                          bias->dims().size()));
     }
 
     dnnl::memory::dims strides(begin(strides_in), end(strides_in));
@@ -123,7 +123,7 @@ class ConvTransposeOneDNNHandlerT
     PADDLE_ENFORCE_EQ(
         strides.size(),
         2,
-        phi::errors::Unimplemented(
+        common::errors::Unimplemented(
             "Now we only support 2d oneDNN convolution transpose op"));
 
     const auto x_dims = x->dims();
@@ -410,7 +410,7 @@ void Execute(const OneDNNContext& dev_ctx,
       PADDLE_ENFORCE_EQ(
           bias->layout(),
           DataLayout::ONEDNN,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The Bias tensor's layout should be %d, but got %d.",
               DataLayout::ONEDNN,
               bias->layout()));
@@ -418,9 +418,9 @@ void Execute(const OneDNNContext& dev_ctx,
       PADDLE_ENFORCE_EQ(
           bias->dims().size(),
           1,
-          phi::errors::InvalidArgument("Bias must only have 1 dimension, "
-                                       "i.e. X, but got dimension = %d .",
-                                       bias->dims().size()));
+          common::errors::InvalidArgument("Bias must only have 1 dimension, "
+                                          "i.e. X, but got dimension = %d .",
+                                          bias->dims().size()));
     }
     // Caching Key for weights is needed
     std::string key =
@@ -490,7 +490,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                            DenseTensor* out) {
   PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
                     AllocationType::CPU,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Operator oneDNN Conv must use CPUPlace"));
 
   const bool is_BFLOAT16 =
@@ -546,7 +546,7 @@ void Conv2dTransposeBiasKernel(const Context& dev_ctx,
                                DenseTensor* out) {
   PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
                     AllocationType::CPU,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Operator oneDNN Conv must use CPUPlace"));
 
   const bool is_BFLOAT16 =

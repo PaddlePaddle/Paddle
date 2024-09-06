@@ -16,6 +16,7 @@
 
 #include "math.h"  // NOLINT
 #include "paddle/common/hostdevice.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
 namespace phi {

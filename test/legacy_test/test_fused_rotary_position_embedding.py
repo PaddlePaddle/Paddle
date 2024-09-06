@@ -617,7 +617,11 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 shape=(1, shape_q[0], 1, shape_q[3]),
                 dtype=self.dtype,
             )
-
+            q.stop_gradient = False
+            if v is not None:
+                v.stop_gradient = False
+            if k is not None:
+                k.stop_gradient = False
             out_q, out_k, out_v = fused_rotary_position_embedding(
                 q,
                 k,
@@ -628,6 +632,8 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 use_neox_rotary_style=False,
                 time_major=True,
             )
+
+            dout = paddle.static.gradients(out_q, q)
 
         exe = paddle.static.Executor()
 

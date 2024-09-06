@@ -34,10 +34,10 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
@@ -111,7 +111,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   std::vector<int64_t> x_dims_mapping = x_dist_attr.dims_mapping();
   PADDLE_ENFORCE_EQ(nouts,
                     num,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of Output Tensors [%d] is not equal "
                         "to the specified split number [%d]",
                         nouts,
@@ -119,23 +119,23 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   PADDLE_ENFORCE_EQ(
       x_ndim,
       out_ndim,
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] is not equal "
-                                   "to the Tensor Out's rank [%d]",
-                                   x_ndim,
-                                   out_ndim));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] is not equal "
+                                      "to the Tensor Out's rank [%d]",
+                                      x_ndim,
+                                      out_ndim));
   for (int i = 0; i < num; i++) {
     auto shape = common::vectorize(outs[i]->dims());
     int ndim = static_cast<int>(shape.size());
     auto dist_attr = outs[i]->dist_attr();
     int dims_mapping_size = static_cast<int>(dist_attr.dims_mapping().size());
-    PADDLE_ENFORCE_EQ(
-        ndim,
-        dims_mapping_size,
-        phi::errors::InvalidArgument("The Tensor Out[%d]'s rank [%d] and Its "
-                                     "dims_mapping size [%d] are not matched.",
-                                     i,
-                                     ndim,
-                                     dims_mapping_size));
+    PADDLE_ENFORCE_EQ(ndim,
+                      dims_mapping_size,
+                      common::errors::InvalidArgument(
+                          "The Tensor Out[%d]'s rank [%d] and Its "
+                          "dims_mapping size [%d] are not matched.",
+                          i,
+                          ndim,
+                          dims_mapping_size));
   }
 
   // Step1: Build Einsum Notation

@@ -64,7 +64,7 @@ void TestMain(int num_fc) {
   PADDLE_ENFORCE_EQ(
       num_nodes_before - (num_fc_nodes_before - 1) + 1,
       num_nodes_after,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "num_nodes_before = %d, num_fc_nodes_before = %d, num_nodes_after = "
           "%d.",
           num_nodes_before,
@@ -72,7 +72,7 @@ void TestMain(int num_fc) {
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_fused_nodes_after = %d.", num_fused_nodes_after));
 }
 

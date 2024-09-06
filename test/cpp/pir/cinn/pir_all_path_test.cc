@@ -70,7 +70,10 @@ static void RunAndCheckResult(::pir::Program* program,
   stage_1_pm.AddPass(pir::CreateBuildCinnPass());
   stage_1_pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
-  CHECK_EQ(stage_1_pm.Run(program), true);
+  PADDLE_ENFORCE_EQ(
+      stage_1_pm.Run(program),
+      true,
+      common::errors::Unavailable("stage_1_pm fail to run program"));
 
   pir::PassManager stage_2_pm(ctx);
   stage_2_pm.AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
@@ -78,9 +81,12 @@ static void RunAndCheckResult(::pir::Program* program,
   stage_2_pm.AddPass(pir::CreateDeadCodeEliminationPass());
   stage_2_pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
 
-  CHECK_EQ(stage_2_pm.Run(program), true);
+  PADDLE_ENFORCE_EQ(
+      stage_2_pm.Run(program),
+      true,
+      common::errors::Unavailable("stage_2_pm fail to run program"));
 
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(program, place);
 

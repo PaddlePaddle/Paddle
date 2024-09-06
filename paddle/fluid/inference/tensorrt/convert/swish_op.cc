@@ -29,7 +29,7 @@ class SwishOpConverter : public OpConverter {
     int input_num = op_desc.Input("X").size();
     PADDLE_ENFORCE_EQ(input_num,
                       1,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The input X's size must equal to 1 in TRT swish op."
                           " But received X's size %d.",
                           input_num));
@@ -39,7 +39,7 @@ class SwishOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_num,
         1UL,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output Out's size must equal to 1 in TRT swish op. "
             "But received Out's size %u.",
             output_num));
@@ -47,29 +47,22 @@ class SwishOpConverter : public OpConverter {
     float beta = PADDLE_GET_CONST(float, op_desc.GetAttr("beta"));
 
     nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      int32_t rank = input->getDimensions().nbDims;
-      nvinfer1::Dims constant_shape;
-      constant_shape.nbDims = rank;
-      std::fill(constant_shape.d, constant_shape.d + rank, 1);
-      std::vector<float> weight_data{beta};
-      auto* beta_data = AddConstantLayer(weight_data.data(), constant_shape);
-      auto* input_mul_with_beta = Prod(beta_data, input);
-      auto* sigmoid = TRT_ENGINE_ADD_LAYER(engine_,
-                                           Activation,
-                                           *input_mul_with_beta,
-                                           nvinfer1::ActivationType::kSIGMOID);
-      layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                   ElementWise,
-                                   *input,
-                                   *(sigmoid->getOutput(0)),
-                                   nvinfer1::ElementWiseOperation::kPROD);
-    } else {
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::SwishPlugin* plugin = new plugin::SwishPlugin(beta, with_fp16);
-      layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
-    }
+    int32_t rank = input->getDimensions().nbDims;
+    nvinfer1::Dims constant_shape;
+    constant_shape.nbDims = rank;
+    std::fill(constant_shape.d, constant_shape.d + rank, 1);
+    std::vector<float> weight_data{beta};
+    auto* beta_data = AddConstantLayer(weight_data.data(), constant_shape);
+    auto* input_mul_with_beta = Prod(beta_data, input);
+    auto* sigmoid = TRT_ENGINE_ADD_LAYER(engine_,
+                                         Activation,
+                                         *input_mul_with_beta,
+                                         nvinfer1::ActivationType::kSIGMOID);
+    layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                 ElementWise,
+                                 *input,
+                                 *(sigmoid->getOutput(0)),
+                                 nvinfer1::ElementWiseOperation::kPROD);
 
     auto output_name = op_desc.Output("Out")[0];
     ReplenishLayerAndOutput(layer, "swish", {output_name}, test_mode);

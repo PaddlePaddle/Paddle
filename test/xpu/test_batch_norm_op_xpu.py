@@ -357,107 +357,113 @@ class XPUTestBatchNormGradOp(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
 
         def test_train(self):
-            y_grad_np = np.random.random_sample(self.shape).astype(self.dtype)
-            (
-                y_np,
-                mean_out_np,
-                variance_out_np,
-                saved_mean_np,
-                saved_variance_np,
-                x_grad_np,
-                scale_grad_np,
-                bias_grad_np,
-            ) = ref_batch_norm_train(
-                self.x_np,
-                y_grad_np,
-                self.scale_np,
-                self.bias_np,
-                self.mean_np,
-                self.variance_np,
-                self.momentum,
-                self.epsilon,
-                self.data_layout,
-            )
-            inputs = {
-                'X': self.x_np,
-                'Scale': self.scale_np,
-                'Bias': self.bias_np,
-                'Mean': self.mean_np,
-                'Variance': self.variance_np,
-                'Y@GRAD': y_grad_np,
-            }
-            outputs = {
-                'Y': y_np,
-                'Mean': mean_out_np,
-                'Variance': variance_out_np,
-                'SavedMean': saved_mean_np,
-                'SavedVariance': saved_variance_np,
-                'X@GRAD': x_grad_np,
-                'Scale@GRAD': scale_grad_np,
-                'Bias@GRAD': bias_grad_np,
-            }
-            attrs = {
-                'momentum': self.momentum,
-                'epsilon': self.epsilon,
-                'is_test': False,
-                'data_layout': self.data_layout,
-                'use_mkldnn': False,
-                'fuse_with_relu': False,
-                'use_global_stats': False,
-            }
-            paddle.enable_static()
-            program = paddle.static.Program()
-            with paddle.static.program_guard(program):
-                block = program.global_block()
-                # Set inputs, outputs and attributes to the forward op of batch_norm
-                input_vars = {}
-                for var_name in inputs:
-                    arg_name = var_name
-                    np_value = inputs[var_name]
-                    if not block.has_var(var_name):
-                        block.create_var(
-                            name=var_name,
-                            shape=np_value.shape,
-                            dtype=np_value.dtype,
-                        )
-                    input_vars[arg_name] = block.var(var_name)
-                fetch_list = []
-                output_vars = {}
-                for var_name in outputs:
-                    arg_name = var_name
-                    np_value = outputs[var_name]
-                    if not block.has_var(var_name):
-                        block.create_var(
-                            name=var_name,
-                            shape=np_value.shape,
-                            dtype=np_value.dtype,
-                        )
-                    if var_name == 'Mean':
-                        arg_name = 'MeanOut'  # Share memory
-                    if var_name == 'Variance':
-                        arg_name = 'VarianceOut'  # Share memory
-                    output_vars[arg_name] = block.var(var_name)
-                    fetch_list.append(var_name)
-                batch_norm_op = block.append_op(
-                    type="batch_norm",
-                    inputs=input_vars,
-                    outputs=output_vars,
-                    attrs=attrs,
+            with paddle.pir_utils.OldIrGuard():
+                y_grad_np = np.random.random_sample(self.shape).astype(
+                    self.dtype
                 )
-                # Generate the backward op_desc of batch_norm
-                grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
-                    batch_norm_op.desc, set(), []
+                (
+                    y_np,
+                    mean_out_np,
+                    variance_out_np,
+                    saved_mean_np,
+                    saved_variance_np,
+                    x_grad_np,
+                    scale_grad_np,
+                    bias_grad_np,
+                ) = ref_batch_norm_train(
+                    self.x_np,
+                    y_grad_np,
+                    self.scale_np,
+                    self.bias_np,
+                    self.mean_np,
+                    self.variance_np,
+                    self.momentum,
+                    self.epsilon,
+                    self.data_layout,
                 )
-                grad_op_desc = grad_op_desc_list[0]
-                new_op_desc = block.desc.append_op()
-                new_op_desc.copy_from(grad_op_desc)
-                program._sync_with_cpp()
-                exe = paddle.static.Executor(self.place)
-                outs = exe.run(program, feed=inputs, fetch_list=fetch_list)
-                for id, name in enumerate(fetch_list):
-                    np.testing.assert_allclose(
-                        outputs[name], outs[id], rtol=self.rtol, atol=self.atol
+                inputs = {
+                    'X': self.x_np,
+                    'Scale': self.scale_np,
+                    'Bias': self.bias_np,
+                    'Mean': self.mean_np,
+                    'Variance': self.variance_np,
+                    'Y@GRAD': y_grad_np,
+                }
+                outputs = {
+                    'Y': y_np,
+                    'Mean': mean_out_np,
+                    'Variance': variance_out_np,
+                    'SavedMean': saved_mean_np,
+                    'SavedVariance': saved_variance_np,
+                    'X@GRAD': x_grad_np,
+                    'Scale@GRAD': scale_grad_np,
+                    'Bias@GRAD': bias_grad_np,
+                }
+                attrs = {
+                    'momentum': self.momentum,
+                    'epsilon': self.epsilon,
+                    'is_test': False,
+                    'data_layout': self.data_layout,
+                    'use_mkldnn': False,
+                    'fuse_with_relu': False,
+                    'use_global_stats': False,
+                }
+                paddle.enable_static()
+                program = paddle.static.Program()
+                with paddle.static.program_guard(program):
+                    block = program.global_block()
+                    # Set inputs, outputs and attributes to the forward op of batch_norm
+                    input_vars = {}
+                    for var_name in inputs:
+                        arg_name = var_name
+                        np_value = inputs[var_name]
+                        if not block.has_var(var_name):
+                            block.create_var(
+                                name=var_name,
+                                shape=np_value.shape,
+                                dtype=np_value.dtype,
+                            )
+                        input_vars[arg_name] = block.var(var_name)
+                    fetch_list = []
+                    output_vars = {}
+                    for var_name in outputs:
+                        arg_name = var_name
+                        np_value = outputs[var_name]
+                        if not block.has_var(var_name):
+                            block.create_var(
+                                name=var_name,
+                                shape=np_value.shape,
+                                dtype=np_value.dtype,
+                            )
+                        if var_name == 'Mean':
+                            arg_name = 'MeanOut'  # Share memory
+                        if var_name == 'Variance':
+                            arg_name = 'VarianceOut'  # Share memory
+                        output_vars[arg_name] = block.var(var_name)
+                        fetch_list.append(var_name)
+                    batch_norm_op = block.append_op(
+                        type="batch_norm",
+                        inputs=input_vars,
+                        outputs=output_vars,
+                        attrs=attrs,
                     )
+                    # Generate the backward op_desc of batch_norm
+                    grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+                        batch_norm_op.desc, set(), []
+                    )
+                    grad_op_desc = grad_op_desc_list[0]
+                    new_op_desc = block.desc.append_op()
+                    new_op_desc.copy_from(grad_op_desc)
+                    program._sync_with_cpp()
+                    exe = paddle.static.Executor(self.place)
+                    outs = exe.run(program, feed=inputs, fetch_list=fetch_list)
+                    for id, name in enumerate(fetch_list):
+                        np.testing.assert_allclose(
+                            outputs[name],
+                            outs[id],
+                            rtol=self.rtol,
+                            atol=self.atol,
+                        )
 
 
 support_types_grad = get_xpu_op_support_types('batch_norm_grad')

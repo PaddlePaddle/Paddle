@@ -72,7 +72,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
       auto *scope_var = scope.FindVar(Output("Scope"));
       PADDLE_ENFORCE_NOT_NULL(
           scope_var,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Scope must be set in ConditionalBlockInferOp."));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);
@@ -83,7 +83,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
 
-      if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
+      if (!exec_ || !phi::is_same_place(exec_->GetPlace(), dev_place)) {
         auto &pdesc = *block->Program();
         exec_.reset(new framework::Executor(dev_place));
 #ifdef PADDLE_WITH_DNNL

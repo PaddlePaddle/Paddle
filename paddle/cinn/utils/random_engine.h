@@ -70,10 +70,10 @@ class LinearRandomEngine {
     if (state == 0) {
       state = 1;
     }
-    PADDLE_ENFORCE_GE(
-        state,
-        0,
-        phi::errors::PreconditionNotMet("Random seed must be greater than 0"));
+    PADDLE_ENFORCE_GE(state,
+                      0,
+                      ::common::errors::PreconditionNotMet(
+                          "Random seed must be greater than 0"));
 
     return state;
   }
@@ -116,7 +116,7 @@ int SampleDiscreteFromDistribution(const std::vector<T>& weights,
   PADDLE_ENFORCE_GT(
       weights.size(),
       0,
-      phi::errors::PreconditionNotMet("Size of target weights is empty."));
+      ::common::errors::PreconditionNotMet("Size of target weights is empty."));
   LinearRandomEngine engine(rand_seed);
   std::discrete_distribution<int> dist(weights.begin(), weights.end());
   return dist(engine);
