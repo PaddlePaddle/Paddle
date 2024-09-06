@@ -349,9 +349,8 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-    // use global calculate stream
     auto stream = dev_ctx.stream();
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
     comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
         dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NE(comm_ctx,
