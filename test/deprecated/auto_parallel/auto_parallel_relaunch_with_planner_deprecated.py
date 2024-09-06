@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import paddle
 from paddle import static
 from paddle.distributed import fleet
@@ -20,6 +22,8 @@ from paddle.distributed.auto_parallel.static.cost import CostEstimator
 from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
+
+sys.path.append("../../auto_parallel")
 
 
 def train():

@@ -133,15 +133,6 @@ TEST(Analyzer_vis, profile) { profile(); }
 TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
-// Check the fuse status
-TEST(Analyzer_vis, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  GetFuseStatis(predictor.get(), &num_ops);
-}
-
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;

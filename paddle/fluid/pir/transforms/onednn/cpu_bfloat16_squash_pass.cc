@@ -27,12 +27,10 @@ namespace {
 
 template <class IrType1, class IrType2>
 static pir::Type create_type(pir::Type type,
-                             const phi::Place &place,
                              pir::Type out_dtype,
                              pir::IrContext *ctx) {
   auto input_type = type.dyn_cast<IrType1>();
   return IrType2::get(ctx,
-                      place,
                       out_dtype,
                       input_type.dims(),
                       input_type.data_layout(),
@@ -218,7 +216,7 @@ class QuantConvBf16SquashPattern
     op_attributes["scale_weights"] =
         rewriter.array_attr({rewriter.float_attr(1.0f)});
 
-    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::IrContext *ctx = rewriter.ir_context();
     auto op_info = ctx->GetRegisteredOpInfo(
         paddle::onednn::dialect::FusedConv2dOp::name());
     if (!op_info) return false;
@@ -226,10 +224,10 @@ class QuantConvBf16SquashPattern
     std::vector<pir::Type> op_item_inner_output_types;
     for (size_t i = 0; i < next_op->num_results(); ++i) {
       pir::Type type = next_op->result_type(i);
+      if (!type.isa<pir::DenseTensorType>()) return false;
       pir::Type new_type =
-          create_type<pir::DenseTensorType,
-                      paddle::dialect::AllocatedDenseTensorType>(
-              type, phi::CPUPlace(), pir::BFloat16Type::get(ctx), ctx);
+          create_type<pir::DenseTensorType, paddle::dialect::DenseTensorType>(
+              type, pir::BFloat16Type::get(ctx), ctx);
       // set bf16 op tensor output type to bf16.
       op_item_inner_output_types.push_back(new_type);
     }
@@ -278,18 +276,18 @@ class QuantFusedConvBf16SquashPattern
     if (q_scale != 1.0f || q_shift != 0.0f) return false;
     if (next_op.input() != op.output()) return false;
 
-    auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(
+    pir::IrContext *ctx = rewriter.ir_context();
+    auto op_info = ctx->GetRegisteredOpInfo(
         paddle::onednn::dialect::FusedConv2dOp::name());
     if (!op_info) return false;
 
-    pir::IrContext *ctx = pir::IrContext::Instance();
     std::vector<pir::Type> op_item_inner_output_types;
     for (size_t i = 0; i < next_op->num_results(); ++i) {
       pir::Type type = next_op->result_type(i);
+      if (!type.isa<pir::DenseTensorType>()) return false;
       pir::Type new_type =
-          create_type<pir::DenseTensorType,
-                      paddle::dialect::AllocatedDenseTensorType>(
-              type, phi::CPUPlace(), pir::BFloat16Type::get(ctx), ctx);
+          create_type<pir::DenseTensorType, paddle::dialect::DenseTensorType>(
+              type, pir::BFloat16Type::get(ctx), ctx);
       // set bf16 op tensor output type to bf16.
       op_item_inner_output_types.push_back(new_type);
     }

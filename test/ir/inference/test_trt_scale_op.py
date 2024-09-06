@@ -40,6 +40,12 @@ class TRTScaleTest(InferencePassTest):
         self.trt_parameters = TRTScaleTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = TRTScaleTest.DynamicShapeParam(
+            {'data': [1, 512]},
+            {'data': [32, 512]},
+            {'data': [1, 512]},
+            False,
+        )
         self.fetch_list = [out]
 
     def append_scale(self, data):
@@ -71,6 +77,12 @@ class TRTScaleShape2Test(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TRTScaleShape2Test.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = TRTScaleShape2Test.DynamicShapeParam(
+            {'data': [1, 512, 512]},
+            {'data': [32, 512, 512]},
+            {'data': [1, 512, 512]},
+            False,
         )
         self.fetch_list = [out]
 

@@ -27,24 +27,10 @@
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 
 namespace {
-template <class IrType1, class IrType2>
-static pir::Type create_type(pir::Type type,
-                             const phi::Place& place,
-                             pir::Type out_dtype,
-                             pir::IrContext* ctx) {
-  auto input_type = type.dyn_cast<IrType1>();
-  return IrType2::get(ctx,
-                      place,
-                      out_dtype,
-                      input_type.dims(),
-                      input_type.data_layout(),
-                      input_type.lod(),
-                      input_type.offset());
-}
-
 class CpuBfloat16TypePattern : public pir::RewritePattern {
  public:
   explicit CpuBfloat16TypePattern(pir::IrContext* context)
@@ -85,7 +71,6 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::SliceOp>() &&
         !op->isa<paddle::onednn::dialect::SoftmaxOp>() &&
         !op->isa<paddle::onednn::dialect::Softmax_Op>() &&
-        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
@@ -113,25 +98,48 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
     auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
-    pir::IrContext* ctx = pir::IrContext::Instance();
     if (op_info) {
-      std::vector<pir::Type> op_item_inner_output_types;
       for (size_t i = 0; i < op->num_results(); ++i) {
         pir::Type type = op->result_type(i);
-        pir::Type new_type =
-            create_type<pir::DenseTensorType,
-                        paddle::dialect::AllocatedDenseTensorType>(
-                type, phi::CPUPlace(), pir::BFloat16Type::get(ctx), ctx);
-        // set bf16 op tensor output type to bf16.
-        op_item_inner_output_types.push_back(new_type);
-      }
-      auto attributes = op->attributes();
+        if (type.isa<paddle::dialect::DenseTensorType>()) {
+          auto dense_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
+          auto new_type = paddle::dialect::DenseTensorType::get(
+              rewriter.ir_context(),
+              paddle::dialect::TransToIrDataType(phi::DataType::BFLOAT16,
+                                                 rewriter.ir_context()),
+              dense_type.dims(),
+              dense_type.data_layout(),
+              dense_type.lod(),
+              dense_type.offset());
+          // set bf16 op tensor output type to bf16.
+          op->result(i).set_type(new_type);
+        } else if (type.isa<pir::VectorType>()) {
+          auto vec_type = type.dyn_cast<pir::VectorType>();
+          auto output_num = vec_type.size();
+          std::vector<pir::Type> results_type(output_num);
+          for (size_t idx = 0; idx < output_num; ++idx) {
+            auto dense_type =
+                vec_type[idx].dyn_cast<paddle::dialect::DenseTensorType>();
+            auto new_type = paddle::dialect::DenseTensorType::get(
+                rewriter.ir_context(),
+                paddle::dialect::TransToIrDataType(phi::DataType::BFLOAT16,
+                                                   rewriter.ir_context()),
+                dense_type.dims(),
+                dense_type.data_layout(),
+                dense_type.lod(),
+                dense_type.offset());
+            results_type[idx] = new_type;
+          }
+          auto new_vec_type =
+              pir::VectorType::get(rewriter.ir_context(), results_type);
+          op->result(i).set_type(new_vec_type);
 
-      pir::Operation* op_item_inner = rewriter.Build(op->operands_source(),
-                                                     attributes,
-                                                     op_item_inner_output_types,
-                                                     op_info);
-      rewriter.ReplaceOp(op, op_item_inner->results());
+        } else {
+          PADDLE_THROW(common::errors::Unimplemented(
+              "result type is not DenseTensorType or VectorType, please close "
+              "MKLDNNBf16"));
+        }
+      }
     }
   }
 };

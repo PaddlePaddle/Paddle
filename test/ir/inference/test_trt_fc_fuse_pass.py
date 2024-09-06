@@ -71,6 +71,14 @@ class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
         self.trt_parameters = FCFusePassTRTStaticDims4Cols1Test.TensorRTParam(
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = (
+            FCFusePassTRTStaticDims4Cols1Test.DynamicShapeParam(
+                {'data': [32, 128, 32, 8]},
+                {'data': [32, 128, 32, 8]},
+                {'data': [32, 128, 32, 8]},
+                False,
+            )
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -98,6 +106,14 @@ class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTStaticDims4Cols2Test.TensorRTParam(
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = (
+            FCFusePassTRTStaticDims4Cols2Test.DynamicShapeParam(
+                {'data': [3, 24, 16, 16]},
+                {'data': [3, 24, 16, 16]},
+                {'data': [3, 24, 16, 16]},
+                False,
+            )
         )
         self.fetch_list = [out]
 

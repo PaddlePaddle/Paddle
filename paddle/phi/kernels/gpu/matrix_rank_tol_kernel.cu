@@ -24,6 +24,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/abs_kernel.h"
+#include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -31,6 +32,7 @@
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/where_kernel.h"
 
 namespace phi {
 
@@ -447,12 +449,166 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                           out);
 }
 
+template <typename T, typename Context>
+void MatrixRankAtolRtolKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& atol,
+                              const paddle::optional<DenseTensor>& rtol,
+                              bool hermitian,
+                              DenseTensor* out) {
+  auto* x_data = x.data<T>();
+  dev_ctx.template Alloc<int64_t>(out);
+
+  auto dim_x = x.dims();
+  auto dim_out = out->dims();
+  int rows = dim_x[dim_x.size() - 2];
+  int cols = dim_x[dim_x.size() - 1];
+  PADDLE_ENFORCE_NE(
+      rows,
+      0,
+      phi::errors::InvalidArgument("The input Tensor x's shape[-2] should not "
+                                   "be 0, but shape is %s now.",
+                                   dim_x));
+  PADDLE_ENFORCE_NE(
+      cols,
+      0,
+      phi::errors::InvalidArgument("The input Tensor x's shape[-1] should not "
+                                   "be 0, but shape is %s now.",
+                                   dim_x));
+  int k = std::min(rows, cols);
+  auto numel = x.numel();
+  int batches = numel / (rows * cols);
+
+  // Must Copy X once, because the gesvdj will destroy the content when exit.
+  DenseTensor x_tmp;
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
+  auto info = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int) * batches,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  int* info_ptr = reinterpret_cast<int*>(info->ptr());
+
+  DenseTensor eigenvalue_tensor;
+  eigenvalue_tensor.Resize(detail::GetEigenvalueDim(dim_x, k));
+  auto* eigenvalue_data = dev_ctx.template Alloc<T>(&eigenvalue_tensor);
+
+  if (hermitian) {
+    SyevjBatched<T>(
+        dev_ctx, batches, rows, x_tmp.data<T>(), eigenvalue_data, info_ptr);
+
+    phi::AbsKernel<T, Context>(dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
+
+  } else {
+    DenseTensor U, VH;
+    U.Resize(detail::GetUDDim(dim_x, k));
+    VH.Resize(detail::GetVHDDim(dim_x, k));
+    auto* u_data = dev_ctx.template Alloc<T>(&U);
+    auto* vh_data = dev_ctx.template Alloc<T>(&VH);
+    GesvdjBatched<T>(dev_ctx,
+                     batches,
+                     cols,
+                     rows,
+                     k,
+                     x_tmp.data<T>(),
+                     vh_data,
+                     u_data,
+                     eigenvalue_data,
+                     info_ptr,
+                     1);
+  }
+
+  DenseTensor max_eigenvalue_tensor;
+  dev_ctx.template Alloc<T>(&max_eigenvalue_tensor);
+  max_eigenvalue_tensor.Resize(detail::RemoveLastDim(eigenvalue_tensor.dims()));
+
+  phi::MaxKernel<T, Context>(dev_ctx,
+                             eigenvalue_tensor,
+                             phi::IntArray({-1}),
+                             false,
+                             &max_eigenvalue_tensor);
+
+  DenseTensor tol_tensor;
+  tol_tensor.Resize(dim_out);
+  dev_ctx.template Alloc<T>(&tol_tensor);
+
+  if (rtol) {
+    DenseTensor tmp_rtol_tensor;
+    tmp_rtol_tensor = phi::Multiply<T>(dev_ctx, *rtol, max_eigenvalue_tensor);
+    funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
+        dev_ctx,
+        atol,
+        tmp_rtol_tensor,
+        GreaterElementFunctor<T>(),
+        &tol_tensor);
+  } else {
+    // when `rtol` is specified to be None in py api
+    // use rtol=eps*max(m, n) only if `atol` is passed with value 0.0, else use
+    // rtol=0.0
+    DenseTensor zero_tensor;
+    zero_tensor = phi::FullLike<T, Context>(dev_ctx, atol, static_cast<T>(0.0));
+
+    T rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
+    DenseTensor default_rtol_tensor;
+    default_rtol_tensor =
+        phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(rtol_T));
+    default_rtol_tensor =
+        phi::Multiply<T>(dev_ctx, default_rtol_tensor, max_eigenvalue_tensor);
+
+    DenseTensor atol_compare_result;
+    atol_compare_result.Resize(atol.dims());
+    phi::EqualKernel<T, Context>(
+        dev_ctx, atol, zero_tensor, &atol_compare_result);
+
+    DenseTensor selected_rtol_tensor;
+    selected_rtol_tensor.Resize(atol.dims());
+    phi::WhereKernel<T, Context>(dev_ctx,
+                                 atol_compare_result,
+                                 default_rtol_tensor,
+                                 zero_tensor,
+                                 &selected_rtol_tensor);
+    funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
+        dev_ctx,
+        atol,
+        selected_rtol_tensor,
+        GreaterElementFunctor<T>(),
+        &tol_tensor);
+  }
+
+  tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
+
+  DenseTensor compare_result;
+  compare_result.Resize(detail::NewAxisDim(dim_out, k));
+  dev_ctx.template Alloc<int64_t>(&compare_result);
+
+  funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int64_t>(
+      dev_ctx,
+      eigenvalue_tensor,
+      tol_tensor,
+      funcs::GreaterThanFunctor<T, int64_t>(),
+      &compare_result);
+
+  phi::SumKernel<int64_t>(dev_ctx,
+                          compare_result,
+                          std::vector<int64_t>{-1},
+                          compare_result.dtype(),
+                          false,
+                          out);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(matrix_rank_tol,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
                    phi::MatrixRankTolKernel,
+                   float,
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}
+
+PD_REGISTER_KERNEL(matrix_rank_atol_rtol,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatrixRankAtolRtolKernel,
                    float,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);

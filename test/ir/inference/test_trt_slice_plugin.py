@@ -53,6 +53,12 @@ class SlicePluginTRTTest(InferencePassTest):
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),
         }
+        self.dynamic_shape_params = SlicePluginTRTTest.DynamicShapeParam(
+            {'data': [3, 3, 3, 3]},
+            {'data': [3, 3, 3, 3]},
+            {'data': [3, 3, 3, 3]},
+            False,
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -125,6 +131,12 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("int32"),
         }
+        self.dynamic_shape_params = SlicePluginTRTTestInt32.DynamicShapeParam(
+            {'data': [3, 3, 3, 3]},
+            {'data': [3, 3, 3, 3]},
+            {'data': [3, 3, 3, 3]},
+            False,
+        )
         self.fetch_list = [out]
 
 
@@ -152,6 +164,14 @@ class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("int32"),
         }
+        self.dynamic_shape_params = (
+            StaticSlicePluginTRTTestInt32.DynamicShapeParam(
+                {'data': [3, 3, 3, 3]},
+                {'data': [3, 3, 3, 3]},
+                {'data': [3, 3, 3, 3]},
+                False,
+            )
+        )
         self.fetch_list = [out]
 
 
