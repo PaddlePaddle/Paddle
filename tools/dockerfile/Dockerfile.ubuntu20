@@ -82,17 +82,16 @@ RUN python3.10 setup.py build && python3.10 setup.py install && \
   python3.12 setup.py build && python3.12 setup.py install
 
 WORKDIR /home
-RUN wget -q https://files.pythonhosted.org/packages/4d/87/fb90046e096a03aeab235e139436b3fe804cdd447ed2093b0d70eba3f7f8/pip-24.2.tar.gz && tar -zxf pip-24.2.tar.gz
-WORKDIR pip-24.2
-RUN python3.9 setup.py install && \
-  python3.8 setup.py install  && \
-  python3.10 setup.py install && \
-  python3.11 setup.py install && \
-  python3.12 setup.py install
+RUN wget -q https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+RUN python3.9 get-pip.py && \
+  python3.8 get-pip.py && \
+  python3.10 get-pip.py && \
+  python3.11 get-pip.py && \
+  python3.12 get-pip.py
 
 WORKDIR /home
-RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz pip-24.2.tar.gz && \
-    rm -r setuptools-50.3.2 setuptools-68.2.2 pip-24.2
+RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz && \
+    rm -r setuptools-50.3.2 setuptools-68.2.2 get-pip.py
 
 # remove them when apt-get support 2.27 and higher version
 RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \
