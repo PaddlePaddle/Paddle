@@ -454,7 +454,6 @@ static bool IsLoopFrameworkEqual(const StmtPattern& lhs,
       has_reduce_dim(lhs_loops) && has_reduce_dim(rhs_loops)
           ? squeezed_lhs_loops.is_reduce == squeezed_rhs_loops.is_reduce
           : true;
-  VLOG(4) << "IsLoopFrameworkEqual: " << (loop_equal && reduce_euqal);
   return loop_equal && reduce_euqal;
 }
 
