@@ -4799,6 +4799,7 @@
   kernel :
     func : trace
   backward : trace_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : trans_layout
   args : (Tensor x, int[] perm)
