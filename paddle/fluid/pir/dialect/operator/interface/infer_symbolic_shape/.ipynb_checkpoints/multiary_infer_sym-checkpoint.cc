@@ -1857,9 +1857,9 @@ bool InstanceNormOpInferSymbolicShape(
             "of scale is [%d]",
             scale_shape,
             scale_shape.size()));
-    bool check =
-        std::all_of(scale_shape.begin(), scale_shape.end(), [](int element) {
-          return typeid(element) == typeid(int);
+    bool check = std::all_of(
+        scale_shape.begin(), scale_shape.end(), [](symbol::DimExpr element) {
+          return element.isa<int64_t>();
         });
     if (check) {
       infer_context->AddEqualCstr(scale_shape[0], C);
@@ -1879,9 +1879,9 @@ bool InstanceNormOpInferSymbolicShape(
             "of scale is [%d]",
             bias_shape,
             bias_shape.size()));
-    bool check =
-        std::all_of(bias_shape.begin(), bias_shape.end(), [](int element) {
-          return typeid(element) == typeid(int);
+    bool check = std::all_of(
+        bias_shape.begin(), bias_shape.end(), [](symbol::DimExpr element) {
+          return element.isa<int64_t>();
         });
     if (check) {
       infer_context->AddEqualCstr(bias_shape[0], C);
