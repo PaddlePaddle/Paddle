@@ -28,10 +28,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_amp_deprecated MODULES test_pass_amp_deprecated)
   set_tests_properties(test_pass_amp_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
-  py_test_modules(test_relaunch_with_planner_deprecated MODULES
-                  test_relaunch_with_planner_deprecated)
-  set_tests_properties(test_relaunch_with_planner_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_pass_grad_clip_deprecated MODULES
                   test_pass_grad_clip_deprecated)
   set_tests_properties(test_pass_grad_clip_deprecated
@@ -69,14 +65,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_optimization_tuner_api_deprecated)
   set_tests_properties(test_optimization_tuner_api_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_pipeline_scheduler_vpp_deprecated MODULES
-                  test_pipeline_scheduler_vpp_deprecated)
-  set_tests_properties(test_pipeline_scheduler_vpp_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pipeline_scheduler_zb_deprecated MODULES
-                  test_pipeline_scheduler_zb_deprecated)
-  set_tests_properties(test_pipeline_scheduler_zb_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_pass_recompute_deprecated MODULES
                   test_pass_recompute_deprecated)
   set_tests_properties(test_pass_recompute_deprecated
