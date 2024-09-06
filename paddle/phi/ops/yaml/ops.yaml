@@ -3883,7 +3883,7 @@
     func : graph_reindex
     data_type : x
   optional : hashtable_value, hashtable_index
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : relu
   args : (Tensor x)
