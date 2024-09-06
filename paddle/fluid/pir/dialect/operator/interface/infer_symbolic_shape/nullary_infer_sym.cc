@@ -411,12 +411,19 @@ bool RandintOpInferSymbolicShape(
 
 bool ReadFileOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<symbol::DimExpr> output_shape = {symbol::DimExpr(1),
-                                               symbol::DimExpr(-1)};
+  symbol::DimExpr unique_dim_sym = infer_context->GetNextSymName();
+
+  const std::vector<symbol::DimExpr> &out_shape = [&] {
+    std::vector<symbol::DimExpr> shape;
+    shape.push_back(unique_dim_sym);
+    return shape;
+  }();
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(output_shape)});
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
   return true;
 }
 
