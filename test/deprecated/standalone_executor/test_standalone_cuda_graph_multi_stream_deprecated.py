@@ -13,9 +13,12 @@
 # limitations under the License.
 
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from test_cuda_graph_static_mode import build_program
 
 import paddle

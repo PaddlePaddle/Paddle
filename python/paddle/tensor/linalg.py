@@ -2547,7 +2547,7 @@ def histogram_bin_edges(
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor, the values of the histogram and the bin edges. The output data type will be float32.
+        Tensor, the values of the bin edges. The output data type will be float32.
 
     Examples:
         .. code-block:: python
