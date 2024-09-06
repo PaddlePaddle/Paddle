@@ -37,7 +37,7 @@ class OneDNNPlacementPattern : public pir::OpRewritePattern<OpType> {
       OpType op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
     std::string target_op_name = op->name();
-    if (target_op_name == "pd_op.cast") {
+    if (target_op_name == "pd_op.cast" || target_op_name == "pd_op.cast_") {
       auto input_type = pir::GetDataTypeFromValue(op->operand_source(0));
       if (!(pir::isa<pir::Float32Type>(input_type) ||
             pir::isa<pir::BFloat16Type>(input_type)))
