@@ -253,7 +253,7 @@ gray_list = {
     'rank',
     'scale',
     'transpose2',
-    'reshape2',
+    'reshape',
     'gather',
     'fill_constant',
     'get_tensor_from_selected_rows',

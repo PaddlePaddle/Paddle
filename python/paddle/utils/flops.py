@@ -339,10 +339,10 @@ def _silu_flops(input_shapes, attrs):
     return _relu_class_flops(input_shapes, attrs)
 
 
-@register_flops("reshape2")
-def _reshape2_flops(input_shapes, attrs):
-    """FLOPs computation for reshape2 op.
-    For reshape2(input):
+@register_flops("reshape")
+def _reshape_flops(input_shapes, attrs):
+    """FLOPs computation for reshape op.
+    For reshape(input):
         equation: flops = 0
     """
     return 0

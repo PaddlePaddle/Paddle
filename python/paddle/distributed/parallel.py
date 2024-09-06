@@ -109,7 +109,7 @@ def _coalesce_tensors(var_groups):
 def _reshape_inplace(x, shape):
     x_shape = framework._create_tensor(dtype=x.dtype)
     framework._dygraph_tracer().trace_op(
-        type="reshape2",
+        type="reshape",
         inputs={'X': x},
         outputs={'Out': x, 'XShape': x_shape},
         attrs={'shape': shape},

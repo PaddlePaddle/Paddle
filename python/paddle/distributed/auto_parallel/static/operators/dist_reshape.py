@@ -49,7 +49,7 @@ class DistributedReshape2(DistributedOperatorImplContainer):
         # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
         op_desc = dist_op.serial_op.desc
         assert (
-            dist_op.serial_op.type == "reshape2"
+            dist_op.serial_op.type == "reshape"
         ), f"{dist_op.serial_op.type} is not supported by dist reshape yet."
 
         x_name = op_desc.input('X')[0]
@@ -88,13 +88,13 @@ class DistributedReshape2(DistributedOperatorImplContainer):
         op_dist_attr = dist_op.dist_attr
 
         # all reshape mapping to impl0
-        op_dist_attr.impl_type = "reshape2"
+        op_dist_attr.impl_type = "reshape"
         op_dist_attr.impl_idx = 0
 
         return reverted
 
 
-register_distributed_operator_impl_container(DistributedReshape2("reshape2"))
+register_distributed_operator_impl_container(DistributedReshape2("reshape"))
 
 
 class DistributedReshapeImpl0(DistributedOperatorImpl):
@@ -856,11 +856,11 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl(
-    "reshape2", DistributedReshapeImpl0("add_one_dim_back")
+    "reshape", DistributedReshapeImpl0("add_one_dim_back")
 )
 register_distributed_operator_impl(
-    "reshape2", DistributedReshapeImpl1("remove_one_dim_back")
+    "reshape", DistributedReshapeImpl1("remove_one_dim_back")
 )
 register_distributed_operator_impl(
-    "reshape2", DistributedReshapeImpl2("same_dim_shape")
+    "reshape", DistributedReshapeImpl2("same_dim_shape")
 )

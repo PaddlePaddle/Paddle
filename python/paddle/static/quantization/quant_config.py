@@ -45,7 +45,6 @@ SUPPORT_ACT_QUANTIZATION_OP_DICT = {
     "mean": [["X"], ["Out"]],
     "not_equal": [["X", "Y"], ["Out"]],
     "reshape": [["X"], ["Out"]],
-    "reshape2": [["X"], ["Out"]],
     "transpose2": [["X"], ["Out"]],
     "nearest_interp": [["X"], ["Out"]],
     "trilinear_interp": [["X"], ["Out"]],

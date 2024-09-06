@@ -497,7 +497,7 @@ def enable_operator_stats_collection() -> None:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> paddle.amp.debugging.enable_operator_stats_collection()
-            >>> # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            >>> # AMP list including conv2d, elementwise_add, reshape, cast (transfer_dtype)
             >>> with paddle.amp.auto_cast(enable=True, level='O2'):
             ...     out = conv(x)
             >>> # Print to the standard output.
@@ -506,7 +506,7 @@ def enable_operator_stats_collection() -> None:
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
@@ -534,7 +534,7 @@ def disable_operator_stats_collection() -> None:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> paddle.amp.debugging.enable_operator_stats_collection()
-            >>> # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            >>> # AMP list including conv2d, elementwise_add, reshape, cast (transfer_dtype)
             >>> with paddle.amp.auto_cast(enable=True, level='O2'):
             ...     out = conv(x)
             >>> # Print to the standard output.
@@ -543,7 +543,7 @@ def disable_operator_stats_collection() -> None:
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
@@ -574,7 +574,7 @@ def collect_operator_stats() -> Generator[None, None, None]:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.debugging.collect_operator_stats():
-            ...     # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            ...     # AMP list including conv2d, elementwise_add, reshape, cast (transfer_dtype)
             ...     with paddle.amp.auto_cast(enable=True, level='O2'):
             ...         out = conv(x)
             >>> # Print to the standard output.
@@ -582,7 +582,7 @@ def collect_operator_stats() -> Generator[None, None, None]:
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 

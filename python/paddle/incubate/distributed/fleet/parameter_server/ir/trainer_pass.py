@@ -1842,7 +1842,7 @@ def insert_reshape_op(
     )
     block._insert_op(
         index=index,
-        type="reshape2",
+        type="reshape",
         inputs={"X": input_var},
         attrs={'shape': new_var_shape},
         outputs={"Out": out, "XShape": x_shape},

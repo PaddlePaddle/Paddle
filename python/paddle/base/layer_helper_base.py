@@ -191,7 +191,7 @@ class LayerHelperBase:
                 )
             x_shape = block.create_var(name="Xshape", dtype=x.dtype)
             block.append_op(
-                type="reshape2",
+                type="reshape",
                 inputs={'X': x},
                 attrs={'shape': shape},
                 outputs={"Out": out, "XShape": x_shape},

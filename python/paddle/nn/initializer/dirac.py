@@ -214,7 +214,7 @@ class Dirac(Initializer):
                 stop_gradient=True,
             )
             block.append_op(
-                type="reshape2",
+                type="reshape",
                 inputs={"X": out_var},
                 attrs={'shape': [-1]},
                 outputs={"Out": out_var, "XShape": x_shape},
@@ -345,7 +345,7 @@ class Dirac(Initializer):
                 stop_gradient=True,
             )
             block.append_op(
-                type="reshape2",
+                type="reshape",
                 inputs={"X": out_var},
                 attrs={'shape': origin_shape},
                 outputs={"Out": out_var, "XShape": x_shape},

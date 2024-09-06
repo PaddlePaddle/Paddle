@@ -66,7 +66,7 @@ class Quant2Int8MkldnnPass:
         )
         self._scale_immutable_ops = [
             'transpose2',
-            'reshape2',
+            'reshape',
             'pool2d',
             'slice',
             'shape',

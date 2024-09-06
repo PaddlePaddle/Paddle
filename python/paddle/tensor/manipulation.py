@@ -4978,11 +4978,11 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
                     shape
                 )
 
-        helper = LayerHelper("reshape2", **locals())
+        helper = LayerHelper("reshape", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type="reshape2",
+            type="reshape",
             inputs=inputs,
             attrs=attrs,
             outputs={"Out": out, "XShape": x_shape},

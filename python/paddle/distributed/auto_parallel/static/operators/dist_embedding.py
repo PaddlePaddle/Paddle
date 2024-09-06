@@ -162,7 +162,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
 
     # TODO use inplace reshape for memory saving
     reshape_op = main_block.append_op(
-        type='reshape2',
+        type='reshape',
         inputs={'X': [Ids_var]},
         outputs={'Out': [intermediate_var_0], 'XShape': [xshape_var]},
         attrs={

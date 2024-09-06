@@ -72,7 +72,7 @@ uniform_random
 These original ops are partially supported:
 
 matmul_v2
-reshape2
+reshape
 concat
 slice
 p_norm

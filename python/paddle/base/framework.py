@@ -120,7 +120,6 @@ stride_ops = [
     "pd_op.imag",
     "pd_op.real",
     "pd_op.reshape",
-    "pd_op.reshape2",
     "pd_op.as_real",
 ]
 
@@ -3326,7 +3325,7 @@ class Operator:
 
                     # FIXME: The outputs of primitive operator currently
                     # doesn't include intermediate output as it will be dropped
-                    # in operator codegen, such as xshape output of reshape2.
+                    # in operator codegen, such as xshape output of reshape.
                     # It will fixed when the operator codegen support
                     # intermediate output.
                     if core._is_bwd_prim_enabled():
@@ -4179,7 +4178,7 @@ def record_is_view_var(op_type, inputs, outputs):
         else:
             if hasattr(outputs["Out"], "is_view_var"):
                 outputs["Out"].is_view_var = True
-    elif op_type == "reshape" or op_type == "reshape2":
+    elif op_type == "reshape":
         if inputs is not None and isinstance(inputs["X"], list):
             if hasattr(inputs["X"][0], "is_view_var"):
                 inputs["X"][0].is_view_var = True

@@ -251,8 +251,8 @@ def collect_operator_stats(program=None, print_subblocks=False):
             reduce_mean_grad                        |  0                |  0                |  1                |  0
             relu                                    |  1                |  0                |  0                |  0
             relu_grad                               |  1                |  0                |  0                |  0
-            reshape2                                |  0                |  0                |  1                |  0
-            reshape2_grad                           |  0                |  0                |  1                |  0
+            reshape                                 |  0                |  0                |  1                |  0
+            reshape_grad                            |  0                |  0                |  1                |  0
             softmax                                 |  0                |  0                |  1                |  0
             softmax_grad                            |  0                |  0                |  1                |  0
             update_loss_scaling                     |  0                |  0                |  1                |  0

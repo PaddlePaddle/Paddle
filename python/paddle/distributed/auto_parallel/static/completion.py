@@ -176,7 +176,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "reduce_sum",
         "layer_norm",
         "lookup_table_v2",
-        "reshape2",
+        "reshape",
         "transpose2",
         "split",
         "unsqueeze2",

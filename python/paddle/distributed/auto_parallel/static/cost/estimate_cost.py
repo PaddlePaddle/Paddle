@@ -447,7 +447,7 @@ class CostEstimator:
                 has_used_var = var_name + key
                 var = dist_op.get_serial_output(var_name)
                 if (
-                    op.type == "reshape2"
+                    op.type == "reshape"
                     or op.type == "transpose2"
                     or op.type == "elementwise_add"
                 ):

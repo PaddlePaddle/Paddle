@@ -3128,8 +3128,8 @@
   attrs :
     {scale_in : Scale_in, scale_out : Scale_out, shift_in : Shift_in, shift_out : Shift_out}
 
-- op : reshape (reshape2)
-  backward : reshape_grad (reshape2_grad)
+- op : reshape
+  backward : reshape_grad
   inputs:
     x : X
   outputs:

@@ -1119,16 +1119,16 @@ def _program_for_vpp_split_bwk(
 
 
 def _get_backward_op_type(block, cur_op, idx):
-    # deal the ops pattern: [reshape2, reshape2, matmul_v2, reshape2, elementwise_add]
+    # deal the ops pattern: [reshape, reshape, matmul_v2, reshape, elementwise_add]
     def is_reshape_matmul_pattern(cur_op, idx, ops, ops_len):
         ops_pattern = [
-            "reshape2",
-            "reshape2",
+            "reshape",
+            "reshape",
             "matmul_v2",
-            "reshape2",
+            "reshape",
             "elementwise_add",
         ]
-        if cur_op.type == "reshape2":
+        if cur_op.type == "reshape":
             if idx + 4 < ops_len:
                 ops_names = []
                 for i in range(idx, idx + 5):
@@ -1429,7 +1429,7 @@ def _insert_reshape_op(
 
     reshape_op = block._insert_op_without_sync(
         index=index,
-        type="reshape2",
+        type="reshape",
         inputs={"X": x},
         outputs={"Out": out, "XShape": x_shape},
         attrs={

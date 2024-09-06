@@ -425,7 +425,7 @@ class ReduceSumGradOpCost(CompOpCost):
 
 @register_op_cost
 class Reshape2OpCost(CompOpCost):
-    OP_TYPE = "reshape2"
+    OP_TYPE = "reshape"
 
     def __init__(self, op=None, op_desc=None, cluster=None, rank=None):
         super().__init__(op=op, op_desc=op_desc, cluster=cluster, rank=rank)
@@ -433,7 +433,7 @@ class Reshape2OpCost(CompOpCost):
 
 @register_op_cost
 class Reshape2GradOpCost(CompOpCost):
-    OP_TYPE = "reshape2_grad"
+    OP_TYPE = "reshape_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None, rank=None):
         super().__init__(op=op, op_desc=op_desc, cluster=cluster, rank=rank)

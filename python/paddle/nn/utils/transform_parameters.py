@@ -42,7 +42,7 @@ def _inplace_reshape_dygraph(x: Tensor, shape: ShapeLike) -> None:
             tmp_out._share_underline_tensor_to(x)
     else:
         _dygraph_tracer().trace_op(
-            type="reshape2",
+            type="reshape",
             inputs={'X': x},
             outputs={'Out': x, 'XShape': x_shape},
             attrs={'shape': shape},

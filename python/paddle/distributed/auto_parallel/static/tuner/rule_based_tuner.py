@@ -199,7 +199,7 @@ class RowMatmulPattern(BasePattern):
         input = self.add_node(0, **{"type": "var"})
 
         # define reshape
-        reshape = self.add_node(1, **{"type": "reshape2"})
+        reshape = self.add_node(1, **{"type": "reshape"})
 
         # define reshape input edge
         x_edge = self.add_edge(input.id, reshape.id, **{"input_name": "X"})
@@ -451,7 +451,7 @@ class ReshapeDataPattern(BasePattern):
         data = self.add_node(0, **{"type": "data"})
 
         # define unsequeeze
-        reshape = self.add_node(1, **{"type": "reshape2"})
+        reshape = self.add_node(1, **{"type": "reshape"})
 
         # define unsequeeze input edge
         x_edge = self.add_edge(0, 1, **{"input_name": "X"})

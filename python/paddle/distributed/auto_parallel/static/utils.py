@@ -1632,7 +1632,7 @@ def get_standalone_cost_data(distributed_programs):
         "c_embedding": "embedding",
         "matmul_v2": "matmul",
         "transpose2": "transpose",
-        "reshape2": "reshape",
+        "reshape": "reshape",
         "unsqueeze2": "unsqueeze",
         "reduce_sum": "sum",
         "elementwise_div": "divide",

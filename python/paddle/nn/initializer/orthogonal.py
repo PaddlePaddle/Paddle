@@ -250,7 +250,7 @@ class Orthogonal(Initializer):
             q = q_transpose
 
         block.append_op(
-            type='reshape2',
+            type='reshape',
             inputs={'X': q},
             outputs={'Out': q, "XShape": x_shape},
             attrs={'shape': var.shape},
