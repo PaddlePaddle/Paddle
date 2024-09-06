@@ -72,49 +72,43 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_shard_layer_api_deprecated)
   # End of unittests WITH single card WITHOUT timeout
 
-  py_test_modules(test_pass_grad_clip MODULES test_pass_grad_clip)
-  set_tests_properties(test_pass_grad_clip
+  py_test_modules(test_pass_grad_clip_deprecated MODULES
+                  test_pass_grad_clip_deprecated)
+  set_tests_properties(test_pass_grad_clip_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
 
-  py_test_modules(test_pass_gradient_merge MODULES test_pass_gradient_merge)
-  set_tests_properties(test_pass_gradient_merge
+  py_test_modules(test_pass_gradient_merge_deprecated MODULES
+                  test_pass_gradient_merge_deprecated)
+  set_tests_properties(test_pass_gradient_merge_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pass_recompute MODULES test_pass_recompute)
-  set_tests_properties(test_pass_recompute
+  py_test_modules(test_pass_amp_deprecated MODULES test_pass_amp_deprecated)
+  set_tests_properties(test_pass_amp_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+  py_test_modules(test_amp_o2_pass_deprecated MODULES
+                  test_amp_o2_pass_deprecated)
+  set_tests_properties(test_amp_o2_pass_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pass_sharding MODULES test_pass_sharding)
-  set_tests_properties(test_pass_sharding
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_pass_amp MODULES test_pass_amp)
-  set_tests_properties(test_pass_amp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                TIMEOUT 80)
-  py_test_modules(test_amp_o2_pass MODULES test_amp_o2_pass)
-  set_tests_properties(test_amp_o2_pass PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                   TIMEOUT 50)
-  py_test_modules(test_pass_generation_pipeline MODULES
-                  test_pass_generation_pipeline)
-  set_tests_properties(test_pass_generation_pipeline
+  py_test_modules(test_pass_generation_pipeline_deprecated MODULES
+                  test_pass_generation_pipeline_deprecated)
+  set_tests_properties(test_pass_generation_pipeline_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   set_tests_properties(
-    test_pass_generation_pipeline
+    test_pass_generation_pipeline_deprecated
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-  py_test_modules(test_pass_1F1B MODULES test_pass_1F1B)
-  set_tests_properties(test_pass_1F1B PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                 TIMEOUT 50)
+  py_test_modules(test_pass_1F1B_deprecated MODULES test_pass_1F1B_deprecated)
+  set_tests_properties(test_pass_1F1B_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   set_tests_properties(
-    test_pass_1F1B PROPERTIES ENVIRONMENT
-                              "FLAGS_new_executor_micro_batching=False")
-  py_test_modules(test_pass_quantization MODULES test_pass_quantization)
-  set_tests_properties(test_pass_quantization
+    test_pass_1F1B_deprecated
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  py_test_modules(test_pass_quantization_deprecated MODULES
+                  test_pass_quantization_deprecated)
+  set_tests_properties(test_pass_quantization_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
-  py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
-  py_test_modules(test_pass_base_list MODULES test_pass_base_list)
-  set_tests_properties(test_pass_base_list PROPERTIES TIMEOUT 40)
-  py_test_modules(test_fuse_adamw_pass MODULES test_fuse_adamw_pass)
-  set_tests_properties(test_fuse_adamw_pass PROPERTIES TIMEOUT 20)
-  py_test_modules(test_fused_linear_pass MODULES test_fused_linear_pass)
-  set_tests_properties(test_fused_linear_pass PROPERTIES TIMEOUT 40)
-
+  py_test_modules(test_pass_bf16_deprecated MODULES test_pass_bf16_deprecated)
+  py_test_modules(test_pass_base_list_deprecated MODULES
+                  test_pass_base_list_deprecated)
+  set_tests_properties(test_pass_base_list_deprecated PROPERTIES TIMEOUT 40)
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
   py_test_modules(test_serialization_deprecated MODULES
                   test_serialization_deprecated)
