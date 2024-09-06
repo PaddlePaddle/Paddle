@@ -720,9 +720,8 @@ bool DetOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_GE(
       input_dims.size(),
       2,
-      common::errors::InvalidArgument(
-                        "The input matrix dimension size should"
-                        "be greater than or equal to 2."));
+      common::errors::InvalidArgument("The input matrix dimension size should"
+                                      "be greater than or equal to 2."));
 
   PADDLE_ENFORCE_EQ(input_dims[input_dims.size() - 1],
                     input_dims[input_dims.size() - 2],
