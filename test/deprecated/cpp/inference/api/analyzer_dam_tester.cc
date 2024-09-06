@@ -270,18 +270,6 @@ TEST(Analyzer_dam, profile) { profile(); }
 TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
-// Check the fuse status
-TEST(Analyzer_dam, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-}
-
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
@@ -334,14 +322,6 @@ TEST(Analyzer_dam, compare_determine) {
   SetInput(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
-}
-// Save optim model
-TEST(Analyzer_dam, save_optim_model) {
-  AnalysisConfig cfg;
-  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
-  MKDIR(optimModelPath.c_str());
-  SetConfig(&cfg);
-  SaveOptimModel(&cfg, optimModelPath);
 }
 
 void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,

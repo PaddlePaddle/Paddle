@@ -13,23 +13,26 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../auto_parallel")
 from get_gpt_model import FakeDataset, generate_model
-from test_sparse_addmm_op import get_cuda_version
 
 import paddle
 from paddle.distributed.fleet import auto
 
 
-def apply_pass(use_fused_passes=False, fused_passes_list=[]):
+def apply_pass(use_recompute=False, no_recompute_segments=[]):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
-    fused_passes = strategy.fused_passes
-    fused_passes.enable = use_fused_passes
-    fused_passes.fused_passes_list = fused_passes_list
+    if use_recompute:
+        recompute = strategy.recompute
+        recompute.enable = True
+        recompute.no_recompute_segments = no_recompute_segments
     return strategy
 
 
@@ -38,55 +41,65 @@ def reset_prog():
     paddle.base.framework.switch_startup_program(paddle.static.Program())
 
 
-class TestFusedLinearPass(unittest.TestCase):
+class TestRecomputePass(unittest.TestCase):
     def setUp(self):
-        self.rtol = 1e-5
+        self.rtol = 1e-6
         self.atol = 1e-8
         self.batch_size = 1
-        self.batch_num = 1
+        self.batch_num = 10
         self.clip_norm = 0.2
         self.dataset = FakeDataset(self.batch_size * self.batch_num)
 
     def init(self, engine):
-        paddle.seed(2021)
-        np.random.seed(2021)
-        random.seed(2021)
+        paddle.seed(2022)
+        np.random.seed(2022)
+        random.seed(2022)
         place = paddle.base.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, use_fused_passes=False, fused_passes_list=[]):
+    def get_engine(self, use_recompute=False, no_recompute_segments=[]):
         reset_prog()
 
-        strategy = apply_pass(use_fused_passes, fused_passes_list)
+        strategy = apply_pass(use_recompute, no_recompute_segments)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model, loss = generate_model("serial")
+        model, loss = generate_model("mp")
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
         return engine
 
-    def check_results(self, ref_losses, check_losses, rtol=None, atol=None):
+    def check_results(self, ref_losses, check_losses):
         np.testing.assert_allclose(
             ref_losses,
             check_losses,
-            rtol=rtol or self.rtol,
-            atol=atol or self.atol,
+            rtol=self.rtol,
+            atol=self.atol,
             err_msg=f'pass {__class__} has wrong results!, \nu={ref_losses}\nv={check_losses}\ndiff={ref_losses - check_losses}',
         )
 
-    def test_passes(self):
-        losses = []
-        if get_cuda_version() >= 11060:
-            for use_fused_passes in [True, False]:
-                engine = self.get_engine(
-                    use_fused_passes, ["fuse_gemm_epilogue"]
-                )
-                history = engine.fit(
-                    self.dataset, 3, batch_size=self.batch_size
-                )
-                losses.append(np.array(history.history["loss"]))
-            self.check_results(losses[0], losses[1])
+    def test_recompute_pass(self):
+        # mp2 training
+        mp_engine = self.get_engine()
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        mp_losses = np.array(history.history["loss"])
+
+        # mp2 recompute training
+        rc_engine = self.get_engine(True)
+        history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        rc_losses = np.array(history.history["loss"])
+        self.check_results(mp_losses, rc_losses)
+
+        # mp2 selective recompute training
+        rc1_engine = self.get_engine(True, [0])
+        history = rc1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        rc1_losses = np.array(history.history["loss"])
+        self.check_results(mp_losses, rc1_losses)
+
+    def test_recompute_pass_error(self):
+        with self.assertRaises(AssertionError):
+            rc_engine = self.get_engine(True, [2])
+            history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
 
 
 if __name__ == "__main__":
