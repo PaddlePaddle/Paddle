@@ -195,7 +195,16 @@ class Engine:
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
             )
-        self._parameter_name_list = [p.name for p in optimizer._parameter_list]
+        # NOTE(ljz) Not support parameter groups
+        param_list = []
+        if optimizer is not None and (
+            optimizer._parameter_list is None
+            or not isinstance(optimizer._parameter_list[0], dict)
+        ):
+            for p in optimizer._parameter_list:
+                if not p.stop_gradient:
+                    param_list.append(p)
+        self._parameter_name_list = [p.name for p in param_list]
         self._optimizer = auto_utils.validate_opt(optimizer)
 
         metrics = metrics or []
