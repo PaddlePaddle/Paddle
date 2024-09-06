@@ -201,7 +201,6 @@ class LlamaAttentionAuto(nn.Layer):
         query_states = self.q_proj(hidden_states).reshape(
             shape=target_query_shape
         )
-
         key_states = self.k_proj(hidden_states).reshape(
             shape=target_key_value_shape
         )
