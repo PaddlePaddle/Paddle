@@ -200,6 +200,15 @@ void StackCreateOp::VerifySig() {
   VLOG(4) << "End Verifying for StackCreateOp.";
 }
 
+bool StackCreateOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &null_shape_or_data =
+      symbol::ShapeOrDataDimExprs(symbol::NullShapeOrDataDimExpr());
+  infer_context->SetShapeOrDataForValue(result(0), null_shape_or_data);
+  infer_context->SetShapeOrDataForValue(result(1), null_shape_or_data);
+  infer_context->SetShapeOrDataForValue(result(2), null_shape_or_data);
+}
+
 size_t StackCreateOp::tuple_size() { return tuple_push_op().tuple_size(); }
 
 Value StackCreateOp::inlet_element(size_t index) {
