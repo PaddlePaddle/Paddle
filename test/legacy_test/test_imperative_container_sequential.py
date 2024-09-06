@@ -75,9 +75,11 @@ class TestImperativeContainerSequential(unittest.TestCase):
             # test insert type error(non nn.Layer type)
             model2 = paddle.nn.Sequential()
             self.assertRaises(AssertionError, model2.insert, 0, 1)
+
             # test insert index error(1)
             model2 = paddle.nn.Sequential()
             self.assertRaises(IndexError, model2.insert, 1, Linear(10, 10))
+
             # test insert at negtive index -1
             model2 = paddle.nn.Sequential()
             model2.insert(0, Linear(10, 10))
@@ -92,6 +94,17 @@ class TestImperativeContainerSequential(unittest.TestCase):
 
             loss1 = paddle.mean(res1)
             loss1.backward()
+
+            # test __iter__
+            model3 = paddle.nn.Sequential(
+                Linear(10, 1),
+                Linear(1, 2),
+            )
+            output1 = model3(data)
+            output2 = data
+            for layer in model3:
+                output2 = layer(output2)
+            self.assertEqual(output1, output2)
 
     def test_sequential_list_params(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')

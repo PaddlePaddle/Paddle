@@ -668,7 +668,10 @@ class Sequential(Layer):
         self._sub_layers[str(index)] = module
         return self
 
-    def extend(self, sequential: Sequence[Layer]) -> Sequential:
+    def extend(self, sequential: Iterable[Layer]) -> Sequential:
         for layer in sequential:
             self.append(layer)
         return self
+
+    def __iter__(self) -> Iterator[Layer]:
+        return iter(self._sub_layers.values())
