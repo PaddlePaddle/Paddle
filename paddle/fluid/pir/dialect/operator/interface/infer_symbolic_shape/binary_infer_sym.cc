@@ -1530,12 +1530,32 @@ bool SequenceMaskOpInferSymbolicShape(
   return true;
 }
 
-// bool ShuffleBatchOpInferSymbolicShape(pir::Operation *op,
-//                                       pir::InferSymbolicShapeContext
-//                                       *infer_context) {
-//   // pass
-//   return true;
-// }
+bool ShuffleBatchOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &seed_ptr_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &seed_shape = seed_shape_or_data.shape();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(seed_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(infer_context->GetNextSymName())});
+
+  return true;
+}
 
 // bool SolveOpInferSymbolicShape(
 //     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
