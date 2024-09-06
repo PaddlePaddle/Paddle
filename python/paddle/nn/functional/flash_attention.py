@@ -1073,12 +1073,14 @@ def flashmask_attention(
             - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 2],
                 indicating bidirectional attention. The values represent the starting row index of the left
                 lower triangular mask and the ending row index of the right upper triangular mask in the dense mask. The values r1, r2 in startend_row_indices indicate that elements in the lower left triangle of the Score matrix starting from the r1-th row downwards (inclusive) will be masked, and elements in the upper right triangle starting from the r2-th row upwards (exclusive) will be masked.
-            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4] (not implemented),
+            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4] ,
                 indicating bidirectional attention. The values represent the start and end row indices of the
                 left lower triangular mask and the start and end row indices of the right upper triangular mask in the dense mask. The values r1, r2, r3, r4 in startend_row_indices indicate that elements in the lower left triangle of the Score matrix starting from the r1-th row downwards (inclusive) but above the r2-th row (exclusive) will be masked, and elements in the upper right triangle starting from the r3-th row downwards (inclusive) but above the r4-th row (exclusive) will be masked.
         - **dropout** (float) - The dropout ratio. Default is 0.0.
         - **causal** (bool) - Whether to enable causal mode. Default is False.
-        - **window_size* (int, optional) - Window size in sliding window attention. Default is None, will not use sliding window attention. (Not implemented!)
+        - **window_size** (int|tuple, optional) - Indicates the window size of sliding window local attention.
+                        If causal mode is enabled, Query at position i will only attend to keys between [i - window_size, i] or [i - window_size[0], i].
+                        If causal mode is disabled, Query at position i will only attend to keys between [i - window_size, i + window_size] or [i - window_size[0], i + window_size[1]].
         - **return_softmax_lse** (bool) - Whether to return the log-sum-exp of the softmax. Default is False.
         - **return_seed_offset** (bool) - Whether to return the random seed offset. Default is False.
         - **fixed_seed_offset** (Tensor, optional): With fixed seed, offset for dropout mask.
@@ -1137,69 +1139,112 @@ def flashmask_attention(
             >>> # doctest: -SKIP
 
     """
-    assert window_size is None, "window is not implemented now."
 
-    assert (
-        startend_row_indices is not None
-    ), f"startend_row_indices must be not None, but got {startend_row_indices}"
-    assert (
-        startend_row_indices.dtype == paddle.int32
-    ), f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
-    assert (
-        len(startend_row_indices.shape) == 4
-    ), f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
+    if window_size is not None:
+        if isinstance(window_size, int):
+            window_size = (window_size, window_size)
+        sq = query.shape[1]
+        bsz = query.shape[0]
+        assert (
+            startend_row_indices is None
+        ), "can't use window_size with startend_row_indices"
+        if causal:
+            startend_row_indices = paddle.arange(
+                window_size[0] + 1, sq + window_size[0] + 1, dtype="int32"
+            ).reshape((1, 1, sq, 1))
+            startend_row_indices = paddle.clip(
+                startend_row_indices, max=sq
+            ).repeat_interleave(bsz, 0)
 
-    assert (
-        startend_row_indices.shape[0] == key.shape[0]
-    ), f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
-
-    assert (
-        startend_row_indices.shape[2] == key.shape[1]
-    ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
-    assert startend_row_indices.shape[1] in [
-        1,
-        key.shape[2],
-    ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
-
-    if causal:
-        if startend_row_indices.shape[-1] not in [1, 2]:
-            raise ValueError(
-                f"Invalid shape of startend_row_indices, when causal is True, the last dimension should be either 1 or 2 but got {startend_row_indices.shape[-1]}"
-            )
-    else:
-        if startend_row_indices.shape[-1] == 2:
-            pass
-        elif startend_row_indices.shape[-1] == 4:
-            raise NotImplementedError(
-                "ending row index is not implemented yet."
-            )
         else:
-            raise ValueError(
-                f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
+            startend_row_indices = paddle.empty((1, 1, sq, 2), dtype="int32")
+            startend_row_indices[0, 0, :, 0] = paddle.arange(
+                window_size[0] + 1, sq + window_size[0] + 1, dtype="int32"
             )
+            startend_row_indices[0, 0, :, 1] = paddle.arange(
+                -window_size[1], sq - window_size[1], dtype="int32"
+            )
+            startend_row_indices = paddle.clip(
+                startend_row_indices, min=0, max=sq
+            ).repeat_interleave(bsz, 0)
 
-    return_softmax = False
+    if startend_row_indices is None:
+        (
+            out,
+            result_softmax,
+            result_softmax_lse,
+            result_seed_offset,
+        ) = _C_ops.flash_attn(
+            query,
+            key,
+            value,
+            fixed_seed_offset,
+            None,
+            dropout,
+            causal,
+            False,
+            not training,
+            rng_name,
+        )
 
-    (
-        out,
-        result_softmax,
-        result_softmax_lse,
-        result_seed_offset,
-    ) = _C_ops.flashmask_attention(
-        query,
-        key,
-        value,
-        startend_row_indices,
-        fixed_seed_offset,
-        dropout,
-        causal,
-        return_softmax,
-        not training,
-        rng_name,
-    )
+    else:
+        assert (
+            startend_row_indices.dtype == paddle.int32
+        ), f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
+        assert (
+            len(startend_row_indices.shape) == 4
+        ), f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
+
+        assert (
+            startend_row_indices.shape[0] == key.shape[0]
+        ), f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
+
+        assert (
+            startend_row_indices.shape[2] == key.shape[1]
+        ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+        assert startend_row_indices.shape[1] in [
+            1,
+            key.shape[2],
+        ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
+
+        if causal:
+            if startend_row_indices.shape[-1] == 1:
+                has_end = False
+            elif startend_row_indices.shape[-1] == 2:
+                has_end = True
+            else:
+                raise ValueError(
+                    f"Invalid shape of startend_row_indices, when causal is True, the last dimension should be either 1 or 2 but got {startend_row_indices.shape[-1]}"
+                )
+        else:
+            if startend_row_indices.shape[-1] == 2:
+                has_end = False
+            elif startend_row_indices.shape[-1] == 4:
+                has_end = True
+            else:
+                raise ValueError(
+                    f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
+                )
+
+        (
+            out,
+            result_softmax,
+            result_softmax_lse,
+            result_seed_offset,
+        ) = _C_ops.flashmask_attention(
+            query,
+            key,
+            value,
+            startend_row_indices,
+            fixed_seed_offset,
+            dropout,
+            causal,
+            False,
+            not training,
+            rng_name,
+        )
+
     outputs = [out]
-    if return_softmax:
-        outputs += [result_softmax]
     if return_softmax_lse:
         outputs += [result_softmax_lse]
     if return_seed_offset:
