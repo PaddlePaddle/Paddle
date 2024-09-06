@@ -127,6 +127,12 @@ if(WITH_GPU AND TENSORRT_FOUND)
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_while_op_deprecated PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_yolo_box_op_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_convert_conv2d_transpose_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_convert_conv3d_transpose_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_convert_depthwise_conv2d_deprecated
+                       PROPERTIES TIMEOUT 300)
 
   if(NOT WIN32)
     set_tests_properties(test_trt_inference_fp16_io_deprecated
@@ -137,6 +143,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
                  450)
     set_tests_properties(test_trt_deformable_conv_deprecated PROPERTIES TIMEOUT
                                                                         500)
+    set_tests_properties(test_trt_convert_conv2d_deprecated PROPERTIES TIMEOUT
+                                                                       500)
+    set_tests_properties(test_trt_convert_depthwise_conv2d_transpose_deprecated
+                         PROPERTIES TIMEOUT 500)
+
   endif()
   if(WITH_NV_JETSON)
     set_tests_properties(
