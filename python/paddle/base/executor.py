@@ -457,14 +457,15 @@ def has_fetch_operations_and_is_startup_program(
             is_startup_program = True
 
     need_fetch_info = []
-    for i, fetch_var in enumerate(fetch_targets):
-        if isinstance(fetch_var, str):
-            if fetch_var not in fetch_info[1]:
-                raise Exception(
-                    f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
-                )
-        elif fetch_var not in ValueSet(fetch_info[0]):
-            need_fetch_info.append(fetch_var)
+    if fetch_targets is not None:
+        for i, fetch_var in enumerate(fetch_targets):
+            if isinstance(fetch_var, str):
+                if fetch_var not in fetch_info[1]:
+                    raise Exception(
+                        f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
+                    )
+            elif fetch_var not in ValueSet(fetch_info[0]):
+                need_fetch_info.append(fetch_var)
 
     return need_fetch_info, is_startup_program
 
@@ -726,7 +727,9 @@ def _get_feed_fetch_var_names(feed, fetch_list):
     elif isinstance(feed, (list, tuple)):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
-    fetch_var_names = list(map(_to_name_str, fetch_list))
+    fetch_var_names = []
+    if fetch_list is not None:
+        fetch_var_names = list(map(_to_name_str, fetch_list))
     return feed_var_names + fetch_var_names
 
 
