@@ -2197,18 +2197,15 @@ bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(
   return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op, infer_context);
 }
 
-// bool SyncBatchNormOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SyncBatchNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BatchNormOpInferSymbolicShape(op, infer_context);
+}
 
-// bool SyncBatchNorm_OpInferSymbolicShape(pir::Operation *op,
-//                                         pir::InferSymbolicShapeContext
-//                                         *infer_context) {
-//   return SyncBatchNormOpInferSymbolicShape(op, infer_context);
-// }
+bool SyncBatchNorm_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return SyncBatchNormOpInferSymbolicShape(op, infer_context);
+}
 
 bool TdmSamplerOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
