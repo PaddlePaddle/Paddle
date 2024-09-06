@@ -354,11 +354,15 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
     auto stream = dev_ctx.stream();
     comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
         dev_ctx.GetCommContext());
-    if (comm_ctx) {
-      comm_ctx->AllReduce(
-          &num_classes_per_device, num_classes_per_device, ncclSum, stream);
-      phi::backends::gpu::GpuStreamSync(stream);
-    }
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+
+    comm_ctx->AllReduce(
+        &num_classes_per_device, num_classes_per_device, ncclSum, stream);
+    phi::backends::gpu::GpuStreamSync(stream);
   }
 #endif
 
