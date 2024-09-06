@@ -711,6 +711,38 @@ bool DecodeJpegOpInferSymbolicShape(
   return true;
 }
 
+bool DetOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context)
+                              {
+  const symbol::ShapeOrDataDimExprs &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> input_dims = input_shape_or_data.shape();
+
+  PADDLE_ENFORCE_GE(input_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The input matrix dimension size should be greater than or equal to 2."));
+
+  PADDLE_ENFORCE_EQ(input_dims[input_dims.size() - 1],
+                    input_dims[input_dims.size() - 2],
+                    common::errors::InvalidArgument(
+                        "The input matrix should be a square matrix."));
+
+  std::vector<symbol::DimExpr> output_dims;
+  if (input_dims.size() > 2) {
+    output_dims.assign(input_dims.begin(), input_dims.end() - 2);
+  } else {
+    output_dims = {};
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  return true;
+}
+
 bool DiagOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto x_shape_or_data =
