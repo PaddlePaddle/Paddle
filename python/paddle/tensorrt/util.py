@@ -125,5 +125,10 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
                 )
             )
 
+            for op in exe_program.global_block().ops[::-1]:
+                # Remove all invalid fetch op
+                if op.name() == "pd_op.fetch":
+                    exe_program.global_block().remove_op(op)
+
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
     return exe_program

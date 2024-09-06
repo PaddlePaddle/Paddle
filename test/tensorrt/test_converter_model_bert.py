@@ -36,7 +36,7 @@ class TestConverterBert(unittest.TestCase):
         input_data_max_shape = np.ones([8, 1000]).astype('int64')
 
         # Step1.1: get original results(for tests only)
-        output_var = program.list_vars()[-1]
+        output_var = program.global_block().ops[-1].result(0)
 
         output_expected = predict_program(
             program, {"input_ids": input_data_min_shape}, [output_var]
@@ -57,7 +57,7 @@ class TestConverterBert(unittest.TestCase):
         # Step5: run TRTConverter(would lower group_op into tensorrt_engine_op)
         converter = PaddleToTensorRTConverter(program_with_pir, scope)
         converter.convert_program_to_trt()
-        output_var = program_with_pir.list_vars()[-1]
+        output_var = program.global_block().ops[-1].result(0)
 
         # Step6: run inference(converted_program)
         output_converted = predict_program(
