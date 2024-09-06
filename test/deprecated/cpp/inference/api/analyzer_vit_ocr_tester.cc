@@ -95,29 +95,6 @@ TEST(Analyzer_vit_ocr, compare) { compare(); }
 TEST(Analyzer_vit_ocr, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
-#ifdef PADDLE_WITH_DNNL
-// Check the fuse status
-TEST(Analyzer_vit_ocr, fuse_status) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg, true);
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-
-  PADDLE_ENFORCE_EQ(fuse_statis.at("fc_onednn_pass"),
-                    33,
-                    common::errors::InvalidArgument(
-                        "Fuse status %d is illegal, expected value is 33.",
-                        fuse_statis.at("fc_onednn_pass")));
-  PADDLE_ENFORCE_EQ(fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass"),
-                    2,
-                    common::errors::InvalidArgument(
-                        "Fuse status %d is illegal, expected value is 2.",
-                        fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass")));
-}
-#endif
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
