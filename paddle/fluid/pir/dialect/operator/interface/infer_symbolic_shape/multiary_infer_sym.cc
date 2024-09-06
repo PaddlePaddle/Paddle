@@ -2252,6 +2252,75 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
 
   return true;
 }
+
+bool NllLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const symbol::ShapeOrDataDimExprs &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &label_shape = label_shape_or_data.shape();
+  PADDLE_ENFORCE_EQ(x_shape.size() == 2 || x_shape.size() == 4,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The tensor rank of Input(X) must be 2 or 4."));
+  infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
+
+  if (op->operand_source(2)) {
+    const symbol::ShapeOrDataDimExprs &w_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const std::vector<symbol::DimExpr> &w_shape = w_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        w_shape.size(),
+        1,
+        phi::errors::InvalidArgument("Input(Weight) should be a 1D tensor."));
+
+    infer_context->AddEqualCstr(x_shape[1], w_shape[0]);
+  }
+
+  const std::string &reduction =
+      op->attribute<pir::StrAttribute>("reduction").AsString();
+
+  std::vector<symbol::DimExpr> out_shape;
+  if (x_shape.size() == 2) {
+    if (reduction == "none") {
+      out_shape = {x_shape[0]};
+    } else {
+      out_shape = std::vector<symbol::DimExpr>{};
+    }
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
+  } else if (x_shape.size() == 4) {
+    PADDLE_ENFORCE_EQ(label_shape.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "Expected Input(Label) dimensions=3, received %d.",
+                          label_shape.size()));
+
+    infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
+    infer_context->AddEqualCstr(x_shape[2], label_shape[1]);
+    infer_context->AddEqualCstr(x_shape[3], label_shape[2]);
+
+    if (reduction == "none") {
+      out_shape = {x_shape[0], x_shape[2], x_shape[3]};
+    } else {
+      out_shape = std::vector<symbol::DimExpr>{};
+    }
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{})});
+  return true;
+}
+
 bool RoiPoolOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
