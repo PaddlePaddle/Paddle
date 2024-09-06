@@ -1953,7 +1953,7 @@ bool MatrixRankOpInferSymbolicShape(
                         "The dims of input must be greater than 2."));
 
   // 获取Hermitian属性
-  bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").AsBool();
+  bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").data();
 
   // 如果hermitian为true，确保输入x是方阵
   if (hermitian) {
