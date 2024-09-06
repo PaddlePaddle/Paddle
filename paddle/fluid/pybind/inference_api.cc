@@ -114,10 +114,6 @@ void BindPaddleInferTensor(py::module *m);
 void BindPredictorPool(py::module *m);
 void BindInternalUtils(py::module *m);
 
-#ifdef PADDLE_WITH_DNNL
-void BindMkldnnQuantizerConfig(py::module *m);
-#endif
-
 template <typename T>
 PaddleBuf PaddleBufCreate(py::array_t<T, py::array::c_style> data) {
   PaddleBuf buf(data.size() * sizeof(T));
@@ -525,9 +521,6 @@ void BindInferenceApi(py::module *m) {
   BindPaddlePassBuilder(m);
   BindPredictorPool(m);
   BindInternalUtils(m);
-#ifdef PADDLE_WITH_DNNL
-  BindMkldnnQuantizerConfig(m);
-#endif
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<AnalysisConfig>,
          py::arg("config"));
@@ -981,12 +974,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("cpu_math_library_num_threads",
            &AnalysisConfig::cpu_math_library_num_threads)
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
-      .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
 #ifdef PADDLE_WITH_DNNL
-      .def("quantizer_config",
-           &AnalysisConfig::mkldnn_quantizer_config,
-           py::return_value_policy::reference)
       .def("set_mkldnn_cache_capacity",
            &AnalysisConfig::SetMkldnnCacheCapacity,
            py::arg("capacity") = 0)
@@ -1083,25 +1072,6 @@ void BindXpuConfig(py::module *m) {
                      &XpuConfig::quant_post_dynamic_op_types);
 }
 
-#ifdef PADDLE_WITH_DNNL
-void BindMkldnnQuantizerConfig(py::module *m) {
-  py::class_<MkldnnQuantizerConfig> quantizer_config(*m,
-                                                     "MkldnnQuantizerConfig");
-  quantizer_config.def(py::init<const MkldnnQuantizerConfig &>())
-      .def(py::init<>())
-      .def("set_quant_data",
-           [](MkldnnQuantizerConfig &self,
-              const std::vector<PaddleTensor> &data) {
-             auto warmup_data =
-                 std::make_shared<std::vector<PaddleTensor>>(data);
-             self.SetWarmupData(warmup_data);
-             return;
-           })
-      .def("set_quant_batch_size", &MkldnnQuantizerConfig::SetWarmupBatchSize)
-      .def("set_enabled_op_types", &MkldnnQuantizerConfig::SetEnabledOpTypes);
-}
-#endif
-
 void BindAnalysisPredictor(py::module *m) {
   py::class_<AnalysisPredictor, PaddlePredictor>(*m, "AnalysisPredictor")
       .def(py::init<const AnalysisConfig &>())
@@ -1148,10 +1118,7 @@ void BindAnalysisPredictor(py::module *m) {
       .def("program",
            &AnalysisPredictor::program,
            py::return_value_policy::reference)
-      .def("get_serialized_program", &AnalysisPredictor::GetSerializedProgram)
-      .def("mkldnn_quantize", &AnalysisPredictor::MkldnnQuantize)
-      .def(
-          "SaveOptimModel", &AnalysisPredictor::SaveOptimModel, py::arg("dir"));
+      .def("get_serialized_program", &AnalysisPredictor::GetSerializedProgram);
 }
 
 void BindPaddleInferPredictor(py::module *m) {
@@ -1288,7 +1255,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const std::vector<std::string> &>())
       .def("enable_cudnn", &PassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &PassStrategy::EnableMKLDNN)
-      .def("enable_mkldnn_quantizer", &PassStrategy::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &PassStrategy::EnableMkldnnBfloat16)
       .def("use_gpu", &PassStrategy::use_gpu);
 
@@ -1297,7 +1263,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const CpuPassStrategy &>())
       .def("enable_cudnn", &CpuPassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &CpuPassStrategy::EnableMKLDNN)
-      .def("enable_mkldnn_quantizer", &CpuPassStrategy::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &CpuPassStrategy::EnableMkldnnBfloat16);
 
   py::class_<GpuPassStrategy, PassStrategy>(*m, "GpuPassStrategy")
@@ -1305,7 +1270,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const GpuPassStrategy &>())
       .def("enable_cudnn", &GpuPassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
-      .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &GpuPassStrategy::EnableMkldnnBfloat16);
 }
 

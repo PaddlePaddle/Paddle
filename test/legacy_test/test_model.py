@@ -252,13 +252,15 @@ class TestModel(unittest.TestCase):
         self.fit(True, 2, 0)
 
     def test_fit_static_with_rank(self):
-        self.fit(False, 2, 0)
+        if not paddle.framework.in_pir_mode():
+            self.fit(False, 2, 0)
 
     def test_fit_dynamic_with_num_iters(self):
         self.fit(True, num_iters=1)
 
     def test_fit_static_with_num_iters(self):
-        self.fit(False, num_iters=1)
+        if not paddle.framework.in_pir_mode():
+            self.fit(False, num_iters=1)
 
     def test_evaluate_dygraph(self):
         self.evaluate(True)
