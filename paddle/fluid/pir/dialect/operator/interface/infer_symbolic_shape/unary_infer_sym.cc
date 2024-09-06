@@ -1957,14 +1957,8 @@ bool MatrixRankOpInferSymbolicShape(
 
   // 如果hermitian为true，确保输入x是方阵
   if (hermitian) {
-    int rows =
-        static_cast<int64_t>(x_shape[x_shape.size() - 2].Get<std::int64_t>());
-    int cols =
-        static_cast<int64_t>(x_shape[x_shape.size() - 1].Get<std::int64_t>());
-    PADDLE_ENFORCE_EQ(rows,
-                      cols,
-                      common::errors::InvalidArgument(
-                          "if hermitian == true, matrix should be n*n"));
+    infer_context->AddEqualCstr(x_shape[x_shape.size() - 2],
+                                x_shape[x_shape.size() - 1]);
   }
 
   std::vector<symbol::DimExpr> x_batch_dims = {};
