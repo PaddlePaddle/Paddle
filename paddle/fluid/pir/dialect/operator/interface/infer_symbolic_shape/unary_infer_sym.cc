@@ -2424,12 +2424,53 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool PartialSumOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
+bool PartialSumOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::TensorListShapeOrDataDimExprs &xs_shapes =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+  int inputs_num = xs_shapes.size();
+  PADDLE_ENFORCE_GT(inputs_num,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "ShapeError: Input tensors count should > 0. But "
+                        "received inputs' length is 0."));
+  if (inputs_num == 1) {
+    VLOG(3) << "Warning: partial_sum op have only one input, may be useless";
+  }
+
+  symbol::DimExpr batch_size = xs_shapes[0].shape()[0];
+  symbol::DimExpr input_len = xs_shapes[1].shape()[1];
+
+  for (int i = 0; i < inputs_num; i++) {
+    const std::vector<symbol::DimExpr> x_shape = xs_shapes[i].shape();
+    PADDLE_ENFORCE_EQ(
+        x_shape.size(),
+        2,
+        phi::errors::InvalidArgument("Only support two dimensions input now."));
+
+    if (i > 0) {
+      infer_context->AddEqualCstr(x_shape[0], batch_size);
+      infer_context->AddEqualCstr(x_shape[1], input_len);
+    }
+  }
+
+  int start_index = op->attribute<pir::Int32Attribute>("start_index").data();
+  int length = op->attribute<pir::Int32Attribute>("length").data();
+
+  std::vector<symbol::DimExpr> output_shape(2);
+  output_shape[0] = batch_size;
+  output_shape[1] = (length == -1) ? input_len - symbol::DimExpr(start_index)
+                                   : symbol::DimExpr(length);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
 
 bool PadOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
