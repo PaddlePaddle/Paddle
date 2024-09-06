@@ -2952,7 +2952,7 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::ProfilerOptions::trace_switch);
 
   py::class_<phi::RecordEvent>(m, "_RecordEvent")
-      .def(py::init([](std::string name, phi::TracerEventType type) {
+      .def(py::init([](std::string name, platform::TracerEventType type) {
         return std::make_unique<phi::RecordEvent>(
             name, type, 1, phi::EventRole::kOrdinary);
       }))

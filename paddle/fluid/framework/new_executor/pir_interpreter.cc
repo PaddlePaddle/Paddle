@@ -1101,7 +1101,7 @@ void PirInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node->EventsToWait()) {
       phi::RecordEvent record(
-          "RecordStreamEvent", phi::TracerEventType::UserDefined, 10);
+          "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
       VLOG(3) << "Record event on default stream in jit_input_var at op: "
               << instr_node->Name();
       event.event_->Record(default_dev_ctx);
@@ -1123,7 +1123,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
     return;
   }
   phi::RecordEvent record(
-      "RecordStreamForGC", phi::TracerEventType::UserDefined, 10);
+      "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
   gpuStream_t stream =
       reinterpret_cast<const phi::GPUContext&>(instr->DeviceContext()).stream();
@@ -1248,7 +1248,8 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
 }
 
 void PirInterpreter::CheckGC(InstructionBase* instr) {
-  phi::RecordEvent record("CheckGC", phi::TracerEventType::UserDefined, 10);
+  phi::RecordEvent record(
+      "CheckGC", platform::TracerEventType::UserDefined, 10);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RecordStreamForGC(instr);
@@ -1826,7 +1827,7 @@ void PirInterpreter::RunInstructionBaseAsync(size_t instr_id) {
 void PirInterpreter::RunNextInstructions(InstructionBase* instr,
                                          SchedulingQueue* reserved_next_ops) {
   phi::RecordEvent record(
-      "RunNextInstructions", phi::TracerEventType::UserDefined, 10);
+      "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
 
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id
@@ -1851,7 +1852,7 @@ void PirInterpreter::RunNextInstructions(InstructionBase* instr,
 
 void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   phi::RecordEvent instruction_event(
-      instr_node->Name(), phi::TracerEventType::Operator, 1);
+      instr_node->Name(), platform::TracerEventType::Operator, 1);
 
   auto cur_place = instr_node->DeviceContext().GetPlace();
   SetDeviceId(cur_place);
@@ -1897,7 +1898,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     if (!instr_node->IsArtificial()) {
       {
         phi::RecordEvent record(
-            "InstrRun", phi::TracerEventType::UserDefined, 10);
+            "InstrRun", platform::TracerEventType::UserDefined, 10);
         instr_node->Run();
       }
 

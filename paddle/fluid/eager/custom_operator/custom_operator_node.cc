@@ -300,7 +300,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   if (require_any_grad && (vec_map.size() > 2)) {
     phi::RecordEvent node_creation_record_event(
         "Custom Op " + op_type_ + " double_grad node_creation",
-        phi::TracerEventType::OperatorInner,
+        paddle::platform::TracerEventType::OperatorInner,
         1);
     VLOG(6) << " Construct Grad for Custom Op: " << op_type_;
     ConstructFwdAndBwdMap(vec_map, op_type_);
