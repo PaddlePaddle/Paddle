@@ -231,6 +231,12 @@ void MatchMatrixTensorInferMeta(const MetaTensor& x,
                                 MetaTensor* tmp,
                                 MetaConfig config = MetaConfig());
 
+void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
+                                 const MetaTensor& atol,
+                                 const MetaTensor& rtol,
+                                 bool hermitian,
+                                 MetaTensor* out);
+
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,
                                        const MetaTensor& in_state,

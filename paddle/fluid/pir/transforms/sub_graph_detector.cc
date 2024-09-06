@@ -589,20 +589,21 @@ void SubgraphDetector::DoOpFusion() {
       MergeSubGraphs(producer, op, union_find, loop_detector);
     }
   }
-  for (auto* op : sort_ops_) {
-    auto producers = GetProducerOpsReverseSort(op, op2id_);
-    for (auto* producer : producers) {
-      if (op_classifier_(*op) && !op_classifier_(*producer)) {
-        for (auto* consumer : GetConsumerOpsSimple(producer)) {
-          if (op_classifier_(*consumer) &&
-              consumer->GetParent() == op->GetParent()) {
-            MergeSubGraphs(op, consumer, union_find, loop_detector);
-          }
-        }
-        continue;
-      }
-    }
-  }
+  // TODO(chenxi67): Redo this part after bug issue about llama2 is fixed
+  // for (auto* op : sort_ops_) {
+  //   auto producers = GetProducerOpsReverseSort(op, op2id_);
+  //   for (auto* producer : producers) {
+  //     if (op_classifier_(*op) && !op_classifier_(*producer)) {
+  //       for (auto* consumer : GetConsumerOpsSimple(producer)) {
+  //         if (op_classifier_(*consumer) &&
+  //             consumer->GetParent() == op->GetParent()) {
+  //           MergeSubGraphs(op, consumer, union_find, loop_detector);
+  //         }
+  //       }
+  //       continue;
+  //     }
+  //   }
+  // }
   for (const auto& op : sort_ops_) {
     subgraph_map_[op] = union_find.GetSetFromOp(op);
   }

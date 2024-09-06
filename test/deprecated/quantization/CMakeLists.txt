@@ -237,13 +237,8 @@ list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 if(WIN32)
   set(SINGLE_CARD_TEST_OPS
       test_user_defined_quantization_deprecated
-      test_quantization_scale_pass_deprecated
-      test_quantization_pass_deprecated
-      test_moving_average_abs_max_scale_op_deprecated
-      test_imperative_qat_channelwise
-      test_imperative_qat
-      test_imperative_out_scale
-      test_graph_deprecated)
+      test_quantization_scale_pass_deprecated test_quantization_pass_deprecated
+      test_moving_average_abs_max_scale_op_deprecated test_graph_deprecated)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
   foreach(src ${SINGLE_CARD_TEST_OPS})
     py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
@@ -270,17 +265,12 @@ endif()
 
 set_tests_properties(test_graph_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_quantization_pass_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
 set_tests_properties(test_user_defined_quantization_deprecated
                      PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 
 if(APPLE)
-  set_tests_properties(test_post_training_quantization_while PROPERTIES TIMEOUT
-                                                                        300)
-  set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_post_training_quantization_while_deprecated
+                       PROPERTIES TIMEOUT 300)
 endif()
 
 set_tests_properties(test_quantization_scale_pass_deprecated PROPERTIES TIMEOUT

@@ -589,13 +589,6 @@ func (config *Config) SetMKLDNNOp(opList []string) {
 }
 
 ///
-/// \brief Turn on OneDNN quantization.
-///
-func (config *Config) EnableMkldnnQuantizer() {
-	C.PD_ConfigEnableMkldnnQuantizer(config.c)
-}
-
-///
 /// \brief Turn on OneDNN bfloat16.
 ///
 func (config *Config) EnableMkldnnBfloat16() {
@@ -636,15 +629,6 @@ func (config *Config) SetBfloat16Op(opList []string) {
 ///
 func (config *Config) ThreadLocalStreamEnabled() bool {
 	return cvtPDBoolToGo(C.PD_ConfigThreadLocalStreamEnabled(config.c))
-}
-
-///
-/// \brief A boolean state telling whether the OneDNN quantization is enabled.
-///
-/// \return bool Whether the OneDNN quantization is enabled.
-///
-func (config *Config) MkldnnQuantizerEnabled() bool {
-	return cvtPDBoolToGo(C.PD_ConfigMkldnnQuantizerEnabled(config.c))
 }
 
 ///

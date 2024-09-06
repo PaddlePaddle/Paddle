@@ -1076,7 +1076,7 @@ void BindOperation(py::module *m) {
             if (int_attr) {
               return py::cast(int_attr.data());
             } else {
-              return py::cast<py::none>(Py_None);
+              return py::cast(-1);
             }
           },
           [](Operation &self, const int &op_role) {

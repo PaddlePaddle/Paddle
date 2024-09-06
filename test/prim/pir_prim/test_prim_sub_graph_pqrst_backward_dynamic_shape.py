@@ -35,6 +35,22 @@ def pow_net(x):
     return paddle.pow(x, 3.2)
 
 
+def prod_net1(x):
+    return paddle.prod(x)
+
+
+def prod_net2(x):
+    return paddle.prod(x, 0)
+
+
+def prod_net3(x):
+    return paddle.prod(x, keepdim=False)
+
+
+def prod_net4(x):
+    return paddle.prod(x, 0, keepdim=False)
+
+
 def scale_net(x):
     return paddle.scale(x, scale=-2.3)
 
@@ -157,6 +173,66 @@ class TestPrimPowWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, 30]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = pow_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimProdWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [100]
+        self.init_x_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = prod_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimProdWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [100, 20, 30]
+        self.init_x_shape = [None, None, 30]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = prod_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimProdWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [100, 20, 30]
+        self.init_x_shape = [None, None, 30]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = prod_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimProdWithGrad4(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [100, 20, 30]
+        self.init_x_shape = [None, None, 30]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = prod_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimProdWithGrad5(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [100, 20, 30]
+        self.init_x_shape = [None, None, 30]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = prod_net4
         self.enable_cinn = False
         self.tol = 1e-6
 
