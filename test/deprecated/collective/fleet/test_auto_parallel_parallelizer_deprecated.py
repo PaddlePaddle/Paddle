@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import (
+sys.path.append("../../../legacy_test")
+from test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
 
@@ -22,7 +24,7 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
 class TestParallelizer(TestMultipleAccelerators):
     # check sharding logic as well as the accuracy with single mode
     def test_parallelizer_logic(self):
-        self.run_mnist_2accelerators('auto_parallel_parallelizer.py')
+        self.run_mnist_2accelerators('auto_parallel_parallelizer_deprecated.py')
 
 
 if __name__ == "__main__":

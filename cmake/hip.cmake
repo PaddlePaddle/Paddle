@@ -85,6 +85,10 @@ find_package_and_include(hipsparse)
 find_package_and_include(rocsparse)
 find_package_and_include(rocfft)
 
+if(CCACHE_PATH)
+  set(HIP_HIPCC_EXECUTABLE ${CCACHE_PATH} ${HIP_HIPCC_EXECUTABLE})
+endif()
+
 # set CXX flags for HIP
 set(CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -DROCM_NO_WRAPPER_HEADER_WARNING")

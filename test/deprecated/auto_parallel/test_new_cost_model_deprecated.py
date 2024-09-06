@@ -14,9 +14,11 @@
 
 import json
 import os
+import sys
 import tempfile
 import unittest
 
+sys.path.append("../../auto_parallel")
 from test_cluster import cluster_json
 
 import paddle

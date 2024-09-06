@@ -797,6 +797,12 @@ XPUOpMap& get_kl3_ops() {
       {"prelu_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"prod_raw", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"put_along_axis",
+       XPUKernelSet({
+           phi::DataType::FLOAT32,
+           phi::DataType::FLOAT16,
+           phi::DataType::BFLOAT16,
+       })},
       {"range",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::INT64,
