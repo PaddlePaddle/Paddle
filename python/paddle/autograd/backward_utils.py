@@ -32,9 +32,11 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.abs",
     "pd_op.add",
     "pd_op.assign",
+    "pd_op.batch_norm",
     "pd_op.cast",
     "pd_op.concat",
     "pd_op.cos",
+    "pd_op.cumprod",
     "pd_op.cumsum",
     "pd_op.divide",
     "pd_op.dropout",
@@ -55,6 +57,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.multiply",
     "pd_op.pad",
     "pd_op.pow",
+    "pd_op.prod",
     "pd_op.reduce_as",
     "pd_op.relu",
     "pd_op.reshape",
@@ -74,6 +77,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.swiglu",
     "pd_op.transpose",
     "pd_op.tanh",
+    "pd_op.where",
 ]
 
 

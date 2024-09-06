@@ -26,7 +26,6 @@ os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_cinn_bucket_compile'] = '1'
 os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
-os.environ['FLAGS_deny_cinn_ops'] = 'slice;'
 
 import paddle
 
