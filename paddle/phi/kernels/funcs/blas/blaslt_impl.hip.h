@@ -816,7 +816,9 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                                  ctx.stream()));
   }
 
-  // TODO(wangyanepng): support global search on HIP platform.
+  // TODO(wangyanepng): HIP platform cannot support global search temporarily
+  // due to the incomplete capability of hipblaslt. Wait for hipblaslt to have
+  // the corresponding capabilities before providing support.
   static void SearchBestAlgoGlobal(
       const phi::GPUContext& ctx,
       const hipblasLtHandle_t& lt_handle,

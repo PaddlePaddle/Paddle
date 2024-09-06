@@ -28,6 +28,10 @@ limitations under the License. */
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.hip.h"
 #include "paddle/phi/kernels/funcs/hipblaslt.h"
+#endif
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#include "paddle/phi/kernels/autotune/auto_tune_base.h"
+#endif
 
 namespace phi {
 
