@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode, pir_utils
 from paddle.device import get_all_custom_device_type
 
 from ...base import dygraph_utils
@@ -1081,11 +1081,7 @@ class BatchNorm(Layer):
                 self._use_global_stats,
                 self._trainable_statistics,
             )
-            if self._act is None:
-                return batch_norm_out
-
-            act_op = getattr(_C_ops, self._act)
-            return act_op(batch_norm_out)
+            return pir_utils.append_activation_in_pir(batch_norm_out, self._act)
         else:
             # create output
             # mean and mean_out share the same memory

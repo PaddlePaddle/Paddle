@@ -112,19 +112,15 @@ class MetaInfo:
 
     @staticmethod
     def _handle_legacy_ir_amp_dtype(dtype):
-        expected_dtype_class = (
-            paddle.core.DataType
-            if paddle.framework.use_pir_api()
-            else paddle.core.VarDesc.VarType
-        )
-        assert isinstance(dtype, expected_dtype_class)
-
-        # TODO(@xiongkun) remove after pir become default state.
+        # TODO(cleanup-legacy-ir) remove after pir become default state.
         # We always use float32 in simulation if AMP is enabled.
+        if use_pir_api():
+            return dtype
+        assert isinstance(dtype, paddle.core.VarDesc.VarType)
+
         current_amp_state = amp_state()
         if (
-            not use_pir_api()
-            and dtype == paddle.float16
+            dtype == paddle.float16
             and current_amp_state is not None
             and current_amp_state["dtype"] == "float16"
         ):
