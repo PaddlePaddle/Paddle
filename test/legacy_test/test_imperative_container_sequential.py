@@ -104,7 +104,9 @@ class TestImperativeContainerSequential(unittest.TestCase):
             output2 = data
             for layer in model3:
                 output2 = layer(output2)
-            self.assertTrue(paddle.allclose(output1, output2).item())
+            np.testing.assert_allclose(
+                output1.numpy(), output2.numpy(), equal_nan=True
+            )
 
     def test_sequential_list_params(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
