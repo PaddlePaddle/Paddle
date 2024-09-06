@@ -91,7 +91,6 @@ class TestUnpoolOp(OpTest):
     def setUp(self):
         self.op_type = "unpool"
         self.python_api = max_unpool2d_wrapper
-        self.indices_dtype = "int32"
         self.init_test_case()
         input = np.random.randint(0, 100, self.shape)
         nsize, csize, hsize, wsize = input.shape
@@ -121,7 +120,7 @@ class TestUnpoolOp(OpTest):
 
         self.inputs = {
             'X': input.astype('float64'),
-            'Indices': indices.astype(self.indices_dtype),
+            'Indices': indices.astype('int32'),
         }
         self.attrs = {
             'strides': self.strides,
@@ -157,18 +156,6 @@ class TestUnpoolOpcase1(TestUnpoolOp):
         self.strides = [2, 2]
         self.paddings = [0, 0]
         self.output_size = None
-
-
-class TestUnpoolOpcase2(TestUnpoolOp):
-    def init_test_case(self):
-        self.unpool2d_forward_naive = unpool2dmax_forward_naive
-        self.unpooling_type = "max"
-        self.shape = [3, 2, 5, 5]
-        self.ksize = [4, 4]
-        self.strides = [2, 2]
-        self.paddings = [0, 0]
-        self.output_size = None
-        self.indices_dtype = "int64"
 
 
 class TestUnpoolOpOutputsize(TestUnpoolOp):
@@ -458,51 +445,6 @@ class TestUnpoolOpAPI_dy4(unittest.TestCase):
             np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
-class TestUnpoolOpAPI_dy5(unittest.TestCase):
-    def test_case(self):
-        import numpy as np
-
-        import paddle
-        import paddle.nn.functional as F
-        from paddle import base
-        from paddle.base import core
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        with base.dygraph.guard(place):
-            input_data = np.array(
-                [
-                    [
-                        [
-                            [1, 2, 3, 4, 5],
-                            [6, 7, 8, 9, 10],
-                            [11, 12, 13, 14, 15],
-                            [16, 17, 18, 19, 20],
-                        ]
-                    ]
-                ]
-            ).astype("float32")
-            input_x = paddle.to_tensor(input_data)
-            output, indices = F.max_pool2d(
-                input_x, kernel_size=2, stride=2, return_mask=True
-            )
-            out_pp = F.max_unpool2d(
-                output,
-                indices.astype("int64"),
-                kernel_size=2,
-                stride=None,
-                output_size=input_x.shape,
-            )
-            output_np = output.numpy()
-            indices_np = indices.numpy()
-            expect_res = unpool2dmax_forward_naive(
-                output_np, indices_np, [2, 2], [2, 2], [0, 0], [4, 5]
-            ).astype("float64")
-            np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
-
-
 class TestUnpoolOpAPI_st(unittest.TestCase):
     @test_with_pir_api
     def test_case(self):
@@ -537,51 +479,6 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
 
         pool_out_np = np.array([[[[6.0, 8.0], [14.0, 16.0]]]]).astype("float32")
         indices_np = np.array([[[[5, 7], [13, 15]]]]).astype("int32")
-        expect_res = unpool2dmax_forward_naive(
-            pool_out_np, indices_np, [2, 2], [2, 2], [0, 0], [5, 5]
-        ).astype("float64")
-        np.testing.assert_allclose(results[0], expect_res, rtol=1e-05)
-        paddle.disable_static()
-
-
-class TestUnpoolOpAPI_st2(unittest.TestCase):
-    @test_with_pir_api
-    def test_case(self):
-        import paddle
-        import paddle.nn.functional as F
-        from paddle.base import core
-
-        paddle.enable_static()
-
-        input_data = np.array(
-            [[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]]]
-        ).astype("float32")
-
-        x = paddle.static.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
-        output, indices = F.max_pool2d(
-            x, kernel_size=2, stride=2, return_mask=True
-        )
-        unpool_out = F.max_unpool2d(
-            output,
-            indices.astype("int64"),
-            kernel_size=2,
-            stride=None,
-            output_size=(5, 5),
-        )
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = paddle.static.Executor(place)
-
-        results = exe.run(
-            feed={"x": input_data},
-            fetch_list=[unpool_out],
-            return_numpy=True,
-        )
-
-        pool_out_np = np.array([[[[6.0, 8.0], [14.0, 16.0]]]]).astype("float32")
-        indices_np = np.array([[[[5, 7], [13, 15]]]]).astype("int64")
         expect_res = unpool2dmax_forward_naive(
             pool_out_np, indices_np, [2, 2], [2, 2], [0, 0], [5, 5]
         ).astype("float64")

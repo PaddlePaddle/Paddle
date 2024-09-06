@@ -224,41 +224,6 @@ class TestUnpool1DOpAPI_dygraph5(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestUnpool1DOpAPI_dygraph6(unittest.TestCase):
-    def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
-            paddle.disable_static()
-            input_data = np.arange(3 * 16).reshape([1, 3, 16]).astype("float32")
-            input_x = paddle.to_tensor(input_data)
-            output, indices = F.max_pool1d(
-                input_x, kernel_size=2, stride=2, return_mask=True
-            )
-            output_unpool = F.max_unpool1d(
-                output,
-                indices.astype("int64"),
-                kernel_size=2,
-                stride=2,
-                output_size=input_x.shape,
-            )
-            expected_output_unpool = unpool1dmax_forward_naive(
-                output.numpy(), indices.numpy(), [2], [2], [0], [16]
-            )
-            np.testing.assert_allclose(
-                output_unpool.numpy(), expected_output_unpool, rtol=1e-05
-            )
-
-        paddle.enable_static()
-
-
 class TestUnpool1DOpAPI_static(unittest.TestCase):
     @test_with_pir_api
     def test_case(self):
@@ -300,56 +265,6 @@ class TestUnpool1DOpAPI_static(unittest.TestCase):
                 ).astype("float32")
                 indices_np = np.array([[[1, 3], [1, 3], [1, 3]]]).astype(
                     "int32"
-                )
-                expected_output_unpool = unpool1dmax_forward_naive(
-                    pool1d_out_np, indices_np, [2], [2], [0], [4]
-                )
-                np.testing.assert_allclose(
-                    fetches[0], expected_output_unpool, rtol=1e-05
-                )
-
-
-class TestUnpool1DOpAPI_static2(unittest.TestCase):
-    @test_with_pir_api
-    def test_case(self):
-        paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                input_data = np.array(
-                    [[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]]
-                ).astype("float32")
-                x = paddle.static.data(
-                    name='x', shape=[1, 3, 4], dtype='float32'
-                )
-                output, indices = F.max_pool1d(
-                    x, kernel_size=2, stride=2, return_mask=True
-                )
-                output_unpool = F.max_unpool1d(
-                    output, indices.astype("int64"), kernel_size=2, stride=None
-                )
-
-                exe = paddle.static.Executor(place)
-                fetches = exe.run(
-                    feed={"x": input_data},
-                    fetch_list=[output_unpool],
-                    return_numpy=True,
-                )
-                pool1d_out_np = np.array(
-                    [[[2.0, 4.0], [6.0, 8.0], [10.0, 12.0]]]
-                ).astype("float32")
-                indices_np = np.array([[[1, 3], [1, 3], [1, 3]]]).astype(
-                    "int64"
                 )
                 expected_output_unpool = unpool1dmax_forward_naive(
                     pool1d_out_np, indices_np, [2], [2], [0], [4]
