@@ -75,28 +75,6 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-void FeedSparseCooTensorKernel(const Context& dev_ctx,
-                               const phi::ExtendedTensor& x,
-                               int col,
-                               phi::SparseCooTensor* out) {
-  PADDLE_ENFORCE_NOT_NULL(
-      out,
-      common::errors::NotFound(
-          "Output cannot be found in scope for operator 'Feed'"));
-  const auto& feed_item = CheckAndGetFeedItem(x, col);
-  const auto& in_tensor = paddle::get<phi::SparseCooTensor>(feed_item);
-  const auto& place = dev_ctx.GetPlace();
-  if (phi::is_same_place(in_tensor.place(), place)) {
-    *out = in_tensor;
-  } else {
-    phi::DenseTensor indices, values;
-    framework::TensorCopy(in_tensor.indices(), place, dev_ctx, &indices);
-    framework::TensorCopy(in_tensor.values(), place, dev_ctx, &values);
-    out->SetMember(indices, values, in_tensor.meta());
-  }
-}
-
-template <typename Context>
 void FeedStringsKernel(const Context& dev_ctx UNUSED,
                        const phi::ExtendedTensor& x,
                        int col,
