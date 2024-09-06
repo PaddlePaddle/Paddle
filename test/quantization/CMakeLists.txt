@@ -462,8 +462,8 @@ list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 if(WIN32)
   set(SINGLE_CARD_TEST_OPS
       test_imperative_qat_channelwise test_imperative_qat
-      test_imperative_qat_lsq test_imperative_qat_matmul
-      test_imperative_out_scale)
+      test_imperative_qat_fuse test_imperative_qat_lsq
+      test_imperative_qat_matmul test_imperative_out_scale)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
   foreach(src ${SINGLE_CARD_TEST_OPS})
     py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
@@ -493,7 +493,11 @@ endif()
 set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_qat_matmul PROPERTIES TIMEOUT 300)
-
+set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 if(LINUX AND WITH_ONEDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                       120)
@@ -517,4 +521,5 @@ if(APPLE)
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
                                                                         300)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 endif()
