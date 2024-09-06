@@ -1320,7 +1320,7 @@ phi::KernelKey GetKernelKey(
 
   if (kernel_backend == phi::Backend::UNDEFINED) {
     VLOG(8) << "Kernel backend cannot be infered from op operands";
-    3 kernel_backend = paddle::experimental::ParseBackend(place);
+    kernel_backend = paddle::experimental::ParseBackend(place);
   }
 
 #ifdef PADDLE_WITH_DNNL
