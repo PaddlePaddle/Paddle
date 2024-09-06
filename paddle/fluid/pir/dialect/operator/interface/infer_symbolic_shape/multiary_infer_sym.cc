@@ -1739,7 +1739,7 @@ bool GraphKhopSamplerOpInferSymbolicShape(
   return true;
 }
 
-bool GraphReindexOpInferSymbolicShape(
+bool ReindexGraphOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
