@@ -54,8 +54,6 @@ SpmdInfo MoEGateDispatchFwdInferSpmd(const DistMetaTensor& x,
       phi::errors::InvalidArgument("gate_logits should be a 2-D tensor, but "
                                    "got gate_logits_shape.size() == %d",
                                    gate_logits_shape.size()));
-  PADDLE_ENFORCE_EQ(
-      use_pad, true, phi::errors::InvalidArgument("use_pad must be true"));
   // infer axes dims_mapping
   std::string x_axes = "sh";
   std::string gate_logits_axes = "se";
@@ -174,8 +172,6 @@ SpmdInfo MoEGateDispatchBwdInferSpmd(const DistMetaTensor& combine_weights,
                         "grad_combine_weights should be a 2-D tensor, but "
                         "got grad_combine_weights_shape.size() == %d",
                         grad_combine_weights_shape.size()));
-  PADDLE_ENFORCE_EQ(
-      use_pad, true, phi::errors::InvalidArgument("use_pad must be true"));
 
   // infer axes dims_mapping
   std::string combine_weights_axes = "sk";
