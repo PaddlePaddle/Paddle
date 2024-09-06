@@ -82,19 +82,19 @@ class AMPTest(unittest.TestCase):
         )
 
     def test_amp_lists_7(self):
-        self.fp32_list.add('reshape2')
-        self.gray_list.remove('reshape2')
+        self.fp32_list.add('reshape')
+        self.gray_list.remove('reshape')
 
         self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
-            custom_fp32_list={'reshape2'}
+            custom_fp32_list={'reshape'}
         )
 
     def test_amp_list_8(self):
-        self.bf16_list.add('reshape2')
-        self.gray_list.remove('reshape2')
+        self.bf16_list.add('reshape')
+        self.gray_list.remove('reshape')
 
         self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
-            custom_bf16_list={'reshape2'}
+            custom_bf16_list={'reshape'}
         )
 
 

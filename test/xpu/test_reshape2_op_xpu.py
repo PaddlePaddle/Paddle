@@ -30,14 +30,14 @@ paddle.enable_static()
 
 class XPUTestReshapeOp(XPUOpTestWrapper):
     def __init__(self):
-        self.op_name = "reshape2"
+        self.op_name = "reshape"
         self.use_dynamic_create_class = False
 
     # situation 1: have shape( list, no tensor), no actual shape(Tensor)
     class TestReshapeOp(XPUOpTest):
         def setUp(self):
             self.init_data()
-            self.op_type = "reshape2"
+            self.op_type = "reshape"
             self.dtype = self.in_type
             self.init_test_input()
             self.init_test_output()
@@ -210,7 +210,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
             self.infered_shape = (1, 8192, 640)
 
 
-support_types = get_xpu_op_support_types("reshape2")
+support_types = get_xpu_op_support_types("reshape")
 for stype in support_types:
     create_test_class(globals(), XPUTestReshapeOp, stype)
 

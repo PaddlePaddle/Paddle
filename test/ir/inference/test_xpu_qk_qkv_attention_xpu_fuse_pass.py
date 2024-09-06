@@ -40,7 +40,7 @@ class TestGatherAddTransposePass(PassAutoScanTest):
         # Use function `is_program_valid` to filter the invalid programs before running
         # Use function `add_skip_pass_case` to ignore the programs even if they cause bug while runing
         reshape_1_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["input"]},
             outputs={"Out": ["reshape_1_out"], "XShape": ["reshape_1_xshape"]},
             shape=[-1, 100, 3, 12, 16],
@@ -134,7 +134,7 @@ class TestGatherAddTransposePass(PassAutoScanTest):
             axis=[0, 2, 1, 3],
         )
         reshape_2_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["transpose2_3_out"]},
             outputs={"Out": ["output"], "XShape": ["reshape_2_xshape"]},
             shape=[-1, 100, 192],

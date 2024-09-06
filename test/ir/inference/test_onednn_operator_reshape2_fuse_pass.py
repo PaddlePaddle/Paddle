@@ -50,7 +50,7 @@ class TestTranspose2Reshape2OneDNNFusePass(PassAutoScanTest):
         )
 
         reshape2_op = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["transpose_out"]},
             outputs={"Out": ["reshape_out"]},
             attrs={

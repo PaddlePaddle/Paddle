@@ -83,14 +83,14 @@ class TestOneDNNMatmulTransposeReshapeFusePass(PassAutoScanTest):
             attrs={'axis': axis},
         )
 
-        reshape2_op = OpConfig(
-            type='reshape2',
+        reshape_op = OpConfig(
+            type='reshape',
             inputs={'X': ['transpose2_output']},
-            outputs={'Out': ['reshape2_output'], 'XShape': ['reshape2_xshape']},
+            outputs={'Out': ['reshape_output'], 'XShape': ['reshape_xshape']},
             attrs={'shape': shape},
         )
 
-        model_net = [matmul_op, transpose2_op, reshape2_op]
+        model_net = [matmul_op, transpose2_op, reshape_op]
 
         program_config = ProgramConfig(
             ops=model_net,
@@ -103,7 +103,7 @@ class TestOneDNNMatmulTransposeReshapeFusePass(PassAutoScanTest):
                     data_gen=partial(generate_input, 'y')
                 ),
             },
-            outputs=['reshape2_output'],
+            outputs=['reshape_output'],
         )
 
         return program_config

@@ -47,7 +47,7 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
             return np.random.random(x_shape).astype(np.float32)
 
         reshape2_op1 = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={
                 "X": ["reshape2_input1"],
             },
@@ -70,7 +70,7 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
             axis=axis_v,
         )
         reshape2_op2 = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={
                 "X": ["transpose2_output"],
             },

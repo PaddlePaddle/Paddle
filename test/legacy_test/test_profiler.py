@@ -34,7 +34,7 @@ class TestFLOPSAPI(unittest.TestCase):
         )
         self.assertTrue(
             flops(
-                'reshape2',
+                'reshape',
                 {
                     'X': [[12, 12, 12]],
                 },

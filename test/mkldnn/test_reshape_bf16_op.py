@@ -26,7 +26,7 @@ from paddle.base import core
 )
 class TestReshapeBf16Op(OpTest):
     def setUp(self):
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.use_mkldnn = False
         self.mkldnn_data_type = "bfloat16"
         self.init_data()
@@ -59,7 +59,7 @@ class TestReshapeBf16Op(OpTest):
             core.CPUPlace(),
             no_check_set=['XShape'],
             check_dygraph=False,
-            check_pir_onednn=(self.op_type == "reshape2"),
+            check_pir_onednn=(self.op_type == "reshape"),
         )
 
     def test_check_grad(self):
@@ -72,7 +72,7 @@ class TestReshapeBf16Op(OpTest):
             user_defined_grad_outputs=[
                 self.inputs["X"].reshape(self.infered_shape)
             ],
-            check_pir_onednn=(self.op_type == "reshape2"),
+            check_pir_onednn=(self.op_type == "reshape"),
         )
 
 

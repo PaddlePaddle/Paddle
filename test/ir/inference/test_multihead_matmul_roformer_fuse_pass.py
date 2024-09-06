@@ -127,19 +127,19 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
             axis=-1,
         )
         reshape_0 = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": [ele_0.outputs["Out"][0]]},
             outputs={"Out": ["reshape_0_out"], "XShape": ["reshape_0_Xout"]},
             shape=(1, 128, 12, 64),
         )
         reshape_1 = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": [ele_1.outputs["Out"][0]]},
             outputs={"Out": ["reshape_1_out"], "XShape": ["reshape_1_Xout"]},
             shape=(1, 128, 12, 64),
         )
         reshape_2 = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": [ele_2.outputs["Out"][0]]},
             outputs={"Out": ["reshape_2_out"], "XShape": ["reshape_2_Xout"]},
             shape=(1, 128, 12, 64),
@@ -301,7 +301,7 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
             axis=(0, 2, 1, 3),
         )
         reshape_3 = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": [transpose_3.outputs["Out"][0]]},
             outputs={"Out": ["reshape_3_out"], "XShape": ["reshape_3_Xout"]},
             shape=(1, 128, 768),

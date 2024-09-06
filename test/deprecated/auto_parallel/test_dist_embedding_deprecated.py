@@ -81,7 +81,7 @@ class TestDistPNorm(unittest.TestCase):
                 op_types.append(op.type)
 
             assert op_types == [
-                'reshape2',
+                'reshape',
                 'c_embedding',
                 'c_allreduce_sum',
                 'reduce_mean',

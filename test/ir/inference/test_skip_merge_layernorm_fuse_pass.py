@@ -110,18 +110,18 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
             outputs={'Out': ['elementadd_op_out']},
             attrs={'axis': -1},
         )
-        reshape2_00_op = OpConfig(
-            type="reshape2",
+        reshape_00_op = OpConfig(
+            type="reshape",
             inputs={'X': ['elementadd_op_out']},
             outputs={
-                'Out': ['reshape2_00_out'],
-                'XShape': ['reshape2_00_outxshape'],
+                'Out': ['reshape_00_out'],
+                'XShape': ['reshape_00_outxshape'],
             },
             attrs={'shape': attrs[0]['shape']},
         )
         strided_slice_10_op = OpConfig(
             type="strided_slice",
-            inputs={'Input': ['reshape2_00_out']},
+            inputs={'Input': ['reshape_00_out']},
             outputs={'Out': ['strided_slice_10_out']},
             attrs={
                 'axes': [1, 2],
@@ -133,7 +133,7 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
         )
         strided_slice_11_op = OpConfig(
             type="strided_slice",
-            inputs={'Input': ['reshape2_00_out']},
+            inputs={'Input': ['reshape_00_out']},
             outputs={'Out': ['strided_slice_11_out']},
             attrs={
                 'axes': [1, 2],
@@ -145,7 +145,7 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
         )
         strided_slice_12_op = OpConfig(
             type="strided_slice",
-            inputs={'Input': ['reshape2_00_out']},
+            inputs={'Input': ['reshape_00_out']},
             outputs={'Out': ['strided_slice_12_out']},
             attrs={
                 'axes': [1, 2],
@@ -157,7 +157,7 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
         )
         strided_slice_13_op = OpConfig(
             type="strided_slice",
-            inputs={'Input': ['reshape2_00_out']},
+            inputs={'Input': ['reshape_00_out']},
             outputs={'Out': ['strided_slice_13_out']},
             attrs={
                 'axes': [1, 2],
@@ -180,19 +180,19 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
             outputs={'Out': ['concat_20_out']},
             attrs={'axis': -1},
         )
-        reshape2_30_op = OpConfig(
-            type='reshape2',
+        reshape_30_op = OpConfig(
+            type='reshape',
             inputs={'X': ['concat_20_out']},
             outputs={
-                'Out': ['reshape2_30_Out'],
-                'XShape': ['reshape2_30_XShape'],
+                'Out': ['reshape_30_Out'],
+                'XShape': ['reshape_30_XShape'],
             },
             attrs={'shape': attrs[1]['shape']},
         )
         layernorm_40_op = OpConfig(
             type='layer_norm',
             inputs={
-                'X': ['reshape2_30_Out'],
+                'X': ['reshape_30_Out'],
                 'Bias': ['layer_norm_bias'],
                 'Scale': ['layer_norm_scale'],
             },
@@ -209,13 +209,13 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=[
                 elementadd_op,
-                reshape2_00_op,
+                reshape_00_op,
                 strided_slice_10_op,
                 strided_slice_11_op,
                 strided_slice_12_op,
                 strided_slice_13_op,
                 concat_20_op,
-                reshape2_30_op,
+                reshape_30_op,
                 layernorm_40_op,
             ],
             weights={

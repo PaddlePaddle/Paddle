@@ -41,7 +41,7 @@ class TestMultiEncoderXPUFusePass(PassAutoScanTest):
             axis=2,
         )
         q_reshape_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["q_add_out"]},
             outputs={"Out": ["q_reshape_out"], "XShape": ["q_reshape_xshape"]},
             shape=[0, 0, 12, 64],
@@ -70,7 +70,7 @@ class TestMultiEncoderXPUFusePass(PassAutoScanTest):
             axis=2,
         )
         k_reshape_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["k_add_out"]},
             outputs={"Out": ["k_reshape_out"], "XShape": ["k_reshape_xshape"]},
             shape=[0, 0, 12, 64],
@@ -99,7 +99,7 @@ class TestMultiEncoderXPUFusePass(PassAutoScanTest):
             axis=2,
         )
         v_reshape_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["v_add_out"]},
             outputs={"Out": ["v_reshape_out"], "XShape": ["v_reshape_xshape"]},
             shape=[0, 0, 12, 64],
@@ -152,7 +152,7 @@ class TestMultiEncoderXPUFusePass(PassAutoScanTest):
             axis=[0, 2, 1, 3],
         )
         qkv_reshape_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["qkv_transpose_out"]},
             outputs={
                 "Out": ["qkv_reshape_out"],

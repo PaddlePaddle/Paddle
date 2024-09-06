@@ -108,7 +108,7 @@ class TestCompatible(unittest.TestCase):
         loss, program, start_program = mlp_forward(program, startup_program)
         ops = program.global_block().ops
         for idx, op in enumerate(ops):
-            if op.type == 'reshape2':
+            if op.type == 'reshape':
                 dist_op_impl_container = (
                     get_distributed_operator_impl_container(op.type)
                 )
@@ -206,7 +206,7 @@ class TestCompatible(unittest.TestCase):
         loss, program, start_program = mlp_forward(program, startup_program)
         ops = program.global_block().ops
         for idx, op in enumerate(ops):
-            if op.type == 'reshape2':
+            if op.type == 'reshape':
                 dist_op_impl_container = (
                     get_distributed_operator_impl_container(op.type)
                 )

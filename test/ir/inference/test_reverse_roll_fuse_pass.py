@@ -114,7 +114,7 @@ class ReverseRollPass(PassAutoScanTest):
             },
         ]
         reshape2_00 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["input0"]},
             outputs={
                 "Out": ["reshape2_00_out"],
@@ -123,7 +123,7 @@ class ReverseRollPass(PassAutoScanTest):
             attrs={"shape": [-1, window_size, window_size, dim]},
         )
         reshape2_10 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["reshape2_00_out"]},
             outputs={
                 "Out": ["reshape2_10_out"],
@@ -150,7 +150,7 @@ class ReverseRollPass(PassAutoScanTest):
             attrs={"axis": [0, 1, 3, 2, 4, 5]},
         )
         reshape2_30 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["transpose2_20_out"]},
             outputs={
                 "Out": ["reshape2_30_out"],
@@ -178,7 +178,7 @@ class ReverseRollPass(PassAutoScanTest):
             },
         )
         reshape2_40 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["roll_30_1_out"]},
             outputs={
                 "Out": ["reshape2_40_out"],
@@ -304,7 +304,7 @@ class ReverseRoll2Pass(PassAutoScanTest):
             },
         ]
         reshape2_00 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["input0"]},
             outputs={
                 "Out": ["reshape2_00_out"],
@@ -313,7 +313,7 @@ class ReverseRoll2Pass(PassAutoScanTest):
             attrs={"shape": [-1, window_size, window_size, dim]},
         )
         reshape2_10 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["reshape2_00_out"]},
             outputs={
                 "Out": ["reshape2_10_out"],
@@ -340,7 +340,7 @@ class ReverseRoll2Pass(PassAutoScanTest):
             attrs={"axis": [0, 1, 3, 2, 4, 5]},
         )
         reshape2_30 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["transpose2_20_out"]},
             outputs={
                 "Out": ["reshape2_30_out"],
@@ -356,7 +356,7 @@ class ReverseRoll2Pass(PassAutoScanTest):
             },
         )
         reshape2_40 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["reshape2_30_out"]},
             outputs={
                 "Out": ["reshape2_40_out"],

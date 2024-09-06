@@ -97,17 +97,17 @@ class TestOneDNNReshapeTransposeMatmulFusePass(PassAutoScanTest):
 
         ops_config = [
             {
-                'op_type': 'reshape2',
+                'op_type': 'reshape',
                 'op_inputs': {'X': ['input_data1']},
                 'op_outputs': {
-                    'Out': ['reshape2_output'],
-                    'XShape': ['reshape2_xshape'],
+                    'Out': ['reshape_output'],
+                    'XShape': ['reshape_xshape'],
                 },
                 'op_attrs': {'shape': attrs[0]['shape']},
             },
             {
                 'op_type': 'transpose2',
-                'op_inputs': {'X': ['reshape2_output']},
+                'op_inputs': {'X': ['reshape_output']},
                 'op_outputs': {
                     'Out': ['transpose2_output'],
                     'XShape': ['transpose2_xshape'],

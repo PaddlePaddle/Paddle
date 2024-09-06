@@ -149,7 +149,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             },
         )
         reshape_op2 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={
                 "X": ["layer_norm_output1"],
             },
@@ -167,7 +167,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             },
         )
         reshape_op3 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={
                 "X": ["reshape_output2"],
             },
@@ -195,7 +195,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             attrs={"axis": attrs[2]['axis']},
         )
         reshape_op5 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={
                 "X": ["transpose_output4"],
             },
@@ -213,7 +213,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             },
         )
         reshape_op6 = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={
                 "X": ["reshape_output5"],
             },

@@ -86,7 +86,7 @@ class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
 
         ops_config = [
             {
-                "op_type": "reshape2",
+                "op_type": "reshape",
                 "op_inputs": {"X": ["input_data"]},
                 "op_outputs": {
                     "Out": ["first_reshape2_output"],
@@ -104,7 +104,7 @@ class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
                 "op_attrs": {'axis': transpose2_axis},
             },
             {
-                "op_type": "reshape2",
+                "op_type": "reshape",
                 "op_inputs": {
                     "X": ["transpose2_output"],
                 },

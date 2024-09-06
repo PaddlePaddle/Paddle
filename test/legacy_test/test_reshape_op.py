@@ -27,7 +27,7 @@ from paddle.static import Program, program_guard
 class TestReshapeOp(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.public_python_api = paddle.tensor.reshape
@@ -60,7 +60,7 @@ class TestReshapeOp(OpTest):
 class TestReshapeOp_ZeroDim1(TestReshapeOp):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.python_api = paddle.tensor.reshape
@@ -100,7 +100,7 @@ class TestReshapeOp_ZeroDim3(OpTest):
 class TestReshapeBF16Op(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.prim_op_type = "prim"
         self.enable_cinn = False
         self.python_api = paddle.tensor.reshape
@@ -139,7 +139,7 @@ class TestReshapeBF16Op(OpTest):
 class TestReshapeFP16Op(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.public_python_api = paddle.tensor.reshape
@@ -188,7 +188,7 @@ class TestReshapeOpDimInfer2(TestReshapeOp):
 class TestReshapeOpWithInputShape(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.public_python_api = paddle.tensor.reshape
@@ -228,7 +228,7 @@ class TestReshapeOpWithInputShape(OpTest):
 class TestReshapeOp_attr_ShapeTensor(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.python_api = paddle.tensor.reshape
         self.public_python_api = paddle.tensor.reshape
         self.prim_op_type = "prim"
@@ -291,7 +291,7 @@ class TestReshapeOpDimInfer2_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor):
 class TestReshapeOp_attr_OnlyShape(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.python_api = paddle.tensor.reshape
         self.public_python_api = paddle.tensor.reshape
         self.prim_op_type = "prim"
@@ -350,7 +350,7 @@ class TestReshapeInt8Op(OpTest):
         self.init_data()
         self.use_mkldnn = True
         self._cpu_only = True
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         input = np.random.randint(0, 127, self.ori_shape).astype(self.dtype)
@@ -396,7 +396,7 @@ class TestReshapeUint8Op(TestReshapeInt8Op):
 class TestReshapeOpBool(TestReshapeOp):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         self.inputs = {

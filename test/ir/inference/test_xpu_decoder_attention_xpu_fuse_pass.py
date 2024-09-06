@@ -42,7 +42,7 @@ class TestDecoderAttentionXPUFusePass(PassAutoScanTest):
         # Use function `is_program_valid` to filter the invalid programs before running
         # Use function `add_skip_pass_case` to ignore the programs even if they cause bug while runing
         reshape2_1_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["input_q"]},
             outputs={
                 "Out": ["reshape2_1_out"],
@@ -51,7 +51,7 @@ class TestDecoderAttentionXPUFusePass(PassAutoScanTest):
             shape=[0, 0, 8, 32],
         )
         reshape2_2_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["input_k"]},
             outputs={
                 "Out": ["reshape2_2_out"],
@@ -60,7 +60,7 @@ class TestDecoderAttentionXPUFusePass(PassAutoScanTest):
             shape=[0, 0, 8, 32],
         )
         reshape2_3_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["input_v"]},
             outputs={
                 "Out": ["reshape2_3_out"],
@@ -133,7 +133,7 @@ class TestDecoderAttentionXPUFusePass(PassAutoScanTest):
             axis=[0, 2, 1, 3],
         )
         reshape2_4_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["transpose2_4_out"]},
             outputs={"Out": ["output"], "XShape": ["reshape2_4_xshape"]},
             shape=[0, 0, 256],

@@ -22,12 +22,12 @@ class TestReshapeUnstackConcatFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
         yield config, [
-            "reshape2",
+            "reshape",
             "slice",
-            "reshape2",
+            "reshape",
             "unstack",
             "concat",
-            "reshape2",
+            "reshape",
             "transpose2",
             "split",
         ], (1e-3, 1e-3)
@@ -36,7 +36,7 @@ class TestReshapeUnstackConcatFusePass(PassAutoScanTest):
         reshape_x_shape = [4, 48, 2, 16, 4096]
 
         reshape_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={"X": ["reshape_x"]},
             outputs={"Out": ["reshape_out"], "XShape": ["reshape_xshape"]},
             shape=[4, -1, 48, 2, 16, 4096],
@@ -88,7 +88,7 @@ class TestReshapeUnstackConcatFusePass(PassAutoScanTest):
             slice_0s.append(slice_0_op)
 
             reshape_0_op = OpConfig(
-                "reshape2",
+                "reshape",
                 inputs={"X": ["slice_0_" + str(i) + "_out"]},
                 outputs={
                     "Out": ["reshape_0_" + str(i) + "_out"],
@@ -110,7 +110,7 @@ class TestReshapeUnstackConcatFusePass(PassAutoScanTest):
             slice_1s.append(slice_1_op)
 
             reshape_1_op = OpConfig(
-                "reshape2",
+                "reshape",
                 inputs={"X": ["slice_1_" + str(i) + "_out"]},
                 outputs={
                     "Out": ["reshape_1_" + str(i) + "_out"],

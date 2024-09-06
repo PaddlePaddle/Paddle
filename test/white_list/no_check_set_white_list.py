@@ -20,7 +20,7 @@ no_check_set_white_list = [
     'flatten_contiguous_range',
     'lrn',
     'squeeze2',
-    'reshape2',
+    'reshape',
     'transpose2',
     'unsqueeze2',
     'cross_entropy2',

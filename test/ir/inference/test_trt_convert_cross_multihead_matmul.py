@@ -85,7 +85,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 "op_attrs": dics[0],
                             },
                             {
-                                "op_type": "reshape2",
+                                "op_type": "reshape",
                                 "op_inputs": {
                                     "X": ["mul1_output"],
                                 },
@@ -114,7 +114,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 "op_attrs": dics[3],
                             },
                             {
-                                "op_type": "reshape2",
+                                "op_type": "reshape",
                                 "op_inputs": {"X": ["mul2_output"]},
                                 "op_outputs": {
                                     "Out": ["reshape22_output"],
@@ -141,7 +141,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 "op_attrs": dics[6],
                             },
                             {
-                                "op_type": "reshape2",
+                                "op_type": "reshape",
                                 "op_inputs": {"X": ["mul3_output"]},
                                 "op_outputs": {
                                     "Out": ["reshape23_output"],
@@ -200,7 +200,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 "op_attrs": dics[13],
                             },
                             {
-                                "op_type": "reshape2",
+                                "op_type": "reshape",
                                 "op_inputs": {"X": ["transpose24_output"]},
                                 "op_outputs": {
                                     "Out": ["reshape24_output"],

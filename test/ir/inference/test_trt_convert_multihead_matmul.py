@@ -112,7 +112,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     "op_attrs": dics[1],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add1_output"],
                                     },
@@ -152,7 +152,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     "op_attrs": dics[5],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add2_output"]
                                     },
@@ -192,7 +192,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     "op_attrs": dics[9],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add3_output"]
                                     },
@@ -274,7 +274,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     "op_attrs": dics[18],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {"X": ["transpose24_output"]},
                                     "op_outputs": {
                                         "Out": ["reshape24_output"],
@@ -506,7 +506,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     "op_attrs": dics[1],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add1_output"],
                                     },
@@ -546,7 +546,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     "op_attrs": dics[5],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add2_output"]
                                     },
@@ -586,7 +586,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     "op_attrs": dics[9],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add3_output"]
                                     },
@@ -668,7 +668,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     "op_attrs": dics[18],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {"X": ["transpose24_output"]},
                                     "op_outputs": {
                                         "Out": ["reshape24_output"],
@@ -796,7 +796,7 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                         },
                     },
                     {
-                        "op_type": "reshape2",
+                        "op_type": "reshape",
                         "op_inputs": {
                             "X": ["elementwise_add1_output"],
                         },
@@ -920,7 +920,7 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                         },
                     },
                     {
-                        "op_type": "reshape2",
+                        "op_type": "reshape",
                         "op_inputs": {"X": ["transpose3_output"]},
                         "op_outputs": {
                             "Out": ["reshape2_output"],
@@ -1096,7 +1096,7 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
                                     "op_attrs": dics[1],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add1_output"],
                                     },
@@ -1136,7 +1136,7 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
                                     "op_attrs": dics[5],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add2_output"]
                                     },
@@ -1176,7 +1176,7 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
                                     "op_attrs": dics[9],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add3_output"]
                                     },
@@ -1258,7 +1258,7 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
                                     "op_attrs": dics[18],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {"X": ["transpose24_output"]},
                                     "op_outputs": {
                                         "Out": ["reshape24_output"],

@@ -1833,7 +1833,7 @@ class TestOrthogonalInitializer1(unittest.TestCase):
                 self.assertEqual(block.ops[2].type, 'diag_v2')
                 self.assertEqual(block.ops[3].type, 'sign')
                 self.assertEqual(block.ops[4].type, 'elementwise_mul')
-                self.assertEqual(block.ops[-3].type, 'reshape2')
+                self.assertEqual(block.ops[-3].type, 'reshape')
                 self.assertEqual(block.ops[-2].type, 'scale')
 
             exe = paddle.static.Executor()
@@ -2077,11 +2077,11 @@ class TestDiracInitializer1(unittest.TestCase):
             if not paddle.framework.use_pir_api():
                 self.assertEqual(len(block.ops), self.num_ops)
                 self.assertEqual(block.ops[0].type, 'fill_constant')
-                self.assertEqual(block.ops[1].type, 'reshape2')
+                self.assertEqual(block.ops[1].type, 'reshape')
                 self.assertEqual(block.ops[2].type, 'assign_value')
                 self.assertEqual(block.ops[3].type, 'assign_value')
                 self.assertEqual(block.ops[4].type, 'scatter')
-                self.assertEqual(block.ops[5].type, 'reshape2')
+                self.assertEqual(block.ops[5].type, 'reshape')
 
             exe = paddle.static.Executor()
             exe.run(start_prog)

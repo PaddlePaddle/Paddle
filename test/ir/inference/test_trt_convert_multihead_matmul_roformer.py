@@ -145,7 +145,7 @@ class TrtConvertMultiHeadMatmulRoformerTest(TrtLayerAutoScanTest):
                                     "op_attrs": dics[1],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add1_output"],
                                     },
@@ -258,7 +258,7 @@ class TrtConvertMultiHeadMatmulRoformerTest(TrtLayerAutoScanTest):
                                     "op_attrs": dics[5],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add2_output"]
                                     },
@@ -362,7 +362,7 @@ class TrtConvertMultiHeadMatmulRoformerTest(TrtLayerAutoScanTest):
                                     "op_attrs": dics[9],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {
                                         "X": ["elementwise_add3_output"]
                                     },
@@ -428,7 +428,7 @@ class TrtConvertMultiHeadMatmulRoformerTest(TrtLayerAutoScanTest):
                                     "op_attrs": dics[18],
                                 },
                                 {
-                                    "op_type": "reshape2",
+                                    "op_type": "reshape",
                                     "op_inputs": {"X": ["transpose24_output"]},
                                     "op_outputs": {
                                         "Out": ["reshape24_output"],

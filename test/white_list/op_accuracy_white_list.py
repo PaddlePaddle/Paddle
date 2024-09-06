@@ -54,7 +54,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'prroi_pool',
     'reduce_max',
     'reduce_min',
-    'reshape2',
+    'reshape',
     'row_conv',
     'scatter',
     'sequence_conv',

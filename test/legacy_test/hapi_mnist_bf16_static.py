@@ -103,7 +103,7 @@ def main(args):
                     'relu',
                     'scale',
                     'elementwise_add',
-                    'reshape2',
+                    'reshape',
                     'slice',
                     'reduce_mean',
                     'conv2d',

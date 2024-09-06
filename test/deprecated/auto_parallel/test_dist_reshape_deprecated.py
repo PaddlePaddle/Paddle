@@ -65,7 +65,7 @@ class TestDistReshape(unittest.TestCase):
             ops = dist_main_prog.global_block().ops
             for idx, op in enumerate(ops):
                 op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
-                assert op_dist_attr.impl_type == "reshape2"
+                assert op_dist_attr.impl_type == "reshape"
                 assert op_dist_attr.impl_idx == 0
 
                 if op_dist_attr.impl_idx == 2:

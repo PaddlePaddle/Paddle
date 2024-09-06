@@ -104,7 +104,7 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
         )
 
         reshape2_op = OpConfig(
-            type="reshape2",
+            type="reshape",
             inputs={"X": ["transpose2_output"]},
             outputs={"Out": ["reshape2_output"], "XShape": ["reshape2_xshape"]},
             attrs={'shape': shape},

@@ -88,7 +88,7 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
                 bias_shape[0] = 1
 
         reshape2_op = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={
                 "X": ["reshape2_x"],
             },

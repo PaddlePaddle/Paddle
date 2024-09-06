@@ -26,7 +26,7 @@ paddle.enable_static()
 class TestReshape2OneDNNOp(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape2"
+        self.op_type = "reshape"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
@@ -58,7 +58,7 @@ class TestReshape2OneDNNOp(OpTest):
         self.check_output(
             no_check_set=['XShape'],
             check_dygraph=False,
-            check_pir_onednn=(self.op_type == "reshape2"),
+            check_pir_onednn=(self.op_type == "reshape"),
         )
 
     def test_check_grad(self):
@@ -66,7 +66,7 @@ class TestReshape2OneDNNOp(OpTest):
             ["X"],
             "Out",
             check_dygraph=False,
-            check_pir_onednn=(self.op_type == "reshape2"),
+            check_pir_onednn=(self.op_type == "reshape"),
         )
 
 
@@ -224,7 +224,7 @@ def create_reshape_bf16_test_classes(parent):
                 core.CPUPlace(),
                 no_check_set=["XShape"],
                 check_dygraph=False,
-                check_pir_onednn=(self.op_type == "reshape2"),
+                check_pir_onednn=(self.op_type == "reshape"),
             )
 
         def test_check_grad(self):
@@ -236,7 +236,7 @@ def create_reshape_bf16_test_classes(parent):
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[self.dout],
                 check_dygraph=False,
-                check_pir_onednn=(self.op_type == "reshape2"),
+                check_pir_onednn=(self.op_type == "reshape"),
             )
 
     cls_name = "{}_{}".format(parent.__name__, "Reshape2_BF16")
@@ -255,7 +255,7 @@ def create_reshape_bf16_test_classes(parent):
             self.check_output_with_place(
                 core.CPUPlace(),
                 check_dygraph=False,
-                check_pir_onednn=(self.op_type == "reshape2"),
+                check_pir_onednn=(self.op_type == "reshape"),
             )
 
         def test_check_grad(self):
@@ -267,7 +267,7 @@ def create_reshape_bf16_test_classes(parent):
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
                 check_dygraph=False,
-                check_pir_onednn=(self.op_type == "reshape2"),
+                check_pir_onednn=(self.op_type == "reshape"),
             )
 
     cls_name = "{}_{}".format(parent.__name__, "Reshape_BF16")

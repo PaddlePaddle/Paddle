@@ -83,7 +83,7 @@ class TestFusedSameUnSqueezePass(PassAutoScanTest):
 class TestFusedSameReshapePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ['scale', 'reshape2'], (1e-5, 1e-5)
+        yield config, ['scale', 'reshape'], (1e-5, 1e-5)
 
     def sample_program_config(self, draw):
         scale_x = draw(
@@ -102,7 +102,7 @@ class TestFusedSameReshapePass(PassAutoScanTest):
             outputs={"Out": ["scale0_out"]},
         )
         reshape_op0 = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={
                 "X": ["scale0_out"],
             },
@@ -110,7 +110,7 @@ class TestFusedSameReshapePass(PassAutoScanTest):
             outputs={"Out": ["reshape0_out"]},
         )
         reshape_op1 = OpConfig(
-            "reshape2",
+            "reshape",
             inputs={
                 "X": ["reshape0_out"],
             },

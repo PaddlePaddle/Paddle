@@ -90,7 +90,7 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
                     },
                 },
                 "reshape": {
-                    "op_type": "reshape2",
+                    "op_type": "reshape",
                     "op_inputs": {
                         "X": ["transpose2_out"],
                     },

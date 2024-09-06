@@ -69,7 +69,7 @@ class TestInplaceOpPass(PassAutoScanTest):
 
         if test_case == "simple_reshape":
             reshape_op = OpConfig(
-                "reshape2",
+                "reshape",
                 inputs={"X": ["scale_out"]},
                 outputs={
                     "Out": ["reshape_out"],
@@ -91,7 +91,7 @@ class TestInplaceOpPass(PassAutoScanTest):
         elif test_case == "shape_tensor1":
             shape = [-1, -1, x_shape[-1]]
             reshape_op = OpConfig(
-                "reshape2",
+                "reshape",
                 inputs={
                     "X": ["scale_out"],
                     "ShapeTensor": ["tmp1", "tmp2", "tmp3"],
@@ -125,7 +125,7 @@ class TestInplaceOpPass(PassAutoScanTest):
         else:
             shape = [0, -1, x_shape[-1]]
             reshape_op = OpConfig(
-                "reshape2",
+                "reshape",
                 inputs={"X": ["scale_out"], "Shape": ["shape"]},
                 outputs={
                     "Out": ["reshape_out"],
@@ -152,7 +152,7 @@ class TestInplaceOpPass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=True)
-        yield config, ['scale', 'reshape2'], (1e-5, 1e-5)
+        yield config, ['scale', 'reshape'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         pass

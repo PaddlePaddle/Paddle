@@ -85,7 +85,7 @@ class TrtConvertQkAttentionTest(TrtLayerAutoScanTest):
                         },
                     },
                     {
-                        "op_type": "reshape2",
+                        "op_type": "reshape",
                         "op_inputs": {
                             "X": ["elementwise_q_output"],
                         },
@@ -132,7 +132,7 @@ class TrtConvertQkAttentionTest(TrtLayerAutoScanTest):
                         },
                     },
                     {
-                        "op_type": "reshape2",
+                        "op_type": "reshape",
                         "op_inputs": {
                             "X": ["elementwise_k_output"],
                         },
@@ -179,7 +179,7 @@ class TrtConvertQkAttentionTest(TrtLayerAutoScanTest):
                         },
                     },
                     {
-                        "op_type": "reshape2",
+                        "op_type": "reshape",
                         "op_inputs": {
                             "X": ["elementwise_v_output"],
                         },
@@ -254,7 +254,7 @@ class TrtConvertQkAttentionTest(TrtLayerAutoScanTest):
                         },
                     },
                     {
-                        "op_type": "reshape2",
+                        "op_type": "reshape",
                         "op_inputs": {"X": ["transpose_output"]},
                         "op_outputs": {
                             "Out": ["reshape_output"],
