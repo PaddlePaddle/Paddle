@@ -74,6 +74,8 @@ namespace pir {
 
 // type/attr's contents which is json::array.
 #define DATA "D"
+// float/double data with nan, inf, -inf
+#define VOILD_DATA "VD"
 
 // NULL_TYPE
 #define NULL_TYPE "NULL"

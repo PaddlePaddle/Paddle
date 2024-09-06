@@ -24,8 +24,6 @@ if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
-list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
-list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -83,16 +81,12 @@ list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
   list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
   list(REMOVE_ITEM TEST_OPS test_fleet_perf_test)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
-  list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
   list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
@@ -725,7 +719,6 @@ endif()
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
-set_tests_properties(test_sync_batch_norm_op PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
   set_tests_properties(test_imperative_signal_handler
@@ -762,7 +755,6 @@ set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
@@ -921,10 +913,6 @@ endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   if(WITH_DISTRIBUTE)
-    set_tests_properties(test_static_model_parallel_fused_feedforward
-                         PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_static_model_parallel_fused_attention
-                         PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
                                                            "RUN_TYPE=DIST")
     set_tests_properties(test_fleet_perf_test PROPERTIES LABELS "RUN_TYPE=DIST")
@@ -1084,7 +1072,6 @@ set(STATIC_BUILD_TESTS
     test_sgd_op_bf16
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_pooling_op
-    test_sync_batch_norm_op
     test_unique
     test_shuffle_batch_op
     test_update_loss_scaling_op
@@ -1138,20 +1125,6 @@ endforeach()
 
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
-set_tests_properties(test_sync_batch_norm_op_static_build
-                     PROPERTIES LABELS "RUN_TYPE=DIST")
-set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
-                                                                     250)
-
-if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
-  # These UTs are specially designed for FleetExecutor
-  set_tests_properties(
-    test_fleet_executor PROPERTIES ENVIRONMENT
-                                   "FLAGS_new_executor_micro_batching=False")
-  set_tests_properties(
-    test_fleet_executor_with_task_nodes
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-endif()
 
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
 py_test_modules(test_stride MODULES test_stride ENVS

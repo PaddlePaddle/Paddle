@@ -573,6 +573,10 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         (data_type == nvinfer1::DataType::kHALF));
 
   phi_kernel_contexts_[data_type]->ClearInputOutput();
+
+  auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
+  phi_kernel_contexts_[data_type]->SetDeviceContext(dev_ctx);
+
   auto& vec_kernel_fn_tensor_params = op_yaml_info_->TensorParams(true);
   int kernel_input_count = vec_kernel_fn_tensor_params.size();
   for (int i = 0; i < getNbInputs(); i++) {
