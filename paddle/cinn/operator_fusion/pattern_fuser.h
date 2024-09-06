@@ -389,19 +389,26 @@ static std::vector<LoopValueDims> GetLoopValueDims(const StmtPattern& pattern) {
 using LoopExprs = std::vector<symbol::DimExpr>;
 
 struct MaybeLoopFramework {
+  std::string DebugStr() const {
+    return "loop: " + utils::Join(loop, ",") +
+           ", is_reduce: " + utils::Join(is_reduce, ",");
+  }
   LoopExprs loop;
   std::vector<bool> is_reduce;
 };
 
 static MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern);
 
-static LoopExprs SqueezeLoopFramework(const LoopExprs& loop) {
-  LoopExprs result;
+static MaybeLoopFramework SqueezeLoopFramework(
+    const MaybeLoopFramework& input) {
+  MaybeLoopFramework result;
+  auto loop = input.loop;
   for (int i = 0; i < loop.size(); i++) {
     if (loop[i] == 1) {
       continue;  // skip 1
     } else {
-      result.push_back(loop[i]);
+      result.loop.push_back(loop[i]);
+      result.is_reduce.push_back(input.is_reduce[i]);
     }
   }
   return result;
@@ -431,20 +438,24 @@ static bool IsLoopFrameworkEqual(const StmtPattern& lhs,
                                  const StmtPattern& rhs) {
   const auto& lhs_loops = GetLoopFramework(lhs);
   const auto& rhs_loops = GetLoopFramework(rhs);
-  VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loops.loop, ",")
-          << ", is_reduce: " << utils::Join(lhs_loops.is_reduce, ",");
-  VLOG(4) << "rhs loop range is:" << utils::Join(rhs_loops.loop, ",")
-          << ", is_reduce: " << utils::Join(rhs_loops.is_reduce, ",");
-  const auto& [lhs_non_reduce_loops, lhs_reduce_loops] =
-      SplitReduceLoop(lhs_loops);
-  const auto& [rhs_non_reduce_loops, rhs_reduce_loops] =
-      SplitReduceLoop(rhs_loops);
-  bool non_reduce_euqal = SqueezeLoopFramework(lhs_non_reduce_loops) ==
-                          SqueezeLoopFramework(rhs_non_reduce_loops);
-  bool reduce_equal = lhs_reduce_loops.empty() || rhs_reduce_loops.empty() ||
-                      (SqueezeLoopFramework(lhs_reduce_loops) ==
-                       SqueezeLoopFramework(rhs_reduce_loops));
-  return non_reduce_euqal && reduce_equal;
+  VLOG(4) << "lhs " << lhs_loops.DebugStr();
+  VLOG(4) << "rhs " << rhs_loops.DebugStr();
+  const auto& squeezed_lhs_loops = SqueezeLoopFramework(lhs_loops);
+  const auto& squeezed_rhs_loops = SqueezeLoopFramework(rhs_loops);
+  bool loop_equal = squeezed_lhs_loops.loop == squeezed_rhs_loops.loop;
+
+  // TODO(huangjiyi): support horizontal fusion without reduce dims euqal.
+  auto has_reduce_dim = [](const MaybeLoopFramework& loops) -> bool {
+    return std::any_of(loops.is_reduce.begin(),
+                       loops.is_reduce.end(),
+                       [](bool b) { return b; });
+  };
+  bool reduce_euqal =
+      has_reduce_dim(lhs_loops) && has_reduce_dim(rhs_loops)
+          ? squeezed_lhs_loops.is_reduce == squeezed_rhs_loops.is_reduce
+          : true;
+  VLOG(4) << "IsLoopFrameworkEqual: " << (loop_equal && reduce_euqal);
+  return loop_equal && reduce_euqal;
 }
 
 struct LoopFrameworkVisitor {
@@ -472,7 +483,7 @@ struct LoopFrameworkVisitor {
 
   MaybeLoopFramework operator()(const HorizontalFusionPattern& pattern) {
     // Horizontal Fusion must have the same loop framework.
-    VLOG(4) << "Get horizontal fusion pattern for loop framework.";
+    VLOG(4) << "Get loop framework for HorizontalFusionPattern.";
     const auto& [base_loop, base_is_reduce] =
         GetLoopFramework(pattern.padding_patterns_.back().pattern);
     const auto& padding_vector = pattern.padding_patterns_.back().padding_pos;
@@ -483,7 +494,7 @@ struct LoopFrameworkVisitor {
     for (int i = 0; i < loop.size(); i++) {
       if (std::find(padding_vector.begin(), padding_vector.end(), i) ==
           padding_vector.end()) {
-        loop[i] = base_loop[pointer++];
+        loop[i] = base_loop[pointer];
         is_reduce[i] = base_is_reduce[pointer++];
       }
     }

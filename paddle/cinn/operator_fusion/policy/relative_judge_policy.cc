@@ -240,8 +240,6 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
 
 bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
     const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
-  VLOG(4) << "RT can fuse";
-
   const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
       SplitReduceDims(axes_info_.GetSignature(upstream->sink_op()),
                       upstream->sink_op());
@@ -261,7 +259,7 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
   bool res = ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
              (IsProductSmallerOrEqual(downstream_free_dims,
                                       upstream_non_reduce_dims) &&
-              fakes.size() == upstream_reduce_dims.size());
+              (fakes.empty() || fakes.size() == upstream_reduce_dims.size()));
 
   if (res && downstream_free_dims.empty() && !fakes.empty()) {
     res = false;
