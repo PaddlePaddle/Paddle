@@ -625,4 +625,4 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
 
 #endif  // Python 3.11, Python 3.12
 
-#endif  // Eval frame is supported
+#endif  // SOT is supported
