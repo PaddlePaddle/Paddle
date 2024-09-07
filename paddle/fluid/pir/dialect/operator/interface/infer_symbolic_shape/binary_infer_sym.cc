@@ -1554,7 +1554,7 @@ bool ShuffleBatchOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(unique_dim_sym)});
+          symbol::TensorShapeOrDataDimExprs(unique_dim_sym.shape())});
 
   return true;
 }
