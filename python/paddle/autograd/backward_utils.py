@@ -46,6 +46,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.expand",
     "pd_op.floor",
     "pd_op.gather",
+    "pd_op.gather_nd",
     "pd_op.gelu",
     "pd_op.hardswish",
     "pd_op.leaky_relu",

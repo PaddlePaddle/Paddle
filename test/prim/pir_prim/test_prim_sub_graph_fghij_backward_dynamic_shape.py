@@ -34,6 +34,10 @@ def gather_net(x, y):
     return paddle.gather(x, y, 1)
 
 
+def gather_nd_net(x, y):
+    return paddle.gather_nd(x, y)
+
+
 def gelu_net1(x):
     return paddle.nn.functional.gelu(x, approximate=True)
 
@@ -108,6 +112,21 @@ class TestPrimGatherWithGrad2(TestPrimGatherWithGrad1):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.array([1, 3, 5], dtype="int32")
         self.net = gather_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimGatherNdWithGrad(TestPrimGatherWithGrad1):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [100, 100]
+        self.init_x_shape = [None, None, 10]
+        self.y_shape = [2, 2]
+        self.init_y_shape = [None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.array([[1, 1], [2, 1]], dtype="int32")
+        self.net = gather_nd_net
         self.enable_cinn = False
         self.tol = 1e-6
 
