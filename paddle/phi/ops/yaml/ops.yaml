@@ -5124,7 +5124,7 @@
   kernel :
     func : weight_dequantize
     data_type : out_dtype
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : weight_only_linear
   args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80, int group_size = -1)
