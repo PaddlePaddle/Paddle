@@ -71,30 +71,37 @@ void cumprod_grad(const Tensor& x,
                   Tensor* x_grad) {
   if (x_grad) {
     // dx = cumsum(out * out_grad, dim, false, exclusive, !reverse) / x
-    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
-    auto zero_tensor = full<T>(x_dim, 0.0, x.dtype());
+    Tensor zero_tensor, ones_tensor;
+    if (has_dynamic_shape(x.shape())) {
+      zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0.0, x.dtype());
+      ones_tensor = backend::full_with_tensor<T>(shape<T>(x), 1.0, x.dtype());
+    } else {
+      zero_tensor = full<T>(x.shape(), 0.0, x.dtype());
+      ones_tensor = full<T>(x.shape(), 1.0, x.dtype());
+    }
     auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
     // determine the index of first zero
     auto zero_mask_cumsum_exclusive =
         cumsum<T>(zero_mask, dim, false, true, reverse);
     auto zero_mask_cumsum = scale<T>(zero_mask_cumsum_exclusive, 2) + zero_mask;
-    auto ones_tensor = full<T>(x_dim, 1.0, x.dtype());
+
     auto first_zero_mask =
         cast<T>(equal<T>(zero_mask_cumsum, ones_tensor), x.dtype());
     // compute the grad for position with value not equal to 0
     auto common_dx = cumsum<T>(out * out_grad, dim, false, exclusive, !reverse);
     // fill the positions of 0 with 1.
-    auto replace_one = (1 - zero_mask) * x + zero_mask;
+    auto replace_one = (ones_tensor - zero_mask) * x + zero_mask;
     // fill the first positions of 0 with 1.
-    auto replace_first_one = (1 - first_zero_mask) * x + first_zero_mask;
+    auto replace_first_one =
+        (ones_tensor - first_zero_mask) * x + first_zero_mask;
     // recompute the grad of the first position with 0
     auto cumprod_recompute =
         cumprod<T>(replace_first_one, dim, exclusive, reverse);
     auto zeros_dx = cumsum<T>(
         cumprod_recompute * out_grad, dim, false, exclusive, !reverse);
-    auto x_grad_res =
-        ((1 - first_zero_mask) * common_dx + first_zero_mask * zeros_dx) /
-        replace_one;
+    auto x_grad_res = ((ones_tensor - first_zero_mask) * common_dx +
+                       first_zero_mask * zeros_dx) /
+                      replace_one;
     set_output<T>(x_grad_res, x_grad);
   }
 }
@@ -1884,10 +1891,19 @@ void batch_norm_grad(const Tensor& x,
                      Tensor* bias_grad) {
   use_global_stats = is_test || use_global_stats;
 
+  bool has_dynamic_shape_for_x = has_dynamic_shape(x.shape());
+
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
 
   Tensor x_data = x;
   Tensor out_grad_data = out_grad;
+  auto run_var = variance_out.get();
+  auto run_mean = mean_out.get();
+  Tensor mean_data;
+  Tensor rsqrt_var;
+  std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
+  std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
+  auto reduce_axis = IntArray(std::vector<int64_t>{0, 1, 2});
 
   bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
                    x.dtype() == phi::DataType::BFLOAT16;
@@ -1898,32 +1914,23 @@ void batch_norm_grad(const Tensor& x,
       out_grad.dtype() == phi::DataType::BFLOAT16) {
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
-
-  auto x_dims = x_data.dims();
-  const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
-                                                   : x_dims[x_dims.size() - 1]);
-  int nume = 1;
-  for (auto i = 0; i < x_dims.size(); i++) {
-    nume = nume * x_dims[i];
-  }
-
-  const int nhw = nume / C;
-
-  if (x_dims.size() == 2 && data_layout_ == DataLayout::kNCHW) {
+  if (x_data.dims().size() == 2 && data_layout_ == DataLayout::kNCHW) {
     data_layout_ = DataLayout::kNHWC;
   }
-
-  auto run_var = variance_out.get();
-  auto run_mean = mean_out.get();
-
-  Tensor mean_data;
-  Tensor rsqrt_var;
+  auto dtype = x_data.dtype();
 
   if (use_global_stats) {
-    auto eps =
-        full<T>(common::vectorize(run_var.dims()), epsilon, run_var.dtype());
-    mean_data = run_mean;
-    rsqrt_var = rsqrt<T>(run_var + eps);
+    if (has_dynamic_shape(run_var.shape())) {
+      auto eps = backend::full_with_tensor<T>(
+          shape<T>(run_var), epsilon, run_var.dtype());
+      mean_data = run_mean;
+      rsqrt_var = rsqrt<T>(run_var + eps);
+    } else {
+      auto eps =
+          full<T>(common::vectorize(run_var.dims()), epsilon, run_var.dtype());
+      mean_data = run_mean;
+      rsqrt_var = rsqrt<T>(run_var + eps);
+    }
   } else {
     mean_data = saved_mean;
     rsqrt_var = saved_variance;
@@ -1942,11 +1949,6 @@ void batch_norm_grad(const Tensor& x,
   //
   // test mode
   // d_x = d_y * scale * inv_var
-
-  std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
-  std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
-  auto reduce_axis = IntArray(std::vector<int64_t>{0, 1, 2});
-  auto dtype = x_data.dtype();
 
   switch (data_layout_) {
     case DataLayout::kNCHW: {
@@ -1973,8 +1975,35 @@ void batch_norm_grad(const Tensor& x,
           if (scale) {
             part1 = scale.get() * part1;
           }
-          auto mean_temp1 = nhwc_out_grad_sum / nhw;
-          auto mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          Tensor mean_temp1, mean_temp2;
+          if (has_dynamic_shape_for_x) {
+            Tensor x_dims = shape<T>(x_data);
+            const Tensor C =
+                (data_layout_ == DataLayout::kNCHW
+                     ? get_slice<T>(x_dims, 1)
+                     : get_slice<T>(x_dims, x_data.dims().size() - 1));
+            Tensor nume = full<T>({1}, 1.0, x_dims.dtype());
+            for (auto i = 0; i < x_dims.size(); i++) {
+              nume = nume * get_slice<T>(x_dims, i);
+            }
+            Tensor nhw = nume / C;
+            mean_temp1 = nhwc_out_grad_sum / nhw;
+            mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          } else {
+            auto x_dims = x_data.dims();
+            const int C =
+                (data_layout_ == DataLayout::kNCHW ? x_dims[1]
+                                                   : x_dims[x_dims.size() - 1]);
+            int nume = 1;
+            for (auto i = 0; i < x_dims.size(); i++) {
+              nume = nume * x_dims[i];
+            }
+
+            const int nhw = nume / C;
+            mean_temp1 = nhwc_out_grad_sum / nhw;
+            mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          }
+
           auto part2 =
               nhwc_out_grad - mean_temp1 - (nhwc_x - mean_data) * mean_temp2;
 
@@ -2015,9 +2044,36 @@ void batch_norm_grad(const Tensor& x,
           if (scale) {
             part1 = scale.get() * part1;
           }
-          auto mean_temp1 = out_grad_data_sum / nhw;
-          auto mean_temp2 =
-              nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          Tensor mean_temp1, mean_temp2;
+
+          if (has_dynamic_shape_for_x) {
+            Tensor x_dims = shape<T>(x_data);
+            const Tensor C =
+                (data_layout_ == DataLayout::kNCHW
+                     ? get_slice<T>(x_dims, 1)
+                     : get_slice<T>(x_dims, x_data.dims().size() - 1));
+            Tensor nume = full<T>({1}, 1.0, x_dims.dtype());
+            for (auto i = 0; i < x_dims.size(); i++) {
+              nume = nume * get_slice<T>(x_dims, i);
+            }
+            Tensor nhw = nume / C;
+            mean_temp1 = out_grad_data_sum / nhw;
+            mean_temp2 = nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          } else {
+            auto x_dims = x_data.dims();
+            const int C =
+                (data_layout_ == DataLayout::kNCHW ? x_dims[1]
+                                                   : x_dims[x_dims.size() - 1]);
+            int nume = 1;
+            for (auto i = 0; i < x_dims.size(); i++) {
+              nume = nume * x_dims[i];
+            }
+
+            const int nhw = nume / C;
+            mean_temp1 = out_grad_data_sum / nhw;
+            mean_temp2 = nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          }
+
           auto part2 =
               out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
 

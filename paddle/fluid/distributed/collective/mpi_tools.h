@@ -18,7 +18,7 @@
 #include <string>
 #include "paddle/phi/core/enforce.h"
 
-#include "paddle/phi/core/distributed/collective/types.h"
+#include "paddle/fluid/distributed/collective/types.h"
 
 #ifdef HOST
 #undef HOST
