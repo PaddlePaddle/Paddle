@@ -199,9 +199,7 @@ PirInterpreter::PirInterpreter(const phi::Place& place,
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  LOG(INFO) << "zrt PirInterpreter::PirInterpreter() build scope: " << ss.str();
   BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
-  LOG(INFO) << "zrt BuildScope over";
 }
 
 PirInterpreter::PirInterpreter(

@@ -40,7 +40,7 @@ const std::vector<std::string> FunctionSchema::OutputArgNames() const {
   std::vector<std::string> output_arg_names;
   output_arg_names.reserve(output_args.size());
   for (auto& arg : output_args) {
-    output_arg_names.emplace_back(arg.Name());
+    output_arg_names.emplace_back(arg.Name()+"@fetch");
   }
   return output_arg_names;
 }

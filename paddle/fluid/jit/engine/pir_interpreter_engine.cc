@@ -34,20 +34,13 @@ PirInterpreterEngine::PirInterpreterEngine(
     const phi::Place &place,
     const std::shared_ptr<pir::Program> &prog)
     : info_(info), params_dict_(params_dict), place_(place), prog_(prog) {
-  info_->RemoveFeedFetch();
-  LOG(INFO) << "1";
   PADDLE_ENFORCE_GT(
       static_cast<int64_t>(info_->Program()->block()->size()),
       0,
       common::errors::PreconditionNotMet(
           "There is no operator in ProgramDesc."));
-  LOG(INFO) << "2";
   utils::ShareParamsIntoScope(info_->ParamNames(), params_dict_, &scope_);
-  LOG(INFO) << "3";
-//   VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-  LOG(INFO) << "3.1";
   CreateInterpreterCore();
-  LOG(INFO) << "4";
 }
 
 // need modify
@@ -61,22 +54,16 @@ void PirInterpreterEngine::CreateInterpreterCore() {
 //   onednn_pass->Apply(&graph);
 // #endif
 
-  LOG(INFO) << "31";
-
   framework::interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
   execution_config.used_for_jit = true;
-  LOG(INFO) << "32";
 
   auto in_names = info_->InputArgNames();
   auto out_names = info_->OutputArgNames();
   execution_config.skip_gc_vars.insert(in_names.begin(), in_names.end());
   execution_config.skip_gc_vars.insert(out_names.begin(), out_names.end());
-  LOG(INFO) << "33";
-
   inner_interpreter_ = std::make_shared<PirInterpreter>(
       place_, out_names, prog_->block(), &scope_, execution_config);
-  LOG(INFO) << "34";
 }
 
 std::vector<Tensor> PirInterpreterEngine::operator()(
@@ -91,9 +78,7 @@ std::vector<DenseTensor> PirInterpreterEngine::operator()(
 
   // the latter can be moved to python side.
   auto &feed_names = info_->InputArgNames();
-  LOG(INFO) << "51";
   paddle::framework::FetchList outs = inner_interpreter_->Run(feed_names);
-  LOG(INFO) << "52";
 
   std::vector<DenseTensor> outputs;
   utils::FetchOuts(info_->OutputArgNames(), scope_, &outputs);

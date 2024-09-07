@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/fluid/jit/engine/pir_interpreter_engine.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
@@ -55,7 +56,6 @@ Layer Deserializer::operator()(const std::string& path,
         for(auto& value : values){
           if(utils::IsPersistable(&value) && value.defining_op()->attributes().count("parameter_name")){
             const auto& value_name = value.defining_op()->attributes().at("parameter_name").dyn_cast<pir::StrAttribute>();
-            LOG(INFO) << "value name: " << value_name;
             persist_var_names.emplace_back(value_name.AsString());
           }
         }
@@ -96,16 +96,13 @@ Layer Deserializer::operator()(const std::string& path,
     auto& base_info = map_item.second;
     VLOG(3) << "Add function type: " << FLAGS_jit_engine_type
             << " Function name: " << func_name;
-    LOG(INFO) << "Add function type: " << FLAGS_jit_engine_type
-            << " Function name: " << func_name;
     if(FLAGS_enable_pir_api){
       auto pir_info = std::dynamic_pointer_cast<PirFunctionInfo>(base_info);
       if (FLAGS_jit_engine_type == "Predictor") {
-        LOG(INFO) << "SetEngine: " << func_name;
         layer.SetEngine(
             func_name,
             utils::MakePirEngine<PirInterpreterEngine>(
-              pir_info, params_dict, place, std::shared_ptr<pir::Program>(pir_info->Program())));
+              pir_info, params_dict, place, std::move(paddle::dialect::PdOpLowerToKernelPass(pir_info->Program().get(), place))));
       } else {
         PD_THROW("Invalid JitLayer engine type.");
       }

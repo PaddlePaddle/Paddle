@@ -55,9 +55,7 @@ void Layer::to(const phi::Place& place) {}
 
 void Layer::SetEngine(const std::string& name,
                       const std::shared_ptr<BaseEngine>& engine) {
-  LOG(INFO) << "set engine begin";
   unit_->SetEngine(name, engine);
-  LOG(INFO) << "set engine end";
 }
 
 const std::shared_ptr<jit::BaseFunctionInfo>& Layer::FunctionInfo(
