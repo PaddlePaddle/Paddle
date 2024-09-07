@@ -168,7 +168,11 @@ class Container:
             return Status.FAILED
 
     def __str__(self):
-        return f'Container rank {self._rank} status {self.status} cmd {self._entrypoint} code {self.exit_code} log {self.errfile} \nenv {self._env}'
+        launch_debug = os.environ('launch_debug')
+        if launch_debug:
+            return f'Container rank {self._rank} status {self.status} cmd {self._entrypoint} code {self.exit_code} log {self.errfile} \nenv {self._env}'
+        else:
+            return f'Container rank {self._rank} status {self.status} cmd {self._entrypoint} code {self.exit_code} log {self.errfile}'
 
     def logs(self, fn=None, offset=0, whence=1, limit=1000):
         if not self._log_handler:
