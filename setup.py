@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import ctypes
 import errno
 import fnmatch
@@ -292,7 +294,7 @@ class InstallLib(install_lib):
             self.byte_compile(outfiles)
 
 
-def git_commit():
+def git_commit() -> str:
     try:
         cmd = ['git', 'rev-parse', 'HEAD']
         git_commit = (
@@ -331,25 +333,25 @@ def _mkdir_p(dir_str):
         raise RuntimeError("Failed to create build folder")
 
 
-def get_major():
+def get_major() -> int:
     return int(_get_version_detail(0))
 
 
-def get_minor():
+def get_minor() -> int:
     return int(_get_version_detail(1))
 
 
-def get_patch():
+def get_patch() -> int:
     return str(_get_version_detail(2))
 
 
-def get_nccl_version():
+def get_nccl_version() -> int:
     if env_dict.get("WITH_NCCL") == 'ON':
         return int(env_dict.get("NCCL_VERSION"))
     return 0
 
 
-def get_cuda_version():
+def get_cuda_version() -> str:
     with_gpu = env_dict.get("WITH_GPU")
     if with_gpu == 'ON':
         return env_dict.get("CUDA_VERSION")
@@ -357,7 +359,7 @@ def get_cuda_version():
         return 'False'
 
 
-def get_cudnn_version():
+def get_cudnn_version() -> str:
     with_gpu = env_dict.get("WITH_GPU")
     if with_gpu == 'ON':
         temp_cudnn_version = ''
@@ -381,7 +383,7 @@ def get_cudnn_version():
         return 'False'
 
 
-def get_xpu_xre_version():
+def get_xpu_xre_version() -> str:
     with_xpu = env_dict.get("WITH_XPU")
     if with_xpu == 'ON':
         return env_dict.get("XPU_XRE_BASE_VERSION")
@@ -389,7 +391,7 @@ def get_xpu_xre_version():
         return 'False'
 
 
-def get_xpu_xccl_version():
+def get_xpu_xccl_version() -> str:
     with_xpu_xccl = env_dict.get("WITH_XPU_BKCL")
     if with_xpu_xccl == 'ON':
         return env_dict.get("XPU_XCCL_BASE_VERSION")
@@ -397,7 +399,7 @@ def get_xpu_xccl_version():
         return 'False'
 
 
-def get_xpu_xhpc_version():
+def get_xpu_xhpc_version() -> str:
     with_xpu_xhpc = env_dict.get("WITH_XPU")
     if with_xpu_xhpc == 'ON':
         return env_dict.get("XPU_XHPC_BASE_DATE")
@@ -405,7 +407,7 @@ def get_xpu_xhpc_version():
         return 'False'
 
 
-def is_tagged():
+def is_tagged() -> bool:
     try:
         cmd = [
             'git',
@@ -433,10 +435,59 @@ def is_tagged():
         return False
 
 
-def get_cinn_version():
+def get_cinn_version() -> str:
     if env_dict.get("WITH_CINN") != 'ON':
         return "False"
     return "0.3.0"
+
+
+def get_cuda_archs() -> list[int]:
+    compiled_cuda_archs = env_dict.get("COMPILED_CUDA_ARCHS")
+    if isinstance(compiled_cuda_archs, str):
+        return [int(arch) for arch in compiled_cuda_archs.split()]
+    else:
+        return []
+
+
+def get_tensorrt_version() -> str:
+
+    def find_libnvinfer():
+        """Search for libnvinfer.so file in LD_LIBRARY_PATH."""
+
+        trt_infer_rt_path = env_dict.get("TR_INFER_RT")
+        tensorrt_library_path = env_dict.get("TENSORRT_LIBRARY_DIR")
+
+        libnvinfer_file = os.path.join(tensorrt_library_path, trt_infer_rt_path)
+
+        if os.path.exists(libnvinfer_file):
+            return libnvinfer_file
+        else:
+            print(f"{libnvinfer_file} not found.")
+        return None
+
+    try:
+        libnvinfer_path = find_libnvinfer()
+        if not libnvinfer_path:
+            return None
+
+        trt = ctypes.CDLL(libnvinfer_path)
+        get_version = trt.getInferLibVersion
+        get_version.restype = ctypes.c_int
+        version = get_version()
+        version_str = str(version)
+        major = version_str[:1] if len(version_str) > 1 else version_str
+        minor = version_str[1:2] if len(version_str) > 3 else version_str[1:]
+        patch = version_str[3:] if len(version_str) > 3 else ''
+
+        minor = minor if minor else '0'
+        patch = patch if patch else '0'
+        version_str = f"{major}.{minor}.{patch}"
+
+        return version_str
+
+    except Exception as e:
+        print(f"Error while getting TensorRT version: {e}")
+        return None
 
 
 def write_version_py(filename='paddle/version/__init__.py'):
@@ -453,14 +504,16 @@ cudnn_version    = '%(cudnn)s'
 xpu_xre_version  = '%(xpu_xre)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
-is_tagged          = %(is_tagged)s
+is_tagged        = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
-cinn_version      = '%(cinn)s'
-with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
-with_pip_tensorrt ='%(with_pip_tensorrt)s'
+cinn_version     = '%(cinn)s'
+tensorrt_version = '%(tensorrt)s'
+with_pip_cuda_libraries = '%(with_pip_cuda_libraries)s'
+with_pip_tensorrt       = '%(with_pip_tensorrt)s'
+compiled_cuda_archs     = %(compiled_cuda_archs)s
 
-__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc', 'tensorrt', 'cuda_archs']
 
 def show() -> None:
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -539,6 +592,8 @@ def show() -> None:
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
+    print('tensorrt_version:', tensorrt_version)
+    print('cuda_archs:', compiled_cuda_archs)
 
 def mkl() -> str:
     return with_mkl
@@ -682,6 +737,42 @@ def cinn() -> str:
 
     """
     return cinn_version
+
+def tensorrt() -> str:
+    """Get TensorRT version of paddle package.
+
+    Returns:
+        string: Return the version information of TensorRT. If paddle package is not compiled with TensorRT, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.tensorrt()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            False
+
+    """
+    return tensorrt_version
+
+def cuda_archs():
+    """Get compiled cuda archs of paddle package.
+
+    Returns:
+        list[int]: Return the compiled cuda archs if with gpu. If paddle package is not compiled with gpu, it will return "".
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.cuda_archs()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            [86]
+
+    """
+    return compiled_cuda_archs
 '''
     commit = git_commit()
 
@@ -712,10 +803,12 @@ def cinn() -> str:
                 'is_tagged': is_tagged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
+                'tensorrt': get_tensorrt_version(),
                 'with_pip_cuda_libraries': env_dict.get(
                     "WITH_PIP_CUDA_LIBRARIES"
                 ),
                 'with_pip_tensorrt': env_dict.get("WITH_PIP_TENSORRT"),
+                'compiled_cuda_archs': get_cuda_archs(),
             }
         )
 
@@ -969,47 +1062,6 @@ def get_setup_requires():
         raise RuntimeError(
             "please check your python version,Paddle only support Python version>=3.8 now"
         )
-
-
-def find_libnvinfer():
-
-    trt_infer_rt_path = env_dict.get("TR_INFER_RT")
-    tensorrt_library_path = env_dict.get("TENSORRT_LIBRARY_DIR")
-
-    libnvinfer_file = os.path.join(tensorrt_library_path, trt_infer_rt_path)
-
-    if os.path.exists(libnvinfer_file):
-        return libnvinfer_file
-    else:
-        print(f"{libnvinfer_file} not found.")
-    return None
-
-
-def get_tensorrt_version():
-    try:
-
-        libnvinfer_path = find_libnvinfer()
-        if not libnvinfer_path:
-            return None
-
-        trt = ctypes.CDLL(libnvinfer_path)
-        get_version = trt.getInferLibVersion
-        get_version.restype = ctypes.c_int
-        version = get_version()
-        version_str = str(version)
-        major = version_str[:1] if len(version_str) > 1 else version_str
-        minor = version_str[1:2] if len(version_str) > 3 else version_str[1:]
-        patch = version_str[3:] if len(version_str) > 3 else ''
-
-        minor = minor if minor else '0'
-        patch = patch if patch else '0'
-        version_str = f"{major}.{minor}.{patch}"
-
-        return version_str
-
-    except Exception as e:
-        print(f"Error while getting TensorRT version: {e}")
-        return None
 
 
 def get_paddle_extra_install_requirements():
