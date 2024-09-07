@@ -117,6 +117,9 @@ def adamw_wrapper(
 
 
 class TestAdamW(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         '''Test AdamW Op with supplied attributes'''
         self.op_type = "adamw"
@@ -135,6 +138,7 @@ class TestAdamW(OpTest):
         epsilon = 1e-4
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -153,7 +157,7 @@ class TestAdamW(OpTest):
             'beta2': beta2,
             "coeff": 0.5,
             "with_decay": True,
-            "amsgrad": False,
+            "amsgrad": self.amsgrad,
         }
 
         param_out, moment1_out, moment2_out, moment2_max_out = adamw_step(
@@ -173,10 +177,18 @@ class TestAdamW(OpTest):
         self.check_output(check_pir=True)
 
 
+class TestAdamWAMSGrad(TestAdamW):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestAdamW2(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         '''Test AdamW Op with supplied attributes'''
         self.op_type = "adamw"
@@ -195,6 +207,7 @@ class TestAdamW2(OpTest):
         epsilon = 1e-4
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -214,7 +227,7 @@ class TestAdamW2(OpTest):
             "lr_ratio": 0.1,
             "coeff": 0.5,
             "with_decay": True,
-            "amsgrad": False,
+            "amsgrad": self.amsgrad,
         }
 
         param_out, moment1_out, moment2_out, moment2_max_out = adamw_step(
@@ -234,7 +247,15 @@ class TestAdamW2(OpTest):
         self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
 
+class TestAdamW2AMSGrad(TestAdamW2):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 class TestAdamWOp(unittest.TestCase):
+    def setUp(self):
+        self.amsgrad = False
+
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
@@ -245,6 +266,7 @@ class TestAdamWOp(unittest.TestCase):
             parameters=linear.parameters(),
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01,
+            amsgrad=self.amsgrad,
         )
 
         for _ in range(2):
@@ -294,6 +316,7 @@ class TestAdamWOp(unittest.TestCase):
                     beta2=beta2,
                     weight_decay=0.01,
                     epsilon=1e-8,
+                    amsgrad=self.amsgrad,
                 )
                 opt.minimize(loss)
 
@@ -313,6 +336,7 @@ class TestAdamWOp(unittest.TestCase):
             parameters=linear.parameters(),
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01,
+            amsgrad=self.amsgrad,
         )
         os.environ["FLAGS_shard_bypass_dygraph_optimizer"] = "1"
         for _ in range(2):
@@ -331,6 +355,7 @@ class TestAdamWOp(unittest.TestCase):
             parameters=linear.parameters(),
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01,
+            amsgrad=self.amsgrad,
         )
         assert adam.__str__() is not None
 
@@ -365,6 +390,7 @@ class TestAdamWOp(unittest.TestCase):
                         beta2=beta2,
                         weight_decay=0.01,
                         epsilon=1e-8,
+                        amsgrad=self.amsgrad,
                     )
                     opt.minimize(loss)
 
@@ -380,16 +406,30 @@ class TestAdamWOp(unittest.TestCase):
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.AdamW(
-                0.1, beta1=-1, parameters=linear.parameters()
+                0.1,
+                beta1=-1,
+                parameters=linear.parameters(),
+                amsgrad=self.amsgrad,
             )
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.AdamW(
-                0.1, beta2=-1, parameters=linear.parameters()
+                0.1,
+                beta2=-1,
+                parameters=linear.parameters(),
+                amsgrad=self.amsgrad,
             )
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.AdamW(
-                0.1, epsilon=-1, parameters=linear.parameters()
+                0.1,
+                epsilon=-1,
+                parameters=linear.parameters(),
+                amsgrad=self.amsgrad,
             )
+
+
+class TestAdamWOpAMSGrad(TestAdamWOp):
+    def setUp(self):
+        self.amsgrad = True
 
 
 class TestAdamWOpGroup(TestAdamWOp):
@@ -407,6 +447,7 @@ class TestAdamWOpGroup(TestAdamWOp):
             ],
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01,
+            amsgrad=self.amsgrad,
         )
 
         for _ in range(2):
@@ -430,6 +471,7 @@ class TestAdamWOpGroup(TestAdamWOp):
             ],
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01,
+            amsgrad=self.amsgrad,
         )
 
         os.environ["FLAGS_shard_bypass_dygraph_optimizer"] = "1"
@@ -441,7 +483,15 @@ class TestAdamWOpGroup(TestAdamWOp):
             adam.clear_gradients()
 
 
+class TestAdamWOpGroupAMSGrad(TestAdamWOpGroup):
+    def setUp(self):
+        self.amsgrad = True
+
+
 class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
+    def setUp(self):
+        self.amsgrad = False
+
     def _test_adamw_op_dygraph_place_amp_with_maingrad(
         self, place, shape, use_main_grad
     ):
@@ -507,7 +557,7 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
             1000,
             False,
             False,
-            False,
+            self.amsgrad,
         )
 
         if use_main_grad:
@@ -532,14 +582,21 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
                 1000,
                 find_master,
                 False,
-                False,
+                self.amsgrad,
             )
             np.testing.assert_allclose(
                 param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
             )
-            np.testing.assert_allclose(
-                master_weight.numpy(), ref_param.numpy(), rtol=1e-6
-            )
+
+            if self.amsgrad:
+                np.testing.assert_allclose(
+                    master_weight.numpy(), ref_param.numpy(), rtol=1e-4
+                )
+            else:
+                np.testing.assert_allclose(
+                    master_weight.numpy(), ref_param.numpy(), rtol=1e-6
+                )
+
         else:
             _, _, _, _, _, _, _ = paddle._C_ops.adamw_(
                 param,
@@ -562,14 +619,20 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
                 1000,
                 find_master,
                 False,
-                False,
+                self.amsgrad,
             )
             np.testing.assert_allclose(
                 param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
             )
-            np.testing.assert_allclose(
-                master_weight.numpy(), ref_param.numpy(), rtol=1e-6
-            )
+
+            if self.amsgrad:
+                np.testing.assert_allclose(
+                    master_weight.numpy(), ref_param.numpy(), rtol=1e-4
+                )
+            else:
+                np.testing.assert_allclose(
+                    master_weight.numpy(), ref_param.numpy(), rtol=1e-6
+                )
 
     def _get_places(self):
         places = []
@@ -588,7 +651,17 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
                     )
 
 
+class TestAdamWOpMultiPrecisionWithMainGradAMSGrad(
+    TestAdamWOpMultiPrecisionWithMainGrad
+):
+    def setUp(self):
+        self.amsgrad = True
+
+
 class TestAdamWOpMultiPrecision(unittest.TestCase):
+    def setUp(self):
+        self.amsgrad = False
+
     def _test_adamw_op_dygraph_place_amp(self, place, use_amp=False):
         paddle.disable_static()
         paddle.seed(10)
@@ -608,6 +681,7 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
                 }
             ],
             multi_precision=use_amp,
+            amsgrad=self.amsgrad,
         )
 
         for idx in range(2):
@@ -649,7 +723,15 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
                 self._test_adamw_op_dygraph_place_amp(place, use_amp)
 
 
+class TestAdamWOpMultiPrecisionAMSGrad(TestAdamWOpMultiPrecision):
+    def setUp(self):
+        self.amsgrad = True
+
+
 class TestAdamWOpError(unittest.TestCase):
+    def setUp(self):
+        self.amsgrad = False
+
     def test_api_errors(self):
         def test_weight_decay_dtype():
             linear = paddle.nn.Linear(13, 5)
@@ -657,6 +739,7 @@ class TestAdamWOpError(unittest.TestCase):
                 learning_rate=0.01,
                 parameters=linear.parameters(),
                 weight_decay=1,
+                amsgrad=self.amsgrad,
             )
 
         def test_parameters_dtype1():
@@ -664,6 +747,7 @@ class TestAdamWOpError(unittest.TestCase):
                 learning_rate=0.01,
                 parameters=paddle.randn((5, 5)),
                 weight_decay=0.1,
+                amsgrad=self.amsgrad,
             )
 
         def test_parameters_dtype2():
@@ -672,11 +756,15 @@ class TestAdamWOpError(unittest.TestCase):
                 learning_rate=0.01,
                 parameters={'params': linear.parameters()},
                 weight_decay=0.1,
+                amsgrad=self.amsgrad,
             )
 
         def test_parameters_dtype3():
             adam = paddle.optimizer.AdamW(
-                learning_rate=0.01, parameters=None, weight_decay=0.1
+                learning_rate=0.01,
+                parameters=None,
+                weight_decay=0.1,
+                amsgrad=self.amsgrad,
             )
 
         def test_parameters_dtype4():
@@ -685,6 +773,7 @@ class TestAdamWOpError(unittest.TestCase):
                 learning_rate=0.01,
                 parameters={'params': set(linear.parameters())},
                 weight_decay=0.1,
+                amsgrad=self.amsgrad,
             )
 
         def test_learning_rate_dtype():
@@ -693,6 +782,7 @@ class TestAdamWOpError(unittest.TestCase):
                 learning_rate=1,
                 parameters=linear.parameters(),
                 weight_decay=0.1,
+                amsgrad=self.amsgrad,
             )
 
         def test_grad_clip_dtype():
@@ -702,6 +792,7 @@ class TestAdamWOpError(unittest.TestCase):
                 parameters=linear.parameters(),
                 weight_decay=0.1,
                 grad_clip=0.1,
+                amsgrad=self.amsgrad,
             )
 
         self.assertRaises(TypeError, test_weight_decay_dtype)
@@ -711,6 +802,11 @@ class TestAdamWOpError(unittest.TestCase):
         self.assertRaises(TypeError, test_parameters_dtype4)
         self.assertRaises(TypeError, test_learning_rate_dtype)
         self.assertRaises(TypeError, test_grad_clip_dtype)
+
+
+class TestAdamWOpErrorAMSGrad(TestAdamWOpError):
+    def setUp(self):
+        self.amsgrad = True
 
 
 class TestAdamWOpGroupWithLR(TestAdamWOp):
@@ -736,6 +832,7 @@ class TestAdamWOpGroupWithLR(TestAdamWOp):
             ],
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01,
+            amsgrad=self.amsgrad,
         )
 
         for _ in range(2):
@@ -744,6 +841,11 @@ class TestAdamWOpGroupWithLR(TestAdamWOp):
             out.backward()
             adam.step()
             adam.clear_gradients()
+
+
+class TestAdamWOpGroupWithLRAMSGrad(TestAdamWOpGroupWithLR):
+    def setUp(self):
+        self.amsgrad = True
 
 
 def simple_lr_setting(param, decay_rate, n_layers):
@@ -765,6 +867,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         random.seed(2022)
         np.random.seed(2022)
         paddle.seed(2022)
+        self.amsgrad = False
 
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
@@ -816,6 +919,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             apply_decay_param_fun=lambda name: True,
             weight_decay=weight_decay,
             lr_ratio=simple_lr_fun,
+            amsgrad=self.amsgrad,
         )
 
         def get_numpy_output(
@@ -839,7 +943,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 "lr_ratio": lr_ratio,
                 "coeff": weight_decay,
                 "with_decay": True,
-                "amsgrad": False,
+                "amsgrad": self.amsgrad,
             }
             param_out, moment1_out, moment2_out, moment2_max_out = adamw_step(
                 np_inputs, np_attrs
@@ -991,6 +1095,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                         weight_decay=weight_decay,
                         epsilon=epsilon,
                         lr_ratio=simple_lr_fun,
+                        amsgrad=self.amsgrad,
                     )
                     opt.minimize(avg_cost)
 
@@ -1015,7 +1120,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                     "lr_ratio": lr_ratio,
                     "coeff": weight_decay,
                     "with_decay": True,
-                    "amsgrad": False,
+                    "amsgrad": self.amsgrad,
                 }
                 param_out, moment1_out, moment2_out, moment2_max_out = (
                     adamw_step(np_inputs, np_attrs)
@@ -1210,6 +1315,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                         weight_decay=weight_decay,
                         epsilon=epsilon,
                         lr_ratio=simple_lr_fun,
+                        amsgrad=self.amsgrad,
                     )
                     _, params_grads = opt.minimize(avg_cost)
 
@@ -1234,7 +1340,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                     "lr_ratio": lr_ratio,
                     "coeff": weight_decay,
                     "with_decay": True,
-                    "amsgrad": False,
+                    "amsgrad": self.amsgrad,
                 }
                 param_out, moment1_out, moment2_out, moment2_out_max = (
                     adamw_step(np_inputs, np_attrs)
@@ -1381,7 +1487,13 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             paddle.disable_static()
 
 
-# TODO(megemini): AMSGrad
+class TestAdamWOpLayerwiseLRAMSGrad(TestAdamWOpLayerwiseLR):
+    def setUp(self):
+        random.seed(2022)
+        np.random.seed(2022)
+        paddle.seed(2022)
+        self.amsgrad = True
+
 
 if __name__ == "__main__":
     unittest.main()

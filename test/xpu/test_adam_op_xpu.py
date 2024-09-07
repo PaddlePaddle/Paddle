@@ -339,6 +339,7 @@ def adam_step_sparse(
                 / (np.sqrt(moment2_max_out[row_id]) + epsilon)
             )
         else:
+            moment2_max_out[row_id] = np.zeros_like(moment2_out[row_id])
             param_out[row_id] = param[row_id] - lr_t * (
                 moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
             )

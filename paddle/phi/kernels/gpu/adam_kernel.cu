@@ -255,8 +255,6 @@ void AdamDenseKernel(const Context& dev_ctx,
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
     if (grad_type == phi::DataType::FLOAT32) {
-      VLOG(3) << "--> AdamKernelREG grad_type == phi::DataType::FLOAT32";
-
       AdamKernelREG<T, float, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
               beta1_,
@@ -279,8 +277,6 @@ void AdamDenseKernel(const Context& dev_ctx,
               param.numel(),
               amsgrad);
     } else {
-      VLOG(3) << "--> AdamKernelREG";
-
       AdamKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -311,8 +307,6 @@ void AdamDenseKernel(const Context& dev_ctx,
     }
   } else {
     if (grad_type == phi::DataType::FLOAT32) {
-      VLOG(3) << "--> AdamKernelMEM grad_type == phi::DataType::FLOAT32";
-
       AdamKernelMEM<T, float, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
               beta1_,
@@ -335,8 +329,6 @@ void AdamDenseKernel(const Context& dev_ctx,
               param.numel(),
               amsgrad);
     } else {
-      VLOG(3) << "--> AdamKernelMEM";
-
       AdamKernelMEM<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,

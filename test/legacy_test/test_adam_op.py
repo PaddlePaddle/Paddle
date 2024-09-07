@@ -64,6 +64,9 @@ def adam_wrapper(
 
 
 class TestAdamOp1(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         '''Test Adam Op with supplied attributes'''
         self.op_type = "adam"
@@ -82,7 +85,7 @@ class TestAdamOp1(OpTest):
         epsilon = 1e-4
         beta1_pow = beta1**10
         beta2_pow = beta2**10
-        amsgrad = False
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -99,7 +102,7 @@ class TestAdamOp1(OpTest):
             'epsilon': epsilon,
             'beta1': beta1,
             'beta2': beta2,
-            'amsgrad': amsgrad,
+            'amsgrad': self.amsgrad,
         }
 
         param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
@@ -119,9 +122,17 @@ class TestAdamOp1(OpTest):
         self.check_output(check_pir=True)
 
 
+class TestAdamOp1AMSGrad(TestAdamOp1):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 class TestAdamOp2(OpTest):
     def set_shape(self):
         self.shape = (102, 105)
+
+    def set_amsgrad(self):
+        self.amsgrad = False
 
     def setUp(self):
         '''Test Adam Op with supplied attributes'''
@@ -142,7 +153,7 @@ class TestAdamOp2(OpTest):
         epsilon = 1e-8
         beta1_pow = beta1**10
         beta2_pow = beta2**10
-        amsgrad = False
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -155,15 +166,15 @@ class TestAdamOp2(OpTest):
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
 
-        attributes = {
+        self.attrs = {
             'epsilon': epsilon,
             'beta1': beta1,
             'beta2': beta2,
-            'amsgrad': amsgrad,
+            'amsgrad': self.amsgrad,
         }
 
         param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
-            self.inputs, attributes
+            self.inputs, self.attrs
         )
 
         self.outputs = {
@@ -184,7 +195,15 @@ class TestAdamOnlyTailOp(TestAdamOp2):
         self.shape = 3
 
 
+class TestAdamOp2AMSGrad(TestAdamOp2):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 class TestAdamOpMultipleSteps(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         '''Test Adam Operator with supplied attributes'''
         self.op_type = "adam"
@@ -205,7 +224,7 @@ class TestAdamOpMultipleSteps(OpTest):
         epsilon = 1e-8
         self.beta1_pow = self.beta1**10
         self.beta2_pow = self.beta2**10
-        self.amsgrad = False
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -261,12 +280,17 @@ class TestAdamOpMultipleSteps(OpTest):
             )
 
 
+class TestAdamOpMultipleStepsAMSGrad(TestAdamOpMultipleSteps):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 def adam_step(inputs, attributes):
     '''
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
     :param attributes: dict of attributes
-    :return tuple: tuple of output param, moment1, moment2,
+    :return tuple: tuple of output param, moment1, moment2, moment2_max
     beta1 power accumulator and beta2 power accumulator
     '''
     param = inputs['Param']
@@ -315,7 +339,7 @@ def adamw_step(inputs, attributes):
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
     :param attributes: dict of attributes
-    :return tuple: tuple of output param, moment1, moment2,
+    :return tuple: tuple of output param, moment1, moment2, moment2_max,
     beta1 power accumulator and beta2 power accumulator
     '''
     param = inputs['Param']
@@ -370,7 +394,7 @@ def adam_step_sparse(
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
     :param attributes: dict of attributes
-    :return tuple: tuple of output param, moment1, moment2,
+    :return tuple: tuple of output param, moment1, moment2, moment2_max,
     beta1 power accumulator and beta2 power accumulator
     '''
     param = inputs['Param']
@@ -410,6 +434,7 @@ def adam_step_sparse(
                 / (np.sqrt(moment2_max_out[row_id]) + epsilon)
             )
         else:
+            moment2_max_out[row_id] = np.zeros_like(moment2_out[row_id])
             param_out[row_id] = param[row_id] - lr_t * (
                 moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
             )
@@ -428,12 +453,16 @@ def adam_step_sparse(
 
 
 class TestSparseAdamOp(unittest.TestCase):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setup(self, scope, place, lazy_mode):
         beta1 = 0.78
         beta2 = 0.836
         epsilon = 1e-4
         beta1_pow = np.array([beta1**10]).astype("float32")
         beta2_pow = np.array([beta2**10]).astype("float32")
+        self.set_amsgrad()
 
         height = 10
         rows = [0, 4, 7]
@@ -455,7 +484,7 @@ class TestSparseAdamOp(unittest.TestCase):
             'beta1': beta1,
             'beta2': beta2,
             'min_row_size_to_use_multithread': 2,
-            'amsgrad': False,
+            'amsgrad': self.amsgrad,
         }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
@@ -535,7 +564,15 @@ class TestSparseAdamOp(unittest.TestCase):
                 self.check_with_place(place, lazy_mode)
 
 
+class TestSparseAdamOpAMSGrad(TestSparseAdamOp):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 class TestAdamOpBetaVariable(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         '''Test Adam Op with beta as Variable'''
         self.op_type = "adam"
@@ -555,6 +592,7 @@ class TestAdamOpBetaVariable(OpTest):
         epsilon = 1e-8
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -569,10 +607,10 @@ class TestAdamOpBetaVariable(OpTest):
             "Beta2Tensor": np.array([beta2]).astype("float32"),
         }
 
-        attributes = {'epsilon': epsilon, 'amsgrad': False}
+        self.attrs = {'epsilon': epsilon, 'amsgrad': self.amsgrad}
 
         param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
-            self.inputs, attributes
+            self.inputs, self.attrs
         )
 
         self.outputs = {
@@ -588,7 +626,15 @@ class TestAdamOpBetaVariable(OpTest):
         self.check_output(check_pir=True)
 
 
+class TestAdamOpBetaVariableAMSGrad(TestAdamOpBetaVariable):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 class TestAdamOpBetaEpsilonVariable(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         '''Test Adam Op with beta/epsilon as Variable'''
         self.op_type = "adam"
@@ -608,6 +654,7 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
         epsilon = 1e-8
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -623,10 +670,10 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
             "EpsilonTensor": np.array([epsilon]).astype("float32"),
         }
 
-        attributes = {'epsilon': epsilon, 'amsgrad': False}
+        self.attrs = {'epsilon': epsilon, 'amsgrad': self.amsgrad}
 
         param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
-            self.inputs, attributes
+            self.inputs, self.attrs
         )
 
         self.outputs = {
@@ -642,7 +689,15 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
         self.check_output(check_pir=True)
 
 
+class TestAdamOpBetaEpsilonVariableAMSGrad(TestAdamOpBetaEpsilonVariable):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 class TestAdamOpWithGlobalBetaPow(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         '''Test Adam Op with global_beta_pow'''
         self.op_type = "adam"
@@ -662,6 +717,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         epsilon = 1e-8
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -677,13 +733,15 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
             "EpsilonTensor": np.array([epsilon]).astype("float32"),
         }
 
-        attributes = {'epsilon': epsilon, 'amsgrad': False}
+        self.attrs = {
+            'use_global_beta_pow': True,
+            'epsilon': epsilon,
+            'amsgrad': self.amsgrad,
+        }
 
         param_out, moment1_out, moment2_out, moment2_max_out = adam_step(
-            self.inputs, attributes
+            self.inputs, self.attrs
         )
-
-        self.attrs = {'use_global_beta_pow': True}
 
         # use_global_beta_pow=True, Beta1PowOut and Beta2PowOut are empty.
         self.outputs = {
@@ -699,7 +757,15 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         self.check_output(check_pir=True)
 
 
+class TestAdamOpWithGlobalBetaPowAMSGrad(TestAdamOpWithGlobalBetaPow):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 class TestAdamOpWithSkipUpdate(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         '''Test Adam Op with global_beta_pow'''
         self.op_type = "adam"
@@ -719,6 +785,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
         epsilon = 1e-8
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        self.set_amsgrad()
 
         self.inputs = {
             'Param': param,
@@ -735,9 +802,11 @@ class TestAdamOpWithSkipUpdate(OpTest):
             "SkipUpdate": np.array([True]).astype("bool"),
         }
 
-        attributes = {'epsilon': epsilon, 'amsgrad': False}
-
-        self.attrs = {'use_global_beta_pow': True, 'amsgrad': False}
+        self.attrs = {
+            'use_global_beta_pow': True,
+            'epsilon': epsilon,
+            'amsgrad': self.amsgrad,
+        }
 
         # use_global_beta_pow=True, Beta1PowOut and Beta2PowOut are empty.
         self.outputs = {
@@ -753,7 +822,15 @@ class TestAdamOpWithSkipUpdate(OpTest):
         self.check_output(check_pir=True)
 
 
+class TestAdamOpWithSkipUpdateAMSGrad(TestAdamOpWithSkipUpdate):
+    def set_amsgrad(self):
+        self.amsgrad = True
+
+
 class TestAdamOpV2(unittest.TestCase):
+    def setUp(self):
+        self.amsgrad = False
+
     def test_pir_adam_op(self):
         with paddle.pir_utils.IrGuard():
             place = base.CPUPlace()
@@ -785,6 +862,7 @@ class TestAdamOpV2(unittest.TestCase):
                         beta2=beta2,
                         weight_decay=0.01,
                         epsilon=1e-8,
+                        amsgrad=self.amsgrad,
                     )
                     opt.minimize(loss)
 
@@ -802,7 +880,9 @@ class TestAdamOpV2(unittest.TestCase):
         linear = paddle.nn.Linear(13, 5)
 
         adam = paddle.optimizer.Adam(
-            learning_rate=0.01, parameters=linear.parameters()
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            amsgrad=self.amsgrad,
         )
         out = linear(a)
         out.backward()
@@ -814,7 +894,9 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.disable_static()
         emb = paddle.nn.Embedding(10, 10)
 
-        adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+        adam = paddle.optimizer.Adam(
+            0.001, parameters=emb.parameters(), amsgrad=self.amsgrad
+        )
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
 
@@ -826,6 +908,7 @@ class TestAdamOpV2(unittest.TestCase):
             learning_rate=learning_rate,
             weight_decay=paddle.regularizer.L2Decay(0.001),
             parameters=emb.parameters(),
+            amsgrad=self.amsgrad,
         )
         lr = adam.get_lr()
         state_dict = adam.state_dict()
@@ -836,7 +919,9 @@ class TestAdamOpV2(unittest.TestCase):
             learning_rate = np.array([0.01]).astype("float32")
             learning_rate = paddle.to_tensor(learning_rate)
             adam = paddle.optimizer.Adam(
-                learning_rate=learning_rate, parameters=emb.parameters()
+                learning_rate=learning_rate,
+                parameters=emb.parameters(),
+                amsgrad=self.amsgrad,
             )
 
         params = adam.get_opti_var_name_list()
@@ -850,7 +935,10 @@ class TestAdamOpV2(unittest.TestCase):
         linear = paddle.nn.Linear(13, 5)
         clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         adam = paddle.optimizer.Adam(
-            0.1, parameters=linear.parameters(), grad_clip=clip
+            0.1,
+            parameters=linear.parameters(),
+            grad_clip=clip,
+            amsgrad=self.amsgrad,
         )
         out = linear(a)
         out.backward()
@@ -861,7 +949,9 @@ class TestAdamOpV2(unittest.TestCase):
     def test_adam_op_with_set_lr(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
-        adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+        adam = paddle.optimizer.Adam(
+            0.1, parameters=linear.parameters(), amsgrad=self.amsgrad
+        )
 
         lr = 0.01
         adam.set_lr(lr)
@@ -879,15 +969,24 @@ class TestAdamOpV2(unittest.TestCase):
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.Adam(
-                0.1, beta1=-1, parameters=linear.parameters()
+                0.1,
+                beta1=-1,
+                parameters=linear.parameters(),
+                amsgrad=self.amsgrad,
             )
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.Adam(
-                0.1, beta2=-1, parameters=linear.parameters()
+                0.1,
+                beta2=-1,
+                parameters=linear.parameters(),
+                amsgrad=self.amsgrad,
             )
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.Adam(
-                0.1, epsilon=-1, parameters=linear.parameters()
+                0.1,
+                epsilon=-1,
+                parameters=linear.parameters(),
+                amsgrad=self.amsgrad,
             )
         paddle.enable_static()
 
@@ -897,7 +996,10 @@ class TestAdamOpV2(unittest.TestCase):
         x = paddle.to_tensor(x_data, stop_gradient=False)
         emb = paddle.nn.Embedding(10, 10, sparse=True)
         adam = paddle.optimizer.Adam(
-            0.001, parameters=emb.parameters(), weight_decay=0.01
+            0.001,
+            parameters=emb.parameters(),
+            weight_decay=0.01,
+            amsgrad=self.amsgrad,
         )
 
         with self.assertRaises(RuntimeError):
@@ -905,6 +1007,11 @@ class TestAdamOpV2(unittest.TestCase):
             out.backward()
             adam.step()
         paddle.enable_static()
+
+
+class TestAdamOpV2AMSGrad(TestAdamOpV2):
+    def setUp(self):
+        self.amsgrad = True
 
 
 class TestAdamOpV2Group(TestAdamOpV2):
@@ -935,7 +1042,15 @@ class TestAdamOpV2Group(TestAdamOpV2):
         adam.clear_gradients()
 
 
+class TestAdamOpV2GroupAMSGrad(TestAdamOpV2Group):
+    def setUp(self):
+        self.amsgrad = True
+
+
 class TestMultiTensorAdam(unittest.TestCase):
+    def setUp(self):
+        self.amsgrad = False
+
     def _adam_optimize_dygraph(
         self,
         place,
@@ -965,6 +1080,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                 parameters=model.parameters(),
                 use_multi_tensor=use_multi_tensor,
                 multi_precision=use_amp,
+                amsgrad=self.amsgrad,
             )
         else:
             parameters = list(model.parameters())
@@ -986,6 +1102,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                 ],
                 use_multi_tensor=use_multi_tensor,
                 multi_precision=use_amp,
+                amsgrad=self.amsgrad,
             )
 
         for idx in range(2):
@@ -1022,7 +1139,9 @@ class TestMultiTensorAdam(unittest.TestCase):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adam(
-            multi_precision=use_amp, use_multi_tensor=use_multi_tensor
+            multi_precision=use_amp,
+            use_multi_tensor=use_multi_tensor,
+            amsgrad=self.amsgrad,
         )
 
         with paddle.static.program_guard(train_program, startup_program):
@@ -1155,7 +1274,10 @@ class TestMultiTensorAdam(unittest.TestCase):
                     self._check_with_place_amp(place, use_amp)
 
 
-# TODO(megemini): AMSGrad
+class TestMultiTensorAdamAMSGrad(TestMultiTensorAdam):
+    def setUp(self):
+        self.amsgrad = True
+
 
 if __name__ == "__main__":
     paddle.enable_static()

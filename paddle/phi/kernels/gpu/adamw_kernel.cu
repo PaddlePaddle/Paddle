@@ -208,6 +208,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
 
   VLOG(4) << "multi_precision: " << multi_precision;
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+  VLOG(4) << "amsgrad:" << amsgrad;
 
   MPDType coeff_ = static_cast<MPDType>(coeff);
   MPDType lr_ratio_ = static_cast<MPDType>(lr_ratio);
