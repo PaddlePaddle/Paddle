@@ -19,17 +19,17 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
-#include "paddle/phi/core/distributed/collective/process_group.h"
-#include "paddle/phi/core/distributed/collective/process_group_with_stream.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 #if defined(PADDLE_WITH_XPU)
-#include "paddle/phi/core/distributed/collective/bkcl_tools.h"
+#include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #endif
 
 constexpr const char* BKCL_BACKEND_NAME = "BKCL";

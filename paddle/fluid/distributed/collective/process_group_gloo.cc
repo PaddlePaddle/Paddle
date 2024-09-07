@@ -27,8 +27,8 @@
 #include <gloo/reduce.h>
 
 #include "glog/logging.h"
-#include "paddle/phi/core/distributed/collective/common.h"
-#include "paddle/phi/core/distributed/collective/process_group_gloo.h"
+#include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/process_group_gloo.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
 
