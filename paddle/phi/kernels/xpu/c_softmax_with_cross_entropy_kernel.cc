@@ -1,70 +1,112 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
-
-#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/softmax_impl.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
 #include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
-template <typename T, typename DeviceContext>
-class CSoftmaxWithCrossEntropyOp : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const int rid = ctx.Attr<int>("ring_id");
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(rid)) {
-      CSoftmaxWithCrossEntropyProcessGroupFunctor<DeviceContext, T> functor_;
-      functor_(ctx);
-    } else {
-      CSoftmaxWithCrossEntropyFunctor<DeviceContext, T> functor_;
-      functor_(ctx);
-    }
-  }
+template <typename Context, typename T>
+struct CSoftmaxWithCrossEntropyFunctor {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& logits,
+                  const DenseTensor& label,
+                  int64_t ignore_index,
+                  int ring_id,
+                  int rank,
+                  int nranks,
+                  DenseTensor* softmax,
+                  DenseTensor* loss);
 };
 
+template <typename Context, typename T>
+struct CSoftmaxWithCrossEntropyProcessGroupFunctor {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& logits,
+                  const DenseTensor& label,
+                  int64_t ignore_index,
+                  int ring_id,
+                  int rank,
+                  int nranks,
+                  DenseTensor* softmax,
+                  DenseTensor* loss);
+};
+
+template <typename T, typename Context>
+void CSoftmaxWithCrossEntropyKernel(const Context& dev_ctx,
+                                    const DenseTensor& logits,
+                                    const DenseTensor& label,
+                                    int64_t ignore_index,
+                                    int ring_id,
+                                    int rank,
+                                    int nranks,
+                                    DenseTensor* softmax,
+                                    DenseTensor* loss) {
+  const int rid = ring_id;
+  auto map = distributed::ProcessGroupMapFromGid::getInstance();
+  if (map->has(rid)) {
+    CSoftmaxWithCrossEntropyProcessGroupFunctor<Context, T> functor_;
+    functor_(dev_ctx,
+             logits,
+             label,
+             ignore_index,
+             ring_id,
+             rank,
+             nranks,
+             softmax,
+             loss);
+  } else {
+    CSoftmaxWithCrossEntropyFunctor<Context, T> functor_;
+    functor_(dev_ctx,
+             logits,
+             label,
+             ignore_index,
+             ring_id,
+             rank,
+             nranks,
+             softmax,
+             loss);
+  }
+}
+
 template <typename T>
-void FixLossAccordingToIgnoreIndex(const framework::ExecutionContext& ctx,
+void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
                                    const phi::DenseTensor* labels,
                                    const phi::DenseTensor* predicted_logits,
                                    phi::DenseTensor* loss,
                                    const int64_t N,
                                    const int64_t ignore_index) {
-  auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
   using XPUType = typename XPUTypeTrait<T>::Type;
   // 先准备一个全0的tensor
-  phi::DenseTensor zeros_constant =
-      ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+  phi::DenseTensor zeros_constant;
+  zeros_constant.Resize({N, 1});
+  dev_ctx.template Alloc<T>(&zeros_constant);
+
   int ret = xpu::constant<XPUType>(
       dev_ctx.x_context(),
       reinterpret_cast<XPUType*>(zeros_constant.data<T>()),
@@ -73,15 +115,17 @@ void FixLossAccordingToIgnoreIndex(const framework::ExecutionContext& ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
 
   // 准备一个bool类型的tensor，用来标记每一个loss要不要刷0
-  phi::DenseTensor bool_tensor_for_mask_label =
-      ctx.AllocateTmpTensor<bool, phi::XPUContext>({N, 1}, dev_ctx);
+  phi::DenseTensor bool_tensor_for_mask_label;
+  bool_tensor_for_mask_label.Resize({N, 1});
+  dev_ctx.template Alloc<bool>(&bool_tensor_for_mask_label);
+
   // 准备一个和label同类型的tensor，每个元素都刷成ignore_index
   phi::DenseTensor ignore_label_as_tensor;
 
-  const auto& label_type = framework::TransToProtoVarType(labels->dtype());
-  if (label_type == framework::proto::VarType::INT32) {
-    ignore_label_as_tensor =
-        ctx.AllocateTmpTensor<int, phi::XPUContext>({N, 1}, dev_ctx);
+  const auto& label_type = labels->dtype();
+  if (label_type == phi::DataType::INT32) {
+    ignore_label_as_tensor.Resize({N, 1});
+    dev_ctx.template Alloc<int>(&ignore_label_as_tensor);
     ret = xpu::constant<int>(dev_ctx.x_context(),
                              ignore_label_as_tensor.data<int>(),
                              N,
@@ -95,9 +139,9 @@ void FixLossAccordingToIgnoreIndex(const framework::ExecutionContext& ctx,
                           bool_tensor_for_mask_label.data<bool>(),
                           N);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
-  } else if (label_type == framework::proto::VarType::INT64) {
-    ignore_label_as_tensor =
-        ctx.AllocateTmpTensor<int64_t, phi::XPUContext>({N, 1}, dev_ctx);
+  } else if (label_type == phi::DataType::INT64) {
+    ignore_label_as_tensor.Resize({N, 1});
+    dev_ctx.template Alloc<int64_t>(&ignore_label_as_tensor);
     ret = xpu::constant<int64_t>(dev_ctx.x_context(),
                                  ignore_label_as_tensor.data<int64_t>(),
                                  N,
@@ -129,18 +173,19 @@ void FixLossAccordingToIgnoreIndex(const framework::ExecutionContext& ctx,
 
 template <typename T>
 struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
-  void operator()(const framework::ExecutionContext& ctx) {
+  void operator()(const phi::XPUContext& dev_ctx,
+                  const DenseTensor& logits_in,
+                  const DenseTensor& label_in,
+                  int64_t ignore_index,
+                  int ring_id,
+                  int rank,
+                  int nranks,
+                  DenseTensor* softmax,
+                  DenseTensor* loss) {
     using XPUType = typename XPUTypeTrait<T>::Type;
-    const phi::DenseTensor* logits = ctx.Input<phi::DenseTensor>("Logits");
-    const phi::DenseTensor* labels = ctx.Input<phi::DenseTensor>("Label");
-    phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
-    phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
-    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
-    const int rid = ctx.Attr<int>("ring_id");
-    const int nranks = ctx.Attr<int>("nranks");
-    const int rank = ctx.Attr<int>("rank");
-
-    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
+    const phi::DenseTensor* logits = &logits_in;
+    const phi::DenseTensor* labels = &label_in;
+    const int rid = ring_id;
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     distributed::ProcessGroup* pg = map->get(rid);
@@ -158,17 +203,16 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
-    framework::TensorCopy(
-        *logits, ctx.GetPlace(), ctx.device_context(), &logits_2d);
-    framework::TensorCopy(
-        *softmax, ctx.GetPlace(), ctx.device_context(), &softmax_2d);
+    phi::Copy(dev_ctx, *logits, dev_ctx.GetPlace(), false, &logits_2d);
+    phi::Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, &softmax_2d);
     logits_2d.Resize({N, D});
     softmax_2d.Resize({N, D});
 
     int ret = -1;
     // step 1, obtain logit_max
     phi::DenseTensor logits_max;
-    logits_max = ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    logits_max.Resize({N, 1});
+    dev_ctx.template Alloc<T>(&logits_max);
     {
       // reduce last dim
       int dims[1] = {1};
@@ -214,8 +258,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
 
     // step 3, obtain predict target
     phi::DenseTensor predicted_logits;
-    predicted_logits =
-        ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    predicted_logits.Resize({N, 1});
+    dev_ctx.template Alloc<T>(&predicted_logits);
     ret = xpu::constant<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<XPUType*>(predicted_logits.data<T>()),
@@ -224,8 +268,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
     const int64_t start_index = rank * D;
     const int64_t end_index = start_index + D;
-    const auto& label_type = framework::TransToProtoVarType(labels->dtype());
-    if (label_type == framework::proto::VarType::INT32) {
+    const auto& label_type = labels->dtype();
+    if (label_type == phi::DataType::INT32) {
       ret = xpu::mask_label_by_index<XPUType, int32_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -237,7 +281,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
           D,
           nranks,
           ignore_index);
-    } else if (label_type == framework::proto::VarType::INT64) {
+    } else if (label_type == phi::DataType::INT64) {
       ret = xpu::mask_label_by_index<XPUType, int64_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -267,7 +311,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
 
     // step 5, obtain sum_exp_logits
     phi::DenseTensor sum_exp_logits;
-    sum_exp_logits = ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    sum_exp_logits.Resize({N, 1});
+    dev_ctx.template Alloc<T>(&sum_exp_logits);
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
@@ -323,11 +368,11 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
 
     // 将label和ignore_index相同的那些loss，置为0
     FixLossAccordingToIgnoreIndex<T>(
-        ctx, labels, &predicted_logits, loss, N, ignore_index);
+        dev_ctx, labels, &predicted_logits, loss, N, ignore_index);
 
-    phi::memory_utils::Copy(ctx.GetPlace(),
+    phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             softmax->data(),
-                            ctx.GetPlace(),
+                            dev_ctx.GetPlace(),
                             softmax_2d.data(),
                             N * D * sizeof(T));
   }
@@ -335,57 +380,32 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
 
 template <typename T>
 struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
-  void operator()(const framework::ExecutionContext& ctx) {
+  void operator()(const phi::XPUContext& dev_ctx,
+                  const DenseTensor& logits_in,
+                  const DenseTensor& label_in,
+                  int64_t ignore_index,
+                  int ring_id,
+                  int rank,
+                  int nranks,
+                  DenseTensor* softmax,
+                  DenseTensor* loss) {
+#if defined(PADDLE_WITH_XPU_BKCL)
     using XPUType = typename XPUTypeTrait<T>::Type;
-    const phi::DenseTensor* logits = ctx.Input<phi::DenseTensor>("Logits");
-    const phi::DenseTensor* labels = ctx.Input<phi::DenseTensor>("Label");
-    phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
-    phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
-    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
-
-    const int rid = ctx.Attr<int>("ring_id");
-    const int nranks = ctx.Attr<int>("nranks");
-    const int rank = ctx.Attr<int>("rank");
-
-    const auto& place = ctx.GetPlace();
-    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
+    const phi::DenseTensor* logits = &logits_in;
+    const phi::DenseTensor* labels = &label_in;
 
     XPUStream stream = nullptr;
-    platform::BKCLComm* comm = nullptr;
     phi::distributed::BKCLCommContext* comm_ctx = nullptr;
 
-    const auto& comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
-    if (FLAGS_dynamic_static_unified_comm) {
-      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
-                        true,
-                        common::errors::InvalidArgument(
-                            "You choose to use new communication library by "
-                            "setting environment "
-                            "variable FLAGS_dynamic_static_unified_comm True. "
-                            "But ring_id(%d) is "
-                            "not found in comm_context_manager.",
-                            std::to_string(rid)));
-      comm_ctx = static_cast<phi::distributed::BKCLCommContext*>(
-          comm_context_manager.Get(std::to_string(rid)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        common::errors::Unavailable(
-                            "BKCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
+    comm_ctx = static_cast<phi::distributed::BKCLCommContext*>(
+        dev_ctx.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "BKCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
 
-      stream = comm_ctx->GetStream();
-      VLOG(3) << "new comm_context_manager has ring_id " << rid;
-    } else {
-      comm = platform::BKCLCommContext::Instance().Get(rid, place);
-
-      // NOTE(zhangxiaoci) use global calculate stream so that no sync is
-      // required stream = comm->stream();
-      stream = static_cast<phi::XPUContext*>(
-                   phi::DeviceContextPool::Instance().Get(place))
-                   ->stream();
-      VLOG(3) << "old BKCLCommContext has ring_id " << rid;
-    }
+    stream = dev_ctx.stream();
 
     // allocate memory on device.
     dev_ctx.template Alloc(softmax, logits->dtype());
@@ -398,17 +418,16 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
-    framework::TensorCopy(
-        *logits, ctx.GetPlace(), ctx.device_context(), &logits_2d);
-    framework::TensorCopy(
-        *softmax, ctx.GetPlace(), ctx.device_context(), &softmax_2d);
+    phi::Copy(dev_ctx, *logits, dev_ctx.GetPlace(), false, &logits_2d);
+    phi::Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, &softmax_2d);
     logits_2d.Resize({N, D});
     softmax_2d.Resize({N, D});
 
     int ret = -1;
     // step 1, obtain logit_max
     phi::DenseTensor logits_max;
-    logits_max = ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    logits_max.Resize({N, 1});
+    dev_ctx.template Alloc<T>(&logits_max);
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
@@ -432,19 +451,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
           f);
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_max");
     }
-    if (comm_ctx) {
-      comm_ctx->AllReduce(&logits_max, logits_max, BKCL_ADD, stream);
-    } else {
-      void* logits_max_buff = logits_max.data<T>();
-      PADDLE_ENFORCE_XPU_SUCCESS(
-          bkcl_all_reduce(comm->comm(),
-                          logits_max_buff,
-                          logits_max_buff,
-                          logits_max.numel(),
-                          phi::ToBKCLDataType(logits_max.dtype()),
-                          BKCL_MAX,
-                          stream));
-    }
+    comm_ctx->AllReduce(&logits_max, logits_max, BKCL_ADD, stream);
 
     // step 2, obtain logit - logit_max
     {
@@ -462,8 +469,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
 
     // step 3, obtain predict target
     phi::DenseTensor predicted_logits;
-    predicted_logits =
-        ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    predicted_logits.Resize({N, 1});
+    dev_ctx.template Alloc<T>(&predicted_logits);
     ret = xpu::constant<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<XPUType*>(predicted_logits.data<T>()),
@@ -472,8 +479,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
     const int64_t start_index = rank * D;
     const int64_t end_index = start_index + D;
-    const auto& label_type = framework::TransToProtoVarType(labels->dtype());
-    if (label_type == framework::proto::VarType::INT32) {
+    const auto& label_type = labels->dtype();
+    if (label_type == phi::DataType::INT32) {
       ret = xpu::mask_label_by_index<XPUType, int32_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -485,7 +492,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
           D,
           nranks,
           ignore_index);
-    } else if (label_type == framework::proto::VarType::INT64) {
+    } else if (label_type == phi::DataType::INT64) {
       ret = xpu::mask_label_by_index<XPUType, int64_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -500,20 +507,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "mask_label_by_index");
 
-    if (comm_ctx) {
-      comm_ctx->AllReduce(
-          &predicted_logits, predicted_logits, BKCL_ADD, stream);
-    } else {
-      void* predict_logits_buff = predicted_logits.data<T>();
-      PADDLE_ENFORCE_XPU_SUCCESS(
-          bkcl_all_reduce(comm->comm(),
-                          predict_logits_buff,
-                          predict_logits_buff,
-                          predicted_logits.numel(),
-                          phi::ToBKCLDataType(predicted_logits.dtype()),
-                          BKCL_ADD,
-                          stream));
-    }
+    comm_ctx->AllReduce(&predicted_logits, predicted_logits, BKCL_ADD, stream);
 
     // step 4, obtain exp(logit)
     ret = xpu::exp<XPUType>(
@@ -525,7 +519,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
 
     // step 5, obtain sum_exp_logits
     phi::DenseTensor sum_exp_logits;
-    sum_exp_logits = ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    sum_exp_logits.Resize({N, 1});
+    dev_ctx.Alloc<T>(&sum_exp_logits);
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
@@ -550,19 +545,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
     }
 
-    if (comm_ctx) {
-      comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, BKCL_ADD, stream);
-    } else {
-      void* sum_exp_logits_buff = sum_exp_logits.data<T>();
-      PADDLE_ENFORCE_XPU_SUCCESS(
-          bkcl_all_reduce(comm->comm(),
-                          sum_exp_logits_buff,
-                          sum_exp_logits_buff,
-                          sum_exp_logits.numel(),
-                          phi::ToBKCLDataType(sum_exp_logits.dtype()),
-                          BKCL_ADD,
-                          stream));
-    }
+    comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, BKCL_ADD, stream);
 
     {
       int64_t dims[4] = {N, D, N, 1};
@@ -592,87 +575,22 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
 
     // 将label和ignore_index相同的那些loss，置为0
     FixLossAccordingToIgnoreIndex<T>(
-        ctx, labels, &predicted_logits, loss, N, ignore_index);
+        dev_ctx, labels, &predicted_logits, loss, N, ignore_index);
 
-    phi::memory_utils::Copy(ctx.GetPlace(),
+    phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             softmax->data(),
-                            ctx.GetPlace(),
+                            dev_ctx.GetPlace(),
                             softmax_2d.data(),
                             N * D * sizeof(T));
+#endif
   }
 };
 
-template <typename T, typename DeviceContext>
-class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    using XPUType = typename XPUTypeTrait<T>::Type;
-    const phi::DenseTensor* labels = context.Input<phi::DenseTensor>("Label");
-    const phi::DenseTensor* loss_grad =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
-    phi::DenseTensor* logit_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
-    const phi::DenseTensor* softmax =
-        context.Input<phi::DenseTensor>("Softmax");
-    const int64_t ignore_index = context.Attr<int64_t>("ignore_index");
-    const int rank = context.Attr<int>("rank");
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+}  // namespace phi
 
-    if (logit_grad != softmax) {
-      framework::TensorCopy(
-          *softmax, context.GetPlace(), context.device_context(), logit_grad);
-    }
-    const auto softmax_dims = softmax->dims();
-    const int axis = softmax_dims.size() - 1;
-    const int64_t N = phi::funcs::SizeToAxis(axis, softmax_dims);
-    const int64_t D = phi::funcs::SizeFromAxis(axis, softmax_dims);
-
-    const int64_t start_index = rank * D;
-    const int64_t end_index = start_index + D;
-    const auto& label_type = framework::TransToProtoVarType(labels->dtype());
-
-    int ret = 0;
-    if (label_type == framework::proto::VarType::INT32) {
-      ret = xpu::mask_label_by_index_grad<XPUType, int32_t>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(loss_grad->data<T>()),
-          labels->data<int32_t>(),
-          reinterpret_cast<XPUType*>(logit_grad->data<T>()),
-          start_index,
-          end_index,
-          N,
-          D,
-          ignore_index);
-    } else if (label_type == framework::proto::VarType::INT64) {
-      ret = xpu::mask_label_by_index_grad<XPUType, int64_t>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(loss_grad->data<T>()),
-          labels->data<int64_t>(),
-          reinterpret_cast<XPUType*>(logit_grad->data<T>()),
-          start_index,
-          end_index,
-          N,
-          D,
-          ignore_index);
-    }
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "mask_label_by_index_grad");
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
-                          XPU,
-                          ALL_LAYOUT,
-                          ops::CSoftmaxWithCrossEntropyOp,
-                          float,
-                          phi::dtype::bfloat16) {}
-PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy_grad,
-                          XPU,
-                          ALL_LAYOUT,
-                          ops::CSoftmaxWithCrossEntropyGrad,
-                          float,
-                          phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(c_softmax_with_cross_entropy,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CSoftmaxWithCrossEntropyKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
