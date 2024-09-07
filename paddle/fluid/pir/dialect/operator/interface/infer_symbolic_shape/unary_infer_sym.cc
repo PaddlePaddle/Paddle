@@ -1520,8 +1520,8 @@ bool LogsumexpOpInferSymbolicShape(
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
-bool Log_softmaxOpInferSymbolicShape(pir::Operation *op,
-                                   pir::InferSymbolicShapeContext *infer_context) {
+bool Log_softmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
@@ -1553,14 +1553,15 @@ bool Log_softmaxOpInferSymbolicShape(pir::Operation *op,
                           "0] when input is 0D Tensor "));
   }
 
-  infer_context->SetShapeOrDataForValue(op->result(0), 
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   return true;
 }
 
-bool LogSoftmaxOpInferSymbolicShape(pir::Operation *op,
-                                   pir::InferSymbolicShapeContext *infer_context){
+bool LogSoftmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return Log_softmaxOpInferSymbolicShape(op, infer_context);
 }
 
