@@ -1534,7 +1534,7 @@ bool ShuffleBatchOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const symbol::ShapeOrDataDimExprs &seed_ptr_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &seed_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
@@ -1549,10 +1549,12 @@ bool ShuffleBatchOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(seed_shape)});
 
+  symbol::DimExpr unique_dim_sym = infer_context->GetNextSymName();
+
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(infer_context->GetNextSymName())});
+          symbol::TensorShapeOrDataDimExprs(unique_dim_sym)});
 
   return true;
 }
