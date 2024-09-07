@@ -106,8 +106,6 @@ class PirFunctionInfo : public BaseFunctionInfo {
 
   std::shared_ptr<pir::Program> Program() const;
 
-  void RemoveFeedFetch();
-
  private:
   std::shared_ptr<pir::Program> program_;
 };

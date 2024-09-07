@@ -121,5 +121,4 @@ std::shared_ptr<pir::Program> PirFunctionInfo::Program() const {
   return program_;  // NOLINT
 }
 
-void PirFunctionInfo::RemoveFeedFetch() { utils::RemoveFeedFetch(program_.get()); }
 }  // namespace paddle::jit
