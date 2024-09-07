@@ -21,7 +21,7 @@ import builtins
 import inspect
 from collections import namedtuple
 from copy import deepcopy
-from functools import cached_property
+from functools import cached_property, reduce
 from typing import Any, Callable, Tuple, Union
 
 from typing_extensions import TypeAlias, TypeGuard
@@ -42,7 +42,6 @@ from ...symbolic.statement_ir import Reference, StatementIR, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
-    BreakGraphError,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -640,13 +639,15 @@ class FunctionGraph:
             except NotSupportedTensorArgumentError as e:
                 bound_arguments = inspect.signature(func).bind(*args, **kwargs)
                 bound_arguments.apply_defaults()
-                if e.name not in bound_arguments.arguments:
-                    # TODO(zrr1999): fallback static shape for all symbolic variables
-                    raise BreakGraphError(
-                        f"Can't find {e.name} in bound arguments."
+                if e.name in bound_arguments.arguments:
+                    original_var = bound_arguments.arguments[e.name]
+                    flatten_vars = original_var.flatten_items()
+                else:
+                    flatten_vars = reduce(
+                        lambda x, y: x + y.flatten_items(),
+                        bound_arguments.arguments.values(),
+                        [],
                     )
-                original_var = bound_arguments.arguments[e.name]
-                flatten_vars = original_var.flatten_items()
 
                 if not any(
                     isinstance(arg, SymbolicVariable) for arg in flatten_vars
