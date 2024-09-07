@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from test_prim_sub_graph_backward_dynamic_shape import (
     TestPrimBaseWithGrad,
+    TestPrimThreeWithGrad,
     TestPrimTwoWithGrad,
     apply_to_static,
 )
@@ -28,6 +29,36 @@ from paddle.static import InputSpec
 
 def add_net(x, y):
     return x + y
+
+
+def batch_norm_net1(x, y, z):
+    mean = paddle.ones([40], dtype="float32")
+    var = paddle.zeros([40], dtype='float32')
+    return paddle.nn.functional.batch_norm(x, mean, var, y, z)
+
+
+def batch_norm_net2(x, y, z):
+    mean = paddle.ones([40], dtype="float32")
+    var = paddle.zeros([40], dtype='float32')
+    return paddle.nn.functional.batch_norm(
+        x, mean, var, y, z, use_global_stats=True
+    )
+
+
+def batch_norm_net3(x, y, z):
+    mean = paddle.ones([60], dtype="float32")
+    var = paddle.zeros([60], dtype='float32')
+    return paddle.nn.functional.batch_norm(
+        x, mean, var, y, z, data_format='NHWC'
+    )
+
+
+def batch_norm_net4(x, y, z):
+    mean = paddle.ones([60], dtype="float32")
+    var = paddle.zeros([60], dtype='float32')
+    return paddle.nn.functional.batch_norm(
+        x, mean, var, y, z, use_global_stats=True, data_format='NHWC'
+    )
 
 
 def concat_net1(x):
@@ -42,6 +73,10 @@ def concat_net2(x):
 
 def concat_net3(x):
     return paddle.concat(x, axis=0)
+
+
+def cumprod_net(x):
+    return paddle.cumprod(x, 1)
 
 
 def cumsum_net(x):
@@ -228,6 +263,132 @@ class TestPrimAddWithGrad10(TestPrimTwoWithGrad):
         self.tol = 1e-6
 
 
+class TestPrimBatchNormWithGrad1(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50, 60]
+        self.init_x_shape = [None, 40, None, None]
+        self.y_shape = [40]
+        self.init_y_shape = [None]
+        self.z_shape = [40]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = batch_norm_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBatchNormWithGrad2(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50, 60]
+        self.init_x_shape = [None, 40, None, None]
+        self.y_shape = [40]
+        self.init_y_shape = [None]
+        self.z_shape = [40]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = batch_norm_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBatchNormWithGrad3(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50, 60]
+        self.init_x_shape = [None, None, None, 60]
+        self.y_shape = [40]
+        self.init_y_shape = [None]
+        self.z_shape = [40]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = batch_norm_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBatchNormWithGrad4(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50, 60]
+        self.init_x_shape = [None, 40, None, None]
+        self.y_shape = [60]
+        self.init_y_shape = [None]
+        self.z_shape = [60]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = batch_norm_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBatchNormWithGrad5(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50, 60]
+        self.init_x_shape = [None, None, None, 60]
+        self.y_shape = [60]
+        self.init_y_shape = [None]
+        self.z_shape = [60]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = batch_norm_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBatchNormWithGrad6(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50, 60]
+        self.init_x_shape = [None, 40, None, None]
+        self.y_shape = [60]
+        self.init_y_shape = [None]
+        self.z_shape = [60]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = batch_norm_net4
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBatchNormWithGrad7(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50, 60]
+        self.init_x_shape = [None, None, None, 60]
+        self.y_shape = [60]
+        self.init_y_shape = [None]
+        self.z_shape = [60]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = batch_norm_net4
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
 class TestPrimConcatWithGrad1(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2023)
@@ -340,6 +501,18 @@ class TestPrimConcatWithGrad6(TestPrimConcatWithGrad5):
         x = np.random.random(self.x_shape).astype(self.dtype)
         self.x = [x + i for i in range(4)]
         self.net = concat_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimCumprodWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = cumprod_net
         self.enable_cinn = False
         self.tol = 1e-6
 

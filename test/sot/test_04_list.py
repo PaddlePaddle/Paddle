@@ -247,10 +247,12 @@ def list_inplace_add():
     return l0, l1
 
 
+@check_no_breakgraph
 def list_extend_range(x):
     return [1, *range(0, len(x.shape))]
 
 
+@check_no_breakgraph
 def list_extend_dict():
     l1 = []
     l1.extend({1: 2, 2: 3, 3: 4})
@@ -369,8 +371,8 @@ class TestListMethods(TestCaseBase):
     def test_list_extend_range(self):
         self.assert_results(list_extend_range, paddle.to_tensor([1, 2]))
 
-    # def test_list_extend_dict(self):
-    #     self.assert_results(list_extend_dict)
+    def test_list_extend_dict(self):
+        self.assert_results(list_extend_dict)
 
 
 if __name__ == "__main__":
