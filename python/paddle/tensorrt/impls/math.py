@@ -110,3 +110,88 @@ def max_converter(network, paddle_op, inputs):
         keep_dims=keepdim,
     )
     return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.divide", trt_version="8.x")
+def divide_converter(network, paddle_op, inputs):
+    weight_shape = paddle_op.operands()[1].source().shape
+    input_shape = paddle_op.operands()[0].source().shape
+
+    weight_tensor = inputs[1]
+    input_tensor = inputs[0]
+    if type(inputs[1]) == trt.Weights:
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    if type(inputs[0]) == trt.Weights:
+        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
+            0
+        )
+    lhs_val, rhs_val = broadcast(
+        network,
+        input_tensor,
+        weight_tensor,
+        input_tensor.name,
+        weight_tensor.name,
+    )
+
+    layer = network.add_elementwise(
+        lhs_val, rhs_val, trt.ElementWiseOperation.DIV
+    )
+    return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.subtract", trt_version="8.x")
+def substract_converter(network, paddle_op, inputs):
+    weight_shape = paddle_op.operands()[1].source().shape
+    input_shape = paddle_op.operands()[0].source().shape
+
+    weight_tensor = inputs[1]
+    input_tensor = inputs[0]
+    if type(inputs[1]) == trt.Weights:
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    if type(inputs[0]) == trt.Weights:
+        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
+            0
+        )
+    lhs_val, rhs_val = broadcast(
+        network,
+        input_tensor,
+        weight_tensor,
+        input_tensor.name,
+        weight_tensor.name,
+    )
+    layer = network.add_elementwise(
+        lhs_val, rhs_val, trt.ElementWiseOperation.SUB
+    )
+    return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.multiply", trt_version="8.x")
+def substract_converter(network, paddle_op, inputs):
+    weight_shape = paddle_op.operands()[1].source().shape
+    input_shape = paddle_op.operands()[0].source().shape
+
+    weight_tensor = inputs[1]
+    input_tensor = inputs[0]
+    if type(inputs[1]) == trt.Weights:
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    if type(inputs[0]) == trt.Weights:
+        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
+            0
+        )
+    lhs_val, rhs_val = broadcast(
+        network,
+        input_tensor,
+        weight_tensor,
+        input_tensor.name,
+        weight_tensor.name,
+    )
+    layer = network.add_elementwise(
+        lhs_val, rhs_val, trt.ElementWiseOperation.PROD
+    )
+    return layer.get_output(0)
