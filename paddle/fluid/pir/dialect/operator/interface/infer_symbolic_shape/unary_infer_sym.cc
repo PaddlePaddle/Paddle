@@ -3751,8 +3751,9 @@ bool WeightQuantizeOpInferSymbolicShape(
   std::vector<symbol::DimExpr> scale_shape;
 
   if (group_size != -1) {
-    symbol::DimExpr scale_shape_0 = (x_shape[0] + (group_size - 1)) / group_size;
-    scale_shape = std::vector<symbol::DimExpr>{scale_dim0, x_dims[1]};
+    symbol::DimExpr scale_shape_0 =
+        (x_shape[0] + (group_size - 1)) / group_size;
+    scale_shape = std::vector<symbol::DimExpr>{scale_shape_0, x_dims[1]};
   } else {
     scale_shape = std::vector<symbol::DimExpr>{x_shape[1]};
   }
@@ -3762,7 +3763,7 @@ bool WeightQuantizeOpInferSymbolicShape(
   } else if (algo == "weight_only_int4") {
     out_shape = std::vector<symbol::DimExpr>{x_shape[1] / 2, x_shape[0]};
   }
-  
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
