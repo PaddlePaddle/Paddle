@@ -19,11 +19,9 @@ extern "C" {
 
 #include <Python.h>
 
-#define EVAL_FRAME_NOT_SUPPORTED_VERSION 0x030d0000
-#define EVAL_FRAME_IS_SUPPORTED \
-  PY_VERSION_HEX < EVAL_FRAME_NOT_SUPPORTED_VERSION
+#include "paddle/fluid/pybind/sot/macros.h"
 
-#if EVAL_FRAME_IS_SUPPORTED
+#if SOT_IS_SUPPORTED
 
 #if PY_VERSION_HEX >= 0x030b0000
 #include <internal/pycore_frame.h>

@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/pybind/cpython_internals.h"
+#include "paddle/fluid/pybind/sot/cpython_internals.h"
 
 #include <frameobject.h>
 
-#if EVAL_FRAME_IS_SUPPORTED
+#if SOT_IS_SUPPORTED
 
 #if PY_VERSION_HEX >= 0x030b0000
 #include <internal/pycore_code.h>

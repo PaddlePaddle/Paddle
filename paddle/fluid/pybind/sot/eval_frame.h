@@ -19,9 +19,9 @@ extern "C" {
 
 #include <Python.h>
 
-#include "paddle/fluid/pybind/cpython_internals.h"
+#include "paddle/fluid/pybind/sot/macros.h"
 
-#if EVAL_FRAME_IS_SUPPORTED
+#if SOT_IS_SUPPORTED
 
 PyObject *set_eval_frame_py(PyObject *callback);
 PyMODINIT_FUNC PyInit__eval_frame();

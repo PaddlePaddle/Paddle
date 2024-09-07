@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pybind/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/eval_frame_tools.h"
 
 #include <Python.h>
 
@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/enforce.h"
 
-#if EVAL_FRAME_IS_SUPPORTED
+#if SOT_IS_SUPPORTED
 
 /*============================ Dict Tree ================================*/
 

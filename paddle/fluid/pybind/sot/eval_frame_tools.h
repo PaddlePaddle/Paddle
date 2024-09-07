@@ -21,9 +21,9 @@ extern "C" {
 #include <Python.h>
 #include <frameobject.h>
 #include <string.h>
-#include "paddle/fluid/pybind/cpython_internals.h"
+#include "paddle/fluid/pybind/sot/macros.h"
 
-#if EVAL_FRAME_IS_SUPPORTED
+#if SOT_IS_SUPPORTED
 
 #if PY_VERSION_HEX >= 0x030b0000
 #include <internal/pycore_frame.h>

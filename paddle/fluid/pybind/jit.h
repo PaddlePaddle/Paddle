@@ -25,9 +25,7 @@ namespace paddle {
 namespace pybind {
 
 void BindJit(pybind11::module *m);
-#if EVAL_FRAME_IS_SUPPORTED
-void BindEvalFrame(pybind11::module *m);
-#endif
+void BindSOT(pybind11::module *m);
 
 }  // namespace pybind
 }  // namespace paddle
