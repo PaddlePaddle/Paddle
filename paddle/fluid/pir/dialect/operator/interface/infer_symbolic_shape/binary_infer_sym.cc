@@ -1778,15 +1778,13 @@ bool WeightDequantizeOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
   const auto &scale_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &scale_shape =
-      scale_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &scale_shape = scale_shape_or_data.shape();
 
-  PADDLE_ENFORCE_EQ(
-      x_shape.size(),
-      2UL,
-      common::errors::InvalidArgument(
-          "The x tensor of dequantize op must be 2D, but got[%d]",
-          x_shape.size()));
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "The x tensor of dequantize op must be 2D, but got[%d]",
+                        x_shape.size()));
 
   int group_size = op->attribute<pir::Int32Attribute>("group_size").data();
   std::string algo = op->attribute<pir::StrAttribute>("algo").AsString();
@@ -1823,16 +1821,15 @@ bool WeightDequantizeOpInferSymbolicShape(
                           "The scale tensor of dequantize op must "
                           "be 2D in group-wise mode, but got[%d]",
                           scale_shape.size()));
-    PADDLE_ENFORCE_EQ(
-        scale_shape[0],
-        (x_shape[1] + (group_size - 1)) / group_size,
-        common::errors::InvalidArgument(
-            "The input(weight_scale) dim[0] must be equal "
-            "to (Input(weight).dim[1] + (group_size -1))"
-            " / group_size"
-            "But receive %d and %d",
-            scale_shape[0],
-            (x_shape[1] + (group_size - 1)) / group_size));
+    PADDLE_ENFORCE_EQ(scale_shape[0],
+                      (x_shape[1] + (group_size - 1)) / group_size,
+                      common::errors::InvalidArgument(
+                          "The input(weight_scale) dim[0] must be equal "
+                          "to (Input(weight).dim[1] + (group_size -1))"
+                          " / group_size"
+                          "But receive %d and %d",
+                          scale_shape[0],
+                          (x_shape[1] + (group_size - 1)) / group_size));
     PADDLE_ENFORCE_EQ(scale_shape[1],
                       real_channel_shape,
                       common::errors::InvalidArgument(
