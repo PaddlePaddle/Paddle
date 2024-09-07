@@ -61,18 +61,21 @@ __global__ void AdamKernelREG(MT beta1,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
+    MT mom2_max = static_cast<MT>(moment2_max[id]);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
+    MT mom2_max_;
     MT denom;
     if (amsgrad) {
-      MT mom2_max = static_cast<MT>(moment2_max[id]);
-      MT mom2_max_ = std::max(mom2, mom2_max);
-      moment2_max_out[id] = mom2_max_;
+      mom2_max_ = std::max(mom2, mom2_max);
+
       denom =
           (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     } else {
+      mom2_max_ = mom2_max;
+
       denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     }
 
@@ -80,6 +83,7 @@ __global__ void AdamKernelREG(MT beta1,
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
+    moment2_max_out[id] = mom2_max_;
     param_out[id] = static_cast<T>(p);
     if (master_param_out) {
       master_param_out[id] = p;
@@ -118,18 +122,21 @@ __global__ void AdamKernelMEM(MT beta1,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
+    MT mom2_max = static_cast<MT>(moment2_max[id]);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
+    MT mom2_max_;
     MT denom;
     if (amsgrad) {
-      MT mom2_max = static_cast<MT>(moment2_max[id]);
-      MT mom2_max_ = std::max(mom2, mom2_max);
-      moment2_max_out[id] = mom2_max_;
+      mom2_max_ = std::max(mom2, mom2_max);
+
       denom =
           (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     } else {
+      mom2_max_ = mom2_max;
+
       denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     }
 
@@ -137,6 +144,7 @@ __global__ void AdamKernelMEM(MT beta1,
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
+    moment2_max_out[id] = mom2_max_;
     param_out[id] = static_cast<T>(p);
     if (master_param_out) {
       master_param_out[id] = p;
@@ -186,6 +194,7 @@ void AdamDenseKernel(const Context& dev_ctx,
   const auto grad_type = grad.dtype();
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+  VLOG(4) << "amsgrad: " << amsgrad;
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -246,6 +255,8 @@ void AdamDenseKernel(const Context& dev_ctx,
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
     if (grad_type == phi::DataType::FLOAT32) {
+      VLOG(3) << "--> AdamKernelREG grad_type == phi::DataType::FLOAT32";
+
       AdamKernelREG<T, float, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
               beta1_,
@@ -268,6 +279,8 @@ void AdamDenseKernel(const Context& dev_ctx,
               param.numel(),
               amsgrad);
     } else {
+      VLOG(3) << "--> AdamKernelREG";
+
       AdamKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -298,6 +311,8 @@ void AdamDenseKernel(const Context& dev_ctx,
     }
   } else {
     if (grad_type == phi::DataType::FLOAT32) {
+      VLOG(3) << "--> AdamKernelMEM grad_type == phi::DataType::FLOAT32";
+
       AdamKernelMEM<T, float, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
               beta1_,
@@ -320,6 +335,8 @@ void AdamDenseKernel(const Context& dev_ctx,
               param.numel(),
               amsgrad);
     } else {
+      VLOG(3) << "--> AdamKernelMEM";
+
       AdamKernelMEM<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,

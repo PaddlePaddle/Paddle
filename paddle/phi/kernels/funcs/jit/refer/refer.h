@@ -536,16 +536,19 @@ void Adam(T beta1,
     mom2_out_ptr[i] =
         beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
 
-    T mom2;
     if (amsgrad) {
-      mom2 = std::max(mom2_out_ptr[i], mom2_max_out_ptr[i]);
-      mom2_max_out_ptr[i] = mom2;
-    } else {
-      mom2 = mom2_out_ptr[i];
-    }
+      T mom2_max_ = std::max(mom2_out_ptr[i], mom2_max_ptr[i]);
+      mom2_max_out_ptr[i] = mom2_max_;
 
-    param_out_ptr[i] =
-        param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2) + eps));
+      param_out_ptr[i] =
+          param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_max_) + eps));
+    } else {
+      mom2_max_out_ptr[i] = mom2_max_ptr[i];
+
+      T mom2_ = mom2_out_ptr[i];
+      param_out_ptr[i] =
+          param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_) + eps));
+    }
   }
 }
 
@@ -574,15 +577,19 @@ void AdamW(T beta1,
     mom2_out_ptr[i] =
         beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
 
-    T mom2;
     if (amsgrad) {
-      mom2 = std::max(mom2_out_ptr[i], mom2_max_out_ptr[i]);
-      mom2_max_out_ptr[i] = mom2;
-    } else {
-      mom2 = mom2_out_ptr[i];
-    }
+      T mom2_max_ = std::max(mom2_out_ptr[i], mom2_max_ptr[i]);
+      mom2_max_out_ptr[i] = mom2_max_;
 
-    param_out_ptr[i] = param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2) + eps));
+      param_out_ptr[i] =
+          param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_max_) + eps));
+    } else {
+      mom2_max_out_ptr[i] = mom2_max_ptr[i];
+
+      T mom2_ = mom2_out_ptr[i];
+      param_out_ptr[i] =
+          param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_) + eps));
+    }
   }
 }
 
