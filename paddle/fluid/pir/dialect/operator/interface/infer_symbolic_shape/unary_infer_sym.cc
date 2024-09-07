@@ -3744,13 +3744,30 @@ bool WeightQuantizeOpInferSymbolicShape(
       common::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_shape.size()));
 
-  std::vector<symbol::DimExpr> out_shape = {x_shape[1], x_shape[0]};
+  int group_size = op->attribute<pir::Int32Attribute>("group_size").data();
+  std::string algo = op->attribute<pir::StrAttribute>("algo").AsString();
+
+  std::vector<symbol::DimExpr> out_shape;
+  std::vector<symbol::DimExpr> scale_shape;
+
+  if (group_size != -1) {
+    symbol::DimExpr scale_shape_0 = (x_shape[0] + (group_size - 1)) / group_size;
+    scale_shape = std::vector<symbol::DimExpr>{scale_dim0, x_dims[1]};
+  } else {
+    scale_shape = std::vector<symbol::DimExpr>{x_shape[1]};
+  }
+
+  if (algo == "weight_only_int8" || algo == "llm.int8") {
+    out_shape = std::vector<symbol::DimExpr>{x_shape[1], x_shape[0]};
+  } else if (algo == "weight_only_int4") {
+    out_shape = std::vector<symbol::DimExpr>{x_shape[1] / 2, x_shape[0]};
+  }
+  
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
-  std::vector<symbol::DimExpr> scale_shape = {x_shape[1]};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
