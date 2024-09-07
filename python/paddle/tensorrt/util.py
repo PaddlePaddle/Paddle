@@ -56,9 +56,11 @@ def run_pir_pass(program, partition_mode=False):
     return program
 
 
-def forbid_op_lower_trt(program, op_name):
+def forbid_op_lower_trt(program, disabled_ops):
+    if isinstance(disabled_ops, str):
+        disabled_ops = [disabled_ops]
     for op in program.global_block().ops:
-        if op.name() == op_name:
+        if op.name() in disabled_ops:
             op.set_bool_attr("__l_trt__", False)
 
 
@@ -80,34 +82,37 @@ def predict_program(program, feed_data, fetch_var_list):
 
 
 def warmup_shape_infer(
-    program, min_shape_feed, max_shape_feed, fetch_var_list=None
+    program,
+    min_shape_feed,
+    max_shape_feed,
+    fetch_var_list=None,
+    scope=None,
 ):
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
-            output_var = program.list_vars()[-1]
+
             # Run the program with input_data
             if fetch_var_list is None:
-                for _ in range(1):
-                    output_original = executor.run(
-                        program, feed=min_shape_feed, fetch_list=[output_var]
-                    )
+                fetch_var_list = [program.list_vars()[-1]]
 
-                # Run the program with input_data_max_shape (fake max_shape input)
-                for _ in range(1):
-                    executor.run(
-                        program, feed=max_shape_feed, fetch_list=[output_var]
-                    )
-            else:
-                for _ in range(1):
-                    output_original = executor.run(
-                        program, feed=min_shape_feed, fetch_list=fetch_var_list
-                    )
+            # Run the program with input_data_max_shape (fake max_shape input)
+            for _ in range(1):
+                output_original = executor.run(
+                    program,
+                    feed=min_shape_feed,
+                    fetch_list=fetch_var_list,
+                    scope=scope,
+                )
 
-                    # Run the program with input_data_max_shape (fake max_shape input)
-                for _ in range(1):
-                    executor.run(
-                        program, feed=max_shape_feed, fetch_list=fetch_var_list
-                    )
+            # Run the program with input_data_max_shape (fake max_shape input)
+            for _ in range(1):
+                executor.run(
+                    program,
+                    feed=max_shape_feed,
+                    fetch_list=fetch_var_list,
+                    scope=scope,
+                )
+
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})

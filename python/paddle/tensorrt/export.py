@@ -17,8 +17,24 @@ import os
 import numpy as np
 
 import paddle
+from paddle.base import core, dygraph
+from paddle.base.framework import (
+    EagerParamBase,
+    Variable,
+)
+from paddle.framework import use_pir_api
+from paddle.jit.api import (
+    _get_function_names_from_layer,
+    get_ast_static_function,
+    to_static,
+)
+from paddle.jit.dy2static.program_translator import (
+    StaticFunction,
+)
+from paddle.nn import Layer
 from paddle.tensorrt.converter import PaddleToTensorRTConverter
 from paddle.tensorrt.util import (
+    forbid_op_lower_trt,
     run_pir_pass,
     warmup_shape_infer,
 )
@@ -91,16 +107,9 @@ class TensorRTConfig:
             {'FLAGS_trt_min_group_size': min_subgraph_size}
         )
 
-    def forbid_op_lower_trt(self, program, disabled_ops):
-        if isinstance(disabled_ops, str):
-            disabled_ops = [disabled_ops]
-        for op in program.global_block().ops:
-            if op.name() in disabled_ops:
-                op.set_bool_attr("__l_trt__", False)
-
 
 # return an optimized program with pd_op.tensorrt_engine operations.
-def converter_to_trt(program, trt_config, scope):
+def convert_to_trt(program, trt_config, scope):
     if not isinstance(program, paddle.base.libpaddle.pir.Program):
         raise TypeError(
             f"program type must be paddle.base.libpaddle.pir.Program, but received {type(program)}"
@@ -130,6 +139,7 @@ def converter_to_trt(program, trt_config, scope):
                 min_shape_feed={feed_name[0]: min_data},
                 max_shape_feed={feed_name[0]: max_data},
                 fetch_var_list=output_var,
+                scope=scope,
             )
 
         # run pir pass (including trt_op_marker_pass)
@@ -137,7 +147,7 @@ def converter_to_trt(program, trt_config, scope):
 
         # specify certain operators to be excluded from entering TensorRT
         if trt_config.disable_ops:
-            trt_config.forbid_op_lower_trt(program, trt_config.disable_ops)
+            forbid_op_lower_trt(program, trt_config.disable_ops)
 
         # run pir pass (including trt_sub_graph_extract_pass)
         program_with_pir = run_pir_pass(program, partition_mode=True)
@@ -183,9 +193,189 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
         input_spec=input_spec,
         **kwargs,
     )
-    main_program = static_net.main_program
-    scope = paddle.static.global_scope()
-    return converter_to_trt(main_program, config, scope)
+    is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
+    if isinstance(static_net, paddle.DataParallel):
+        inner_layer = static_net._layers
+    else:
+        inner_layer = static_net
+
+    inner_input_spec = None
+    if input_spec is not None:
+        if isinstance(static_net, Layer):
+            for member_name in _get_function_names_from_layer(inner_layer):
+                static_func = getattr(inner_layer, member_name, None)
+                if (
+                    isinstance(static_func, StaticFunction)
+                    and 'forward' != member_name
+                ):
+                    raise ValueError(
+                        f"If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is {type(input_spec)}."
+                    )
+        if not isinstance(input_spec, (list, tuple)):
+            raise TypeError(
+                f"The input input_spec should be 'list', but received input_spec's type is {type(input_spec)}."
+            )
+        inner_input_spec = []
+        for var in paddle.utils.flatten(input_spec):
+            if isinstance(var, paddle.static.InputSpec):
+                inner_input_spec.append(var)
+            elif isinstance(
+                var, (core.eager.Tensor, Variable, paddle.pir.Value)
+            ):
+                inner_input_spec.append(
+                    paddle.static.InputSpec.from_tensor(var)
+                )
+            else:
+                inner_input_spec.append(var)
+
+    with_hook = False
+    scope = core.Scope()
+    extra_var_info = {}
+    if isinstance(static_net, Layer):
+        functions = list(set(_get_function_names_from_layer(static_net)))
+        functions = sorted(functions)
+        if static_net._forward_pre_hooks or static_net._forward_post_hooks:
+            with_hook = True
+    else:
+        functions = [static_net]
+
+    combine_vars = {}
+    combine_program = []
+    property_vals = []  # (value, key)
+    concrete_program = None
+
+    for attr_func in functions:
+        if isinstance(static_net, Layer):
+            static_func = get_ast_static_function(
+                getattr(inner_layer, attr_func, None)
+            )
+            if isinstance(static_func, StaticFunction):
+                if static_func.is_property:
+                    # property method to be exported
+                    immediate_val = static_func()
+                    property_vals.append(
+                        (
+                            immediate_val,
+                            static_net.__class__.__name__ + '.' + attr_func,
+                        )
+                    )
+                    continue
+                concrete_program = (
+                    static_func.concrete_program_specify_input_spec(
+                        inner_input_spec,
+                        with_hook=with_hook,
+                        is_prim_infer=is_prim_infer,
+                    )
+                )
+            elif 'forward' == attr_func:
+                if inner_input_spec:
+                    inner_input_spec = paddle.utils.pack_sequence_as(
+                        input_spec, inner_input_spec
+                    )
+                static_forward = to_static(
+                    inner_layer.forward,
+                    input_spec=inner_input_spec,
+                    full_graph=True,
+                )
+                concrete_program = (
+                    static_forward.concrete_program_specify_input_spec(
+                        with_hook=with_hook, is_prim_infer=is_prim_infer
+                    )
+                )
+                # the input_spec has been used in declarative, which is equal to
+                # @to_static with input_spec and jit.save without input_spec,
+                # avoid needless warning
+                inner_input_spec = None
+            else:
+                continue
+        else:
+            if isinstance(attr_func, StaticFunction):
+                static_func = get_ast_static_function(attr_func)
+                if static_func.is_property:
+                    immediate_val = static_func()
+                    property_vals.append((immediate_val, static_func))
+                    continue
+
+                concrete_program = (
+                    static_func.concrete_program_specify_input_spec(
+                        inner_input_spec, is_prim_infer=is_prim_infer
+                    )
+                )
+            else:
+                static_func = get_ast_static_function(attr_func)
+                if inner_input_spec:
+                    inner_input_spec = paddle.utils.pack_sequence_as(
+                        input_spec, inner_input_spec
+                    )
+                static_function = to_static(
+                    static_func,
+                    input_spec=inner_input_spec,
+                    full_graph=True,
+                )
+                concrete_program = static_function.concrete_program
+
+        dygraph_state_dict = None
+        if isinstance(inner_layer, Layer):
+            dygraph_state_dict = inner_layer.to_static_state_dict()
+            print("dygraph_state_dict", dygraph_state_dict)
+        elif isinstance(attr_func, StaticFunction):
+            if static_func._class_instance:
+                dygraph_state_dict = (
+                    static_func._class_instance.to_static_state_dict()
+                )
+        if dygraph_state_dict:
+            state_names_dict = {}
+            state_var_dict = {}
+            for strcutured_name, var in dygraph_state_dict.items():
+                state_names_dict[var.name] = strcutured_name
+                state_var_dict[var.name] = var
+        with dygraph.guard():
+            if use_pir_api():
+                for tensor, value in zip(*concrete_program.parameters):
+                    if not value.persistable:
+                        continue
+                    print("value.name", value.name)
+                    param_or_buffer_tensor = scope.var(value.name).get_tensor()
+                    print("param_or_buffer_tensor", param_or_buffer_tensor)
+                    src_tensor = (
+                        state_var_dict[tensor.name].value().get_tensor()
+                    )
+                    param_or_buffer_tensor._share_data_with(src_tensor)
+            else:
+                for param_or_buffer in concrete_program.parameters:
+                    if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
+                        scr_tensor = param_or_buffer.value().get_map_tensor()
+                        tgt_var = scope.var(param_or_buffer.name)
+                        tgt_var.set_vocab(scr_tensor)
+                    else:
+                        param_or_buffer_tensor = scope.var(
+                            param_or_buffer.name
+                        ).get_tensor()
+                        # src_tensor = param_or_buffer.value().get_tensor()
+                        src_tensor = (
+                            state_var_dict[param_or_buffer.name]
+                            .value()
+                            .get_tensor()
+                        )
+                        param_or_buffer_tensor._share_data_with(src_tensor)
+                    if param_or_buffer.name not in extra_var_info:
+                        extra_info_dict = {}
+                        if param_or_buffer.name in state_names_dict:
+                            extra_info_dict['structured_name'] = (
+                                state_names_dict[param_or_buffer.name]
+                            )
+                        extra_info_dict['stop_gradient'] = (
+                            param_or_buffer.stop_gradient
+                        )
+                        if isinstance(param_or_buffer, EagerParamBase):
+                            extra_info_dict['trainable'] = (
+                                param_or_buffer.trainable
+                            )
+                        extra_var_info[param_or_buffer.name] = extra_info_dict
+
+    with paddle.pir_utils.IrGuard():
+        main_program = static_net.forward.main_program
+        return convert_to_trt(main_program, config, scope)
 
 
 # Obtain a program with tensorrt_op by directly loading the model.
@@ -221,4 +411,4 @@ def export_loaded_model(model_dir, trt_config):
             )
         )
 
-    return converter_to_trt(program, trt_config, scope)
+    return convert_to_trt(program, trt_config, scope)

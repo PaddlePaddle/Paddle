@@ -22,7 +22,7 @@ from get_program import (
 from paddle.tensorrt.export import (
     Input,
     TensorRTConfig,
-    converter_to_trt,
+    convert_to_trt,
 )
 from paddle.tensorrt.util import (
     predict_program,
@@ -54,7 +54,7 @@ class TestConverterResNet50(unittest.TestCase):
             program, {"input": input_optim_data}, [output_var]
         )
 
-        program_with_trt = converter_to_trt(program, trt_config, scope)
+        program_with_trt = convert_to_trt(program, trt_config, scope)
         output_var = program_with_trt.list_vars()[-1]
 
         # Step6: run inference(converted_program)

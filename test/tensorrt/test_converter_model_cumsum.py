@@ -19,14 +19,31 @@ import numpy as np
 
 import paddle
 import paddle.inference as paddle_infer
+import paddle.nn.functional as F
+from paddle import nn
+from paddle.static import InputSpec
 from paddle.tensorrt.export import (
     Input,
     TensorRTConfig,
+    export,
     export_loaded_model,
 )
 
 
-class TestConverterCumsumOp(unittest.TestCase):
+class CumsumModel(nn.Layer):
+    def __init__(self, input_dim):
+        super(self).__init__()
+        self.linear = nn.Linear(input_dim, input_dim)
+
+    def forward(self, x):
+        linear_out = self.linear(x)
+        relu_out = F.relu(linear_out)
+        axis = paddle.full([1], 2, dtype='int64')
+        out = paddle.cumsum(relu_out, axis=axis)
+        return out
+
+
+class TestExport_to_loaded_model(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -48,11 +65,8 @@ class TestConverterCumsumOp(unittest.TestCase):
                 x = paddle.static.data(
                     shape=np_x.shape, name='x', dtype=np_x.dtype
                 )
-                linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
-                linear_out = linear(x)
-                relu_out = paddle.nn.functional.relu(linear_out)
-                axis = paddle.full([1], 2, dtype='int64')
-                out = paddle.cumsum(relu_out, axis=axis)
+                model = CumsumModel(input_dim=np_x.shape[-1])
+                out = model(x)
                 loss = paddle.mean(out)
                 sgd = paddle.optimizer.SGD(learning_rate=0.0)
                 sgd.minimize(paddle.mean(out))
@@ -74,7 +88,6 @@ class TestConverterCumsumOp(unittest.TestCase):
                 config.use_optimized_model(True)
 
             # Set input
-
             input_config = Input(
                 min_input_shape=(9, 10, 11),
                 optim_input_shape=(9, 10, 11),
@@ -108,6 +121,33 @@ class TestConverterCumsumOp(unittest.TestCase):
             min_data, _, max_data = input_instrance[i].generate_input_data()
             model_inputs = paddle.to_tensor(min_data)
             output_converted = predictor.run([model_inputs])
+
+
+class TestExport(unittest.TestCase):
+    def test_run(self):
+        with paddle.pir_utils.IrGuard():
+            input_config = Input(
+                min_input_shape=(9, 10, 11),
+                optim_input_shape=(9, 10, 11),
+                max_input_shape=(9, 10, 11),
+            )
+            trt_config = TensorRTConfig(inputs=[input_config])
+            for i, input_instrance in enumerate(trt_config.inputs):
+                min_data, _, max_data = input_instrance[i].generate_input_data()
+                # np_x = np.random.randn(9, 10, 11).astype('float32')
+                x = paddle.to_tensor(min_data)
+                paddle.disable_static()
+                net = CumsumModel(input_dim=min_data.shape[-1])
+                paddle.disable_static()
+                # 创建 InputSpec
+                input_spec = [InputSpec(shape=min_data.shape, dtype='float32')]
+                program_with_trt = export(
+                    net,
+                    input_spec=input_spec,
+                    config=trt_config,
+                    full_graph=True,
+                )
+                print("program_with_trt", program_with_trt)
 
 
 if __name__ == "__main__":
