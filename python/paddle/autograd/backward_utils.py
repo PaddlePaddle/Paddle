@@ -73,6 +73,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.split",
     "pd_op.sqrt",
     "pd_op.square",
+    "pd_op.squeeze",
     "pd_op.stack",
     "pd_op.swiglu",
     "pd_op.transpose",
