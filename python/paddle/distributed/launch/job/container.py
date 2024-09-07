@@ -168,10 +168,10 @@ class Container:
             return Status.FAILED
 
     def __str__(self):
-       need_print = os.environ.get('FLAGS_print_launcher_env', 'false').lower()
-       if need_print == 'true' or need_print == '1':
-           return f'Container rank {self._rank} status {self.status} cmd {self._entrypoint} code {self.exit_code} log {self.errfile} \nenv {self._env}'
-       return f'Container rank {self._rank} status {self.status} cmd {self._entrypoint} code {self.exit_code} log {self.errfile}'
+        need_print = os.environ.get('FLAGS_print_launcher_env', 'false').lower()
+        if need_print == 'true' or need_print == '1':
+            return f'Container rank {self._rank} status {self.status} cmd {self._entrypoint} code {self.exit_code} log {self.errfile} \nenv {self._env}'
+        return f'Container rank {self._rank} status {self.status} cmd {self._entrypoint} code {self.exit_code} log {self.errfile}'
 
     def logs(self, fn=None, offset=0, whence=1, limit=1000):
         if not self._log_handler:
@@ -209,5 +209,3 @@ class Container:
             self.logs(offset=ed - length, whence=0)
         else:
             self.logs(offset=0, whence=0)
-
-
