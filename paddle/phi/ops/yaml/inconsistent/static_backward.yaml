@@ -252,6 +252,18 @@
   inplace : (out_grad -> x_grad)
   composite : hardswish_grad(x, out_grad, x_grad)
 
+- backward_op : legacy_matmul_grad
+  forward : legacy_matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false, float alpha=1.0f) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false, float alpha=1.0f)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : legacy_matmul_grad
+    param: [x, y, out_grad, transpose_x, transpose_y, alpha]
+    data_type: out_grad
+
 - backward_op : lrn_grad
   forward: lrn (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout") -> Tensor (out), Tensor (mid_out)
   args: (Tensor x, Tensor out, Tensor mid_out, Tensor out_grad, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format

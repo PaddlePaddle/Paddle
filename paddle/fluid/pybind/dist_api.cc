@@ -42,6 +42,7 @@ using paddle::dialect::DistTypeInterface;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::ProcessMeshAttribute;
 using paddle::dialect::TensorDistAttribute;
+using pir::ArrayAttribute;
 
 namespace paddle::pybind {
 
@@ -127,11 +128,21 @@ OperationDistAttribute CreateOperationDistAttribute(
       pir::IrContext::Instance(), mesh, operands, results);
 }
 
+ArrayAttribute CreateArrayAttribute(
+    const std::vector<pir::Attribute> &elements) {
+  return ArrayAttribute::get(pir::IrContext::Instance(), elements);
+}
+
 void BindDistUtils(pybind11::module *m) {
   m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
   m->def("create_op_dist_attribute", CreateOperationDistAttribute);
+  m->def("create_array_attribute", CreateArrayAttribute);
   m->def("get_sub_meshes", phi::distributed::GetSubMeshes);
-  m->def("cvt_to_dist_type", &dialect::CvtToPirDistType);
+  m->def("cvt_to_dist_type",
+         &dialect::CvtToPirDistType,
+         py::arg("global_type"),
+         py::arg("dist_attr"),
+         py::arg("local_ddim") = std::vector<int64_t>());
 }
 
 void BindDistPassAPI(pybind11::module *module) {

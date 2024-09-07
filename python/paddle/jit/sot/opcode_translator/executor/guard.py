@@ -104,10 +104,9 @@ def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
             guard.original_guard = guard
             return guard
 
-        free_vars = {}
-        for expr in stringified_guards:
-            free_vars = union_free_vars(free_vars, expr.free_vars)
-
+        free_vars = union_free_vars(
+            *(expr.free_vars for expr in stringified_guards)
+        )
         inlined_guard_expr = "lambda frame: " + " and ".join(
             [expr.inlined_expr for expr in stringified_guards]
         )

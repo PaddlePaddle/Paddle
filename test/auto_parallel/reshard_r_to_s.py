@@ -21,6 +21,8 @@ import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.pir_pass import (
     apply_reshard_pass,
 )
+from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class TestReshardRToS:
@@ -94,6 +96,7 @@ class TestReshardRToS:
                     input_tensor, self._mesh, [dist.Shard(self._shard)]
                 )
             dist_program = main_program.clone()
+            set_all_ops_op_role(dist_program, OpRole.Forward)
             apply_reshard_pass(dist_program)
             np.testing.assert_equal(dist_program.num_ops(), 6)
             old_ops = [op.name() for op in main_program.global_block().ops]
