@@ -3753,7 +3753,7 @@ bool WeightQuantizeOpInferSymbolicShape(
   if (group_size != -1) {
     symbol::DimExpr scale_shape_0 =
         (x_shape[0] + (group_size - 1)) / group_size;
-    scale_shape = std::vector<symbol::DimExpr>{scale_shape_0, x_dims[1]};
+    scale_shape = std::vector<symbol::DimExpr>{scale_shape_0, x_shape[1]};
   } else {
     scale_shape = std::vector<symbol::DimExpr>{x_shape[1]};
   }
