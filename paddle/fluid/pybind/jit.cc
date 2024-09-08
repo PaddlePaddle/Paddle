@@ -59,7 +59,7 @@ void BindJit(pybind11::module *m) {
   });
 }
 
-void BindSOT(pybind11::module *m) {
+void BindSot(pybind11::module *m) {
 #if SOT_IS_SUPPORTED
   PyInit__eval_frame();
   m->def(
