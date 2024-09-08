@@ -410,7 +410,6 @@ void BuildValue(pir::Value value,
     var = CreateVar(value, var_name_prefix, false, value_exe_info);
   }
   // Only support DenseTensor or Vector<DenseTensor>
-  LOG(INFO) << "value.type(): " << value.type();
   if (!value.type() ||
       value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     var->GetMutable<phi::DenseTensor>();
@@ -767,22 +766,16 @@ void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
                 const ExecutionConfig& execution_config,
                 ValueExecutionInfo* value_exe_info) {
-  // VLOG(4) << "***** [before build] scope"
-  //         << "(" << value_exe_info->GetScope() << ") ******\n"
-  //         << GenScopeTreeDebugInfo(
-  //                const_cast<Scope*>(value_exe_info->GetScope()->root()));
-
-  // VLOG(6) << "Start handle keyword blockargument!";
-  LOG(INFO) << "***** [before build] scope"
+  VLOG(4) << "***** [before build] scope"
           << "(" << value_exe_info->GetScope() << ") ******\n"
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
 
-  LOG(INFO) << "Start handle keyword blockargument!";
+  VLOG(6) << "Start handle keyword blockargument!";
+  
+
   for (auto& kwarg : block.kwargs()) {
-    // VLOG(6) << "link keyword blockargument in variable"
-    //         << value_exe_info->GetScope();
-    LOG(INFO) << "link keyword blockargument in variable"
+    VLOG(6) << "link keyword blockargument in variable"
             << value_exe_info->GetScope();
     Variable* var = value_exe_info->GetScope()->FindVar(kwarg.first);
     PADDLE_ENFORCE(var,
@@ -791,29 +784,23 @@ void BuildScope(const pir::Block& block,
 
     value_exe_info->Add(kwarg.second, kwarg.first);
   }
-  // VLOG(6) << "Finished handle keyword blockargument!";
-  LOG(INFO) << "Finished handle keyword blockargument!";
+  VLOG(6) << "Finished handle keyword blockargument!";
 
   for (auto& op : block) {
-    LOG(INFO) << "zrt 0";
     std::string op_name = op.name();
-    LOG(INFO) << "zrt op_name: " << op_name;
     if (op.attributes().count("op_name")) {
       op_name = op.attributes()
                     .at("op_name")
                     .dyn_cast<pir::StrAttribute>()
                     .AsString();
     }
-    // VLOG(4) << "build op:" << op_name;
-    LOG(INFO) << "build op:" << op_name;
+    VLOG(4) << "build op:" << op_name;
     if (SpecialOps.count(op_name)) {
       HandleForSpecialOp(
           &op, var_name_prefix, value_exe_info, execution_config);
       continue;
     }
-    LOG(INFO) << "zrt 1";
     CheckInputVars(&op, op_name, value_exe_info);
-    LOG(INFO) << "zrt 2";
 
     if (op.num_results() < 1) continue;
     if (op.attributes().count("is_inplace") != 0 &&
@@ -821,22 +808,16 @@ void BuildScope(const pir::Block& block,
             .at("is_inplace")
             .dyn_cast<pir::BoolAttribute>()
             .data()) {
-      LOG(INFO) << "zrt 3";
       HandleForInplaceVarOp(&op, var_name_prefix, value_exe_info);
       continue;
     } else {
       for (size_t i = 0; i < op.num_results(); ++i) {
-        LOG(INFO) << "zrt 4";
         BuildValue(op.result(i), var_name_prefix, value_exe_info);
       }
     }
   }
 
-  // VLOG(4) << "***** [after build] scope"
-  //         << "(" << value_exe_info->GetScope() << ") ******\n"
-  //         << GenScopeTreeDebugInfo(
-  //                const_cast<Scope*>(value_exe_info->GetScope()->root()));
-  LOG(INFO) << "***** [after build] scope"
+  VLOG(4) << "***** [after build] scope"
           << "(" << value_exe_info->GetScope() << ") ******\n"
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
