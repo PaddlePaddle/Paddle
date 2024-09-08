@@ -492,8 +492,27 @@ def monkey_patch_value():
     def _bool_(self):
         raise TypeError(
             "bool(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
-            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
-            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.bool), and do not use bool(Value)."
+            "1. use Value determine if None, implicit conversion\n"
+            "       x: Value | None\n"
+            "   error:\n"
+            "       if x and x.get_defining_op(): ...\n"
+            "   correct:\n"
+            "       if x is not None and x.get_defining_op(): ...\n\n"
+            "2. Error reporting based on values\n"
+            "       x: Value | float\n"
+            "   error:\n"
+            "       if x > 0: raise ValueError(...)\n"
+            "   correct:\n"
+            "       if isinstance(x, float) and x > 0: raise ValueError(...)\n\n"
+            "3. Determine which branch to use based on the value of Value\n"
+            "       x: Value | Tensor\n"
+            "   error:\n"
+            "       if x > 0: # This is really where you should go different branches depending on the conditions\n"
+            "   correct:\n"
+            "       if in_dynamic_mode(): # Or judgment: isinstance(x, Value)\n"
+            "           if x > 0: ...\n"
+            "       else:\n"
+            "           paddle.static.nn.cond(x > 0, ...) # Separate dynamic and static graph logic, use: cond OP\n"
         )
 
     def clone(self):
