@@ -317,7 +317,6 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
-            print("dygraph_state_dict", dygraph_state_dict)
         elif isinstance(attr_func, StaticFunction):
             if static_func._class_instance:
                 dygraph_state_dict = (
@@ -334,9 +333,8 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
                 for tensor, value in zip(*concrete_program.parameters):
                     if not value.persistable:
                         continue
-                    print("value.name", value.name)
                     param_or_buffer_tensor = scope.var(value.name).get_tensor()
-                    print("param_or_buffer_tensor", param_or_buffer_tensor)
+
                     src_tensor = (
                         state_var_dict[tensor.name].value().get_tensor()
                     )
@@ -375,7 +373,8 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
 
     with paddle.pir_utils.IrGuard():
         main_program = static_net.forward.main_program
-        return convert_to_trt(main_program, config, scope)
+        program_with_trt = convert_to_trt(main_program, config, scope)
+        return program_with_trt, scope
 
 
 # Obtain a program with tensorrt_op by directly loading the model.

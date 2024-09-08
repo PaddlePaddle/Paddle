@@ -41,7 +41,7 @@ def map_dtype(pd_dtype):
 def run_pir_pass(program, partition_mode=False):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
-    pm.enable_ir_printing()
+    # pm.enable_ir_printing()
     paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     passes = [
         {'trt_op_marker_pass': {}},
@@ -70,13 +70,16 @@ def enforce_op_lower_trt(program, op_name):
             op.set_bool_attr("__l_trt__", True)
 
 
-def predict_program(program, feed_data, fetch_var_list):
+def predict_program(program, feed_data, fetch_var_list, scope=None):
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             place = paddle.CUDAPlace(0)
             executor = paddle.static.Executor(place)
             output = executor.run(
-                program, feed=feed_data, fetch_list=fetch_var_list
+                program,
+                feed=feed_data,
+                fetch_list=fetch_var_list,
+                scope=scope,
             )
             return output
 
