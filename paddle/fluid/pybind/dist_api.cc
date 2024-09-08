@@ -133,11 +133,6 @@ OperationDistAttribute CreateOperationDistAttribute(
       pir::IrContext::Instance(), mesh, operands, results, chunk_id);
 }
 
-pir::ArrayAttribute CreateArrayAttribute(
-    const std::vector<pir::Attribute> &attrs) {
-  return pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs);
-}
-
 ArrayAttribute CreateArrayAttribute(
     const std::vector<pir::Attribute> &elements) {
   return ArrayAttribute::get(pir::IrContext::Instance(), elements);
