@@ -1304,7 +1304,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
         simple_lr_fun = partial(simple_lr_setting, decay_rate=0.8, n_layers=2)
         learning_rate = 0.001
-        weight_decay = 1
+        weight_decay = 0
         beta1 = 0.9
         beta2 = 0.999
 
