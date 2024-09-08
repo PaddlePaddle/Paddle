@@ -399,10 +399,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test_with_fake_data_run(
     test_analyzer_googlenet ${IMG_CLASS_TEST_APP} ${GOOGLENET_MODEL_DIR} false)
 
-  # resnet50
-  set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
-  download_data_without_verify(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
-
   # mobilenet with depthwise_conv op
   set(MOBILENET_MODEL_DIR
       "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv")
