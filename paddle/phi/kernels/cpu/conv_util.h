@@ -196,19 +196,19 @@ inline std::vector<int64_t> ComputeOutputShape(
           filter_dims,
           groups,
           data_format));
-  PADDLE_ENFORCE_EQ(
-      filter_dims[0] % groups,
-      0,
-      common::errors::InvalidArgument(
-          "The number of output's channels (filter's first dimension) of "
-          "Op(Conv) should be divided by groups. But received: "
-          "the output channels is %d, the filter's shape is [%s], "
-          "the groups is %d.",
-          filter_dims[0],
-          filter_dims,
-          groups));
-
   if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0] % groups,
+        0,
+        common::errors::InvalidArgument(
+            "The number of output's channels (filter's first dimension) of "
+            "Op(Conv) should be divided by groups. But received: "
+            "the output channels is %d, the filter's shape is [%s], "
+            "the groups is %d.",
+            filter_dims[0],
+            filter_dims,
+            groups));
+
     PADDLE_ENFORCE_GT(
         filter_dims[0],
         0,
