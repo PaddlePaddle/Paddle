@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,8 +20,10 @@ from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
+
+paddle.enable_static()
+paddle.seed(2022)
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
@@ -351,29 +354,35 @@ class TestUnpool3DOpOutput(TestUnpool3DOp):
 
 class TestUnpool1DAPI_dy(unittest.TestCase):
     def test_case(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        paddle.disable_static(place)
-        input_data = np.arange(3 * 16).reshape([1, 3, 16]).astype("float32")
-        input_x = paddle.to_tensor(input_data)
-        output, indices = F.max_pool1d(
-            input_x, kernel_size=2, stride=2, return_mask=True
-        )
-        output_unpool = F.max_unpool1d(
-            output,
-            indices.astype("int64"),
-            kernel_size=2,
-            stride=2,
-            output_size=input_x.shape,
-        )
-        expected_output_unpool = unpool1dmax_forward_naive(
-            output.numpy(), indices.numpy(), [2], [2], [0], [16]
-        )
-        np.testing.assert_allclose(
-            output_unpool.numpy(), expected_output_unpool, rtol=1e-05
-        )
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static(place)
+            input_data = np.arange(3 * 16).reshape([1, 3, 16]).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            output, indices = F.max_pool1d(
+                input_x, kernel_size=2, stride=2, return_mask=True
+            )
+            output_unpool = F.max_unpool1d(
+                output,
+                indices.astype("int64"),
+                kernel_size=2,
+                stride=2,
+                output_size=input_x.shape,
+            )
+            expected_output_unpool = unpool1dmax_forward_naive(
+                output.numpy(), indices.numpy(), [2], [2], [0], [16]
+            )
+            np.testing.assert_allclose(
+                output_unpool.numpy(), expected_output_unpool, rtol=1e-05
+            )
 
         paddle.enable_static()
 
@@ -382,57 +391,65 @@ class TestUnpool1DAPI_st(unittest.TestCase):
     @test_with_pir_api
     def test_case(self):
         paddle.enable_static()
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
         ):
-            input_data = np.array(
-                [[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]]
-            ).astype("float32")
-            x = paddle.static.data(name='x', shape=[1, 3, 4], dtype='float32')
-            output, indices = F.max_pool1d(
-                x, kernel_size=2, stride=2, return_mask=True
-            )
-            output_unpool = F.max_unpool1d(
-                output, indices.astype("int64"), kernel_size=2, stride=None
-            )
+            places.append(paddle.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input_data = np.array(
+                    [[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]]
+                ).astype("float32")
+                x = paddle.static.data(
+                    name='x', shape=[1, 3, 4], dtype='float32'
+                )
+                output, indices = F.max_pool1d(
+                    x, kernel_size=2, stride=2, return_mask=True
+                )
+                output_unpool = F.max_unpool1d(
+                    output, indices.astype("int64"), kernel_size=2, stride=None
+                )
 
-            exe = paddle.static.Executor(place)
-            fetches = exe.run(
-                feed={"x": input_data},
-                fetch_list=[output_unpool],
-                return_numpy=True,
-            )
-            pool1d_out_np = np.array(
-                [[[2.0, 4.0], [6.0, 8.0], [10.0, 12.0]]]
-            ).astype("float32")
-            indices_np = np.array([[[1, 3], [1, 3], [1, 3]]]).astype("int64")
-            expected_output_unpool = unpool1dmax_forward_naive(
-                pool1d_out_np, indices_np, [2], [2], [0], [4]
-            )
-            np.testing.assert_allclose(
-                fetches[0], expected_output_unpool, rtol=1e-05
-            )
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    feed={"x": input_data},
+                    fetch_list=[output_unpool],
+                    return_numpy=True,
+                )
+                pool1d_out_np = np.array(
+                    [[[2.0, 4.0], [6.0, 8.0], [10.0, 12.0]]]
+                ).astype("float32")
+                indices_np = np.array([[[1, 3], [1, 3], [1, 3]]]).astype(
+                    "int64"
+                )
+                expected_output_unpool = unpool1dmax_forward_naive(
+                    pool1d_out_np, indices_np, [2], [2], [0], [4]
+                )
+                np.testing.assert_allclose(
+                    fetches[0], expected_output_unpool, rtol=1e-05
+                )
 
 
 class TestUnpool2DAPI_dy(unittest.TestCase):
     def test_case(self):
-        import numpy as np
-
-        import paddle
-        import paddle.nn.functional as F
-        from paddle import base
-        from paddle.base import core
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        with base.dygraph.guard(place):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static(place)
             input_data = np.array(
                 [
                     [
@@ -463,85 +480,110 @@ class TestUnpool2DAPI_dy(unittest.TestCase):
             ).astype("float64")
             np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
+        paddle.enable_static()
+
 
 class TestUnpool2DAPI_st(unittest.TestCase):
     @test_with_pir_api
     def test_case(self):
-        import paddle
-        import paddle.nn.functional as F
-        from paddle.base import core
-
         paddle.enable_static()
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input_data = np.array(
+                    [
+                        [
+                            [
+                                [1, 2, 3, 4],
+                                [5, 6, 7, 8],
+                                [9, 10, 11, 12],
+                                [13, 14, 15, 16],
+                            ]
+                        ]
+                    ]
+                ).astype("float32")
 
-        input_data = np.array(
-            [[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]]]
-        ).astype("float32")
+                x = paddle.static.data(
+                    name="x", shape=[1, 1, 4, 4], dtype="float32"
+                )
+                output, indices = F.max_pool2d(
+                    x, kernel_size=2, stride=2, return_mask=True
+                )
+                unpool_out = F.max_unpool2d(
+                    output,
+                    indices.astype("int64"),
+                    kernel_size=2,
+                    stride=None,
+                    output_size=(5, 5),
+                )
+                exe = paddle.static.Executor(place)
 
-        x = paddle.static.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
-        output, indices = F.max_pool2d(
-            x, kernel_size=2, stride=2, return_mask=True
-        )
-        unpool_out = F.max_unpool2d(
-            output,
-            indices.astype("int64"),
-            kernel_size=2,
-            stride=None,
-            output_size=(5, 5),
-        )
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = paddle.static.Executor(place)
+                results = exe.run(
+                    feed={"x": input_data},
+                    fetch_list=[unpool_out],
+                    return_numpy=True,
+                )
 
-        results = exe.run(
-            feed={"x": input_data},
-            fetch_list=[unpool_out],
-            return_numpy=True,
-        )
-
-        pool_out_np = np.array([[[[6.0, 8.0], [14.0, 16.0]]]]).astype("float32")
-        indices_np = np.array([[[[5, 7], [13, 15]]]]).astype("int64")
-        expect_res = unpool2dmax_forward_naive(
-            pool_out_np, indices_np, [2, 2], [2, 2], [0, 0], [5, 5]
-        ).astype("float64")
-        np.testing.assert_allclose(results[0], expect_res, rtol=1e-05)
-        paddle.disable_static()
+                pool_out_np = np.array([[[[6.0, 8.0], [14.0, 16.0]]]]).astype(
+                    "float32"
+                )
+                indices_np = np.array([[[[5, 7], [13, 15]]]]).astype("int64")
+                expect_res = unpool2dmax_forward_naive(
+                    pool_out_np, indices_np, [2, 2], [2, 2], [0, 0], [5, 5]
+                ).astype("float64")
+                np.testing.assert_allclose(results[0], expect_res, rtol=1e-05)
 
 
 class TestUnpool3DAPI_dy(unittest.TestCase):
     def test_case(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-
-        paddle.disable_static(place)
-        input_data = (
-            np.arange(3 * 4 * 4 * 6).reshape([1, 3, 4, 4, 6]).astype("float32")
-        )
-        input_x = paddle.to_tensor(input_data)
-        output, indices = F.max_pool3d(
-            input_x, kernel_size=2, stride=2, return_mask=True
-        )
-        output_unpool = F.max_unpool3d(
-            output,
-            indices.astype("int64"),
-            kernel_size=2,
-            stride=2,
-            output_size=input_x.shape,
-        )
-        expected_output_unpool = unpool3dmax_forward_naive(
-            output.numpy(),
-            indices.numpy(),
-            [2, 2, 2],
-            [2, 2, 2],
-            [0, 0, 0],
-            [4, 4, 6],
-        )
-        np.testing.assert_allclose(
-            output_unpool.numpy(), expected_output_unpool, rtol=1e-05
-        )
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static(place)
+            input_data = (
+                np.arange(3 * 4 * 4 * 6)
+                .reshape([1, 3, 4, 4, 6])
+                .astype("float32")
+            )
+            input_x = paddle.to_tensor(input_data)
+            output, indices = F.max_pool3d(
+                input_x, kernel_size=2, stride=2, return_mask=True
+            )
+            output_unpool = F.max_unpool3d(
+                output,
+                indices.astype("int64"),
+                kernel_size=2,
+                stride=2,
+                output_size=input_x.shape,
+            )
+            expected_output_unpool = unpool3dmax_forward_naive(
+                output.numpy(),
+                indices.numpy(),
+                [2, 2, 2],
+                [2, 2, 2],
+                [0, 0, 0],
+                [4, 4, 6],
+            )
+            np.testing.assert_allclose(
+                output_unpool.numpy(), expected_output_unpool, rtol=1e-05
+            )
 
         paddle.enable_static()
 
@@ -550,65 +592,70 @@ class TestUnpool3DAPI_st2(unittest.TestCase):
     @test_with_pir_api
     def test_case(self):
         paddle.enable_static()
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
         ):
-            input_data = np.array(
-                [
+            places.append(paddle.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input_data = np.array(
                     [
                         [
                             [
-                                [1, 2, 3, 4],
-                                [5, 6, 7, 8],
-                                [9, 10, 11, 12],
-                                [13, 14, 15, 16],
-                            ],
-                            [
-                                [1, 2, 3, 4],
-                                [5, 6, 7, 8],
-                                [9, 10, 11, 12],
-                                [13, 14, 15, 16],
-                            ],
+                                [
+                                    [1, 2, 3, 4],
+                                    [5, 6, 7, 8],
+                                    [9, 10, 11, 12],
+                                    [13, 14, 15, 16],
+                                ],
+                                [
+                                    [1, 2, 3, 4],
+                                    [5, 6, 7, 8],
+                                    [9, 10, 11, 12],
+                                    [13, 14, 15, 16],
+                                ],
+                            ]
                         ]
                     ]
-                ]
-            ).astype("float32")
-            x = paddle.static.data(
-                name='x', shape=[1, 1, 2, 4, 4], dtype='float32'
-            )
-            output, indices = F.max_pool3d(
-                x, kernel_size=2, stride=2, return_mask=True
-            )
-            output_unpool = F.max_unpool3d(
-                output, indices.astype("int64"), kernel_size=2, stride=None
-            )
+                ).astype("float32")
+                x = paddle.static.data(
+                    name='x', shape=[1, 1, 2, 4, 4], dtype='float32'
+                )
+                output, indices = F.max_pool3d(
+                    x, kernel_size=2, stride=2, return_mask=True
+                )
+                output_unpool = F.max_unpool3d(
+                    output, indices.astype("int64"), kernel_size=2, stride=None
+                )
 
-            exe = paddle.static.Executor(place)
-            fetches = exe.run(
-                feed={"x": input_data},
-                fetch_list=[output_unpool],
-                return_numpy=True,
-            )
-            pool3d_out_np = np.array([[[[[6.0, 8.0], [14.0, 16.0]]]]]).astype(
-                "float32"
-            )
-            indices_np = np.array([[[[[5, 7], [13, 15]]]]]).astype("int64")
-            expected_output_unpool = unpool3dmax_forward_naive(
-                pool3d_out_np,
-                indices_np,
-                [2, 2, 2],
-                [2, 2, 2],
-                [0, 0, 0],
-                [2, 4, 4],
-            )
-            np.testing.assert_allclose(
-                fetches[0], expected_output_unpool, rtol=1e-05
-            )
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    feed={"x": input_data},
+                    fetch_list=[output_unpool],
+                    return_numpy=True,
+                )
+                pool3d_out_np = np.array(
+                    [[[[[6.0, 8.0], [14.0, 16.0]]]]]
+                ).astype("float32")
+                indices_np = np.array([[[[[5, 7], [13, 15]]]]]).astype("int64")
+                expected_output_unpool = unpool3dmax_forward_naive(
+                    pool3d_out_np,
+                    indices_np,
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [0, 0, 0],
+                    [2, 4, 4],
+                )
+                np.testing.assert_allclose(
+                    fetches[0], expected_output_unpool, rtol=1e-05
+                )
 
 
 if __name__ == '__main__':
