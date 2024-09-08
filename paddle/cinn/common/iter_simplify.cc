@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,24 +26,6 @@
 namespace cinn {
 namespace common {
 
-bool isIterExpr(const Expr& a, const Expr& b) {
-  return a.As<ir::IterSplit>() || a.As<ir::IterSum>() ||
-         b.As<ir::IterSplit>() || b.As<ir::IterSum>();
-}
-
-bool isOne(const Expr& expr) {
-  if (expr.is_constant() && expr.get_constant() == 1) {
-    return true;
-  }
-  return false;
-}
-bool isZero(const Expr& expr) {
-  if (expr.is_constant() && expr.get_constant() == 0) {
-    return true;
-  }
-  return false;
-}
-
 /*! \brief Override VisitExpr for iter expr type processing */
 void IterMapToExprNormalizer::Visit(const Expr* expr, Expr* op) {
   if (auto op_ = op->As<ir::IterSplit>()) {
@@ -62,13 +44,13 @@ Expr IterMapToExprNormalizer::ConvertIterSum(ir::IterSum* expr) {
     auto split = arg.As<ir::IterSplit>();
     res = res + ConvertIterSplit(split);
   }
-  res = isZero(expr->base) ? res : res + expr->base;
+  res = IsZero(expr->base) ? res : res + expr->base;
   return res;
 }
 
 Expr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
   // quick branch
-  if (isZero(expr->scale)) return Expr(0);
+  if (IsZero(expr->scale)) return Expr(0);
 
   Expr source;
   ir::IterMark* mark = expr->source.As<ir::IterMark>();
@@ -83,11 +65,11 @@ Expr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
   }
   Expr res;
   if (analyzer_.ProveEQ(expr->extent, mark->extent) &&
-      isOne(expr->lower_factor)) {
+      IsOne(expr->lower_factor)) {
     res = source;
   } else if (analyzer_.ProveEQ(mark->extent,
                                expr->lower_factor * expr->extent)) {
-    if (isOne(expr->extent) && !isOne(mark->extent)) {
+    if (IsOne(expr->extent) && !IsOne(mark->extent)) {
       res = ir::Zero(expr->extent.type());
     }
     res = source / expr->lower_factor * expr->scale;
@@ -95,23 +77,7 @@ Expr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
     res = (source % (expr->lower_factor * expr->extent)) / expr->lower_factor *
           expr->scale;
   }
-  return isOne(expr->scale) ? res : res * expr->scale;
-}
-
-IterMapRewriter::IterMapRewriter(const std::vector<ir::Var>& input_iters) {
-  for (const auto& iter : input_iters) {
-    if (isOne(iter->upper_bound)) {
-      var_map_[iter->name] = ir::IterSum::Make({}, iter->lower_bound);
-    } else if (isZero(iter->lower_bound)) {
-      auto tmp = ir::IterMark::Make(Expr(iter.ptr()), iter->upper_bound);
-      auto mark = tmp.As<ir::IterMark>();
-      var_map_[iter->name] = ir::IterSplit::Make(tmp);
-      input_marks_.push_back(*mark);
-    } else {
-      PADDLE_THROW(::common::errors::InvalidArgument(
-          "iter should start from 0, but got %d", iter->lower_bound));
-    }
-  }
+  return IsOne(expr->scale) ? res : res * expr->scale;
 }
 
 void IterMapRewriter::Visit(const ir::_Var_* op, Expr* expr) {
@@ -130,7 +96,7 @@ void IterMapRewriter::Visit(const ir::Add* op, Expr* expr) {
     *expr = const_res.value();
     return;
   }
-  if (!isIterExpr(a, b)) {
+  if (!IsIterExpr(a, b)) {
     return;
   }
 
@@ -159,7 +125,7 @@ void IterMapRewriter::Visit(const ir::Sub* op, Expr* expr) {
     *expr = const_res.value();
     return;
   }
-  if (!isIterExpr(a, b)) return;
+  if (!IsIterExpr(a, b)) return;
 
   Expr ret = ToIterSum(a);
   ir::IterSum* ret_sum = ret.As<ir::IterSum>();
@@ -187,13 +153,12 @@ void IterMapRewriter::Visit(const ir::Mul* op, Expr* expr) {
     return;
   }
 
-  if (!isIterExpr(a, b)) return;
+  if (!IsIterExpr(a, b)) return;
 
   if ((a.As<ir::IterSum>() || a.As<ir::IterSplit>()) &&
       (b.As<ir::IterSum>() || b.As<ir::IterSplit>())) {
     PADDLE_THROW(::common::errors::InvalidArgument(
         "product of iter and iter is not supported"));
-    return;
   }
 
   if (!a.As<ir::IterSum>() && !a.As<ir::IterSplit>()) {
@@ -268,7 +233,7 @@ void IterMapRewriter::MulToLhs(ir::IterSum* lhs, const Expr& rhs) {
     auto lsplit = lvalue.As<ir::IterSplit>();
     lsplit->scale = lsplit->scale * rhs;
   }
-  lhs->base = isZero(lhs->base) ? lhs->base : lhs->base * rhs;
+  lhs->base = IsZero(lhs->base) ? lhs->base : lhs->base * rhs;
 }
 
 }  // namespace common

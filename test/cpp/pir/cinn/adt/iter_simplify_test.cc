@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/cinn/common/integer_set.h"
-#include "paddle/cinn/common/iter_simplify.cc"
 #include "paddle/cinn/ir/op/ir_operators.h"
 
 namespace cinn {

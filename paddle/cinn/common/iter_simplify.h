@@ -24,6 +24,24 @@
 namespace cinn {
 namespace common {
 
+bool IsIterExpr(const Expr& a, const Expr& b) {
+  return a.As<ir::IterSplit>() || a.As<ir::IterSum>() ||
+         b.As<ir::IterSplit>() || b.As<ir::IterSum>();
+}
+
+bool IsOne(const Expr& expr) {
+  if (expr.is_constant() && expr.get_constant() == 1) {
+    return true;
+  }
+  return false;
+}
+bool IsZero(const Expr& expr) {
+  if (expr.is_constant() && expr.get_constant() == 0) {
+    return true;
+  }
+  return false;
+}
+
 class IterMapToExprNormalizer : public ir::IRMutator<> {
  public:
   explicit IterMapToExprNormalizer(SymbolicExprAnalyzer analyzer)
@@ -44,7 +62,21 @@ class IterMapToExprNormalizer : public ir::IRMutator<> {
 
 class IterMapRewriter : public ir::IRMutator<> {
  public:
-  explicit IterMapRewriter(const std::vector<ir::Var>& input_iters);
+  explicit IterMapRewriter(const std::vector<ir::Var>& input_iters) {
+    for (const auto& iter : input_iters) {
+      if (IsOne(iter->upper_bound)) {
+        var_map_[iter->name] = ir::IterSum::Make({}, iter->lower_bound);
+      } else if (IsZero(iter->lower_bound)) {
+        auto tmp = ir::IterMark::Make(Expr(iter.ptr()), iter->upper_bound);
+        auto mark = tmp.As<ir::IterMark>();
+        var_map_[iter->name] = ir::IterSplit::Make(tmp);
+        input_marks_.push_back(*mark);
+      } else {
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "iter should start from 0, but got %d", iter->lower_bound));
+      }
+    }
+  }
 
   void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 

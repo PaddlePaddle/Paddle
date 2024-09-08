@@ -1012,6 +1012,11 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
+/**
+ * \brief IterMark is a special ExprNode, which can be used to mark ther entire
+ * ierator. source is a IterSum or iterator. extent is the extent of the
+ * iterator or IterSum.
+ */
 struct IterMark : public ExprNode<IterMark> {
   IterMark() = default;
   IterMark(const IterMark& other) : source(other.source), extent(other.extent) {
@@ -1026,6 +1031,10 @@ struct IterMark : public ExprNode<IterMark> {
   static const IrNodeTy _node_type_ = IrNodeTy::IterMark;
 };
 
+/**
+ * \brief Split of an iterator.
+ * result = source / lower_factor % extent * scale
+ */
 struct IterSplit : public ExprNode<IterSplit> {
  public:
   IterSplit() = default;
@@ -1054,6 +1063,10 @@ struct IterSplit : public ExprNode<IterSplit> {
   static const IrNodeTy _node_type_ = IrNodeTy::IterSplit;
 };
 
+/**
+ * \brief sum of IterSplit.
+ * result = sum(args) + base
+ */
 struct IterSum : public ExprNode<IterSum> {
  public:
   IterSum() = default;
@@ -1200,10 +1213,4 @@ struct hash<cinn::ir::Var> {
     return std::hash<std::string>()(var->name);
   }
 };
-// template <>
-// struct hash<cinn::ir::_Var_> {
-//   std::size_t operator()(const cinn::ir::_Var_& var) const {
-//     return std::hash<std::string>()(var.name);
-//   }
-// };
 }  // namespace std
