@@ -1337,7 +1337,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 'beta1': beta1,
                 'beta2': beta2,
                 "lr_ratio": lr_ratio,
-                "coeff": weight_decay,
+                "coeff": float(weight_decay),
                 "with_decay": True,
             }
             param_out, moment1_out, moment2_out = adamw_step(
