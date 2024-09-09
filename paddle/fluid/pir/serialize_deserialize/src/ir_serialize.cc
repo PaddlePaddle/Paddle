@@ -352,11 +352,9 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
       }
     }
   } else {
-    VLOG(8) << "HHHHHHere is not pd_op ";
     for (auto& attr : attr_map) {
       if (attr.first != "stop_gradient" && attr.first != "persistable" &&
           attr.first != "op_callstack") {
-        VLOG(8) << "HHHHHHere 2 ";
         attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
       }
     }
@@ -381,7 +379,6 @@ Json ProgramWriter::WriteAttributesMapOther(const AttributeMap& attr_map) {
 
 Json ProgramWriter::WriteAttribute(const std::string& op_attr_name,
                                    const pir::Attribute& attr) {
-  VLOG(8) << "Start write Attribute ...";
   Json attr_json;
   attr_json[NAME] = op_attr_name;
   attr_json[ATTR_TYPE] = pir::writeAttr(attr);

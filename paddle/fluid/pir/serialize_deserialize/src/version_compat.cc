@@ -134,9 +134,14 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
                                                     {"parameter_name", 3}};
       std::string attr_name = item[NAME].get<std::string>();
       int index = attrs.count(attr_name) == 0 ? attrs.size() : attrs[attr_name];
-      if (item[ATTR_TYPE][ID] == "0.a_str") {
+      if (item[ATTR_TYPE][ID] == DialectIdMap::Instance()->GetCompressDialectId(
+                                     pir::BuiltinDialect::name()) +
+                                     "." + pir::StrAttribute::name()) {
         json->at(ATTRS)[index] = item[ATTR_TYPE][DATA];
-      } else if (item[ATTR_TYPE][ID] == "0.a_bool") {
+      } else if (item[ATTR_TYPE][ID] ==
+                 DialectIdMap::Instance()->GetCompressDialectId(
+                     pir::BuiltinDialect::name()) +
+                     "." + pir::BoolAttribute::name()) {
         auto data = item[ATTR_TYPE][DATA];
         json->at(ATTRS)[index] = static_cast<int32_t>(data);
       }
@@ -146,7 +151,9 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
           {"persistable", 0}, {"stop_gradient", 1}, {"trainable", 2}};
       std::string attr_name = item[NAME].get<std::string>();
       int index = attrs.count(attr_name) == 0 ? attrs.size() : attrs[attr_name];
-      if (item[ATTR_TYPE][ID] == "0.a_bool") {
+      if (item[ATTR_TYPE][ID] == DialectIdMap::Instance()->GetCompressDialectId(
+                                     pir::BuiltinDialect::name()) +
+                                     "." + pir::BoolAttribute::name()) {
         auto data = item[ATTR_TYPE][DATA];
         json->at(OPRESULTS_ATTRS)[index] = static_cast<int32_t>(data);
       }

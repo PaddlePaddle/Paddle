@@ -47,7 +47,7 @@ op_patches:
         type : pir::StrAttribute
         default : "op1_attr3_value"
       - action : modify_name
-        default : 6.operation1
+        default : test2.operation1
   - op_name : test.operation2
     actions :
       - action : add_output

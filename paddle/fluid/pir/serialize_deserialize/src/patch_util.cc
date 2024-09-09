@@ -388,7 +388,9 @@ Json ParseOpPatches(const YAML::Node &root) {
         j_patch["patch"][OPRESULTS]["UPDATE"].push_back(j_type);
       } else if (action_name == "modify_name") {
         VLOG(8) << "Patch for modify_name";
-        j_patch["patch"]["NEW_NAME"] = action["default"].as<std::string>();
+        std::string op_name = action["default"].as<std::string>();
+        GetCompressOpName(&op_name);
+        j_patch["patch"]["NEW_NAME"] = op_name;
       }
     }
     json_patch.push_back(j_patch);
