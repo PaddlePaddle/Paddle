@@ -44,13 +44,17 @@ enum MappedModes {
 
 class MemoryMapAllocation : public Allocation {
  public:
-  explicit MemoryMapAllocation(void *ptr, size_t size, std::string ipc_name)
+  explicit MemoryMapAllocation(void *ptr,
+                               size_t size,
+                               std::string ipc_name,
+                               int fd)
       : Allocation(ptr, size, platform::CPUPlace()),
         ipc_name_(std::move(ipc_name)),
+        fd_(fd),
         map_ptr_(ptr),
         map_size_(size) {}
   explicit MemoryMapAllocation(
-      void *ptr, size_t size, std::string ipc_name, int flags, int fd)
+      void *ptr, size_t size, std::string ipc_name, int fd, int flags)
       : Allocation(ptr, size, platform::CPUPlace()),
         ipc_name_(std::move(ipc_name)),
         fd_(fd),
@@ -59,6 +63,7 @@ class MemoryMapAllocation : public Allocation {
         map_size_(size) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
+  inline const int shared_fd() const { return fd_; }
 
   virtual void close();
 
@@ -71,6 +76,7 @@ class MemoryMapAllocation : public Allocation {
   void *map_ptr_ = nullptr;
   size_t map_size_ = 0;
   bool closed_ = false;
+  bool closed_fd_ = false;
 };
 
 class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
@@ -93,11 +99,15 @@ class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   void resetBaseptr();
 };
 
-void AllocateMemoryMap(
-    std::string filename, int flags, size_t size, void **base_ptr_, int *fd_);
+void AllocateMemoryMap(std::string filename,
+                       int *shared_fd,
+                       int flags,
+                       size_t size,
+                       void **base_ptr_);
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
+                                      int shared_fd,
                                       int flags,
                                       size_t size,
                                       int buffer_id = -1);
@@ -111,11 +121,13 @@ class MemoryMapWriterAllocation : public Allocation {
         ipc_name_(std::move(ipc_name)) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
+  inline const int shared_fd() const { return fd_; }
 
   ~MemoryMapWriterAllocation() override;
 
  private:
   std::string ipc_name_;
+  int fd_ = -1;
 };
 
 class MemoryMapReaderAllocation : public Allocation {
@@ -127,11 +139,13 @@ class MemoryMapReaderAllocation : public Allocation {
         ipc_name_(std::move(ipc_name)) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
+  inline const int shared_fd() const { return fd_; }
 
   ~MemoryMapReaderAllocation() override;
 
  private:
   std::string ipc_name_;
+  int fd_ = -1;
 };
 
 std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
