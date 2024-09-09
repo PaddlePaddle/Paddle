@@ -30,7 +30,6 @@ set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
-list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_ps_gpu)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
@@ -75,7 +74,6 @@ if(NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
-list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
@@ -126,7 +124,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
@@ -513,8 +510,6 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
   endif()
 
-  py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
-                  ${dist_ENVS})
   py_test_modules(test_communicator_geo_deprecated MODULES
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)

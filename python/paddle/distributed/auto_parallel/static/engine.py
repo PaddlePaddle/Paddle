@@ -729,18 +729,21 @@ class Engine:
                             use_master_grad=self._strategy.amp.use_master_grad,
                             use_promote=self._strategy.amp.use_promote,
                         )
-                        # bfloat16 needs no scaler
-                        scaler = paddle.amp.GradScaler(
-                            init_loss_scaling=self._strategy.amp.init_loss_scaling,
-                            incr_ratio=self._strategy.amp.incr_ratio,
-                            decr_ratio=self._strategy.amp.decr_ratio,
-                            incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
-                            decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
-                            use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
-                            enable=self._strategy.amp.enable
-                            and self._strategy.amp.dtype != 'bfloat16',
-                        )
-                        scaled = scaler.scale(loss)
+                        with auto_complete_op_role(
+                            dist_program, OpRole.Forward
+                        ):
+                            # bfloat16 needs no scaler
+                            scaler = paddle.amp.GradScaler(
+                                init_loss_scaling=self._strategy.amp.init_loss_scaling,
+                                incr_ratio=self._strategy.amp.incr_ratio,
+                                decr_ratio=self._strategy.amp.decr_ratio,
+                                incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
+                                decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
+                                use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
+                                enable=self._strategy.amp.enable
+                                and self._strategy.amp.dtype != 'bfloat16',
+                            )
+                            scaled = scaler.scale(loss)
                         optimizer_ops, params_grads = scaler.minimize(
                             self._optimizer, scaled
                         )
@@ -795,11 +798,7 @@ class Engine:
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        gradient_sync_after_accumulate = (
-            self._strategy.dp_optimization.gradient_sync_after_accumulate
-        )
-        if gradient_sync_after_accumulate:
-            global_params_grads = params_grads
+        global_params_grads = params_grads
 
         apply_reshard_pass(dist_program, params_grads)
         # print('after reshard', dist_program, flush=1)
@@ -840,14 +839,8 @@ class Engine:
 
         if mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
-            config["gradient_sync_after_accumulate"] = (
-                gradient_sync_after_accumulate
-            )
-            config["params_grads"] = (
-                global_params_grads
-                if gradient_sync_after_accumulate
-                else params_grads
-            )
+            config["gradient_sync_after_accumulate"] = True
+            config["params_grads"] = global_params_grads
 
             auto_parallel_gradient_merge_pass = new_pass(
                 "auto_parallel_gradient_merge_pass", config
@@ -1326,6 +1319,8 @@ class Engine:
                             op.operand(0).set_source(reshard_var)
                 for del_op in del_ops:
                     del_op.erase()
+
+                set_all_ops_op_role(startup_prog, OpRole.Forward)
                 apply_reshard_pass(startup_prog)
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
