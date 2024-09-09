@@ -664,22 +664,22 @@ bool BroadcastTensorsOpInferSymbolicShape(
   }
 
   std::vector<symbol::DimExpr> out_shape;
-  for (size_t i = 0; i < target_rank; i++) {
-    out_shape.push_back(symbol::DimExpr{1});
-  }
-
   symbol::DimExprBuilder builder;
-  for (size_t i = 0; i < input_shape_or_data_list.size(); i++) {
-    size_t tmp_bound = input_shape_or_data_list[i].shape().size();
-    for (size_t j = 0; j < tmp_bound; j++) {
-      out_shape[target_rank - j - 1] = builder.Broadcast(
-          input_shape_or_data_list[i].shape()[tmp_bound - j - 1],
-          out_shape[target_rank - j - 1]);
+  for (size_t i = 0; i < target_rank; i++) {
+    auto tmp_dim = symbol::DimExpr{1};
+    for (const auto &input_shape_or_data : input_shape_or_data_list) {
+      int axis = i - target_rank + static_cast<int>(input_shape_or_data.size());
+      if (axis >= 0) {
+        infer_context->AddBroadcastableCstr(input_shape_or_data.shape()[axis],
+                                            tmp_dim);
+        tmp_dim = builder.Broadcast(input_shape_or_data.shape()[axis], tmp_dim);
+      }
     }
+    out_shape.emplace_back(tmp_dim);
   }
 
   symbol::TensorListShapeOrDataDimExprs out_shapes;
-  for (size_t i = 0; i < target_rank; i++) {
+  for (size_t i = 0; i < input_shape_or_data_list.size(); i++) {
     out_shapes.emplace_back(out_shape);
   }
 
