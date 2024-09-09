@@ -924,11 +924,6 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     for (const auto &pass : pass_pm.passes()) {
       pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
       pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
-      if (pass->name() == "auto_mixed_precision_pass") {
-        pass->Set("__mixed_precision_mode__",
-                  new phi::DataType(
-                      paddle::ConvertPrecision(config_.mixed_precision_mode_)));
-      }
       if (pass->name() == "matmul_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_fuse_pass") {
@@ -959,14 +954,24 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                    config_.pm_opt_level_);
-  // auto common_subexpression_elimination_pass =
-  //     ::pir::CreateCommonSubexpressionEliminationPass();
-  // if (std::find(config_.deleted_passes_.begin(),
-  //               config_.deleted_passes_.end(),
-  //               common_subexpression_elimination_pass->name()) ==
-  //     config_.deleted_passes_.end()) {
-  //   basic_pass_pm.AddPass(std::move(common_subexpression_elimination_pass));
-  // }
+  auto common_subexpression_elimination_pass =
+      ::pir::CreateCommonSubexpressionEliminationPass();
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                common_subexpression_elimination_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    basic_pass_pm.AddPass(std::move(common_subexpression_elimination_pass));
+  }
+  auto auto_mixed_precision_pass = 
+      ::pir::CreateAutoMixedPrecisionPass();
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                auto_mixed_precision_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    auto_mixed_precision_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+    auto_mixed_precision_pass->SetNotOwned("__mixed_precision_mode__", new phi::DataType(paddle::ConvertPrecision(config_.mixed_precision_mode_)));
+    basic_pass_pm.AddPass(std::move(auto_mixed_precision_pass));
+  }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
   if (std::find(config_.deleted_passes_.begin(),
