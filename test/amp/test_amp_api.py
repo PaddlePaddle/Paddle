@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from contextlib import contextmanager
 
 import numpy as np
 from amp_base_models import AmpTestBase
@@ -22,6 +21,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.base import core
+from paddle.pir_utils import DygraphPirGuard
 from paddle.static import amp
 
 
@@ -414,16 +414,6 @@ class SimpleModelIncludeSetValue(nn.Layer):
         return z
 
 
-# Copy from ../dygraph_to_static/dygraph_to_static_utils.py
-@contextmanager
-def pir_dygraph_guard():
-    in_dygraph_mode = paddle.in_dynamic_mode()
-    with paddle.pir_utils.IrGuard():
-        if in_dygraph_mode:
-            paddle.disable_static()
-        yield
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
     "Require compiled with CUDA or XPU.",
@@ -479,7 +469,7 @@ class TestDy2STWithSetValue(AmpTestBase):
             "pd_op.set_value_with_tensor_": 1,
         }
 
-        with pir_dygraph_guard():
+        with DygraphPirGuard():
             func = SimpleModelIncludeSetValue()
             func = paddle.amp.decorate(func, level='O2')
             func = paddle.jit.to_static(func, full_graph=True)
