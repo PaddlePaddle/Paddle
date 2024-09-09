@@ -3449,6 +3449,7 @@
     data_type : input
   optional : weight
   backward : nll_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nms
   args : (Tensor x, float threshold = 1.0f)
@@ -3585,6 +3586,7 @@
     func : partial_sum
     data_type : x
   backward : partial_sum_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")
@@ -4797,6 +4799,7 @@
   kernel :
     func : trace
   backward : trace_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : trans_layout
   args : (Tensor x, int[] perm)
@@ -5133,7 +5136,7 @@
     data_type : x
   optional : bias
   backward : weight_only_linear_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : weight_quantize
   args : (Tensor x, str algo = "weight_only_int8", int arch = 80, int group_size = -1)
@@ -5233,16 +5236,6 @@
     data_type: DataType::FLOAT32
   optional: seq_length
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op: moe
-  args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
-    str act_type = "gelu")
-  output: Tensor (out)
-  infer_meta:
-    func: MoeInferMeta
-  kernel:
-    func: moe
-  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op: number_count
   args: (Tensor numbers, int upper_range)
