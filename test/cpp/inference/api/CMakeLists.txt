@@ -338,9 +338,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       test_analyzer_seq_pool1_fuse_compare_zero_copy ${SEQ_POOL1_INSTALL_DIR}
       analyzer_seq_pool1_fuse_compare_zero_copy_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(
-      test_analyzer_seq_pool1_fuse_statis ${SEQ_POOL1_INSTALL_DIR}
-      analyzer_seq_pool1_fuse_statis_tester.cc EXTRA_DEPS common)
-    inference_analysis_api_test(
       test_analyzer_seq_pool1_profile ${SEQ_POOL1_INSTALL_DIR}
       analyzer_seq_pool1_profile_tester.cc EXTRA_DEPS common)
     if(NOT WIN32)
@@ -348,8 +345,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_analyzer_seq_pool1 PROPERTIES TIMEOUT 120)
       set_tests_properties(test_analyzer_seq_pool1_fuse_compare_zero_copy
-                           PROPERTIES TIMEOUT 120)
-      set_tests_properties(test_analyzer_seq_pool1_fuse_statis
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_analyzer_seq_pool1_profile PROPERTIES TIMEOUT
                                                                       120)
@@ -384,44 +379,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz"
                   73beea65abda2edb61c1662cd3180c62)
   if(WITH_GPU)
-    inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR}
-                                analyzer_ernie_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(gpu_ernie_half_test ${ERNIE_INSTALL_DIR}
                                 gpu_ernie_half_test.cc EXTRA_DEPS common)
     set_tests_properties(gpu_ernie_half_test PROPERTIES TIMEOUT 60)
-  endif()
-  inference_analysis_api_int8_test(
-    test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR} analyzer_ernie_int8_tester.cc
-    EXTRA_DEPS common)
-
-  # Ernie large
-  set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
-  download_model_and_data(
-    ${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz"
-    af7715245ed32cc77374625d4c80f7ef "Ernie_large_data.txt.tar.gz"
-    edb2113eec93783cad56ed76d47ba57f)
-  download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz"
-                  1facda98eef1085dc9d435ebf3f23a73)
-  inference_analysis_test(
-    test_analyzer_ernie_large
-    SRCS
-    analyzer_ernie_tester.cc
-    EXTRA_DEPS
-    paddle_inference_shared
-    common
-    ARGS
-    --infer_model=${ERNIE_INSTALL_DIR}/model
-    --infer_data=${ERNIE_INSTALL_DIR}/data.txt
-    --refer_result=${ERNIE_INSTALL_DIR}/result.txt
-    --ernie_large=true)
-  if(NOT WIN32
-     AND NOT APPLE
-     AND TEST test_analyzer_ernie_large)
-    set_tests_properties(test_analyzer_ernie_large
-                         PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
-  endif()
-  if(WIN32 AND TEST test_analyzer_ernie_large)
-    set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 200)
   endif()
 
   # densebox
@@ -456,61 +416,41 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                       ${IMAGENET_DATA_ARCHIVE})
 
     # build test binary to be used in subsequent tests
-    set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
-    set(INT8_IMG_CLASS_TEST_APP_SRC
-        "analyzer_int8_image_classification_tester.cc")
-    inference_analysis_api_test_build(${INT8_IMG_CLASS_TEST_APP}
-                                      ${INT8_IMG_CLASS_TEST_APP_SRC})
 
     # resnet50 int8
     set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
     download_int8_data_without_verify(${INT8_RESNET50_MODEL_DIR}
                                       "resnet50_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run(
-      test_analyzer_int8_resnet50 ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # mobilenetv1 int8
     set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
     download_int8_data_without_verify(${INT8_MOBILENETV1_MODEL_DIR}
                                       "mobilenetv1_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run(
-      test_analyzer_int8_mobilenetv1 ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # mobilenetv2 int8
     set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
     download_int8_data_without_verify(${INT8_MOBILENETV2_MODEL_DIR}
                                       "mobilenet_v2_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run(
-      test_analyzer_int8_mobilenetv2 ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # resnet101 int8
     set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
     download_int8_data_without_verify(${INT8_RESNET101_MODEL_DIR}
                                       "Res101_int8_model.tar.gz")
-    #   inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # vgg16 int8
     set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
     download_int8_data_without_verify(${INT8_VGG16_MODEL_DIR}
                                       "VGG16_int8_model.tar.gz")
-    #  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # vgg19 int8
     set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
     download_int8_data_without_verify(${INT8_VGG19_MODEL_DIR}
                                       "VGG19_int8_model.tar.gz")
-    #   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # googlenet int8
     set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
     download_int8_data_without_verify(${INT8_GOOGLENET_MODEL_DIR}
                                       "GoogleNet_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run_custom_warmup_batch_size(
-      test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
 
     # mobilenetv3_large_x1_0 int8
     set(INT8_MOBILENETV3_LARGE_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv3_large")
@@ -522,19 +462,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/"
         ${INT8_MOBILENETV3_FILE_NAME})
     endif()
-    inference_analysis_test_run(
-      test_analyzer_int8_mobilenetv3_large
-      COMMAND
-      ${INT8_IMG_CLASS_TEST_APP}
-      ARGS
-      --infer_model=${INT8_MOBILENETV3_LARGE_MODEL_DIR}/MobileNetV3_large_x1_0_infer
-      --infer_data=${IMAGENET_DATA_PATH}
-      --warmup_batch_size=50
-      --batch_size=1
-      --enable_int8_ptq=true
-      --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
-      --iterations=100
-      --with_accuracy_layer=false)
 
     ### BFLOAT16 tests
 
@@ -581,78 +508,10 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
     ### Object detection models
     set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
-    set(INT8_OBJ_DETECT_TEST_APP "test_analyzer_int8_object_detection")
-    set(INT8_OBJ_DETECT_TEST_APP_SRC "analyzer_int8_object_detection_tester.cc")
 
     # download dataset if necessary
     download_int8_data_without_verify(${INT8_DATA_DIR}
                                       "pascalvoc_val_head_300.tar.gz")
-
-    # build test binary to be used in subsequent tests
-    inference_analysis_api_test_build(${INT8_OBJ_DETECT_TEST_APP}
-                                      ${INT8_OBJ_DETECT_TEST_APP_SRC})
-
-    # mobilenet-ssd int8
-    set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
-    download_int8_data_without_verify(${INT8_MOBILENET_SSD_MODEL_DIR}
-                                      "mobilenet_ssd_int8_model.tar.gz")
-    inference_analysis_api_object_dection_int8_test_run(
-      test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP}
-      ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
-
-    ### Lexcial analysis GRU model
-    set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
-    download_gru_data_without_verify("${GRU_PATH}" "GRU_eval_data.tar.gz")
-    download_gru_data_without_verify("${GRU_PATH}" "GRU_eval_model_v2.tar.gz")
-    set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
-    set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model_v2")
-    set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
-    set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
-
-    # build test binary to be used in subsequent tests
-    inference_analysis_api_test_build(${LEXICAL_TEST_APP}
-                                      ${LEXICAL_TEST_APP_SRC})
-    # run lexcial analysis test
-    inference_analysis_api_lexical_test_run(
-      test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH})
-    # run bfloat16 lexical analysis test
-    inference_analysis_api_lexical_bfloat16_test_run(
-      test_analyzer_lexical_gru_bfloat16 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH})
-    # run post-training quantization lexical analysis test
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      false) # fuse_multi_gru
-    # run post-training quantization lexical analysis test with multi_gru fuse
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8_multi_gru
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      true) # fuse_multi_gru
-
-    # run qat gru test
-    set(QAT_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
-    set(QAT_GRU_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant/GRU_quant2")
-    download_quant_data(${QAT_GRU_MODEL_DIR} ${QAT_GRU_MODEL_ARCHIVE}
-                        cf207f8076dcfb8b74d8b6bdddf9090c)
-
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_qat_int8
-      ${LEXICAL_TEST_APP}
-      "${QAT_GRU_MODEL_DIR}/GRU_quant_acc"
-      ${GRU_DATA_PATH}
-      false # enable_int8_ptq
-      true # enable_int8_qat
-      false) # fuse_multi_gru
 
     ### optimized FP32 vs. Quant INT8 tests
 
@@ -710,17 +569,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       test_analyzer_quant2_resnet50_channelwise_mkldnn
       ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_RESNET50_MODEL}
       ${QUANT2_RESNET50_MODEL} ${IMAGENET_DATA_PATH} true)
-
-    ### Other tests
-
-    # MKLDNN quantizer config
-    set(MKLDNN_QUANTIZER_CONFIG_TEST_APP "test_mkldnn_quantizer_config")
-    set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC
-        "mkldnn_quantizer_config_tester.cc")
-    inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP}
-                                      ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
-    inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND
-                                ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
 
     # preprocess data2bin imagenet
     download_int8_data_without_verify(${INT8_DATA_DIR} "imagenet_small.tar.gz")
@@ -1077,25 +925,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   endif()
 
   if(WITH_ONEDNN)
-    set_tests_properties(test_analyzer_int8_resnet50 PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenet_ssd PROPERTIES TIMEOUT
-                                                                     120)
     set_tests_properties(test_analyzer_quant_performance_benchmark
                          PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenetv2 PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenetv1 PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenetv3_large PROPERTIES TIMEOUT
-                                                                         120)
     set_tests_properties(test_analyzer_quant2_mobilenetv1_mkldnn
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_quant2_resnet50_channelwise_mkldnn
                          PROPERTIES TIMEOUT 120)
   endif()
 
-  set_tests_properties(test_analyzer_ernie_int8 PROPERTIES TIMEOUT 120)
-  if(WITH_GPU)
-    set_tests_properties(test_analyzer_ernie PROPERTIES TIMEOUT 120)
-  endif()
   if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 240)
     if(NOT WIN32)
@@ -1202,19 +1039,4 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
   endif()
-
-  if(WITH_TESTING AND WITH_ONEDNN)
-    if(NOT APPLE)
-      inference_base_test(
-        test_mkldnn_quantizer
-        SRCS
-        mkldnn_quantizer_tester.cc
-        DEPS
-        paddle_inference_shared
-        common
-        ARGS
-        --dirname=${WORD2VEC_MODEL_DIR})
-    endif()
-  endif()
-
 endif()

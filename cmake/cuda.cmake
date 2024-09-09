@@ -256,6 +256,9 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
   set(${out_arch_bin}
       ${cuda_arch_bin}
       PARENT_SCOPE)
+  set(COMPILED_CUDA_ARCHS
+      ${cuda_arch_bin}
+      CACHE STRING "Specify compiled cuda archs.")
 endfunction()
 
 message(STATUS "CUDA detected: " ${CMAKE_CUDA_COMPILER_VERSION})

@@ -57,17 +57,17 @@ void RmsNormKernel(const Context& dev_ctx,
                    DenseTensor* residual_out,
                    DenseTensor* inv_var) {
   if (quant_scale > 0.0f) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Quantization is not supported in XPU rms_norm yet"));
   }
   PADDLE_ENFORCE_EQ(
       begin_norm_axis > 0 && begin_norm_axis <= x.dims().size(),
       true,
-      phi::errors::InvalidArgument("begin_norm_axis should be in range [1, "
-                                   "%d], but received begin_norm_axis = "
-                                   "%d",
-                                   x.dims().size(),
-                                   begin_norm_axis));
+      common::errors::InvalidArgument("begin_norm_axis should be in range [1, "
+                                      "%d], but received begin_norm_axis = "
+                                      "%d",
+                                      x.dims().size(),
+                                      begin_norm_axis));
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
@@ -96,7 +96,7 @@ void RmsNormKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       cols,
       norm_weight.dims()[0],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The product from begin_norm_axis to the last axis of input tensor "
           "x, "
           "i.e., cols(%d)"
@@ -107,7 +107,7 @@ void RmsNormKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         cols,
         norm_bias.get().dims()[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The product from begin_norm_axis to the last axis of input tensor "
             "x, "
             "i.e., cols(%d)"
