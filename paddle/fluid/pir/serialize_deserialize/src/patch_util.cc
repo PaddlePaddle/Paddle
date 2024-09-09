@@ -333,7 +333,13 @@ Json ParseOpPatches(const YAML::Node &root) {
         Json j_attr;
         j_attr[NAME] = attr_name;
         j_attr[ATTR_TYPE] = BuildAttrJsonPatch(action);
-        j_patch["patch"][ATTRS].push_back(j_attr);
+        if (action_name == "add_attr") {
+          Json j_add = Json::object();
+          j_add["ADD"] = j_attr;
+          j_patch["patch"][ATTRS].push_back(j_add);
+        } else {
+          j_patch["patch"][ATTRS].push_back(j_attr);
+        }
       } else if (action_name == "add_output_attr" ||
                  action_name == "modify_output_attr" ||
                  action_name == "delete_output_attr") {
@@ -342,7 +348,13 @@ Json ParseOpPatches(const YAML::Node &root) {
         Json j_attr;
         j_attr[NAME] = attr_name;
         j_attr[ATTR_TYPE] = BuildAttrJsonPatch(action);
-        j_patch["patch"][OPRESULTS_ATTRS].push_back(j_attr);
+        if (action_name == "add_output_attr") {
+          Json j_add = Json::object();
+          j_add["ADD"] = j_attr;
+          j_patch["patch"][OPRESULTS_ATTRS].push_back(j_add);
+        } else {
+          j_patch["patch"][OPRESULTS_ATTRS].push_back(j_attr);
+        }
       } else if (action_name == "modify_attr_name" ||
                  action_name == "modify_output_attr_name") {
         VLOG(8) << "Patch for modify attr name.";
@@ -356,8 +368,10 @@ Json ParseOpPatches(const YAML::Node &root) {
         j_patch["patch"][col].push_back(j_attr);
       } else if (action_name == "delete_input") {
         VLOG(8) << "Patch for delete_input";
+        Json j_input;
         int op_id = action["object"].as<int>();
-        j_patch["patch"][OPOPERANDS]["DELETE"].push_back(op_id);
+        j_input[ID] = op_id;
+        j_patch["patch"][OPOPERANDS]["DELETE"].push_back(j_input);
       } else if (action_name == "add_output") {
         VLOG(8) << "Patch for add_output";
         Json j_output;
@@ -372,6 +386,9 @@ Json ParseOpPatches(const YAML::Node &root) {
         j_type[ID] = op_id;
         j_type[TYPE_TYPE] = BuildTypeJsonPatch(action);
         j_patch["patch"][OPRESULTS]["UPDATE"].push_back(j_type);
+      } else if (action_name == "modify_name") {
+        VLOG(8) << "Patch for modify_name";
+        j_patch["patch"]["NEW_NAME"] = action["default"].as<std::string>();
       }
     }
     json_patch.push_back(j_patch);

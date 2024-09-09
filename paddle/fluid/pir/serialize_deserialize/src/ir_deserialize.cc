@@ -227,6 +227,16 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
     VLOG(8) << " get attr_patch:  " << attr_patch;
     patch_builder->ApplyOpPatches(op_name, op_json, op_patch);
     VLOG(8) << op_name << " has been patched: " << *op_json;
+    // Apply patch to op name
+    // This happens when changing an op into another dialect
+    if (op_patch.contains("NEW_NAME")) {
+      std::string new_name =
+          op_patch.at("NEW_NAME").template get<std::string>();
+      VLOG(8) << "change op name from " << op_name << " to " << new_name;
+      op_name = new_name;
+      op_json->at(ID) = op_name;
+      VLOG(8) << "op_json after changing name: " << *op_json;
+    }
   }
   GetDecompressOpName(&op_name);
   VLOG(4) << "Read op_name = " << op_name << ".";
@@ -312,6 +322,13 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
     Json* opresult_attrs_json,
     const std::unordered_map<std::string, Json>& attr_patch) {
   pir::AttributeMap attributes;
+  // Add new attribute from patch
+  if (attr_patch.count("A_ADD")) {
+    for (auto& attr_json : attr_patch.at("A_ADD")) {
+      attrs_json->insert(attrs_json->end(), attr_json);
+    }
+    VLOG(8) << "attr has been added: " << *attrs_json;
+  }
   for (auto& attr_json : *attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
     if (attr_patch.count(attr_name)) {
@@ -329,6 +346,13 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
     }
   }
   VLOG(6) << "Finish Read pir::AttributeMap.";
+  // Add new opresult attribute from patch
+  if (attr_patch.count("OA_ADD")) {
+    for (auto& attr_json : attr_patch.at("OA_ADD")) {
+      opresult_attrs_json->insert(opresult_attrs_json->end(), attr_json);
+    }
+    VLOG(8) << "opresult attr has been added: " << *opresult_attrs_json;
+  }
   for (auto& attr_json : *opresult_attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
     VLOG(8) << attr_name << " patch: " << attr_patch;

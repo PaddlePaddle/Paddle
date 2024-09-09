@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/phi/core/enforce.h"
+#include "test/cpp/pir/tools/test1_dialect.h"
 #include "test/cpp/pir/tools/test_dialect.h"
 namespace pir {
 
@@ -56,6 +57,7 @@ DialectIdMap::DialectIdMap() {
   insert(paddle::dialect::DistDialect::name(), "4");
   // TestDialect for test use
   insert(test::TestDialect::name(), "5");
+  insert(test1::Test1Dialect::name(), "6");
 }
 void DialectIdMap::insert(const std::string& key, const std::string& value) {
   CompressDialect[key] = value;

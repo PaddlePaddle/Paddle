@@ -69,12 +69,20 @@ std::unordered_map<std::string, Json> PatchBuilder::GetOpAttrPatchMap(
   std::unordered_map<std::string, Json> op_attr_patch;
   if (op_patch.count(ATTRS)) {
     for (Json item : op_patch[ATTRS]) {
-      op_attr_patch[item[NAME]].push_back(item);
+      if (item.count("ADD")) {
+        op_attr_patch["A_ADD"].push_back(item.at("ADD"));
+      } else {
+        op_attr_patch[item[NAME]].push_back(item);
+      }
     }
   }
   if (op_patch.count(OPRESULTS_ATTRS)) {
     for (Json item : op_patch[OPRESULTS_ATTRS]) {
-      op_attr_patch[item[NAME]].push_back(item);
+      if (item.count("ADD")) {
+        op_attr_patch["OA_ADD"].push_back(item.at("ADD"));
+      } else {
+        op_attr_patch[item[NAME]].push_back(item);
+      }
     }
   }
   return op_attr_patch;
@@ -101,7 +109,7 @@ void PatchBuilder::ApplyOpPairPatches(int64_t* id) {
       op_patches_[op2][OPOPERANDS]["DELETE"].push_back(op2_patch["DELETE"][i]);
     }
   }
-  id = &max_id;
+  *id = max_id;
   VLOG(8) << "Op patches after applying op pair patches: \n" << op_patches_;
   VLOG(8) << "Max id after applying op pair patches: " << max_id;
   VLOG(6) << "Finish apply op_pair patches... ";
@@ -158,7 +166,7 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
       VLOG(8) << "ADD output: " << json_in;
     }
     for (auto item : in_patch["DELETE"]) {
-      int id = item.get<int>();
+      int id = item[ID].get<int>();
       json_in->erase(id);
     }
   }
@@ -180,7 +188,7 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
       VLOG(8) << "ADD output: " << json_out;
     }
     for (auto item : out_patch["DELETE"]) {
-      int id = item.get<int>();
+      int id = item[ID].get<int>();
       json_out->erase(id);
     }
   }
