@@ -47,23 +47,26 @@ class TestConverterBert(unittest.TestCase):
         trt_config = TensorRTConfig(inputs=[input_config])
         trt_config.disable_ops = "pd_op.dropout"
 
-        output_var = program.list_vars()[-1]
-        # get original results(for tests only)
+        # Step1.1: get original results(for tests only)
+        output_var = program.global_block().ops[-1].result(0)
+
         output_expected = predict_program(
             program, {"input_ids": input_min_data}, [output_var]
         )
         # get tensorrt_engine_op(converted_program)
         program_with_trt = convert_to_trt(program, trt_config, scope)
-        output_var = program_with_trt.list_vars()[-1]
+        output_var = program_with_trt.global_block().ops[-1].result(0)
 
+        print("program_with_trt",program_with_trt)
         # run inference(converted_program)
         output_converted = predict_program(
             program_with_trt,
             {"input_ids": input_min_data},
             [output_var],
         )
+       
 
-        # Check that the results are close to each other within a tolerance of 1e-2
+        # # Check that the results are close to each other within a tolerance of 1e-2
         np.testing.assert_allclose(
             output_expected[0],
             output_converted[0],

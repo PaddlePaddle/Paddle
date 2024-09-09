@@ -134,11 +134,10 @@ def convert_to_trt(program, trt_config, scope):
             program_with_output = program.list_vars()[-1]
 
             # run warmup for collecting shape
-            warmup_shape_infer(
+            program=warmup_shape_infer(
                 program,
                 min_shape_feed={feed_name[0]: min_data},
                 max_shape_feed={feed_name[0]: max_data},
-                fetch_var_list=output_var,
                 scope=scope,
             )
 

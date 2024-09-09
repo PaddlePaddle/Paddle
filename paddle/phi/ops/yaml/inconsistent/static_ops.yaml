@@ -467,6 +467,17 @@
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
   traits : pir::SideEffectTrait
 
+- op : legacy_matmul
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false, float alpha=1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : MatmulInferMeta
+    param: [x, y, transpose_x, transpose_y]
+  kernel :
+    func : legacy_matmul
+    param: [x, y, transpose_x, transpose_y, alpha]
+  backward : legacy_matmul_grad
+
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
