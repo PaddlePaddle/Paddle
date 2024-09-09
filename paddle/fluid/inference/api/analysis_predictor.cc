@@ -81,10 +81,6 @@
 #include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/inference/api/onednn_quantizer.h"
-#endif
-
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
@@ -2134,13 +2130,6 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (config_.mkldnn_quantizer_enabled()) {
-    LOG(INFO) << "Quantization is enabled";
-    argument_->SetQuantizeEnabledOpTypes(
-        config_.mkldnn_quantizer_config()->enabled_op_types());
-    argument_->SetQuantizeExcludedOpIds(
-        config_.mkldnn_quantizer_config()->excluded_op_ids());
-  }
   if (config_.mkldnn_bfloat16_enabled()) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
@@ -2455,23 +2444,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     return nullptr;
   }
 
-  if (config.mkldnn_quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
-    return nullptr;
-  }
-
   return predictor;
-}
-
-bool AnalysisPredictor::MkldnnQuantize() {
-#if PADDLE_WITH_DNNL
-  if (!mkldnn_quantizer_)
-    mkldnn_quantizer_ = new AnalysisPredictor::MkldnnQuantizer(
-        *this, config_.mkldnn_quantizer_config());
-  return mkldnn_quantizer_->Quantize();
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
-  return false;
-#endif
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
@@ -3270,13 +3243,6 @@ AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
     scope_->DeleteScope(sub_scope_);
   }
 
-#if PADDLE_WITH_DNNL
-  if (mkldnn_quantizer_) {
-    delete mkldnn_quantizer_;
-    mkldnn_quantizer_ = nullptr;
-  }
-#endif
-
   if (config_.shape_range_info_collected()) {
     StatisticShapeRangeInfo();
   }
@@ -3325,45 +3291,6 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
 
 std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
-}
-
-// Add SaveOptimModel
-void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
-  // save model
-  std::string model_name = dir + "/model";
-  std::ofstream outfile;
-  outfile.open(model_name, std::ios::out | std::ios::binary);
-  std::string inference_prog_desc = GetSerializedProgram();
-  outfile << inference_prog_desc;
-  // save params
-  framework::ProgramDesc save_program;
-  auto *save_block = save_program.MutableBlock(0);
-
-  const framework::ProgramDesc &main_program = program();
-  const framework::BlockDesc &global_block = main_program.Block(0);
-  std::vector<std::string> save_var_list;
-  for (framework::VarDesc *var : global_block.AllVars()) {
-    if (IsPersistable(var)) {
-      framework::VarDesc *new_var = save_block->Var(var->Name());
-      new_var->SetShape(var->GetShape());
-      new_var->SetDataType(var->GetDataType());
-      new_var->SetType(var->GetType());
-      new_var->SetLoDLevel(var->GetLoDLevel());
-      new_var->SetPersistable(true);
-
-      save_var_list.push_back(new_var->Name());
-    }
-  }
-  std::sort(save_var_list.begin(), save_var_list.end());
-  auto *op = save_block->AppendOp();
-  op->SetType("save_combine");
-  op->SetInput("X", save_var_list);
-  op->SetAttr("file_path", dir + "/params");
-  op->CheckAttrs();
-
-  phi::CPUPlace place;
-  framework::Executor exe(place);
-  exe.Run(save_program, scope(), 0, true, true);
 }
 
 void AnalysisPredictor::RegisterOutputHook(

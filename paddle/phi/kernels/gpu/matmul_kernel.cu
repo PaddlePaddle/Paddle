@@ -104,3 +104,16 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
   }
 }
 #endif
+
+PD_REGISTER_KERNEL(legacy_matmul,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int8_t) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+}

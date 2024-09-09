@@ -28,7 +28,7 @@ std::pair<std::string, std::string> GetContentSplitByDot(
 }
 
 std::vector<std::string> GetOpDistAttr() { return {"op_dist_attr", "op_role"}; }
-
+std::vector<std::string> GetOpQuantAttr() { return {"struct_name"}; }
 void GetCompressOpName(std::string* op_name) {
   std::pair<std::string, std::string> name = GetContentSplitByDot(*op_name);
   *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +

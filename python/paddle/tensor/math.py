@@ -294,9 +294,8 @@ def scale(
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
     elif in_pir_mode():
-        if act is None:
-            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        raise ValueError("act is not implement in pir of scale api.")
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        return paddle.pir_utils.append_activation_in_pir(out, act)
     else:
         check_variable_and_dtype(
             x,
