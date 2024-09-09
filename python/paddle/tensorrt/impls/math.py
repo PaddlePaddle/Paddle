@@ -31,6 +31,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 from paddle.tensorrt.converter_utils import (
+    add_elementwise_layer,
     broadcast,
     get_axes_for_reduce_op,
 )
@@ -114,84 +115,20 @@ def max_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.divide", trt_version="8.x")
 def divide_converter(network, paddle_op, inputs):
-    weight_shape = paddle_op.operands()[1].source().shape
-    input_shape = paddle_op.operands()[0].source().shape
-
-    weight_tensor = inputs[1]
-    input_tensor = inputs[0]
-    if type(inputs[1]) == trt.Weights:
-        weight_tensor = network.add_constant(
-            weight_shape, inputs[1]
-        ).get_output(0)
-    if type(inputs[0]) == trt.Weights:
-        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
-            0
-        )
-    lhs_val, rhs_val = broadcast(
-        network,
-        input_tensor,
-        weight_tensor,
-        input_tensor.name,
-        weight_tensor.name,
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.DIV
     )
-
-    layer = network.add_elementwise(
-        lhs_val, rhs_val, trt.ElementWiseOperation.DIV
-    )
-    return layer.get_output(0)
 
 
 @converter_registry.register("pd_op.subtract", trt_version="8.x")
 def substract_converter(network, paddle_op, inputs):
-    weight_shape = paddle_op.operands()[1].source().shape
-    input_shape = paddle_op.operands()[0].source().shape
-
-    weight_tensor = inputs[1]
-    input_tensor = inputs[0]
-    if type(inputs[1]) == trt.Weights:
-        weight_tensor = network.add_constant(
-            weight_shape, inputs[1]
-        ).get_output(0)
-    if type(inputs[0]) == trt.Weights:
-        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
-            0
-        )
-    lhs_val, rhs_val = broadcast(
-        network,
-        input_tensor,
-        weight_tensor,
-        input_tensor.name,
-        weight_tensor.name,
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.SUB
     )
-    layer = network.add_elementwise(
-        lhs_val, rhs_val, trt.ElementWiseOperation.SUB
-    )
-    return layer.get_output(0)
 
 
 @converter_registry.register("pd_op.multiply", trt_version="8.x")
-def substract_converter(network, paddle_op, inputs):
-    weight_shape = paddle_op.operands()[1].source().shape
-    input_shape = paddle_op.operands()[0].source().shape
-
-    weight_tensor = inputs[1]
-    input_tensor = inputs[0]
-    if type(inputs[1]) == trt.Weights:
-        weight_tensor = network.add_constant(
-            weight_shape, inputs[1]
-        ).get_output(0)
-    if type(inputs[0]) == trt.Weights:
-        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
-            0
-        )
-    lhs_val, rhs_val = broadcast(
-        network,
-        input_tensor,
-        weight_tensor,
-        input_tensor.name,
-        weight_tensor.name,
+def multiply_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.PROD
     )
-    layer = network.add_elementwise(
-        lhs_val, rhs_val, trt.ElementWiseOperation.PROD
-    )
-    return layer.get_output(0)
