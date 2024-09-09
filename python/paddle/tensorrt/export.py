@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 
 import numpy as np
@@ -19,10 +21,8 @@ import numpy as np
 import paddle
 from paddle.base import core, dygraph
 from paddle.base.framework import (
-    EagerParamBase,
     Variable,
 )
-from paddle.framework import use_pir_api
 from paddle.jit.api import (
     _get_function_names_from_layer,
     get_ast_static_function,
@@ -41,15 +41,47 @@ from paddle.tensorrt.util import (
 
 
 class Input:
+    """
+    A class used to configure and generate random input data for different shapes and data types.
+
+    This class supports generating random input data for minimum, optimal, and maximum shapes, with configurable data types (e.g., 'int' or 'float') and value ranges.
+
+    Args:
+        min_input_shape : tuple
+            The shape of the minimum input tensor.
+        max_input_shape : tuple
+            The shape of the maximum input tensor.
+        optim_input_shape : tuple, optional
+            The shape of the optimal input tensor (default is None).
+        input_data_type : str, optional
+            The data type for the input tensors, such as 'float32' or 'int64' (default is None).
+        input_range : tuple, optional
+            The range of values used to generate input data. For floats, the default range is (0.0, 1.0). For integers, the default range is (1, 10).
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+        >>> # example :
+        >>> from paddle.tensorrt.export import Input
+        >>> input = Input(
+        ...    min_input_shape=(1,100),
+        ...    optim_input_shape=(4,100),
+        ...    max_input_shape=(8,100),
+        ... )
+
+        >>> input.input_data_type='int64'
+        >>> input.input_range=(1,10)
+    """
+
     def __init__(
         self,
-        min_input_shape,
-        max_input_shape,
-        optim_input_shape=None,
-        input_data_type=None,
-        input_range=None,
-    ):
-
+        min_input_shape: tuple,
+        max_input_shape: tuple,
+        optim_input_shape: tuple | None = None,
+        input_data_type: str | None = 'float32',
+        input_range: tuple | None = None,
+    ) -> None:
         self.min_input_shape = min_input_shape
         self.max_input_shape = max_input_shape
         self.optim_input_shape = optim_input_shape
@@ -57,6 +89,25 @@ class Input:
         self.input_range = input_range
 
     def generate_input_data(self):
+        """
+        Generates random input data based on the specified shapes and data types and input_range
+
+        Returns:
+            tuple(numpy.ndarray, numpy.ndarray, numpy.ndarray): A tuple containing the generated input data for the minimum, optimal, and maximum shapes.
+
+        Examples:
+            .. code-block:: python
+            >>> # example :
+            >>> from paddle.tensorrt.export import Input
+            >>> input = Input(
+            ...    min_input_shape=(1,100),
+            ...    optim_input_shape=(4,100),
+            ...    max_input_shape=(8,100),
+            ... )
+            >>> input.input_data_type='int64'
+            >>> input.input_range=(1,10)
+            >>> input_min_data, input_optim_data, input_max_data = input_config.generate_input_data()
+        """
         if self.input_data_type is None:
             self.input_data_type = 'float32'
 
@@ -94,11 +145,45 @@ class Input:
 class TensorRTConfig:
     def __init__(
         self,
-        inputs,
-        min_subgraph_size=3,
-        save_model_dir=None,
-        disable_ops=None,
-    ):
+        inputs: list,
+        min_subgraph_size: int | None = 3,
+        save_model_dir: str | None = None,
+        disable_ops: str | None = None,
+    ) -> None:
+        """
+        A class for configuring TensorRT optimizations.
+
+        Args:
+            inputs : list
+                A list of Input configurations
+            min_subgraph_size : int, optional
+                The minimum number of operations in a subgraph for TensorRT to optimize (default is 3).
+            save_model_dir : str, optional
+                The directory where the optimized model will be saved (default is None).
+            disable_ops : str, optional
+                A string representing the names of operations that should not be entering by TensorRT (default is None).
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+            >>> # example :
+            >>> from paddle.tensorrt.export import (
+            ...    Input,
+            ...    TensorRTConfig,
+            ... )
+            >>> input = Input(
+            ...    min_input_shape=(1,100),
+            ...    optim_input_shape=(4,100),
+            ...    max_input_shape=(8,100),
+            ... )
+            >>> input.input_data_type='int64'
+            >>> input.input_range=(1,10)
+
+            >>> trt_config = TensorRTConfig(inputs=[input])
+            >>> trt_config.disable_ops = "pd_op.dropout"
+        """
         self.inputs = (inputs,)
         self.min_subgraph_size = min_subgraph_size
         self.save_model_dir = save_model_dir
@@ -185,10 +270,84 @@ def convert_to_trt(program, trt_config, scope):
 
 
 # Obtain a program with tensorrt_op for dynamic-to-static scenarios.
-def export(funtion=None, input_spec=None, config=None, **kwargs):
+def export(function=None, input_spec=None, config=None, **kwargs):
+    """
+    Convert a dynamic graph API to a static graph and apply TensorRT optimizations if relevant parameters are configured.
+
+    Args:
+        function (callable): Callable dynamic graph function. If it used as a
+            decorator, the decorated function will be parsed as this parameter.
+        input_spec (list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to
+            specific the shape/dtype/name information of each input Tensor.
+        config: TensorRTConfig configurations
+        kwargs: Support keys including `property`, set `property` to True if the function
+            is python property.
+
+    Returns:
+        tuple: A tuple containing two elements. The first element is the TensorRT optimized program., optionally optimized with TensorRT if configured. The second element is the scope containing the parameters.
+
+    Examples:
+        .. code-block:: python
+        >>> # example
+        >>> from paddle import nn
+        >>> from paddle.static import InputSpec
+        >>> import unittest
+        >>> import paddle
+        >>> from paddle.tensorrt.export import (
+        ...    Input,
+        ...    TensorRTConfig,
+        ...    export,
+        ... )
+
+        >>> class CumsumModel(nn.Layer):
+        ...    def __init__(self, input_dim):
+        ...        super().__init__()
+        ...        self.linear = nn.Linear(input_dim, input_dim)
+
+        >>>    def forward(self, x):
+        ...        linear_out = self.linear(x)
+        ...        relu_out = F.relu(linear_out)
+        ...        axis = paddle.full([1], 2, dtype='int64')
+        ...        out = paddle.cumsum(relu_out, axis=axis)
+        ...        return out
+
+        >>> def test_run():
+        ...     with paddle.pir_utils.IrGuard():
+        ...        input_config = Input(
+        ...            min_input_shape=(9, 10, 11),
+        ...            optim_input_shape=(9, 10, 11),
+        ...            max_input_shape=(9, 10, 11),
+        ...        )
+        ...        trt_config = TensorRTConfig(inputs=[input_config])
+        ...        for i, input_instrance in enumerate(trt_config.inputs):
+        ...            min_data, _, max_data = input_instrance[i].generate_input_data()
+        ...            paddle.disable_static()
+        ...            x = paddle.to_tensor(min_data)
+        ...            net = CumsumModel(input_dim=min_data.shape[-1])
+        ...            out=net(x)
+        ...            paddle.disable_static()
+        ...            input_spec = [InputSpec(shape=min_data.shape, dtype='float32')]
+        ...            program_with_trt ,scope= export(
+        ...                net,
+        ...                input_spec=input_spec,
+        ...                config=trt_config,
+        ...                full_graph=True,
+        ...            )
+        ...            output_var = program_with_trt.list_vars()[-1]
+        ...            output_converted = predict_program(
+        ...                program_with_trt, {"input": input_optim_data}, [output_var]
+        ...            )
+        ...            with paddle.static.program_guaed(program_with_trt):
+        ...                place=paddle.CUDAPlace(0)
+        ...                executor=paddle.static.Executor(place)
+        ...                output=executor.run(program_with_trt, feed={"input": input_optim_data}, fetch=[output_var])
+
+        >>> test_run()
+
+    """
     # Converts dynamic graph APIs into static graph
     static_net = paddle.jit.to_static(
-        funtion,
+        function,
         input_spec=input_spec,
         **kwargs,
     )
@@ -248,8 +407,6 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
         # layer is function
         functions = [static_net]
 
-    combine_vars = {}
-    combine_program = []
     property_vals = []  # (value, key)
     concrete_program = None
     for attr_func in functions:
@@ -344,60 +501,130 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
                 state_var_dict[var.name] = var
         #  share parameters from Layer to scope & record var info
         with dygraph.guard():
-            if use_pir_api():
-                for tensor, value in zip(*concrete_program.parameters):
-                    if not value.persistable:
-                        continue
-                    param_or_buffer_tensor = scope.var(value.name).get_tensor()
+            for tensor, value in zip(*concrete_program.parameters):
+                if not value.persistable:
+                    continue
+                param_or_buffer_tensor = scope.var(value.name).get_tensor()
 
-                    src_tensor = (
-                        state_var_dict[tensor.name].value().get_tensor()
-                    )
-                    param_or_buffer_tensor._share_data_with(src_tensor)
-            else:
-                for param_or_buffer in concrete_program.parameters:
-                    if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
-                        scr_tensor = param_or_buffer.value().get_map_tensor()
-                        tgt_var = scope.var(param_or_buffer.name)
-                        tgt_var.set_vocab(scr_tensor)
-                    else:
-                        # share to scope
-                        param_or_buffer_tensor = scope.var(
-                            param_or_buffer.name
-                        ).get_tensor()
-                        src_tensor = (
-                            state_var_dict[param_or_buffer.name]
-                            .value()
-                            .get_tensor()
-                        )
-                        param_or_buffer_tensor._share_data_with(src_tensor)
-                    # record var info
-                    if param_or_buffer.name not in extra_var_info:
-                        extra_info_dict = {}
-                        if param_or_buffer.name in state_names_dict:
-                            extra_info_dict['structured_name'] = (
-                                state_names_dict[param_or_buffer.name]
-                            )
-                        extra_info_dict['stop_gradient'] = (
-                            param_or_buffer.stop_gradient
-                        )
-                        if isinstance(param_or_buffer, EagerParamBase):
-                            extra_info_dict['trainable'] = (
-                                param_or_buffer.trainable
-                            )
-                        extra_var_info[param_or_buffer.name] = extra_info_dict
-
+                src_tensor = state_var_dict[tensor.name].value().get_tensor()
+                param_or_buffer_tensor._share_data_with(src_tensor)
     with paddle.pir_utils.IrGuard():
-        main_program = static_net.forward.main_program
+        main_program = concrete_program.main_program
         program_with_trt = convert_to_trt(main_program, config, scope)
         return program_with_trt, scope
 
 
 # Obtain a program with tensorrt_op by directly loading the model.
-def export_loaded_model(model_dir, trt_config):
-    if os.path.abspath(trt_config.save_model_dir) == os.path.abspath(model_dir):
+def export_loaded_model(model_dir, config):
+    """
+    Loading a PaddlePaddle Model and Exporting the TensorRT-Optimized Program.
+
+    Args:
+       model_dir(str):The directory path where the PaddlePaddle model is located.
+       config(TensorRTConfig):The configuration of TensorRTConfig
+
+    Returns:
+        program:The TensorRT optimized program.
+
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> import numpy as np
+            >>> import tempfile
+            >>> import paddle.inference as paddle_infer
+            >>> from paddle.tensorrt.export import (
+            ...      Input,
+            ...      TensorRTConfig,
+            ...      export,
+            ...      export_loaded_model,
+            ... )
+            >>> import os
+            >>> from paddle import nn
+            >>> import paddle.nn.functional as F
+
+            >>> class CumsumModel(nn.Layer):
+            ...    def __init__(self, input_dim):
+            ...        super().__init__()
+            ...        self.linear = nn.Linear(input_dim, input_dim)
+
+            ...    def forward(self, x):
+            ...        linear_out = self.linear(x)
+            ...        relu_out = F.relu(linear_out)
+            ...        axis = paddle.full([1], 2, dtype='int64')
+            ...        out = paddle.cumsum(relu_out, axis=axis)
+            ...        return out
+
+            >>> temp_dir = tempfile.TemporaryDirectory()
+            >>> save_path = os.path.join(temp_dir.name, 'tensor_axis_cumsum')
+
+            >>> with paddle.pir_utils.IrGuard():
+            ...    paddle.enable_static()
+            ...    np_x = np.random.randn(9, 10, 11).astype('float32')
+            ...    main_prog = paddle.static.Program()
+            ...    startup_prog = paddle.static.Program()
+            ...    with paddle.static.program_guard(main_prog, startup_prog):
+            ...        x = paddle.static.data(
+            ...            shape=np_x.shape, name='x', dtype=np_x.dtype
+            ...        )
+            ...        model = CumsumModel(input_dim=np_x.shape[-1])
+            ...        out = model(x)
+            ...        loss = paddle.mean(out)
+            ...        sgd = paddle.optimizer.SGD(learning_rate=0.0)
+            ...        sgd.minimize(paddle.mean(out))
+
+            ...        exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            ...        exe.run(startup_prog)
+            ...        static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
+
+            ...        # run infer
+            ...        paddle.static.save_inference_model(
+            ...            save_path, [x], [out], exe
+            ...        )
+
+            ...        config = paddle_infer.Config(
+            ...            save_path + '.json', save_path + '.pdiparams'
+            ...        )
+            ...        config.enable_new_ir()
+            ...        config.enable_new_executor()
+            ...        config.use_optimized_model(True)
+
+            ... # Set input
+            ...    input_config = Input(
+            ...        min_input_shape=(9, 10, 11),
+            ...        optim_input_shape=(9, 10, 11),
+            ...        max_input_shape=(9, 10, 11),
+            ...    )
+            ...    # Create a TensorRTConfig with inputs as a required field.
+            ...    trt_config = TensorRTConfig(inputs=[input_config])
+
+            ...    trt_save_path = os.path.join(temp_dir.name, 'trt')
+            ...    trt_config.save_model_dir = trt_save_path
+
+            ...    program_with_trt = export_loaded_model(save_path, trt_config)
+
+            ...    # Create a config for inference.
+            ...    config = paddle_infer.Config(
+            ...        trt_config.save_model_dir + '.json',
+            ...        trt_config.save_model_dir + '.pdiparams',
+            ...    )
+
+            ...    if paddle.is_compiled_with_cuda():
+            ...        config.enable_use_gpu(100, 0)
+            ...    else:
+            ...        config.disable_gpu()
+            ...    predictor = paddle_infer.create_predictor(config)
+            ...    input_names = predictor.get_input_names()
+
+            ...    paddle.disable_static()
+            ...    for i, input_instrance in enumerate(trt_config.inputs):
+            ...        min_data, _, max_data = input_instrance[i].generate_input_data()
+            ...        model_inputs = paddle.to_tensor(min_data)
+            ...        output_converted = predictor.run([model_inputs])
+
+    """
+    if os.path.abspath(config.save_model_dir) == os.path.abspath(model_dir):
         raise ValueError(
-            "The `trt_config.save_model_dir` and `model_dir` cannot be the same. Please specify a different directory for saving the model."
+            "The `config.save_model_dir` and `model_dir` cannot be the same. Please specify a different directory for saving the model."
         )
 
     scope = paddle.static.global_scope()
@@ -426,4 +653,4 @@ def export_loaded_model(model_dir, trt_config):
             )
         )
 
-    return convert_to_trt(program, trt_config, scope)
+    return convert_to_trt(program, config, scope)

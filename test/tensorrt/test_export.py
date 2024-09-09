@@ -79,6 +79,7 @@ class TestExport_to_loaded_model(unittest.TestCase):
                 static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
                 # run infer
+                print("self.save_path: ", self.save_path)
                 paddle.static.save_inference_model(
                     self.save_path, [x], [out], exe
                 )
