@@ -150,7 +150,6 @@ DECLARE_FUNCTION_FOR_GPU(gpuStreamEndCapture,
 DECLARE_FUNCTION_FOR_GPU(gpuStreamGetCaptureInfo,
                          cudaStreamGetCaptureInfo,
                          hipStreamGetCaptureInfo);
-DECLARE_FUNCTION_FOR_GPU(gpuEventCreate, cudaEventCreate, hipEventCreate);
 DECLARE_FUNCTION_FOR_GPU(gpuEventCreateWithFlags,
                          cudaEventCreateWithFlags,
                          hipEventCreateWithFlags);
@@ -160,9 +159,6 @@ DECLARE_FUNCTION_FOR_GPU(gpuEventQuery, cudaEventQuery, hipEventQuery);
 DECLARE_FUNCTION_FOR_GPU(gpuEventSynchronize,
                          cudaEventSynchronize,
                          hipEventSynchronize);
-DECLARE_FUNCTION_FOR_GPU(gpuEventElapsedTime,
-                         cudaEventElapsedTime,
-                         hipEventElapsedTime);
 
 #undef DECLARE_FUNCTION_FOR_GPU
 

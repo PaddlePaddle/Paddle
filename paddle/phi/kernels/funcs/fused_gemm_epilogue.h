@@ -169,8 +169,13 @@ class GemmEpilogueAlgoCache {
     }
 
     gpuEvent_t start_event, stop_event;
-    PADDLE_ENFORCE_GPU_SUCCESS(gpuEventCreate(&start_event));
-    PADDLE_ENFORCE_GPU_SUCCESS(gpuEventCreate(&stop_event));
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreate(&start_event));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreate(&stop_event));
+#else  // PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&start_event));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&stop_event));
+#endif
 
     for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
       float curr_time = 0;
@@ -199,8 +204,13 @@ class GemmEpilogueAlgoCache {
 
         PADDLE_ENFORCE_GPU_SUCCESS(gpuEventRecord(stop_event, stream));
         PADDLE_ENFORCE_GPU_SUCCESS(gpuEventSynchronize(stop_event));
+#ifdef PADDLE_WITH_HIP
         PADDLE_ENFORCE_GPU_SUCCESS(
-            gpuEventElapsedTime(&time, start_event, stop_event));
+            hipEventElapsedTime(&time, start_event, stop_event));
+#else  // PADDLE_WITH_CUDA
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            cudaEventElapsedTime(&time, start_event, stop_event));
+#endif
         curr_time += time;
         if (status != BLASLT_CONSTANT(BLAS_STATUS_SUCCESS)) {
           curr_time = 3.40282e+038;  // Max Value of float
