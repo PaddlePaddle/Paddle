@@ -496,7 +496,12 @@ void CodeGenGpuDev::Visit(const ir::Load *op) {
   // overload this visit function to especially deal with the case when it
   // accesses element at a cuda/hip built-in vector, others still resolve to
   // CodeGenC
-  if (!PrintBuiltinVectorAccess(op, op->index(), false)) {
+
+  std::cerr << "=============!!!!!!!!!!!!!!!!!!\n";
+  auto expr1 = op->index();
+  std::cerr << "===============================\n";
+
+  if (!PrintBuiltinVectorAccess(op, expr1, false)) {
     CodeGenC::Visit(op);
   }
 }

@@ -202,7 +202,9 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
     }
 
     if (i > 0) {
+      std::cerr << "before simple " << res << std::endl;
       res = cinn::common::AutoSimplify(res);
+      std::cerr << "after simple " << res << std::endl;
     }
   }
 
