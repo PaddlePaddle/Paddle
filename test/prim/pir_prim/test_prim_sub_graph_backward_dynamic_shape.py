@@ -233,7 +233,7 @@ class TestPrimThreeWithGrad(unittest.TestCase):
                 input_spec=[
                     InputSpec(shape=self.init_x_shape, dtype='float32'),
                     InputSpec(shape=self.init_y_shape, dtype='float32'),
-                    InputSpec(shape=self.init_y_shape, dtype='float32'),
+                    InputSpec(shape=self.init_z_shape, dtype='float32'),
                 ],
             )
             fn.train()

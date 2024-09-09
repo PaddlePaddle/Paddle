@@ -493,8 +493,14 @@ void scatter_grad(const Tensor& index,
                   Tensor* x_grad,
                   Tensor* updates_grad) {
   if (x_grad) {
-    auto zero_tensor =
-        full<T>(common::vectorize(updates.dims()), 0.0, updates.dtype());
+    Tensor zero_tensor;
+    if (has_dynamic_shape(updates.shape())) {
+      zero_tensor =
+          backend::full_with_tensor<T>(shape<T>(updates), 0.0, updates.dtype());
+    } else {
+      zero_tensor =
+          full<T>(common::vectorize(updates.dims()), 0.0, updates.dtype());
+    }
     auto tmp_grad = scatter<T>(out_grad, index, zero_tensor, false);
     set_output<T>(tmp_grad, x_grad);
   }

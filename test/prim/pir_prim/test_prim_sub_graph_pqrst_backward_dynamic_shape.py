@@ -18,6 +18,7 @@ import numpy as np
 from test_prim_sub_graph_backward_dynamic_shape import (
     TestPrimBaseOneGradTwoInputs,
     TestPrimBaseWithGrad,
+    TestPrimThreeWithGrad,
     TestPrimTwoWithGrad,
     apply_to_static,
 )
@@ -51,10 +52,6 @@ def prod_net4(x):
     return paddle.prod(x, 0, keepdim=False)
 
 
-def scale_net(x):
-    return paddle.scale(x, scale=-2.3)
-
-
 def reduce_as_net(x, y):
     return paddle.reduce_as(x, y)
 
@@ -65,6 +62,14 @@ def relu_net(x):
 
 def reshape_net(x):
     return paddle.reshape(x, [30, 200 * 40])
+
+
+def scale_net(x):
+    return paddle.scale(x, scale=-2.3)
+
+
+def scatter_net(x, y, z):
+    return paddle.scatter(x, y, z)
 
 
 def sigmoid_net(x):
@@ -237,18 +242,6 @@ class TestPrimProdWithGrad5(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
-class TestPrimScaleWithGrad(TestPrimBaseWithGrad):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [20, 30, 70]
-        self.init_x_shape = [None, None, 70]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = scale_net
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
 class TestPrimReduceAsWithGrad2(TestPrimBaseOneGradTwoInputs):
     def setUp(self):
         np.random.seed(2023)
@@ -319,6 +312,63 @@ class TestPrimReshapeWithGrad(TestPrimBaseWithGrad):
         self.net = reshape_net
         self.enable_cinn = False
         self.tol = 1e-6
+
+
+class TestPrimScaleWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [20, 30, 70]
+        self.init_x_shape = [None, None, 70]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = scale_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimScatterWithGrad(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 50]
+        self.init_x_shape = [None, 50]
+        self.y_shape = [2]
+        self.init_y_shape = [None]
+        self.z_shape = [2, 50]
+        self.init_z_shape = [None, 50]
+        self.x = np.ones(self.x_shape).astype(self.dtype)
+        self.y = np.array([1, 2])
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = scatter_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+    def base_net(self, flag=None):
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
+        x = paddle.to_tensor(self.x, stop_gradient=False)
+        y = paddle.to_tensor(self.y)
+        z = paddle.to_tensor(self.z, stop_gradient=False)
+        if flag == "prim":
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=self.init_x_shape, dtype='float32'),
+                    InputSpec(shape=self.init_y_shape, dtype='float32'),
+                    InputSpec(shape=self.init_z_shape, dtype='float32'),
+                ],
+            )
+            fn.train()
+        else:
+            fn = self.net
+        res = fn(x, y, z)
+        res.backward()
+        x_grad = x.gradient()
+        z_grad = z.gradient()
+        if flag == "prim":
+            core._set_prim_all_enabled(False)
+        return res, [x_grad, z_grad]
 
 
 class TestPrimSigmoidWithGrad(TestPrimBaseWithGrad):
