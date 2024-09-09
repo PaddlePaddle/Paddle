@@ -1785,19 +1785,19 @@ bool ReindexGraphOpInferSymbolicShape(
     GraphReindexShapeCheck(hashtable_index_shape, "HashTable_Index");
   }
 
-  symbol::DimExpr out_unknown_0 = infer_context->GetNextSymName();
+  symbol::DimExpr unique_dim_sym = infer_context->GetNextSymName();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({out_unknown_0})});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {symbol::DimExpr{neighbors_shape[0]}})});
   infer_context->SetShapeOrDataForValue(
       op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({out_unknown_0})});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {symbol::DimExpr{neighbors_shape[0]}})});
   infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({x_shape[0]})});
+          symbol::TensorShapeOrDataDimExprs({unique_dim_sym})});
 
   return true;
 }
