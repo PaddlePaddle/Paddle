@@ -28,17 +28,17 @@ void XPUGetSinCosData(const Context& dev_ctx,
   if (sin_cos.get_ptr()) {
     auto sin_cos_dims = sin_cos.get_ptr()->dims();
     int64_t dims_size = sin_cos_dims.size();
-    PADDLE_ENFORCE_EQ(
-        (dims_size == 2 || dims_size == 4),
-        true,
-        phi::errors::InvalidArgument("The dims of sin and cos is expected to "
-                                     "be 2 or 4, but received %d.",
-                                     dims_size));
+    PADDLE_ENFORCE_EQ((dims_size == 2 || dims_size == 4),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The dims of sin and cos is expected to "
+                          "be 2 or 4, but received %d.",
+                          dims_size));
     if (dims_size == 4) {
       // sin.shape: [1, seq_len, 1, head_dim]
       PADDLE_ENFORCE_EQ((sin_cos_dims[2] == 1),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The num_heads of sin and cos must be 1."));
     }
     int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
@@ -47,7 +47,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
           (sin_cos_dims[dims_size - 1] == head_dim &&
            sin_cos_dims[sin_seq_len_dim] >= seq_len),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The seq_len of sin and cos must be greater than or equal to "
               "this of q. The head_dim of sin and cos must be the same as this "
               "of q."));
@@ -55,7 +55,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
       auto position_ids_dims = position_ids.get_ptr()->dims();
       PADDLE_ENFORCE_EQ(position_ids_dims.size(),
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dims of position_ids is expected to "
                             "be 2, but received %d.",
                             position_ids_dims.size()));
@@ -64,7 +64,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
           (position_ids_dims[0] == batch_size &&
            position_ids_dims[1] == seq_len),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The batch_size and seq_len of position_ids must be the same as "
               "those of q."));
       using XPUTypeFp16 = typename XPUTypeTrait<phi::dtype::float16>::Type;

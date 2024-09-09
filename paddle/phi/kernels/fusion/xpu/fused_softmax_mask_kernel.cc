@@ -32,7 +32,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(mask_dim[1],
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input mask's second dim must be 1 "
                         "received the second dimension of mask is %d",
                         mask_dim[1]));
@@ -43,7 +43,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         x_dim[idx],
         mask_dim[idx],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input x's %dth dim should be equal with input mask's %dth dim "
             "but "
             "received the %dth dimension of x and mask are not equal "

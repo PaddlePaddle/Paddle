@@ -21,12 +21,12 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
@@ -100,6 +100,14 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       const AllreduceOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const std::vector<int64_t>& out_size_each_rank,
+      const std::vector<int64_t>& in_size_each_rank,
       bool sync_op,
       bool use_calc_stream) override;
 

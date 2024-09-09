@@ -156,7 +156,7 @@ QuantLinearFusePass::QuantLinearFusePass() {
 // if have relu after elementwise_add, then fuse relu into quant_linear op.
 void QuantLinearFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
 
   FusePassBase::Init("quant_linear_fuse_pattern", graph);
 
@@ -174,10 +174,10 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
   GraphPatternDetector gpd;
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(
-      scope,
-      phi::errors::InvalidArgument("Scope in QuantLinearFusePass should not be "
-                                   "null."));
+  PADDLE_ENFORCE_NOT_NULL(scope,
+                          common::errors::InvalidArgument(
+                              "Scope in QuantLinearFusePass should not be "
+                              "null."));
 
   patterns::QuantLinearFusePattern pattern(gpd.mutable_pattern(),
                                            "quant_linear_fuse_pattern");
@@ -198,7 +198,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
             ->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input scale tensor's place should be CPU."));
 
     float input_scale = NAN;
@@ -210,7 +210,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
           input_scale_tensor.data<phi::dtype::float16>();
       input_scale = static_cast<float>(input_scale_data[0]);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport type. The type of 'Scale' in quantize_linear op is "
           "expected to be float32 or float16, but the current type is %d",
           input_scale_tensor.dtype()));
@@ -230,7 +230,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
             ->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(weight_scale_tensor.place()),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "weight_scale tensor's place should be CPU."));
     const float* weight_scale_data = weight_scale_tensor.data<float>();
 

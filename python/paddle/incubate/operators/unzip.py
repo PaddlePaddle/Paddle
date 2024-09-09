@@ -11,12 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
-def unzip(input, lod, len):
+
+def unzip(input: Tensor, lod: Tensor, len: int) -> Tensor:
     r"""
 
     **unzip layers**
@@ -24,12 +30,12 @@ def unzip(input, lod, len):
     unzip 'input' according to 'lod'
 
     Args:
-        input (Variable): The zipped input
+        input (Tensor): The zipped input
         len(int): The second dim length of unzipped output.
-        lod (Variable): The original lod of unzipped input, 1-D LodTensor with shape[K].
+        lod (Tensor): The original lod of unzipped input, 1-D LodTensor with shape[K].
 
     Returns:
-        Variable: The original unzipped tensor, 2-D LodTensor with shape[K-1, len].
+        Tensor, The original unzipped tensor, 2-D LodTensor with shape[K-1, len].
 
     Examples:
 
@@ -44,7 +50,7 @@ def unzip(input, lod, len):
             >>> len = 4
             >>> input = paddle.to_tensor(input_np, "int64")
             >>> lod = paddle.to_tensor(lod_np, "int64")
-            >>> unzipped_input = paddle.incubate.operators.unzip(input, lod, len)
+            >>> unzipped_input = paddle.incubate.operators.unzip(input, lod, len) # type: ignore[operator]
             >>> print(unzipped_input)
             Tensor(shape=[5, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[1, 2, 3, 0],

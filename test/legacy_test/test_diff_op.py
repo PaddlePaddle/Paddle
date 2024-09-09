@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -53,7 +54,13 @@ class TestDiffOp(unittest.TestCase):
     def setUp(self):
         self.set_args()
         self.get_output()
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -81,7 +88,13 @@ class TestDiffOp(unittest.TestCase):
     @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
@@ -156,6 +169,77 @@ class TestDiffOpN(TestDiffOp):
         self.axis = 0
         self.prepend = None
         self.append = None
+
+
+class TestDiffOpNAxis(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = 1
+        self.prepend = None
+        self.append = None
+
+
+class TestDiffOpNPrepend(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = -1
+        self.prepend = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype(
+            'float32'
+        )
+        self.append = None
+
+
+class TestDiffOpNAppend(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = -1
+        self.prepend = None
+        self.append = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype('float32')
+
+
+class TestDiffOpNPreAppend(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = -1
+        self.prepend = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype(
+            'float32'
+        )
+        self.append = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype('float32')
+
+
+class TestDiffOpNPrependAxis(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = 0
+        self.prepend = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype(
+            'float32'
+        )
+        self.append = None
+
+
+class TestDiffOpNAppendAxis(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = 0
+        self.prepend = None
+        self.append = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype('float32')
+
+
+class TestDiffOpNPreAppendAxis(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = 0
+        self.prepend = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype(
+            'float32'
+        )
+        self.append = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype('float32')
 
 
 class TestDiffOpAxis(TestDiffOp):

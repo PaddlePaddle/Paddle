@@ -67,7 +67,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
       PADDLE_ENFORCE_EQ(
           in_dims[i],
           dout_dims[i + bat],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "ReduceDims dimension mismatch. Operands could "
               "not be broadcast together with the shape of X = [%s] and "
               "the shape of Y = [%s]. X.shape[%d](%d) is not equal to "
@@ -148,10 +148,10 @@ static std::vector<int64_t> get_unsqueeze_dims(
       PADDLE_ENFORCE_LT(
           k,
           origin_dims.size(),
-          phi::errors::OutOfRange("Your index [%lu] exceeds the number of "
-                                  "elements in origin_dims[%lu].",
-                                  k,
-                                  origin_dims.size()));
+          common::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                     "elements in origin_dims[%lu].",
+                                     k,
+                                     origin_dims.size()));
       result.push_back(origin_dims[k]);
       k++;
     }

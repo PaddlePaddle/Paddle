@@ -27,7 +27,7 @@ def _get_version_detail(idx):
     assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
 
-    if re.match('${TAG_VERSION_REGEX}', '${PADDLE_VERSION}'):
+    if re.match(r'${TAG_VERSION_REGEX}', '${PADDLE_VERSION}'):
         version_details = '${PADDLE_VERSION}'.split('.')
 
         if len(version_details) >= 3:
@@ -152,6 +152,9 @@ if '${WITH_GPU}' == 'ON':
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/float16.h')
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/bfloat16.h')
+
+if '${WITH_ROCM}' == 'ON':
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h')
 
 for lib in cinnlibs:
     shutil.copy(lib, libs_path)

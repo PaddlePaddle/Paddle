@@ -127,10 +127,10 @@ void MultiEmbeddingKernel(const Context& ctx,
                    &cpu_seq_lod);
         break;
       default:
-        PADDLE_THROW(
-            phi::errors::Unimplemented("Only support mask data type is int64 "
-                                       "or float, not support %s now.",
-                                       DataTypeToString(mask_tensor->dtype())));
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Only support mask data type is int64 "
+            "or float, not support %s now.",
+            DataTypeToString(mask_tensor->dtype())));
         break;
     }
     memcpy(seq_lod_data, cpu_seq_lod.data(), cpu_seq_lod.size() * sizeof(int));
@@ -192,7 +192,7 @@ void EmbeddingWithEltwiseAddXpuKernel(
           ctx, ids, tables, mask, padding_idx, out, seq_lod, max_seq_len);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Only support ids data type is int64 or int32, not support %s now.",
           DataTypeToString(ids[0]->dtype())));
       break;

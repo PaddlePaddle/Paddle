@@ -81,7 +81,7 @@ struct ConvertToPhiContext<phi::GPUContext> {
 
 #ifdef PADDLE_WITH_XPU
 template <>
-struct ConvertToPhiContext<platform::XPUDeviceContext> {
+struct ConvertToPhiContext<phi::XPUContext> {
   using TYPE = phi::XPUContext;
 };
 #endif

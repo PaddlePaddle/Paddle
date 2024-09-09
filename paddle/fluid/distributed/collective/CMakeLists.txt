@@ -19,12 +19,7 @@ if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     process_group_nccl
     SRCS process_group_nccl.cc common.cc
-    DEPS process_group
-         phi
-         common
-         enforce
-         collective_helper
-         device_context
+    DEPS process_group phi common collective_helper device_context
          ${DEVICE_EVENT_LIBS})
 
   cc_library(
@@ -38,7 +33,7 @@ if(WITH_XPU_BKCL)
   cc_library(
     process_group_bkcl
     SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
-    DEPS process_group phi common enforce collective_helper device_context)
+    DEPS process_group phi common collective_helper device_context)
 endif()
 
 if(WITH_MPI)
@@ -52,7 +47,7 @@ if(WITH_CUSTOM_DEVICE)
   cc_library(
     process_group_custom
     SRCS process_group_custom.cc custom_ccl_tools.cc common.cc
-    DEPS process_group phi common enforce collective_helper device_context)
+    DEPS process_group phi common collective_helper device_context)
 endif()
 
 set(COMM_UTILS_DEPS process_group)

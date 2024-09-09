@@ -30,7 +30,7 @@ struct Data {
     PADDLE_ENFORCE_EQ(
         size_from_shape,
         data.size(),
-        phi::errors::InvalidArgument("Shape size doesn't match data size."));
+        common::errors::InvalidArgument("Shape size doesn't match data size."));
   }
 
   const std::vector<int64_t>& getShape() const { return shape; }

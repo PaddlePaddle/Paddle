@@ -66,19 +66,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
-#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
@@ -112,6 +109,9 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/profiler.h"
 #include "paddle/utils/none.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -130,19 +130,19 @@ limitations under the License. */
 #ifndef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/capi/capi.h"
 #endif
 
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
@@ -173,7 +173,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python
-PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+PYBIND11_MAKE_OPAQUE(phi::TensorArray);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
@@ -203,8 +203,16 @@ void BindTensor(pybind11::module &m) {  // NOLINT
   g_framework_tensor_pytype =
       reinterpret_cast<PyTypeObject *>(framework_tensor.ptr());
   framework_tensor
-      .def("__array__",
-           [](phi::DenseTensor &self) { return TensorToPyArray(self); })
+      .def(
+          // TODO(risemeup): Modify the logic of
+          // TensorToPyArray() according to the dtype and copy
+          // parameters.
+          "__array__",
+          [](phi::DenseTensor &self, py::object dtype, py::object copy) {
+            return TensorToPyArray(self);
+          },
+          py::arg("dtype") = py::none(),
+          py::arg("copy") = py::none())
       .def("_ptr",
            [](const phi::DenseTensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
@@ -212,7 +220,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_slice",
            [](phi::DenseTensor &self, int64_t begin_idx, int64_t end_idx) {
              if (!self.meta().is_contiguous()) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Tensor is not contiguous, cannot call "
                    "_slice on it."));
              }
@@ -495,7 +503,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         PADDLE_ENFORCE_EQ(
             CheckLoD(new_offset_lod, -1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The provided recursive_sequence_lengths info is "
                 "invalid, "
                 "the LoD converted by recursive_sequence_lengths is %s",
@@ -520,7 +528,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_EQ(
                 CheckLoD(new_lod, common::vectorize(self.dims()).front()),
                 true,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "The provided LoD is invalid, the LoD is %s", new_lod));
             self.set_lod(new_lod);
           },
@@ -563,7 +571,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 CheckLoD(new_offset_lod,
                          common::vectorize(self.dims()).front()),
                 true,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "The provided recursive_sequence_lengths info is "
                     "invalid, "
                     "the LoD converted by recursive_sequence_lengths is "
@@ -714,7 +722,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](phi::DenseTensor &self, const phi::DenseTensor src,
               py::tuple t) {
               if (!src.meta().is_contiguous()) {
-                PADDLE_THROW(phi::errors::InvalidArgument(
+                PADDLE_THROW(common::errors::InvalidArgument(
                     "Tensor is not contiguous, cannot call "
                     "share_buffer_with on it."));
               }
@@ -724,7 +732,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
              PADDLE_ENFORCE_NOT_NULL(
                  cuda_ipc_allocation,
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Tensor is not Cuda IPC shared tensor. "
                      "Now only Tensor shared by cuda ipc could use this "
                      "api."));
@@ -733,7 +741,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              auto dtype =
                  static_cast<phi::DataType>(t[1].cast<int>());
              auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
-             auto lod_info = t[3].cast<framework::LoD>();
+             auto lod_info = t[3].cast<phi::LoD>();
              auto device_id = t[4].cast<int>();
 
              auto shared_reader_holder =
@@ -768,7 +776,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  self.Holder().get());
              PADDLE_ENFORCE_EQ(
                  phi::is_gpu_place(holder->place()), true,
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "Tensor is not on GPU. share_cuda only support GPU "
                      "Tensor, share_filename is for CPU tensor."));
 
@@ -844,7 +852,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  shared_reader_holder,
                  static_cast<phi::DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
-             tensor.set_lod(t[5].cast<framework::LoD>());
+             tensor.set_lod(t[5].cast<phi::LoD>());
 
              return tensor;
            },
@@ -876,7 +884,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              PADDLE_ENFORCE_EQ(
                  phi::is_cpu_place(holder->place()) ||
                      phi::is_cuda_pinned_place(holder->place()),
-                 true, phi::errors::InvalidArgument(
+                 true, common::errors::InvalidArgument(
                            "Tensor is not on CPU. share_filename only "
                            "support CPU Tensor."));
 
@@ -979,7 +987,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  shared_holder,
                  static_cast<phi::DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
-             tensor.set_lod(t[5].cast<framework::LoD>());
+             tensor.set_lod(t[5].cast<phi::LoD>());
 
              return tensor;
            },
@@ -1027,7 +1035,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
           [](const phi::DenseTensor &t) {  // __getstate__
             auto holder = t.Holder();
             PADDLE_ENFORCE_EQ(phi::is_cpu_place(holder->place()), true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "Tensor is not on CPU."
                                   "Now only Tensor on CPU can be serialized."));
             auto *mmap_writer_allocation =
@@ -1035,7 +1043,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     holder.get());
             PADDLE_ENFORCE_NOT_NULL(
                 mmap_writer_allocation,
-                phi::errors::PreconditionNotMet(
+                common::errors::PreconditionNotMet(
                     "Tensor is not in shared memory."
                     "Now only Tensor on shared memory can be serialized."));
             int type_idx = static_cast<int>(t.type());
@@ -1067,7 +1075,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 shared_reader_holder,
                 static_cast<phi::DataType>(t[2].cast<int>()));
             tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
-            tensor.set_lod(t[4].cast<framework::LoD>());
+            tensor.set_lod(t[4].cast<phi::LoD>());
 
             return tensor;
           }));

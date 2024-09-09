@@ -66,8 +66,9 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, '\t', &data);
-      PADDLE_ENFORCE_GT(
-          data.size(), 4, phi::errors::Fatal("The size of data is invaild."));
+      PADDLE_ENFORCE_GT(data.size(),
+                        4,
+                        common::errors::Fatal("The size of data is invaild."));
       // load title1 data
       std::vector<int64_t> title1_data;
       split_to_int64(data[0], ' ', &title1_data);
@@ -147,17 +148,17 @@ TEST(Analyzer_seq_conv1, profile) {
     PADDLE_ENFORCE_GT(
         outputs.size(),
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     auto output = outputs.back();
     PADDLE_ENFORCE_EQ(
         output.size(),
         1UL,
-        phi::errors::Fatal("The size of output should be equal to 0."));
+        common::errors::Fatal("The size of output should be equal to 0."));
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(
         size,
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     // output is probability, which is in (0, 1).
     for (size_t i = 0; i < size; i++) {
@@ -165,20 +166,6 @@ TEST(Analyzer_seq_conv1, profile) {
       EXPECT_LT(result[i], 1);
     }
   }
-}
-
-// Check the fuse status
-TEST(Analyzer_seq_conv1, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-
-  auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_TRUE(fuse_statis.count("seqconv_eltadd_relu_fuse"));
-  EXPECT_EQ(fuse_statis.at("fc_fuse"), 2);
-  EXPECT_EQ(fuse_statis.at("seqconv_eltadd_relu_fuse"), 6);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

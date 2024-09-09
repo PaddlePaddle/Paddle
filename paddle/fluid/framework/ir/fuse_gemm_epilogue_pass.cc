@@ -48,7 +48,7 @@ void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
 ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
                                                bool is_training) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("gemm_epilogue");
   FusePassBase::Init(scope_name, graph);
 
@@ -128,7 +128,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     bool is_act_grad_x_from_act,
     EpiloguePassActivationCache *cache) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
 
   const std::string scope_name("gemm_epilogue");
   FusePassBase::Init(scope_name, graph);
@@ -237,7 +237,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
 ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
                                                bool without_x_gradient) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("gemm_epilogue");
   FusePassBase::Init(scope_name, graph);
 
@@ -369,7 +369,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     bool is_act_grad_x_from_act,
     EpiloguePassActivationCache *cache) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("gemm_epilogue");
   FusePassBase::Init(scope_name, graph);
 

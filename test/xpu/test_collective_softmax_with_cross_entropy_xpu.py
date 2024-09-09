@@ -122,7 +122,6 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
                 "GLOG_v": "3",
                 "DTYPE": dtype,
                 "BATCH_SIZE": str(self.batch_size),
-                "FLAGS_dynamic_static_unified_comm": "0",
             }
             required_envs.update(need_envs)
             if check_error_log:

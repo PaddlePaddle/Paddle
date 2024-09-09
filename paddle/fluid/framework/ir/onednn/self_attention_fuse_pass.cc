@@ -100,7 +100,7 @@ void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     // Link inputs and outputs.
     PADDLE_ENFORCE_NE(subgraph.count(x),
                       0,
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "Detector did not find input x of self attention."));
 
     IR_NODE_LINK_TO(subgraph.at(x), self_attention_node);    // Input

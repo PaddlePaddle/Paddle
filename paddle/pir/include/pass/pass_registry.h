@@ -36,7 +36,7 @@ class IR_API PassRegistry {
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
     PADDLE_ENFORCE_NE(Has(pass_type),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Pass %s has been registered.", pass_type));
     pass_map_.insert({pass_type, pass_creator});
   }
@@ -44,7 +44,7 @@ class IR_API PassRegistry {
   std::unique_ptr<Pass> Get(const std::string &pass_type) const {
     PADDLE_ENFORCE_EQ(Has(pass_type),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Pass %s has not been registered.", pass_type));
     return pass_map_.at(pass_type)();
   }

@@ -57,8 +57,43 @@ class TestSemiAutoParallel2DGlobalMeshReshard:
             verbose=True,
         )
 
+    def test_split_dim1(self):
+        global_mesh = dist.ProcessMesh([[0, 1], [2, 3]])
+        mesh0 = dist.ProcessMesh([[0], [2]])
+        mesh1 = dist.ProcessMesh([[1], [3]])
+
+        input = paddle.ones(shape=[2, 3], dtype='float32')
+        input = dist.shard_tensor(
+            input, global_mesh, [dist.Shard(0), dist.Replicate()]
+        )
+        input.stop_gradient = False
+        global_input = input + 1.0  # global_input: 2.0
+
+        # forward on pp0
+        input_pp0 = dist.reshard(
+            global_input, mesh0, [dist.Shard(0), dist.Replicate()]
+        )
+        output = input_pp0 + 1.0  # output_pp0: 3.0
+
+        # forward on pp1
+        output = dist.reshard(output, mesh1, [dist.Shard(0), dist.Replicate()])
+        input_pp1 = dist.reshard(
+            global_input, mesh1, [dist.Shard(0), dist.Replicate()]
+        )
+        output = input_pp1 + output  # output_pp1: 5.0
+        loss = paddle.sum(output)  # 30.0
+        np.testing.assert_allclose(loss.numpy(), 30.0, rtol=1e-06, verbose=True)
+        loss.backward()
+        np.testing.assert_allclose(
+            input.grad.numpy(),
+            np.full(shape=(2, 3), fill_value=2.0, dtype=np.float32),
+            rtol=1e-06,
+            verbose=True,
+        )
+
     def run_test_case(self):
         self.test_basic()
+        self.test_split_dim1()
 
 
 if __name__ == '__main__':

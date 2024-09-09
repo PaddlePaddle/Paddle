@@ -203,7 +203,7 @@ FCElementwiseLayerNormFusePass::FCElementwiseLayerNormFusePass() {
 
 void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init("fc_elementwise_layernorm_fuse", graph);
   int found_subgraph_count = 0;

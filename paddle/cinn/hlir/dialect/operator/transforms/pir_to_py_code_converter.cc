@@ -1085,6 +1085,12 @@ struct PirToPyCodeConverterHelper {
       ss << "self." << name << "()";
       return ss.str();
     }
+    std::string operator()(TypeId<cinn::dialect::FusionTrackerPtrAttribute>) {
+      const auto& name = cinn::dialect::FusionTrackerPtrAttribute::name();
+      std::stringstream ss;
+      ss << "self." << name << "()";
+      return ss.str();
+    }
     std::string operator()(TypeId<UnclassifiedAttribute>) {
       return "self.UnclassifiedAttribute()";
     }

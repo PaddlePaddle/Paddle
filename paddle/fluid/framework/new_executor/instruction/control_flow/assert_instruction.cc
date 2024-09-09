@@ -29,7 +29,7 @@ AssertInstruction::AssertInstruction(size_t id,
       type_(OpFuncType::kCpuSync),
       value_exe_info_(value_exe_info) {
   PADDLE_ENFORCE(op->isa<paddle::dialect::AssertOp>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Assert instruction only support assert op"));
 
   auto assert_op = op->dyn_cast<paddle::dialect::AssertOp>();
@@ -60,7 +60,7 @@ void AssertInstruction::Run() {
   PADDLE_ENFORCE_EQ(
       cond.numel(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The numel of Input(Condition) of AssertOp must be 1. But now "
           "the Condition's shape is %s.",
           cond.dims().to_str()));
@@ -94,7 +94,7 @@ void AssertInstruction::Run() {
     }
     return {};
   }();
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "The condition variable '%s' of AssertOp must be "
       "true, but received false. %s",
       value_exe_info_->GetVarName(cond_var_),

@@ -115,4 +115,5 @@ PD_REGISTER_KERNEL(take_along_axis,
                    ALL_LAYOUT,
                    phi::TakeAlongAxisKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float) {}

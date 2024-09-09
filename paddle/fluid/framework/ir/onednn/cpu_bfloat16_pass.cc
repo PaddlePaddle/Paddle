@@ -128,7 +128,7 @@ class Quantizer final : public Quanter {
     PADDLE_ENFORCE_GE(
         inputs.size(),
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "OP(%s)'s inputs(%d) must be equal or greater than 1.",
             op->Name(),
             inputs.size()));
@@ -180,7 +180,7 @@ class DeQuantizer final : public Quanter {
     PADDLE_ENFORCE_GE(
         outputs.size(),
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "OP(%s)'s outputs(%d) must be equal or greater than 1.",
             op->Name(),
             outputs.size()));

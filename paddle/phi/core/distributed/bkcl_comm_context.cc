@@ -165,6 +165,23 @@ void BKCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                              stream));
 }
 
+void BKCLCommContext::AllToAll(phi::DenseTensor* out_tensor,
+                               const phi::DenseTensor& in_tensor,
+                               XPUStream stream) {
+  phi::distributed::CommStaticCheck::SameShape(*out_tensor,
+                                               in_tensor,
+                                               /*dst_rank*/ rank_,
+                                               /*cur_rank*/ rank_,
+                                               size_,
+                                               phi::AllocationType::XPU);
+  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_to_all(bkcl_comm_,
+                                             in_tensor.data(),
+                                             in_tensor.numel() / size_,
+                                             out_tensor->data(),
+                                             ToBKCLDataType(in_tensor.type()),
+                                             stream));
+}
+
 void BKCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                              const phi::DenseTensor& in_tensor,
                              BKCLOp reduce_type,

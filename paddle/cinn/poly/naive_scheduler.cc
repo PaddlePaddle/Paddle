@@ -21,14 +21,17 @@ namespace poly {
 
 std::unique_ptr<Schedule> NaiveScheduler::BuildSchedule() {
   PartitionGroups();
-  CHECK(!groups_.empty());
+  PADDLE_ENFORCE_EQ(!groups_.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The groups are empty. Please provide valid groups."));
 
   for (auto &group : groups_) {
     std::vector<Stage *> status;
     PADDLE_ENFORCE_EQ(
         group.nodes.size(),
         1UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "group.nodes.size() should be 1, but got %d", group.nodes.size()));
     NaiveGroupScheduler scheduler(
         const_cast<Stage *>(group.nodes.front()->stage));

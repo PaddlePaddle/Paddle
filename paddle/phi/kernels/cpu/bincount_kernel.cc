@@ -42,7 +42,7 @@ void BincountInner(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       *std::min_element(input_data, input_data + input_numel),
       static_cast<InputT>(0),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The elements in input tensor must be non-negative ints"));
 
   int64_t output_size = static_cast<int64_t>(*std::max_element(
@@ -92,7 +92,7 @@ void BincountKernel(const Context& dev_ctx,
   int int_minlength = minlength.to<int>();
   PADDLE_ENFORCE_GE(int_minlength,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The minlength should be greater than or equal to 0."
                         "But received minlength is %d",
                         int_minlength));

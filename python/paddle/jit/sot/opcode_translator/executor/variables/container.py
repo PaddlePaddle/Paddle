@@ -253,7 +253,7 @@ class ListVariable(ContainerVariable):
         return ConstantVariable.wrap_literal(None, self.graph)
 
     def extend(self, data):
-        for item in data.proxy.get_all():
+        for item in data.get_iter().to_list():
             self.append(item)
         self.graph.side_effects.record_proxy_variable(self)
         return ConstantVariable.wrap_literal(None, self.graph)
@@ -265,6 +265,11 @@ class ListVariable(ContainerVariable):
             self.graph,
             DummyTracker([self, list_]),
         )
+
+    def inplace_concat(self, list_):
+        assert isinstance(list_, ListVariable)
+        self.extend(list_)
+        return self
 
     def repeat(self, length):
         assert isinstance(length, ConstantVariable)

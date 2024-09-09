@@ -18,6 +18,8 @@ high level unit test for distribute fleet.
 
 import argparse
 import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
 import shutil
 import socket
 import subprocess
@@ -384,7 +386,7 @@ class TestFleetBase(unittest.TestCase):
             listen_rgx = "Fail to listen"
 
             with open(logx, "r") as rb:
-                for line in rb.readlines():
+                for line in rb:
                     if listen_rgx in line:
                         is_lf = True
                         break

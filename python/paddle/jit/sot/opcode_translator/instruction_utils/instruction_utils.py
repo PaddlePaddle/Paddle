@@ -323,11 +323,15 @@ def modify_extended_args(instructions: list[Instruction]) -> bool:
 
 
 def modify_vars(instructions: list[Instruction], code_options):
-    co_names = code_options['co_names']
     co_varnames = code_options['co_varnames']
     co_freevars = code_options['co_freevars']
     for instrs in instructions:
-        if instrs.opname in ['LOAD_FAST', 'LOAD_FAST_CHECK', 'STORE_FAST']:
+        if instrs.opname in [
+            'LOAD_FAST',
+            'LOAD_FAST_CHECK',
+            'STORE_FAST',
+            'DELETE_FAST',
+        ]:
             assert (
                 instrs.argval in co_varnames
             ), f"`{instrs.argval}` not in {co_varnames}"
@@ -382,9 +386,9 @@ def instrs_info(instrs, mark=None, range=None, want_str=True):
             "{line:<8s}{is_jump_target:>2s}{offset:>4d} {opname:<30s}{arg:<4s}{argval:<40s}{mark}".format(
                 line=str(instr.starts_line) if instr.starts_line else "",
                 is_jump_target=">>" if instr.is_jump_target else "  ",
-                offset=instr.offset
-                if instr.offset or instr.offset == 0
-                else -1,
+                offset=(
+                    instr.offset if instr.offset or instr.offset == 0 else -1
+                ),
                 opname=instr.opname,
                 arg=str(instr.arg) if instr.arg is not None else "",
                 argval=f"({instr.argval})" if instr.argval else "",

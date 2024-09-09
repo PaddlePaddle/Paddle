@@ -315,7 +315,7 @@ class CompositeGradOpMakerBase {
     framework::VarDesc* original_var = original_block_->FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(
         original_var,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Can't find var: %s in block %s", name, original_block_));
     *StaticCompositeContext::Instance().GetBlock()->Var(name) = *original_var;
   }
@@ -444,7 +444,7 @@ class CompositeGradOpMakerBase {
       PADDLE_ENFORCE_EQ(
           fwd_in_names.size(),
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When calling SingleForward for op: %s's Input: %s, we should "
               "only get one input tensor, but we got %d instead.",
               fwd_op_.Type(),
@@ -465,7 +465,7 @@ class CompositeGradOpMakerBase {
       PADDLE_ENFORCE_EQ(
           fwd_out_names.size(),
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When calling SingleForward for op: %s's Output: %s, we should "
               "only get one input tensor, but we got %d instead.",
               fwd_op_.Type(),
@@ -518,7 +518,7 @@ class CompositeGradOpMakerBase {
                          const std::vector<std::string>& origin_names) {
     PADDLE_ENFORCE_EQ(outputs.size(),
                       origin_names.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of outputs must be equal to the size "
                           "of the origin_names.",
                           outputs.size(),
@@ -575,7 +575,7 @@ class CompositeGradOpMakerBase {
     PADDLE_ENFORCE_NE(
         it,
         map.end(),
-        phi::errors::NotFound("Cannot find attribute (%s).", name));
+        common::errors::NotFound("Cannot find attribute (%s).", name));
     return it->second;
   }
 

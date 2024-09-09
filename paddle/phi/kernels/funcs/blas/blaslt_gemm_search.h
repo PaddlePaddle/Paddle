@@ -216,60 +216,73 @@ class CublasLtAlgoCache {
       }
     }
     if (!search_configs_.empty()) {
-      for (const auto& search_config : search_configs_) {
-        if (search_config.n == n && search_config.k == k &&
-            m <= search_config.m) {
-          cublasLtMatmulAlgo_t algo;
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              dynload::cublasLtMatmulAlgoInit(handle,
-                                              compute_type,
-                                              scale_type,
-                                              b_type,
-                                              a_type,
-                                              c_type,
-                                              c_type,
-                                              search_config.algo_id,
-                                              &algo));
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              dynload::cublasLtMatmulAlgoConfigSetAttribute(
-                  &algo,
-                  CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
-                  &search_config.custom_option,
-                  sizeof(search_config.custom_option)));
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              dynload::cublasLtMatmulAlgoConfigSetAttribute(
-                  &algo,
-                  CUBLASLT_ALGO_CONFIG_TILE_ID,
-                  &search_config.tile,
-                  sizeof(search_config.tile)));
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              dynload::cublasLtMatmulAlgoConfigSetAttribute(
-                  &algo,
-                  CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
-                  &search_config.split_k_val,
-                  sizeof(search_config.split_k_val)));
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              dynload::cublasLtMatmulAlgoConfigSetAttribute(
-                  &algo,
-                  CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING,
-                  &search_config.swizzle,
-                  sizeof(search_config.swizzle)));
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              dynload::cublasLtMatmulAlgoConfigSetAttribute(
-                  &algo,
-                  CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
-                  &search_config.reduction_scheme,
-                  sizeof(search_config.reduction_scheme)));
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              dynload::cublasLtMatmulAlgoConfigSetAttribute(
-                  &algo,
-                  CUBLASLT_ALGO_CONFIG_STAGES_ID,
-                  &search_config.stages,
-                  sizeof(search_config.stages)));
-          std::lock_guard<std::mutex> lock(cache_mutex_);
-          algo_caches_[seed] = algo;
-          return &algo_caches_[seed];
+      auto configure_algo = [&](const CublasLtAlgoConfig& search_config)
+          -> cublasLtMatmulAlgo_t* {
+        cublasLtMatmulAlgo_t algo;
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cublasLtMatmulAlgoInit(handle,
+                                            compute_type,
+                                            scale_type,
+                                            b_type,
+                                            a_type,
+                                            c_type,
+                                            c_type,
+                                            search_config.algo_id,
+                                            &algo));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                &algo,
+                CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
+                &search_config.custom_option,
+                sizeof(search_config.custom_option)));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                &algo,
+                CUBLASLT_ALGO_CONFIG_TILE_ID,
+                &search_config.tile,
+                sizeof(search_config.tile)));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                &algo,
+                CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
+                &search_config.split_k_val,
+                sizeof(search_config.split_k_val)));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                &algo,
+                CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING,
+                &search_config.swizzle,
+                sizeof(search_config.swizzle)));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                &algo,
+                CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
+                &search_config.reduction_scheme,
+                sizeof(search_config.reduction_scheme)));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                &algo,
+                CUBLASLT_ALGO_CONFIG_STAGES_ID,
+                &search_config.stages,
+                sizeof(search_config.stages)));
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        algo_caches_[seed] = algo;
+        return &algo_caches_[seed];
+      };
+      const CublasLtAlgoConfig* pre = nullptr;
+      for (size_t i = 0; i < search_configs_.size(); i++) {
+        if (search_configs_[i].n == n && search_configs_[i].k == k &&
+            m <= search_configs_[i].m) {
+          return configure_algo(search_configs_[i]);
+        } else if (search_configs_[i].n == n && search_configs_[i].k == k &&
+                   m > search_configs_[i].m) {
+          if (pre == nullptr || pre->m < search_configs_[i].m)
+            pre = &search_configs_[i];
         }
+      }
+      if (pre != nullptr) {
+        // use max m in file
+        return configure_algo(*pre);
       }
     }
 

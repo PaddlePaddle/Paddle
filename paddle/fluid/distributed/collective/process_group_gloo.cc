@@ -26,10 +26,11 @@
 
 #include <gloo/reduce.h>
 
+#include "glog/logging.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/process_group_gloo.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle::distributed {
 
@@ -636,7 +637,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
   PADDLE_ENFORCE_NE(
       use_calc_stream,
       true,
-      phi::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
+      common::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
   std::shared_ptr<GatherGlooTask> task;
   auto tag = next_tag();
   auto comm_context = this->GetCommContext();
@@ -667,7 +668,7 @@ ProcessGroupGloo::createDefaultDevice() {
   PADDLE_ENFORCE_EQ(
       ret,
       0,
-      phi::errors::Fatal("Get hostname error for createDefaultDevice."));
+      common::errors::Fatal("Get hostname error for createDefaultDevice."));
   ::addrinfo* result;
   result = phi::distributed::tcputils::get_addr_info(
       hostname.data(), "", 0, AF_UNSPEC);
@@ -725,8 +726,38 @@ phi::distributed::GlooCommContext* ProcessGroupGloo::GetCommContext() {
       comm_context_manager.Get(std::to_string(this->gid_)));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
-                    phi::errors::Unavailable("GlooCommContext is nullptr"));
+                    common::errors::Unavailable("GlooCommContext is nullptr"));
   return comm_context;
+}
+
+std::vector<char> ProcessGroupGloo::GlooStore::get(const std::string& key) {
+  VLOG(3) << "GlooStore::get";
+  auto value = _store->get(key);
+  return std::vector<char>(value.begin(), value.end());
+}
+
+void ProcessGroupGloo::GlooStore::wait(const std::vector<std::string>& keys) {
+  VLOG(3) << "GlooStore::wait";
+  for (auto& key : keys) {
+    _store->wait(key);
+  }
+}
+
+void ProcessGroupGloo::GlooStore::set(const std::string& key,
+                                      const std::vector<char>& value) {
+  VLOG(3) << "GlooStore::set";
+  std::vector<uint8_t> tmp(value.begin(), value.end());
+  _store->set(key, tmp);
+}
+
+void ProcessGroupGloo::GlooStore::wait(
+    const std::vector<std::string>& keys,
+    const std::chrono::milliseconds& timeout) {
+  VLOG(3) << "GlooStore::wait";
+  for (auto& key : keys) {
+    _store->wait(key);
+  }
+  // wait(keys);
 }
 
 }  // namespace paddle::distributed

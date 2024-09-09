@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 
+#include <chrono>
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -28,6 +29,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
@@ -50,10 +52,13 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_assign_out_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/shape_ops_fallback_to_phi_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/specify_input_dynamic_dim_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 
+COMMON_DECLARE_bool(cinn_specify_input_dynamic_dim);
+COMMON_DECLARE_string(cinn_input_dynamic_dim_spec_file);
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_debug);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
@@ -95,6 +100,16 @@ void ApplyShapeOptimizationPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   bool has_dynamic_shape = HasDynamicShape(*program);
   if (has_dynamic_shape) {
+    if (FLAGS_cinn_specify_input_dynamic_dim) {
+      PADDLE_ENFORCE_NE(
+          FLAGS_cinn_input_dynamic_dim_spec_file,
+          "",
+          ::common::errors::InvalidArgument(
+              "'FLAGS_cinn_input_dynamic_dim_spec_file' should not be empty "
+              "when using FLAGS_cinn_specify_input_dynamic_dim."));
+      SpecifyInputDynamicDimFromFile(program,
+                                     FLAGS_cinn_input_dynamic_dim_spec_file);
+    }
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
   pass_manager->Run(program);
@@ -242,6 +257,7 @@ int64_t GetOpCount(const ::pir::Operation* op) {
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
+  const uint32_t origin_num_ops = program->num_ops();
   PirToPyCodeConverter(program)
       .file_name("original_programs.py")
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
@@ -267,7 +283,19 @@ void ApplyCinnPass(::pir::Program* program,
               << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
               << std::endl;
   }
+
+  auto start = std::chrono::high_resolution_clock::now();
   ApplyCinnLowerPass(program, CreatePassManager);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  LOG(INFO) << "Time of lowering and compiling program: ***** [ "
+            << duration.count() << " ] ***** seconds.";
+
+  const uint32_t new_num_ops = program->num_ops();
+  LOG(INFO) << "Number of ops in the original program is: " << origin_num_ops
+            << ", after lowering it becomes: " << new_num_ops
+            << ". (compression ratio: " << new_num_ops << "/" << origin_num_ops
+            << " = " << static_cast<float>(new_num_ops) / origin_num_ops << ")";
 }
 
 }  // namespace cinn::dialect::ir
