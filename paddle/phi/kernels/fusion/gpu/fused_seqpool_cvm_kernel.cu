@@ -228,43 +228,44 @@ void FusedSeqpoolCVMCUDAKernel(const Context &dev_ctx,
                                bool use_cvm,
                                int cvm_offset,
                                std::vector<DenseTensor *> out) {
+  // from InferShape
   const size_t num_inputs = x.size();
   std::vector<phi::DDim> outs_dims;
   outs_dims.resize(num_inputs);
-  int batch_size = -1;
+  int batch_size_tmp = -1;
   for (size_t i = 0; i < num_inputs; ++i) {
     const auto dims = x[i]->dims();
     int rank = dims.size();
     int cur_batch_size = 0;
 
-    const auto &x_lod = x[0]->get_lod();
+    const auto &x_lod = x[0]->lod();
     if (!x_lod.empty()) {
       cur_batch_size = static_cast<int>(x_lod[0].size() - 1);
     } else {
       cur_batch_size = static_cast<int>(x[0]->dims()[0]);
     }
-    if (batch_size == -1) {
-      batch_size = cur_batch_size;
+    if (batch_size_tmp == -1) {
+      batch_size_tmp = cur_batch_size;
     } else {
-      PADDLE_ENFORCE_EQ(batch_size,
+      PADDLE_ENFORCE_EQ(batch_size_tmp,
                         cur_batch_size,
                         common::errors::PreconditionNotMet(
                             "The batch size of all input should be same, "
                             "please check, last batch_size is %d, current "
                             "batch_size is %d",
-                            batch_size,
+                            batch_size_tmp,
                             cur_batch_size));
     }
     std::vector<int64_t> out_dim;
     if (use_cvm) {
-      out_dim = {batch_size, dims[rank - 1]};
+      out_dim = {batch_size_tmp, dims[rank - 1]};
     } else {
-      out_dim = {batch_size, dims[rank - 1] - cvm_offset};
+      out_dim = {batch_size_tmp, dims[rank - 1] - cvm_offset};
     }
     outs_dims[i] = common::make_ddim(out_dim);
   }
   for (size_t i = 0; i < out.size(); ++i) {
-    out[i]->set_dims(outs_dims[i]);
+    out[i]->Resize(outs_dims[i]);
   }
 
   auto &inputs = x;
