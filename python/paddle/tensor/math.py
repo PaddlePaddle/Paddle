@@ -294,9 +294,8 @@ def scale(
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
     elif in_pir_mode():
-        if act is None:
-            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        raise ValueError("act is not implement in pir of scale api.")
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        return paddle.pir_utils.append_activation_in_pir(out, act)
     else:
         check_variable_and_dtype(
             x,
@@ -6311,6 +6310,16 @@ def diff(
             Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 3,  1, -3,  5,  2])
 
+            >>> out = paddle.diff(x, n=2, append=y)
+            >>> out
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-2, -4,  8, -3])
+
+            >>> out = paddle.diff(x, n=3, append=y)
+            >>> out
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-2 ,  12, -11])
+
             >>> z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             >>> out = paddle.diff(z, axis=0)
             >>> out
@@ -6455,7 +6464,7 @@ def diff(
     if n > 1:
         for _ in range(n - 1):
             out = _diff_handler(
-                out, n=1, axis=axis, prepend=prepend, append=append, name=name
+                out, n=1, axis=axis, prepend=None, append=None, name=name
             )
     return out
 

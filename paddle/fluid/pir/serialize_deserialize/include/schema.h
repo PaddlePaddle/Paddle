@@ -61,6 +61,7 @@ namespace pir {
 #define ATTRS "A"
 #define OPRESULTS_ATTRS "OA"
 #define DIST_ATTRS "DA"
+#define QUANT_ATTRS "QA"
 
 // value's key:
 //  value's type which should be pir::Type's json object(ID or ID and DATA).
@@ -74,6 +75,8 @@ namespace pir {
 
 // type/attr's contents which is json::array.
 #define DATA "D"
+// float/double data with nan, inf, -inf
+#define VOILD_DATA "VD"
 
 // NULL_TYPE
 #define NULL_TYPE "NULL"
@@ -86,6 +89,7 @@ std::pair<std::string, std::string> GetContentSplitByDot(
     const std::string& str);
 
 std::vector<std::string> GetOpDistAttr();
+std::vector<std::string> GetOpQuantAttr();
 
 void GetCompressOpName(std::string* op_name);
 

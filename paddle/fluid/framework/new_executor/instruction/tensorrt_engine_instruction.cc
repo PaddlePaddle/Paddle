@@ -277,8 +277,12 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
     auto is_shape_tensor = true;
     if (trt_engine_->engine()) {
       auto *engine = trt_engine_->engine();
+#if IS_TRT_VERSION_GE(8600)
+      is_shape_tensor = engine->isShapeInferenceIO(name.c_str());
+#else
       is_shape_tensor =
           engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
+#endif
       if (!is_shape_tensor) {
         runtime_shape_tensor.erase(name);
         VLOG(4) << "trt engine runtime delete shape name(" << name << "), dims("
@@ -446,9 +450,25 @@ void TensorRTEngineInstruction::BindInputTensor(
   }
 
   // Get index of profile 0 first, then plus binding offset
+#if IS_TRT_VERSION_GE(8600)
+  int bind_index = -1;
+  for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+    if (std::string(input_name.c_str()) ==
+        std::string(trt_engine_->engine()->getIOTensorName(i))) {
+      bind_index = i + binding_offset;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_GE(
+      bind_index,
+      0,
+      phi::errors::InvalidArgument("Cannot find input name %s in TRT engine",
+                                   input_name.c_str()));
+#else
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(input_name.c_str()) +
       binding_offset;
+#endif
   PADDLE_ENFORCE_LT(bind_index,
                     num_bindings,
                     common::errors::InvalidArgument(
@@ -461,8 +481,9 @@ void TensorRTEngineInstruction::BindInputTensor(
 
 #if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
-  if (trt_engine_->engine()->isShapeBinding(bind_index) &&
-      trt_engine_->engine()->bindingIsInput(bind_index)) {
+  if (trt_engine_->engine()->isShapeInferenceIO(input_name.c_str()) &&
+      trt_engine_->engine()->getTensorIOMode(input_name.c_str()) ==
+          nvinfer1::TensorIOMode::kINPUT) {
     if (input_tensor.dtype() == phi::DataType::INT32) {
       phi::memory_utils::Copy(phi::CPUPlace(),
                               shape_v.data(),
@@ -534,8 +555,13 @@ void TensorRTEngineInstruction::BindInputTensor(
           << input_tensor.dtype();
 
   auto indata_type = paddle::platform::PhiType2NvType(input_tensor.dtype());
+#if IS_TRT_VERSION_GE(8600)
+  auto intrt_type =
+      trt_engine_->engine()->getTensorDataType(input_name.c_str());
+#else
   auto intrt_index = trt_engine_->engine()->getBindingIndex(input_name.c_str());
   auto intrt_type = trt_engine_->engine()->getBindingDataType(intrt_index);
+#endif
   PADDLE_ENFORCE_EQ(indata_type,
                     intrt_type,
                     common::errors::InvalidArgument(
@@ -601,14 +627,29 @@ void TensorRTEngineInstruction::BindOutputTensor(
   // Initialize context and get offset by profile index
   trt_context = trt_engine_->context();
   binding_offset = trt_engine_->GetBindingsOffset();
-
+#if IS_TRT_VERSION_GE(8600)
+  int bind_index = -1;
+  for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+    if (std::string(output_name.c_str()) ==
+        std::string(trt_engine_->engine()->getIOTensorName(i))) {
+      bind_index = i + binding_offset;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_GE(
+      bind_index,
+      0,
+      phi::errors::InvalidArgument("Cannot find input name %s in TRT engine",
+                                   output_name.c_str()));
+#else
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(output_name.c_str()) +
       binding_offset;
+#endif
   std::vector<int> ddim;
 
 #if IS_TRT_VERSION_GE(8500)
-  auto x_name = trt_engine_->engine()->getBindingName(bind_index);
+  auto x_name = trt_engine_->engine()->getIOTensorName(bind_index);
   auto dims = trt_context->getTensorShape(x_name);
   int nb_dims = dims.nbDims;
   for (; nb_dims > 0; nb_dims--) {
@@ -642,7 +683,12 @@ void TensorRTEngineInstruction::BindOutputTensor(
                         "index = %d, number of bindings = %d.",
                         bind_index,
                         num_bindings));
+#if IS_TRT_VERSION_GE(8600)
+  auto trt_type = trt_engine_->engine()->getTensorDataType(
+      trt_engine_->engine()->getIOTensorName(bind_index));
+#else
   auto trt_type = trt_engine_->engine()->getBindingDataType(bind_index);
+#endif
   // get adr and set type
   VLOG(1) << "trt output [" << output_name << "] dtype is "
           << TRT2PaddleDataType(trt_type);

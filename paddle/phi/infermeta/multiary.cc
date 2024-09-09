@@ -4714,7 +4714,7 @@ void RmsNormInferMeta(const MetaTensor& x,
   }
   PADDLE_ENFORCE_EQ(normalized_dims,
                     norm_weight.dims()[0],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The normalized size of Input(X) must equal to be "
                         "the size of Weight, but received "
                         "normalized size of Input(X) is [%d], received size "
@@ -5884,20 +5884,6 @@ void FusedRopeInferMeta(const MetaTensor& q,
       out_v->set_dtype(q.dtype());
     }
   }
-}
-
-void MoeInferMeta(const MetaTensor& x,
-                  const MetaTensor& gate,
-                  const MetaTensor& bmm0,
-                  const MetaTensor& bias0,
-                  const MetaTensor& bmm1,
-                  const MetaTensor& bias1,
-                  const std::string& act_type,
-                  MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
 }
 
 void FusedMoeInferMeta(const MetaTensor& X,

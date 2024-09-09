@@ -904,6 +904,7 @@ class Optimizer:
                 var = self._master_grads[grad]
             else:
                 var = paddle.cast(grad, 'float32')
+                var.get_defining_op().set_bool_attr('master_grad_cast', True)
                 self._master_grads[grad] = var
         else:
             if grad.name in self._master_grads:
