@@ -407,7 +407,7 @@ def split_mesh(global_mesh: dist.ProcessMesh, sub_mesh_dim: int):
     return sub_mesh_list
 
 
-def get_sub_meshes_and_local_placements(
+def _get_sub_meshes_and_local_placements(
     global_mesh, global_placements, sub_mesh_dim
 ):
     if global_mesh is None or sub_mesh_dim is None or global_placements is None:
@@ -439,7 +439,7 @@ def cal_global_shape(local_shape, mesh, placements):
 def moe_global_mesh_tensor(
     local_tensor_list, mesh, placements, local_mesh_dim=-1
 ):
-    local_mesh_list, local_placements = get_sub_meshes_and_local_placements(
+    local_mesh_list, local_placements = _get_sub_meshes_and_local_placements(
         mesh, placements, local_mesh_dim
     )
     process_ids = np.array(mesh.process_ids).reshape(mesh.shape)
@@ -583,7 +583,7 @@ def moe_sub_mesh_tensors(
     """
     Get the local part of the ``dist_tensor`` on the specific ``local_mesh_dim``.
     """
-    local_mesh_list, local_placements = get_sub_meshes_and_local_placements(
+    local_mesh_list, local_placements = _get_sub_meshes_and_local_placements(
         global_mesh, global_placements, local_mesh_dim
     )
 
@@ -3014,10 +3014,10 @@ class ShardDataloader:
 
 
 def shard_dataloader(
-    dataloader: paddle.io.DataLoader,
-    meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
-    input_keys: list[str] | tuple[str] | None = None,
-    shard_dims: list | tuple | str | int | None = None,
+    dataloader: DataLoader,
+    meshes: ProcessMesh | Sequence[ProcessMesh],
+    input_keys: Sequence[str] | None = None,
+    shard_dims: Sequence[str] | Sequence[int] | str | int | None = None,
     is_dataset_splitted: bool = False,
 ) -> ShardDataloader:
     """
