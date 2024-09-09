@@ -2514,22 +2514,15 @@ bool PyramidHashOpInferSymbolicShape(
   const auto &w_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
-  std::vector<symbol::DimExpr> w_shape = w_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &w_shape = w_shape_or_data.shape();
 
-  PADDLE_ENFORCE_EQ(
-      x_shape.size(),
-      2,
-      common::errors::InvalidArgument("The rank of Input(X) of PyramidHashOP "
-                                      "is invalid. It should be 2, but got %d",
-                                      x_shape.size()));
-
-  PADDLE_ENFORCE_EQ(
-      w_shape.size(),
-      2,
-      common::errors::InvalidArgument("The rank of Input(W) of PyramidHashOP "
-                                      "is invalid. It should be 2, but got %d",
-                                      w_shape.size()));
+  PADDLE_ENFORCE_EQ((x_shape.size() == 2) && (w_shape.size() == 2),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(X) and Input(W) of PyramidHashOP "
+                        "is invalid. It should be 2, but got %d",
+                        x_shape.size()));
 
   int num_emb = op->attribute<pir::Int32Attribute>("num_emb").data();
   int space_len = op->attribute<pir::Int32Attribute>("space_len").data();
