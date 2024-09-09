@@ -33,7 +33,6 @@ namespace phi {
 namespace fusion {
 
 #define FLT_MAX 1e38
-// #define DEBUG_BEAM_SEARCH_SOFTMAX
 
 static constexpr int kBlockSizeForSmallBeamWidth = 256;
 static constexpr int kMaxVocabPartForStage1FastKernel = 128;
@@ -466,18 +465,7 @@ __global__ void beam_search_softmax_topk_stage1(BeamSearchParams<T> params,
 
   const bool finish = params.beam_finished[beam_batch_id];
   const int seq_len = params.seq_lens[beam_batch_id];
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  if (blockIdx.y == 0 && thread_id == 0) {
-    printf(
-        "batch %d. beam_group_sub_idx %d. beam_batch_id %d. "
-        "group_beam_batch_id %d. seq_len %d. \n",
-        batch_id,
-        beam_group_sub_idx,
-        beam_batch_id,
-        blockIdx.x,
-        seq_len);
-  }
-#endif
+
   // for dybatch
   if (seq_len < 0 || finish) {
     return;
@@ -494,16 +482,7 @@ __global__ void beam_search_softmax_topk_stage1(BeamSearchParams<T> params,
   section_end = (section_end > vocab_size) ? vocab_size : section_end;
 
   T *logits = params.logits + beam_batch_id * vocab_size;
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
 
-  if (blockIdx.y == 0 && thread_id == 0) {
-    printf("ID %d. section_start: %d. section_end: %d. logtis:%f\n",
-           blockIdx.x,
-           section_start,
-           section_end,
-           logits[0]);
-  }
-#endif
   if (fuse_softmax) {
     typedef cub::BlockReduce<TopKSoftMax<T, K>, THREADBLOCK_SIZE> BlockReduce;
     __shared__ typename BlockReduce::TempStorage temp_storage;
@@ -764,10 +743,7 @@ __global__ void beam_search_softmax_topk_stage2(BeamSearchParams<T> params,
   const int group_beam_batch_id = blockIdx.x;
   // const int vector_id = blockIdx.x;
   const int PACKED_TOP_KMD_SIZE = packed_top_kmd_size;
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  // printf("--stage2: group_beam_batch_id: %d beam_batch_id: %d\n",
-  // group_beam_batch_id, beam_batch_id);
-#endif
+
   // for dybatch
   const int seq_len = params.seq_lens[beam_batch_id];
   const bool finish = params.beam_finished[beam_batch_id];
@@ -829,19 +805,6 @@ __global__ void beam_search_softmax_topk_stage2(BeamSearchParams<T> params,
         float val = total.topk.vals[i] - total.softmax_md.logit - d_total_log;
         tmp_ids[i] = total.topk.ids[i];
         tmp_vals[i] = val + params.cum_scores[beam_batch_id];
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-        printf(
-            "group_beam_batch_id: %d, vals: %f, logit: %f, d_total_log: %f,id: %d, val: "
-            "%f, cum_log_probs: %f, res: %f\n",
-            group_beam_batch_id,
-            total.topk.vals[i],
-            total.softmax_md.logit,
-            d_total_log,
-            tmp_ids[i],
-            val,
-            params.cum_scores[beam_batch_id],
-            tmp_vals[i]);
-#endif
       }
     }
   } else {
@@ -942,7 +905,6 @@ void invokeBeamSearchSoftmaxTopKStage2(BeamSearchParams<T> &params,
   }
 }
 
-
 template <typename T, int K>
 __global__ void update_beam_finished_early_stop(const T *beam_hyps_score_out,
                                                 bool *beam_finished) {
@@ -984,13 +946,7 @@ __global__ void batch_topk(BeamSearchParams<T> params,
   const int step_id = step_ids[0];
   const int seq_len = params.seq_lens[beam_group_start_id];
   const int max_dec_len = params.max_dec_lens[beam_group_start_id];
-
   const bool last_dec_step = (step_id + 1 == max_dec_len);
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  if (finish && thread_id == 0) {
-    printf("batch_topk: batch %d finish \n", beam_group_start_id);
-  }
-#endif
 
   if (thread_id == 0 && seq_len > 0 && !finish) {
     TopK<T, K> partial;
@@ -1008,36 +964,28 @@ __global__ void batch_topk(BeamSearchParams<T> params,
     int index = batch_id * beam_group_size * K;
     if (step_id == 0) {
       for (int i = 0; i < K; i++) {
-        float score_now = apply_length_penalty(
-            params.tmp_vals[index + i], step_id + 1, params.length_penalty[batch_id]);
+        float score_now = apply_length_penalty(params.tmp_vals[index + i],
+                                               step_id + 1,
+                                               params.length_penalty[batch_id]);
         if (!GROUP) {
-          score_now -= params.diversity_penalty[batch_id] * static_cast<float>(i + 1);
+          score_now -=
+              params.diversity_penalty[batch_id] * static_cast<float>(i + 1);
         }
         partial.insert((T)score_now, params.tmp_ids[index + i], i / K);
       }
     } else {
       for (int i = 0; i < beam_group_size * K; i++) {
-        float score_now = apply_length_penalty(
-            params.tmp_vals[index + i], step_id + 1, params.length_penalty[batch_id]);
+        float score_now = apply_length_penalty(params.tmp_vals[index + i],
+                                               step_id + 1,
+                                               params.length_penalty[batch_id]);
         if (!GROUP) {
-          score_now -= params.diversity_penalty[batch_id] * static_cast<float>(i % K + 1);
+          score_now -= params.diversity_penalty[batch_id] *
+                       static_cast<float>(i % K + 1);
         }
         partial.insert((T)score_now, params.tmp_ids[index + i], i / K);
       }
     }
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-    for (int i = 0; i < K; ++i) {
-      printf("Batch %d. TopK: %d. id:%d. val: %f. parent: %d \n",batch_id, i,
-      partial.ids[i], partial.vals[i], partial.parent_ids[i]);
-    }
-#endif
     if (partial.vals[0] < beam_hyps.hyps[beam_group_size - 1].score) {
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-      printf("batch %d best score %f < worst_hyp_score. stop\n",
-             batch_id,
-             params.cum_scores[index],
-             beam_hyps.hyps[beam_group_size - 1].score);
-#endif
       for (int i = 0; i < beam_group_size; i++) {
         beam_finished[i] = true;
       }
@@ -1073,17 +1021,8 @@ __global__ void batch_topk(BeamSearchParams<T> params,
         parent_ids[next_step_num] = parent_id;
         next_step_num += 1;
       }
-    }  // for
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-    for (int i = 0; i < K / 2; i++) {
-      printf("buf: %d-%d. id:%d. val: %f. parent: %d \n",
-             batch_id,
-             i,
-             next_tokens[i],
-             cum_scores_out[i],
-             parent_ids[i]);
     }
-#endif
+
     for (int i = 0; i < beam_group_size; i++) {
       beam_hyps_score_out[i] = beam_hyps.hyps[i].score;
     }
@@ -1194,65 +1133,6 @@ void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
     }
   }
 
-  // Reserved for debug
-  // invokeBeamSearchSoftmaxTopKStage2<T, K>(params,
-  //                                         batch_size,
-  //                                         beam_width,
-  //                                         beam_group_idx,
-  //                                         voc_parts,
-  //                                         packed_top_kmd_size,
-  //                                         fuse_softmax,
-  //                                         stream);
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-  printf("======== num %dth for loop before stage2 =======\n", beam_group_idx);
-  int total_ele = batch_size * beam_width;  // hard code here
-  int parent_ids_arr[total_ele];
-  cudaMemcpy(parent_ids_arr,
-             params.parent_ids,
-             total_ele * sizeof(int),
-             cudaMemcpyDeviceToHost);
-  printf("parent_ids_arr total: \n");
-  for (int i = 0; i < total_ele; i++) {
-    printf("%d-%f. ", parent_ids_arr[i], (float*)reinterpret_cast<float*>(parent_ids_arr+i));
-    if ((i + 1) % 10 == 0) {
-      printf("\n");
-    }
-  }
-  printf("\n");
-  int packed_top_kmd_size = 2 * K;
-  if (fuse_softmax) {
-    packed_top_kmd_size += 2;
-  }
-  const int tmp_buffer_size =
-      batch_size * beam_group_size * voc_parts * packed_top_kmd_size;
-
-  VLOG(0) << "tmp_buffer_size invoke: " << tmp_buffer_size;
-  float* tmp_buffer_cpu = (float*)malloc(tmp_buffer_size * sizeof(float));
-  printf("point3 %p\n", params.tmp_buffer);
-  cudaMemcpy(tmp_buffer_cpu, params.tmp_buffer, tmp_buffer_size * sizeof(float), cudaMemcpyDeviceToHost);
-  for (int i = 0; i < batch_size; i++) {
-    printf("--- batch %d ---\n", i);
-    for (int j = 0; j < beam_group_size; j++) {
-      printf("  -- sub_group_id %d --\n", j);
-      for (int k = 0; k < voc_parts; k++) {
-        printf("    - voc part id - %d - \n    ", k);
-        for (int elem_id = 0; elem_id < K; elem_id++) {
-          printf("%dth idx:%d.  ", elem_id, *reinterpret_cast<int*>(tmp_buffer_cpu + i * beam_group_size * voc_parts * packed_top_kmd_size + 
-                  j * voc_parts * packed_top_kmd_size + k * packed_top_kmd_size + elem_id));
-        }
-        printf("\n    ");
-        for (int elem_id = K ; elem_id < packed_top_kmd_size; elem_id++) {
-          printf("%dth val:%f.  ", elem_id, tmp_buffer_cpu[i * beam_group_size * voc_parts * packed_top_kmd_size + 
-                  j * voc_parts * packed_top_kmd_size + k * packed_top_kmd_size + elem_id]);
-
-        }
-        printf("\n");
-      }
-    }
-  }
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#endif
   beamSearchSoftmaxTopkStage2FastKernelLauncher<T, K>(params,
                                                       batch_size,
                                                       beam_width,
@@ -1264,58 +1144,6 @@ void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
 
   batch_topk<T, K, 32, GROUP><<<batch_size, 32, 0, stream>>>(
       params, beam_width, beam_group_idx, params.dec_stride);
-  // === old_beam_search strategy ===
-  // }
-
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-  printf("======== num %dth for loop =======\n", beam_group_idx);
-  // int total_ele = batch_size * beam_width;  // hard code here
-  // int parent_ids_arr[total_ele];
-  cudaMemcpy(parent_ids_arr,
-             params.parent_ids,
-             total_ele * sizeof(int),
-             cudaMemcpyDeviceToHost);
-  printf("parent_ids_arr total: \n");
-  for (int i = 0; i < total_ele; i++) {
-    printf("%d. ", parent_ids_arr[i]);
-    if ((i + 1) % 10 == 0) {
-      printf("\n");
-    }
-  }
-  printf("\n");
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-
-  bool beam_finished_arr[total_ele];
-  cudaMemcpy(beam_finished_arr,
-             params.beam_finished,
-             sizeof(bool) * total_ele,
-             cudaMemcpyDeviceToHost);
-  printf("beam_finished total: \n");
-  for (int i = 0; i < total_ele; i++) {
-    printf("%d. ", beam_finished_arr[i]);
-    if ((i + 1) % 10 == 0) {
-      printf("\n");
-    }
-  }
-  printf("\n");
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-
-  int next_tokens_arr[total_ele];
-  cudaMemcpy(next_tokens_arr,
-             params.next_tokens,
-             sizeof(int) * total_ele,
-             cudaMemcpyDeviceToHost);
-  printf("next_tokens total: \n");
-  for (int i = 0; i < total_ele; i++) {
-    printf("%d. ", next_tokens_arr[i]);
-    if ((i + 1) % 10 == 0) {
-      printf("\n");
-    }
-  }
-  printf("\n");
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#endif
 }
 
 template <typename T, typename Context, bool GROUP>
@@ -1479,9 +1307,6 @@ __global__ void update_beam_search_params_kernel(BeamSearchParams<T> params) {
         src_beam * max_seq_len + time_step;
     block_tables_out[block_tables_tgt_offset] =
         block_tables[block_tables_src_offset];
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  printf("block_table. src_beam %d. time_step. %d. bid:%d, subID:%d, tgt_offset:%d, src_offset:%d, val: %d \n", src_beam, time_step, bb_id / params.beam_width, beam_group_sub_id, block_tables_tgt_offset, block_tables_src_offset, block_tables[block_tables_src_offset]);
-#endif
     if (time_step < min(step + 1, max_dec_len)) {
       const uint cache_ids_tgt_offset =
           batch_group_id * beam_group_size * dec_stride +
@@ -1492,9 +1317,6 @@ __global__ void update_beam_search_params_kernel(BeamSearchParams<T> params) {
       cache_ids_out[cache_ids_tgt_offset] =
           (time_step == step) ? next_tokens[bb_id]
                               : cache_ids[cache_ids_src_offset];
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  printf("cache_ids. src_beam %d. time_step. %d, bid:%d, subID:%d, tgt_offset:%d, src_offset:%d, val:%d\n", src_beam, time_step, bb_id / params.beam_width, beam_group_sub_id, cache_ids_tgt_offset, cache_ids_src_offset, cache_ids_out[cache_ids_tgt_offset]);
-#endif
     }
   }
 }
@@ -1582,22 +1404,6 @@ void BeamSearchSoftmaxKernel(const Context &dev_ctx,
   const int dec_stride = beam_hyps.dims()[1];
   const int end_ids_len = end_ids.dims()[0];
   const int beam_group_size = beam_width_scalar / beam_group_num_scalar;
-
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-  VLOG(2) << "beam_width: " << beam_width_scalar << ", beam_group_num: " << beam_group_num_scalar;
-  VLOG(2) << "bsf-input -- logits: " << logits;
-  VLOG(2) << "bsf-input -- cum_scores: " << cum_scores;
-  VLOG(2) << "bsf-input -- seq_lens: " << seq_lens;
-  VLOG(2) << "bsf-input -- beam_finished: " << beam_finished;
-  VLOG(2) << "bsf-input -- end_ids: " << end_ids;
-  VLOG(2) << "bsf-input -- step_ids: " << step_ids;
-  VLOG(2) << "bsf-input -- beam_cache_ids: " << beam_cache_ids;
-  VLOG(2) << "bsf-input -- block_tables: " << block_tables;
-  VLOG(2) << "bsf-input -- beam_hyps: " << beam_hyps;
-  VLOG(2) << "bsf-input -- beam_hyps_score: " << beam_hyps_score;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#endif
 
   dev_ctx.template Alloc<int>(next_tokens);
   dev_ctx.template Alloc<int>(parent_ids);
@@ -1697,20 +1503,6 @@ void BeamSearchSoftmaxKernel(const Context &dev_ctx,
     }
   }
   updateBeamSearchParams<T>(params, dev_ctx.stream());
-
-#ifdef DEBUG_BEAM_SEARCH_SOFTMAX
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-  VLOG(2) << "bsf -- next_token: " << *next_tokens;
-  VLOG(2) << "bsf -- beam_finished: " << beam_finished;
-  VLOG(2) << "bsf -- parent_ids: " << *parent_ids;
-  VLOG(2) << "bsf -- seq_lens_out: " << seq_lens;
-  VLOG(2) << "bsf -- step_ids_out: " << step_ids;
-  VLOG(2) << "bsf -- cache_ids_out: " << beam_cache_ids;
-  VLOG(2) << "bsf -- block_tables_out: " << block_tables;
-  VLOG(2) << "bsf -- beam_hyps_out: " << beam_hyps;
-  VLOG(2) << "bsf -- beam_hyps_score_out: " << beam_hyps_score;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#endif
 }
 
 }  // namespace fusion
