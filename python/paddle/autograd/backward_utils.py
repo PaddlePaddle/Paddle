@@ -64,6 +64,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.rsqrt",
     "pd_op.scale",
     "pd_op.scatter",
+    "pd_op.scatter_nd_add",
     "pd_op.sigmoid",
     "pd_op.silu",
     "pd_op.sin",

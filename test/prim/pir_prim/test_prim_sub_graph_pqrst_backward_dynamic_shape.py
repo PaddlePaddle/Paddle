@@ -72,6 +72,10 @@ def scatter_net(x, y, z):
     return paddle.scatter(x, y, z)
 
 
+def scatter_nd_add_net(x, y, z):
+    return paddle.scatter_nd_add(x, y, z)
+
+
 def sigmoid_net(x):
     return paddle.nn.functional.sigmoid(x)
 
@@ -369,6 +373,24 @@ class TestPrimScatterWithGrad(TestPrimThreeWithGrad):
         if flag == "prim":
             core._set_prim_all_enabled(False)
         return res, [x_grad, z_grad]
+
+
+class TestPrimScatterNdAddWithGrad(TestPrimScatterWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [3, 5, 9, 10]
+        self.init_x_shape = [None, None, None, 10]
+        self.y_shape = [3, 2]
+        self.init_y_shape = [None, 2]
+        self.z_shape = [3, 9, 10]
+        self.init_z_shape = [None, None, 10]
+        self.x = np.ones(self.x_shape).astype(self.dtype)
+        self.y = np.array([[1, 1], [0, 1], [1, 3]])
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = scatter_nd_add_net
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimSigmoidWithGrad(TestPrimBaseWithGrad):
