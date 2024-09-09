@@ -36,7 +36,7 @@ class TestConverterDummy(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             with paddle.static.program_guard(program):
                 executor = paddle.static.Executor()
-                output_var = program.list_vars()[-2]
+                output_var = program.list_vars()[-1]
                 # Run the program with input_data
                 for _ in range(1):
                     output_original = executor.run(
@@ -45,7 +45,7 @@ class TestConverterDummy(unittest.TestCase):
                         fetch_list=[output_var],
                     )
 
-        warmup_shape_infer(
+        program = warmup_shape_infer(
             program,
             min_shape_feed={"input": input_data},
             max_shape_feed={"input": input_data_max_shape},
@@ -56,7 +56,7 @@ class TestConverterDummy(unittest.TestCase):
         # Convert the program to TensorRT
         converter = PaddleToTensorRTConverter(program_with_pir, scope)
         converter.convert_program_to_trt()
-        output_var = program_with_pir.list_vars()[-2]
+        output_var = program_with_pir.list_vars()[-1]
 
         with paddle.pir_utils.IrGuard():
             with paddle.static.program_guard(program_with_pir):
