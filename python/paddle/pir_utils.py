@@ -133,6 +133,9 @@ class DygraphPirGuard:
         self.old_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]
+        self.in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+        if not self.in_dygraph_outside:
+            paddle.disable_static()
         if not self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
             paddle.base.framework.global_var._use_pir_api_ = True
@@ -140,6 +143,8 @@ class DygraphPirGuard:
             self._switch_to_pir()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.in_dygraph_outside:
+            paddle.enable_static()
         if not self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
             paddle.base.framework.global_var._use_pir_api_ = False
@@ -169,6 +174,9 @@ class DygraphOldIrGuard:
         self.old_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]
+        self.in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+        if not self.in_dygraph_outside:
+            paddle.disable_static()
         if self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
             paddle.base.framework.global_var._use_pir_api_ = False
@@ -176,6 +184,8 @@ class DygraphOldIrGuard:
             _switch_to_old_ir_()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.in_dygraph_outside:
+            paddle.enable_static()
         if self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
             paddle.base.framework.global_var._use_pir_api_ = True
