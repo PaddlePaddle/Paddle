@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/distributed/collective/process_group_bkcl.h"
+#include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 
 #include "paddle/common/errors.h"
+#include "paddle/fluid/distributed/collective/bkcl_tools.h"
+#include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
-#include "paddle/phi/core/distributed/collective/bkcl_tools.h"
-#include "paddle/phi/core/distributed/collective/common.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
