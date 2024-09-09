@@ -646,6 +646,7 @@ class FunctionGraph:
                         isinstance(arg, SymbolicVariable)
                         for arg in flatten_vars
                     ):
+                        # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
                         raise e
 
                     args, kwargs = map_if(
