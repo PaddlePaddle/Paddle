@@ -28,7 +28,7 @@ from typing_extensions import TypeAlias, TypeGuard
 
 import paddle
 from paddle.jit.utils import OrderedSet
-from paddle.utils import flatten
+from paddle.utils import flatten, map_structure
 
 from .....utils.layers_utils import NotSupportedTensorArgumentError
 from ...infer_meta import (
@@ -642,6 +642,20 @@ class FunctionGraph:
                 if e.name in bound_arguments.arguments:
                     original_var = bound_arguments.arguments[e.name]
                     flatten_vars = original_var.flatten_items()
+                    if not any(
+                        isinstance(arg, SymbolicVariable)
+                        for arg in flatten_vars
+                    ):
+                        raise e
+
+                    args, kwargs = map_if(
+                        (args, kwargs),
+                        pred=lambda x: x is original_var,
+                        true_fn=lambda x: replace_symbolic_var_with_constant_var(
+                            x
+                        ),
+                        false_fn=lambda x: x,
+                    )
                 else:
                     flatten_vars = reduce(
                         lambda x, y: x + y.flatten_items(),
@@ -649,17 +663,15 @@ class FunctionGraph:
                         [],
                     )
 
-                if not any(
-                    isinstance(arg, SymbolicVariable) for arg in flatten_vars
-                ):
-                    raise e
+                    if not any(
+                        isinstance(arg, SymbolicVariable)
+                        for arg in flatten_vars
+                    ):
+                        raise e
 
-                args, kwargs = map_if(
-                    (args, kwargs),
-                    pred=lambda x: x is original_var,
-                    true_fn=lambda x: replace_symbolic_var_with_constant_var(x),
-                    false_fn=lambda x: x,
-                )
+                    args, kwargs = map_structure(
+                        replace_symbolic_var_with_constant_var, (args, kwargs)
+                    )
 
                 metas = convert_to_meta(args)
                 kwmetas = convert_to_meta(kwargs)
