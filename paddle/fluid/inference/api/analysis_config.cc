@@ -42,7 +42,6 @@ COMMON_DECLARE_bool(use_cinn);
 #endif
 
 COMMON_DECLARE_bool(enable_pir_api);
-COMMON_DECLARE_bool(enable_auto_layout_pass);
 namespace paddle {
 struct MkldnnQuantizerConfig;
 
@@ -1532,11 +1531,6 @@ bool AnalysisConfig::cinn_enabled() const {
 #ifdef PADDLE_WITH_CINN
   is_enabled = is_enabled || FLAGS_use_cinn;
 #endif
-  return is_enabled;
-}
-
-bool AnalysisConfig::autolayout_enabled() const {
-  bool is_enabled = FLAGS_enable_auto_layout_pass;
   return is_enabled;
 }
 

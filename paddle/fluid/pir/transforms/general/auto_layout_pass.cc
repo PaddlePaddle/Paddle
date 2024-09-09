@@ -30,6 +30,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/op_trait.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -112,7 +113,7 @@ class AutoLayoutPass : public pir::Pass {
       if (operand.type().isa<pir::VectorType>()) {
         auto defined_op = operand.defining_op();
         for (auto inner_operand : defined_op->operands_source()) {
-          is_insert_transpose = JudgeOperand(inner_operand, NCHW2NHWC_);
+          is_insert_transpose = JudgeOperand(inner_operand, NHWC2NCHW_);
           if (is_insert_transpose) break;
         }
       } else {
@@ -124,15 +125,14 @@ class AutoLayoutPass : public pir::Pass {
   }
 
   void TransferLayout(pir::Builder builder, pir::Block* block) {
-    for (auto& op_item : *block) {
+    for (auto&& op_item : *block) {
       auto op = &op_item;
       auto op_name = op->name();
 
       // Skip special ops.
-      if (op_name == "builtin.parameter" || op_name == "pd_op.feed" ||
-          op_name == "builtin.shadow_output")
-        continue;
+      if (op->HasTrait<pir::ImmutableLayoutTrait>()) continue;
       if (op->operands().size() == 0) continue;
+
       // NHWC ops branch, Only support conv2d now, it will add white list later.
       if (op_name == "pd_op.conv2d") {
         if (op->HasAttribute("data_format") &&
@@ -155,6 +155,14 @@ class AutoLayoutPass : public pir::Pass {
   // Skip the operand which is not dense tensor or not 4-D tensor, they don't
   // need transpose.
   bool JudgeValue(const pir::Value& value) {
+    if (!value) {
+      PADDLE_THROW(common::errors::Fatal(
+          "value is null, please check the input tensor."));
+    }
+    if (!value.type().isa<paddle::dialect::DenseTensorType>()) {
+      PADDLE_THROW(common::errors::Fatal(
+          "value type is null, please check the input tensor type."));
+    }
     if (auto type = value.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
       return type.dims().size() == 4;
     }
@@ -192,7 +200,7 @@ class AutoLayoutPass : public pir::Pass {
                            pir::Builder& builder) {  // NOLINT
     builder.SetInsertionPointAfter(op);
     for (auto& result : op->results()) {
-      // Canbe optimize with cache when not eliminate the transpose op.
+      if (result.use_empty()) continue;
       if (!JudgeValue(result)) continue;
       auto transpose_op =
           builder.Build<paddle::dialect::TransposeOp>(result, NHWC2NCHW_);

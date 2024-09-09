@@ -44,36 +44,27 @@ class RedundantTransposePattern
 
   bool Match(paddle::dialect::TransposeOp op) const override {
     auto before_transpose = op.x().defining_op();
-    if (before_transpose->dyn_cast<paddle::dialect::TransposeOp>()) {
-      const auto before_perm_attr =
-          before_transpose->attribute<pir::ArrayAttribute>("perm");
-
-      std::vector<int32_t> before_perm;
-      for (size_t i = 0; i < before_perm_attr.size(); ++i) {
-        auto attr = before_perm_attr.at(i);
-        before_perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
-      }
-
-      const auto after_perm_attr = op.attribute<pir::ArrayAttribute>("perm");
-      std::vector<int32_t> after_perm;
-      for (size_t i = 0; i < after_perm_attr.size(); ++i) {
-        auto attr = after_perm_attr.at(i);
-        after_perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
-      }
-
-      if (before_perm[0] == after_perm[0] && before_perm[1] == after_perm[3] &&
-          before_perm[2] == after_perm[1] && before_perm[3] == after_perm[2] &&
-          before_perm == NCHW2NHWC_) {
-        return true;
-      }
-
-      if (before_perm[0] == after_perm[0] && before_perm[1] == after_perm[2] &&
-          before_perm[2] == after_perm[3] && before_perm[3] == after_perm[1] &&
-          before_perm == NHWC2NCHW_) {
-        return true;
-      }
+    if (!before_transpose->isa<paddle::dialect::TransposeOp>()) {
+      return false;
     }
-    return false;
+    const auto before_perm_attr =
+        before_transpose->attribute<pir::ArrayAttribute>("perm");
+
+    std::vector<int32_t> before_perm;
+    for (size_t i = 0; i < before_perm_attr.size(); ++i) {
+      auto attr = before_perm_attr.at(i);
+      before_perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+
+    const auto after_perm_attr = op.attribute<pir::ArrayAttribute>("perm");
+    std::vector<int32_t> after_perm;
+    for (size_t i = 0; i < after_perm_attr.size(); ++i) {
+      auto attr = after_perm_attr.at(i);
+      after_perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+
+    if (before_perm == NCHW2NHWC_ && after_perm == NHWC2NCHW_) return true;
+    if (before_perm == NHWC2NCHW_ && after_perm == NCHW2NHWC_) return true;
   }
   void Rewrite(paddle::dialect::TransposeOp op,
                pir::PatternRewriter& rewriter) const override {

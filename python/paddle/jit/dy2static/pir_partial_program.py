@@ -674,7 +674,6 @@ class PartialProgramLayer:
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
-
         if auto_layout_is_enabled():
             pm = paddle.pir.PassManager()
             pm.add_pass("auto_layout_pass", {})

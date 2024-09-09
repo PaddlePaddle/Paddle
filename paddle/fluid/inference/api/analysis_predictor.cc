@@ -868,17 +868,8 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
           if (std::find(config_.deleted_passes_.begin(),
                         config_.deleted_passes_.end(),
                         gpu_pass) == config_.deleted_passes_.end()) {
-            if (gpu_pass == "transfer_layout_pass" &&
-                config_.autolayout_enabled())
-              continue;
             pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
           }
-        }
-        if (config_.autolayout_enabled()) {
-          pass_pm.AddPass(
-              pir::PassRegistry::Instance().Get("auto_layout_pass"));
-          pass_pm.AddPass(
-              pir::PassRegistry::Instance().Get("auto_layout_simplify_pass"));
         }
       }
 
@@ -2215,13 +2206,7 @@ void AnalysisPredictor::PrepareArgument() {
         pass_builder->ClearPasses();
         for (const auto &pass : kGpuLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
-          if (pass == "transfer_layout_pass" && config_.autolayout_enabled())
-            continue;
           pass_builder->AppendPass(pass);
-        }
-        if (config_.autolayout_enabled()) {
-          pass_builder->AppendPass("auto_layout_pass");
-          pass_builder->AppendPass("auto_layout_simplify_pass");
         }
       } else if (config_.use_xpu()) {  // NOLINT
         // All passes support fp16. Not reset pass_builder.

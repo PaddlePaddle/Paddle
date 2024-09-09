@@ -1368,6 +1368,14 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
 
+/**
+ * Performance related FLAG
+ * Name: enable_auto_layout_pass
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, using AutoLayoutPass and AutuLayoutSimplifyPass by default
+ */
 PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass,
                          false,
                          "Whether enable auto_layout_pass.");
