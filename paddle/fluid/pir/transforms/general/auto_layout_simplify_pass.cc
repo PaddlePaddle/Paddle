@@ -65,6 +65,7 @@ class RedundantTransposePattern
 
     if (before_perm == NCHW2NHWC_ && after_perm == NHWC2NCHW_) return true;
     if (before_perm == NHWC2NCHW_ && after_perm == NCHW2NHWC_) return true;
+    return false;
   }
   void Rewrite(paddle::dialect::TransposeOp op,
                pir::PatternRewriter& rewriter) const override {
