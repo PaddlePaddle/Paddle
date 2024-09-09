@@ -266,6 +266,18 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool UniformRandomInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &shape = shape_or_data.shape();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(shape)});
+
+  return true;
+}
 bool GatherOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape_or_data =
