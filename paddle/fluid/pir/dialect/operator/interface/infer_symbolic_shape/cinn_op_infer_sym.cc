@@ -268,13 +268,20 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
 bool UniformRandomInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &shape = shape_or_data.shape();
+  const std::vector<int64_t> shape =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
+
+  const std::vector<symbol::DimExpr> out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    for (int64_t dim : shape) {
+      out_dims.emplace_back(symbole::DimExpr{dim});
+    }
+    return out_dims;
+  }();
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(shape)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   return true;
 }
