@@ -115,6 +115,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include "paddle/fluid/pir/transforms/general/auto_mixed_precision_pass.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
@@ -924,7 +925,9 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
       pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
       if (pass->name() == "auto_mixed_precision_pass") {
-        pass->Set("__mixed_precision_mode__", new phi::DataType(paddle::ConvertPrecision(config_.mixed_precision_mode_)));
+        pass->Set("__mixed_precision_mode__",
+                  new phi::DataType(
+                      paddle::ConvertPrecision(config_.mixed_precision_mode_)));
       }
       if (pass->name() == "matmul_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_act_fuse_pass" ||
@@ -956,14 +959,14 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                    config_.pm_opt_level_);
-  auto common_subexpression_elimination_pass =
-      ::pir::CreateCommonSubexpressionEliminationPass();
-  if (std::find(config_.deleted_passes_.begin(),
-                config_.deleted_passes_.end(),
-                common_subexpression_elimination_pass->name()) ==
-      config_.deleted_passes_.end()) {
-    basic_pass_pm.AddPass(std::move(common_subexpression_elimination_pass));
-  }
+  // auto common_subexpression_elimination_pass =
+  //     ::pir::CreateCommonSubexpressionEliminationPass();
+  // if (std::find(config_.deleted_passes_.begin(),
+  //               config_.deleted_passes_.end(),
+  //               common_subexpression_elimination_pass->name()) ==
+  //     config_.deleted_passes_.end()) {
+  //   basic_pass_pm.AddPass(std::move(common_subexpression_elimination_pass));
+  // }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
   if (std::find(config_.deleted_passes_.begin(),

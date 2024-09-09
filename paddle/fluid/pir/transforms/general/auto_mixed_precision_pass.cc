@@ -442,8 +442,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
       if (result.type().isa<paddle::dialect::DenseTensorType>() &&
           IsDenseTensorTypeFloat(
               result.type().dyn_cast<paddle::dialect::DenseTensorType>())) {
+        return true;
       } else if (result.type().isa<pir::VectorType>() &&
                  IsVectorTypeFloat(result.type().dyn_cast<pir::VectorType>())) {
+        return true;
       }
     }
     return false;
