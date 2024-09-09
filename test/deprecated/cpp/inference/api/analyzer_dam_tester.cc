@@ -70,11 +70,18 @@ struct DataRecord {
                            response.begin() + batch_end);
       data.response_mask.assign(response_mask.begin() + batch_iter,
                                 response_mask.begin() + batch_end);
-      CHECK(!data.response.empty());
-      CHECK(!data.response_mask.empty());
+      PADDLE_ENFORCE_EQ(!data.response.empty(),
+                        true,
+                        common::errors::Fatal(
+                            "Variable `data` response is empty, please check"));
+      PADDLE_ENFORCE_EQ(
+          !data.response_mask.empty(),
+          true,
+          common::errors::Fatal(
+              "Variable `data` response mask is empty, please check"));
       PADDLE_ENFORCE_EQ(data.response.size(),
                         data.response_mask.size(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required data.response.size() should be equal to "
                             "data.response_mask.size() . "));
     }
@@ -93,7 +100,7 @@ struct DataRecord {
       split(line, ',', &data);
       PADDLE_ENFORCE_EQ(data.size(),
                         (size_t)(2 * FLAGS_max_turn_num + 3),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required data.size() should be equal to "
                             "(size_t)(2 * FLAGS_max_turn_num + 3) . "));
       // load turn data
@@ -142,7 +149,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   int size = one_batch.response[0].size();
   PADDLE_ENFORCE_EQ(size,
                     kMaxTurnLen,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required size should be equal to kMaxTurnLen . "));
   // turn tensor assignment
   for (int i = 0; i < FLAGS_max_turn_num; ++i) {
@@ -263,18 +270,6 @@ TEST(Analyzer_dam, profile) { profile(); }
 TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
-// Check the fuse status
-TEST(Analyzer_dam, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-}
-
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
@@ -327,14 +322,6 @@ TEST(Analyzer_dam, compare_determine) {
   SetInput(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
-}
-// Save optim model
-TEST(Analyzer_dam, save_optim_model) {
-  AnalysisConfig cfg;
-  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
-  MKDIR(optimModelPath.c_str());
-  SetConfig(&cfg);
-  SaveOptimModel(&cfg, optimModelPath);
 }
 
 void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,

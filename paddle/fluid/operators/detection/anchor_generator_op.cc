@@ -24,24 +24,24 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Input"),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Input) of AnchorGeneratorOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Anchors"),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Output(Anchors) of AnchorGeneratorOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Variances"),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Output(Variances) of AnchorGeneratorOp should not be null."));
 
     auto input_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(
         input_dims.size(),
         4,
-        phi::errors::InvalidArgument("The layout of input is NCHW."));
+        common::errors::InvalidArgument("The layout of input is NCHW."));
 
     auto anchor_sizes = ctx->Attrs().Get<std::vector<float>>("anchor_sizes");
     auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
@@ -97,12 +97,12 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<float>& anchor_sizes) {
           PADDLE_ENFORCE_GT(anchor_sizes.size(),
                             0UL,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "Size of anchor_sizes must be at least 1."));
           for (size_t i = 0; i < anchor_sizes.size(); ++i) {
             PADDLE_ENFORCE_GT(anchor_sizes[i],
                               0.0,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "anchor_sizes[%d] must be positive.", i));
           }
         });
@@ -120,11 +120,11 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               variances.size(),
               4UL,
-              phi::errors::InvalidArgument("Must provide 4 variance only."));
+              common::errors::InvalidArgument("Must provide 4 variance only."));
           for (size_t i = 0; i < variances.size(); ++i) {
             PADDLE_ENFORCE_GT(variances[i],
                               0.0,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "variance[%d] must be greater than 0.", i));
           }
         });
@@ -137,12 +137,12 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               stride.size(),
               2UL,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Must provide 2 stride for width and height only."));
           for (size_t i = 0; i < stride.size(); ++i) {
             PADDLE_ENFORCE_GT(stride[i],
                               0.0,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "stride[%d] should be larger than 0.", i));
           }
         });

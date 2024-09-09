@@ -18,13 +18,16 @@ import os
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
@@ -165,16 +168,6 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)

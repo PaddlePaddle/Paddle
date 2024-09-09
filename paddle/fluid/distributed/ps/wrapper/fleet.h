@@ -287,8 +287,10 @@ class FleetWrapper {
                                              const std::string& msg);
 
   std::string GetDistDesc() const {
-    CHECK(is_initialized_ == true)
-        << "FleetWrapper should be initialized first!!!";
+    PADDLE_ENFORCE_EQ(is_initialized_,
+                      true,
+                      common::errors::PermissionDenied(
+                          "FleetWrapper should be initialized first!!!"));
     return dist_desc_;
   }
 
@@ -333,7 +335,7 @@ class FleetWrapper {
   size_t GetAbsoluteSum(size_t start,
                         size_t end,
                         size_t level,
-                        const framework::LoD& lod);
+                        const phi::LoD& lod);
 
  protected:
   static bool is_initialized_;

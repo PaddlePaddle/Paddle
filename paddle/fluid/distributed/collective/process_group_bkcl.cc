@@ -17,14 +17,14 @@
 #include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/platform/device/xpu/bkcl_helper.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 
 namespace paddle {
 namespace distributed {
@@ -267,7 +267,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
 
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(comm_ctx.get(),
-                            phi::errors::Fatal("comm context is nullptr."));
+                            common::errors::Fatal("comm context is nullptr."));
     if (!is_coalescing_) {
       task->comm_event_->Record(*comm_ctx.get());
     } else {
@@ -321,7 +321,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
 
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(comm_ctx.get(),
-                            phi::errors::Fatal("comm context is nullptr."));
+                            common::errors::Fatal("comm context is nullptr."));
     if (!is_coalescing_) {
       task->comm_event_->Record(*comm_ctx.get());
     } else {
@@ -362,6 +362,66 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
       },
       in_tensor,
       CommType::ALLREDUCE,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const std::vector<int64_t>& out_size_each_rank,
+    const std::vector<int64_t>& in_size_each_rank,
+    bool sync_op,
+    bool use_calc_stream) {
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
+  const phi::DDim& out_dim = out_tensor->dims();
+  const phi::DDim& in_dim = in_tensor.dims();
+
+  // XCCL only support all_to_all_single
+  PADDLE_ENFORCE_EQ(
+      in_dim[0],
+      out_dim[0],
+      common::errors::PreconditionNotMet(
+          "XPU AllToAll: input dim (%d) and output dim (%d) differ",
+          in_dim[0],
+          out_dim[0]));
+  PADDLE_ENFORCE_EQ(
+      in_dim[0] % size_,
+      0,
+      common::errors::PreconditionNotMet(
+          "XPU AllToAll: input dim (%d) not divisible by nranks (%d)",
+          in_dim[0],
+          size_));
+  int64_t size_on_each_rank = in_dim[0] / size_;
+  for (size_t i = 0; i < in_size_each_rank.size(); i++) {
+    PADDLE_ENFORCE_EQ(size_on_each_rank,
+                      in_size_each_rank[i],
+                      common::errors::PreconditionNotMet(
+                          "XPU AllToAll only support all_to_all_single mode"));
+    PADDLE_ENFORCE_EQ(size_on_each_rank,
+                      out_size_each_rank[i],
+                      common::errors::PreconditionNotMet(
+                          "XPU AllToAll only support all_to_all_single mode"));
+  }
+
+  return Collective(
+      [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
+        VLOG(3) << "[bkcl_all_to_all] "
+                << "sendbuff: " << in_tensor.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+
+        comm_context->AllToAll(out_tensor, in_tensor, stream);
+      },
+      in_tensor,
+      CommType::ALLTOALL,
       sync_op,
       use_calc_stream);
 }
@@ -506,7 +566,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
   phi::XPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
@@ -545,7 +605,7 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const auto& iter = place_to_comm_ctx_.find(key);
     PADDLE_ENFORCE_NE(iter,
                       place_to_comm_ctx_.end(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Cannot find device context in process group."));
     return iter->second.get();
   }
@@ -569,14 +629,14 @@ phi::distributed::BKCLCommContext* ProcessGroupBKCL::GetCommContext() {
       comm_context_manager.Get(std::to_string(this->gid_)));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
-                    phi::errors::Unavailable("BKCLCommContext is nullptr"));
+                    common::errors::Unavailable("BKCLCommContext is nullptr"));
   return comm_context;
 }
 
 void ProcessGroupBKCL::StartCoalescing() {
   PADDLE_ENFORCE_EQ(is_coalescing_,
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Coalescing is on, please call EndCoalesce."));
   is_coalescing_ = true;
   GroupStart();
@@ -598,7 +658,7 @@ void ProcessGroupBKCL::EndCoalescing(
   PADDLE_ENFORCE_EQ(
       tasks.size(),
       colaescing_place_keys_.size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Number of tasks[%d] do not match number of collectives[%d].",
           tasks.size(),
           colaescing_place_keys_.size()));

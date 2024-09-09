@@ -375,11 +375,13 @@ class TestArgMinMaxOpError(unittest.TestCase):
 
 class TestArgMaxOpFp16(unittest.TestCase):
     def test_fp16(self):
-        x_np = np.random.random((10, 16)).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
-            out = paddle.argmax(x)
-            if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
+            x_np = np.random.random((10, 16)).astype('float16')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    shape=[10, 16], name='x', dtype='float16'
+                )
+                out = paddle.argmax(x)
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
@@ -388,11 +390,13 @@ class TestArgMaxOpFp16(unittest.TestCase):
 
 class TestArgMinOpFp16(unittest.TestCase):
     def test_fp16(self):
-        x_np = np.random.random((10, 16)).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
-            out = paddle.argmin(x)
-            if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
+            x_np = np.random.random((10, 16)).astype('float16')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    shape=[10, 16], name='x', dtype='float16'
+                )
+                out = paddle.argmin(x)
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())

@@ -31,13 +31,44 @@ static std::string GetValueId(Value val) {
          std::to_string(val_idx);
 }
 
-void InferSymbolicShapeContext::Init() {
+void InferSymbolicShapeContext::Init(
+    const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec) {
   value_id_to_shape_or_data_.clear();
   next_sym_idx_ = sym_idx_begin_;
   constraints_manager_.SetEqualCallbackFunc(
       [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
         return SubstituteDimExpr(lhs, rhs);
       });
+
+  const auto& CreateDimExprForInputDynamicDim = [&]() {
+    for (const auto& item : input_dynamic_dim_spec) {
+      input_dynamic_dim_name_spec_to_dimexpr_map_[item.dim_name] =
+          symbol::DimExpr{GetNextSymName()};
+    }
+  };
+
+  const auto& SetDynamicShapeInputBind =
+      [&](const std::vector<std::pair<std::string, int>>& input_bind,
+          const symbol::DimExpr& dim_expr) {
+        for (const auto& item : input_bind) {
+          predefined_dimexpr_map_for_inputs_[item.first].emplace_back(
+              DimIndexAndExpr(item.second, dim_expr));
+        }
+      };
+
+  const auto& SetDynamicShapeInputRange =
+      [&](const symbol::ConstraintsManager::Range& range,
+          const symbol::DimExpr& dim_expr) {
+        constraints_manager_.AddInputRangeCstr(dim_expr, range);
+      };
+
+  CreateDimExprForInputDynamicDim();
+  for (const auto& item : input_dynamic_dim_spec) {
+    const auto& dim_expr =
+        input_dynamic_dim_name_spec_to_dimexpr_map_.at(item.dim_name);
+    SetDynamicShapeInputBind(item.input_bind, dim_expr);
+    SetDynamicShapeInputRange(item.range, dim_expr);
+  }
 }
 
 void InferSymbolicShapeContext::RegisterSymbolConstraintFromContext(
@@ -205,6 +236,11 @@ bool InferSymbolicShapeContext::IsBroadcastable(
   return constraints_manager_.IsBroadcastable(lhs, rhs);
 }
 
+bool InferSymbolicShapeContext::HasPredefinedRange(
+    const symbol::DimExpr& dim_expr) const {
+  return constraints_manager_.IsBoundedInput(dim_expr);
+}
+
 symbol::ShapeOrDataDimExprs
 InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
     const symbol::ShapeOrDataDimExprs& shape_or_data) {
@@ -367,7 +403,24 @@ InferSymbolicShapeContext::GetOpInferSymbolicShapeCache(
   return std::nullopt;
 }
 
-void ShapeConstraintIRAnalysis::Init() { context_.Init(); }
+bool InferSymbolicShapeContext::HasPredefinedDimExprForInputName(
+    const std::string& input_name) const {
+  return predefined_dimexpr_map_for_inputs_.count(input_name) != 0;
+}
+
+const std::vector<InferSymbolicShapeContext::DimIndexAndExpr>
+InferSymbolicShapeContext::GetPredefinedDimExprForInputName(
+    const std::string& input_name) const {
+  if (!HasPredefinedDimExprForInputName(input_name)) {
+    PADDLE_THROW(common::errors::Fatal(
+        input_name + "Not in predefined_dimexpr_map_for_inputs!"));
+  }
+  return predefined_dimexpr_map_for_inputs_.at(input_name);
+}
+
+void ShapeConstraintIRAnalysis::InitInferContext() {
+  context_.Init(input_dynamic_dim_spec_);
+}
 
 void ShapeConstraintIRAnalysis::RegisterSymbolConstraintFromShapeAnalysis(
     const ShapeConstraintIRAnalysis& other) {
@@ -504,7 +557,7 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
       SetSymbolForValueByStaticShape(val);
     } else {
       VLOG(3) << "InferShapeOrDataForValue,  defining_op: "
-              << val.defining_op()->name();
+              << val.defining_op()->name() << " id:" << val.defining_op()->id();
       InferShapeOrDataForValue(val);
     }
   }
@@ -702,6 +755,11 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() {
   return print_hook;
 }
 
+void ShapeConstraintIRAnalysis::SetInputDynamicDimSpec(
+    const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec) {
+  input_dynamic_dim_spec_ = input_dynamic_dim_spec;
+}
+
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
   static ShapeAnalysisManager instance;
   return instance;
@@ -753,6 +811,7 @@ bool IsStaticShape(const Value& value) {
 static const char* kOpCallStack = "op_callstack";
 static const char* kSymShapeStr = "sym_shape_str";
 static const char* kResultName = "name";
+static const char* kStopGradient = "stop_gradient";
 
 InferSymbolicShapeCacheKey::InferSymbolicShapeCacheKey(
     const Operation& op,
@@ -771,7 +830,7 @@ InferSymbolicShapeCacheKey::InferSymbolicShapeCacheKey(
   attributes_.reserve(attributes.size());
   for (const auto& [attr_name, attr_value] : order_attributes) {
     if (!attr_value || attr_name == kOpCallStack || attr_name == kSymShapeStr ||
-        attr_name == kResultName)
+        attr_name == kStopGradient || attr_name == kResultName)
       continue;
     attributes_.emplace_back(attr_name, attr_value);
   }

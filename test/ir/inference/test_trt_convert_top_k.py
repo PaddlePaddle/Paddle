@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -30,7 +32,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
+        def generate_input1(dims, batch, attrs: list[dict[str, Any]]):
             if dims == 1:
                 return np.random.random([32]).astype(np.float32)
             elif dims == 2:
@@ -76,7 +78,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
@@ -114,19 +116,6 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)

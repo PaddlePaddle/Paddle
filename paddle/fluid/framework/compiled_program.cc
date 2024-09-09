@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 #include "paddle/common/flags.h"
 
@@ -537,7 +537,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
       auto dtype = framework::TransToProtoVarType(main_tensor.dtype());
-      ncclDataType_t data_type = platform::ToNCCLDataType(dtype);
+      ncclDataType_t data_type = phi::ToNCCLDataType(main_tensor.dtype());
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -600,8 +600,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
-      auto dtype = framework::TransToProtoVarType(main_tensor.dtype());
-      BKCLDataType data_type = platform::ToBKCLDataType(dtype);
+      BKCLDataType data_type = phi::ToBKCLDataType(main_tensor.dtype());
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;

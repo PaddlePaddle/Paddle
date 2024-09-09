@@ -35,18 +35,18 @@ void LoadKernel(const Context& dev_ctx,
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Load operator fail to open file %s, please check "
                         "whether the model file is complete or damaged.",
                         file_path));
   PADDLE_ENFORCE_NOT_NULL(out,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The variable to be loaded cannot be found."));
 
   if (seek != -1) {
     PADDLE_ENFORCE_GE(seek,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "seek with tensor must great than or equal to 0"));
     framework::DeserializeFromStream(fin, out, dev_ctx, seek, shape);
   } else {
@@ -72,12 +72,12 @@ void LoadSelectedRowsKernel(const Context& dev_ctx,
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Load operator fail to open file %s, please check "
                         "whether the model file is complete or damaged.",
                         file_path));
   PADDLE_ENFORCE_NOT_NULL(out,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The variable to be loaded cannot be found."));
 
   framework::DeserializeFromStream(fin, out, dev_ctx);

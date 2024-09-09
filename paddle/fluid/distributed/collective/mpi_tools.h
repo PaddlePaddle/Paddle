@@ -16,9 +16,7 @@
 #include <error.h>
 #include <iostream>
 #include <string>
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 #include "paddle/fluid/distributed/collective/types.h"
 
@@ -39,7 +37,7 @@ namespace mpi {
       std::stringstream ss;                                        \
       ss << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
          << "with error code: " << std::to_string(r) << std::endl; \
-      PADDLE_THROW(phi::errors::Fatal(ss.str()));                  \
+      PADDLE_THROW(common::errors::Fatal(ss.str()));               \
       exit(EXIT_FAILURE);                                          \
     }                                                              \
   } while (0)

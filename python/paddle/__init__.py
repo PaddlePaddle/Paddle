@@ -589,6 +589,11 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
+    import pkg_resources
+
+    data_file_path = pkg_resources.resource_filename('paddle.cinn_config', '')
+    os.environ['CINN_CONFIG_PATH'] = data_file_path
+
 if __is_metainfo_generated and is_compiled_with_cuda():
     import os
     import platform
@@ -725,7 +730,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                     if not path_patched:
                         prev_path = os.environ['PATH']
                         os.environ['PATH'] = ';'.join(
-                            dll_paths + [os.environ['PATH']]
+                            [*dll_paths, os.environ['PATH']]
                         )
                         path_patched = True
                     res = kernel32.LoadLibraryW(dll)
@@ -894,6 +899,7 @@ __all__ = [
     'flip',
     'rot90',
     'bincount',
+    'histogram_bin_edges',
     'histogram',
     'histogramdd',
     'multiplex',

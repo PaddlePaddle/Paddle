@@ -35,11 +35,11 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         input2.height(),
-        phi::errors::InvalidArgument("The two inputs height must be equal."
-                                     "But received first input height  = "
-                                     "[%d], second input height = [%d]",
-                                     in1_height,
-                                     input2.height()));
+        common::errors::InvalidArgument("The two inputs height must be equal."
+                                        "But received first input height  = "
+                                        "[%d], second input height = [%d]",
+                                        in1_height,
+                                        input2.height()));
     output->set_height(in1_height);
 
     phi::Vector<int64_t> in1_rows(input1.rows());
@@ -60,7 +60,7 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         in2_value.numel() / in2_rows.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
             in1_row_numel,
@@ -68,7 +68,7 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         out_value->numel() / out_rows.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input and oupput width must be equal."
             "But received input width = [%d], output width = [%d]",
             in1_row_numel,
@@ -80,17 +80,17 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2.place();
     PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::GPU,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto out_place = context.GetPlace();
     PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::GPU,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
 
     memory_utils::Copy(out_place,
@@ -146,7 +146,7 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         in2_dims[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The two inputs height must be equal."
             "But received first input height = [%d], first input height = [%d]",
             in1_height,
@@ -154,7 +154,7 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         out_dims[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input and output height must be equal."
             "But received input height = [%d], output height = [%d]",
             in1_height,
@@ -167,7 +167,7 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2.numel() / in1_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
             in1_row_numel,
@@ -175,7 +175,7 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         output->numel() / in1_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input and output width must be equal."
             "But received input width = [%d], output width = [%d]",
             in1_row_numel,
@@ -220,11 +220,11 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         input2->height(),
-        phi::errors::InvalidArgument("The two inputs height must be equal."
-                                     "But received first input height = "
-                                     "[%d], second input height = [%d]",
-                                     in1_height,
-                                     input2->height()));
+        common::errors::InvalidArgument("The two inputs height must be equal."
+                                        "But received first input height = "
+                                        "[%d], second input height = [%d]",
+                                        in1_height,
+                                        input2->height()));
 
     auto& in1_rows = input1.rows();
     auto& in2_rows = *(input2->mutable_rows());
@@ -241,12 +241,12 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2->place();
     PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
 
     auto* in1_data = in1_value.data<T>();
@@ -296,11 +296,11 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         in2_dims[0],
-        phi::errors::InvalidArgument("The two inputs height must be equal."
-                                     "But received first input height = "
-                                     "[%d], second input height = [%d]",
-                                     in1_height,
-                                     in2_dims[0]));
+        common::errors::InvalidArgument("The two inputs height must be equal."
+                                        "But received first input height = "
+                                        "[%d], second input height = [%d]",
+                                        in1_height,
+                                        in2_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
@@ -309,7 +309,7 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
             in1_row_numel,
@@ -452,15 +452,15 @@ struct MergeAddImpl {
       if (input->rows().size() == 0) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(
-          input_width,
-          input->value().dims()[1],
-          phi::errors::InvalidArgument("All input should have same "
-                                       "dimension except for the first one."));
-      PADDLE_ENFORCE_EQ(
-          input_height,
-          input->height(),
-          phi::errors::InvalidArgument("All input should have same height."));
+      PADDLE_ENFORCE_EQ(input_width,
+                        input->value().dims()[1],
+                        common::errors::InvalidArgument(
+                            "All input should have same "
+                            "dimension except for the first one."));
+      PADDLE_ENFORCE_EQ(input_height,
+                        input->height(),
+                        common::errors::InvalidArgument(
+                            "All input should have same height."));
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
     std::vector<int64_t> merge_rows_cpu(merged_row_set.begin(),
@@ -610,11 +610,11 @@ struct UpdateToTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         in2_dims[0],
-        phi::errors::InvalidArgument("The two inputs height must be equal."
-                                     "But received first input height = "
-                                     "[%d], second input height = [%d]",
-                                     in1_height,
-                                     in2_dims[0]));
+        common::errors::InvalidArgument("The two inputs height must be equal."
+                                        "But received first input height = "
+                                        "[%d], second input height = [%d]",
+                                        in1_height,
+                                        in2_dims[0]));
 
     auto& in1_value = merged_in1.value();
     auto& in1_rows = merged_in1.rows();
@@ -623,7 +623,7 @@ struct UpdateToTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
             in1_row_numel,

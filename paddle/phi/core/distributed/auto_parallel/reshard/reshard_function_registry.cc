@@ -41,7 +41,7 @@ ReshardFunction* ChooseProperReshardFunction(
       return func.get();
     }
   }
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Can not reshard from in_dist_attr=%s to out_dist_attr=%s.",
       in.dist_attr().to_string(),
       out_dist_attr.to_string()));

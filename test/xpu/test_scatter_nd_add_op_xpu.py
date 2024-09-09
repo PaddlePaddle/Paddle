@@ -37,9 +37,9 @@ def numpy_scatter_nd(ref, index, updates, fun):
     remain_numel = np.prod(index_shape[:-1]).astype("int32")
     slice_size = np.prod(ref_shape[end_size : len(ref_shape)]).astype("int32")
 
-    flat_index = index.reshape([remain_numel] + list(index_shape[-1:]))
+    flat_index = index.reshape([remain_numel, *index_shape[-1:]])
     flat_updates = updates.reshape((remain_numel, slice_size))
-    flat_output = ref.reshape(list(ref_shape[:end_size]) + [slice_size])
+    flat_output = ref.reshape([*ref_shape[:end_size], slice_size])
 
     for i_up, i_out in enumerate(flat_index):
         i_out = tuple(i_out)

@@ -65,7 +65,7 @@ void LookupTableDequantKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_LT(
           ids[i],
           row_number,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Variable value (input) of OP(fluid.layers.embedding) "
               "expected >= 0 and < %ld, but got %ld. Please check input "
               "value.",
@@ -74,7 +74,7 @@ void LookupTableDequantKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_GE(
           ids[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Variable value (input) of OP(fluid.layers.embedding) "
               "expected >= 0 and < %ld, but got %ld. Please check input "
               "value.",

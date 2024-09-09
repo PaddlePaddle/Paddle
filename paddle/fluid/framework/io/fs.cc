@@ -74,9 +74,12 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
     PADDLE_ENFORCE_EQ(
         0,
         setvbuf(&*fp, buffer, _IOFBF, buffer_size),
-        phi::errors::InvalidArgument("Set Buffer Failed, Please Check!"));
+        common::errors::InvalidArgument("Set Buffer Failed, Please Check!"));
     fp = {&*fp, [fp, buffer](FILE*) mutable {  // NOLINT
-            CHECK(fp.unique());                // NOLINT
+            PADDLE_ENFORCE_EQ(fp.unique(),
+                              true,
+                              common::errors::PermissionDenied(
+                                  "File Pointer is not unique!!!"));  // NOLINT
             fp = nullptr;
             delete[] buffer;
           }};
@@ -586,7 +589,7 @@ void fs_mv(const std::string& src, const std::string& dest) {
   PADDLE_ENFORCE_EQ(
       s,
       d,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The source is not equal to destination, Please Check!"));
   switch (s) {
     case 0:

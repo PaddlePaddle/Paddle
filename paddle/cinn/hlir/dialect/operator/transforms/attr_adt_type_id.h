@@ -56,6 +56,7 @@ namespace cinn::dialect {
 
 class GroupInfoAttribute;
 class CINNKernelInfoAttribute;
+class FusionTrackerPtrAttribute;
 
 }  // namespace cinn::dialect
 
@@ -86,7 +87,8 @@ class UnclassifiedAttribute {};
   __macro(paddle::dialect::PlaceAttribute)          \
   __macro(paddle::dialect::DataLayoutAttribute)     \
   __macro(cinn::dialect::GroupInfoAttribute)        \
-  __macro(cinn::dialect::CINNKernelInfoAttribute)
+  __macro(cinn::dialect::CINNKernelInfoAttribute)   \
+  __macro(cinn::dialect::FusionTrackerPtrAttribute)
 // clang-format on
 
 using AttrAdtTypeIdBase = ::common::AdtBaseTypeId<

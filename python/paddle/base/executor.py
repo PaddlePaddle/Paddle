@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import logging
 import os
 import sys
 import warnings
 from functools import lru_cache
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
@@ -49,6 +52,20 @@ from .incubate.checkpoint import auto_checkpoint as acp
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
 from .wrapped_decorator import signature_safe_contextmanager
 
+if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
+    import numpy.typing as npt
+
+    from paddle import Tensor
+    from paddle._typing import PlaceLike
+    from paddle._typing.device_like import _Place
+    from paddle.base.dataset import DatasetBase
+    from paddle.distributed.fleet.dataset.dataset import (
+        DatasetBase as _FleetDatasetBase,
+    )
+    from paddle.static import CompiledProgram
+
 __all__ = []
 
 g_scope = core.Scope()
@@ -56,7 +73,7 @@ InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 
 
-def global_scope():
+def global_scope() -> core._Scope:
     """
     :api_attr: Static Graph
 
@@ -78,7 +95,7 @@ def global_scope():
     return g_scope
 
 
-def _switch_scope(scope):
+def _switch_scope(scope: core._Scope) -> core._Scope:
     global g_scope
     ex = g_scope
     g_scope = scope
@@ -86,7 +103,7 @@ def _switch_scope(scope):
 
 
 @signature_safe_contextmanager
-def scope_guard(scope):
+def scope_guard(scope: core._Scope) -> Generator[None, None, None]:
     """
 
     This function switches scope through python `with` statement.
@@ -407,7 +424,7 @@ def has_fetch_operators(
     return fetch_count > 0
 
 
-def has_fetch_operations(
+def has_fetch_operations_and_is_startup_program(
     block, fetch_targets, fetch_holder_name, fetch_op='pd_op.fetch'
 ):
     """Check whether the block already has fetch operation.
@@ -429,23 +446,27 @@ def has_fetch_operations(
     """
     from paddle.autograd.backward_utils import ValueSet
 
+    is_startup_program = False
     fetch_info = [[], []]
     for op in block.ops:
         if op.name() == fetch_op:
             fetch_info[0].append(op.operand_source(0))
             fetch_info[1].append(op.attrs()["name"])
+        elif op.name() == "builtin.set_parameter":
+            is_startup_program = True
 
     need_fetch_info = []
-    for i, fetch_var in enumerate(fetch_targets):
-        if isinstance(fetch_var, str):
-            if fetch_var not in fetch_info[1]:
-                raise Exception(
-                    f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
-                )
-        elif fetch_var not in ValueSet(fetch_info[0]):
-            need_fetch_info.append(fetch_var)
+    if fetch_targets is not None:
+        for i, fetch_var in enumerate(fetch_targets):
+            if isinstance(fetch_var, str):
+                if fetch_var not in fetch_info[1]:
+                    raise Exception(
+                        f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
+                    )
+            elif fetch_var not in ValueSet(fetch_info[0]):
+                need_fetch_info.append(fetch_var)
 
-    return need_fetch_info
+    return need_fetch_info, is_startup_program
 
 
 def _add_feed_fetch_ops(
@@ -517,8 +538,10 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    need_fetch_info = has_fetch_operations(
-        global_block, fetch_list, fetch_var_name, fetch_op
+    need_fetch_info, is_startup_program = (
+        has_fetch_operations_and_is_startup_program(
+            global_block, fetch_list, fetch_var_name, fetch_op
+        )
     )
     if need_fetch_info:
         with paddle.static.program_guard(program):
@@ -526,6 +549,8 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
                 assert isinstance(
                     fetch_input, Value
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
+                if is_startup_program:
+                    fetch_input = paddle._pir_ops.parameter(fetch_input.name)
                 out = paddle._pir_ops.fetch(
                     fetch_input, fetch_var_name + str(i), i
                 )
@@ -537,11 +562,15 @@ def _add_single_pir_fetch_op(program, fetch_value, fetch_name, fetch_col):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    need_fetch_info = has_fetch_operations(
-        global_block, [fetch_value], fetch_name, fetch_op
+    need_fetch_info, is_startup_program = (
+        has_fetch_operations_and_is_startup_program(
+            global_block, [fetch_value], fetch_name, fetch_op
+        )
     )
     if need_fetch_info:
         with paddle.static.program_guard(program):
+            if is_startup_program:
+                fetch_value = paddle._pir_ops.parameter(fetch_value.name)
             out = paddle._pir_ops.fetch(fetch_value, fetch_name, fetch_col)
             out.persistable = True
 
@@ -565,7 +594,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
-        scope(core.Scope|None): scope object. It should be the scope where
+        scope(core._Scope|None): scope object. It should be the scope where
             you pass to Executor.run() when running your program.
             If None, global_scope() will be used. Default None.
         return_numpy(bool): whether convert the tensor to numpy.ndarray.
@@ -676,7 +705,9 @@ def _get_feed_fetch_var_names(feed, fetch_list):
     elif isinstance(feed, (list, tuple)):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
-    fetch_var_names = list(map(_to_name_str, fetch_list))
+    fetch_var_names = []
+    if fetch_list is not None:
+        fetch_var_names = list(map(_to_name_str, fetch_list))
     return feed_var_names + fetch_var_names
 
 
@@ -1032,6 +1063,12 @@ class _ExecutorCache:
                         pir_program, param_mapping, new_program._grad_var_to_var
                     )
 
+                    if core._enable_auto_recompute():
+                        logging.info("apply auto_recompute in executor")
+                        pir_program = decomp.auto_recompute_pir_program(
+                            pir_program, None
+                        )
+
                     if in_cinn_mode():
                         apply_cinn_pass(pir_program)
 
@@ -1082,15 +1119,6 @@ class _ExecutorCache:
         scope,
         plan,
     ):
-        if plan is None:
-            _add_pir_fetch_ops(
-                program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
-            )
-        else:
-            for i, value in enumerate(fetch_list):
-                _add_single_pir_fetch_op(
-                    value.block.program, value, fetch_var_name + str(i), i
-                )
         return self._get_cached_program_and_executor_pir_mode(
             self._CachedData(
                 program,
@@ -1104,6 +1132,17 @@ class _ExecutorCache:
             )
         )
 
+    def _update_pir_fetch_list(self, fetch_list, value_map_list):
+        update_fetch_list = []
+        for i, fetch_var in enumerate(fetch_list):
+            if isinstance(fetch_var, str):
+                update_fetch_list.append(fetch_var)
+            else:
+                for value_map in value_map_list:
+                    if value_map.has(fetch_var):
+                        update_fetch_list.append(value_map.look_up(fetch_var))
+        return update_fetch_list
+
     def _get_pir_program_and_executor(self, cached_data):
         program = cached_data.program
         feed = cached_data.feed
@@ -1114,11 +1153,52 @@ class _ExecutorCache:
         scope = cached_data.scope
 
         if cached_data.plan is None:
+            value_map = pir.IrMapping()
+            _, is_startup_program = has_fetch_operations_and_is_startup_program(
+                program.global_block(),
+                fetch_list,
+                fetch_var_name,
+                "pd_op.fetch",
+            )
+            program = program.clone(value_map)
+            if is_startup_program:
+                update_fetch_list = fetch_list
+            else:
+                update_fetch_list = self._update_pir_fetch_list(
+                    fetch_list, [value_map]
+                )
+
+            _add_pir_fetch_ops(
+                program,
+                fetch_list=update_fetch_list,
+                fetch_var_name=fetch_var_name,
+            )
             default_job = core.Job("default")
             type_to_program = {"default": program}
             plan = core.Plan([default_job], type_to_program)
         else:
-            plan = cached_data.plan
+            type_to_program = {}
+            value_map_list = []
+            for job_type in cached_data.plan.job_types():
+                ir_program = cached_data.plan.ir_program(job_type)
+                value_map = pir.IrMapping()
+                program = ir_program.clone(value_map)
+                type_to_program[job_type] = program
+                value_map_list.append(value_map)
+
+            job_list = []
+            for job in cached_data.plan.job_list():
+                job_list.append(job)
+
+            plan = core.Plan(job_list, type_to_program)
+            update_fetch_list = self._update_pir_fetch_list(
+                fetch_list, value_map_list
+            )
+
+            for i, value in enumerate(update_fetch_list):
+                _add_single_pir_fetch_op(
+                    value.block.program, value, fetch_var_name + str(i), i
+                )
 
         new_exe = _StandaloneExecutor(place, plan, scope)
 
@@ -1140,7 +1220,13 @@ class _ExecutorCache:
 
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
-                decomp.decompose_dist_program(program)
+                pir_grad_var_to_var = decomp.decompose_dist_program(program)
+            if core._enable_auto_recompute():
+                print("apply auto_recompute in executor", flush=True)
+                program = decomp.auto_recompute_pir_program(
+                    program, pir_grad_var_to_var
+                )
+
         if in_cinn_mode():
             apply_cinn_pass(program)
         return program, new_exe, data_op_infos
@@ -1210,7 +1296,9 @@ class Executor:
 
     """
 
-    def __init__(self, place=None):
+    place: _Place
+
+    def __init__(self, place: PlaceLike | None = None) -> None:
         if place is None:
             expected_place = framework._current_expected_place_()
             self.place = expected_place
@@ -1251,7 +1339,7 @@ class Executor:
             op.all_attrs()[self.op_role_key]
         ) & int(core.op_proto_and_checker_maker.OpRole.Optimize)
 
-    def __del__(self):
+    def __del__(self) -> None:
         # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache
         # may not immediately destructed after Executor instance deleted (so does not the _StandaloneExecutor),
         # that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
@@ -1566,7 +1654,7 @@ class Executor:
     TODO(panyx0718): Why ParallelExecutor doesn't have close?
     '''
 
-    def close(self):
+    def close(self) -> None:
         """
         Close the executor. This interface is used for distributed training (PServers mode).
         This executor can not be used after calling the interface, because
@@ -1593,7 +1681,7 @@ class Executor:
                 del trainer_instance
             self._default_executor.close()
 
-    def flush(self):
+    def flush(self) -> None:
         """
         flush all trainer param to root_scope
         """
@@ -1603,6 +1691,48 @@ class Executor:
             self._default_executor.release_trainer(trainer_instance)
             del trainer_instance
         self.trainer_caches.clear()
+
+    @overload
+    def run(
+        self,
+        program: Program | CompiledProgram | None = ...,
+        feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
+        feed_var_name: str = ...,
+        fetch_var_name: str = ...,
+        scope: core._Scope | None = ...,
+        return_numpy: Literal[True] = ...,
+        use_program_cache: bool = ...,
+        use_prune: bool = ...,
+    ) -> list[npt.NDArray[Any]]: ...
+
+    @overload
+    def run(
+        self,
+        program: Program | CompiledProgram | None = ...,
+        feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
+        feed_var_name: str = ...,
+        fetch_var_name: str = ...,
+        scope: core._Scope | None = ...,
+        return_numpy: Literal[False] = ...,
+        use_program_cache: bool = ...,
+        use_prune: bool = ...,
+    ) -> list[Tensor]: ...
+
+    @overload
+    def run(
+        self,
+        program: Program | CompiledProgram | None = ...,
+        feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
+        feed_var_name: str = ...,
+        fetch_var_name: str = ...,
+        scope: core._Scope | None = ...,
+        return_numpy: bool = ...,
+        use_program_cache: bool = ...,
+        use_prune: bool = ...,
+    ) -> list[Tensor] | list[npt.NDArray[Any]]: ...
 
     def run(
         self,
@@ -1691,8 +1821,10 @@ class Executor:
                 >>> exe.run(paddle.static.default_startup_program())
 
                 >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-                >>> loss_val, array_val = exe.run(feed={'X': x},
-                ...                                 fetch_list=[loss.name, array.name])
+                >>> loss_val, array_val = exe.run(
+                ...     feed={'X': x},
+                ...     fetch_list=[loss.name, array.name]  # type: ignore[union-attr]
+                ... )
                 >>> print(array_val)
                 >>> # doctest: +SKIP("Random output")
                 [array(0.16870381, dtype=float32)]
@@ -1721,17 +1853,20 @@ class Executor:
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> build_strategy = paddle.static.BuildStrategy()
                 >>> binary = paddle.static.CompiledProgram(
-                ...     paddle.static.default_main_program(), build_strategy=build_strategy)
+                ...     paddle.static.default_main_program(),
+                ...     build_strategy=build_strategy
+                ... )
                 >>> batch_size = 6
                 >>> x = np.random.random(size=(batch_size, 1)).astype('float32')
 
-                >>> prediction, = exe.run(binary,
-                ...                         feed={'X': x},
-                ...                     fetch_list=[prediction.name])
+                >>> prediction, = exe.run(
+                ...     binary,
+                ...     feed={'X': x},
+                ...     fetch_list=[prediction.name]
+                ... )
                 >>> # If the user uses two GPU cards to run this python code, the printed result will be
                 >>> # (6, class_dim). The first dimension value of the printed result is the batch_size.
-                >>> print("The prediction shape: {}".format(
-                ...     np.array(prediction).shape))
+                >>> print("The prediction shape: {}".format(np.array(prediction).shape))
                 The prediction shape: (6, 2)
 
                 >>> print(prediction)
@@ -2169,7 +2304,7 @@ class Executor:
         dataset.set_thread(pipeline_opt["concurrency_list"][0] * pipeline_num)
         return pipeline_num
 
-    def split_program_by_device(self, program):
+    def split_program_by_device(self, program: Program) -> list[int] | None:
         ops_list = []
         type_list = []
         pre = None
@@ -2769,10 +2904,7 @@ class Executor:
             self._add_scope_cache(cache_key, cached_scope)
         if micro_cached_scopes is None:
             micro_cached_scopes = []
-            if (
-                "inference_generation" in fleet_opt
-                and fleet_opt["inference_generation"]
-            ):
+            if fleet_opt.get("inference_generation"):
                 for _ in range(int(fleet_opt["num_micro_batches"])):
                     micro_cached_scopes.append(cached_scope.new_scope())
                 self._add_micro_scopes_cache(cache_key, micro_cached_scopes)
@@ -2841,10 +2973,7 @@ class Executor:
                 fetch_task.set_program(fetch_program)
 
             micro_scope_list = []
-            if (
-                "inference_generation" in fleet_opt
-                and fleet_opt["inference_generation"]
-            ):
+            if fleet_opt.get("inference_generation"):
                 for i in range(int(fleet_opt["num_micro_batches"])):
                     micro_scope_list.append(cached_scope.new_scope())
 
@@ -3048,16 +3177,16 @@ class Executor:
 
     def infer_from_dataset(
         self,
-        program=None,
-        dataset=None,
-        scope=None,
-        thread=0,
-        debug=False,
-        fetch_list=None,
-        fetch_info=None,
-        print_period=100,
-        fetch_handler=None,
-    ):
+        program: Program | CompiledProgram | None = None,
+        dataset: DatasetBase | _FleetDatasetBase | None = None,
+        scope: core._Scope | None = None,
+        thread: int = 0,
+        debug: bool = False,
+        fetch_list: list[Tensor] | None = None,
+        fetch_info: list[str] | None = None,
+        print_period: int = 100,
+        fetch_handler: FetchHandler | None = None,
+    ) -> None:
         """
         Infer from a pre-defined Dataset. Dataset is defined in paddle.base.dataset.
         Given a program, either a program or compiled program, infer_from_dataset will
@@ -3127,14 +3256,14 @@ class Executor:
 
     def start_heter_trainer(
         self,
-        program=None,
-        scope=None,
-        debug=False,
-        fetch_list=None,
-        fetch_info=None,
-        print_period=100,
-        fetch_handler=None,
-    ):
+        program: Program | None = None,
+        scope: core._Scope | None = None,
+        debug: bool = False,
+        fetch_list: list[Tensor] | None = None,
+        fetch_info: list[str] | None = None,
+        print_period: int = 100,
+        fetch_handler: FetchHandler | None = None,
+    ) -> core.TrainerBase:
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=None,
@@ -3171,16 +3300,16 @@ class Executor:
 
     def train_from_dataset(
         self,
-        program=None,
-        dataset=None,
-        scope=None,
-        thread=0,
-        debug=False,
-        fetch_list=None,
-        fetch_info=None,
-        print_period=100,
-        fetch_handler=None,
-    ):
+        program: Program | CompiledProgram | None = None,
+        dataset: DatasetBase | _FleetDatasetBase | None = None,
+        scope: core._Scope | None = None,
+        thread: int = 0,
+        debug: bool = False,
+        fetch_list: list[Tensor] | None = None,
+        fetch_info: list[str] | None = None,
+        print_period: int = 100,
+        fetch_handler: FetchHandler | None = None,
+    ) -> None:
         """
         Train from a pre-defined Dataset. Dataset is defined in paddle.base.dataset.
         Given a program, either a program or compiled program, train_from_dataset will

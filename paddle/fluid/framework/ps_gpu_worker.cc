@@ -23,7 +23,7 @@ limitations under the License. */
      defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
 #if defined _WIN32 || defined __APPLE__

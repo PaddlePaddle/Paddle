@@ -350,6 +350,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    fused_dropout_add,
+    PD_INFER_SPMD(phi::distributed::FusedDropoutAddSpmdBase),
+    PD_INFER_SPMD(phi::distributed::FusedDropoutAddSpmdReverseBase));
+
 // elementwise binary rule
 PD_REGISTER_SPMD_RULE(
     add,
@@ -675,6 +680,11 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(unbind,
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    logsumexp,
+    PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmd),
+    PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

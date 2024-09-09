@@ -335,10 +335,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_model=${DAM_SMALL_INSTALL_DIR}/model
     --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt)
 
-  #save model
-  inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR}
-                              analyzer_save_model_tester.cc EXTRA_DEPS common)
-
   # chinese_ner
   set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
   download_model_and_data_without_verify(
@@ -383,18 +379,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     test_analyzer_transformer
     SRCS
     analyzer_transformer_compare_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${TRANSFORMER_INSTALL_DIR}/model
-    --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
-    --batch_size=8
-    --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
-  inference_analysis_test(
-    test_analyzer_transformer_fuse
-    SRCS
-    analyzer_transformer_fuse_tester.cc
     EXTRA_DEPS
     common
     paddle_inference_shared
@@ -501,15 +485,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_mmp_tester.cc EXTRA_DEPS common)
 
   inference_analysis_test(
-    test_analyzer_capi_exp
-    SRCS
-    analyzer_capi_exp_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${RESNET50_MODEL_DIR}/model)
-
-  inference_analysis_test(
     test_analyzer_capi_exp_pd_tensor
     SRCS
     analyzer_capi_exp_pd_tensor_tester.cc
@@ -562,15 +537,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_model=${OCR_INSTALL_DIR}/model
     --infer_data=${OCR_INSTALL_DIR}/data.txt
     --refer_result=${OCR_INSTALL_DIR}/result.txt)
-
-  inference_analysis_test(
-    test_analyzer_capi_exp_ner
-    SRCS
-    analyzer_capi_exp_ner_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
 
   set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)

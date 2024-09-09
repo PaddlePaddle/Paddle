@@ -52,9 +52,11 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
                 'lower': True if self.real_op_type == 'tril' else False,
             }
             self.outputs = {
-                'Out': self.real_np_op(self.X, self.diagonal)
-                if self.diagonal
-                else self.real_np_op(self.X)
+                'Out': (
+                    self.real_np_op(self.X, self.diagonal)
+                    if self.diagonal
+                    else self.real_np_op(self.X)
+                )
             }
 
         def init_dtype(self):
@@ -138,7 +140,7 @@ class TestTrilTriuOpError(unittest.TestCase):
         errmsg = {
             "diagonal: TypeError": f"diagonal in {op_type} must be a python Int",
         }
-        expected = list(errmsg.keys())[0]
+        expected = next(iter(errmsg.keys()))
         with self.assertRaisesRegex(
             eval(expected.split(':')[-1]), errmsg[expected]
         ):
@@ -153,7 +155,7 @@ class TestTrilTriuOpError(unittest.TestCase):
         errmsg = {
             "input: ValueError": f"x shape in {op_type} must be at least 2-D",
         }
-        expected = list(errmsg.keys())[0]
+        expected = next(iter(errmsg.keys()))
         with self.assertRaisesRegex(
             eval(expected.split(':')[-1]), errmsg[expected]
         ):

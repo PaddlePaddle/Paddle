@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -23,34 +26,38 @@ from paddle.nn import (
     initializer as I,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DataLayout2D, ParamAttrLike
+
 
 def resnet_unit(
-    x,
-    filter_x,
-    scale_x,
-    bias_x,
-    mean_x,
-    var_x,
-    z,
-    filter_z,
-    scale_z,
-    bias_z,
-    mean_z,
-    var_z,
-    stride,
-    stride_z,
-    padding,
-    dilation,
-    groups,
-    momentum,
-    eps,
-    data_format,
-    fuse_add,
-    has_shortcut,
-    use_global_stats,
-    is_test,
-    act,
-):
+    x: Tensor,
+    filter_x: Tensor,
+    scale_x: Tensor,
+    bias_x: Tensor,
+    mean_x: Tensor,
+    var_x: Tensor,
+    z: Tensor | None,
+    filter_z: Tensor | None,
+    scale_z: Tensor | None,
+    bias_z: Tensor | None,
+    mean_z: Tensor | None,
+    var_z: Tensor | None,
+    stride: int,
+    stride_z: int,
+    padding: int,
+    dilation: int,
+    groups: int,
+    momentum: float,
+    eps: float,
+    data_format: DataLayout2D,
+    fuse_add: bool,
+    has_shortcut: bool,
+    use_global_stats: bool,
+    is_test: bool,
+    act: str,
+) -> Tensor:
     helper = LayerHelper('resnet_unit', **locals())
     bn_param_dtype = base.core.VarDesc.VarType.FP32
     bit_mask_dtype = base.core.VarDesc.VarType.INT32
@@ -156,31 +163,31 @@ class ResNetUnit(Layer):
 
     def __init__(
         self,
-        num_channels_x,
-        num_filters,
-        filter_size,
-        stride=1,
-        momentum=0.9,
-        eps=1e-5,
-        data_format='NHWC',
-        act='relu',
-        fuse_add=False,
-        has_shortcut=False,
-        use_global_stats=False,
-        is_test=False,
-        filter_x_attr=None,
-        scale_x_attr=None,
-        bias_x_attr=None,
-        moving_mean_x_name=None,
-        moving_var_x_name=None,
-        num_channels_z=1,
-        stride_z=1,
-        filter_z_attr=None,
-        scale_z_attr=None,
-        bias_z_attr=None,
-        moving_mean_z_name=None,
-        moving_var_z_name=None,
-    ):
+        num_channels_x: int,
+        num_filters: int,
+        filter_size: int,
+        stride: int = 1,
+        momentum: float = 0.9,
+        eps: float = 1e-5,
+        data_format: DataLayout2D = 'NHWC',
+        act: str = 'relu',
+        fuse_add: bool = False,
+        has_shortcut: bool = False,
+        use_global_stats: bool = False,
+        is_test: bool = False,
+        filter_x_attr: ParamAttrLike | None = None,
+        scale_x_attr: ParamAttrLike | None = None,
+        bias_x_attr: ParamAttrLike | None = None,
+        moving_mean_x_name: str | None = None,
+        moving_var_x_name: str | None = None,
+        num_channels_z: int = 1,
+        stride_z: int = 1,
+        filter_z_attr: ParamAttrLike | None = None,
+        scale_z_attr: ParamAttrLike | None = None,
+        bias_z_attr: ParamAttrLike | None = None,
+        moving_mean_z_name: str | None = None,
+        moving_var_z_name: str | None = None,
+    ) -> None:
         super().__init__()
         self._stride = stride
         self._stride_z = stride_z
@@ -327,7 +334,7 @@ class ResNetUnit(Layer):
             self.mean_z = None
             self.var_z = None
 
-    def forward(self, x, z=None):
+    def forward(self, x: Tensor, z: Tensor | None = None) -> Tensor:
         if self._fuse_add and z is None:
             raise ValueError("z can not be None")
 

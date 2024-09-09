@@ -30,12 +30,13 @@ def compute_index_add_ref(
         axis = axis + len(x_shape)
     if axis != 0:
         outer_loop = np.prod(x_shape[:axis]).astype(int)
-        x_reshape = [outer_loop] + list(x_shape[axis:])
+        x_reshape = [outer_loop, *x_shape[axis:]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
 
         add_value_reshape = [
-            np.prod(add_value_shape[:axis]).astype(int)
-        ] + list(add_value_shape[axis:])
+            np.prod(add_value_shape[:axis]).astype(int),
+            *add_value_shape[axis:],
+        ]
 
         add_value_np_reshape = np.reshape(
             add_value_np, tuple(add_value_reshape)

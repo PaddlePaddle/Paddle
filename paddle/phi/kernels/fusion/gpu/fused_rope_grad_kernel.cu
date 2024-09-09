@@ -49,7 +49,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   auto head_dim = dout_q.dims()[3];
   PADDLE_ENFORCE_NE(head_dim % 2,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The head_dim of input must be a multiple of 2."));
 
   constexpr const int vec_size = 2;

@@ -33,17 +33,17 @@ void PhiKernelOp::VerifySig() {
 
   PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
                      attributes.at("op_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: op_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
                      attributes.at("kernel_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
                      attributes.at("kernel_key").isa<KernelAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_key is not right."));
 }
 
@@ -72,17 +72,17 @@ void LegacyKernelOp::VerifySig() {
 
   PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
                      attributes.at("op_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: op_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
                      attributes.at("kernel_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
                      attributes.at("kernel_key").isa<KernelAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_key is not right."));
 }
 
@@ -110,17 +110,17 @@ void CustomKernelOp::VerifySig() {
 
   PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
                      attributes.at("op_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: op_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
                      attributes.at("kernel_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
                      attributes.at("kernel_key").isa<KernelAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_key is not right."));
 }
 
@@ -152,17 +152,17 @@ void OneDNNPhiKernelOp::VerifySig() {
 
   PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
                      attributes.at("op_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: op_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
                      attributes.at("kernel_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
                      attributes.at("kernel_key").isa<KernelAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_key is not right."));
 }
 
@@ -191,17 +191,17 @@ void OneDNNMixedPhiKernelOp::VerifySig() {
 
   PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
                      attributes.at("op_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: op_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
                      attributes.at("kernel_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
                      attributes.at("kernel_key").isa<KernelAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_key is not right."));
 }
 
@@ -231,17 +231,17 @@ void OneDNNLegacyKernelOp::VerifySig() {
 
   PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
                      attributes.at("op_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: op_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
                      attributes.at("kernel_name").isa<pir::StrAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
                      attributes.at("kernel_key").isa<KernelAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Type of attribute: kernel_key is not right."));
 }
 

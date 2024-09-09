@@ -274,6 +274,7 @@
   output : Tensor(out), Tensor(seed_offset)
   infer_meta :
     func : FusedDropoutAddInferMeta
+    spmd_rule : FusedDropoutAddSpmd
     param : [x, y]
   kernel :
     func : fused_dropout_add
@@ -839,3 +840,15 @@
     data_type: embeddings
   optional: h0, c0
   intermediate: xx, batched_input, batched_hidden, batched_cell, reordered_h0, reordered_c0
+
+- op: fused_moe
+  args: (Tensor x, Tensor gate_weight, Tensor ffn1_weight, Tensor ffn1_scale, Tensor ffn1_bias, Tensor ffn2_weight, Tensor ffn2_scale, Tensor ffn2_bias,
+    str quant_method = "None", int moe_topk = 2, bool norm_topk_prob = true)
+  output: Tensor (out)
+  infer_meta:
+    func: FusedMoeInferMeta
+  kernel:
+    func: fused_moe
+    data_type : x
+  optional : ffn1_bias, ffn1_scale, ffn2_bias, ffn2_scale
+  support_dygraph_mode : true

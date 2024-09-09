@@ -34,9 +34,22 @@ namespace ir {
 using cinn::common::make_shared;
 
 Expr Cast::Make(Type t, Expr v) {
-  CHECK(!t.is_unk());
-  CHECK(!(t.is_void() && !t.is_cpp_handle())) << "Void is not allowed to cast";
-  CHECK(v.defined());
+  PADDLE_ENFORCE_EQ(!t.is_unk(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The type is unknown. "
+                        "A valid type is required for casting."));
+  PADDLE_ENFORCE_EQ(
+      !(t.is_void() && !t.is_cpp_handle()),
+      true,
+      ::common::errors::InvalidArgument(
+          "Void is not allowed to cast. "
+          "Ensure the type is not void unless it is a C++ handle."));
+  PADDLE_ENFORCE_EQ(v.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The expression is not defined. "
+                        "A defined expression is required for casting."));
 
   auto node = make_shared<Cast>();
   node->v() = v;
@@ -58,14 +71,25 @@ Expr Add::Make(Expr a, Expr b) {
 Add::Add(Expr a, Expr b) : BinaryOpNode<Add>(a.type(), a, b) {}
 
 void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
-  CHECK(a.defined());
-  CHECK(b.defined());
-  TryElevateInt32ToInt64({a, b});
   PADDLE_ENFORCE_EQ(
-      a.type(),
-      b.type(),
-      ::common::errors::InvalidArgument(
-          "The operands' types of the node [%s] don't match", ir_name));
+      a.defined(),
+      true,
+      ::common::errors::InvalidArgument("The first operand is not defined. "
+                                        "A valid expression is required."));
+  PADDLE_ENFORCE_EQ(
+      b.defined(),
+      true,
+      ::common::errors::InvalidArgument("The second operand is not defined. "
+                                        "A valid expression is required."));
+  TryElevateInt32ToInt64({a, b});
+  PADDLE_ENFORCE_EQ(a.type(),
+                    b.type(),
+                    ::common::errors::InvalidArgument(
+                        "The operands' types of the node [%s] don't match. "
+                        "Received types: %s and %s",
+                        ir_name.data(),
+                        a.type().to_string().c_str(),
+                        b.type().to_string().c_str()));
 }
 
 void Add::Verify() const { BinaryNodeVerify(a(), b(), "Add"); }
@@ -116,7 +140,14 @@ Expr Minus::Make(Expr a) {
   return Expr(node);
 }
 
-void Minus::Verify() const { CHECK(v().defined()); }
+void Minus::Verify() const {
+  PADDLE_ENFORCE_EQ(
+      v().defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The operand is not defined. "
+          "A valid operand is required for the Minus operation."));
+}
 
 Expr EQ::Make(Expr a, Expr b) {
   auto node = make_shared<EQ>(a, b);
@@ -207,9 +238,18 @@ Type Not::type() const { return type_; }
 
 Expr Let::Make(Expr symbol, Expr body) {
   auto *n = make_shared<Let>();
-  CHECK(symbol.type().valid());
+  PADDLE_ENFORCE_EQ(
+      symbol.type().valid(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The type of the symbol is not valid. "
+          "A valid type for the symbol is required to create a Let node."));
   if (body.defined()) {
-    CHECK(body.type().valid());
+    PADDLE_ENFORCE_EQ(body.type().valid(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The type of the body is not valid. "
+                          "If a body is defined, it must have a valid type."));
   }
   n->symbol = symbol;
   n->body = body;
@@ -218,15 +258,21 @@ Expr Let::Make(Expr symbol, Expr body) {
 }
 
 void Let::Verify() const {
-  CHECK(symbol.defined());
+  PADDLE_ENFORCE_EQ(symbol.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The symbol is not defined. "
+                        "A defined symbol is required for the Let node."));
   // The default value(contained in body) is not required.
   if (body.defined()) {
     TryElevateInt32ToInt64({symbol, body});
-    PADDLE_ENFORCE_EQ(symbol.type(),
-                      body.type(),
-                      ::common::errors::InvalidArgument(
-                          "The type of the symbol and the body of "
-                          "the node [Let] should be the same"));
+    PADDLE_ENFORCE_EQ(
+        symbol.type(),
+        body.type(),
+        ::common::errors::InvalidArgument(
+            "The type of the symbol and the body of "
+            "the node [Let] should be the same. "
+            "The types must match to ensure consistency within the Let node."));
   }
 }
 
@@ -265,7 +311,13 @@ Expr _Var_::Copy() const {
   return Expr(n);
 }
 
-void _Var_::Verify() const { CHECK(!name.empty()) << "Var should have a name"; }
+void _Var_::Verify() const {
+  PADDLE_ENFORCE_EQ(!name.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The variable should have a name. "
+                        "A valid name is required to identify the variable."));
+}
 
 void Mul::Verify() const { BinaryNodeVerify(a(), b(), "Mul"); }
 
@@ -279,9 +331,23 @@ Expr For::Make(Var loop_var,
                BindInfo bind_info) {
   ir::TryElevateInt32ToInt64({loop_var, min, extent});
   auto node = make_shared<For>();
-  CHECK(loop_var.defined());
-  CHECK(min.defined());
-  CHECK(extent.defined());
+
+  PADDLE_ENFORCE_EQ(
+      loop_var.defined(),
+      true,
+      ::common::errors::InvalidArgument("The loop variable is not defined. "
+                                        "A valid loop variable is required."));
+  PADDLE_ENFORCE_EQ(
+      min.defined(),
+      true,
+      ::common::errors::InvalidArgument("The minimum value is not defined. "
+                                        "A valid minimum value is required."));
+  PADDLE_ENFORCE_EQ(
+      extent.defined(),
+      true,
+      ::common::errors::InvalidArgument("The extent is not defined. "
+                                        "A valid extent is required."));
+
   node->loop_var = loop_var;
   node->min = min;
   node->extent = extent;
@@ -291,9 +357,22 @@ Expr For::Make(Var loop_var,
   node->set_vectorize_info(vector_info);
   node->set_bind_info(bind_info);
 
-  if (node->is_vectorized()) CHECK(node->vectorize_info().valid());
-  if (node->is_binded() && bind_info.offset >= 0)
-    CHECK(node->bind_info().valid());
+  if (node->is_vectorized()) {
+    PADDLE_ENFORCE_EQ(node->vectorize_info().valid(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The vectorize info is not valid. "
+                          "Ensure that the vectorization "
+                          "information is correctly specified."));
+  }
+  if (node->is_binded() && bind_info.offset >= 0) {
+    PADDLE_ENFORCE_EQ(
+        node->bind_info().valid(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The bind info is not valid. "
+            "Ensure that the binding information is correctly specified."));
+  }
 
   return Expr(node);
 }
@@ -333,9 +412,20 @@ Expr ScheduleBlock::Make(const std::vector<Var> &iter_vars,
   return Expr(node);
 }
 void ScheduleBlock::Verify() const {
-  CHECK(!name.empty());
-  CHECK(body.defined());
+  PADDLE_ENFORCE_EQ(
+      !name.empty(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The name is empty. A valid name is required for the ScheduleBlock "
+          "to "
+          "ensure proper identification and referencing within the code."));
+  PADDLE_ENFORCE_EQ(body.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The body is not defined. "
+                        "A defined body is required for the ScheduleBlock."));
 }
+
 std::vector<Expr *> ScheduleBlock::expr_fields() {
   std::vector<Expr *> res;
   res.push_back(&body);
@@ -356,24 +446,38 @@ Expr ScheduleBlockRealize::Make(const std::vector<Expr> &iter_values,
 }
 void ScheduleBlockRealize::Verify() const {
   auto *schedule_block_ptr = schedule_block.As<ScheduleBlock>();
-  CHECK(schedule_block_ptr);
+  PADDLE_ENFORCE_NOT_NULL(schedule_block_ptr,
+                          ::common::errors::InvalidArgument(
+                              "The schedule block pointer is null. "
+                              "A valid schedule block pointer is required."));
   PADDLE_ENFORCE_EQ(
       schedule_block_ptr->iter_vars.size(),
       iter_values.size(),
       ::common::errors::InvalidArgument(
-          "The size of iter_values should be equal to the size of iter_vars"));
+          "The size of iter_values should be equal to the size of iter_vars. "
+          "Expected size: %d, but got: %d",
+          schedule_block_ptr->iter_vars.size(),
+          iter_values.size()));
 }
+
 std::vector<Expr *> ScheduleBlockRealize::expr_fields() {
   std::vector<Expr *> res;
   auto *schedule_block_ptr = schedule_block.As<ScheduleBlock>();
-  CHECK(schedule_block_ptr);
+  PADDLE_ENFORCE_NOT_NULL(schedule_block_ptr,
+                          ::common::errors::InvalidArgument(
+                              "The schedule block pointer is null. "
+                              "A valid schedule block pointer is required."));
   res.push_back(&schedule_block_ptr->body);
   return res;
 }
+
 std::vector<const Expr *> ScheduleBlockRealize::expr_fields() const {
   std::vector<const Expr *> res;
   auto *schedule_block_ptr = schedule_block.As<ScheduleBlock>();
-  CHECK(schedule_block_ptr);
+  PADDLE_ENFORCE_NOT_NULL(schedule_block_ptr,
+                          ::common::errors::InvalidArgument(
+                              "The schedule block pointer is null. "
+                              "A valid schedule block pointer is required."));
   res.push_back(&schedule_block_ptr->body);
   return res;
 }
@@ -392,9 +496,20 @@ IfThenElse::IfThenElse(Expr condition, Expr true_case, Expr false_case)
       condition(condition),
       true_case(true_case),
       false_case(false_case) {
-  CHECK(condition.defined());
-  CHECK(true_case.defined());
+  PADDLE_ENFORCE_EQ(
+      condition.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The condition is not defined. "
+          "A valid condition expression is required for IfThenElse."));
+  PADDLE_ENFORCE_EQ(
+      true_case.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The true_case is not defined. "
+          "A valid true_case expression is required for IfThenElse."));
 }
+
 std::vector<Expr *> IfThenElse::expr_fields() {
   return {&condition, &true_case, &false_case};
 }
@@ -403,7 +518,10 @@ std::vector<const Expr *> IfThenElse::expr_fields() const {
 }
 
 Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
-  CHECK(tensor.As<_Tensor_>()) << "tensor should be _Tensor_ type";
+  PADDLE_ENFORCE_NOT_NULL(tensor.As<_Tensor_>(),
+                          ::common::errors::InvalidArgument(
+                              "The tensor should be of type _Tensor_. "
+                              "Ensure that the tensor is correctly defined."));
   auto node = make_shared<Store>();
   node->tensor = tensor;
   node->value = value;
@@ -419,7 +537,10 @@ Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
 
 Expr Store::index() const {
   auto *tensor_n = tensor.As<ir::_Tensor_>();
-  CHECK(tensor_n);
+  PADDLE_ENFORCE_NOT_NULL(tensor_n,
+                          ::common::errors::InvalidArgument(
+                              "The tensor pointer is null. "
+                              "Ensure that the tensor is correctly defined."));
   if (indices.size() == 1) {
     return indices[0];
   }
@@ -461,7 +582,11 @@ void Cast::replace(Expr old_op, Expr new_op) {
 
 const std::string &Store::name() const {
   auto *t = tensor.As<ir::_Tensor_>();
-  CHECK(t);
+  PADDLE_ENFORCE_NOT_NULL(
+      t,
+      ::common::errors::InvalidArgument(
+          "The tensor pointer is null. "
+          "A valid tensor pointer is required to get the name."));
   return t->name;
 }
 
@@ -479,7 +604,14 @@ std::vector<const Expr *> Store::expr_fields() const {
   return exprs;
 }
 
-void Store::Verify() const { CHECK(tensor.defined()); }
+void Store::Verify() const {
+  PADDLE_ENFORCE_EQ(
+      tensor.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The tensor is not defined. "
+          "A defined tensor is required for the Store operation."));
+}
 
 Expr Alloc::Make(Expr dest,
                  Type type,
@@ -487,7 +619,10 @@ Expr Alloc::Make(Expr dest,
                  Expr condition,
                  Expr body) {
   auto node = make_shared<Alloc>();
-  CHECK(dest.As<_Buffer_>()) << "Alloc destination only supports Buffer";
+  PADDLE_ENFORCE_NOT_NULL(dest.As<_Buffer_>(),
+                          ::common::errors::InvalidArgument(
+                              "Alloc destination only supports Buffer. "
+                              "Ensure the destination is of type Buffer."));
   node->destination = dest;
   node->extents = extents;
   node->condition = condition;
@@ -504,11 +639,15 @@ int32_t Alloc::ConstantAllocationSize(const std::vector<Expr> &extents) {
   int32_t res{1};
   for (auto &e : extents) {
     auto *p = e.As<IntImm>();
-    CHECK(p) << "extent should be IntImm";
+    PADDLE_ENFORCE_NOT_NULL(p,
+                            ::common::errors::InvalidArgument(
+                                "Extent should be IntImm. "
+                                "Each extent must be an instance of IntImm."));
     res *= p->value;
   }
   return res;
 }
+
 std::vector<Expr *> Alloc::expr_fields() {
   std::vector<Expr *> res;
   for (auto &x : extents) res.push_back(&x);
@@ -526,7 +665,10 @@ std::vector<const Expr *> Alloc::expr_fields() const {
 
 Expr Free::Make(Expr dest) {
   auto node = make_shared<Free>();
-  CHECK(dest.As<_Buffer_>()) << "Free destination only supports Buffer";
+  PADDLE_ENFORCE_NOT_NULL(dest.As<_Buffer_>(),
+                          ::common::errors::InvalidArgument(
+                              "Free destination only supports Buffer. "
+                              "Ensure the destination is of type Buffer."));
   node->destination = dest;
   return Expr(node);
 }
@@ -540,7 +682,12 @@ Expr Call::Make(Type type,
                 int value_index,
                 const std::map<std::string, attr_t> &attrs) {
   for (size_t i = 0; i < read_args.size(); ++i) {
-    CHECK(read_args[i].defined());
+    PADDLE_ENFORCE_EQ(
+        read_args[i].defined(),
+        true,
+        ::common::errors::InvalidArgument("Read argument %d is not defined. "
+                                          "All read arguments must be defined.",
+                                          i));
   }
 
   auto node = cinn::common::make_shared<Call>(type);
@@ -602,11 +749,26 @@ Expr PolyFor::Make(Var iterator,
   n->set_vectorize_info(vectorize_info);
   n->set_bind_info(bind_info);
 
-  if (n->is_vectorized()) CHECK(n->vectorize_info().valid());
-  if (n->is_binded() && bind_info.offset >= 0) CHECK(n->bind_info().valid());
+  if (n->is_vectorized()) {
+    PADDLE_ENFORCE_EQ(n->vectorize_info().valid(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The vectorize info is not valid. "
+                          "Ensure that the vectorization "
+                          "information is correctly specified."));
+  }
+  if (n->is_binded() && bind_info.offset >= 0) {
+    PADDLE_ENFORCE_EQ(
+        n->bind_info().valid(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The bind info is not valid. "
+            "Ensure that the binding information is correctly specified."));
+  }
 
   return Expr(n);
 }
+
 std::vector<Expr *> PolyFor::expr_fields() {
   return {&init, &condition, &inc, &body};
 }
@@ -661,14 +823,27 @@ Var &Var::operator=(const _Var_ *x) {
 }
 
 Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
-  CHECK(tensor->type().valid());
+  PADDLE_ENFORCE_EQ(
+      tensor->type().valid(),
+      true,
+      ::common::errors::InvalidArgument("The tensor type is not valid. "
+                                        "A valid tensor type is required."));
   const auto indices = utils::GetCompitableStoreLoadIndices(
       tensor.as_tensor_ref(), origin_indices);
-  CHECK(!indices.empty());
+  PADDLE_ENFORCE_EQ(
+      !indices.empty(),
+      true,
+      ::common::errors::InvalidArgument("The indices should not be empty. "
+                                        "At least one index is required."));
   TryElevateInt32ToInt64(indices);
   for (auto &idx : indices) {
-    CHECK(idx.type().ElementOf() == Int(64) ||
-          idx.type().ElementOf() == Int(32));
+    PADDLE_ENFORCE_EQ(
+        idx.type().ElementOf() == Int(64) || idx.type().ElementOf() == Int(32),
+        true,
+        ::common::errors::InvalidArgument(
+            "The index type should be either int64 or int32. "
+            "Received index type: %s",
+            idx.type().to_string().c_str()));
   }
   auto node = make_shared<Load>();
   node->tensor = tensor;
@@ -683,14 +858,28 @@ void Load::convert_int32_to_int64() {
 }
 
 Type Load::type() const {
-  CHECK(tensor.defined());
-  CHECK(tensor.type().valid());
+  PADDLE_ENFORCE_EQ(
+      tensor.defined(),
+      true,
+      ::common::errors::InvalidArgument("The tensor is not defined. "
+                                        "A defined tensor is required."));
+  PADDLE_ENFORCE_EQ(
+      tensor.type().valid(),
+      true,
+      ::common::errors::InvalidArgument("The tensor type is not valid. "
+                                        "A valid tensor type is required."));
 
   int lanes = 0;
-  for (auto &idx : indices) lanes = std::max(lanes, idx.type().lanes());
+  for (auto &idx : indices) {
+    lanes = std::max(lanes, idx.type().lanes());
+  }
   auto type = tensor.type().ElementOf().with_lanes(lanes);
-  if (type.is_cpp_handle()) return type.set_cpp_handle(false);
-  if (type.is_cpp_handle2()) return type.set_cpp_handle(true);
+  if (type.is_cpp_handle()) {
+    return type.set_cpp_handle(false);
+  }
+  if (type.is_cpp_handle2()) {
+    return type.set_cpp_handle(true);
+  }
   return type;
 }
 
@@ -709,7 +898,10 @@ std::vector<const Expr *> Load::expr_fields() const {
 Expr Load::index() const {
   if (is_addr_tensor()) {
     auto *tensor_n = tensor.As<_Tensor_>();
-    CHECK(tensor_n);
+    PADDLE_ENFORCE_NOT_NULL(tensor_n,
+                            ::common::errors::InvalidArgument(
+                                "The tensor pointer is null. "
+                                "A valid tensor pointer is required."));
     VLOG(3) << "Begin Load::index IndiceToAbsOffset of tensor: "
             << this->name();
     if (indices.size() == 1) {
@@ -728,18 +920,34 @@ Expr Load::index() const {
 
 const std::string &Load::name() const {
   auto *t = tensor.As<ir::_Tensor_>();
-  CHECK(t);
+  PADDLE_ENFORCE_NOT_NULL(
+      t,
+      ::common::errors::InvalidArgument("The tensor pointer is null. "
+                                        "A valid tensor pointer is required."));
   return t->name;
 }
 
 void Load::Verify() const {
-  CHECK(tensor.defined());
-  CHECK(!indices.empty()) << "At least one indice is needed";
+  PADDLE_ENFORCE_EQ(
+      tensor.defined(),
+      true,
+      ::common::errors::InvalidArgument("The tensor is not defined."));
+  PADDLE_ENFORCE_EQ(
+      !indices.empty(),
+      true,
+      ::common::errors::InvalidArgument("At least one index is needed."));
   for (auto &indice : indices) {
-    CHECK(indice.defined());
-    CHECK(indice.type().ElementOf() == type_of<int32_t>() ||
-          indice.type().ElementOf() == type_of<int64_t>())
-        << "get type " << indice.type() << " vs (int64 or int32)";
+    PADDLE_ENFORCE_EQ(indice.defined(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "One of the indices is not defined."));
+    PADDLE_ENFORCE_EQ(
+        indice.type().ElementOf() == type_of<int32_t>() ||
+            indice.type().ElementOf() == type_of<int64_t>(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The index type should be either int32 or int64. Received type: %s",
+            indice.type().to_string().c_str()));
   }
 }
 
@@ -749,10 +957,22 @@ bool LoadStoreAddrMnger::is_addr_tensor() const {
 bool LoadStoreAddrMnger::is_addr_scalar() const { return !is_addr_tensor(); }
 
 Expr Ramp::Make(Expr base, Expr stride, int lanes) {
-  CHECK(base.defined());
-  CHECK(stride.defined());
-  CHECK(base.type().valid());
-  CHECK(stride.type().valid());
+  PADDLE_ENFORCE_EQ(
+      base.defined(),
+      true,
+      ::common::errors::InvalidArgument("The base expression is not defined."));
+  PADDLE_ENFORCE_EQ(stride.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The stride expression is not defined."));
+  PADDLE_ENFORCE_EQ(
+      base.type().valid(),
+      true,
+      ::common::errors::InvalidArgument("The base type is not valid."));
+  PADDLE_ENFORCE_EQ(
+      stride.type().valid(),
+      true,
+      ::common::errors::InvalidArgument("The stride type is not valid."));
   PADDLE_ENFORCE_EQ(stride.type(),
                     Int(32),
                     ::common::errors::InvalidArgument(
@@ -773,8 +993,14 @@ Expr Ramp::Make(Expr base, Expr stride, int lanes) {
 }
 
 Expr Broadcast::Make(Expr value, int lanes) {
-  CHECK(value.defined());
-  CHECK(value.type().valid());
+  PADDLE_ENFORCE_EQ(value.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The value expression is not defined."));
+  PADDLE_ENFORCE_EQ(
+      value.type().valid(),
+      true,
+      ::common::errors::InvalidArgument("The value type is not valid."));
 
   auto *n = make_shared<Broadcast>();
   n->value = value;
@@ -791,7 +1017,11 @@ Type Broadcast::type() const {
 }
 
 Expr Sum::Make(const std::vector<Expr> &vs) {
-  CHECK(!vs.empty());
+  PADDLE_ENFORCE_EQ(
+      !vs.empty(),
+      true,
+      ::common::errors::InvalidArgument("The vector of operands is empty. "
+                                        "At least one operand is required."));
   if (vs.size() == 1) return vs.front();
 
   auto *n = make_shared<Sum>();
@@ -801,11 +1031,13 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
     PADDLE_ENFORCE_EQ(v.type(),
                       type,
                       ::common::errors::InvalidArgument(
-                          "The operands' types of the node [Sum] don't match"));
+                          "The operands' types of the node [Sum] don't match. "
+                          "Expected type: %s, but got type: %s",
+                          type.to_string().c_str(),
+                          v.type().to_string().c_str()));
   }
 
   n->operands() = vs;
-
   n->set_type(vs.front()->type());
 
   return Expr(n);
@@ -861,23 +1093,47 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
                   Expr init,
                   Expr body,
                   const std::vector<Var> &reduce_axis) {
-  CHECK(body.defined());
-  CHECK(init.defined());
+  PADDLE_ENFORCE_EQ(
+      body.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The body expression is not defined. "
+          "A valid body expression is required for the Reduce node."));
+  PADDLE_ENFORCE_EQ(
+      init.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The init expression is not defined. "
+          "A valid init expression is required for the Reduce node."));
+
   auto n = cinn::common::make_shared<Reduce>();
   n->init = init;
   n->body = body;
   n->reduce_type = reduce_type;
   n->reduce_axis.append(reduce_axis.begin(), reduce_axis.end());
-  CHECK(body.type().valid());
+
+  PADDLE_ENFORCE_EQ(body.type().valid(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The body type is not valid. "
+                        "Ensure that the body expression has a valid type."));
+
   if (init.defined()) {
-    CHECK(init.type().valid());
-    PADDLE_ENFORCE_EQ(
-        init.type(),
-        body.type(),
-        ::common::errors::InvalidArgument(
-            "The type of the init and the body of the node [Reduce] "
-            "should be the same"));
+    PADDLE_ENFORCE_EQ(init.type().valid(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The init type is not valid. "
+                          "Ensure that the init expression has a valid type."));
+    PADDLE_ENFORCE_EQ(init.type(),
+                      body.type(),
+                      ::common::errors::InvalidArgument(
+                          "The type of the init and the body of the "
+                          "node [Reduce] should be the same. "
+                          "Received init type: %s, body type: %s",
+                          init.type().to_string().c_str(),
+                          body.type().to_string().c_str()));
   }
+
   n->set_type(body.type());
   return Expr(n);
 }
@@ -889,7 +1145,11 @@ std::vector<Expr *> Reduce::expr_fields() {
   if (init.defined()) {
     res.push_back(&init);
   }
-  CHECK(body.defined());
+  PADDLE_ENFORCE_EQ(body.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The body expression is not defined. "
+                        "The Reduce node requires a defined body expression."));
   res.push_back(&body);
   return res;
 }
@@ -898,21 +1158,39 @@ std::vector<const Expr *> Reduce::expr_fields() const {
   if (init.defined()) {
     res.push_back(&init);
   }
-  CHECK(body.defined());
+  PADDLE_ENFORCE_EQ(body.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The body expression is not defined. "
+                        "The Reduce node requires a defined body expression."));
   res.push_back(&body);
   return res;
 }
 
 void Reduce::Verify() const {
-  CHECK(init.defined());
-  CHECK(body.defined());
-  CHECK(!reduce_axis.empty()) << "At least one reduce axis is needed";
-  PADDLE_ENFORCE_EQ(
-      init.type(),
-      body.type(),
-      ::common::errors::InvalidArgument(
-          "The type of the init and the body of the node [Reduce] "
-          "should be the same"));
+  PADDLE_ENFORCE_EQ(init.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The init expression is not defined. "
+                        "The Reduce node requires a defined init expression."));
+  PADDLE_ENFORCE_EQ(body.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The body expression is not defined. "
+                        "The Reduce node requires a defined body expression."));
+  PADDLE_ENFORCE_EQ(!reduce_axis.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "At least one reduce axis is needed. "
+                        "Ensure that the reduce_axis vector is not empty."));
+  PADDLE_ENFORCE_EQ(init.type(),
+                    body.type(),
+                    ::common::errors::InvalidArgument(
+                        "The type of the init and the body of the "
+                        "node [Reduce] should be the same. "
+                        "Received init type: %s, body type: %s",
+                        init.type().to_string().c_str(),
+                        body.type().to_string().c_str()));
 }
 
 Type Select::type() const {
@@ -922,97 +1200,222 @@ Type Select::type() const {
 }
 
 void Select::Verify() const {
-  CHECK(condition.defined());
-  CHECK(true_value.defined());
-  CHECK(false_value.defined());
-  CHECK(condition.type().is_bool())
-      << "Select Node's condition should be a boolean";
-  PADDLE_ENFORCE_EQ(true_value.type(),
-                    false_value.type(),
-                    ::common::errors::InvalidArgument(
-                        "Select Node's true_value and false_value should have "
-                        "the same type"));
+  PADDLE_ENFORCE_EQ(
+      condition.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The condition expression is not defined. "
+          "A valid condition expression is required for the Select node."));
+  PADDLE_ENFORCE_EQ(
+      true_value.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The true_value expression is not defined. "
+          "A valid true_value expression is required for the Select node."));
+  PADDLE_ENFORCE_EQ(
+      false_value.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The false_value expression is not defined. "
+          "A valid false_value expression is required for the Select node."));
+  PADDLE_ENFORCE_EQ(
+      condition.type().is_bool(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The condition of the Select Node should be a boolean."));
+  PADDLE_ENFORCE_EQ(
+      true_value.type(),
+      false_value.type(),
+      ::common::errors::InvalidArgument(
+          "The true_value and false_value of the Select Node should have "
+          "the same type. Received true_value type: %s, false_value type: %s",
+          true_value.type().to_string().c_str(),
+          false_value.type().to_string().c_str()));
 }
 
-void Free::Verify() const { CHECK(destination.defined()); }
+void Free::Verify() const {
+  PADDLE_ENFORCE_EQ(destination.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The destination is not defined. "
+                        "A valid destination is required for the Free node."));
+}
 
-void Alloc::Verify() const { CHECK(destination.defined()); }
+void Alloc::Verify() const {
+  PADDLE_ENFORCE_EQ(destination.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The destination is not defined. "
+                        "A valid destination is required for the Alloc node."));
+}
 
 void For::Verify() const {
-  CHECK(loop_var.defined());
-  CHECK(min.defined());
-  CHECK(extent.defined());
-  CHECK(body.defined());
+  PADDLE_ENFORCE_EQ(loop_var.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The loop variable is not defined. "
+                        "A valid loop variable is required for the For node."));
+  PADDLE_ENFORCE_EQ(min.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The minimum value is not defined. "
+                        "A valid minimum value is required for the For node."));
+  PADDLE_ENFORCE_EQ(extent.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The extent is not defined. "
+                        "A valid extent is required for the For node."));
+  PADDLE_ENFORCE_EQ(body.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The body is not defined. "
+                        "A valid body is required for the For node."));
 
   PADDLE_ENFORCE_EQ((loop_var->type() == type_of<int32_t>()) ||
                         (loop_var->type() == type_of<int64_t>()),
                     true,
                     ::common::errors::InvalidArgument(
-                        "loop var's type must be int32 or int64"));
+                        "The loop variable's type must be int32 or int64. "
+                        "Received type: %s",
+                        loop_var->type().to_string().c_str()));
   PADDLE_ENFORCE_EQ((min->type() == type_of<int32_t>()) ||
                         (min->type() == type_of<int64_t>()),
                     true,
                     ::common::errors::InvalidArgument(
-                        "loop min's type must be int32 or int64"));
+                        "The minimum value's type must be int32 or int64. "
+                        "Received type: %s",
+                        min->type().to_string().c_str()));
   PADDLE_ENFORCE_EQ((extent->type() == type_of<int32_t>()) ||
                         (extent->type() == type_of<int64_t>()),
                     true,
                     ::common::errors::InvalidArgument(
-                        "loop extent's type must be int32 or int64"));
+                        "The extent's type must be int32 or int64. "
+                        "Received type: %s",
+                        extent->type().to_string().c_str()));
 }
 
 void PolyFor::Verify() const {
-  CHECK(iterator.defined());
-  CHECK(init.defined());
-  CHECK(condition.defined());
-  CHECK(inc.defined());
-  CHECK(body.defined());
+  PADDLE_ENFORCE_EQ(iterator.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The iterator is not defined. "
+                        "A valid iterator is required for the PolyFor node."));
+  PADDLE_ENFORCE_EQ(
+      init.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The init expression is not defined. "
+          "A valid init expression is required for the PolyFor node."));
+  PADDLE_ENFORCE_EQ(
+      condition.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The condition expression is not defined. "
+          "A valid condition expression is required for the PolyFor node."));
+  PADDLE_ENFORCE_EQ(
+      inc.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The increment expression is not defined. "
+          "A valid increment expression is required for the PolyFor node."));
+  PADDLE_ENFORCE_EQ(body.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The body is not defined. "
+                        "A valid body is required for the PolyFor node."));
 
   PADDLE_ENFORCE_EQ(
       iterator->type(),
       type_of<int32_t>(),
-      ::common::errors::InvalidArgument("iterator's type must be int32"));
-  PADDLE_ENFORCE_EQ(
-      init.type(),
-      type_of<int32_t>(),
-      ::common::errors::InvalidArgument("init's type must be int32"));
-  PADDLE_ENFORCE_EQ(
-      condition.type(),
-      type_of<bool>(),
-      ::common::errors::InvalidArgument("condition's type must be bool"));
-  PADDLE_ENFORCE_EQ(
-      inc.type(),
-      type_of<int32_t>(),
-      ::common::errors::InvalidArgument("inc's type must be int32"));
+      ::common::errors::InvalidArgument("The iterator's type must be int32. "
+                                        "Received type: %s",
+                                        iterator->type().to_string().c_str()));
+  PADDLE_ENFORCE_EQ(init.type(),
+                    type_of<int32_t>(),
+                    ::common::errors::InvalidArgument(
+                        "The init expression's type must be int32. "
+                        "Received type: %s",
+                        init.type().to_string().c_str()));
+  PADDLE_ENFORCE_EQ(condition.type(),
+                    type_of<bool>(),
+                    ::common::errors::InvalidArgument(
+                        "The condition expression's type must be bool. "
+                        "Received type: %s",
+                        condition.type().to_string().c_str()));
+  PADDLE_ENFORCE_EQ(inc.type(),
+                    type_of<int32_t>(),
+                    ::common::errors::InvalidArgument(
+                        "The increment expression's type must be int32. "
+                        "Received type: %s",
+                        inc.type().to_string().c_str()));
 }
 
 void Ramp::Verify() const {
-  CHECK(base.defined());
-  CHECK(stride.defined());
+  PADDLE_ENFORCE_EQ(
+      base.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The base expression is not defined. "
+          "A valid base expression is required for the Ramp node."));
+  PADDLE_ENFORCE_EQ(
+      stride.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The stride expression is not defined. "
+          "A valid stride expression is required for the Ramp node."));
 }
 
 void FracOp::Verify() const {
-  CHECK(a().defined());
-  CHECK(b().defined());
+  PADDLE_ENFORCE_EQ(
+      a().defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The operand 'a' is not defined. "
+          "A valid operand 'a' is required for the FracOp node."));
+  PADDLE_ENFORCE_EQ(
+      b().defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The operand 'b' is not defined. "
+          "A valid operand 'b' is required for the FracOp node."));
   PADDLE_ENFORCE_EQ(
       a().type(),
       b().type(),
       ::common::errors::InvalidArgument(
-          "The type of the operands of the node [FracOp] should be "
-          "the same"));
+          "The type of the operands of the node [FracOp] should be the same. "
+          "Received 'a' type: %s, 'b' type: %s",
+          a().type().to_string().c_str(),
+          b().type().to_string().c_str()));
 }
 
-void Broadcast::Verify() const { CHECK(value.defined()); }
+void Broadcast::Verify() const {
+  PADDLE_ENFORCE_EQ(value.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The value is not defined. "
+                        "A valid value is required for the Broadcast node."));
+}
 
 void MultiOperandVerify(llvm::ArrayRef<Expr> operands) {
   Type operand_type = operands.front().type();
-  CHECK(operand_type.valid());
+  PADDLE_ENFORCE_EQ(
+      operand_type.valid(),
+      true,
+      ::common::errors::InvalidArgument("The operand type is not valid. "
+                                        "A valid operand type is required."));
   for (int i = 1; i < operands.size(); i++) {
-    CHECK(operands[i].defined());
+    PADDLE_ENFORCE_EQ(operands[i].defined(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "One of the operands is not defined. "
+                          "All operands must be defined for the node."));
     PADDLE_ENFORCE_EQ(operands[i].type(),
                       operand_type,
                       ::common::errors::InvalidArgument(
-                          "The operands' types of the node don't match"));
+                          "The operands' types of the node don't match. "
+                          "Expected type: %s, but got type: %s",
+                          operand_type.to_string().c_str(),
+                          operands[i].type().to_string().c_str()));
   }
 }
 

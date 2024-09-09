@@ -116,7 +116,7 @@ def visit_member(parent_name, member, func):
 
 def is_primitive(instance):
     int_types = (int,)
-    pritimitive_types = int_types + (float, str)
+    pritimitive_types = (*int_types, float, str)
     if isinstance(instance, pritimitive_types):
         return True
     elif isinstance(instance, (list, tuple, set)):
