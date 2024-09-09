@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -26,6 +27,16 @@ from paddle.incubate.nn.functional import fused_linear_activation
 def is_fused_gemm_epilogue_supported():
     if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
         return hasattr(paddle._C_ops, 'fused_gemm_epilogue')
+    else:
+        return False
+
+
+def is_rocm_gfx928():
+    if not paddle.is_compiled_with_rocm():
+        return False
+    f = os.popen("$ROCM_PATH/bin/rocm_agent_enumerator | tail -1")
+    if f.read()[:-1] == "gfx928":
+        return True
     else:
         return False
 
@@ -61,7 +72,8 @@ class TestFuseGemmBase(OpTest):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
     def setUp(self):
@@ -97,7 +109,8 @@ class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP32(TestFuseGemmEpilogueOpReluMMFP16):
     def init_dtype_type(self):
@@ -118,7 +131,8 @@ class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
     def setUp(self):
@@ -157,7 +171,8 @@ class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP32(TestFuseGemmEpilogueOpReluMTMFP16):
     def init_dtype_type(self):
@@ -178,7 +193,8 @@ class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
     def setUp(self):
@@ -217,7 +233,8 @@ class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMTFP32(TestFuseGemmEpilogueOpReluMMTFP16):
     def init_dtype_type(self):
@@ -238,7 +255,8 @@ class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
     def setUp(self):
@@ -277,7 +295,8 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMTFP32(TestFuseGemmEpilogueOpReluMTMTFP16):
     def init_dtype_type(self):
@@ -298,7 +317,8 @@ class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
     def setUp(self):
@@ -337,7 +357,8 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP32MultiDimX(
     TestFuseGemmEpilogueOpReluMMFP16MultiDimX
@@ -362,7 +383,8 @@ class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
     def setUp(self):
@@ -401,7 +423,8 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP32MultiDimX(
     TestFuseGemmEpilogueOpReluMTMFP16MultiDimX
@@ -426,7 +449,8 @@ class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
     def setUp(self):
@@ -464,7 +488,8 @@ class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpGeluMMFP32(TestFuseGemmEpilogueOpGeluMMFP16):
     def init_dtype_type(self):
@@ -485,7 +510,8 @@ class TestFuseGemmEpilogueOpGeluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
     def setUp(self):
@@ -523,7 +549,8 @@ class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpNoneMMFP32(TestFuseGemmEpilogueOpNoneMMFP16):
     def init_dtype_type(self):
