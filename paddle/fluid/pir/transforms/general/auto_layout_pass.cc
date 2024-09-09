@@ -59,18 +59,25 @@ class AutoLayoutPass : public pir::Pass {
  private:
   void RewriteLayout(pir::Operation* op,
                      const std::vector<pir::Value>& input_values) {  // NOLINT
-    if (op->name() == "builtin.combine") {
-      auto concrete_op = op->dyn_cast<pir::CombineOp>();
-      auto out = concrete_op.out();
-      std::vector<pir::Type> new_out_type;
-      for (auto v : op->operands_source()) {
-        new_out_type.push_back(v.type());
+    auto InferMetaSpecificOp = [&]() {
+      // Op not implement InferMetaInterface interface, so we need to rewrite
+      // manually
+      if (op->isa<pir::CombineOp>()) {
+        auto out = op->dyn_cast<pir::CombineOp>().out();
+        std::vector<pir::Type> new_out_type;
+        for (auto v : op->operands_source()) {
+          new_out_type.push_back(v.type());
+        }
+        auto new_out_type_v =
+            pir::VectorType::get(pir::IrContext::Instance(), new_out_type);
+        out.set_type(new_out_type_v);
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "`%s` should implement InferMetaInterface interface or rewrite "
+            "manually, but not found.",
+            op->name()));
       }
-      auto new_out_type_v =
-          pir::VectorType::get(pir::IrContext::Instance(), new_out_type);
-      out.set_type(new_out_type_v);
-      return;
-    }
+    };
 
     if (op->HasAttribute("data_format")) {
       op->set_attribute("data_format", pir::StrAttribute::get(ctx_, "NHWC"));
@@ -85,9 +92,7 @@ class AutoLayoutPass : public pir::Pass {
         op->result(i).set_type(output_types[i]);
       }
     } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "`%s` should implement InferMetaInterface interface, but not found.",
-          op->name()));
+      InferMetaSpecificOp();
     }
   }
 
