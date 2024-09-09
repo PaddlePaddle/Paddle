@@ -21,19 +21,16 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-#include <cuda_runtime_api.h>  // NOLINT
-#include "cuda.h"              // NOLINT
-#include "paddle/phi/backends/dynload/cublasLt.h"
-#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
-#elif defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
-#include "paddle/phi/backends/dynload/hipblasLt.h"
-#include "paddle/phi/backends/gpu/rocm/rocm_helper.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.hip.h"
+#else
+#include <cuda_runtime_api.h>  // NOLINT
+#include "cuda.h"              // NOLINT
 #endif
+
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
+    defined(PADDLE_WITH_HIP)
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
@@ -44,8 +41,16 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
-
 #include "paddle/utils/optional.h"
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#include "paddle/phi/backends/dynload/cublasLt.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/dynload/hipblasLt.h"
+#include "paddle/phi/backends/gpu/rocm/rocm_helper.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.hip.h"
+#endif
 
 #ifdef PADDLE_WITH_HIP
 #define GPU(str) hip##str
@@ -1074,4 +1079,5 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
 
 }  // namespace funcs
 }  // namespace phi
+#endif
 #endif
