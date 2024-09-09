@@ -467,6 +467,17 @@
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
   traits : pir::SideEffectTrait
 
+- op : legacy_matmul
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false, float alpha=1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : MatmulInferMeta
+    param: [x, y, transpose_x, transpose_y]
+  kernel :
+    func : legacy_matmul
+    param: [x, y, transpose_x, transpose_y, alpha]
+  backward : legacy_matmul_grad
+
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -774,6 +785,7 @@
   kernel:
     func: seed
   traits : pir::SideEffectTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : send_and_recv
   args : (Tensor[] x, str message_name, str[] send_var_name, str[] recv_var_name, int trainer_id = 0, str mode="forward", str[] endpoints={"127.0.0.1:6164"}, str[] next_endpoints={"127.0.0.1:6164"}, str[] previous_endpoints={"127.0.0.1:6164"})

@@ -1184,50 +1184,53 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
     return broadcasted;
   }();
 
-  std::vector<symbol::DimExpr> out_dims;
-  if (ndims_x > ndims_y) {
-    out_dims.assign(x_dims.begin(), x_dims.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    out_dims.assign(y_dims.begin(), y_dims.end() - 2);
-  } else {
+  const auto &Padding = [&]() {
+    int diff = ndims_x - ndims_y;
+    if (diff > 0) {
+      for (int i = 0; i < diff; i++) {
+        y_dims.emplace(y_dims.begin(), 1);
+      }
+    } else {
+      for (int i = 0; i < -diff; i++) {
+        x_dims.emplace(x_dims.begin(), 1);
+      }
+    }
+    ndims_x = x_dims.size();
+    ndims_y = y_dims.size();
+  };
+
+  const auto &out_dims = [&]() -> std::vector<symbol::DimExpr> {
+    Padding();
+    std::vector<symbol::DimExpr> res;
     symbol::DimExprBuilder builder;
     for (size_t i = 0; i < ndims_x - 2; ++i) {
-      out_dims.emplace_back(builder.Broadcast(x_dims[i], y_dims[i]));
+      res.emplace_back(builder.Broadcast(x_dims[i], y_dims[i]));
       infer_context->AddBroadcastableCstr(x_dims[i], y_dims[i]);
     }
-  }
+    bool transpose_x_attr = GetBoolAttr(op, "transpose_x");
+    bool transpose_y_attr = GetBoolAttr(op, "transpose_y");
+    symbol::DimExpr out_M =
+        transpose_x_attr ? x_dims[ndims_x - 1] : x_dims[ndims_x - 2];
+    symbol::DimExpr out_N =
+        transpose_y_attr ? y_dims[ndims_y - 2] : y_dims[ndims_y - 1];
+    if (!x_broadcasted) {
+      res.emplace_back(out_M);
+    }
+    if (!y_broadcasted) {
+      res.emplace_back(out_N);
+    }
 
-  bool transpose_x_attr = GetBoolAttr(op, "transpose_x");
-  bool transpose_y_attr = GetBoolAttr(op, "transpose_y");
-  symbol::DimExpr out_M =
-      transpose_x_attr ? x_dims[ndims_x - 1] : x_dims[ndims_x - 2];
-  symbol::DimExpr out_N =
-      transpose_y_attr ? y_dims[ndims_y - 2] : y_dims[ndims_y - 1];
-  if (!x_broadcasted) {
-    out_dims.emplace_back(out_M);
-  }
-  if (!y_broadcasted) {
-    out_dims.emplace_back(out_N);
-  }
+    symbol::DimExpr x_K =
+        transpose_x_attr ? x_dims[ndims_x - 2] : x_dims[ndims_x - 1];
+    symbol::DimExpr y_K =
+        transpose_y_attr ? y_dims[ndims_y - 1] : y_dims[ndims_y - 2];
+    infer_context->AddEqualCstr(x_K, y_K);
+
+    return res;
+  }();
 
   infer_context->SetShapeOrDataForValue(op->result(0),
                                         ShapeOrData{TensorExprs(out_dims)});
-
-  if ((ndims_x == ndims_y) && ndims_x >= 2) {
-    if (transpose_x_attr == false && transpose_y_attr == false) {
-      infer_context->AddEqualCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 2]);
-    } else if (transpose_x_attr == false && transpose_y_attr == true) {
-      infer_context->AddEqualCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 1]);
-    } else if (transpose_x_attr == true && transpose_y_attr == false) {
-      infer_context->AddEqualCstr(x_dims[ndims_x - 2], y_dims[ndims_x - 2]);
-    } else {
-      infer_context->AddEqualCstr(x_dims[ndims_x - 2], y_dims[ndims_x - 1]);
-    }
-
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      infer_context->AddEqualCstr(x_dims[i], y_dims[i]);
-    }
-  }
   return true;
 }
 
