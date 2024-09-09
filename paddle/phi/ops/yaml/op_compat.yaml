@@ -1678,6 +1678,13 @@
   outputs:
     {cache_kv_out : CacheKVOut, out : Out}
 
+- op : fused_seqpool_cvm
+  backward: fused_seqpool_cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
+
 - op : fused_transpose
   inputs:
     {x : X}
