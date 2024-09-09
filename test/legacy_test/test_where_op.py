@@ -37,7 +37,11 @@ class TestWhereOp(OpTest):
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_pir=True)
+        self.check_output(
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim=True,
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -95,7 +99,10 @@ class TestWhereBF16OP(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_cinn=self.check_cinn, check_pir=True
+            place,
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim=True,
         )
 
     def test_check_grad(self):
@@ -108,6 +115,7 @@ class TestWhereBF16OP(OpTest):
             check_cinn=self.check_cinn,
             check_pir=True,
             check_prim_pir=True,
+            check_prim=True,
         )
 
     def init_config(self):

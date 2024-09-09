@@ -145,6 +145,24 @@ void cast_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void where_grad(const Tensor& condition,
+                const Tensor& x,
+                const Tensor& y,
+                const Tensor& out_grad,
+                Tensor* x_grad,
+                Tensor* y_grad) {
+  // condition is a boolean tensor mask with same shape of x and y
+  if (x_grad) {
+    auto res_x = cast<T>(condition, out_grad.dtype()) * out_grad;
+    set_output<T>(res_x, x_grad);
+  }
+  if (y_grad) {
+    auto res_y = cast<T>(1 - condition, out_grad.dtype()) * out_grad;
+    set_output<T>(res_y, y_grad);
+  }
+}
+
+template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
                  const Tensor& out_grad,
