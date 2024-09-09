@@ -1712,6 +1712,39 @@ bool TdmChildOpInferSymbolicShape(
   return true;
 }
 
+static inline std::vector<symbol::DimExpr> MatrixGetBroadcastBatchPortion(
+    const std::vector<symbol::DimExpr> &x,
+    const std::vector<symbol::DimExpr> &y,
+    pir::InferSymbolicShapeContext *infer_context) {
+  // use int to avoid underflow for minus
+  int size_x = x.size();
+  int size_y = y.size();
+  int max_size = std::max(size_x, size_y);
+  std::vector<symbol::DimExpr> batchPortion(max_size);
+
+  int size_diff = size_x - size_y;
+  if (size_diff > 0) {
+    for (int i = 0; i < size_diff; i++) {
+      batchPortion[i] = x[i];
+    }
+  } else {
+    size_diff = -size_diff;
+    for (int i = 0; i < size_diff; i++) {
+      batchPortion[i] = y[i];
+    }
+  }
+
+  symbol::DimExprBuilder builder;
+  for (int i = size_diff; i < max_size; i++) {
+    int offset = max_size - i;
+    int dim_x = size_x - offset;
+    int dim_y = size_y - offset;
+    infer_context->AddBroadcastableCstr(x[dim_x], y[dim_y]);
+    batchPortion[i] = builder.Broadcast(x[dim_x], y[dim_y]);
+  }
+  return batchPortion;
+}
+
 bool TriangularSolveOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -1729,40 +1762,8 @@ bool TriangularSolveOpInferSymbolicShape(
   std::vector<symbol::DimExpr> x_shape_cut(x_shape.begin(), x_shape.end() - 2);
   std::vector<symbol::DimExpr> y_shape_cut(y_shape.begin(), y_shape.end() - 2);
 
-  size_t size_x_cut = x_shape_cut.size();
-  size_t size_y_cut = y_shape_cut.size();
-  int64_t size = std::max(size_x_cut, size_y_cut);
-  std::vector<symbol::DimExpr> expand_batch_portion(size);
-  for (int64_t i = size - 1; i >= 0; --i) {
-    int64_t offset = size - i - 1;
-    int64_t dim_x = size_x_cut - offset - 1;
-    int64_t dim_y = size_y_cut - offset - 1;
-    int64_t x_cut_size = 0, y_cut_size = 0;
-    if (dim_x >= 0) {
-      if (x_shape_cut[dim_x].isa<int64_t>()) {
-        x_cut_size =
-            static_cast<int64_t>(x_shape_cut[dim_x].Get<std::int64_t>());
-      } else {
-        PADDLE_THROW("x shape's dtype should be int64, but got %s.",
-                     symbol::ToString(x_shape_cut[dim_x]));
-      }
-    } else {
-      x_cut_size = 1;
-    }
-    if (dim_y >= 0) {
-      if (y_shape_cut[dim_y].isa<int64_t>()) {
-        y_cut_size =
-            static_cast<int64_t>(y_shape_cut[dim_y].Get<std::int64_t>());
-      } else {
-        PADDLE_THROW("y shape's dtype should be int64, but got %s.",
-                     symbol::ToString(y_shape_cut[dim_y]));
-      }
-    } else {
-      y_cut_size = 1;
-    }
-    expand_batch_portion[i] = x_cut_size != 1 ? symbol::DimExpr(x_cut_size)
-                                              : symbol::DimExpr(y_cut_size);
-  }
+  std::vector<symbol::DimExpr> expand_batch_portion =
+      MatrixGetBroadcastBatchPortion(x_shape_cut, y_shape_cut, infer_context);
 
   std::vector<symbol::DimExpr> output_shape({expand_batch_portion});
   output_shape.insert(output_shape.end(),
