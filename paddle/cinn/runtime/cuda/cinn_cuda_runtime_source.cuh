@@ -653,10 +653,9 @@ EXPAND_REDUCE_FP16_MACRO(CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO)
 
 #define CINN_BLOCK_REDUCE_INTERNAL_ROW_SHM_IMPL(TYPE, value, init_value, cinn_warp_shuffle_internal) \
   int tid = threadIdx.y * blockDim.x + threadIdx.x;                                          \
-  int warp_id = tid / 32;                                                                    \
-  int row_dim =  blockDim.x / 32;                                                            \
+  int warp_id = tid >> 5;                                                                    \
+  int row_dim =  (blockDim.x + 31) >> 5;                                                            \
   TYPE tmp_val = cinn_warp_shuffle_internal(value);                                          \
-  if ( return_warp ) return tmp_val;                                                         \
   if (blockDim.x <= 32) {                                                                    \
     return tmp_val;                                                                          \
   }                                                                                          \
@@ -665,8 +664,8 @@ EXPAND_REDUCE_FP16_MACRO(CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO)
     shm[warp_id] = tmp_val;                                                                  \
   }                                                                                          \
   __syncthreads();                                                                           \
-  if ((threadIdx.x / 32) == 0 ) {                                                            \
-    tmp_val = (threadIdx.x < row_dim) ? shm[threadIdx.y * row_dim + threadIdx.x ] : init_value;   \
+  if (threadIdx.x < 32) {                                                            \
+    tmp_val = (threadIdx.x < row_dim) ? shm[threadIdx.y * row_dim + threadIdx.x] : init_value;   \
     shm[warp_id] = cinn_warp_shuffle_internal(tmp_val);                                      \
   }                                                                                          \
   __syncthreads();                                                                           \
