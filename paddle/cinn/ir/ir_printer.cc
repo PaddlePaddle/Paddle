@@ -143,18 +143,34 @@ void IrPrinter::Visit(const FloatImm *x) {
       ss << static_cast<bfloat16>(x->value) << "f";
     }
   } else if (x->type().is_float(32)) {
-    float v = TruncateInfinity<float>(x->value);
-    if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
-    ss << std::setprecision(std::numeric_limits<float>::max_digits10);
-    ss << std::showpoint;
-    ss << v;
-    if (std::isfinite(v)) {
-      ss << "f";
+    if (std::isinf(x->value)) {
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "__int_as_float(0x7f800000)";
+      } else {
+        ss << "__int_as_float(0xff800000)";
+      }
+    } else {
+      float v = TruncateInfinity<float>(x->value);
+      if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
+      ss << std::setprecision(std::numeric_limits<float>::max_digits10);
+      ss << std::showpoint;
+      ss << v;
+      if (std::isfinite(v)) {
+        ss << "f";
+      }
     }
   } else if (x->type().is_float(64)) {
-    ss << std::setprecision(std::numeric_limits<double>::max_digits10);
-    ss << std::showpoint;
-    ss << x->value;
+    if (std::isinf(x->value)) {
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "__int_as_float(0x7f800000)";
+      } else {
+        ss << "__int_as_float(0xff800000)";
+      }
+    } else {
+      ss << std::setprecision(std::numeric_limits<double>::max_digits10);
+      ss << std::showpoint;
+      ss << x->value;
+    }
   } else {
     std::stringstream ss;
     ss << "Not support float type: " << x->type();

@@ -396,10 +396,7 @@ void PD_ConfigSetMkldnnOp(__pd_keep PD_Config* pd_config,
   }
   config->SetMKLDNNOp(std::move(op_names));
 }
-void PD_ConfigEnableMkldnnQuantizer(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableMkldnnQuantizer();
-}
+
 void PD_ConfigEnableMkldnnBfloat16(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableMkldnnBfloat16();
@@ -430,10 +427,7 @@ PD_Bool PD_ConfigThreadLocalStreamEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->thread_local_stream_enabled();  // NOLINT
 }
-PD_Bool PD_ConfigMkldnnQuantizerEnabled(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  return config->mkldnn_quantizer_enabled();  // NOLINT
-}
+
 void PD_ConfigSetModelBuffer(__pd_keep PD_Config* pd_config,
                              const char* prog_buffer,
                              size_t prog_buffer_size,
