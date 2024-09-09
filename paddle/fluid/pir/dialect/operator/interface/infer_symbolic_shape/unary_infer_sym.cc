@@ -685,7 +685,7 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
   if (op->HasAttribute("offsets")) {
     std::vector<int64_t> offsets_ =
         paddle::dialect::details::GetVectorAttr<int64_t>(op, "offsets");
-    for (const auto &i : offsets_) offsets.push_back(symbol::DimExpr{i});
+    for (const auto &i : offsets_) offsets.emplace_back(symbol::DimExpr{i});
   } else {
     const auto &offsets_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
@@ -697,7 +697,7 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
   if (op->HasAttribute("shape")) {
     std::vector<int64_t> shape =
         paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
-    for (const auto &i : shape) out_dims.push_back(symbol::DimExpr{i});
+    for (const auto &i : shape) out_dims.emplace_back(symbol::DimExpr{i});
   } else {
     const auto &shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
