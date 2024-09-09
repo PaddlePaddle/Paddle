@@ -4063,26 +4063,29 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
     const int32_t size_id = linear_index % size_per_head;
 
     const int tmp_max_len_this_time =
-        max_len_this_time + (head_id < q_head_num  ? 0 : pre_cache_length);
-    const int tmp_seq_id = head_id < q_head_num  ? seq_id : seq_id + pre_cache_length;
+        max_len_this_time + (head_id < q_head_num ? 0 : pre_cache_length);
+    const int tmp_seq_id =
+        head_id < q_head_num ? seq_id : seq_id + pre_cache_length;
 
-    if (head_id < q_head_num ) {
+    if (head_id < q_head_num) {
       const int write_idx =
-        target_batch_id * q_head_num * tmp_max_len_this_time * size_per_head +
-        head_id * tmp_max_len_this_time * size_per_head +
-        tmp_seq_id * size_per_head + size_id;
+          target_batch_id * q_head_num * tmp_max_len_this_time * size_per_head +
+          head_id * tmp_max_len_this_time * size_per_head +
+          tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &q_buf[write_idx]);
     } else if (head_id < q_head_num + kv_head_num) {
       const int write_idx =
-        target_batch_id * kv_head_num * tmp_max_len_this_time * size_per_head +
-        (head_id - q_head_num) * tmp_max_len_this_time * size_per_head +
-        tmp_seq_id * size_per_head + size_id;
+          target_batch_id * kv_head_num * tmp_max_len_this_time *
+              size_per_head +
+          (head_id - q_head_num) * tmp_max_len_this_time * size_per_head +
+          tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &k_buf[write_idx]);
     } else {
-      const int write_idx =
-        target_batch_id * kv_head_num * tmp_max_len_this_time * size_per_head +
-        (head_id - q_head_num - kv_head_num) * tmp_max_len_this_time * size_per_head +
-        tmp_seq_id * size_per_head + size_id;
+      const int write_idx = target_batch_id * kv_head_num *
+                                tmp_max_len_this_time * size_per_head +
+                            (head_id - q_head_num - kv_head_num) *
+                                tmp_max_len_this_time * size_per_head +
+                            tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &v_buf[write_idx]);
     }
   }
@@ -4107,8 +4110,7 @@ void qkv_transpose_split(
     const int seq_len,
     const int pre_cache_length,
     const int size_per_head) {
-  int32_t elem_cnt =
-      token_num * (q_head_num + kv_head_num * 2) * size_per_head;
+  int32_t elem_cnt = token_num * (q_head_num + kv_head_num * 2) * size_per_head;
 
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
