@@ -415,7 +415,8 @@ bool ReadFileOpInferSymbolicShape(
 
   const std::vector<symbol::DimExpr> &out_shape = [&] {
     std::vector<symbol::DimExpr> shape;
-    shape.push_back(unique_dim_sym);
+    shape.emplace_back(symbol::DimExpr(1));
+    shape.emplace_back(unique_dim_sym);
     return shape;
   }();
 
