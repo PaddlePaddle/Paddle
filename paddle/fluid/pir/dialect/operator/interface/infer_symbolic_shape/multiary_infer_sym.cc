@@ -1788,12 +1788,12 @@ bool ReindexGraphOpInferSymbolicShape(
   symbol::DimExpr unique_dim_sym = infer_context->GetNextSymName();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
-          {symbol::DimExpr{neighbors_shape[0]}})});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({neighbors_shape[0]})});
   infer_context->SetShapeOrDataForValue(
       op->result(1),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
-          {symbol::DimExpr{neighbors_shape[0]}})});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({neighbors_shape[0]})});
   infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
