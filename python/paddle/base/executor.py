@@ -1227,28 +1227,11 @@ class _ExecutorCache:
             type_to_program = {"default": program}
             plan = core.Plan([default_job], type_to_program)
         else:
-            type_to_program = {}
-            value_map_list = []
-            for job_type in cached_data.plan.job_types():
-                ir_program = cached_data.plan.ir_program(job_type)
-                value_map = pir.IrMapping()
-                program = ir_program.clone(value_map)
-                type_to_program[job_type] = program
-                value_map_list.append(value_map)
-
-            job_list = []
-            for job in cached_data.plan.job_list():
-                job_list.append(job)
-
-            plan = core.Plan(job_list, type_to_program)
-            update_fetch_list = self._update_pir_fetch_list(
-                fetch_list, value_map_list
-            )
-
-            for i, value in enumerate(update_fetch_list):
+            for i, value in enumerate(fetch_list):
                 _add_single_pir_fetch_op(
                     value.block.program, value, fetch_var_name + str(i), i
                 )
+            plan = cached_data.plan
 
         new_exe = _StandaloneExecutor(place, plan, scope)
 
