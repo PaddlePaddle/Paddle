@@ -1080,6 +1080,44 @@ void BeamSearchInferMeta(const MetaTensor& pre_ids,
   parent_idx->set_dtype(pre_ids.dtype());
 }
 
+void BeamSearchSoftmaxInferMeta(const MetaTensor& logits,
+                                const MetaTensor& seq_lens,  
+                                const MetaTensor& stop_flags,
+                                const MetaTensor& end_ids,
+                                const MetaTensor& step_ids,
+                                const MetaTensor& max_dec_lens,
+                                const MetaTensor& block_tables,
+                                const MetaTensor& cum_scores,
+                                const MetaTensor& beam_cache_ids,
+                                const MetaTensor& beam_hyps,
+                                const MetaTensor& beam_hyps_score,
+                                const MetaTensor& beam_finished,
+                                const MetaTensor& beam_width,
+                                const MetaTensor& beam_group_num,
+                                const MetaTensor& length_penalty,
+                                const MetaTensor& diversity_penalty,
+                                bool fuse_softmax,
+                                bool early_stop,
+                                MetaTensor* next_tokens,
+                                MetaTensor* parent_ids) {
+  // Kernel needs to support dybatch, so the logits[0] may be different from 
+  // other input in dimensions[0].
+  
+  auto logits_dims = logits.dims();
+
+  PADDLE_ENFORCE_EQ(logits_dims.size(),
+                    2UL,
+                    errors::InvalidArgument(
+                        "The Input(logits) must be a 2-D tensor with "));
+
+  int bbm = logits_dims[0];
+
+  next_tokens->set_dims({bbm, 1});
+  next_tokens->set_dtype(DataType::INT32);
+  parent_ids->set_dims({bbm, 1});
+  parent_ids->set_dtype(DataType::INT32);
+}
+
 void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out) {
   int target_rank = 0;

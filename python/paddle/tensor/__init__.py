@@ -439,6 +439,7 @@ from .search import (  # noqa: F401
     searchsorted,
     sort,
     top_p_sampling,
+    beam_search_softmax,
     topk,
     where,
     where_,

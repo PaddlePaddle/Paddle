@@ -1452,3 +1452,90 @@ def top_p_sampling(
         return out, ids, topk_scores, topk_ids
     else:
         return out, ids
+
+def beam_search_softmax(
+    logits,
+    seq_lens,
+    stop_flags,
+    end_ids,
+    step_ids,
+    max_dec_lens,
+    block_tables,
+    cum_scores,
+    beam_cache_ids,
+    beam_hyps,
+    beam_hyps_score,
+    beam_finished,
+    beam_width,
+    beam_group_num,
+    length_penalty,
+    diversity_penalty,
+    fuse_softmax=True,
+    early_stop=False,
+    name=None,
+):  
+    assert beam_width <= 16, f"beam_width must be less than or equal to 16, but get {beam_width}."
+    assert beam_group_num <= beam_width, "beam_group_num must be less than or equal to beam_width"
+    assert beam_width % beam_group_num == 0, "beam_width must be divisible by beam_group_num"
+    if in_dynamic_mode():
+        return _C_ops.beam_search_softmax(
+            logits,
+            seq_lens,
+            stop_flags,
+            end_ids,
+            step_ids,
+            max_dec_lens,
+            block_tables,
+            cum_scores,
+            beam_cache_ids,
+            beam_hyps,
+            beam_hyps_score,
+            beam_finished,
+            beam_width,
+            beam_group_num,
+            length_penalty,
+            diversity_penalty,
+            fuse_softmax,
+            early_stop,
+            name,
+        )
+
+    inputs = {
+        "logits": logits,
+        "seq_lens": seq_lens,
+        "stop_flags": stop_flags,
+        "end_ids": end_ids,
+        "step_ids": step_ids,
+        "max_dec_lens": max_dec_lens,
+        "block_tables": block_tables,
+        "cum_scores": cum_scores,
+        "beam_cache_ids": beam_cache_ids,
+        "beam_hyps": beam_hyps,
+        "beam_hyps_score": beam_hyps_score,
+        "beam_finished": beam_finished,
+        "beam_width": beam_width,
+        "beam_group_num": beam_group_num,
+        "length_penalty": length_penalty,
+        "diversity_penalty": diversity_penalty,
+    }
+    attrs = {}
+    attrs['fuse_softmax'] = fuse_softmax
+    attrs['early_stop'] = early_stop
+
+    helper = LayerHelper('beam_search_softmax', **locals())
+    next_tokens = helper.create_variable_for_type_inference(dtype="int32")
+    parent_ids = helper.create_variable_for_type_inference(dtype="int32")
+
+    helper.append_op(
+        type='beam_search_softmax',
+        inputs=inputs,
+        outputs={
+            "next_tokens": next_tokens,
+            "parent_ids": parent_ids,
+        },
+        attrs=attrs,
+    )
+    return (
+        next_tokens,
+        parent_ids
+    )

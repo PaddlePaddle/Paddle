@@ -562,6 +562,7 @@ from .tensor.search import (
     mode,
     nonzero,
     searchsorted,
+    beam_search_softmax,
     sort,
     topk,
     where,

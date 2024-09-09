@@ -252,6 +252,27 @@ void BilinearInferMeta(const MetaTensor& x,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void BeamSearchSoftmaxInferMeta(const MetaTensor& logits,
+                                const MetaTensor& seq_lens,  
+                                const MetaTensor& stop_flags,
+                                const MetaTensor& end_ids,
+                                const MetaTensor& step_ids,
+                                const MetaTensor& max_dec_lens,
+                                const MetaTensor& block_tables,
+                                const MetaTensor& cum_scores,
+                                const MetaTensor& beam_cache_ids,
+                                const MetaTensor& beam_hyps,
+                                const MetaTensor& beam_hyps_score,
+                                const MetaTensor& beam_finished,
+                                const MetaTensor& beam_width,
+                                const MetaTensor& beam_group_num,
+                                const MetaTensor& length_penalty,
+                                const MetaTensor& diversity_penalty,
+                                bool fuse_softmax,
+                                bool early_stop,
+                                MetaTensor *next_tokens,
+                                MetaTensor *parent_ids);
+
 void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out);
 
