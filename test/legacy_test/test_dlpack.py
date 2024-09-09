@@ -122,6 +122,15 @@ class TestDLPack(unittest.TestCase):
             x = paddle.rand([3, 5])
             dlpack = paddle.utils.dlpack.to_dlpack(x)
 
+    def test_to_dlpack_modification(self):
+        # See Paddle issue 50120
+        for i in range(10):
+            x = paddle.rand([3, 5])
+            dlpack = paddle.utils.dlpack.to_dlpack(x)
+            y = paddle.utils.dlpack.from_dlpack(dlpack)
+            y[1:2, 2:5] = 2.0
+            np.testing.assert_allclose(x.numpy(), y.numpy())
+
 
 class TestRaiseError(unittest.TestCase):
     def test_from_dlpack_raise_type_error(self):

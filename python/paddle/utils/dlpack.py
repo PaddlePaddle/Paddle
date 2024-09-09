@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import enum
 from typing import TYPE_CHECKING
 
 import paddle
@@ -31,6 +32,20 @@ __all__ = [
     'to_dlpack',
     'from_dlpack',
 ]
+
+
+class DLDeviceType(enum.IntEnum):
+    # Enums as in DLPack specification (aten/src/ATen/dlpack.h)
+    kDLCPU = (1,)
+    kDLGPU = (2,)
+    kDLCPUPinned = (3,)
+    kDLOpenCL = (4,)
+    kDLVulkan = (7,)
+    kDLMetal = (8,)
+    kDLVPI = (9,)
+    kDLROCM = (10,)
+    kDLExtDev = (12,)
+    kDLOneAPI = (14,)
 
 
 def to_dlpack(x: Tensor) -> CapsuleType:
@@ -71,7 +86,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
     return x._to_dlpack()
 
 
-def from_dlpack(dlpack: CapsuleType) -> Tensor:
+def from_dlpack(ext_tensor) -> Tensor:
     """
     Decodes a DLPack to a tensor.
 
@@ -98,18 +113,27 @@ def from_dlpack(dlpack: CapsuleType) -> Tensor:
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
     """
 
-    t = type(dlpack)
-    dlpack_flag = t.__module__ == 'builtins' and t.__name__ == 'PyCapsule'
-    if not dlpack_flag:
-        raise TypeError(
-            "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
-            f" but received {type(dlpack)}."
-        )
-
-    if in_dygraph_mode():
-        out = paddle.base.core.from_dlpack(dlpack)
-        out = paddle.to_tensor(out)
-        return out
-
-    out = paddle.base.core.from_dlpack(dlpack)
-    return out
+    if hasattr(ext_tensor, '__dlpack__'):
+        device = ext_tensor.__dlpack_device__()
+        # device is either CUDA or ROCm, we need to pass the current
+        # stream
+        if device[0] in (DLDeviceType.kDLGPU, DLDeviceType.kDLROCM):
+            stream = paddle.device.cuda.current_stream(device[1])
+            # cuda_stream is the pointer to the stream and it is a public
+            # attribute, but it is not documented
+            # The array API specify that the default legacy stream must be passed
+            # with a value of 1 for CUDA
+            # https://data-apis.org/array-api/latest/API_specification/array_object.html?dlpack-self-stream-none#dlpack-self-stream-none
+            is_gpu = device[0] == DLDeviceType.kDLGPU
+            # Since pytorch is not using PTDS by default, lets directly pass
+            # the legacy stream
+            stream_ptr = (
+                1 if is_gpu and stream.cuda_stream == 0 else stream.cuda_stream
+            )
+            dlpack = ext_tensor.__dlpack__(stream=stream_ptr)
+        else:
+            dlpack = ext_tensor.__dlpack__()
+    else:
+        # Old versions just call the converter
+        dlpack = ext_tensor
+    return paddle.base.core.from_dlpack(dlpack)
