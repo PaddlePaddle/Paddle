@@ -23,11 +23,10 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-
+#include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
 
 namespace phi {
 namespace fusion {
@@ -43,9 +42,9 @@ static constexpr int kMaxVocabPartForStage1FastKernel = 128;
         dev_ctx, params, beam_group_idx, stream);        \
     break
 
-#define DISPATCH_COMPUTE_PARTS_K(K)                      \
-   case K:                                               \
-    ComputeVocParts<T, 2 * K>(params);                   \
+#define DISPATCH_COMPUTE_PARTS_K(K)    \
+  case K:                              \
+    ComputeVocParts<T, 2 * K>(params); \
     break
 
 template <typename T>
@@ -69,26 +68,26 @@ struct BeamSearchParams {
   int max_smem_per_block{0};
 
   T *logits{nullptr};
-  const int *step_ids{nullptr};               // [BS * BM, 1]
-  const int *seq_lens{nullptr};               // [BS * BM, 1]
+  const int *step_ids{nullptr};  // [BS * BM, 1]
+  const int *seq_lens{nullptr};  // [BS * BM, 1]
 
   const int *max_dec_lens{nullptr};
   const int *end_ids{nullptr};
 
   const T *cum_scores{nullptr};
   const int *block_tables{nullptr};
-  const int *beam_cache_ids{nullptr};         
+  const int *beam_cache_ids{nullptr};
 
-  const float *length_penalty{nullptr};       // [BS, 1]
-  const float *diversity_penalty{nullptr};    // [BS, 1]
+  const float *length_penalty{nullptr};     // [BS, 1]
+  const float *diversity_penalty{nullptr};  // [BS, 1]
 
-  bool *stop_flags{nullptr};                  // [BS, 1]
-  int *cache_ids_out{nullptr};                // [BS * BM, max_dec_len]
-  bool *beam_finished{nullptr};               // [BS * BM, 1]
-  int *block_tables_out{nullptr};             // [BS * BM, max_seq_len]
-  T *cum_scores_out{nullptr};                 // [BS * BM, 1]
-  int *beam_hyps_out{nullptr};                // [BS * BM, max_dec_len]
-  T *beam_hyps_score_out{nullptr};            // [BS * BM, 1]
+  bool *stop_flags{nullptr};        // [BS, 1]
+  int *cache_ids_out{nullptr};      // [BS * BM, max_dec_len]
+  bool *beam_finished{nullptr};     // [BS * BM, 1]
+  int *block_tables_out{nullptr};   // [BS * BM, max_seq_len]
+  T *cum_scores_out{nullptr};       // [BS * BM, 1]
+  int *beam_hyps_out{nullptr};      // [BS * BM, max_dec_len]
+  T *beam_hyps_score_out{nullptr};  // [BS * BM, 1]
 
   // func out
   int *next_tokens{nullptr};
@@ -551,7 +550,8 @@ __global__ void beam_search_softmax_topk_stage1(BeamSearchParams<T> params,
   for (int elem_id = thread_id; elem_id < PACKED_TOP_KMD_SIZE;
        elem_id += THREADBLOCK_SIZE) {
     params.tmp_buffer[blockIdx.x * PACKED_TOP_KMD_SIZE * gridDim.y +
-               blockIdx.y * PACKED_TOP_KMD_SIZE + elem_id] = buf_s[elem_id];
+                      blockIdx.y * PACKED_TOP_KMD_SIZE + elem_id] =
+        buf_s[elem_id];
   }
 }
 
@@ -609,7 +609,8 @@ __launch_bounds__(THREADBLOCK_SIZE) __global__
   if constexpr (IS_FAST_KERNEL) {  // Use share memory instead of global memory
     extern __shared__ char smem[];
     float *smemVal = reinterpret_cast<float *>(smem);
-    for (int idx = tid; idx < PACKED_TOP_KMD_SIZE * voc_parts; idx += THREADBLOCK_SIZE) {
+    for (int idx = tid; idx < PACKED_TOP_KMD_SIZE * voc_parts;
+         idx += THREADBLOCK_SIZE) {
       smemVal[idx] = localTempBuffer[idx];
     }
     localTempBuffer = smemVal;
@@ -662,10 +663,8 @@ __launch_bounds__(THREADBLOCK_SIZE) __global__
 
     for (int i = 0; i < K; ++i) {
       float val = (float)buf_smem_kv[i].value - total_md.m - d_total_log;
-      tmp_ids[group_beam_batch_id * K + i] =
-          buf_smem_kv[i].key;
-      tmp_vals[group_beam_batch_id * K + i] =
-          val + cum_scores[beam_batch_id];
+      tmp_ids[group_beam_batch_id * K + i] = buf_smem_kv[i].key;
+      tmp_vals[group_beam_batch_id * K + i] = val + cum_scores[beam_batch_id];
     }
   }
 }
@@ -689,7 +688,7 @@ __launch_bounds__(THREADBLOCK_SIZE) __global__
                      params.tmp_vals,                                        \
                      params.tmp_buffer,                                      \
                      params.cum_scores,                                      \
-                     params.beam_finished,                                  \
+                     params.beam_finished,                                   \
                      params.seq_lens,                                        \
                      beam_width,                                             \
                      beam_group_idx,                                         \
@@ -1058,14 +1057,15 @@ void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
   // == Step1 == : stage1
   if (params.use_fast_kernel) {
     constexpr int block_size =
-      (K < 16) ? ((K < 8) ? kBlockSizeForSmallBeamWidth : 128) : 64;
+        (K < 16) ? ((K < 8) ? kBlockSizeForSmallBeamWidth : 128) : 64;
     const int vocab_chunk_size = (vocab_size + voc_parts - 1) / voc_parts;
     const int dyn_smem_size = sizeof(T) * vocab_chunk_size;
     VLOG(1) << "Stage1 kernel dyn_smem_size: " << dyn_smem_size;
     if (dyn_smem_size >= (48 << 10)) {
-      cudaFuncSetAttribute(beam_search_softmax_topk_stage1_fast<T, K, block_size>,
-                            cudaFuncAttributeMaxDynamicSharedMemorySize,
-                            dyn_smem_size);
+      cudaFuncSetAttribute(
+          beam_search_softmax_topk_stage1_fast<T, K, block_size>,
+          cudaFuncAttributeMaxDynamicSharedMemorySize,
+          dyn_smem_size);
     }
     VLOG(1) << "voc_parts: " << voc_parts;
 
@@ -1104,11 +1104,8 @@ void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
 #endif
       // （bs, bm, voc_parts, 2 * K + 2）
       beam_search_softmax_topk_stage1<T, K, block_size, 2 * K + 2>
-          <<<grid, block_size, 0, stream>>>(params,
-                                            beam_width,
-                                            beam_group_idx,
-                                            vocab_size,
-                                            fuse_softmax);
+          <<<grid, block_size, 0, stream>>>(
+              params, beam_width, beam_group_idx, vocab_size, fuse_softmax);
     } else {
 #ifdef PADDLE_WITH_CUDA
       cudaFuncSetAttribute(
@@ -1125,11 +1122,8 @@ void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
 #endif
       // （bs, bm, voc_parts, 2 * K）
       beam_search_softmax_topk_stage1<T, K, block_size, 2 * K>
-          <<<grid, block_size, 0, stream>>>(params,
-                                            beam_width,
-                                            beam_group_idx,
-                                            vocab_size,
-                                            fuse_softmax);
+          <<<grid, block_size, 0, stream>>>(
+              params, beam_width, beam_group_idx, vocab_size, fuse_softmax);
     }
   }
 
@@ -1170,13 +1164,12 @@ void invokeTopkSoftMax(const Context &dev_ctx,
     CASE_K(16);
     default:
       PADDLE_THROW(errors::InvalidArgument(
-            "Beam_group_size/Beam_width must <= 16, but get %d",
-            params.beam_group_size));
+          "Beam_group_size/Beam_width must <= 16, but get %d",
+          params.beam_group_size));
   }
 }
 
-
-template<typename T, int K>
+template <typename T, int K>
 void ComputeVocParts(BeamSearchParams<T> &params) {
   int dev_id = 0;
   const int block_size =
@@ -1213,7 +1206,9 @@ void ComputeVocParts(BeamSearchParams<T> &params) {
           << ". extra_smem: " << extra_smem;
   int voc_parts = kMaxVocabPartForStage1FastKernel + 1;
   VLOG(1) << "Start compute voc_parts";
-  for (int n_block = max_active_blocks - 1; n_block > 0 && voc_parts > kMaxVocabPartForStage1FastKernel; --n_block) {
+  for (int n_block = max_active_blocks - 1;
+       n_block > 0 && voc_parts > kMaxVocabPartForStage1FastKernel;
+       --n_block) {
     int dyn_smem_size = max_smem_per_sm / n_block - extra_smem;
     dyn_smem_size -= dyn_smem_size % sizeof(T);
     voc_parts = ceilDiv(sizeof(T) * params.vocab_size, dyn_smem_size);
@@ -1223,7 +1218,8 @@ void ComputeVocParts(BeamSearchParams<T> &params) {
 
   if (!params.fuse_softmax || voc_parts > kMaxVocabPartForStage1FastKernel) {
     params.use_fast_kernel = false;
-    VLOG(1) << "Vocab size is too big for shared-memory. Falling back to the old algorithm";
+    VLOG(1) << "Vocab size is too big for shared-memory. Falling back to the "
+               "old algorithm";
     int sm_count;
     cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev_id);
     const int max_act_blocks_per_sm = 4;
@@ -1234,11 +1230,12 @@ void ComputeVocParts(BeamSearchParams<T> &params) {
   }
   params.voc_parts = voc_parts;
   params.max_smem_per_block = max_smem_per_block;
-  VLOG(1) << "BeamSearch Pre-compute. voc_parts: " << params.voc_parts << ". use_fast_kernel: " << params.use_fast_kernel;
+  VLOG(1) << "BeamSearch Pre-compute. voc_parts: " << params.voc_parts
+          << ". use_fast_kernel: " << params.use_fast_kernel;
 }
 
-template<typename T>
-void DispatchComputeVocParts(BeamSearchParams<T> &params){
+template <typename T>
+void DispatchComputeVocParts(BeamSearchParams<T> &params) {
   switch (params.beam_group_size) {
     DISPATCH_COMPUTE_PARTS_K(1);
     DISPATCH_COMPUTE_PARTS_K(2);
@@ -1258,8 +1255,8 @@ void DispatchComputeVocParts(BeamSearchParams<T> &params){
     DISPATCH_COMPUTE_PARTS_K(16);
     default:
       PADDLE_THROW(errors::InvalidArgument(
-            "Beam_group_size/Beam_width must <= 16, but get %d",
-            params.beam_group_size));
+          "Beam_group_size/Beam_width must <= 16, but get %d",
+          params.beam_group_size));
   }
 }
 
@@ -1326,8 +1323,8 @@ __global__ void update_stop_flags(BeamSearchParams<T> params) {
   int bid = blockIdx.x;
   const int beam_width = params.beam_width;
   const int beam_group_size = params.beam_group_size;
-  const bool* beam_finished = params.beam_finished + beam_width * bid;
-  bool* stop_flags = params.stop_flags + beam_width * bid;
+  const bool *beam_finished = params.beam_finished + beam_width * bid;
+  bool *stop_flags = params.stop_flags + beam_width * bid;
   bool finished = true;
   if (threadIdx.x == 0 && !stop_flags[0]) {
 #pragma unroll
@@ -1363,10 +1360,10 @@ here. Not elegant but useful ︸_︸.
 template <typename T, typename Context>
 void BeamSearchSoftmaxKernel(const Context &dev_ctx,
                              const DenseTensor &logits,
-                             const DenseTensor &seq_lens,  
-                             const DenseTensor &stop_flags,       // inplace
+                             const DenseTensor &seq_lens,
+                             const DenseTensor &stop_flags,  // inplace
                              const DenseTensor &end_ids,
-                             const DenseTensor &step_ids,  
+                             const DenseTensor &step_ids,
                              const DenseTensor &max_dec_lens,
                              const DenseTensor &block_tables,     // inplace
                              const DenseTensor &cum_scores,       // inplace
@@ -1382,19 +1379,27 @@ void BeamSearchSoftmaxKernel(const Context &dev_ctx,
                              bool early_stop,
                              DenseTensor *next_tokens,
                              DenseTensor *parent_ids) {
-  // PADDLE_ENFORCE_EQ(beam_width % beam_group_num, 
-  //                   0, 
+  // PADDLE_ENFORCE_EQ(beam_width % beam_group_num,
+  //                   0,
   //                   platform::errors::InvalidArgument(
   //                     "beam_width must be divisible by beam_group_num."
   //                   ));
-  
+
   const auto &logits_dims = logits.dims();
 
   int beam_width_scalar;
-  cudaMemcpyAsync(&beam_width_scalar, beam_width.data<int>(), sizeof(int), cudaMemcpyDeviceToHost, dev_ctx.stream());
+  cudaMemcpyAsync(&beam_width_scalar,
+                  beam_width.data<int>(),
+                  sizeof(int),
+                  cudaMemcpyDeviceToHost,
+                  dev_ctx.stream());
 
   int beam_group_num_scalar;
-  cudaMemcpyAsync(&beam_group_num_scalar, beam_group_num.data<int>(), sizeof(int), cudaMemcpyDeviceToHost, dev_ctx.stream());
+  cudaMemcpyAsync(&beam_group_num_scalar,
+                  beam_group_num.data<int>(),
+                  sizeof(int),
+                  cudaMemcpyDeviceToHost,
+                  dev_ctx.stream());
 
   int beam_batch_size = logits_dims[0];
   int batch_size = beam_batch_size / beam_width_scalar;
@@ -1478,9 +1483,11 @@ void BeamSearchSoftmaxKernel(const Context &dev_ctx,
   params.tmp_vals = tmp_topk_val.data<T>();
 
   DispatchComputeVocParts<T>(params);
-  // allocate workspace 
-  const int tmp_id_val_size = batch_size * beam_group_size * beam_group_size * 2;
-  const int packed_top_kmd_size = fuse_softmax ? 2 * 2 * beam_group_size + 2 : 2 * 2 * beam_group_size;
+  // allocate workspace
+  const int tmp_id_val_size =
+      batch_size * beam_group_size * beam_group_size * 2;
+  const int packed_top_kmd_size =
+      fuse_softmax ? 2 * 2 * beam_group_size + 2 : 2 * 2 * beam_group_size;
   const int tmp_stage1_to_stage2_size =
       batch_size * beam_group_size * params.voc_parts * packed_top_kmd_size;
 
@@ -1488,12 +1495,14 @@ void BeamSearchSoftmaxKernel(const Context &dev_ctx,
   DenseTensor wsp_buffer_tensor;
   wsp_buffer_tensor.Resize(phi::make_ddim({workspace_size}));
   dev_ctx.template Alloc<float>(&wsp_buffer_tensor);
-  params.tmp_ids = reinterpret_cast<int*>(wsp_buffer_tensor.data<float>());
+  params.tmp_ids = reinterpret_cast<int *>(wsp_buffer_tensor.data<float>());
   params.tmp_vals = wsp_buffer_tensor.data<float>() + tmp_id_val_size;
   params.tmp_buffer = wsp_buffer_tensor.data<float>() + 2 * tmp_id_val_size;
-  VLOG(2) << "tmp_id_val_size: " << tmp_id_val_size << ". tmp_stage1_to_stage2_size: " << tmp_stage1_to_stage2_size;
+  VLOG(2) << "tmp_id_val_size: " << tmp_id_val_size
+          << ". tmp_stage1_to_stage2_size: " << tmp_stage1_to_stage2_size;
 
-  for (int beam_group_idx = 0; beam_group_idx < beam_group_num_scalar; ++beam_group_idx) {
+  for (int beam_group_idx = 0; beam_group_idx < beam_group_num_scalar;
+       ++beam_group_idx) {
     if (beam_group_num_scalar == 1) {
       invokeTopkSoftMax<T, Context, false>(
           dev_ctx, params, beam_group_idx, dev_ctx.stream());

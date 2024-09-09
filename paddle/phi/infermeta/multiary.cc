@@ -1081,7 +1081,7 @@ void BeamSearchInferMeta(const MetaTensor& pre_ids,
 }
 
 void BeamSearchSoftmaxInferMeta(const MetaTensor& logits,
-                                const MetaTensor& seq_lens,  
+                                const MetaTensor& seq_lens,
                                 const MetaTensor& stop_flags,
                                 const MetaTensor& end_ids,
                                 const MetaTensor& step_ids,
@@ -1100,15 +1100,15 @@ void BeamSearchSoftmaxInferMeta(const MetaTensor& logits,
                                 bool early_stop,
                                 MetaTensor* next_tokens,
                                 MetaTensor* parent_ids) {
-  // Kernel needs to support dybatch, so the logits[0] may be different from 
+  // Kernel needs to support dybatch, so the logits[0] may be different from
   // other input in dimensions[0].
-  
+
   auto logits_dims = logits.dims();
 
-  PADDLE_ENFORCE_EQ(logits_dims.size(),
-                    2UL,
-                    errors::InvalidArgument(
-                        "The Input(logits) must be a 2-D tensor with "));
+  PADDLE_ENFORCE_EQ(
+      logits_dims.size(),
+      2UL,
+      errors::InvalidArgument("The Input(logits) must be a 2-D tensor with "));
 
   int bbm = logits_dims[0];
 

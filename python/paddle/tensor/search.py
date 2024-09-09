@@ -1453,6 +1453,7 @@ def top_p_sampling(
     else:
         return out, ids
 
+
 def beam_search_softmax(
     logits,
     seq_lens,
@@ -1473,10 +1474,16 @@ def beam_search_softmax(
     fuse_softmax=True,
     early_stop=False,
     name=None,
-):  
-    assert beam_width <= 16, f"beam_width must be less than or equal to 16, but get {beam_width}."
-    assert beam_group_num <= beam_width, "beam_group_num must be less than or equal to beam_width"
-    assert beam_width % beam_group_num == 0, "beam_width must be divisible by beam_group_num"
+):
+    assert (
+        beam_width <= 16
+    ), f"beam_width must be less than or equal to 16, but get {beam_width}."
+    assert (
+        beam_group_num <= beam_width
+    ), "beam_group_num must be less than or equal to beam_width"
+    assert (
+        beam_width % beam_group_num == 0
+    ), "beam_width must be divisible by beam_group_num"
     if in_dynamic_mode():
         return _C_ops.beam_search_softmax(
             logits,
@@ -1535,7 +1542,4 @@ def beam_search_softmax(
         },
         attrs=attrs,
     )
-    return (
-        next_tokens,
-        parent_ids
-    )
+    return (next_tokens, parent_ids)
