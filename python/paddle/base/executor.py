@@ -457,14 +457,15 @@ def has_fetch_operations_and_is_startup_program(
             is_startup_program = True
 
     need_fetch_info = []
-    for i, fetch_var in enumerate(fetch_targets):
-        if isinstance(fetch_var, str):
-            if fetch_var not in fetch_info[1]:
-                raise Exception(
-                    f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
-                )
-        elif fetch_var not in ValueSet(fetch_info[0]):
-            need_fetch_info.append(fetch_var)
+    if fetch_targets is not None:
+        for i, fetch_var in enumerate(fetch_targets):
+            if isinstance(fetch_var, str):
+                if fetch_var not in fetch_info[1]:
+                    raise Exception(
+                        f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
+                    )
+            elif fetch_var not in ValueSet(fetch_info[0]):
+                need_fetch_info.append(fetch_var)
 
     return need_fetch_info, is_startup_program
 
@@ -726,7 +727,9 @@ def _get_feed_fetch_var_names(feed, fetch_list):
     elif isinstance(feed, (list, tuple)):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
-    fetch_var_names = list(map(_to_name_str, fetch_list))
+    fetch_var_names = []
+    if fetch_list is not None:
+        fetch_var_names = list(map(_to_name_str, fetch_list))
     return feed_var_names + fetch_var_names
 
 
@@ -1166,15 +1169,6 @@ class _ExecutorCache:
         scope,
         plan,
     ):
-        if plan is None:
-            _add_pir_fetch_ops(
-                program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
-            )
-        else:
-            for i, value in enumerate(fetch_list):
-                _add_single_pir_fetch_op(
-                    value.block.program, value, fetch_var_name + str(i), i
-                )
         return self._get_cached_program_and_executor_pir_mode(
             self._CachedData(
                 program,
@@ -1188,6 +1182,17 @@ class _ExecutorCache:
             )
         )
 
+    def _update_pir_fetch_list(self, fetch_list, value_map_list):
+        update_fetch_list = []
+        for i, fetch_var in enumerate(fetch_list):
+            if isinstance(fetch_var, str):
+                update_fetch_list.append(fetch_var)
+            else:
+                for value_map in value_map_list:
+                    if value_map.has(fetch_var):
+                        update_fetch_list.append(value_map.look_up(fetch_var))
+        return update_fetch_list
+
     def _get_pir_program_and_executor(self, cached_data):
         program = cached_data.program
         feed = cached_data.feed
@@ -1198,11 +1203,52 @@ class _ExecutorCache:
         scope = cached_data.scope
 
         if cached_data.plan is None:
+            value_map = pir.IrMapping()
+            _, is_startup_program = has_fetch_operations_and_is_startup_program(
+                program.global_block(),
+                fetch_list,
+                fetch_var_name,
+                "pd_op.fetch",
+            )
+            program = program.clone(value_map)
+            if is_startup_program:
+                update_fetch_list = fetch_list
+            else:
+                update_fetch_list = self._update_pir_fetch_list(
+                    fetch_list, [value_map]
+                )
+
+            _add_pir_fetch_ops(
+                program,
+                fetch_list=update_fetch_list,
+                fetch_var_name=fetch_var_name,
+            )
             default_job = core.Job("default")
             type_to_program = {"default": program}
             plan = core.Plan([default_job], type_to_program)
         else:
-            plan = cached_data.plan
+            type_to_program = {}
+            value_map_list = []
+            for job_type in cached_data.plan.job_types():
+                ir_program = cached_data.plan.ir_program(job_type)
+                value_map = pir.IrMapping()
+                program = ir_program.clone(value_map)
+                type_to_program[job_type] = program
+                value_map_list.append(value_map)
+
+            job_list = []
+            for job in cached_data.plan.job_list():
+                job_list.append(job)
+
+            plan = core.Plan(job_list, type_to_program)
+            update_fetch_list = self._update_pir_fetch_list(
+                fetch_list, value_map_list
+            )
+
+            for i, value in enumerate(update_fetch_list):
+                _add_single_pir_fetch_op(
+                    value.block.program, value, fetch_var_name + str(i), i
+                )
 
         new_exe = _StandaloneExecutor(place, plan, scope)
 

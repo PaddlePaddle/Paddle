@@ -58,3 +58,10 @@ PD_REGISTER_KERNEL(matmul_with_flatten_double_grad,
                    phi::MatmulWithFlattenDoubleGradKernel,
                    float,
                    double) {}
+
+PD_REGISTER_KERNEL(legacy_matmul_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulGradKernel,
+                   float,
+                   double) {}

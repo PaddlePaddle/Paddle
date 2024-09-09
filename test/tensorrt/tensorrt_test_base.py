@@ -159,7 +159,7 @@ class TensorRTBaseTest(unittest.TestCase):
                         *self.max_shape[feed_name]
                     ).astype(self.api_args[feed_name].dtype)
 
-            warmup_shape_infer(
+            main_program = warmup_shape_infer(
                 main_program,
                 min_shape_feed=min_shape_data,
                 max_shape_feed=max_shape_data,
