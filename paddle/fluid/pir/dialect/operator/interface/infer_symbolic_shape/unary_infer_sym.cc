@@ -3848,7 +3848,7 @@ bool UnsqueezeOpInferSymbolicShape(
 
   auto x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  auto axes_shape_or_data =
+  auto axis_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   std::vector<symbol::DimExpr> x_sym_shape;
@@ -3859,47 +3859,53 @@ bool UnsqueezeOpInferSymbolicShape(
   }
   int x_dims_size = x_sym_shape.size();
 
-  std::vector<symbol::DimExpr> axes_sym;
-  if (axes_shape_or_data.data().has_value()) {
-    axes_sym = axes_shape_or_data.data().value();
+  std::vector<symbol::DimExpr> axis_sym;
+  if (axis_shape_or_data.data().has_value()) {
+    axis_sym = axis_shape_or_data.data().value();
   } else {
-    axes_sym = axes_shape_or_data.shape();
+    axis_sym =
+        details::GetOrCreateExprVecFromData(axis_shape_or_data, infer_context);
   }
-  int axes_sym_size = axes_sym.size();
+  int axis_sym_size = axis_sym.size();
 
   // GetUnsqueezeShape
-  int output_rank = x_dims_size + axes_sym_size;
+  int output_rank = x_dims_size + axis_sym_size;
   std::vector<symbol::DimExpr> result_sym_dims(output_rank, 0);
 
   int cur_output_rank = x_dims_size;
-  for (auto axis_expr : axes_sym) {
-    PADDLE_ENFORCE_EQ(
-        axis_expr.Has<std::int64_t>(),
-        true,
-        common::errors::InvalidArgument(
-            "in UnsqueezeOpInferSymbolicShape, axes must be known int type, "
-            "but got: %s",
-            symbol::ToString(axis_expr)));
-    int axis = static_cast<int>(axis_expr.Get<std::int64_t>());
-    int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
+  bool is_new_sym = false;
+  for (auto axis_expr : axis_sym) {
+    if (axis_expr.Has<std::int64_t>()) {
+      int axis = static_cast<int>(axis_expr.Get<std::int64_t>());
+      int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
 
-    // Move old axis, and insert new axis
-    for (int i = cur_output_rank; i >= cur; --i) {
-      if (result_sym_dims.at(i) == 1) {
-        // Move axis
-        result_sym_dims.at(i + 1) = 1;
-        result_sym_dims.at(i) = 0;
+      // Move old axis, and insert new axis
+      for (int i = cur_output_rank; i >= cur; --i) {
+        if (result_sym_dims.at(i) == 1) {
+          // Move axis
+          result_sym_dims.at(i + 1) = 1;
+          result_sym_dims.at(i) = 0;
+        }
       }
+      result_sym_dims.at(cur) = 1;
+      // Add the output size.
+      cur_output_rank++;
+    } else {
+      is_new_sym = true;
+      break;
     }
-    result_sym_dims.at(cur) = 1;
-    // Add the output size.
-    cur_output_rank++;
   }
 
   // Make output shape
-  for (int in_idx = 0, out_idx = 0; out_idx < output_rank; ++out_idx) {
-    if (result_sym_dims.at(out_idx) == 0) {
-      result_sym_dims.at(out_idx) = x_sym_shape.at(in_idx++);
+  if (is_new_sym) {
+    for (int out_idx = 0; out_idx < output_rank; ++out_idx) {
+      result_sym_dims.at(out_idx) = infer_context->GetNextSymName();
+    }
+  } else {
+    for (int in_idx = 0, out_idx = 0; out_idx < output_rank; ++out_idx) {
+      if (result_sym_dims.at(out_idx) == 0) {
+        result_sym_dims.at(out_idx) = x_sym_shape.at(in_idx++);
+      }
     }
   }
 
