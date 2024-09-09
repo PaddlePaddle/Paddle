@@ -729,18 +729,21 @@ class Engine:
                             use_master_grad=self._strategy.amp.use_master_grad,
                             use_promote=self._strategy.amp.use_promote,
                         )
-                        # bfloat16 needs no scaler
-                        scaler = paddle.amp.GradScaler(
-                            init_loss_scaling=self._strategy.amp.init_loss_scaling,
-                            incr_ratio=self._strategy.amp.incr_ratio,
-                            decr_ratio=self._strategy.amp.decr_ratio,
-                            incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
-                            decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
-                            use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
-                            enable=self._strategy.amp.enable
-                            and self._strategy.amp.dtype != 'bfloat16',
-                        )
-                        scaled = scaler.scale(loss)
+                        with auto_complete_op_role(
+                            dist_program, OpRole.Forward
+                        ):
+                            # bfloat16 needs no scaler
+                            scaler = paddle.amp.GradScaler(
+                                init_loss_scaling=self._strategy.amp.init_loss_scaling,
+                                incr_ratio=self._strategy.amp.incr_ratio,
+                                decr_ratio=self._strategy.amp.decr_ratio,
+                                incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
+                                decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
+                                use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
+                                enable=self._strategy.amp.enable
+                                and self._strategy.amp.dtype != 'bfloat16',
+                            )
+                            scaled = scaler.scale(loss)
                         optimizer_ops, params_grads = scaler.minimize(
                             self._optimizer, scaled
                         )
@@ -1316,6 +1319,8 @@ class Engine:
                             op.operand(0).set_source(reshard_var)
                 for del_op in del_ops:
                     del_op.erase()
+
+                set_all_ops_op_role(startup_prog, OpRole.Forward)
                 apply_reshard_pass(startup_prog)
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True

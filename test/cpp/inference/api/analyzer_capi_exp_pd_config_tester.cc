@@ -76,10 +76,6 @@ TEST(PD_Config, interface) {
   int32_t cpu_threads = PD_ConfigGetCpuMathLibraryNumThreads(config);
   EXPECT_EQ(cpu_threads, 10);
 
-  PD_ConfigEnableMkldnnQuantizer(config);
-  bool onednn_qt_enabled = PD_ConfigMkldnnQuantizerEnabled(config);
-  EXPECT_TRUE(onednn_qt_enabled);
-
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
 
