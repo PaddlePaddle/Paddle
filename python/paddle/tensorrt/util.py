@@ -99,16 +99,25 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
-            output_var = program.list_vars()[-1]
             # Run the program with input_data
             for _ in range(1):
-                output_original = executor.run(
-                    program, feed=min_shape_feed, fetch_list=[output_var]
-                )
+                output_original = executor.run(program, feed=min_shape_feed)
 
             # Run the program with input_data_max_shape (fake max_shape input)
             for _ in range(1):
-                executor.run(
-                    program, feed=max_shape_feed, fetch_list=[output_var]
+                executor.run(program, feed=max_shape_feed)
+
+            exe_program, _, _ = (
+                executor._executor_cache.get_pir_program_and_executor(
+                    program,
+                    feed=max_shape_feed,
+                    fetch_list=None,
+                    feed_var_name='feed',
+                    fetch_var_name='fetch',
+                    place=paddle.framework._current_expected_place_(),
+                    scope=paddle.static.global_scope(),
+                    plan=None,
                 )
+            )
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
+    return exe_program

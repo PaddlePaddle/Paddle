@@ -30,13 +30,11 @@ namespace cub = hipcub;
 #include <random>
 
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -351,43 +349,19 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(ring_id)) {
-      // Use ProcessGroup
-      phi::distributed::ProcessGroup* pg = map->get(ring_id);
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(num_classes_per_device);
-      out_tensor.push_back(num_classes_per_device);
+    auto stream = dev_ctx.stream();
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+        dev_ctx.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
 
-      phi::distributed::AllreduceOptions opts;
-      opts.reduce_op = phi::distributed::ReduceOp::SUM;
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
-    } else {
-      phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-      // use global calculate stream
-      auto stream = dev_ctx.stream();
-      const auto& comm_context_manager =
-          phi::distributed::CommContextManager::GetInstance();
-
-      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
-                        true,
-                        errors::InvalidArgument(
-                            "You choose to use new communication library by "
-                            "setting environment "
-                            "variable FLAGS_dynamic_static_unified_comm "
-                            "True. But ring_id(%d) is "
-                            "not found in comm_context_manager.",
-                            std::to_string(ring_id)));
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(ring_id)));
-      stream = comm_ctx->GetStream();
-
-      comm_ctx->AllReduce(
-          &num_classes_per_device, num_classes_per_device, ncclSum, stream);
-      phi::backends::gpu::GpuStreamSync(stream);
-    }
+    comm_ctx->AllReduce(
+        &num_classes_per_device, num_classes_per_device, ncclSum, stream);
+    phi::backends::gpu::GpuStreamSync(stream);
   }
 #endif
 
