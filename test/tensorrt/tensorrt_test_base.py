@@ -27,7 +27,8 @@ from paddle.tensorrt.util import (
 
 
 class TensorRTBaseTest(unittest.TestCase):
-    def setUp(self):
+    def __init__(self, methodName='runTest'):
+        super().__init__(methodName)
         self.python_api = None
         self.api_args = None
         self.program_config = None
@@ -83,7 +84,7 @@ class TensorRTBaseTest(unittest.TestCase):
             output = self.python_api(*actual_args)
             fetch_list = []
             if isinstance(output, tuple):
-                fetch_list = list(output)
+                fetch_list = [out for out in list(output) if out is not None]
             else:
                 fetch_list.append(output)
         return main_program, startup_program, fetch_list
