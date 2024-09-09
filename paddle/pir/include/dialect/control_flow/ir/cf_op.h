@@ -101,10 +101,9 @@ class IR_API TuplePopOp : public Op<TuplePopOp, SideEffectTrait> {
   TuplePushOp tuple_push_op() { return container_interface().tuple_push_op(); }
 };
 
-class IR_API StackCreateOp
-    : public Op<StackCreateOp,
-                ContainerOpInterface,
-                paddle::dialect::InferSymbolicShapeInterface> {
+class IR_API StackCreateOp : public Op<StackCreateOp,
+                                       ContainerOpInterface,
+                                       pir::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cf.stack_create"; }
