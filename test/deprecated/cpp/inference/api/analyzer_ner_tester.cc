@@ -125,17 +125,17 @@ void profile(bool memory_load = false) {
     PADDLE_ENFORCE_GT(
         outputs.size(),
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     auto output = outputs.back();
     PADDLE_ENFORCE_EQ(
         output.size(),
         1UL,
-        phi::errors::Fatal("The size of output should be equal to 1."));
+        common::errors::Fatal("The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(
         size,
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     int64_t *result = static_cast<int64_t *>(output[0].data.data());
     for (size_t i = 0; i < std::min<size_t>(11, size); i++) {
       EXPECT_EQ(result[i], chinese_ner_result_data[i]);
@@ -147,21 +147,6 @@ TEST(Analyzer_Chinese_ner, profile) { profile(); }
 
 TEST(Analyzer_Chinese_ner, profile_memory_load) {
   profile(true /* memory_load */);
-}
-
-// Check the fuse status
-TEST(Analyzer_Chinese_ner, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
-  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
-  EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 2);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

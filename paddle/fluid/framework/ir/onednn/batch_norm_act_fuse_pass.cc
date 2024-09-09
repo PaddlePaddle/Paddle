@@ -81,7 +81,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input graph of "
           "FuseBatchNormActOneDNNPass should not be nullptr."));
   FusePassBase::Init("bn_act", graph);
@@ -111,7 +111,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     if (bn_op->HasAttr("trainable_statistics")) {
       PADDLE_ENFORCE(
           !PADDLE_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only when mean and variance "
               "are not calculated by current batch statistics."));
     }
@@ -119,7 +119,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     if (bn_op->HasAttr("is_test")) {
       PADDLE_ENFORCE(
           PADDLE_GET_CONST(bool, bn_op->GetAttr("is_test")),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only during inference."));
     }
 

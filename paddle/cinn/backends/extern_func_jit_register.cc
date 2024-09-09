@@ -24,7 +24,12 @@ void RegisterExternFunctionHelper(const std::string &fn_name,
                                   Target target,
                                   void *fn_ptr) {
   ExternFunctionProtoRegistry::Global().Register(fn_name, fn_proto.release());
-  CHECK(ExternFunctionProtoRegistry::Global().Lookup(fn_name));
+  PADDLE_ENFORCE_NOT_NULL(ExternFunctionProtoRegistry::Global().Lookup(fn_name),
+                          ::common::errors::NotFound(
+                              "The function prototype for '%s' was not found "
+                              "in the ExternFunctionProtoRegistry. Please "
+                              "ensure the function name is correct.",
+                              fn_name));
 
   ExternFunctionEmitterRegistry::Global().Register(
       ExternFuncID{TargetToBackendRepr(target), fn_name.c_str()}, fn_name);

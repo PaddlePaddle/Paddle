@@ -35,7 +35,7 @@ static void FindAllPyLayerOpAndPyLayerGradOp(
   PADDLE_ENFORCE_GE(
       fwd_ops->size(),
       bwd_ops->size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Size of forward ops must be greater or equal to backward ops. The "
           "number of forward ops is %d and the number of backward ops is %d",
           fwd_ops->size(),
@@ -56,7 +56,7 @@ static void FindAllPyLayerOpAndPyLayerGradOp(
   PADDLE_ENFORCE_GE(
       fwd_ops->size(),
       bwd_ops->size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "There are more pylayer_grad ops than "
           "pylayer ops in the graph or program. The number of "
           "forward ops is %d and the number of backward ops is %d",
@@ -116,14 +116,14 @@ static void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
       if (IsMatchedPyLayerOpAndPyLayerGradOp(fwd_op, bwd_op)) {
         PADDLE_ENFORCE_EQ(matched_fwd_op,
                           nullptr,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "Found multiple matched pylayer ops."));
         matched_fwd_op = &fwd_op;
       }
     }
 
     PADDLE_ENFORCE_NOT_NULL(matched_fwd_op,
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "Cannot find matched forward pylayer op."));
 
     SetSkipVarsForPyLayerOp(const_cast<OpVariant *>(matched_fwd_op), &bwd_op);

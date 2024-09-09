@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/select_op_helper.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -55,7 +55,7 @@ class SelectOutputOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         output_branch,
         out_names.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input 'Mask' in SelectOutputOp is invalid. "
             "'Mask' must be less than the size of output vector 'Out'. "
             "But received Mask = %d, Out's size = %d.",

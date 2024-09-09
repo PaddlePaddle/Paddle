@@ -250,7 +250,9 @@ class Test_Exp_Op_Int(unittest.TestCase):
 class TestExpm1(TestActivation):
     def setUp(self):
         self.op_type = "expm1"
+        self.prim_op_type = "prim"
         self.python_api = paddle.expm1
+        self.public_python_api = paddle.expm1
         self.init_dtype()
         self.init_shape()
 
@@ -269,7 +271,11 @@ class TestExpm1(TestActivation):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):
@@ -313,7 +319,13 @@ class TestExpm1API(unittest.TestCase):
         self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         self.out_ref = np.expm1(self.x)
 
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -923,7 +935,9 @@ class TestTanhInplaceAPI(TestTanhAPI):
 class TestAtan(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "atan"
+        self.prim_op_type = "prim"
         self.python_api = paddle.atan
+        self.public_python_api = paddle.atan
         self.init_dtype()
         self.init_shape()
 
@@ -948,9 +962,21 @@ class TestAtan(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+                check_prim_pir=True,
+            )
 
     @test_with_pir_api
     def test_out_name(self):
@@ -4869,10 +4895,12 @@ def ref_softsign(x):
 class TestSoftsign(TestActivation):
     def setUp(self):
         self.op_type = "softsign"
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
 
         self.python_api = paddle.nn.functional.softsign
+        self.public_python_api = paddle.nn.functional.softsign
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -4891,16 +4919,35 @@ class TestSoftsign(TestActivation):
         self.shape = [10, 12]
 
     def test_check_output(self):
-        self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_output(
+                check_pir=True, check_pir_onednn=self.check_pir_onednn
+            )
+        else:
+            self.check_output(
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+                check_prim_pir=True,
+            )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+                check_prim_pir=True,
+            )
 
 
 class TestSoftsign_Complex64(TestSoftsign):
@@ -5516,7 +5563,7 @@ create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(
     TestExpFp32_Prim, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
-create_test_act_fp16_class(TestExpm1)
+create_test_act_fp16_class(TestExpm1, check_prim_pir=True)
 create_test_act_fp16_class(
     TestSigmoid,
     check_prim=True,
@@ -5571,7 +5618,7 @@ create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestSinh, check_pir=True)
 create_test_act_fp16_class(TestAsin, check_pir=True)
-create_test_act_fp16_class(TestAtan, check_pir=True)
+create_test_act_fp16_class(TestAtan, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestAcosh, check_pir=True)
 create_test_act_fp16_class(TestAsinh, check_pir=True)
 create_test_act_fp16_class(TestAtanh, check_pir=True)
@@ -5712,7 +5759,7 @@ create_test_act_bf16_class(TestActivation)
 create_test_act_bf16_class(
     TestExpFp32_Prim, check_prim=True, check_prim_pir=True
 )
-create_test_act_bf16_class(TestExpm1)
+create_test_act_bf16_class(TestExpm1, check_prim_pir=True)
 create_test_act_bf16_class(
     TestSigmoid, check_prim=True, check_pir=True, check_prim_pir=True
 )
@@ -5746,7 +5793,7 @@ create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestSinh, check_pir=True)
 create_test_act_bf16_class(TestAsin, check_pir=True)
-create_test_act_bf16_class(TestAtan, check_pir=True)
+create_test_act_bf16_class(TestAtan, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestAcosh, check_pir=True)
 create_test_act_bf16_class(TestAsinh, check_pir=True)
 create_test_act_bf16_class(TestAtanh, check_pir=True)

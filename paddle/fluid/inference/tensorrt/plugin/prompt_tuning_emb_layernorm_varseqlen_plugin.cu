@@ -325,7 +325,7 @@ int32_t TrtPromptTuningEmbLayerNormVarSeqlenPluginHFace::enqueue(
   } else if (maxSeqlen <= 512) {
     S = 512;
   } else {
-    PADDLE_THROW(phi::errors::Fatal("The max seqlenth is 512."));
+    PADDLE_THROW(common::errors::Fatal("The max seqlenth is 512."));
   }
   const float* beta = mBetaDev.get();
   const float* gamma = mGammaDev.get();

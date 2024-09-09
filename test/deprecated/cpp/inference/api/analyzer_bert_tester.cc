@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/core/enforce.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
@@ -61,19 +61,6 @@ TEST(Analyzer_bert, profile_mkldnn_bf16) {
   profile(use_mkldnn, use_bfloat16);
 }
 #endif
-
-// Check the fuse status
-TEST(Analyzer_bert, fuse_statis) {
-#if !defined(_WIN32)
-  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
-#endif
-  auto cfg(SetConfig());
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  LOG(INFO) << "num_ops: " << num_ops;
-}
 
 TEST(Analyzer_bert, compare) {
 #if !defined(_WIN32)
@@ -139,12 +126,12 @@ TEST(Analyzer_bert, transfer_scope_cache) {
   PADDLE_ENFORCE_EQ(
       global_transfer_scope_cache.size(),
       threads_num,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "The size of scope cache is not equal to thread number."));
   PADDLE_ENFORCE_EQ(
       global_transfer_data_cache.size(),
       threads_num,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "The size of data cache is not equal to thread number."));
 }
 
@@ -161,7 +148,7 @@ void profile(bool use_mkldnn, bool use_bfloat16) {
 std::vector<std::vector<paddle::PaddleTensor>> LoadInputData() {
   if (FLAGS_infer_data.empty()) {
     LOG(ERROR) << "please set input data path";
-    PADDLE_THROW(phi::errors::NotFound("Missing input data path"));
+    PADDLE_THROW(common::errors::NotFound("Missing input data path"));
   }
 
   std::ifstream fin(FLAGS_infer_data);
@@ -192,7 +179,8 @@ std::vector<paddle::PaddleTensor> ParseInputStreamToVector(
     const std::string &line) {
   const auto fields = Split<std::string>(line, ';');
 
-  if (fields.size() < 5) PADDLE_THROW(phi::errors::Fatal("Invalid input line"));
+  if (fields.size() < 5)
+    PADDLE_THROW(common::errors::Fatal("Invalid input line"));
 
   std::vector<paddle::PaddleTensor> tensors;
 
@@ -230,7 +218,8 @@ AnalysisConfig SetConfig(bool use_mkldnn, bool use_bfloat16) {
 template <typename T>
 paddle::PaddleTensor ParseTensor(const std::string &field) {
   const auto data = Split<std::string>(field, ':');
-  if (data.size() < 2) PADDLE_THROW(phi::errors::Fatal("Invalid data field"));
+  if (data.size() < 2)
+    PADDLE_THROW(common::errors::Fatal("Invalid data field"));
 
   std::string shape_str = data[0];
   const auto shape = Split<int>(shape_str, ' ');

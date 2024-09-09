@@ -61,9 +61,9 @@ class TestDatasetWithStat(unittest.TestCase):
 
         embs = []
         for x in slots_vars:
-            emb = paddle.static.nn.embedding(
-                x, is_sparse=True, size=[100001, 4]
-            )
+            emb = paddle.nn.Embedding(
+                num_embeddings=100001, embedding_dim=4, sparse=True
+            )(x)
             embs.append(emb)
 
         dataset = paddle.distributed.InMemoryDataset()

@@ -24,7 +24,7 @@ limitations under the License. */
         attr_name__ = vec_##attr_name__[0];                                \
         PADDLE_ENFORCE_EQ(vec_##attr_name__.size(),                        \
                           1UL,                                             \
-                          phi::errors::InvalidArgument(                    \
+                          common::errors::InvalidArgument(                 \
                               "attr axes/starts/ends/steps 's size in "    \
                               "set_value must be one, but got %d",         \
                               vec_##attr_name__.size()));                  \
@@ -94,7 +94,7 @@ class SetValueConverter : public OpConverter {
       PADDLE_ENFORCE_EQ(
           dtype,
           5,
-          phi::errors::InvalidArgument("set_value OP dtype must be float"));
+          common::errors::InvalidArgument("set_value OP dtype must be float"));
       float value = PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>,
                                      op_desc.GetAttr("values"))[0]
                         .to<float>();
@@ -146,7 +146,7 @@ class SetValueConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         updates->getDimensions().nbDims,
         input_rank,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ValueTensor‘s rank not equal to Input's rank, "
             "you should try use C++ API "
             "config.exp_disable_tensorrt_ops({\"%s\"}) to forbid this op "
@@ -174,7 +174,7 @@ class SetValueConverter : public OpConverter {
     PADDLE_ENFORCE_GT(
         input_dims.d[axes],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "the input_dims.d[%d] must be greater than 0, but received %d",
             axes,
             input_dims.d[axes]));
@@ -182,22 +182,22 @@ class SetValueConverter : public OpConverter {
     PADDLE_ENFORCE_GT(
         update_dims.d[axes],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "the update_dims.d[%d] must be greater than 0, but received %d",
             axes,
             update_dims.d[axes]));
 
-    PADDLE_ENFORCE_LE(
-        axes,
-        input_dims.nbDims,
-        phi::errors::InvalidArgument("The axes %d is larger than total axes %d",
-                                     axes,
-                                     input_dims.nbDims));
+    PADDLE_ENFORCE_LE(axes,
+                      input_dims.nbDims,
+                      common::errors::InvalidArgument(
+                          "The axes %d is larger than total axes %d",
+                          axes,
+                          input_dims.nbDims));
 
     PADDLE_ENFORCE_LE(
         starts,
         input_dims.d[axes],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The start %d of dim %d is larger than origin shape %d",
             starts,
             axes,
@@ -206,7 +206,7 @@ class SetValueConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         update_dims.d[axes],
         (ends - 1 - starts) / steps + 1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "the %dth axis of update dim error, should be %d, but we got %d",
             axes,
             (ends - 1 - starts) / steps + 1,
@@ -249,7 +249,7 @@ class SetValueConverter : public OpConverter {
 
       ReplenishLayerAndOutput(layer, "set_value", {output_name}, test_mode);
     } else {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "static shape mode not supported in set value yet"));
     }
   }

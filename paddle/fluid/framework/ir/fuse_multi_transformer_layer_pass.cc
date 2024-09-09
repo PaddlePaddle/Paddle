@@ -289,8 +289,8 @@ void FuseMultiTransformerLayerPass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::Fatal("During the fuse_multi_transformer_layer pass, "
-                         "The scope should not be null."));
+      common::errors::Fatal("During the fuse_multi_transformer_layer pass, "
+                            "The scope should not be null."));
 
   VLOG(3) << "Running fuse_multi_transformer_layer_pass.";
   if (graph->IsMainGraph()) {

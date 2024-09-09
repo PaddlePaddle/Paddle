@@ -23,13 +23,14 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         DataLayout1D,
         DataLayout1DVariant,
         DataLayout2D,
         DataLayout3D,
-        IntSequence,
         ParamAttrLike,
         ShapeLike,
         Size2,
@@ -42,19 +43,17 @@ if TYPE_CHECKING:
         _PaddingTensorMode,
     )
 
-    _T_Padding = TypeVar("_T_Padding", Tensor, IntSequence)
+    _T_Padding = TypeVar("_T_Padding", Tensor, Sequence[int])
 
 __all__ = []
 
 
 @overload
-def _npairs(x: _T_Padding, n: int) -> _T_Padding:
-    ...
+def _npairs(x: _T_Padding, n: int) -> _T_Padding: ...
 
 
 @overload
-def _npairs(x: int, n: int) -> int:
-    ...
+def _npairs(x: int, n: int) -> int: ...
 
 
 def _npairs(x, n):
@@ -845,14 +844,14 @@ class Dropout(Layer):
     """
 
     p: float
-    axis: int | IntSequence | None
+    axis: int | Sequence[int] | None
     mode: _DropoutMode
     name: str | None
 
     def __init__(
         self,
         p: float = 0.5,
-        axis: int | IntSequence | None = None,
+        axis: int | Sequence[int] | None = None,
         mode: _DropoutMode = "upscale_in_train",
         name: str | None = None,
     ) -> None:
@@ -1218,7 +1217,7 @@ class Pad1D(Layer):
 
     def __init__(
         self,
-        padding: Tensor | IntSequence | int,
+        padding: Tensor | Sequence[int] | int,
         mode: _PaddingTensorMode = 'constant',
         value: float = 0.0,
         data_format: DataLayout1D = "NCL",
@@ -1286,7 +1285,7 @@ class ZeroPad1D(Layer):
 
     def __init__(
         self,
-        padding: Tensor | IntSequence | int,
+        padding: Tensor | Sequence[int] | int,
         data_format: DataLayout1D = "NCL",
         name: str | None = None,
     ) -> None:
@@ -1360,7 +1359,7 @@ class Pad2D(Layer):
 
     def __init__(
         self,
-        padding: Tensor | IntSequence | int,
+        padding: Tensor | Sequence[int] | int,
         mode: _PaddingTensorMode = 'constant',
         value: float = 0.0,
         data_format: DataLayout2D = "NCHW",
@@ -1431,7 +1430,7 @@ class ZeroPad2D(Layer):
 
     def __init__(
         self,
-        padding: Tensor | IntSequence | int,
+        padding: Tensor | Sequence[int] | int,
         data_format: DataLayout2D = "NCHW",
         name: str | None = None,
     ) -> None:
@@ -1505,7 +1504,7 @@ class Pad3D(Layer):
 
     def __init__(
         self,
-        padding: Tensor | IntSequence | int,
+        padding: Tensor | Sequence[int] | int,
         mode: _PaddingTensorMode = 'constant',
         value: float = 0.0,
         data_format: DataLayout3D = "NCDHW",
@@ -1576,7 +1575,7 @@ class ZeroPad3D(Layer):
 
     def __init__(
         self,
-        padding: Tensor | IntSequence | int,
+        padding: Tensor | Sequence[int] | int,
         data_format: DataLayout3D = "NCDHW",
         name: str | None = None,
     ) -> None:
@@ -1701,6 +1700,9 @@ class Embedding(Layer):
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
+        max_norm(float, optional): If provided, will renormalize the embedding vectors to have a norm larger than
+            :attr:`max\_norm` . It will inplace update the input embedding weight in dynamic graph mode. Default: None.
+        norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
         sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizer does not support sparse update,
@@ -1765,6 +1767,8 @@ class Embedding(Layer):
         num_embeddings: int,
         embedding_dim: int,
         padding_idx: float | None = None,
+        max_norm: float | None = None,
+        norm_type: float = 2.0,
         sparse: bool = False,
         weight_attr: ParamAttrLike | None = None,
         name: str | None = None,
@@ -1774,6 +1778,8 @@ class Embedding(Layer):
         self._embedding_dim = embedding_dim
         self._sparse = sparse
         self._is_distributed = False
+        self._max_norm = max_norm
+        self._norm_type = norm_type
         self._padding_idx = padding_idx
 
         if self._num_embeddings <= 0:
@@ -1819,6 +1825,8 @@ class Embedding(Layer):
             x,
             weight=self.weight,
             padding_idx=self._padding_idx,
+            max_norm=self._max_norm,
+            norm_type=self._norm_type,
             sparse=self._sparse,
             name=self._name,
         )

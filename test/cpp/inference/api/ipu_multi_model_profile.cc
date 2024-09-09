@@ -86,7 +86,7 @@ TEST(Analyzer_ipu_fp16, performance_profile) {
     config.SetModel(FLAGS_infer_model + "/model/");
     ErnieInputData(total_batch_size, FLAGS_ipu_enable_fp16, &inputs);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Only support Resnet50 and Ernie Currently"));
   }
   // ipu_device_num, ipu_micro_batch_size, ipu_enable_pipelining,

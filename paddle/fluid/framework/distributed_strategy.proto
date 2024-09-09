@@ -97,6 +97,8 @@ message DygraphShardingConfig {
   optional bool split_param = 4 [ default = false ];
   optional bool fuse_optimizer = 5 [ default = true ];
   optional bool use_reduce_avg = 6 [ default = true ];
+  optional bool release_gradients = 7 [ default = false ];
+  optional int32 comm_buffer_size_MB = 8 [ default = 256 ];
 }
 
 message HybridConfig {

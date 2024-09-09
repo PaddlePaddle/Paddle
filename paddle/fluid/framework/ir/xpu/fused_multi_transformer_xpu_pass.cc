@@ -300,7 +300,7 @@ class FusedMultiTransformerXPUPass : public FusePassBase {
 
 void FusedMultiTransformerXPUPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   VLOG(3) << "in FusedMultiTransformerXPUPass::ApplyImpl";
 
@@ -420,9 +420,10 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
         Node* w_intx = nullptr;
         Node* w_max = nullptr;
         Node* scale_max = nullptr;
-        PADDLE_ENFORCE_NE(w_node,
-                          nullptr,
-                          phi::errors::Fatal("w node should not be nullptr"));
+        PADDLE_ENFORCE_NE(
+            w_node,
+            nullptr,
+            common::errors::Fatal("w node should not be nullptr"));
         if (quant_post_dynamic_weight_precision == 0) {
           PrepareWeight<float, int8_t>(graph,
                                        scope,
@@ -455,35 +456,35 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
       PADDLE_ENFORCE_EQ(
           w_names.size(),
           w_nodes->size(),
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "The size of w_names(%d) should be equal to w_nodes(%d)",
               static_cast<int>(w_names.size()),
               static_cast<int>(w_nodes->size())));
       PADDLE_ENFORCE_EQ(
           w_names.size(),
           w_intx_nodes->size(),
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "The size of w_names(%d) should be equal to w_intx_nodes(%d)",
               static_cast<int>(w_names.size()),
               static_cast<int>(w_intx_nodes->size())));
       PADDLE_ENFORCE_EQ(
           w_names.size(),
           w_max_nodes->size(),
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "The size of w_names(%d) should be equal to w_max_nodes(%d)",
               static_cast<int>(w_names.size()),
               static_cast<int>(w_max_nodes->size())));
       PADDLE_ENFORCE_EQ(
           w_names.size(),
           w_intx_names->size(),
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "The size of w_names(%d) should be equal to w_intx_names(%d)",
               static_cast<int>(w_names.size()),
               static_cast<int>(w_intx_names->size())));
       PADDLE_ENFORCE_EQ(
           w_names.size(),
           w_max_names->size(),
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "The size of w_names(%d) should be equal to w_max_names(%d)",
               static_cast<int>(w_names.size()),
               static_cast<int>(w_max_names->size())));
@@ -526,7 +527,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
         PADDLE_ENFORCE_NE(
             curr_tensor,
             nullptr,
-            phi::errors::Fatal("tensor node should not be nullptr"));
+            common::errors::Fatal("tensor node should not be nullptr"));
         CastToFp32(curr_tensor);
 
         Node* curr_node = FindNodeWithName(graph, name);

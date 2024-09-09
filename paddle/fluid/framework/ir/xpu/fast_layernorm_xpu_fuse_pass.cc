@@ -113,7 +113,7 @@ class FastLayernormXPUFusePass : public FusePassBase {
 
 void FastLayernormXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   FuseFastLayernorm(graph);
@@ -140,7 +140,7 @@ void FastLayernormXPUFusePass::FuseFastLayernorm(ir::Graph* graph) const {
     auto* block = l_norm->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     // delete useless node
     std::unordered_set<const Node*> delete_nodes;

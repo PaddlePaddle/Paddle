@@ -103,7 +103,7 @@ void RegisterAllCustomOperator(bool use_pir) {
             PADDLE_ENFORCE_EQ(
                 meta_inputs.size(),
                 inputs.size(),
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "The number of inputs for the custom operator [%s] given "
                     "in the Pattern needs to be consistent with the number at "
                     "implementation time.",
@@ -111,7 +111,7 @@ void RegisterAllCustomOperator(bool use_pir) {
             PADDLE_ENFORCE_EQ(
                 meta_attrs.size(),
                 attrs.size(),
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "The number of attrs for the custom operator [%s] given "
                     "in the Pattern needs to be consistent with the number at "
                     "implementation time.",
@@ -162,7 +162,7 @@ void RegisterAllCustomOperator(bool use_pir) {
                 PADDLE_ENFORCE_EQ(
                     inputs[i].type().isa<::pir::VectorType>(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The [%d] input of the custom operator [%s] "
                         "should be a pir::VectorType.",
                         i,
@@ -204,7 +204,7 @@ void RegisterAllCustomOperator(bool use_pir) {
               auto attr_type = attr_name_and_type[1];
               PADDLE_ENFORCE_EQ(attrs.count(attr_name),
                                 true,
-                                phi::errors::InvalidArgument(
+                                common::errors::InvalidArgument(
                                     "The attr [%s] in the custom operator [%s] "
                                     "specified in the Pattern needs to be "
                                     "consistent with the implementation",
@@ -278,7 +278,7 @@ void RegisterAllCustomOperator(bool use_pir) {
                 }
                 custom_attrs.emplace_back(vec_string_attr);
               } else {
-                PADDLE_THROW(phi::errors::Unimplemented(
+                PADDLE_THROW(common::errors::Unimplemented(
                     "Unsupported `%s` type value as custom attribute now. "
                     "Supported data types include `bool`, `int`, `float`, "
                     "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -315,7 +315,7 @@ void RegisterAllCustomOperator(bool use_pir) {
               if (paddle::framework::detail::IsDuplicableVar(output)) {
                 PADDLE_ENFORCE_NE(inplace_reverse_map.find(output),
                                   inplace_reverse_map.end(),
-                                  phi::errors::InvalidArgument(
+                                  common::errors::InvalidArgument(
                                       "Only support vector output that is set "
                                       "for inplace, Please use "
                                       "`SetInplaceMap` in your output when "
@@ -341,29 +341,29 @@ void RegisterAllCustomOperator(bool use_pir) {
               all_values_num += output_name2value_num[output];
             }
 
-            PADDLE_ENFORCE_EQ(
-                output_shapes.size(),
-                all_values_num,
-                phi::errors::InvalidArgument("The number of output shapes "
-                                             "after running custom operator's "
-                                             "InferShapeFunc is wrong, "
-                                             "expected contains %d Tensors' "
-                                             "shape, but actually contains %d "
-                                             "Tensors' shape",
-                                             all_values_num,
-                                             output_shapes.size()));
+            PADDLE_ENFORCE_EQ(output_shapes.size(),
+                              all_values_num,
+                              common::errors::InvalidArgument(
+                                  "The number of output shapes "
+                                  "after running custom operator's "
+                                  "InferShapeFunc is wrong, "
+                                  "expected contains %d Tensors' "
+                                  "shape, but actually contains %d "
+                                  "Tensors' shape",
+                                  all_values_num,
+                                  output_shapes.size()));
 
-            PADDLE_ENFORCE_EQ(
-                output_dtypes.size(),
-                all_values_num,
-                phi::errors::InvalidArgument("The number of output dtypes "
-                                             "after running custom operator's "
-                                             "InferDtypeFunc is wrong, "
-                                             "expected contains %d Tensors' "
-                                             "dtype, but actually contains %d "
-                                             "Tensors' dtype",
-                                             all_values_num,
-                                             output_dtypes.size()));
+            PADDLE_ENFORCE_EQ(output_dtypes.size(),
+                              all_values_num,
+                              common::errors::InvalidArgument(
+                                  "The number of output dtypes "
+                                  "after running custom operator's "
+                                  "InferDtypeFunc is wrong, "
+                                  "expected contains %d Tensors' "
+                                  "dtype, but actually contains %d "
+                                  "Tensors' dtype",
+                                  all_values_num,
+                                  output_dtypes.size()));
 
             size_t value_index = 0;
             for (const auto &output : meta_outputs) {

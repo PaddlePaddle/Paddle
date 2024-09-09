@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+import os
 import unittest
 
 import numpy as np
@@ -204,7 +205,13 @@ class TestSparseAdagradOp(unittest.TestCase):
         )
 
     def test_sparse_adagrad(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -247,7 +254,13 @@ class TestAdagradOpMultiPrecision(unittest.TestCase):
     def _get_places(self):
         import paddle
 
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         return places
@@ -298,15 +311,7 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adagrad(0.1)
-        optimizer._multi_precision = mp
-        if use_amp:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
-                use_fp16_guard=False,
-            )
+
         with paddle.static.program_guard(train_program, startup_program):
             if use_amp:
                 data = paddle.static.data(
@@ -316,22 +321,34 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
                 data = paddle.static.data(
                     shape=[2, 2], name='X', dtype='float32'
                 )
-            hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
+            hidden_layer = paddle.nn.Linear(2, 10)
+            if use_amp:
+                hidden_layer, optimizer = paddle.amp.decorate(
+                    models=hidden_layer,
+                    optimizers=optimizer,
+                    level='O2',
+                    master_weight=True,
+                    master_grad=False,
+                )
+                with paddle.amp.auto_cast(
+                    level='O2', dtype='float16', use_promote=True
+                ):
+                    hidden = hidden_layer(data)
+                    loss = paddle.mean(hidden)
+            else:
+                hidden = hidden_layer(data)
+                loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
 
         if use_amp:
-            optimizer.amp_init(
-                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
-            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')
         out = []
         for idx in range(5):
             (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
+                train_program, feed={"X": x}, fetch_list=[loss]
             )
             out.append(loss_data)
         return out
@@ -358,15 +375,16 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
                 atol=0.1,
             )
         "Test static mode"
-        output1_st = self.static_adagrad_mp(use_amp=True, mp=True)
-        output2_st = self.static_adagrad_mp(use_amp=False, mp=False)
-        for idx in range(len(output1_st)):
-            np.testing.assert_allclose(
-                output1_st[idx].astype('float32'),
-                output2_st[idx].astype('float32'),
-                rtol=1e-05,
-                atol=0.1,
-            )
+        with paddle.pir_utils.IrGuard():
+            output1_st = self.static_adagrad_mp(use_amp=True, mp=True)
+            output2_st = self.static_adagrad_mp(use_amp=False, mp=False)
+            for idx in range(len(output1_st)):
+                np.testing.assert_allclose(
+                    output1_st[idx].astype('float32'),
+                    output2_st[idx].astype('float32'),
+                    rtol=1e-05,
+                    atol=0.1,
+                )
 
 
 if __name__ == "__main__":

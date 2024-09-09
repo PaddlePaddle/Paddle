@@ -50,7 +50,7 @@ class BlockMultiHeadAttentionXPUPass : public FusePassBase {
 
 void BlockMultiHeadAttentionXPUPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   InplaceBlockMultiHeadAttentionXPU(graph);

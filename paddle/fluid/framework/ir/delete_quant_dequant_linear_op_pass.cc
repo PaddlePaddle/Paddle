@@ -91,7 +91,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Scope in DeleteQuantDequantLinearOpPass should not be null."));
 
   VLOG(3) << "Running delete_quant_dequant_linear_op_pass.";
@@ -141,7 +141,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
             ->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input scale tensor's place should be CPU."));
 
     float input_scale = NAN;
@@ -153,8 +153,8 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
           input_scale_tensor.data<phi::dtype::float16>();
       input_scale = static_cast<float>(input_scale_data[0]);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented("%d is not supported.",
-                                              input_scale_tensor.dtype()));
+      PADDLE_THROW(common::errors::Unimplemented("%d is not supported.",
+                                                 input_scale_tensor.dtype()));
     }
 
     int nums_any_ops =

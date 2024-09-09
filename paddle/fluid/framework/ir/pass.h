@@ -88,7 +88,7 @@ class Pass {
   AttrType &Get(const std::string &attr_name) const {
     PADDLE_ENFORCE_NE(attrs_.find(attr_name),
                       attrs_.end(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Attribute %s not registered for pass.", attr_name));
     try {
       return *paddle::any_cast<AttrType *>(attrs_.at(attr_name));
@@ -108,7 +108,7 @@ class Pass {
         return info.name();
       };
 
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Invalid type for attritube %s, expected: %s, actual: %s.",
           attr_name,
           TypeToString(typeid(AttrType *)),
@@ -138,8 +138,8 @@ class Pass {
       PADDLE_ENFORCE_EQ(
           attrs_.count(attr_name),
           0,
-          phi::errors::AlreadyExists("Attribute %s already set in the pass.",
-                                     attr_name));
+          common::errors::AlreadyExists("Attribute %s already set in the pass.",
+                                        attr_name));
     } else {
       VLOG(3) << "Setting the attribute " << attr_name << " for the pass "
               << type_;
@@ -157,7 +157,7 @@ class Pass {
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
     PADDLE_ENFORCE_EQ(attrs_.count(attr_name),
                       0,
-                      phi::errors::AlreadyExists(
+                      common::errors::AlreadyExists(
                           "Attribute %s already set in the pass.", attr_name));
     attrs_[attr_name] = attr;
   }
@@ -172,7 +172,7 @@ class Pass {
 
  protected:
   virtual void ApplyImpl(Graph *graph UNUSED) const {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The virtual pass called is not implemented."));
   }
 
@@ -245,10 +245,10 @@ class PassRegistry {
   }
 
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
-    PADDLE_ENFORCE_NE(
-        Has(pass_type),
-        true,
-        phi::errors::AlreadyExists("Pass %s has been registered.", pass_type));
+    PADDLE_ENFORCE_NE(Has(pass_type),
+                      true,
+                      common::errors::AlreadyExists(
+                          "Pass %s has been registered.", pass_type));
     map_.insert({pass_type, pass_creator});
   }
 
@@ -256,7 +256,7 @@ class PassRegistry {
     if (pass_type == "tensorrt_subgraph_pass") {
       PADDLE_ENFORCE_EQ(Has(pass_type),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Pass %s has not been registered. Please "
                             "use the paddle inference library "
                             "compiled with tensorrt or disable "
@@ -265,7 +265,7 @@ class PassRegistry {
     } else {
       PADDLE_ENFORCE_EQ(Has(pass_type),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Pass %s has not been registered.", pass_type));
     }
     return map_.at(pass_type)();
@@ -284,8 +284,8 @@ struct PassRegistrar : public Registrar {
     PADDLE_ENFORCE_EQ(
         PassRegistry::Instance().Has(pass_type),
         false,
-        phi::errors::AlreadyExists("Pass '%s' is registered more than once.",
-                                   pass_type));
+        common::errors::AlreadyExists("Pass '%s' is registered more than once.",
+                                      pass_type));
     PassRegistry::Instance().Insert(
         pass_type, [this, pass_type]() -> std::unique_ptr<Pass> {
           std::unique_ptr<Pass> pass(new PassType());

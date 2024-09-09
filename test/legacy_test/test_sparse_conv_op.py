@@ -19,8 +19,10 @@ import numpy as np
 from utils import compare_legacy_with_pt
 
 import paddle
+import paddle.device
 from paddle import sparse
 from paddle.base import core
+from paddle.base.framework import in_pir_mode
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -582,6 +584,200 @@ class TestStatic(unittest.TestCase):
             np.testing.assert_array_equal(correct_out_values, fetch[2])
             self.assertTrue(out_indices.dtype == paddle.int32)
         paddle.disable_static()
+
+
+devices = []
+if paddle.device.get_device() != "cpu":
+    devices.append(paddle.device.get_device())
+else:
+    devices.append('cpu')
+
+
+class TestSparseSubmConvStatic(unittest.TestCase):
+    '''
+    test subm_conv2d and subm_conv3d in static graph in pir mode.
+    compare the results of subm_conv2d in static graph and dynamic graph, use the result in dynamic graph as the correct answer.
+    '''
+
+    def check_result_subm_conv2d(self, x_shape, weight_shape):
+        '''
+        x_shape: the shape of input tensor x, [N, H, W, C]
+        weight_shape: the shape of conv kernel, [kH, kW, C/g, M]
+        compare the output of paddle.sparse.nn.functional.subm_conv2d in static graph and dynamic graph.
+        '''
+        for device in devices:
+            paddle.device.set_device(device)
+            x = paddle.rand(x_shape, dtype='float32')
+            weight = paddle.randn(weight_shape, dtype='float32')
+            x_indices_data, x_values_data = (
+                x.detach().to_sparse_coo(sparse_dim=len(x_shape)).indices(),
+                x.detach().to_sparse_coo(sparse_dim=len(x_shape)).values(),
+            )
+            w_indices_data, w_values_data = (
+                weight.detach()
+                .to_sparse_coo(sparse_dim=len(weight_shape))
+                .indices(),
+                weight.detach()
+                .to_sparse_coo(sparse_dim=len(weight_shape))
+                .values(),
+            )
+            x.stop_gradient = False
+            weight.stop_gradient = False
+
+            dynamic_out = paddle.sparse.nn.functional.subm_conv2d(x, weight)
+            dynamic_out_dense = dynamic_out.to_dense()
+
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_indices = paddle.static.data(
+                    name="x_indices",
+                    shape=x_indices_data.shape,
+                    dtype=x_indices_data.dtype,
+                )
+                x_values = paddle.static.data(
+                    name="x_values",
+                    shape=x_values_data.shape,
+                    dtype=x_values_data.dtype,
+                )
+                w_indices = paddle.static.data(
+                    name="w_indices",
+                    shape=w_indices_data.shape,
+                    dtype=w_indices_data.dtype,
+                )
+                w_values = paddle.static.data(
+                    name="w_values",
+                    shape=w_values_data.shape,
+                    dtype=w_values_data.dtype,
+                )
+
+                static_x = paddle.sparse.sparse_coo_tensor(
+                    x_indices,
+                    x_values,
+                    shape=x_shape,
+                    dtype=x.dtype,
+                )
+                static_w = paddle.sparse.sparse_coo_tensor(
+                    w_indices,
+                    w_values,
+                    shape=weight_shape,
+                    dtype=weight.dtype,
+                )
+                static_out = paddle.sparse.nn.functional.subm_conv2d(
+                    static_x, static_w
+                )
+                static_dense_out = static_out.to_dense()
+
+                st_exe = paddle.static.Executor()
+                st_fetch = st_exe.run(
+                    feed={
+                        "x_indices": x_indices_data.numpy(),
+                        "x_values": x_values_data.numpy(),
+                        "w_indices": w_indices_data.numpy(),
+                        "w_values": w_values_data.numpy(),
+                    },
+                    fetch_list=[static_dense_out],
+                    return_numpy=True,
+                )
+                np.testing.assert_allclose(
+                    dynamic_out_dense.numpy(), st_fetch[0], rtol=1e-05
+                )
+                paddle.disable_static()
+
+    def check_result_subm_conv3d(self, x_shape, weight_shape):
+        '''
+        x_shape: the shape of input tensor x, [N, D, H, W, C]
+        weight_shape: the shape of conv kernel, [kD, kH, kW, C/g, M]
+        compare the output of paddle.sparse.nn.functional.subm_conv3d in static graph and dynamic graph.
+        '''
+        for device in devices:
+            paddle.device.set_device(device)
+            x = paddle.rand(x_shape, dtype='float32')
+            weight = paddle.randn(weight_shape, dtype='float32')
+            x_indices_data, x_values_data = (
+                x.detach().to_sparse_coo(sparse_dim=len(x_shape)).indices(),
+                x.detach().to_sparse_coo(sparse_dim=len(x_shape)).values(),
+            )
+            w_indices_data, w_values_data = (
+                weight.detach()
+                .to_sparse_coo(sparse_dim=len(weight_shape))
+                .indices(),
+                weight.detach()
+                .to_sparse_coo(sparse_dim=len(weight_shape))
+                .values(),
+            )
+            x.stop_gradient = False
+            weight.stop_gradient = False
+
+            dynamic_out = paddle.sparse.nn.functional.subm_conv3d(x, weight)
+            dynamic_out_dense = dynamic_out.to_dense()
+
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_indices = paddle.static.data(
+                    name="x_indices",
+                    shape=x_indices_data.shape,
+                    dtype=x_indices_data.dtype,
+                )
+                x_values = paddle.static.data(
+                    name="x_values",
+                    shape=x_values_data.shape,
+                    dtype=x_values_data.dtype,
+                )
+                w_indices = paddle.static.data(
+                    name="w_indices",
+                    shape=w_indices_data.shape,
+                    dtype=w_indices_data.dtype,
+                )
+                w_values = paddle.static.data(
+                    name="w_values",
+                    shape=w_values_data.shape,
+                    dtype=w_values_data.dtype,
+                )
+
+                static_x = paddle.sparse.sparse_coo_tensor(
+                    x_indices,
+                    x_values,
+                    shape=x_shape,
+                    dtype=x.dtype,
+                )
+                static_w = paddle.sparse.sparse_coo_tensor(
+                    w_indices,
+                    w_values,
+                    shape=weight_shape,
+                    dtype=weight.dtype,
+                )
+                static_out = paddle.sparse.nn.functional.subm_conv3d(
+                    static_x, static_w
+                )
+                static_dense_out = static_out.to_dense()
+
+                st_exe = paddle.static.Executor()
+                st_fetch = st_exe.run(
+                    feed={
+                        "x_indices": x_indices_data.numpy(),
+                        "x_values": x_values_data.numpy(),
+                        "w_indices": w_indices_data.numpy(),
+                        "w_values": w_values_data.numpy(),
+                    },
+                    fetch_list=[static_dense_out],
+                    return_numpy=True,
+                )
+                np.testing.assert_allclose(
+                    dynamic_out_dense.numpy(), st_fetch[0], rtol=1e-05
+                )
+                paddle.disable_static()
+
+    def test_subm_conv2d(self):
+        if in_pir_mode():
+            self.check_result_subm_conv2d([1, 3, 4, 1], [3, 3, 1, 1])
+
+    def test_subm_conv3d(self):
+        if in_pir_mode():
+            self.check_result_subm_conv3d([1, 1, 3, 4, 1], [1, 3, 3, 1, 1])
 
 
 if __name__ == "__main__":

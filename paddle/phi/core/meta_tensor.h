@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace phi {
 
-struct MetaConfig {
+struct TEST_API MetaConfig {
   bool is_runtime{true};
   bool is_run_mkldnn_kernel{false};
   MetaConfig() = default;

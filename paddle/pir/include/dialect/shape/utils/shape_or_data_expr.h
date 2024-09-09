@@ -32,18 +32,18 @@ class ShapeOrData {
       PADDLE_ENFORCE_EQ(
           data.size(),
           1UL,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When shape is 0-D, size of data should be 1, but got %d.",
               data.size()));
     } else if (shape.size() == 1) {
       PADDLE_ENFORCE_EQ(shape[0].template Has<int64_t>(),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "When shape is 1-D, value of shape should be int"));
       PADDLE_ENFORCE_EQ(
           shape[0].template Get<int64_t>() == static_cast<int64_t>(data.size()),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When shape is 1-D, size of data should be the same as "
               "value[%d] of shape, but got [%d].",
               shape[0].template Get<std::int64_t>(),
@@ -192,12 +192,12 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
   }
 
   const std::vector<DimExpr>& shape() const {
-    PADDLE_ENFORCE_EQ(
-        std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
-        true,
-        phi::errors::PreconditionNotMet("Shape of ShapeOrData is not a vector, "
-                                        "check whether the value is a "
-                                        "tensor-list or not."));
+    PADDLE_ENFORCE_EQ(std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "Shape of ShapeOrData is not a vector, "
+                          "check whether the value is a "
+                          "tensor-list or not."));
     return std::get<TensorShapeOrDataDimExprs>(*this).shape();
   }
 
@@ -205,7 +205,7 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
     PADDLE_ENFORCE_EQ(
         std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Data of ShapeOrData is not a vector, check whether the value is a "
             "tensor-list or not."));
     return std::get<TensorShapeOrDataDimExprs>(*this).data();
@@ -215,7 +215,7 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
     PADDLE_ENFORCE_EQ(
         std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Data of ShapeOrData is not a vector, check whether the value is a "
             "tensor-list or not."));
 

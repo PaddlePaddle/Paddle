@@ -34,7 +34,7 @@ class DeleteOpDevicePass : public Pass {
 
 void DeleteOpDevicePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   int delete_counts = 0;
   for (auto* node : graph->Nodes()) {
     if (!node->IsOp() || !node->Op()->HasAttr("op_device")) continue;

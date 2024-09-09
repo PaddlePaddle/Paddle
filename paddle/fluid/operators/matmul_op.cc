@@ -379,7 +379,7 @@ phi::DDim GetDimForInput(const framework::InferShapeContext &ctx,
   auto dim = ctx.GetInputDim(input_name);
   PADDLE_ENFORCE_GT(dim.size(),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input(%s) has not been initialized properly. The "
                         "shape of Input(%s) = [%s].",
                         dim));
@@ -637,7 +637,7 @@ class MatMulOp : public framework::OperatorWithKernel {
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The batch size of the two matrices should be equal, or "
               "at least one is zero.\n"
               "But received X's shape: %s, Y's shape: %s.",
@@ -653,7 +653,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_LE(
           head_number,
           mat_dim_x.width_,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Unsatisfied mkl acceleration library requirements: "
               "The number of heads "
               "(%d) must be equal to X's width. But received X's shape: %s.",
@@ -667,7 +667,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 #else
     PADDLE_ENFORCE_EQ(mat_dim_x.width_,
                       mat_dim_y.height_,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input X's width should be equal to the Y's height, "
                           "but received X's shape: [%s], "
                           "Y's shape: [%s].",
@@ -946,51 +946,6 @@ REGISTER_OPERATOR(matmul_grad,
                   ops::MatMulOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulOpDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(matmul_grad_grad, ops::MatMulOpDoubleGrad);
-REGISTER_OP_CPU_KERNEL(matmul,
-                       ops::MatMulKernel<phi::CPUContext, float>,
-                       ops::MatMulKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(matmul_grad,
-                       ops::MatMulGradKernel<phi::CPUContext, float>,
-                       ops::MatMulGradKernel<phi::CPUContext, double>);
-
-REGISTER_OP_CPU_KERNEL(matmul_grad_grad,
-                       ops::MatMulDoubleGradKernel<phi::CPUContext, float>,
-                       ops::MatMulDoubleGradKernel<phi::CPUContext, double>);
-
-#if defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    matmul,
-    ops::MatMulKernel<phi::GPUContext, int8_t>,
-    ops::MatMulKernel<phi::GPUContext, float>,
-    ops::MatMulKernel<phi::GPUContext, double>,
-    ops::MatMulKernel<phi::GPUContext, phi::dtype::float16>);
-#endif
-
-#if defined(PADDLE_WITH_CUDA)
-#if CUDA_VERSION >= 11060
-REGISTER_OP_CUDA_KERNEL(
-    matmul,
-    ops::MatMulKernel<phi::GPUContext, int8_t>,
-    ops::MatMulKernel<phi::GPUContext, float>,
-    ops::MatMulKernel<phi::GPUContext, double>,
-    ops::MatMulKernel<phi::GPUContext, phi::dtype::float16>);
-#else
-REGISTER_OP_CUDA_KERNEL(
-    matmul,
-    ops::MatMulKernel<phi::GPUContext, float>,
-    ops::MatMulKernel<phi::GPUContext, double>,
-    ops::MatMulKernel<phi::GPUContext, phi::dtype::float16>);
-#endif
-#endif
-
-REGISTER_OP_CUDA_KERNEL(
-    matmul_grad,
-    ops::MatMulGradKernel<phi::GPUContext, float>,
-    ops::MatMulGradKernel<phi::GPUContext, double>,
-    ops::MatMulGradKernel<phi::GPUContext, phi::dtype::float16>);
-REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
-                        ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
-                        ops::MatMulDoubleGradKernel<phi::GPUContext, double>);
 
 REGISTER_OP_VERSION(matmul).AddCheckpoint(
     R"ROC(Register matmul for adding the attribute of
