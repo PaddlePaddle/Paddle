@@ -1188,6 +1188,8 @@ class ArgmaxOpPattern
     if (axis == 0 || flatten ||
         (dtype != phi::DataType::INT32 && dtype != phi::DataType::INT64))
       return false;
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
   }
 };
 class MaxOpPattern : public pir::OpRewritePattern<paddle::dialect::MaxOp> {
