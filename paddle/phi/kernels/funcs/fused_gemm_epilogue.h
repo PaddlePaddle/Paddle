@@ -19,6 +19,8 @@ limitations under the License. */
 #include <mutex>
 #include <unordered_map>
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
@@ -1072,3 +1074,4 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
 
 }  // namespace funcs
 }  // namespace phi
+#endif
