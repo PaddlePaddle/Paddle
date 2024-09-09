@@ -47,6 +47,12 @@ class TensorRTMatMulDims2Test(InferencePassTest):
         self.trt_parameters = TensorRTMatMulDims2Test.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = TensorRTMatMulDims2Test.DynamicShapeParam(
+            {'data': [1, 24]},
+            {'data': [32, 24]},
+            {'data': [24, 24]},
+            False,
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -85,6 +91,12 @@ class TensorRTMatMulTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = TensorRTMatMulTest.DynamicShapeParam(
+            {'data': [1, 6, 24, 24]},
+            {'data': [32, 6, 24, 24]},
+            {'data': [1, 6, 24, 24]},
+            False,
         )
         self.fetch_list = [out]
 
@@ -151,6 +163,14 @@ class TensorRTMatMulBroadcastTest(InferencePassTest):
         self.trt_parameters = TensorRTMatMulBroadcastTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = (
+            TensorRTMatMulBroadcastTest.DynamicShapeParam(
+                {'data_x': [1, 6, 24], 'data_y': [24, 16]},
+                {'data_x': [32, 6, 24], 'data_y': [24, 16]},
+                {'data_x': [2, 6, 24], 'data_y': [24, 16]},
+                False,
+            )
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -167,6 +187,10 @@ class TensorRTMatMulBroadcastTest(InferencePassTest):
             )
 
 
+@unittest.skipIf(
+    not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core does not support bfloat16",
+)
 class TensorRTMatMulBroadcastBF16Test(InferencePassTest):
     def setUp(self):
         self.set_params()
@@ -194,6 +218,14 @@ class TensorRTMatMulBroadcastBF16Test(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulBroadcastTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Bfloat16, False, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTMatMulBroadcastTest.DynamicShapeParam(
+                {'data_x': [1, 6, 24], 'data_y': [24, 16]},
+                {'data_x': [32, 6, 24], 'data_y': [24, 16]},
+                {'data_x': [2, 6, 24], 'data_y': [24, 16]},
+                False,
+            )
         )
         self.fetch_list = [out]
 

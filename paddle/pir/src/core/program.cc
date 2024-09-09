@@ -81,6 +81,14 @@ std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
   for (const auto& op : *block()) {
     auto* new_op = op.Clone(ir_mapping, clone_options);
     new_program->block()->push_back(new_op);
+
+    if (new_op->name() == "builtin.set_parameter") {
+      std::unique_ptr<pir::Parameter> param_new(
+          new Parameter(nullptr, 0, new_op->operand(0).type()));
+      new_program->SetParameter(
+          new_op->attribute<StrAttribute>("parameter_name").AsString(),
+          std::move(param_new));
+    }
   }
   return new_program;
 }

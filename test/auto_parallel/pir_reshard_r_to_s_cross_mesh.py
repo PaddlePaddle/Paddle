@@ -19,6 +19,8 @@ import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.pir_pass import (
     apply_reshard_pass,
 )
+from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class TestReshardRToSCrossMesh:
@@ -54,7 +56,7 @@ class TestReshardRToSCrossMesh:
 
             old_ops = [op.name() for op in main_program.global_block().ops]
             assert 'dist_op.reshard' in old_ops
-
+            set_all_ops_op_role(main_program, OpRole.Forward)
             apply_reshard_pass(main_program)
         # np.testing.assert_equal(dist_program.num_ops(), 6)
         new_ops = [op.name() for op in main_program.global_block().ops]

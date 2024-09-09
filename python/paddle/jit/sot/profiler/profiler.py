@@ -40,7 +40,7 @@ def EventGuard(event_name, event_level=1):
     try:
         global _event_level
         need_pop = False
-        if ENV_SOT_EVENT_LEVEL.get() >= event_level:
+        if ENV_SOT_EVENT_LEVEL.get_with_cache() >= event_level:
             core.nvprof_nvtx_push(event_name)
             need_pop = True
         yield

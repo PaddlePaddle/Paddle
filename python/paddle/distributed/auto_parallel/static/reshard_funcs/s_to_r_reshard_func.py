@@ -49,8 +49,9 @@ class SToRReshardFunction(ReshardFunction):
         # may be shard and it will call this 1-D s_to_r function on each
         # axis. In this case, we should recompute the local and global shape.
         out_local_shape = list(in_value.shape)
-        out_local_shape[split_axis] = (
-            in_value.shape[split_axis] // mesh.shape[split_mesh_dim]
+        out_local_shape[split_axis] = int(
+            (in_value.shape[split_axis] + mesh.shape[split_mesh_dim] - 1)
+            / mesh.shape[split_mesh_dim]
         )
         out_global_shape = list(out_local_shape)
         out_global_shape[0] *= mesh.shape[split_mesh_dim]
@@ -96,10 +97,8 @@ class SToRReshardFunction(ReshardFunction):
         for k, v in split_axis_map.items():
             split_axis = k
             break
-
-        num_of_padding = (
-            src_value.shape[split_axis] % src_dist_attr.process_mesh.size
-        )
+        num_of_process = src_dist_attr.process_mesh.size
+        num_of_padding = src_value.shape[split_axis] % num_of_process
         is_balanced_split = num_of_padding == 0
 
         if is_balanced_split:
@@ -113,8 +112,102 @@ class SToRReshardFunction(ReshardFunction):
             )
             return new_value
         else:
-            # TODO(ywt01) support unbalanced split
-            raise NotImplementedError("unbalanced split is not implemented")
+            # find the last one
+            need_padding = (
+                paddle.distributed.get_rank()
+                == src_dist_attr.process_mesh.process_ids[-1]
+            )
+
+            # get padding_num
+            avg_size_on_split_axis = int(
+                (src_value.shape[split_axis] + num_of_process - 1)
+                / num_of_process
+            )
+            padding_num = (
+                avg_size_on_split_axis * num_of_process
+                - src_value.shape[split_axis]
+            )
+            if need_padding:
+                # set right _local_shape
+                local_shape_at_split_axis = src_value.shape[
+                    split_axis
+                ] - avg_size_on_split_axis * (num_of_process - 1)
+                local_shape = src_value._local_shape
+                local_shape[split_axis] = local_shape_at_split_axis
+                tmp_src_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    src_value.type(), src_dist_attr, list(local_shape)
+                )
+                src_value.set_type(tmp_src_type)
+                padding_shape = src_value._local_shape
+                padding_shape[split_axis] = padding_num
+                padding_tensor = paddle.full(
+                    padding_shape,
+                    0.0,
+                    src_value.dtype,
+                )
+                tmp_src_type1 = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    padding_tensor.type(), dst_dist_attr
+                )
+                padding_tensor.set_type(tmp_src_type1)
+                padding_tensor.get_defining_op().dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        dst_dist_attr.process_mesh, [], [dst_dist_attr]
+                    )
+                )
+
+                concat_value = paddle._C_ops.concat(
+                    [src_value, padding_tensor], split_axis
+                )
+                # set concat dist_attr
+                axis_dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        src_dist_attr.process_mesh, [-1], {}
+                    )
+                )
+                concat_value.get_defining_op().dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        src_dist_attr.process_mesh,
+                        [
+                            paddle.base.libpaddle.pir.create_array_attribute(
+                                [src_dist_attr, dst_dist_attr]
+                            ),
+                            axis_dist_attr,
+                        ],
+                        [src_dist_attr],
+                    )
+                )
+                # set concat_value type
+                concat_global_shape = list(src_value.shape)
+                concat_global_shape[split_axis] = (
+                    avg_size_on_split_axis * num_of_process
+                )
+                concat_type = paddle.pir.create_shaped_type(
+                    src_value.type(), concat_global_shape
+                )
+                concat_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    concat_type, src_dist_attr
+                )
+                concat_value.set_type(concat_type)
+
+                new_value = self.reshard_s_to_r_with_padding(
+                    concat_value,
+                    split_axis,
+                    src_dist_attr,
+                    dst_dist_attr,
+                    dst_type,
+                    padding_num,
+                )
+                return new_value
+            else:
+                new_value = self.reshard_s_to_r_with_padding(
+                    src_value,
+                    split_axis,
+                    src_dist_attr,
+                    dst_dist_attr,
+                    dst_type,
+                    padding_num,
+                )
+                return new_value
 
     def reshard_s_to_r_with_padding(
         self,
@@ -168,14 +261,29 @@ class SToRReshardFunction(ReshardFunction):
             )
             pd_splite_op.result(0).set_type(vec_type)
 
-            concat_value = paddle._C_ops.concat(split_values, split_axis)
-            # fold builtin.split op and builtin.combine op
-            concat_op = concat_value.get_defining_op()
-            builtin_combine_op = concat_op.operand_source(0).get_defining_op()
-            concat_op.operand(0).set_source(pd_splite_op.result(0))
-            builtin_combine_op.erase()
-            builtin_split_op.erase()
-            return concat_value
+            if padding_num != 0:
+                tmp_split_values = paddle._C_ops.split(
+                    split_values[-1],
+                    [
+                        split_values[-1].shape[split_axis] - padding_num,
+                        padding_num,
+                    ],
+                    split_axis,
+                )
+                split_values[-1] = tmp_split_values[0]
+                concat_value = paddle._C_ops.concat(split_values, split_axis)
+                return concat_value
+            else:
+                concat_value = paddle._C_ops.concat(split_values, split_axis)
+                # fold builtin.split op and builtin.combine op
+                concat_op = concat_value.get_defining_op()
+                builtin_combine_op = concat_op.operand_source(
+                    0
+                ).get_defining_op()
+                concat_op.operand(0).set_source(pd_splite_op.result(0))
+                builtin_combine_op.erase()
+                builtin_split_op.erase()
+                return concat_value
         return allgather_value
 
 
