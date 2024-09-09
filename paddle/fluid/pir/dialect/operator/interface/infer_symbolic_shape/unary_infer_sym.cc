@@ -1281,12 +1281,15 @@ bool Flatten_OpInferSymbolicShape(
   return FlattenOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FrobeniusNormOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FrobeniusNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  bool keepdim = op->attribute<pir::BoolAttribute>("keep_dim").data();
+  bool reduce_all = op->attribute<pir::BoolAttribute>("reduce_all").data();
+
+  const auto &axis = details::GetVectorAttr(op, "axis");
+
+  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+}
 
 bool FoldOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
