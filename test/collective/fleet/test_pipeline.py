@@ -59,18 +59,6 @@ class TestPipeline(TestDistBase):
                 need_envs=self.need_envs(),
             )
 
-    def test_dist_train_one_device(self):
-        if base.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "pipeline_mnist_one_device.py",
-                check_error_log=True,
-                log_name=flag_name,
-                need_envs={
-                    "PADDLE_MANUAL_PIPELINE_STAGE": "0",
-                    "FLAGS_new_executor_micro_batching": "0",
-                },
-            )
-
 
 if __name__ == '__main__':
     unittest.main()

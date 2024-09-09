@@ -19,7 +19,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle::platform {
 

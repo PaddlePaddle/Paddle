@@ -58,6 +58,24 @@ def dynamic_shape_in_list(x, shape):
     return x.reshape(shape)
 
 
+class CustomConv(paddle.nn.Conv2D):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @paddle.jit.to_static(full_graph=False)
+    def forward(self, x):
+        return paddle.nn.functional.conv2d(
+            x,
+            self.weight,
+            self.bias,
+            [self._stride[0] + 1, self._stride[1]],
+            self._padding,
+            self._dilation,
+            self._groups,
+            self._data_format,
+        )
+
+
 class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
     def test_dynamic_int_input_cache_hit_case1(self):
         with with_allow_dynamic_shape_guard(
@@ -154,6 +172,15 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                     [i * 4, 5],
                 )
                 self.assertEqual(ctx.translate_count, 2)
+
+    def test_dynamic_shape_fallback(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            for i in range(1, 5):
+                conv = CustomConv(3, 3, 3, stride=i)
+                conv(paddle.randn([1, 3, 224, 224]))
+                self.assertEqual(ctx.translate_count, i)
 
 
 if __name__ == '__main__':
