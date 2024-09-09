@@ -93,41 +93,5 @@ SpmdInfo PadInferSpmdDynamic(const DistMetaTensor& x,
   return PadInferSpmd(x, paddings, pad_value.to<int32_t>());
 }
 
-SpmdInfo PadGradInferSpmd(const DistMetaTensor& out_grad,
-                          const std::vector<int>& paddings,
-                          const Scalar& pad_value) {
-  auto out_shape = common::vectorize(out_grad.dims());
-  int out_ndim = out_shape.size();
-  const auto& out_dist_attr_src = out_grad.dist_attr();
-  const std::vector<int64_t>& out_dims_mapping =
-      out_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(out_ndim,
-                    out_dims_mapping.size(),
-                    common::errors::InvalidArgument(
-                        "The Tensor out_grad's rank [%d] and Input's "
-                        "dims_mapping size [%d] are not matched.",
-                        out_ndim,
-                        out_dims_mapping.size()));
-  std::vector<int64_t> dims_to_unshard(out_ndim);
-  std::iota(dims_to_unshard.begin(), dims_to_unshard.end(), 0);
-  auto out_grad_dist_attr =
-      UnShardTensorDims(out_dist_attr_src, dims_to_unshard);
-  auto x_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad_dist_attr);
-  x_grad_dist_attr.set_dims_mapping(out_grad_dist_attr.dims_mapping());
-
-  VLOG(4) << "PadGradInferSpmd:";
-
-  VLOG(4) << "out_grad shape: [" << str_join(out_shape) << "]"
-          << "src_dims_mapping: [" << str_join(out_dist_attr_src.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: ["
-          << str_join(out_grad_dist_attr.dims_mapping()) << "]";
-
-  VLOG(4) << "x grad dims_mapping: ["
-          << str_join(x_grad_dist_attr.dims_mapping()) << "]";
-
-  return SpmdInfo{{out_grad_dist_attr}, {x_grad_dist_attr}};
-}
-
 }  // namespace distributed
 }  // namespace phi
