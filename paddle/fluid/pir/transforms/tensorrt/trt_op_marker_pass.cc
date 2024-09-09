@@ -1188,7 +1188,30 @@ class ArgmaxOpPattern
     if (axis == 0 || flatten ||
         (dtype != phi::DataType::INT32 && dtype != phi::DataType::INT64))
       return false;
-
+  }
+};
+class MaxOpPattern : public pir::OpRewritePattern<paddle::dialect::MaxOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MaxOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MaxOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op->HasAttribute("keepdim")) {
+      VLOG(3) << "the max does not have attr keep_dim ";
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    if (!(x_dtype.isa<pir::Float32Type>() || x_dtype.isa<pir::Float64Type>() ||
+          x_dtype.isa<pir::Int32Type>() || x_dtype.isa<pir::Int64Type>())) {
+      VLOG(3) << "max input data type must be int32 or int64 or "
+                 "float32 or "
+                 "float64";
+      return false;
+    }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -1263,14 +1286,13 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<RemainderOpPattern>(context));
     ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
     ps.Add(std::make_unique<ArgmaxOpPattern>(context));
+    ps.Add(std::make_unique<MaxOpPattern>(context));
     return ps;
   }
 };
-
 }  // namespace
 
 namespace pir {
-
 std::unique_ptr<Pass> CreateTrtOpMarkerPass() {
   return std::make_unique<TrtOpMarkerPass>();
 }

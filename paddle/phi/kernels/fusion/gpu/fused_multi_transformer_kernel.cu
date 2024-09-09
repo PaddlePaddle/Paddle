@@ -445,6 +445,28 @@ void FusedMultiTransformerOpKernel(
     }
   }
 
+  int timestep = src_mask->dims()[3] - 1;
+  int multi_block_attention_min_partition_size =
+      static_cast<int>(FLAGS_multi_block_attention_min_partition_size);
+  int max_num_partitions =
+      (timestep + multi_block_attention_min_partition_size - 1) /
+      multi_block_attention_min_partition_size;
+
+  phi::DenseTensor partial_max_logits_tensor;
+  partial_max_logits_tensor.Resize({{bsz, num_head, max_num_partitions}});
+  phi::DenseTensor partial_expsum_tensor;
+  partial_expsum_tensor.Resize({{bsz, num_head, max_num_partitions}});
+  phi::DenseTensor partial_out_tensor;
+  partial_out_tensor.Resize({{bsz, num_head, max_num_partitions, dim_head}});
+
+  dev_ctx.template Alloc<float>(
+      &partial_max_logits_tensor,
+      partial_max_logits_tensor.numel() * sizeof(float));
+  dev_ctx.template Alloc<float>(&partial_expsum_tensor,
+                                partial_expsum_tensor.numel() * sizeof(float));
+  dev_ctx.template Alloc<T>(&partial_out_tensor,
+                            partial_out_tensor.numel() * sizeof(T));
+
   for (int i = 0; i < layers; ++i) {
     // step1. layer_norm
     if (i == 0 && pre_layer_norm) {
@@ -489,31 +511,62 @@ void FusedMultiTransformerOpKernel(
     }
 
     if (time_step) {  // generation decoder stage
-      // [2, batch_size, num_head, max_seq_len, head_size]
-      int max_seq_len = cache_kv->dims()[3];
-      phi::fusion::fmha<T>(dev_ctx,
-                           qkv_out,
-                           *qkv_bias,
-                           src_mask,
-                           nullptr,
-                           sequence_lengths,
-                           rotary_tensor,
-                           beam_cache_offset,
-                           cache_kv_out,
-                           &fmha_out,
-                           bsz,
-                           cache_bsz,
-                           seq_len,
-                           max_seq_len,
-                           num_head,
-                           dim_head,
-                           src_mask->dims()[3] - 1,
-                           rotary_emb_dims,
-                           1. / sqrt(dim_head),
-                           mask_broadcast_num_heads,
-                           compute_bias,
-                           use_neox_rotary_style,
-                           gqa_group_size);
+      if (FLAGS_fused_multi_transformer_op_use_mbfmha) {
+        int max_seq_len = cache_kv->dims()[3];
+        phi::fusion::mbfmha<T>(dev_ctx,
+                               qkv_out,
+                               *qkv_bias,
+                               src_mask,
+                               nullptr,
+                               sequence_lengths,
+                               rotary_tensor,
+                               cache_kv_out,
+                               &fmha_out,
+                               &partial_max_logits_tensor,
+                               &partial_expsum_tensor,
+                               &partial_out_tensor,
+                               bsz,
+                               cache_bsz,
+                               seq_len,
+                               max_seq_len,
+                               num_head,
+                               dim_head,
+                               src_mask->dims()[3] - 1,
+                               rotary_emb_dims,
+                               1. / sqrt(dim_head),
+                               mask_broadcast_num_heads,
+                               compute_bias,
+                               use_neox_rotary_style,
+                               gqa_group_size);
+
+      } else {
+        // [2, batch_size, num_head, max_seq_len, head_size]
+        int max_seq_len = cache_kv->dims()[3];
+
+        phi::fusion::fmha<T>(dev_ctx,
+                             qkv_out,
+                             *qkv_bias,
+                             src_mask,
+                             nullptr,
+                             sequence_lengths,
+                             rotary_tensor,
+                             beam_cache_offset,
+                             cache_kv_out,
+                             &fmha_out,
+                             bsz,
+                             cache_bsz,
+                             seq_len,
+                             max_seq_len,
+                             num_head,
+                             dim_head,
+                             src_mask->dims()[3] - 1,
+                             rotary_emb_dims,
+                             1. / sqrt(dim_head),
+                             mask_broadcast_num_heads,
+                             compute_bias,
+                             use_neox_rotary_style,
+                             gqa_group_size);
+      }
     } else if (cache_kv_out) {  // generation context stage
       if (!encoder_remove_padding) {
         PADDLE_THROW(common::errors::InvalidArgument(

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 
@@ -1303,6 +1304,14 @@ void MatchMatrixTensorInferMeta(const MetaTensor& x,
     tmp->set_dims(common::make_ddim(tmp_dims_vec));
     tmp->set_dtype(x.dtype());
   }
+}
+
+void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
+                                 const MetaTensor& atol,
+                                 const MetaTensor& rtol,
+                                 bool hermitian,
+                                 MetaTensor* out) {
+  MatrixRankTolInferMeta(x, atol, true, hermitian, out);
 }
 
 void MultiClassNMSInferMeta(const MetaTensor& bboxes,

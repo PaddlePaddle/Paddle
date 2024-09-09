@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -2015,6 +2016,24 @@ void MatmulWithFlattenDoubleGradKernel(
                   &ddout_mat,
                   static_cast<T>(ddout_flag));
     }
+  }
+}
+
+template <typename T, typename Context>
+void LegacyMatmulGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            const DenseTensor& out_grad,
+                            bool transpose_x,
+                            bool transpose_y,
+                            float alpha,
+                            DenseTensor* dx,
+                            DenseTensor* dy) {
+  MatmulGradKernel<T, Context>(
+      dev_ctx, x, y, out_grad, transpose_x, transpose_y, dx, dy);
+  if (std::fabs(alpha - 1.f) > 1e-6f) {
+    ScaleKernel<T, Context>(dev_ctx, *dx, Scalar(alpha), Scalar(0), false, dx);
+    ScaleKernel<T, Context>(dev_ctx, *dy, Scalar(alpha), Scalar(0), false, dy);
   }
 }
 
