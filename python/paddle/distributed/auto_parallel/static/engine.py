@@ -889,6 +889,28 @@ class Engine:
             )
             self._job_plan = core.Plan(jobs, type_to_program)
 
+        if self._strategy.fused_passes.fused_passes_list is not None:
+            pm = pir.PassManager()
+            for p in self._strategy.fused_passes.fused_passes_list:
+                # Temporary implementation, it will be refined when auto_parallel refactored
+                if p == 'eliminate_transpose':
+                    from paddle.distributed.auto_parallel.static.pir_pass import (
+                        eliminate_transpose_by_reshape,
+                    )
+
+                    for job_type in self._job_plan.job_types():
+                        ir_program = self._job_plan.ir_program(job_type)
+                        eliminate_transpose_by_reshape(ir_program)
+                else:
+                    pm.add_pass(p, {})
+
+            if self._job_plan is None:
+                pm.run(dense_program)
+            else:
+                for job_type in self._job_plan.job_types():
+                    ir_program = self._job_plan.ir_program(job_type)
+                    pm.run(ir_program)
+
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
 
