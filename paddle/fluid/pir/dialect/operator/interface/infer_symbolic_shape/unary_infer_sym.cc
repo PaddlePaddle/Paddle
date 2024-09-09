@@ -2611,8 +2611,7 @@ bool SvdOpInferSymbolicShape(pir::Operation *op,
   const symbol::DimExpr m = x_shapes[x_rank - 2];
   const symbol::DimExpr n = x_shapes[x_rank - 1];
   symbol::DimExprBuilder builder;
-  const symbol::DimExpr k =
-      builder.Min(m.Get<std::int64_t>(), n.Get<std::int64_t>());
+  const symbol::DimExpr k = builder.Min(m, n);
 
   auto UDDim = [&](const std::vector<symbol::DimExpr> &x_shapes,
                    const symbol::DimExpr &k) {
