@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/pybind/cpython_internals.h"
+#include "paddle/fluid/pybind/sot/cpython_internals.h"
 
 #include <frameobject.h>
+
+#if SOT_IS_SUPPORTED
 
 #if PY_VERSION_HEX >= 0x030b0000
 #include <internal/pycore_code.h>
@@ -622,3 +624,5 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
 }
 
 #endif  // Python 3.11, Python 3.12
+
+#endif  // SOT is supported
