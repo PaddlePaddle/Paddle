@@ -341,7 +341,7 @@ std::unordered_set<std::string> CollectStoreBufferNames(
 std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const OpLoweringGroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    bool done_op_schedule,
+    bool is_remove_tmp_buffer_in_args,
     std::vector<ir::Expr> func_bodies,
     std::vector<ir::Tensor>* group_func_arg_tensors,
     std::vector<ir::Argument>* group_func_args,
@@ -396,7 +396,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     arg_name_set.insert(tensor->buffer->name);
   }
 
-  if (!done_op_schedule) {
+  if (!is_remove_tmp_buffer_in_args) {
     std::unordered_set<std::string> args_set;
     for (auto arg : (*group_func_args)) {
       args_set.insert(arg.name());
@@ -503,7 +503,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     // 3.Building LoweredFunc
     auto func = ir::_LoweredFunc_::Make(
         group->FuncName(), *group_func_args, func_body, temp_buffers);
-    if (!done_op_schedule) {
+    if (!is_remove_tmp_buffer_in_args) {
       func->PrepareBufferCastExprs();
     }
     // 4.Apply low level pass
