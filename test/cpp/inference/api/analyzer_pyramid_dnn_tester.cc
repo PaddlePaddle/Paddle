@@ -161,17 +161,6 @@ TEST(Analyzer_Pyramid_DNN, profile) {
   }
 }
 
-// Check the fuse status
-TEST(Analyzer_Pyramid_DNN, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-}
-
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_Pyramid_DNN, compare) {
   AnalysisConfig cfg;

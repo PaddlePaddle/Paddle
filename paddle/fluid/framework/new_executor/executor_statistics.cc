@@ -25,8 +25,8 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/profiler/utils.h"
 #include "paddle/phi/core/os_info.h"
+#include "paddle/phi/core/platform/profiler/utils.h"
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PHI_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,

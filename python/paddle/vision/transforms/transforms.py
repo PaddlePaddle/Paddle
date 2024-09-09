@@ -918,7 +918,7 @@ class Normalize(BaseTransform[_InputT, _RetT]):
             ...                         data_format='HWC')
             ...
             >>> fake_img = paddle.rand([300,320,3]).numpy() * 255.
-            >>> fake_img = normalize(fake_img)
+            >>> fake_img = normalize(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.shape)
             (300, 320, 3)
             >>> print(fake_img.max(), fake_img.min())

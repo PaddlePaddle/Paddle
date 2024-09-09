@@ -64,7 +64,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
     PADDLE_ENFORCE_EQ(
         !args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of %s compute is empty!", op_name));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
@@ -73,9 +73,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
                           "The size of pack_args should be greater than 0 . "));
     std::string tensor_name = UniqName(op_name + "_Out");
     Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_NOT_NULL(
-        A_expr.as_tensor(),
-        phi::errors::InvalidArgument("The input argument A  is not a tensor."));
+    PADDLE_ENFORCE_NOT_NULL(A_expr.as_tensor(),
+                            ::common::errors::InvalidArgument(
+                                "The input argument A  is not a tensor."));
     ir::Tensor A = A_expr.as_tensor_ref();
     auto out = BitcastConvert(A, out_type[0], tensor_name);
     std::vector<CINNValue> res;

@@ -780,7 +780,8 @@ def monkey_patch_value():
             )
 
         def is_device(arg):
-            return isinstance(arg, (paddle.core.Place, str))
+            # in dy2static, arg can be None
+            return arg is None or isinstance(arg, (paddle.core.Place, str))
 
         def is_tensor(arg):
             return isinstance(arg, paddle.pir.Value)

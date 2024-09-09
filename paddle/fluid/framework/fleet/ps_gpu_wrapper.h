@@ -60,6 +60,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
+#include "paddle/phi/backends/dynload/afs_api.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"            // NOLINT
@@ -99,6 +100,112 @@ class AfsWrapper {
 
  private:
   paddle::ps::AfsApiWrapper afs_handler_;
+};
+#endif
+
+#ifdef PADDLE_WITH_PSCORE
+class AfsWrapper {
+ public:
+  AfsWrapper() {}
+  const AfsAPIWrapperHandle& GetAfsWrapper() const { return handle_; }
+
+  ~AfsWrapper() {
+    if (handle_ != nullptr) {
+      phi::dynload::destroyAfsAPIWrapper(handle_);
+    }
+  }
+
+  int Init(const std::string& fs_name,
+           const std::string& fs_user,
+           const std::string& pass_wd,
+           const std::string& conf) {
+    if (handle_ == nullptr) {
+      handle_ = phi::dynload::createAfsAPIWrapper();
+    }
+    int ret = phi::dynload::afs_init(handle_,
+                                     fs_name.c_str(),
+                                     fs_user.c_str(),
+                                     pass_wd.c_str(),
+                                     conf.c_str());
+    VLOG(1) << "AfsWrapper Init" << handle_ << " ret: " << ret
+            << "  fs_name :" << fs_name << "  fs_user :" << fs_user
+            << "  pass_wd :" << pass_wd << "  conf :" << conf;
+    return ret;
+  }
+
+  AfsWriterHandle OpenWriter(const std::string& filename) {
+    return phi::dynload::afs_open_writer(handle_, filename.c_str());
+  }
+
+  AfsReaderHandle OpenReader(const std::string& filename) {
+    return phi::dynload::afs_open_reader(handle_, filename.c_str());
+  }
+
+  void CloseReader(AfsReaderHandle reader_handle) {
+    phi::dynload::afs_close_reader(handle_, reader_handle);
+  }
+
+  void CloseWriter(AfsWriterHandle writer_handle) {
+    phi::dynload::afs_close_writer(handle_, writer_handle);
+  }
+
+  int Touchz(const std::string& path) {
+    return phi::dynload::afs_touchz(handle_, path.c_str());
+  }
+
+  int Mv(const std::string& old_path, const std::string& dest_path) {
+    return phi::dynload::afs_mv(handle_, old_path.c_str(), dest_path.c_str());
+  }
+
+  int Remove(const std::string& path) {
+    return phi::dynload::afs_remove(handle_, path.c_str());
+  }
+
+  int Mkdir(const std::string& path) {
+    return phi::dynload::afs_mkdir(handle_, path.c_str());
+  }
+
+  int DownloadFile(const std::string& local_file, const std::string& afs_file) {
+    return phi::dynload::afs_download_file(
+        handle_, local_file.c_str(), afs_file.c_str());
+  }
+
+  int UploadFile(const std::string& local_file, const std::string& afs_file) {
+    return phi::dynload::afs_upload_file(
+        handle_, local_file.c_str(), afs_file.c_str());
+  }
+
+  std::vector<std::string> List(const std::string& path) {
+    size_t list_size = 0;
+    char** lists = phi::dynload::afs_list(handle_, path.c_str(), &list_size);
+    std::vector<std::string> ret_lists(list_size);
+    for (size_t i = 0; i < list_size; i++) {
+      ret_lists[i] = std::string(lists[i]);
+    }
+
+    for (size_t i = 0; i < list_size; i++) {
+      phi::dynload::afs_free(reinterpret_cast<void*>(lists[i]));
+    }
+    phi::dynload::afs_free(reinterpret_cast<void*>(lists));
+    return ret_lists;
+  }
+
+  std::string Cat(const std::string& path) {
+    size_t file_len = 0;
+    char* ret = phi::dynload::afs_cat(handle_, path.c_str(), &file_len);
+    auto ret_str = std::string(ret, file_len);
+    phi::dynload::afs_free(reinterpret_cast<void*>(ret));
+    return ret_str;
+  }
+
+  int Exist(const std::string& path) {
+    int ret = phi::dynload::afs_exist(handle_, path.c_str());
+    VLOG(1) << "AfsWrapper Exist " << ret << " path: " << path;
+    return ret;
+  }
+
+ private:
+  AfsAPIWrapperHandle handle_ = nullptr;
 };
 #endif
 
@@ -923,6 +1030,42 @@ class PSGPUWrapper {
                   const std::string& conf);
 #endif
 
+#ifdef PADDLE_WITH_PSCORE
+  AfsReaderHandle OpenReader(const std::string& filename) {
+    return afs_handle_.OpenReader(filename);
+  }
+
+  AfsWriterHandle OpenWriter(const std::string& filename) {
+    return afs_handle_.OpenWriter(filename);
+  }
+
+  void CloseReader(AfsReaderHandle handle) { afs_handle_.CloseReader(handle); }
+
+  void CloseWriter(AfsWriterHandle handle) { afs_handle_.CloseWriter(handle); }
+
+  int AfsRead(AfsReaderHandle handle, char* buf, int len) {
+    return phi::dynload::afs_reader_read(handle, buf, len);
+  }
+
+  int AfsWrite(AfsWriterHandle handle,
+               const char* data,
+               size_t len,
+               bool direct) {
+    return phi::dynload::afs_writer_write(handle, data, len, direct);
+  }
+
+  int AfsWrite(AfsWriterHandle handle,
+               const uint64_t k,
+               const std::vector<float>& value) {
+    return phi::dynload::afs_writer_write_v2(
+        handle, k, value.data(), value.size());
+  }
+
+  void InitAfsApi(const std::string& fs_name,
+                  const std::string& fs_user,
+                  const std::string& pass_wd,
+                  const std::string& conf);
+#endif
   // for node rank
   int PartitionKeyForRank(const uint64_t& key) {
     return static_cast<int>((key / device_num_) % node_size_);
@@ -946,6 +1089,9 @@ class PSGPUWrapper {
   Dataset* dataset_;
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
+#endif
+#ifdef PADDLE_WITH_PSCORE
+  AfsWrapper afs_handle_;
 #endif
   std::unordered_map<
       uint64_t,

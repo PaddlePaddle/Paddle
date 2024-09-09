@@ -29,6 +29,7 @@ from distutils.command.build import build
 from .extension_utils import (
     add_compile_flag,
     find_cuda_home,
+    find_ccache_home,
     find_rocm_home,
     normalize_extension_kwargs,
 )
@@ -84,6 +85,8 @@ CUDA_HOME = find_cuda_home()
 if core.is_compiled_with_rocm():
     ROCM_HOME = find_rocm_home()
     CUDA_HOME = ROCM_HOME
+
+CCACHE_HOME = find_ccache_home()
 
 
 def setup(**attr: Any) -> None:
@@ -455,8 +458,11 @@ class BuildExtension(build_ext):
                             ROCM_HOME is not None
                         ), "Not found ROCM runtime, \
                             please use `export ROCM_PATH= XXX` to specify it."
-
-                        hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
+                        if CCACHE_HOME is not None:
+                            hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
+                            hipcc_cmd = f'{CCACHE_HOME} {hipcc_cmd}'
+                        else:
+                            hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
                         self.set_executable('compiler_so', hipcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
@@ -466,8 +472,11 @@ class BuildExtension(build_ext):
                             CUDA_HOME is not None
                         ), "Not found CUDA runtime, \
                             please use `export CUDA_HOME= XXX` to specify it."
-
-                        nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                        if CCACHE_HOME is not None:
+                            nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                            nvcc_cmd = f'{CCACHE_HOME} {nvcc_cmd}'
+                        else:
+                            nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                         self.set_executable('compiler_so', nvcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
@@ -475,8 +484,15 @@ class BuildExtension(build_ext):
 
                     cflags = prepare_unix_cudaflags(cflags)
                 # cxx compile Cpp source
-                elif isinstance(cflags, dict):
-                    cflags = cflags['cxx']
+                else:
+                    if CCACHE_HOME is not None:
+                        # self.set_executable('compiler_so', [CCACHE_HOME, *self.executables['compiler_so']])
+                        self.set_executable(
+                            'compiler_so', [CCACHE_HOME, *self.compiler_so]
+                        )
+
+                    if isinstance(cflags, dict):
+                        cflags = cflags['cxx']
 
                 # Note(qili93): HIP require some additional flags for CMAKE_C_FLAGS
                 if core.is_compiled_with_rocm():

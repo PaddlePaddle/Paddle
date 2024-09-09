@@ -60,11 +60,7 @@ class InstanceNormOpConverter : public OpConverter {
     }
 
     nvinfer1::IPluginV2* plugin = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      plugin = new plugin::InstanceNormPluginDynamic(eps, scale_v, bias_v);
-    } else {
-      plugin = new plugin::InstanceNormPlugin(eps, scale_v, bias_v);
-    }
+    plugin = new plugin::InstanceNormPluginDynamic(eps, scale_v, bias_v);
 
     std::vector<nvinfer1::ITensor*> instance_norm_inputs{input};
     auto* layer = engine_->network()->addPluginV2(
