@@ -1251,9 +1251,6 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
     }
   }
 };
-#else
-// A void structure just for successfully compile.
-struct MatmulPlanner {};
 #endif  // PADDLE_WITH_HIP
 
 }  // namespace funcs
