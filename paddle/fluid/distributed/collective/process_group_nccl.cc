@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/distributed/collective/process_group_nccl.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
-#include "paddle/phi/core/distributed/collective/common.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
