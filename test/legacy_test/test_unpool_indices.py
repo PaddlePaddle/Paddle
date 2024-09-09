@@ -23,7 +23,7 @@ import paddle.nn.functional as F
 from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
-paddle.seed(2022)
+paddle.seed(2024)
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
