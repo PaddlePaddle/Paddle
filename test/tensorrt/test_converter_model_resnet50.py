@@ -46,7 +46,7 @@ class TestConverterResNet50(unittest.TestCase):
         # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
 
-        output_var = program.list_vars()[-2]
+        output_var = program.list_vars()[-1]
 
         # get original results(for tests only)
 

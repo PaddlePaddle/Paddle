@@ -44,18 +44,8 @@ class TestConverterDummy(unittest.TestCase):
 
         # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
-        
-        with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(program):
-                executor = paddle.static.Executor()
-                output_var = program.list_vars()[-1]
-                # Run the program with input_data
-                for _ in range(1):
-                    output_original = executor.run(
-                        program,
-                        feed={"input": input_data},
-                        fetch_list=[output_var],
-                    )
+
+        output_var = program.list_vars()[-1]
 
         # get original results(for tests only)
         output_expected = predict_program(

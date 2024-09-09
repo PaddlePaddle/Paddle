@@ -134,7 +134,7 @@ def convert_to_trt(program, trt_config, scope):
             program_with_output = program.list_vars()[-1]
 
             # run warmup for collecting shape
-            program=warmup_shape_infer(
+            program = warmup_shape_infer(
                 program,
                 min_shape_feed={feed_name[0]: min_data},
                 max_shape_feed={feed_name[0]: max_data},
@@ -193,11 +193,17 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
         **kwargs,
     )
     is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
+    # If the input layer be wrapped by DataParallel,
+    # the args and kwargs of forward method will can't be parsed by
+    # function_spec, so here we save DataParallel._layers instead
+    # DataParallel it self
+    #  using inner_layer, do not change input layer
     if isinstance(static_net, paddle.DataParallel):
         inner_layer = static_net._layers
     else:
         inner_layer = static_net
 
+    # avoid change user given input_spec
     inner_input_spec = None
     if input_spec is not None:
         if isinstance(static_net, Layer):
@@ -225,8 +231,11 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
                     paddle.static.InputSpec.from_tensor(var)
                 )
             else:
+                #  Support non-Tensor type in `input_spec`
                 inner_input_spec.append(var)
 
+    # whether outermost layer has pre/post hook, if does, we need also save
+    # these operators in program.
     with_hook = False
     scope = core.Scope()
     extra_var_info = {}
@@ -236,13 +245,13 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
         if static_net._forward_pre_hooks or static_net._forward_post_hooks:
             with_hook = True
     else:
+        # layer is function
         functions = [static_net]
 
     combine_vars = {}
     combine_program = []
     property_vals = []  # (value, key)
     concrete_program = None
-
     for attr_func in functions:
         if isinstance(static_net, Layer):
             static_func = get_ast_static_function(
@@ -267,6 +276,9 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
                     )
                 )
             elif 'forward' == attr_func:
+                # if input_spec is incomplete, declarative will throw error
+                # inner_input_spec is list[InputSpec], it should be packed with same structure
+                # as original input_spec here
                 if inner_input_spec:
                     inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
@@ -281,13 +293,11 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
                         with_hook=with_hook, is_prim_infer=is_prim_infer
                     )
                 )
-                # the input_spec has been used in declarative, which is equal to
-                # @to_static with input_spec and jit.save without input_spec,
-                # avoid needless warning
                 inner_input_spec = None
             else:
                 continue
         else:
+            # When layer is a function
             if isinstance(attr_func, StaticFunction):
                 static_func = get_ast_static_function(attr_func)
                 if static_func.is_property:
@@ -313,6 +323,7 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
                 )
                 concrete_program = static_function.concrete_program
 
+        # when save multi `StaticFunction`, all `StaticFunction` share params.
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
@@ -322,11 +333,16 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
                     static_func._class_instance.to_static_state_dict()
                 )
         if dygraph_state_dict:
+            #  we maintain the mapping of variable name to
+            # structured name, the buffer variable (non-persistable)
+            # saved to inference program may not need by dygraph Layer,
+            # we only record the state_dict variable's structured name
             state_names_dict = {}
             state_var_dict = {}
             for strcutured_name, var in dygraph_state_dict.items():
                 state_names_dict[var.name] = strcutured_name
                 state_var_dict[var.name] = var
+        #  share parameters from Layer to scope & record var info
         with dygraph.guard():
             if use_pir_api():
                 for tensor, value in zip(*concrete_program.parameters):
@@ -345,16 +361,17 @@ def export(funtion=None, input_spec=None, config=None, **kwargs):
                         tgt_var = scope.var(param_or_buffer.name)
                         tgt_var.set_vocab(scr_tensor)
                     else:
+                        # share to scope
                         param_or_buffer_tensor = scope.var(
                             param_or_buffer.name
                         ).get_tensor()
-                        # src_tensor = param_or_buffer.value().get_tensor()
                         src_tensor = (
                             state_var_dict[param_or_buffer.name]
                             .value()
                             .get_tensor()
                         )
                         param_or_buffer_tensor._share_data_with(src_tensor)
+                    # record var info
                     if param_or_buffer.name not in extra_var_info:
                         extra_info_dict = {}
                         if param_or_buffer.name in state_names_dict:

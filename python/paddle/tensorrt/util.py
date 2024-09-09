@@ -41,7 +41,6 @@ def map_dtype(pd_dtype):
 def run_pir_pass(program, partition_mode=False):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
-    # pm.enable_ir_printing()
     paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     passes = [
         {'trt_op_marker_pass': {}},
@@ -84,18 +83,18 @@ def predict_program(program, feed_data, fetch_var_list, scope=None):
             return output
 
 
-def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
+def warmup_shape_infer(program, min_shape_feed, max_shape_feed, scope=None):
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
             # Run the program with input_data
             for _ in range(1):
-                executor.run(program, feed=min_shape_feed)
+                executor.run(program, feed=min_shape_feed, scope=scope)
 
             # Run the program with input_data_max_shape (fake max_shape input)
             for _ in range(1):
-                executor.run(program, feed=max_shape_feed)
+                executor.run(program, feed=max_shape_feed, scope=scope)
 
             exe_program, _, _ = (
                 executor._executor_cache.get_pir_program_and_executor(
@@ -105,7 +104,7 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
                     feed_var_name='feed',
                     fetch_var_name='fetch',
                     place=paddle.framework._current_expected_place_(),
-                    scope=paddle.static.global_scope(),
+                    scope=scope,
                     plan=None,
                 )
             )

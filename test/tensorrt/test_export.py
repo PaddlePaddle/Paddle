@@ -142,7 +142,6 @@ class TestExport(unittest.TestCase):
                 net = CumsumModel(input_dim=min_data.shape[-1])
                 out = net(x)
 
-                paddle.disable_static()
                 # 创建 InputSpec
                 input_spec = [InputSpec(shape=min_data.shape, dtype='float32')]
                 program_with_trt, scope = export(
