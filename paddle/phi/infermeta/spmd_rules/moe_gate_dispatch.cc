@@ -32,10 +32,8 @@ SpmdInfo MoEGateDispatchFwdInferSpmd(const DistMetaTensor& x,
     x: [S, H], S = b*s
     gate_logits: [S, E]
   outputs:
-    y: [E*C, H] is use_pad is True, else [S*K, H]
-    combine_weights: [S, K]
-    scatter_index: [K, S]
-    expert_offset: [E]
+    y: [E, C, H] is use_pad is true, else [S, K, H], currently only support
+  use_pad=true combine_weights: [S, K] scatter_index: [K, S] expert_offset: [E]
     expert_id: [S, K]
   */
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(x);
@@ -77,7 +75,7 @@ SpmdInfo MoEGateDispatchFwdInferSpmd(const DistMetaTensor& x,
   gate_logits_dist_attr_dst.set_dims_mapping(gate_logits_dims_mapping_dst);
 
   // output axes
-  std::string y_axes = "sh";
+  std::string y_axes = "esh";
   std::vector<int64_t> y_dims_mapping =
       GetDimsMappingForAxes(y_axes, axis_to_dim_map);
 
@@ -130,10 +128,8 @@ SpmdInfo MoEGateDispatchBwdInferSpmd(const DistMetaTensor& combine_weights,
       combine_weights: [S, K]
       scatter_index: [K, S]
       expert_id: [S, K]
-      grad_y: [E*C, H] is use_pad is True, else [S*K, H]
-      grad_combine_weights: [S, K]
-    outputs:
-      grad_x: [S, H]
+      grad_y: [E, C, H] is use_pad is true, else [S, K, H], currently only
+    support use_pad=true grad_combine_weights: [S, K] outputs: grad_x: [S, H]
       grad_gate_logits: [S, E]
    */
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(combine_weights);
@@ -162,8 +158,8 @@ SpmdInfo MoEGateDispatchBwdInferSpmd(const DistMetaTensor& combine_weights,
                                    expert_id_shape.size()));
   PADDLE_ENFORCE_EQ(
       grad_y_shape.size(),
-      2,
-      phi::errors::InvalidArgument("grad_y should be a 2-D tensor, but "
+      3,
+      phi::errors::InvalidArgument("grad_y should be a 3-D tensor, but "
                                    "got grad_y_shape.size() == %d",
                                    grad_y_shape.size()));
   PADDLE_ENFORCE_EQ(grad_combine_weights_shape.size(),
@@ -177,7 +173,7 @@ SpmdInfo MoEGateDispatchBwdInferSpmd(const DistMetaTensor& combine_weights,
   std::string combine_weights_axes = "sk";
   std::string scatter_index_axes = "ks";
   std::string expert_id_axes = "sk";
-  std::string grad_y_axes = "sh";
+  std::string grad_y_axes = "esh";
   std::string grad_combine_weights_axes = "sk";
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
@@ -186,7 +182,7 @@ SpmdInfo MoEGateDispatchBwdInferSpmd(const DistMetaTensor& combine_weights,
            {expert_id_axes, expert_id_dims_mapping_src},
            {grad_y_axes, grad_y_dims_mapping_src},
            {grad_combine_weights_axes, grad_combine_weights_dims_mapping_src}});
-  axis_to_dim_map["e"] = -1;  // not allowed dim e to be sharded
+  // axis_to_dim_map["e"] = -1;  // not allowed dim e to be sharded
   // input axes
   std::vector<int64_t> combine_weights_dims_mapping_dst =
       GetDimsMappingForAxes(combine_weights_axes, axis_to_dim_map);

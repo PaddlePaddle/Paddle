@@ -109,14 +109,15 @@ TEST(MoECombineSPMDRule, test_moe_gate_dispatch_spmd) {
   const std::vector<std::vector<int64_t>>& forward_input_shapes = {{s, h},
                                                                    {s, e}};
   const std::vector<std::vector<int64_t>>& backward_input_shapes = {
-      {s, k}, {k, s}, {s, k}, {e * capacity, h}, {s, k}};
+      {s, k}, {k, s}, {s, k}, {e, capacity, h}, {s, k}};
 
   // replicated case, forward
   std::vector<std::vector<int64_t>> input_dims_mappings = {{-1, -1}, {-1, -1}};
   std::pair<std::vector<std::vector<int64_t>>,
             std::vector<std::vector<int64_t>>>
-      expected_dims_mappings = {{{-1, -1}, {-1, -1}},
-                                {{-1, -1}, {-1, -1}, {-1, -1}, {-1}, {-1, -1}}};
+      expected_dims_mappings = {
+          {{-1, -1}, {-1, -1}},
+          {{-1, -1, -1}, {-1, -1}, {-1, -1}, {-1}, {-1, -1}}};
   test_moe_gate_dispatch_spmd(forward_input_shapes,
                               input_dims_mappings,
                               expected_dims_mappings,
@@ -125,9 +126,10 @@ TEST(MoECombineSPMDRule, test_moe_gate_dispatch_spmd) {
                               use_pad);
 
   // replicated case, backward
-  input_dims_mappings = {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}};
-  expected_dims_mappings = {{{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}},
-                            {{-1, -1}, {-1, -1}}};
+  input_dims_mappings = {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1, -1}, {-1, -1}};
+  expected_dims_mappings = {
+      {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1, -1}, {-1, -1}},
+      {{-1, -1}, {-1, -1}}};
   test_moe_gate_dispatch_spmd(backward_input_shapes,
                               input_dims_mappings,
                               expected_dims_mappings,
@@ -139,7 +141,7 @@ TEST(MoECombineSPMDRule, test_moe_gate_dispatch_spmd) {
   // ep case, forward
   input_dims_mappings = {{0, -1}, {-1, -1}};
   expected_dims_mappings = {{{0, -1}, {0, -1}},
-                            {{0, -1}, {0, -1}, {-1, 0}, {-1}, {0, -1}}};
+                            {{-1, 0, -1}, {0, -1}, {-1, 0}, {-1}, {0, -1}}};
   test_moe_gate_dispatch_spmd(forward_input_shapes,
                               input_dims_mappings,
                               expected_dims_mappings,
@@ -148,8 +150,8 @@ TEST(MoECombineSPMDRule, test_moe_gate_dispatch_spmd) {
                               use_pad);
 
   // ep case, backward
-  input_dims_mappings = {{0, -1}, {-1, 0}, {0, -1}, {0, -1}, {0, -1}};
-  expected_dims_mappings = {{{0, -1}, {-1, 0}, {0, -1}, {0, -1}, {0, -1}},
+  input_dims_mappings = {{0, -1}, {-1, 0}, {0, -1}, {-1, 0, -1}, {0, -1}};
+  expected_dims_mappings = {{{0, -1}, {-1, 0}, {0, -1}, {-1, 0, -1}, {0, -1}},
                             {{0, -1}, {0, -1}}};
   test_moe_gate_dispatch_spmd(backward_input_shapes,
                               input_dims_mappings,
