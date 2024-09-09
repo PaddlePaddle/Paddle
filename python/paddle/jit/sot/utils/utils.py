@@ -77,38 +77,46 @@ class NameGenerator:
         return name.startswith(self.prefix)
 
 
-class TmpNameRecords:
+class SymbolRegistry:
     def __init__(self):
-        self.name_generator = NameGenerator(prefix="_sot_tmp_")
+        self.symbol_generator = NameGenerator(prefix="___t_")
         self.tmp_names_record = OrderedDict()
+        self.declared_symbols: set[str] = set()
+        self.symbol_table = {}
 
-    def next_name(self):
-        return self.name_generator.next()
+    def next_symbol(self) -> str:
+        return self.symbol_generator.next()
 
-    def add_tmp_var(self, expr):
-        if expr in self.tmp_names_record:
-            return self.tmp_names_record[expr]
-        else:
-            tmp_name = self.next_name()
-            self.tmp_names_record[expr] = tmp_name
-            return tmp_name
+    def request_symbol(self, expr: str) -> str:
+        if expr in self.symbol_table:
+            return self.symbol_table[expr]
+        symbol = self.next_symbol()
+        self.symbol_table[expr] = symbol
+        return symbol
+
+    def gen_expr(self, expr: str, gen_expr_fn):
+        symbol = self.symbol_table[expr]
+        if symbol in self.declared_symbols:
+            return symbol
+        self.declared_symbols.add(symbol)
+        return f"({symbol} := ({gen_expr_fn()}))"
 
 
-_tmp_name_records = TmpNameRecords()
+_symbol_registry = SymbolRegistry()
 
 
 @contextmanager
-def tmp_name_guard():
-    global _tmp_name_records
-    old = _tmp_name_records
-    _tmp_name_records = TmpNameRecords()
+def switch_symbol_registry():
+    global _symbol_registry
+    original_registry = _symbol_registry
+    _symbol_registry = SymbolRegistry()
     yield
-    _tmp_name_records = old
+    _symbol_registry = original_registry
 
 
-def current_tmp_name_records():
-    global _tmp_name_records
-    return _tmp_name_records
+def current_symbol_registry():
+    global _symbol_registry
+    return _symbol_registry
 
 
 class ResumeFnNameFactory(metaclass=Singleton):

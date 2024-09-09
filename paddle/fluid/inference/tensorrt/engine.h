@@ -513,6 +513,7 @@ class TensorRTEngine {
   }
   bool disable_trt_plugin_fp16() { return params_.disable_trt_plugin_fp16; }
   bool with_dynamic_shape() { return params_.with_dynamic_shape; }
+  int32_t get_max_batch_size() { return params_.max_batch_size; }
   phi::DataType precision() { return params_.precision; }
 
 #if IS_TRT_VERSION_GE(6000)

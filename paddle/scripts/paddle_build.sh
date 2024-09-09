@@ -3709,8 +3709,8 @@ function exec_type_checking() {
     cd ${PADDLE_ROOT}/tools
 
     # check all sample code
-    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "[typing]" || true`
-    DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "[debug]" || true`
+    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[typing\]" || true`
+    DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[debug\]" || true`
 
     if [[ ${TITLE_CHECK_ALL} ]]; then
         if [[ ${DEBUG_MODE} ]]; then
