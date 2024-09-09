@@ -66,17 +66,6 @@ void profile(bool use_mkldnn = false) {
                  FLAGS_num_threads);
 }
 
-// Check the fuse status
-TEST(Analyzer_resnet50, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  LOG(INFO) << "num_ops: " << num_ops;
-}
-
 TEST(Analyzer_resnet50, profile) { profile(); }
 #ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
@@ -112,19 +101,6 @@ TEST(Analyzer_resnet50, compare_determine) {
   SetInput(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
-}
-
-// Save optim model
-TEST(Analyzer_resnet50, save_optim_model) {
-  AnalysisConfig cfg;
-  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
-#ifdef _WIN32
-  _mkdir(optimModelPath.c_str());
-#else
-  mkdir(optimModelPath.c_str(), 0777);
-#endif
-  SetConfig(&cfg);
-  SaveOptimModel(&cfg, optimModelPath);
 }
 
 void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,
