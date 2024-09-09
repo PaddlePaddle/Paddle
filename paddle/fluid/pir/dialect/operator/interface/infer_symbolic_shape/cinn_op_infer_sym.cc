@@ -274,7 +274,7 @@ bool UniformRandomInferSymbolicShape(
   const std::vector<symbol::DimExpr> out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims;
     for (int64_t dim : shape) {
-      out_dims.emplace_back(symbole::DimExpr{dim});
+      out_dims.emplace_back(symbol::DimExpr{dim});
     }
     return out_dims;
   }();
