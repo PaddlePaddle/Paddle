@@ -45,7 +45,8 @@ struct MergeTrivialPatternOperation {
       if (can_fuse) {
         auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
         merged_node->set_fusion_iters(
-            SingleDownstreamItersFusion(upstream, downstream, true));
+            graph->iters_fusion_policy()->FuseItersSignature(
+                upstream, downstream, true));
         graph->RemoveNode(downstream);
         VLOG(4) << "Spliting trivial pattern: \nupstream "
                 << upstream->DebugStr() << "\ndownstream "
@@ -74,7 +75,8 @@ struct MergeReduceTreeOperation {
     auto downstream = node->downstream().at(0);
     auto merged_node = graph->MergeNode(node, downstream, MergePattern);
     merged_node->set_fusion_iters(
-        SingleDownstreamItersFusion(node, downstream, true));
+        graph->iters_fusion_policy()->FuseItersSignature(
+            node, downstream, true));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
@@ -108,7 +110,8 @@ struct MergeReduceTreeAndTrivialOperation {
     PatternNodePtr merged_node =
         graph->MergeNode(node, downstream, merge_pattern_fn);
     merged_node->set_fusion_iters(
-        SingleDownstreamItersFusion(node, downstream, false));
+        graph->iters_fusion_policy()->FuseItersSignature(
+            node, downstream, false));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
@@ -144,6 +147,55 @@ struct LiftToHorizontalFusionPatternOperation {
     VLOG(4) << "Make CopyInstr: " << origin_name << " -> " << node->id();
     node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
     return node;
+  }
+};
+
+struct LiftToItersPermutationPatternOperation {
+  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
+    PADDLE_ENFORCE_EQ(node->sink_op()->num_results(),
+                      1,
+                      ::common::errors::PreconditionNotMet(
+                          "Op with multi output value can not lift to "
+                          "ItersPermutationPattern"));
+    std::string origin_name = node->id();
+    node->set_stmt_pattern(
+        ItersPermutationPattern(GetOpsInPattern(node->stmt_pattern()),
+                                std::make_shared<FusionTracker>(
+                                    GetFusionTracker(node->stmt_pattern()))));
+    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
+    VLOG(4) << "Make CopyInstr: " << origin_name << " -> " << node->id();
+    return node;
+  }
+};
+
+struct RiseDownstreamOperation {
+  PatternNodePtr operator()(PatternGraph* graph,
+                            const PatternNodePtr& upstream,
+                            const PatternNodePtr& downstream) {
+    VLOG(4) << "Start RiseDownstreamOperation";
+    VLOG(4) << "Upstream: \n" << upstream->DebugStr();
+    VLOG(4) << "Downstream: \n" << downstream->DebugStr();
+    auto iters_transform_route =
+        graph->policy_manager()
+            .template GetPolicy<ItersFusionPolicy>()
+            ->GetItersTransformRoute(downstream, upstream);
+    VLOG(4) << "iters_transform_route: "
+            << DebugStrItersTransformRoute(iters_transform_route);
+
+    auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
+    merged_node->set_fusion_iters(
+        graph->iters_fusion_policy()->FuseItersSignature(
+            upstream, downstream, false));
+    std::string downstream_tmp_id = GetNewTmpId(downstream->id());
+    merged_node->AppendInstr(std::make_shared<ItersTransformInstr>(
+        downstream->id(), downstream_tmp_id, iters_transform_route));
+    merged_node->AppendInstr(std::make_shared<CombineInstr>(
+        std::vector<std::string>{upstream->id(), downstream_tmp_id},
+        merged_node->id()));
+    graph->RemoveNode(upstream);
+    graph->RemoveNode(downstream);
+    VLOG(4) << "Merged: \n" << merged_node->DebugStr();
+    return merged_node;
   }
 };
 

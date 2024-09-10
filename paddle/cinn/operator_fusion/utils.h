@@ -154,6 +154,37 @@ std::unordered_set<T> ToUnorderedSet(const std::vector<T>& input) {
   return result;
 }
 
+template <typename Set>
+Set SetUnion(const Set& A, const Set& B) {
+  Set result;
+  std::set_union(A.begin(),
+                 A.end(),
+                 B.begin(),
+                 B.end(),
+                 std::inserter(result, result.begin()));
+  return result;
+}
+template <typename Set>
+Set SetIntersection(const Set& A, const Set& B) {
+  Set result;
+  std::set_intersection(A.begin(),
+                        A.end(),
+                        B.begin(),
+                        B.end(),
+                        std::inserter(result, result.begin()));
+  return result;
+}
+template <typename Set>
+Set SetDifference(const Set& A, const Set& B) {
+  Set result;
+  std::set_difference(A.begin(),
+                      A.end(),
+                      B.begin(),
+                      B.end(),
+                      std::inserter(result, result.begin()));
+  return result;
+}
+
 template <typename T>
 bool IsAnyFirstInSecond(const std::vector<T>& first,
                         const std::vector<T>& second) {
@@ -192,6 +223,40 @@ std::vector<T> UniqueConcatVector(const std::vector<T>& first,
   return result;
 }
 
+template <typename Int, typename T>
+std::vector<Int> GetTransposePerm(const std::vector<T>& source,
+                                  const std::vector<T>& target) {
+  PADDLE_ENFORCE_EQ(source.size(),
+                    target.size(),
+                    ::common::errors::InvalidArgument(
+                        "The size of source and target should be equal."));
+  std::vector<Int> perm;
+  for (size_t i = 0; i < source.size(); ++i) {
+    auto iter = std::find(source.begin(), source.end(), target[i]);
+    PADDLE_ENFORCE_NE(iter,
+                      source.end(),
+                      ::common::errors::InvalidArgument(
+                          "The target should contain all elements in source."));
+    perm.emplace_back(iter - source.begin());
+  }
+  return perm;
+}
+
+template <typename T, typename Int>
+std::vector<T> TransposeVector(const std::vector<T>& v,
+                               const std::vector<Int>& perm) {
+  PADDLE_ENFORCE_EQ(
+      v.size(),
+      perm.size(),
+      ::common::errors::InvalidArgument(
+          "The size of transpose vector and perm should be equal."));
+  std::vector<T> result;
+  for (size_t i = 0; i < perm.size(); ++i) {
+    result.emplace_back(v[perm[i]]);
+  }
+  return result;
+}
+
 struct ValueDim {
   pir::Value v_;
   size_t idx_ = -1;
@@ -204,8 +269,8 @@ struct ValueDim {
       if (v.defining_op() != nullptr) {
         return v.defining_op();
       }
-      // For inputs of the program, the defining_op is nullptr, we use it's user
-      // as the related op.
+      // For inputs of the program, the defining_op is nullptr, we use it's
+      // user as the related op.
       PADDLE_ENFORCE_EQ(v.use_empty(),
                         false,
                         ::common::errors::PreconditionNotMet(

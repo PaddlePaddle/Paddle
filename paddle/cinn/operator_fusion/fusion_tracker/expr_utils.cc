@@ -14,8 +14,19 @@
 
 #pragma once
 #include "paddle/cinn/operator_fusion/fusion_tracker/expr_utils.h"
+#include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 
 namespace cinn::fusion {
+
+using namespace cinn::hlir::framework::pir::trivial_fusion_detail;  // NOLINT
+using namespace ExprSetFinderUtils;                                 // NOLINT
+using namespace ExprTransformerUtils;                               // NOLINT
+
+ir::Expr ApplyItersTransform::operator()(const TransposeItersTransform& trans) {
+  auto result = TransposeForsTransformer(trans.perm_)(expr_);
+  VLOG(4) << "[ItersTransform] After TransposeItersTransform: " << result;
+  return result;
+}
 
 std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops) {
   std::vector<ir::Expr> exprs;
@@ -28,12 +39,6 @@ std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops) {
 
 // tmp transform for reduce_tree and reduce_tree_trivial.
 std::vector<ir::Tensor> GetOutputTensors(const ir::Expr& op_expr) {
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildScheduleBlockRealizes;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildTensorStores;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ScheduleBlockRealizeIsNotInit;
   const auto& tensors =
       (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
        ChildTensorStores)(op_expr);
@@ -44,12 +49,6 @@ std::vector<ir::Tensor> GetOutputTensors(const ir::Expr& op_expr) {
 }
 
 std::vector<ir::Tensor> GetInputTensors(const ir::Expr& op_expr) {
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildScheduleBlockRealizes;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildTensorLoads;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ScheduleBlockRealizeIsNotInit;
   const auto& exprs =
       (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
        ChildTensorLoads)(op_expr);
@@ -137,16 +136,6 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
 }
 
 static std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildFors;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildScheduleBlockRealizes;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      FindFather;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      IsFor;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ScheduleBlockRealizeIsNotInit;
   const auto& all_father_fors =
       (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
        FindFather(expr) * IsFor)(expr);
@@ -162,19 +151,6 @@ static std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
 static int counter = 0;
 ir::Expr UnSqueezeExpr(const ir::Expr& expr,
                        const std::vector<int>& padding_vec) {
-  using cinn::hlir::framework::pir::trivial_fusion_detail::AppendBound;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildFors;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildRootScheduleBlockRealizes;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildScheduleBlockRealizes;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      IsForIterVar;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::
-      ExprTransformerUtils::ReplaceVarTransformer;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::
-      ExprTransformerUtils::UnsqueezeForTransformer;
   VLOG(4) << "UnSqueezeExpr: " << expr
           << "\npadding vector: " << utils::Join(padding_vec, ", ");
   const auto& vars_in_expr = AppendBound(GetAllForIters(expr), expr);
@@ -218,7 +194,6 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
 
 std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
                                  const std::vector<int>& padding_pos) {
-  using cinn::hlir::framework::pir::trivial_fusion_detail::IsReduceBody;
   std::vector<FusibleOp> results;
   auto expr_vec = std::visit(FusibleOp2Expr(), fusion_op);
   for (auto expr : expr_vec) {

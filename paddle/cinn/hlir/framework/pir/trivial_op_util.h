@@ -155,9 +155,13 @@ extern ExprSetFinder Store2Value;
 
 extern ExprSetFinder Realizer2ScheduleBlock;
 
+extern ExprSetFinder Realizer2IterValues;
+
 extern ExprSetFinder ScheduleBlock2Body;
 
 extern ExprSetFinder ScheduleBlockRealizeNotRoot;
+
+extern ExprSetFinder ScheduleBlockRealizeIsRoot;
 
 extern ExprSetFinder ScheduleBlockRealizeIsNotInit;
 
@@ -245,6 +249,8 @@ ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize);
 
 ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
                                      const std::string& tensor_name);
+
+ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm);
 }  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(
@@ -269,6 +275,10 @@ static bool IsReduceBody(const ir::Expr& expr_body) {
            ExprSetFinderUtils::ScheduleBlockRealizeIsInit)(expr_body)
               .empty();
 }
+
+std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
+                                 const ir::Expr& root);
+
 }  // namespace trivial_fusion_detail
 }  // namespace pir
 }  // namespace framework

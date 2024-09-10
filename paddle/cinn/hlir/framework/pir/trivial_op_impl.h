@@ -79,9 +79,6 @@ ir::Expr GetComputeBody(const FusibleOp& op);
 
 ir::Tensor GetOutputTensor(const FusibleOp& op);
 
-std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
-                                 const ir::Expr& root);
-
 std::vector<ir::Var> GetOutputIters(const FusibleOp& op);
 
 std::vector<ir::Var> GetReduceIters(const ReduceOp& op);

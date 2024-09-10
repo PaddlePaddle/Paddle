@@ -131,33 +131,6 @@ ir::Tensor GetOutputTensor(const FusibleOp& op) {
   return std::visit(Visitor(), op);
 }
 
-std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
-                                 const ir::Expr& root) {
-  return ExprSetFinderUtils::MapVector<ir::Var>(
-      vars, [&](const auto& v) -> ir::Var {
-        VLOG(4) << "Start Append Bound for " << v;
-        VLOG(4) << "AppendBound for " << v << ", lower: "
-                << (ExprSetFinderUtils::ChildFors *
-                    ExprSetFinderUtils::IsForIterVar(v) *
-                    ExprSetFinderUtils::For2Min)
-                       .GetSingle(root)
-                << ", upper: "
-                << (ExprSetFinderUtils::ChildFors *
-                    ExprSetFinderUtils::IsForIterVar(v) *
-                    ExprSetFinderUtils::For2Max)
-                       .GetSingle(root);
-        return ir::Var(
-            (ExprSetFinderUtils::ChildFors *
-             ExprSetFinderUtils::IsForIterVar(v) * ExprSetFinderUtils::For2Min)
-                .GetSingle(root),
-            (ExprSetFinderUtils::ChildFors *
-             ExprSetFinderUtils::IsForIterVar(v) * ExprSetFinderUtils::For2Max)
-                .GetSingle(root),
-            v->name,
-            v->is_reduce_axis);
-      });
-}
-
 std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
   struct Visitor {
     std::vector<ir::Var> operator()(const ReduceOp& op) {
@@ -180,7 +153,6 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
           outer_iter_expr);
     }
   };
-  VLOG(4) << "GetOutputIters";
   return AppendBound(std::visit(Visitor(), op), _GetRootExpr(op));
 }
 

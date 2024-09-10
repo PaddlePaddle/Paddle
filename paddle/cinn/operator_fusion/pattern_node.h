@@ -27,10 +27,10 @@ struct PatternNode {
       std::function<StmtPattern(const StmtPattern&, const StmtPattern&)>;
 
   explicit PatternNode(const PatternContent& content,
-                       const ShardableAxesSignature& axes)
+                       const FusionItersSignature& fusion_iters)
       : sink_op_(content.op),
         stmt_pattern_(ConvertToStmtPattern(content)),
-        fusion_iters_(FusionItersSignature(content.op, axes)) {}
+        fusion_iters_(fusion_iters) {}
 
   explicit PatternNode(PatternNodePtr fused_up_node,
                        PatternNodePtr fused_down_node,
@@ -50,8 +50,7 @@ struct PatternNode {
 
   std::string DebugStr() const {
     std::stringstream ss;
-    ss << "Node: " << this << ", Pattern: " << GetPatternName(stmt_pattern())
-       << ", ID: " << GetPatternId(stmt_pattern());
+    ss << "Node: " << this << ", ID: " << GetPatternId(stmt_pattern());
     ss << "\n    -u>:  ";
     for (const auto& u : upstream_) {
       ss << GetPatternId(u->stmt_pattern()) << "(" << u << "), ";
