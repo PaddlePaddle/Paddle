@@ -441,12 +441,14 @@ bool RecvV2OpInferSymbolicShape(pir::Operation *op,
                             "set to True for both send_v2 and recv_v2.",
                             i,
                             out[i]));
-      out_shape.push_back(symbol::DimExpr(out[i]));
+      out_shape.emplace_back(symbol::DimExpr(out[i]));
     }
     infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs(out_shape)});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(0));
   }
 
   return true;
