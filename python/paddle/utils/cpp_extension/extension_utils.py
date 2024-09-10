@@ -596,7 +596,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             if core.is_compiled_with_rocm():
                 extra_link_args.append('-lamdhip64')
             else:
-                extra_link_args.append('-lcudart')
+                extra_link_args.append('-lmcruntime')
 
         kwargs['extra_link_args'] = extra_link_args
 
@@ -666,22 +666,21 @@ def find_cuda_home():
     Use heuristic method to find cuda path
     """
     # step 1. find in $CUDA_HOME or $CUDA_PATH
-    cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
-
+    maca_path = os.environ.get('MACA_PATH')
     # step 2.  find path by `which nvcc`
-    if cuda_home is None:
+    if maca_path is None:
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
             with open(os.devnull, 'w') as devnull:
-                nvcc_path = subprocess.check_output(
-                    [which_cmd, 'nvcc'], stderr=devnull
+                cucc_path = subprocess.check_output(
+                    [which_cmd, 'cucc'], stderr=devnull
                 )
-                nvcc_path = nvcc_path.decode()
+                cucc_path = cucc_path.decode()
                 # Multi CUDA, select the first
-                nvcc_path = nvcc_path.split('\r\n')[0]
+                cucc_path = cucc_path.split('\r\n')[0]
 
-                # for example: /usr/local/cuda/bin/nvcc
-                cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
+                # for example: /opt/maca/tools/cu-bridge/bin/cucc
+                cucc_path = os.path.dirname(os.path.dirname(cucc_path))
         except:
             if IS_WINDOWS:
                 # search from default NVIDIA GPU path
@@ -689,18 +688,19 @@ def find_cuda_home():
                     'C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v*.*'
                 )
                 if len(candidate_paths) > 0:
-                    cuda_home = candidate_paths[0]
+                    maca_path = candidate_paths[0]
             else:
-                cuda_home = "/usr/local/cuda"
+                maca_path = "/opt/maca"
+    else:
+        cucc_path = os.path.join(maca_path, 'tools/cu-bridge')
     # step 3. check whether path is valid
     if (
-        cuda_home
-        and not os.path.exists(cuda_home)
+        cucc_path
+        and not os.path.exists(cucc_path)
         and core.is_compiled_with_cuda()
     ):
-        cuda_home = None
-
-    return cuda_home
+        cucc_path = None
+    return cucc_path
 
 
 def find_rocm_home():
@@ -743,7 +743,7 @@ def find_cuda_includes():
     cuda_home = find_cuda_home()
     if cuda_home is None:
         raise ValueError(
-            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
+            "Not found MACA runtime, please use `export MACA_PATH=XXX` to specific it."
         )
 
     return [os.path.join(cuda_home, 'include')]
@@ -829,15 +829,15 @@ def find_cuda_libraries():
     """
     Use heuristic method to find cuda static lib path
     """
-    cuda_home = find_cuda_home()
-    if cuda_home is None:
+    maca_path = os.environ.get('MACA_PATH')
+    if maca_path is None:
         raise ValueError(
-            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
+            "Not found MACA runtime, please use `export MACA_PATH=XXX` to specific it."
         )
     if IS_WINDOWS:
-        cuda_lib_dir = [os.path.join(cuda_home, 'lib', 'x64')]
+        cuda_lib_dir = [os.path.join(maca_path, 'lib', 'x64')]
     else:
-        cuda_lib_dir = [os.path.join(cuda_home, 'lib64')]
+        cuda_lib_dir = [os.path.join(maca_path, 'lib')]
 
     return cuda_lib_dir
 
