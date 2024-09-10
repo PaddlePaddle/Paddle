@@ -1107,7 +1107,7 @@ PHI_DEFINE_EXPORTED_string(cinn_subgraph_graphviz_dir,
 /*
  * CINN related FLAG
  * Name: FLAGS_cinn_specify_input_dynamic_dim
- * Since Version: develop
+ * Since Version: 3.0 Beta
  * Value Range: bool, default=false
  * Example: FLAGS_cinn_specify_input_dynamic_dim=true will use file set by
  * FLAGS_cinn_input_dynamic_dim_spec_file to specify input dynamic dimention.
@@ -1119,7 +1119,7 @@ PHI_DEFINE_EXPORTED_bool(cinn_specify_input_dynamic_dim,
 /*
  * CINN related FLAG
  * Name: FLAGS_cinn_input_dynamic_dim_spec_file
- * Since Version: develop
+ * Since Version: 3.0 Beta
  * Value Range: string, default=""
  * Example: FLAGS_cinn_input_dynamic_dim_spec_file="./config.json",
  * FLAGS_cinn_specify_input_dynamic_dim=true would use input dynamic dimention
@@ -1936,3 +1936,20 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_bool(enable_auto_parallel_align_mode,
                          false,
                          "Enable align mode for auto parallel");
+
+/**
+ * fused_multi_transformer_op related FLAG
+ * Name: fused_multi_transformer_op_use_mbfmha
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable flash decoding for mmha kernels in fused_multi_transformer_op.
+ */
+PHI_DEFINE_EXPORTED_bool(fused_multi_transformer_op_use_mbfmha,
+                         false,
+                         "Enable flash decoding for mmha kernels in "
+                         "fused_multi_transformer_op.");
+
+PHI_DEFINE_EXPORTED_int64(multi_block_attention_min_partition_size,
+                          1024,
+                          "The minimum partition size for flash decoding");
