@@ -1009,6 +1009,9 @@ def _pir_program_for_vpp(
         if op_role != int(OpRole.Optimize) and op_chunk_id == -1:
             op_chunk_id = infer_chunk_id(idx, all_ops, False)
             if op_chunk_id == -1:
+                all_used_op = op.result(0).all_used_ops()
+                for op in all_used_op:
+                    print(op.name(), op)
                 raise ValueError(
                     f"Cannot infer chunk_id for op {op.name()} at index {idx}"
                 )

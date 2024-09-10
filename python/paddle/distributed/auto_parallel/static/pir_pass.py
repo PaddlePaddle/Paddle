@@ -491,7 +491,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
         "FThenB",
         "1F1B",
         "VPP",
-    ], f"pipeline scheduler only support FThenB now, but receive {pass_name}"
+    ], f"pipeline scheduler only support FThenB, 1F1B and VPP now, but receive {pass_name}"
 
     pass_attr = {}
     pass_attr["num_micro_batches"] = pipeline_strategy.accumulate_steps
