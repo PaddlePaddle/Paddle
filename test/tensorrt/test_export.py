@@ -46,7 +46,7 @@ class CumsumModel(nn.Layer):
         return out
 
 
-class TestConvert_loaded_model(unittest.TestCase):
+class TestConvertLoadedModel(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.temp_dir = tempfile.TemporaryDirectory()
