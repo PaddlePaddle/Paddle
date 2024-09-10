@@ -818,7 +818,7 @@ class DygraphShardingOptimizerV2:
                 if pad_tensor is not None:
                     assert paddle.all(
                         pad_tensor == 0
-                    ).item(), f"The padding of Tensor {k} is not zero"
+                    ).item(), f"The padding of Tensor {k} is not zero, CUDA error(1002)"
 
     def _forward_pre_hook_function(self, tasks):
         def __impl__(x, y):
