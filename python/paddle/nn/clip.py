@@ -234,7 +234,7 @@ def _cast_to_mp_type_if_enabled(x):
     elif (
         x.dtype == DataType.FLOAT16 or x.dtype == DataType.BFLOAT16
     ) and _clip_by_global_norm_using_mp_type():
-        return x.astype(DataType.FP32)
+        return x.astype(DataType.FLOAT32)
     else:
         return x
 
