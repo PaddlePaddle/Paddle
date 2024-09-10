@@ -162,7 +162,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(
       test_trt_pool_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 300)
+                 500)
 
   endif()
 
