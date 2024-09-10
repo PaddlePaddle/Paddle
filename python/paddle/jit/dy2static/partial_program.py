@@ -815,7 +815,7 @@ class PartialProgramLayer:
             self._build_strategy,
             forward_skip_vars,
         )
-        # self._apply_inplace_pass(builded_infer_program, None)
+        self._apply_inplace_pass(builded_infer_program, None)
         return builded_infer_program
 
     @switch_to_static_graph
@@ -852,9 +852,9 @@ class PartialProgramLayer:
             forward_skip_vars,
         )
 
-        # self._apply_inplace_pass(
-        #     forward_builded_program, backward_builded_program
-        # )
+        self._apply_inplace_pass(
+            forward_builded_program, backward_builded_program
+        )
 
         # NOTE(Aurelius84): Export forward/backward program for SubGraphChecker,
         # see export_subgraph for detail.
