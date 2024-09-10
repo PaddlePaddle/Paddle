@@ -198,8 +198,8 @@ class Engine:
         # NOTE(ljz) Not support parameter groups
         param_list = []
         if optimizer is not None and (
-            optimizer._parameter_list is None
-            or not isinstance(optimizer._parameter_list[0], dict)
+            optimizer._parameter_list is not None
+            and not isinstance(optimizer._parameter_list[0], dict)
         ):
             for p in optimizer._parameter_list:
                 if not p.stop_gradient:
