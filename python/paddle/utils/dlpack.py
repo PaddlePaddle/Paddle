@@ -86,7 +86,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
     return x._to_dlpack()
 
 
-def from_dlpack(ext_tensor) -> Tensor:
+def from_dlpack(dlpack) -> Tensor:
     """
     Decodes a DLPack to a tensor.
 
@@ -113,8 +113,17 @@ def from_dlpack(ext_tensor) -> Tensor:
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
     """
 
-    if hasattr(ext_tensor, '__dlpack__'):
-        device = ext_tensor.__dlpack_device__()
+    # Check the type of dlpack
+    t = type(dlpack)
+    dlpack_flag = t.__module__ == 'builtins' and t.__name__ == 'PyCapsule'
+    if not dlpack_flag:
+        raise TypeError(
+            "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
+            f" but received {type(dlpack)}."
+        )
+
+    if hasattr(dlpack, '__dlpack__'):
+        device = dlpack.__dlpack_device__()
         # device is either CUDA or ROCm, we need to pass the current
         # stream
         if device[0] in (DLDeviceType.kDLGPU, DLDeviceType.kDLROCM):
@@ -130,14 +139,14 @@ def from_dlpack(ext_tensor) -> Tensor:
             stream_ptr = (
                 1 if is_gpu and stream.cuda_stream == 0 else stream.cuda_stream
             )
-            dlpack = ext_tensor.__dlpack__(stream=stream_ptr)
+            dlpack_ = dlpack.__dlpack__(stream=stream_ptr)
         else:
-            dlpack = ext_tensor.__dlpack__()
+            dlpack_ = dlpack.__dlpack__()
     else:
         # Old versions just call the converter
-        dlpack = ext_tensor
+        dlpack_ = dlpack
 
-    out: paddle.base.libpaddle.Tensor = paddle.base.core.from_dlpack(dlpack)
+    out: paddle.base.libpaddle.Tensor = paddle.base.core.from_dlpack(dlpack_)
 
     if in_dygraph_mode():
         out: Tensor = paddle.to_tensor(out)
