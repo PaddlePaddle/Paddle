@@ -554,5 +554,27 @@ StringToDataLayoutMap() {
   return data_layout_map;
 }
 
+void SetStopGradient() {}
+
+void SetStopGradient(pir::Value* value) {
+  value->set_attribute(
+      "stop_gradient",
+      pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+}
+
+void SetStopGradient(std::vector<pir::Value>* values) {
+  for (auto& value : *values) {
+    SetStopGradient(&value);
+  }
+}
+
+void SetStopGradient(paddle::optional<pir::Value>* value) {
+  SetStopGradient(value->get());
+}
+
+void SetStopGradient(paddle::optional<std::vector<pir::Value>>* values) {
+  SetStopGradient(values->get());
+}
+
 }  // namespace dialect
 }  // namespace paddle
