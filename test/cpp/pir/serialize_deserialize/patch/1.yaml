@@ -54,6 +54,10 @@ op_patches:
         object : 0
         type : pir::DenseTensorType
         default : [pir::Float32Type,[-1],"NCHW",[],0]
+      - action : add_output_attr
+        object : op2_attr1
+        type : pir::StrAttribute
+        default : "op2_attr1_value"
   - op_name : test1.operation3
     actions :
       - action : delete_input
