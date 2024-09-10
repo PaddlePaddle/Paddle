@@ -36,7 +36,6 @@ from .quant_config import (
     SUPPORT_QUANTIZATION_OP_DICT,
     ARMCPUQuantizer,
     BaseQuantizer,
-    MKLDNNQuantizer,
     TensorRTQuantizer,
 )
 from .quantization_pass import (
@@ -400,14 +399,6 @@ class PostTrainingQuantization:
             )
         elif deploy_backend.lower() == "tensorrt":
             self.quant_config = TensorRTQuantizer(
-                quantizable_op_type=quantizable_op_type,
-                quant_bits=weight_bits,
-            )
-        elif (
-            deploy_backend.lower() == "mkldnn"
-            or deploy_backend.lower() == "onednn"
-        ):
-            self.quant_config = MKLDNNQuantizer(
                 quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,
             )

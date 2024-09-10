@@ -216,6 +216,26 @@ class ShardingGradView:
         # share param buffer
         self._share_param_buffer()
 
+    def _get_padding(self):
+        if self._param_begin < self._param_end and self._slice_grad is not None:
+            padding_start = self._index + self._param._numel()
+            padding_end = self._index + self._padded_size
+            padding_start = max(self._param_begin, padding_start)
+            padding_end = min(self._param_end, padding_end)
+
+            if padding_start >= padding_end:
+                return None
+
+            padding = padding_end - padding_start
+            grad_numel = self._slice_grad._numel()
+            assert grad_numel >= padding, f"{grad_numel} vs {padding}"
+            padding_grad = self._slice_grad._slice(
+                grad_numel - padding, grad_numel
+            )
+            return padding_grad
+        else:
+            return None
+
     def _slice_grad_from_buffer(self):
         assert self._grad_buffer is not None
         if self._param_begin < self._param_end:

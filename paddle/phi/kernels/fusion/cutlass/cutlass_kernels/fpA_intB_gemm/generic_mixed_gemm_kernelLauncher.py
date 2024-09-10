@@ -235,6 +235,8 @@ if __name__ == "__main__":
     if archs:
         for element_type in ElementTypes.keys():
             for arch in archs:
+                if arch == 90 and 80 in archs:
+                    continue
                 for epilogue_tag in EpilogueTags.keys():
                     for stages in StagesList[arch]:
                         file_name = f"autogen_tmp/generic_mixed_gemm_kernelLauncher_{element_type}_sm{arch}_stages{stages}_{epilogue_tag}.cu"

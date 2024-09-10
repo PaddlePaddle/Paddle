@@ -36,7 +36,7 @@ void SparseNaiveSGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
   } else {
     PADDLE_ENFORCE_GE(naive_param.weight_bounds_size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "invalid repeated size for weight_bounds: %d",
                           naive_param.weight_bounds_size()));
     _min_bound = naive_param.weight_bounds(0);
@@ -85,7 +85,7 @@ void SparseAdaGradSGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
   } else {
     PADDLE_ENFORCE_GE(adagrad_param.weight_bounds_size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "invalid repeated size for weight_bounds: %d",
                           adagrad_param.weight_bounds_size()));
     _min_bound = adagrad_param.weight_bounds(0);
@@ -144,7 +144,7 @@ void StdAdaGradSGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
   } else {
     PADDLE_ENFORCE_GE(adagrad_param.weight_bounds_size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "invalid repeated size for weight_bounds: %d",
                           adagrad_param.weight_bounds_size()));
     _min_bound = adagrad_param.weight_bounds(0);
@@ -200,7 +200,7 @@ void SparseAdamSGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
   } else {
     PADDLE_ENFORCE_GE(adam_param.weight_bounds_size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "invalid repeated size for weight_bounds: %d",
                           adam_param.weight_bounds_size()));
     _min_bound = adam_param.weight_bounds(0);
@@ -276,7 +276,7 @@ void SparseSharedAdamSGDRule::LoadConfig(
   } else {
     PADDLE_ENFORCE_GE(adam_param.weight_bounds_size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "invalid repeated size for weight_bounds: %d",
                           adam_param.weight_bounds_size()));
     _min_bound = adam_param.weight_bounds(0);
@@ -360,7 +360,7 @@ void SparseAdaGradV2SGDRule::LoadConfig(
   } else {
     PADDLE_ENFORCE_GE(adagrad_param.weight_bounds_size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "invalid repeated size for weight_bounds: %d",
                           adagrad_param.weight_bounds_size()));
     _min_bound = adagrad_param.weight_bounds(0);
