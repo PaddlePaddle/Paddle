@@ -131,6 +131,14 @@ class TestDLPack(unittest.TestCase):
             y[1:2, 2:5] = 2.0
             np.testing.assert_allclose(x.numpy(), y.numpy())
 
+    def test_to_dlpack_data_ptr_consistency(self):
+        # See Paddle issue 50120
+        for i in range(2):
+            x = paddle.rand([3, 5])
+            dlpack = paddle.utils.dlpack.to_dlpack(x)
+            y = paddle.utils.dlpack.from_dlpack(dlpack)
+            self.assertEqual(x.data_ptr(), y.data_ptr())
+
 
 class TestRaiseError(unittest.TestCase):
     def test_from_dlpack_raise_type_error(self):
