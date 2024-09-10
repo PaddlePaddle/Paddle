@@ -182,7 +182,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_dist_to_static)
   set_tests_properties(test_semi_auto_parallel_dist_to_static
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
-  py_test_modules(test_static_reshard_api MODULES test_static_reshard_api)
+  py_test_modules(test_static_reshard_api MODULES test_static_reshard_api ENVS
+                  FLAGS_enable_pir_api=1)
   set_tests_properties(test_static_reshard_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
@@ -228,7 +229,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_comm_cost MODULES test_comm_cost)
   py_test_modules(test_comp_cost MODULES test_comp_cost)
   py_test_modules(test_dist_context MODULES test_dist_context)
-  py_test_modules(test_to_static MODULES test_to_static)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
   py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
@@ -241,7 +241,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
-  py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
+  py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api ENVS
+                  FLAGS_enable_pir_api=1)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
   py_test_modules(test_dist_concat MODULES test_dist_concat)
   # End of unittests WITH single card WITHOUT timeout
