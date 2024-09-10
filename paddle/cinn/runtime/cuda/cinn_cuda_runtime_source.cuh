@@ -652,23 +652,23 @@ EXPAND_REDUCE_FP16_MACRO(CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO)
 #undef CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO
 
 #define CINN_BLOCK_REDUCE_INTERNAL_ROW_SHM_IMPL(TYPE, value, init_value, cinn_warp_shuffle_internal) \
-  int tid = threadIdx.y * blockDim.x + threadIdx.x;                                          \
-  int warp_id = tid >> 5;                                                                    \
-  int row_dim =  (blockDim.x + 31) >> 5;                                                            \
-  TYPE tmp_val = cinn_warp_shuffle_internal(value);                                          \
-  if (blockDim.x <= 32) {                                                                    \
-    return tmp_val;                                                                          \
-  }                                                                                          \
-  __syncthreads();                                                                           \
-  if ((tid & 31) == 0) {                                                                     \
-    shm[warp_id] = tmp_val;                                                                  \
-  }                                                                                          \
-  __syncthreads();                                                                           \
-  if (threadIdx.x < 32) {                                                            \
-    tmp_val = (threadIdx.x < row_dim) ? shm[threadIdx.y * row_dim + threadIdx.x] : init_value;   \
-    shm[warp_id] = cinn_warp_shuffle_internal(tmp_val);                                      \
-  }                                                                                          \
-  __syncthreads();                                                                           \
+  int tid = threadIdx.y * blockDim.x + threadIdx.x;                                                  \
+  int warp_id = tid >> 5;                                                                            \
+  int row_dim =  (blockDim.x + 31) >> 5;                                                             \
+  TYPE tmp_val = cinn_warp_shuffle_internal(value);                                                  \
+  if (blockDim.x <= 32) {                                                                            \
+    return tmp_val;                                                                                  \
+  }                                                                                                  \
+  __syncthreads();                                                                                   \
+  if ((tid & 31) == 0) {                                                                             \
+    shm[warp_id] = tmp_val;                                                                          \
+  }                                                                                                  \
+  __syncthreads();                                                                                   \
+  if (threadIdx.x < 32) {                                                                            \
+    tmp_val = (threadIdx.x < row_dim) ? shm[threadIdx.y * row_dim + threadIdx.x] : init_value;       \
+    shm[warp_id] = cinn_warp_shuffle_internal(tmp_val);                                              \
+  }                                                                                                  \
+  __syncthreads();                                                                                   \
   return shm[threadIdx.y * row_dim];
 
 #define CINN_BLOCK_REDUCE_INTERNAL_ROW_SHM_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                                                \
