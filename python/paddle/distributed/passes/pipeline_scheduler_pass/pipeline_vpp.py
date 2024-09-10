@@ -327,7 +327,4 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 f"type = {types[i]}, sub_programs = {sub_program_list[i]}\n"
             )
 
-        for type, sub_program in zip(types, sub_program_list):
-            print(type, sub_program)
-
         return types, sub_program_list
