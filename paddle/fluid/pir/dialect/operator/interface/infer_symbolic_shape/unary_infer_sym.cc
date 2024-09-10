@@ -453,12 +453,11 @@ bool ClassCenterSampleOpInferSymbolicShape(
                         "but the value given is %d.",
                         label_shape_or_data.shape().size()));
 
-  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
-
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::TensorShapeOrDataDimExprs(label_shape_or_data.shape()));
 
+  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
