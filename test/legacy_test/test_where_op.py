@@ -28,7 +28,9 @@ from paddle.pir_utils import test_with_pir_api
 class TestWhereOp(OpTest):
     def setUp(self):
         self.op_type = 'where'
+        self.prim_op_type = 'prim'
         self.python_api = paddle.where
+        self.public_python_api = paddle.where
         self.check_cinn = True
         self.init_config()
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
@@ -39,7 +41,11 @@ class TestWhereOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', check_cinn=self.check_cinn, check_pir=True
+            ['X', 'Y'],
+            'Out',
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_config(self):
@@ -71,8 +77,10 @@ class TestWhereFP16OP(TestWhereOp):
 class TestWhereBF16OP(OpTest):
     def setUp(self):
         self.op_type = 'where'
+        self.prim_op_type = 'prim'
         self.dtype = np.uint16
         self.python_api = paddle.where
+        self.public_python_api = paddle.where
         self.check_cinn = True
         self.init_config()
         self.inputs = {
@@ -99,6 +107,7 @@ class TestWhereBF16OP(OpTest):
             numeric_grad_delta=0.05,
             check_cinn=self.check_cinn,
             check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_config(self):

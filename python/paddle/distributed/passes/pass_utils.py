@@ -718,31 +718,31 @@ def forward_complete_op_role(main_program):
     first_left_op_role = None
     first_right_op_role = None
     while iop < ops_len:
-        if all_ops[iop].op_role is not None:
+        if all_ops[iop].op_role != -1:
             first_left_op_role = all_ops[iop].op_role
             iop += 1
             continue
         else:
             right_idx = iop + 1
-            while right_idx < ops_len and all_ops[right_idx].op_role is None:
+            while right_idx < ops_len and all_ops[right_idx].op_role == -1:
                 right_idx += 1
             if right_idx >= ops_len:  # [first_left_op_role, xx, xx, xx, xx]
                 assert (
-                    first_left_op_role is not None
-                ), "first_left_op_role can't be None."
+                    first_left_op_role == -1
+                ), "first_left_op_role can't be -1."
                 for idx in range(iop, right_idx):
                     all_ops[idx].op_role = first_left_op_role
                 break
             else:  # [first_left_op_role, xx, xx, xx, xx, first_right_op_role]
                 first_right_op_role = all_ops[right_idx].op_role
                 assert (
-                    first_left_op_role is None
+                    first_left_op_role == -1
                     or first_left_op_role == first_right_op_role
                 ), f"The left and right operators of (idx[{iop}]) have different op_role."
                 for idx in range(iop, right_idx):
                     all_ops[idx].op_role = first_right_op_role
                     iop = right_idx + 1
-    if first_left_op_role is None and first_right_op_role is None:
+    if first_left_op_role == -1 and first_right_op_role == -1:
         raise ValueError("all the ops don't have the op_role.")
 
 
@@ -763,7 +763,7 @@ def _split_program_into_forward_backward_optimize(
 
     region = "opt"
     for op_idx in range(len(complete_ops) - 1, -1, -1):
-        if complete_ops[op_idx].op_role is not None:
+        if complete_ops[op_idx].op_role != -1:
             if complete_ops[op_idx].op_role == 1:
                 region = "bwd"
             elif complete_ops[op_idx].op_role == 0:

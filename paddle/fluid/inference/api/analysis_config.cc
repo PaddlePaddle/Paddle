@@ -43,7 +43,6 @@ COMMON_DECLARE_bool(use_cinn);
 
 COMMON_DECLARE_bool(enable_pir_api);
 namespace paddle {
-struct MkldnnQuantizerConfig;
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
 
@@ -541,8 +540,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_mkldnn_int8_);
   CP_MEMBER(quantize_enabled_op_types_);
   CP_MEMBER(quantize_excluded_op_ids_);
-  CP_MEMBER(use_mkldnn_quantizer_);
-  CP_MEMBER(mkldnn_quantizer_config_);
   CP_MEMBER(min_input_shape_);
   CP_MEMBER(max_input_shape_);
   CP_MEMBER(optim_input_shape_);
@@ -685,19 +682,6 @@ void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
 #endif
 }
 
-void AnalysisConfig::EnableMkldnnQuantizer() {
-#ifdef PADDLE_WITH_DNNL
-  if (!mkldnn_quantizer_config_)
-    mkldnn_quantizer_config_ = std::make_unique<MkldnnQuantizerConfig>();
-  use_mkldnn_quantizer_ = true;
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
-  use_mkldnn_quantizer_ = false;
-#endif
-
-  Update();
-}
-
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
@@ -742,13 +726,6 @@ void AnalysisConfig::EnableMkldnnInt8(
 #endif
 
   Update();
-}
-
-MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
-  PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
-                          common::errors::PreconditionNotMet(
-                              "MkldnnQuantizer was not enabled yet."));
-  return mkldnn_quantizer_config_.get();
 }
 
 void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
@@ -1027,17 +1004,6 @@ void AnalysisConfig::Update() {
     }
   }
 
-  // Quantization passes must come after all other optimization passes
-  if (use_mkldnn_quantizer_) {
-    if (!enable_ir_optim_) {
-      LOG(ERROR) << "EnableMkldnnQuantizer() only works when IR optimization "
-                    "is enabled.";
-    }
-#ifdef PADDLE_WITH_DNNL
-    pass_builder()->EnableMkldnnQuantizer();
-#endif
-  }
-
   if (use_mkldnn_bfloat16_) {
 #ifdef PADDLE_WITH_DNNL
     pass_builder()->EnableMkldnnBfloat16();
@@ -1145,7 +1111,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
 
-  ss << use_mkldnn_quantizer_;
   ss << use_mkldnn_bfloat16_;
   for (auto &item : bfloat16_enabled_op_types_) ss << item;
   ss << use_mkldnn_int8_;
