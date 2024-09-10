@@ -98,6 +98,7 @@ class TestReshardRToSCrossMesh:
             elif op.name() == 'pd_op.slice':
                 assert op.dist_attr.process_mesh == self._out_mesh
                 assert op.result(0).dist_attr() == op.dist_attr.result(0)
+                
                 assert op.result(0).type() == target_type
 
 
