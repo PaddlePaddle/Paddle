@@ -1091,7 +1091,6 @@ struct Conv2dOpTranscriber : public OpTranscriber {
   }
 };
 
-<<<<<<< HEAD
 struct Conv3dOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -1111,14 +1110,6 @@ struct ScaleOpTranscriber : public OpTranscriber {
           paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0.0));
     } else if (info.name == "bias_after_scale") {
       (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
-=======
-struct SequencePoolOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "pad_value") {
-      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0f);
->>>>>>> 79c8c55fec7b49959ea246b9689115388eec98d5
     }
   }
 };
@@ -1134,14 +1125,37 @@ struct DropoutOpTranscriber : public OpTranscriber {
   }
 };
 
-<<<<<<< HEAD
 struct SequencePoolOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
                                   const OpAttributeInfo& info) override {
     if (info.name == "pad_value") {
       (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0f);
-=======
+    }
+  }
+};
+
+struct SequencePoolOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "pad_value") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0f);
+    }
+  }
+};
+
+struct DropoutOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "mode") {
+      (*attribute_map)[info.name] =
+          pir::StrAttribute::get(ctx, "downscale_in_infer");
+    }
+  }
+};
+
 struct ScaleOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -1151,7 +1165,6 @@ struct ScaleOpTranscriber : public OpTranscriber {
           paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0.0));
     } else if (info.name == "bias_after_scale") {
       (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
->>>>>>> 79c8c55fec7b49959ea246b9689115388eec98d5
     }
   }
 };
