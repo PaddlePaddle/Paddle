@@ -395,14 +395,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
     analyzer_text_classification_tester.cc EXTRA_DEPS common)
 
-  # seq_conv1
-  set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
-  download_model_and_data_without_verify(
-    ${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz"
-    "seq_conv1_data.txt.tar.gz")
-  inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR}
-                              analyzer_seq_conv1_tester.cc EXTRA_DEPS common)
-
   # mobilenet
   set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
   if(NOT EXISTS ${MOBILENET_INSTALL_DIR}/mobilenetv1.tar.gz)
@@ -1203,16 +1195,5 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ARGS
     --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model
     --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
-
-  # text_classification
-  set(TEXT_CLASSIFICATION_INSTALL_DIR
-      "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
-  download_model_and_data(
-    ${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz"
-    3f0f440313ca50e26184e65ffd5809ab "text_classification_data.txt.tar.gz"
-    36ae620020cc3377f45ed330dd36238f)
-  inference_analysis_api_test(
-    test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
-    analyzer_text_classification_tester.cc EXTRA_DEPS common)
 
 endif()

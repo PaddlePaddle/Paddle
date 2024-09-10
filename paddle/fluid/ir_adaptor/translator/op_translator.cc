@@ -1091,7 +1091,6 @@ struct Conv2dOpTranscriber : public OpTranscriber {
   }
 };
 
-<<<<<<< HEAD
 struct Conv3dOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -1136,46 +1135,6 @@ struct SequencePoolOpTranscriber : public OpTranscriber {
   }
 };
 
-struct SequencePoolOpTranscriber : public OpTranscriber {
-=======
-struct SequencePoolOp : public OpTranscriber {
->>>>>>> e449ab5731aa85893c236fdab5a8977d7c9f67d7
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "pad_value") {
-      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0f);
-    }
-  }
-};
-
-<<<<<<< HEAD
-struct DropoutOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "mode") {
-      (*attribute_map)[info.name] =
-          pir::StrAttribute::get(ctx, "downscale_in_infer");
-    }
-  }
-};
-
-struct ScaleOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "bias") {
-      (*attribute_map)[info.name] =
-          paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0.0));
-    } else if (info.name == "bias_after_scale") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
-    }
-  }
-};
-
-=======
->>>>>>> e449ab5731aa85893c236fdab5a8977d7c9f67d7
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
 
@@ -3937,16 +3896,11 @@ OpTranslator::OpTranslator() {
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
-<<<<<<< HEAD
   special_handlers["conv3d"] = Conv3dOpTranscriber();
-=======
-  special_handlers["sequence_pool"] = SequencePoolOp();
->>>>>>> e449ab5731aa85893c236fdab5a8977d7c9f67d7
   special_handlers["cross_entropy_with_softmax"] =
       CrossEntropyWithSoftmaxOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["depthwise_conv2d"] = DepthwiseConv2dOpTranscriber();
-  special_handlers["dropout"] = DropoutOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
@@ -3983,14 +3937,10 @@ OpTranslator::OpTranslator() {
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["share_buffer"] = ShareBufferOpTranscriber();
   special_handlers["sequence_pool"] = SequencePoolOpTranscriber();
-<<<<<<< HEAD
-=======
   special_handlers["dropout"] = DropoutOpTranscriber();
   special_handlers["scale"] = ScaleOpTranscriber();
->>>>>>> 79c8c55fec7b49959ea246b9689115388eec98d5
   special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
-  special_handlers["scale"] = ScaleOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["top_p_sampling"] = TopPSamplingOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
