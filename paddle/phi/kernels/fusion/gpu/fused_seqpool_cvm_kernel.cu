@@ -304,7 +304,7 @@ void FusedSeqpoolCVMCUDAKernel(const Context &dev_ctx,
     } else {
       PADDLE_ENFORCE_EQ(batch_size,
                         cur_batch_size,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The batch size of all input should be same, "
                             "please cheack, last batchsize is %d, current "
                             "batchsize is %d",

@@ -29,7 +29,7 @@ void FusedSeqpoolCVMOpCPUKernel(const Context &dev_ctx,
                                 bool use_cvm,
                                 int cvm_offset,
                                 std::vector<DenseTensor *> out) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Unimplemented CPU kernel for FusedSeqpoolCVMOp, only support GPU "
       "now."));
 }

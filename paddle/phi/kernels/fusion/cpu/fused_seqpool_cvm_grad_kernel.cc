@@ -32,7 +32,7 @@ void FusedSeqpoolCVMGradOpCPUKernel(
     int cvm_offset,
     std::vector<DenseTensor *> x_grad,
     DenseTensor *cvm_grad) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Unimplemented CPU kernel for FusedSeqpoolCVMGradOp, only support GPU "
       "now."));
 }

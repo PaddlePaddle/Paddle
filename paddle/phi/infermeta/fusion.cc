@@ -4622,23 +4622,23 @@ void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaConfig config) {
   PADDLE_ENFORCE_GE(x.size(),
                     1UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Inputs(X) of FusedSeqpoolCVMOp should not be empty."));
   PADDLE_ENFORCE_GE(
       out.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Outputs(Out) of FusedSeqpoolCVMOp should not be empty."));
 
   const auto& cvm_dims = cvm.dims();
   PADDLE_ENFORCE_EQ(
       cvm_dims.size(),
       2UL,
-      phi::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
+      common::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
   PADDLE_ENFORCE_EQ(cvm_dims[1],
                     2UL,
-                    phi::errors::InvalidArgument("The 2nd dimension of "
-                                                 "Input(CVM) should be 2."));
+                    common::errors::InvalidArgument("The 2nd dimension of "
+                                                    "Input(CVM) should be 2."));
 
   const size_t num_inputs = x.size();
   std::vector<phi::DDim> outs_dims;
@@ -4646,7 +4646,7 @@ void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
 
   PADDLE_ENFORCE_GT(num_inputs,
                     0UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input tensors count should be greater than 0, "
                         "but received value is %d.",
                         num_inputs));
@@ -4656,7 +4656,7 @@ void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
   auto size_tmp = x[0]->dims().size();
   PADDLE_ENFORCE_EQ(size_tmp,
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The dims size of first input should be equal to 2, "
                         "but received value is %d.",
                         size_tmp));
@@ -4668,7 +4668,7 @@ void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
       PADDLE_ENFORCE_GT(
           dims[rank - 1],
           2,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Shape error in %lu id, the last dimension(embedding) of the "
               "'X' tensor must be larger than 2.",
               i));
@@ -4717,12 +4717,12 @@ void FusedSeqpoolCvmGradInferMeta(
   PADDLE_ENFORCE_EQ(
       cvm_dims.size(),
       2,
-      phi::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
+      common::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
 
   for (size_t i = 0; i < og_dims.size(); i++) {
     PADDLE_ENFORCE_EQ(og_dims[i].size(),
                       x_dims[i].size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The rank of output grad must equal to Input(X). But "
                           "received: input rank %u, input shape [%s].",
                           og_dims[i].size(),
@@ -4732,7 +4732,7 @@ void FusedSeqpoolCvmGradInferMeta(
       PADDLE_ENFORCE_EQ(
           o_dim,
           x_dims[i][og_dims[i].size() - 1],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The dimension mismatch between Input(OUT@GRAD) and "
               "Input(X). Received Input(OUT@GRAD): input rank %u, "
               "input shape [%s]; received Input(X): input rank %u, "
@@ -4745,7 +4745,7 @@ void FusedSeqpoolCvmGradInferMeta(
       PADDLE_ENFORCE_EQ(
           og_dims[i][og_dims[i].size() - 1],
           x_dims[i][og_dims[i].size() - 1] - cvm_offset,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The dimension mismatch between Input(OUT@GRAD) and "
               "Input(X). Received Input(OUT@GRAD): input rank %u, "
               "input shape [%s]; received Input(X): input rank %u, "
