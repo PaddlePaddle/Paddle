@@ -1167,4 +1167,52 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
   endif()
+
+  if(WITH_TESTING)
+    if(NOT APPLE)
+      if(NOT EXISTS ${WORD2VEC_INSTALL_DIR}/word2vec.inference.model.tar.gz)
+        inference_download_and_uncompress_without_verify(
+          ${WORD2VEC_INSTALL_DIR} ${INFERENCE_URL}
+          "word2vec.inference.model.tar.gz")
+      endif()
+      inference_base_test(
+        test_api_impl
+        SRCS
+        api_impl_tester.cc
+        DEPS
+        common
+        paddle_inference_shared
+        ARGS
+        --word2vec_dirname=${WORD2VEC_MODEL_DIR}
+        --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
+    endif()
+  endif()
+
+  set(VIT_OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/vit")
+  if(NOT EXISTS ${VIT_OCR_INSTALL_DIR}/vit_ocr.tgz)
+    inference_download_and_uncompress_without_verify(
+      ${VIT_OCR_INSTALL_DIR} ${INFERENCE_URL} "ocr/vit_ocr.tgz")
+  endif()
+  inference_analysis_test(
+    test_analyzer_vit_ocr
+    SRCS
+    analyzer_vit_ocr_tester.cc
+    EXTRA_DEPS
+    common
+    paddle_inference_shared
+    ARGS
+    --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model
+    --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
+
+  # text_classification
+  set(TEXT_CLASSIFICATION_INSTALL_DIR
+      "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
+  download_model_and_data(
+    ${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz"
+    3f0f440313ca50e26184e65ffd5809ab "text_classification_data.txt.tar.gz"
+    36ae620020cc3377f45ed330dd36238f)
+  inference_analysis_api_test(
+    test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
+    analyzer_text_classification_tester.cc EXTRA_DEPS common)
+
 endif()
