@@ -25,6 +25,7 @@ from paddle.static import nn
 
 class ShuffleChannelFuseTRTPassTest(InferencePassTest):
     def setUp(self):
+        paddle.enable_static()
         with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
