@@ -801,11 +801,12 @@ phi::Place GetPlaceFromPtr(void* data) {
   return phi::CPUPlace();
 }
 
-using Deleter = std::function<void(void*)>;
 /*
-code ref:
+dlpack related code ref:
 https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
+and paddle/phi/api/lib/tensor_utils.cc
 */
+using Deleter = std::function<void(void*)>;
 using AllocationDeleter = void (*)(phi::Allocation*);
 
 phi::DenseTensor from_blob(void* data,
