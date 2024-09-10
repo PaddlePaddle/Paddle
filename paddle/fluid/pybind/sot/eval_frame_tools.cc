@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pybind/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/eval_frame_tools.h"
 
 #include <Python.h>
 
@@ -21,6 +21,8 @@
 #include "paddle/common/errors.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/enforce.h"
+
+#if SOT_IS_SUPPORTED
 
 /*============================ Dict Tree ================================*/
 
@@ -282,3 +284,5 @@ PyObject* skip_file_prefix(PyObject* filepath_tuple) {
   }
   return Py_None;
 }
+
+#endif
