@@ -54,7 +54,7 @@ class Input:
         optim_input_shape : tuple, optional
             The shape of the optimal input tensor (default is None).
         input_data_type : str, optional
-            The data type for the input tensors, such as 'float32' or 'int64' (default is None).
+            The data type for the input tensors, such as 'float32' or 'int64' or 'float32' or 'int32'  (default is float32).
         input_range : tuple, optional
             The range of values used to generate input data. For floats, the default range is (0.0, 1.0). For integers, the default range is (1, 10).
     Returns:
