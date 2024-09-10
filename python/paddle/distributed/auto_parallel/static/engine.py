@@ -265,6 +265,7 @@ class Engine:
         self._fwd_main_progs = {}
         self._startup_progs = {}
         self._pir_dist_main_progs = {}
+        self._pir_dist_startup_progs = {}
         self._pir_dense_main_progs = {}
         self._pir_fetch_values = []
         self._pir_user_defined_fetch_names = []
@@ -812,11 +813,15 @@ class Engine:
         #   Partition the computation graph into different pipeline stage if need.
         apply_partition_pass(dist_program)
 
+        if mode == "train" and self._loss and self._optimizer:
+            global_params_grads = params_grads
+        else:
+            global_params_grads = []
+            params_grads = []
+
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        global_params_grads = params_grads
-
         apply_reshard_pass(dist_program, params_grads)
         # print('after reshard', dist_program, flush=1)
 
@@ -908,6 +913,7 @@ class Engine:
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
+        self._pir_dist_startup_progs[mode] = startup_program
 
     def _prepare_program(self, mode, init_parameters=True):
         if self._in_pir_mode:
@@ -1263,6 +1269,9 @@ class Engine:
             )
 
         if self._in_pir_mode:
+            # FIXME(ljz) avoid shared same tensro more than once in different mode
+            if mode != "train":
+                return
             # TODO(2024-Q2)
             # 1. unify random control
             # 2. initilization of non-parameter buffer
@@ -2623,12 +2632,18 @@ class Engine:
         return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
 
     def get_dist_startup_program(self, mode: _Mode) -> Program:
+        if self._in_pir_mode:
+            return self._pir_dist_startup_progs[self._mode]
         return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
 
     def get_serial_main_program(self, mode: _Mode) -> Program:
+        if self._in_pir_mode:
+            return self._fwd_main_progs[mode]
         return self._dist_contexts[mode].serial_main_program
 
     def get_serial_startup_program(self, mode: _Mode) -> Program:
+        if self._in_pir_mode:
+            return self._startup_progs[mode]
         return self._dist_contexts[mode].serial_startup_program
 
     @property

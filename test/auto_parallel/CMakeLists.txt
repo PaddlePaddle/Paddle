@@ -178,8 +178,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_saved_tensor_hook)
   set_tests_properties(test_semi_auto_parallel_saved_tensor_hook
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_semi_auto_parallel_dist_to_static MODULES
-                  test_semi_auto_parallel_dist_to_static)
+  py_test_modules(
+    test_semi_auto_parallel_dist_to_static MODULES
+    test_semi_auto_parallel_dist_to_static ENVS FLAGS_enable_pir_api=1)
   set_tests_properties(test_semi_auto_parallel_dist_to_static
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   py_test_modules(test_static_reshard_api MODULES test_static_reshard_api ENVS
