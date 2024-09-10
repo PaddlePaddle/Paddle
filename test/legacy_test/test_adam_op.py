@@ -66,6 +66,8 @@ def adam_wrapper(
 class TestAdamOp1(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        # no check `Moment2MaxOut` with amsgrad is False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test Adam Op with supplied attributes'''
@@ -119,12 +121,13 @@ class TestAdamOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOp1AMSGrad(TestAdamOp1):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 class TestAdamOp2(OpTest):
@@ -133,6 +136,7 @@ class TestAdamOp2(OpTest):
 
     def set_amsgrad(self):
         self.amsgrad = False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test Adam Op with supplied attributes'''
@@ -187,7 +191,7 @@ class TestAdamOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOnlyTailOp(TestAdamOp2):
@@ -198,11 +202,13 @@ class TestAdamOnlyTailOp(TestAdamOp2):
 class TestAdamOp2AMSGrad(TestAdamOp2):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 class TestAdamOpMultipleSteps(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test Adam Operator with supplied attributes'''
@@ -262,7 +268,7 @@ class TestAdamOpMultipleSteps(OpTest):
             }
 
             # Verify output for this step
-            self.check_output(check_pir=True)
+            self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
             # Output of this step becomes input for next step
             self.inputs['Param'] = param_out
@@ -283,6 +289,7 @@ class TestAdamOpMultipleSteps(OpTest):
 class TestAdamOpMultipleStepsAMSGrad(TestAdamOpMultipleSteps):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 def adam_step(inputs, attributes):
@@ -326,7 +333,7 @@ def adam_step(inputs, attributes):
             moment1_out / (np.sqrt(moment2_max_out) + epsilon)
         )
     else:
-        moment2_max_out = np.zeros_like(moment2_out)
+        moment2_max_out = np.empty_like(moment2_out)
         param_out = param - lr_t * (
             moment1_out / (np.sqrt(moment2_out) + epsilon)
         )
@@ -379,7 +386,7 @@ def adamw_step(inputs, attributes):
             moment1_out / (np.sqrt(moment2_max_out) + epsilon)
         )
     else:
-        moment2_max_out = np.zeros_like(moment2_out)
+        moment2_max_out = np.empty_like(moment2_out)
         param_out = param - lr_t * (
             moment1_out / (np.sqrt(moment2_out) + epsilon)
         )
@@ -434,7 +441,7 @@ def adam_step_sparse(
                 / (np.sqrt(moment2_max_out[row_id]) + epsilon)
             )
         else:
-            moment2_max_out[row_id] = np.zeros_like(moment2_out[row_id])
+            moment2_max_out[row_id] = np.empty_like(moment2_out[row_id])
             param_out[row_id] = param[row_id] - lr_t * (
                 moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
             )
@@ -455,6 +462,7 @@ def adam_step_sparse(
 class TestSparseAdamOp(unittest.TestCase):
     def set_amsgrad(self):
         self.amsgrad = False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setup(self, scope, place, lazy_mode):
         beta1 = 0.78
@@ -567,11 +575,13 @@ class TestSparseAdamOp(unittest.TestCase):
 class TestSparseAdamOpAMSGrad(TestSparseAdamOp):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 class TestAdamOpBetaVariable(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test Adam Op with beta as Variable'''
@@ -623,17 +633,19 @@ class TestAdamOpBetaVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOpBetaVariableAMSGrad(TestAdamOpBetaVariable):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 class TestAdamOpBetaEpsilonVariable(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test Adam Op with beta/epsilon as Variable'''
@@ -686,17 +698,19 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOpBetaEpsilonVariableAMSGrad(TestAdamOpBetaEpsilonVariable):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 class TestAdamOpWithGlobalBetaPow(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test Adam Op with global_beta_pow'''
@@ -754,17 +768,19 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOpWithGlobalBetaPowAMSGrad(TestAdamOpWithGlobalBetaPow):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 class TestAdamOpWithSkipUpdate(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test Adam Op with global_beta_pow'''
@@ -819,12 +835,13 @@ class TestAdamOpWithSkipUpdate(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOpWithSkipUpdateAMSGrad(TestAdamOpWithSkipUpdate):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 class TestAdamOpV2(unittest.TestCase):

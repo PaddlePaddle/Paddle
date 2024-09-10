@@ -64,23 +64,21 @@ __global__ void AdamWKernelREG(MT beta1,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
-    MT mom2_max = static_cast<MT>(moment2_max[id]);
 
     p *= (static_cast<MT>(1.0) - lr * coeff);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-    MT mom2_max_;
     MT denom;
     if (amsgrad) {
-      mom2_max_ = std::max(mom2, mom2_max);
+      MT mom2_max = static_cast<MT>(moment2_max[id]);
+      MT mom2_max_ = std::max(mom2, mom2_max);
+      moment2_max_out[id] = mom2_max_;
 
       denom =
           (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     } else {
-      mom2_max_ = mom2_max;
-
       denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     }
 
@@ -88,7 +86,6 @@ __global__ void AdamWKernelREG(MT beta1,
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
-    moment2_max_out[id] = mom2_max_;
     param_out[id] = static_cast<T>(p);
     if (master_param_out) {
       master_param_out[id] = p;
@@ -129,23 +126,21 @@ __global__ void AdamWKernelMEM(MT beta1,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
-    MT mom2_max = static_cast<MT>(moment2_max[id]);
 
     p *= (static_cast<MT>(1.0) - lr * coeff);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-    MT mom2_max_;
     MT denom;
     if (amsgrad) {
-      mom2_max_ = std::max(mom2, mom2_max);
+      MT mom2_max = static_cast<MT>(moment2_max[id]);
+      MT mom2_max_ = std::max(mom2, mom2_max);
+      moment2_max_out[id] = mom2_max_;
 
       denom =
           (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     } else {
-      mom2_max_ = mom2_max;
-
       denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
     }
 
@@ -153,7 +148,6 @@ __global__ void AdamWKernelMEM(MT beta1,
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
-    moment2_max_out[id] = mom2_max_;
     param_out[id] = static_cast<T>(p);
     if (master_param_out) {
       master_param_out[id] = p;
@@ -179,7 +173,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       const DenseTensor& learning_rate,
                       const DenseTensor& moment1,
                       const DenseTensor& moment2,
-                      const DenseTensor& moment2_max,
+                      const paddle::optional<DenseTensor>& moment2_max,
                       const DenseTensor& beta1_pow,
                       const DenseTensor& beta2_pow,
                       const paddle::optional<DenseTensor>& master_param,
@@ -232,7 +226,13 @@ void AdamwDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, moment2_max, dev_ctx.GetPlace(), false, moment2_max_out);
+    if (amsgrad) {
+      phi::Copy(dev_ctx,
+                moment2_max.get(),
+                dev_ctx.GetPlace(),
+                false,
+                moment2_max_out);
+    }
     if (!use_global_beta_pow) {
       phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
       phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
@@ -271,6 +271,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                       : nullptr;
 
+  const MPDType* moment2_max_in_data =
+      amsgrad ? moment2_max.get().data<MPDType>() : nullptr;
+  MPDType* moment2_max_out_data =
+      amsgrad ? dev_ctx.template Alloc<MPDType>(moment2_max_out) : nullptr;
+
   // update param and moment
   int threads = 512;
   int blocks = (param.numel() + threads - 1) / threads;
@@ -291,8 +296,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
               dev_ctx.template Alloc<MPDType>(moment1_out),
               moment2.data<MPDType>(),
               dev_ctx.template Alloc<MPDType>(moment2_out),
-              moment2_max.data<MPDType>(),
-              dev_ctx.template Alloc<MPDType>(moment2_max_out),
+              moment2_max_in_data,
+              moment2_max_out_data,
               learning_rate.data<MPDType>(),
               grad.data<float>(),
               param.data<T>(),
@@ -314,8 +319,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<MPDType>(moment1_out),
           moment2.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment2_out),
-          moment2_max.data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(moment2_max_out),
+          moment2_max_in_data,
+          moment2_max_out_data,
           learning_rate.data<MPDType>(),
           grad.data<T>(),
           param.data<T>(),
@@ -347,8 +352,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
               dev_ctx.template Alloc<MPDType>(moment1_out),
               moment2.data<MPDType>(),
               dev_ctx.template Alloc<MPDType>(moment2_out),
-              moment2_max.data<MPDType>(),
-              dev_ctx.template Alloc<MPDType>(moment2_max_out),
+              moment2_max_in_data,
+              moment2_max_out_data,
               learning_rate.data<MPDType>(),
               grad.data<float>(),
               param.data<T>(),
@@ -370,8 +375,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<MPDType>(moment1_out),
           moment2.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment2_out),
-          moment2_max.data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(moment2_max_out),
+          moment2_max_in_data,
+          moment2_max_out_data,
           learning_rate.data<MPDType>(),
           grad.data<T>(),
           param.data<T>(),

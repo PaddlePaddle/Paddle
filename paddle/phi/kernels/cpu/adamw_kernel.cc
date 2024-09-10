@@ -35,7 +35,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       const DenseTensor& learning_rate,
                       const DenseTensor& moment1,
                       const DenseTensor& moment2,
-                      const DenseTensor& moment2_max,
+                      const paddle::optional<DenseTensor>& moment2_max,
                       const DenseTensor& beta1_pow,
                       const DenseTensor& beta2_pow,
                       const paddle::optional<DenseTensor>& master_param,
@@ -136,7 +136,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
   T* param_out_ptr = dev_ctx.template Alloc<T>(param_out);
   T* mom1_out_ptr = dev_ctx.template Alloc<T>(moment1_out);
   T* mom2_out_ptr = dev_ctx.template Alloc<T>(moment2_out);
-  T* mom2_max_out_ptr = dev_ctx.template Alloc<T>(moment2_max_out);
+  T* mom2_max_out_ptr =
+      amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr;
   T old_lr = learning_rate.data<T>()[0];
   T learning_rate_ =
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
@@ -147,7 +148,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
   const T* param_ptr = param.data<T>();
   const T* mom1_ptr = moment1.data<T>();
   const T* mom2_ptr = moment2.data<T>();
-  const T* mom2_max_ptr = moment2_max.data<T>();
+  const T* mom2_max_ptr = amsgrad ? moment2_max.get().data<T>() : nullptr;
   const T* grad_ptr = grad.data<T>();
 
   auto adamw =
@@ -161,6 +162,9 @@ void AdamwDenseKernel(const Context& dev_ctx,
 #endif
   for (int64_t i = 0; i < numel / chunk_size; ++i) {
     const int64_t offset = i * chunk_size;
+    const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
+    T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+
     adamw(beta1_,
           beta2_,
           -learning_rate_,
@@ -172,11 +176,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
           grad_ptr + offset,
           mom1_ptr + offset,
           mom2_ptr + offset,
-          mom2_max_ptr + offset,
+          mom2_max_in_data,
           param_ptr + offset,
           mom1_out_ptr + offset,
           mom2_out_ptr + offset,
-          mom2_max_out_ptr + offset,
+          mom2_max_out_data,
           param_out_ptr + offset,
           amsgrad);
   }
@@ -184,6 +188,9 @@ void AdamwDenseKernel(const Context& dev_ctx,
   if (numel % chunk_size != 0) {
     const int64_t offset = (numel / chunk_size) * chunk_size;
     const int64_t tail_numel = numel % chunk_size;
+    const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
+    T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+
     adamw(beta1_,
           beta2_,
           -learning_rate_,
@@ -195,11 +202,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
           grad_ptr + offset,
           mom1_ptr + offset,
           mom2_ptr + offset,
-          mom2_max_ptr + offset,
+          mom2_max_in_data,
           param_ptr + offset,
           mom1_out_ptr + offset,
           mom2_out_ptr + offset,
-          mom2_max_out_ptr + offset,
+          mom2_max_out_data,
           param_out_ptr + offset,
           amsgrad);
   }

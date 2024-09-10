@@ -235,8 +235,10 @@ void AdamInferMeta(const MetaTensor& param,
   moment1_out->set_dtype(moment1.dtype());
   moment2_out->set_dims(param_dims);
   moment2_out->set_dtype(moment2.dtype());
-  moment2_max_out->set_dims(param_dims);
-  moment2_max_out->set_dtype(moment2_max.dtype());
+  if (amsgrad) {
+    moment2_max_out->set_dims(param_dims);
+    moment2_max_out->set_dtype(moment2.dtype());
+  }
 
   beta1_pow_out->set_dims(beta1_pow_dims);
   beta1_pow_out->set_dtype(beta1_pow.dtype());
@@ -3865,7 +3867,7 @@ void MergedAdamInferMeta(
     const std::vector<const MetaTensor*>& learning_rate,
     const std::vector<const MetaTensor*>& moment1,
     const std::vector<const MetaTensor*>& moment2,
-    const std::vector<const MetaTensor*>& moment2_max,
+    const paddle::optional<std::vector<const MetaTensor*>>& moment2_max,
     const std::vector<const MetaTensor*>& beta1_pow,
     const std::vector<const MetaTensor*>& beta2_pow,
     const paddle::optional<std::vector<const MetaTensor*>>& master_param,
@@ -5796,7 +5798,7 @@ void FusedAdamInferMeta(
     const MetaTensor& learning_rate,
     const std::vector<const MetaTensor*>& moments1,
     const std::vector<const MetaTensor*>& moments2,
-    const std::vector<const MetaTensor*>& moments2_max,
+    const paddle::optional<std::vector<const MetaTensor*>>& moments2_max,
     const std::vector<const MetaTensor*>& beta1_pows,
     const std::vector<const MetaTensor*>& beta2_pows,
     const paddle::optional<std::vector<const MetaTensor*>>& master_params,
@@ -5825,8 +5827,10 @@ void FusedAdamInferMeta(
     moments1_out[i]->set_dtype(moments1[i]->dtype());
     moments2_out[i]->set_dims(moments2[i]->dims());
     moments2_out[i]->set_dtype(moments2[i]->dtype());
-    moments2_max_out[i]->set_dims(moments2_max[i]->dims());
-    moments2_max_out[i]->set_dtype(moments2_max[i]->dtype());
+    if (amsgrad) {
+      moments2_max_out[i]->set_dims(moments2_max.get()[i]->dims());
+      moments2_max_out[i]->set_dtype(moments2_max.get()[i]->dtype());
+    }
     beta1_pows_out[i]->set_dims(beta1_pows[i]->dims());
     beta1_pows_out[i]->set_dtype(beta1_pows[i]->dtype());
     beta2_pows_out[i]->set_dims(beta2_pows[i]->dims());

@@ -58,6 +58,7 @@ class FusedAdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Moments1", "(Tensor) Input first moments").AsDuplicable();
     AddInput("Moments2", "(Tensor) Input second moments").AsDuplicable();
     AddInput("Moments2Max", "(Tensor) Input second moments max for amsgrad")
+        .AsDispensable()
         .AsDuplicable();
     AddInput("Beta1Pows",
              "(Tensor, default Tensor<float>) Input beta1 power accumulator")
@@ -76,6 +77,7 @@ class FusedAdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Moments2Out", "(Tensor) Output second moments").AsDuplicable();
     AddOutput("Moments2MaxOut",
               "(Tensor) Output second moments max for amsgrad")
+        .AsDispensable()
         .AsDuplicable();
     AddOutput("Beta1PowsOut", "(Tensor) Output beta1 power accumulator")
         .AsDuplicable();

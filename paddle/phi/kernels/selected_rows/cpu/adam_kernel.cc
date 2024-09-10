@@ -37,7 +37,7 @@ void AdamDenseParamSparseGradKernel(
     const DenseTensor& learning_rate,
     const DenseTensor& moment1,
     const DenseTensor& moment2,
-    const DenseTensor& moment2_max,
+    const paddle::optional<DenseTensor>& moment2_max,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
     const paddle::optional<DenseTensor>& master_param UNUSED,
@@ -77,7 +77,13 @@ void AdamDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, moment2_max, dev_ctx.GetPlace(), false, moment2_max_out);
+    if (amsgrad) {
+      phi::Copy(dev_ctx,
+                moment2_max.get(),
+                dev_ctx.GetPlace(),
+                false,
+                moment2_max_out);
+    }
     if (!use_global_beta_pow) {
       phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, beta1_pow_out);
       phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, beta2_pow_out);
@@ -151,8 +157,8 @@ void AdamDenseParamSparseGradKernel(
       dev_ctx.template Alloc<T>(moment1_out),
       moment2.data<T>(),
       dev_ctx.template Alloc<T>(moment2_out),
-      moment2_max.data<T>(),
-      dev_ctx.template Alloc<T>(moment2_max_out),
+      amsgrad ? moment2_max.get().data<T>() : nullptr,
+      amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr,
       learning_rate.data<T>(),
       grad_data,
       param.data<T>(),

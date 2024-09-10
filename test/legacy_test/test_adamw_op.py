@@ -64,7 +64,7 @@ def adamw_step(inputs, attributes):
         moment2_max_out = np.maximum(moment2_out, moment2_max)
         denom = (np.sqrt(moment2_max_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
     else:
-        moment2_max_out = np.zeros_like(moment2_out)
+        moment2_max_out = np.empty_like(moment2_out)
         denom = (np.sqrt(moment2_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
 
     param_out = param + ((moment1_out / denom) * (-(lr / (1.0 - beta1_pow))))
@@ -119,6 +119,8 @@ def adamw_wrapper(
 class TestAdamW(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        # no check `Moment2MaxOut` with amsgrad is False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test AdamW Op with supplied attributes'''
@@ -174,12 +176,13 @@ class TestAdamW(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamWAMSGrad(TestAdamW):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 @unittest.skipIf(
@@ -188,6 +191,7 @@ class TestAdamWAMSGrad(TestAdamW):
 class TestAdamW2(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        self.no_check_set = ['Moment2MaxOut']
 
     def setUp(self):
         '''Test AdamW Op with supplied attributes'''
@@ -244,12 +248,17 @@ class TestAdamW2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            no_check_set=self.no_check_set,
+            place=core.CUDAPlace(0),
+            check_pir=True,
+        )
 
 
 class TestAdamW2AMSGrad(TestAdamW2):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 class TestAdamWOp(unittest.TestCase):

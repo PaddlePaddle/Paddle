@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <stdio.h>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -543,8 +542,6 @@ void Adam(T beta1,
       param_out_ptr[i] =
           param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_max_) + eps));
     } else {
-      mom2_max_out_ptr[i] = mom2_max_ptr[i];
-
       T mom2_ = mom2_out_ptr[i];
       param_out_ptr[i] =
           param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_) + eps));
@@ -584,8 +581,6 @@ void AdamW(T beta1,
       param_out_ptr[i] =
           param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_max_) + eps));
     } else {
-      mom2_max_out_ptr[i] = mom2_max_ptr[i];
-
       T mom2_ = mom2_out_ptr[i];
       param_out_ptr[i] =
           param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_) + eps));

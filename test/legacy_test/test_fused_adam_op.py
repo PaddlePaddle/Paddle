@@ -77,7 +77,7 @@ def fused_adam_step(inputs, attributes, num):
                 * (moments1_out[i] / (np.sqrt(moments2_max_out[i]) + epsilon))
             )
         else:
-            _moment2_max = np.zeros_like(_moment2_out)
+            _moment2_max = np.empty_like(_moment2_out)
             moments2_max_out.append(_moment2_max)
 
             params_out.append(
@@ -103,6 +103,8 @@ def fused_adam_step(inputs, attributes, num):
 class TestFusedAdamOp(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
+        # no check `Moment2MaxOut` with amsgrad is False
+        self.no_check_set = ['Moments2MaxOut']
 
     def setUp(self):
         paddle.enable_static()
@@ -204,12 +206,15 @@ class TestFusedAdamOp(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
-            self.check_output(check_dygraph=False)
+            self.check_output(
+                no_check_set=self.no_check_set, check_dygraph=False
+            )
 
 
 class TestFusedAdamOpAMSGrad(TestFusedAdamOp):
     def set_amsgrad(self):
         self.amsgrad = True
+        self.no_check_set = None
 
 
 if __name__ == "__main__":

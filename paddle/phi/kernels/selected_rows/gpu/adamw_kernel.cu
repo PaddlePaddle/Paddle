@@ -80,7 +80,6 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
     } else {
       MT mom1 = static_cast<MT>(mom1_[id]);
       MT mom2 = static_cast<MT>(mom2_[id]);
-      MT mom2_max = static_cast<MT>(mom2_max_[id]);
 
       MT p = master_param ? master_param[id] : static_cast<MT>(param_[id]);
       MT g = row_idx >= 0
@@ -92,16 +91,15 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
       mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
       mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-      MT mom2_max_;
       MT denom;
       if (amsgrad) {
-        mom2_max_ = std::max(mom2, mom2_max);
+        MT mom2_max = static_cast<MT>(mom2_max_[id]);
+        MT mom2_max_ = std::max(mom2, mom2_max);
+        mom2_max_out_[id] = mom2_max_;
 
         denom = (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) +
                 epsilon;
       } else {
-        mom2_max_ = mom2_max;
-
         denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
       }
 
@@ -110,7 +108,6 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
       // Write back to global memory
       mom1_out_[id] = mom1;
       mom2_out_[id] = mom2;
-      mom2_max_out_[id] = mom2_max_;
       param_out_[id] = static_cast<T>(p);
       if (master_param_out) {
         master_param_out[id] = p;
@@ -127,7 +124,7 @@ void AdamwDenseParamSparseGradKernel(
     const DenseTensor& learning_rate,
     const DenseTensor& moment1,
     const DenseTensor& moment2,
-    const DenseTensor& moment2_max,
+    const paddle::optional<DenseTensor>& moment2_max,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
     const paddle::optional<DenseTensor>& master_param,
@@ -176,7 +173,13 @@ void AdamwDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, moment2_max, dev_ctx.GetPlace(), false, moment2_max_out);
+    if (amsgrad) {
+      phi::Copy(dev_ctx,
+                moment2_max.get(),
+                dev_ctx.GetPlace(),
+                false,
+                moment2_max_out);
+    }
     if (!use_global_beta_pow) {
       phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
       phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
@@ -214,6 +217,11 @@ void AdamwDenseParamSparseGradKernel(
   MPDType* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                       : nullptr;
+
+  const MPDType* moment2_max_in_data =
+      amsgrad ? moment2_max.get().data<MPDType>() : nullptr;
+  MPDType* moment2_max_out_data =
+      amsgrad ? dev_ctx.template Alloc<MPDType>(moment2_max_out) : nullptr;
 
   if (grad.rows().size() == 0) {
     VLOG(3) << "grad row size is 0!!";
@@ -266,8 +274,8 @@ void AdamwDenseParamSparseGradKernel(
             dev_ctx.template Alloc<MPDType>(moment1_out),
             moment2.data<MPDType>(),
             dev_ctx.template Alloc<MPDType>(moment2_out),
-            moment2_max.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment2_max_out),
+            moment2_max_in_data,
+            moment2_max_out_data,
             learning_rate.data<MPDType>(),
             grad_data,
             param.data<T>(),
@@ -300,8 +308,8 @@ void AdamwDenseParamSparseGradKernel(
         dev_ctx.template Alloc<MPDType>(moment1_out),
         moment2.data<MPDType>(),
         dev_ctx.template Alloc<MPDType>(moment2_out),
-        moment2_max.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment2_max_out),
+        moment2_max_in_data,
+        moment2_max_out_data,
         learning_rate.data<MPDType>(),
         grad_data,
         param.data<T>(),

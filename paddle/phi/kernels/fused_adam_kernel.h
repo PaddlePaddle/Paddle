@@ -27,7 +27,7 @@ void FusedAdamKernel(
     const DenseTensor &learning_rate,
     const std::vector<const DenseTensor *> &moments1,
     const std::vector<const DenseTensor *> &moments2,
-    const std::vector<const DenseTensor *> &moments2_max,
+    const paddle::optional<std::vector<const DenseTensor *>> &moments2_max,
     const std::vector<const DenseTensor *> &beta1_pows,
     const std::vector<const DenseTensor *> &beta2_pows,
     const paddle::optional<std::vector<const DenseTensor *>> &master_params,

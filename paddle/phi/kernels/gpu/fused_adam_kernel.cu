@@ -106,10 +106,13 @@ struct FusedAdamFunctor {
       mom1_ptr = static_cast<MT*>(t_info.tensor_addrs[1][tensor_id]) + offset;
       mom2_ptr = static_cast<MT*>(t_info.tensor_addrs[2][tensor_id]) + offset;
       mom2_max_ptr =
-          static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]) + offset;
+          AMSGrad ? static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]) + offset
+                  : nullptr;
       mp_ptr =
           IsMultiPrecision
-              ? static_cast<MT*>(t_info.tensor_addrs[4][tensor_id]) + offset
+              ? static_cast<MT*>(
+                    t_info.tensor_addrs[3 + (AMSGrad ? 1 : 0)][tensor_id]) +
+                    offset
               : nullptr;
 
       n -= offset;
@@ -137,7 +140,9 @@ struct FusedAdamFunctor {
         phi::Load<T, VecSize>(g_ptr + idx, &g_vec);
         phi::Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
         phi::Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
-        phi::Load<MT, VecSize>(mom2_max_ptr + idx, &mom2_max_vec);
+        if (AMSGrad) {
+          phi::Load<MT, VecSize>(mom2_max_ptr + idx, &mom2_max_vec);
+        }
       } else {
         int size = n - idx;
         for (int j = 0; j < size; j++) {
@@ -149,7 +154,9 @@ struct FusedAdamFunctor {
           g_vec[j] = g_ptr[idx + j];
           mom1_vec[j] = static_cast<MT>(mom1_ptr[idx + j]);
           mom2_vec[j] = static_cast<MT>(mom2_ptr[idx + j]);
-          mom2_max_vec[j] = static_cast<MT>(mom2_max_ptr[idx + j]);
+          if (AMSGrad) {
+            mom2_max_vec[j] = static_cast<MT>(mom2_max_ptr[idx + j]);
+          }
         }
 #pragma unroll
         for (int j = size; j < VecSize; j++) {
@@ -158,7 +165,9 @@ struct FusedAdamFunctor {
           mp_vec[j] = MT(0);
           mom1_vec[j] = MT(0);
           mom2_vec[j] = MT(0);
-          mom2_max_vec[j] = MT(0);
+          if (AMSGrad) {
+            mom2_max_vec[j] = MT(0);
+          }
         }
       }
 
@@ -167,14 +176,14 @@ struct FusedAdamFunctor {
         MT p = IsMultiPrecision ? mp_vec[j] : static_cast<MT>(p_vec[j]);
         UpdateMoments(&mom1_vec[j],
                       &mom2_vec[j],
-                      &mom2_max_vec[j],
+                      AMSGrad ? &mom2_max_vec[j] : nullptr,
                       static_cast<MT>(g_vec[j]),
                       beta1,
                       beta2);
         mp_vec[j] = UpdateParameter(p,
                                     mom1_vec[j],
                                     mom2_vec[j],
-                                    mom2_max_vec[j],
+                                    AMSGrad ? mom2_max_vec[j] : MT(0),
                                     beta1_pow,
                                     beta2_pow,
                                     lr,
@@ -185,7 +194,9 @@ struct FusedAdamFunctor {
       if (idx <= n - VecSize) {
         phi::Store<MT, VecSize>(mom1_vec, mom1_ptr + idx);
         phi::Store<MT, VecSize>(mom2_vec, mom2_ptr + idx);
-        phi::Store<MT, VecSize>(mom2_max_vec, mom2_max_ptr + idx);
+        if (AMSGrad) {
+          phi::Store<MT, VecSize>(mom2_max_vec, mom2_max_ptr + idx);
+        }
         if (IsMultiPrecision) {
           phi::Store<MT, VecSize>(mp_vec, mp_ptr + idx);
         }
@@ -201,7 +212,9 @@ struct FusedAdamFunctor {
           p_ptr[idx + j] = static_cast<T>(mp_vec[j]);
           mom1_ptr[idx + j] = mom1_vec[j];
           mom2_ptr[idx + j] = mom2_vec[j];
-          mom2_max_ptr[idx + j] = mom2_max_vec[j];
+          if (AMSGrad) {
+            mom2_max_ptr[idx + j] = mom2_max_vec[j];
+          }
         }
       }
     }
@@ -217,7 +230,6 @@ struct FusedAdamFunctor {
       MT beta2) {
     MT mom1 = static_cast<MT>(mom1_ptr[0]);
     MT mom2 = static_cast<MT>(mom2_ptr[0]);
-    MT mom2_max = static_cast<MT>(mom2_max_ptr[0]);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
@@ -226,9 +238,8 @@ struct FusedAdamFunctor {
     mom2_ptr[0] = mom2;
 
     if (AMSGrad) {
+      MT mom2_max = static_cast<MT>(mom2_max_ptr[0]);
       mom2_max_ptr[0] = std::max(mom2, mom2_max);
-    } else {
-      mom2_max_ptr[0] = mom2_max;
     }
   }
 
@@ -299,7 +310,7 @@ void FusedAdamKernel(
     const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
-    const std::vector<const DenseTensor*>& moments2_max,
+    const paddle::optional<std::vector<const DenseTensor*>>& moments2_max,
     const std::vector<const DenseTensor*>& beta1_pows,
     const std::vector<const DenseTensor*>& beta2_pows,
     const paddle::optional<std::vector<const DenseTensor*>>& master_params,
@@ -350,7 +361,9 @@ void FusedAdamKernel(
   CopyTensorIfDifferent(dev_ctx, params, params_out);
   CopyTensorIfDifferent(dev_ctx, moments1, moments1_out);
   CopyTensorIfDifferent(dev_ctx, moments2, moments2_out);
-  CopyTensorIfDifferent(dev_ctx, moments2_max, moments2_max_out);
+  if (amsgrad) {
+    CopyTensorIfDifferent(dev_ctx, moments2_max.get(), moments2_max_out);
+  }
   CopyTensorIfDifferent(dev_ctx, beta1_pows, beta1_pows_out, true);
   CopyTensorIfDifferent(dev_ctx, beta2_pows, beta2_pows_out, true);
   if (master_params) {
@@ -386,7 +399,9 @@ void FusedAdamKernel(
   input_vector.push_back(params_out);
   input_vector.push_back(moments1_out);
   input_vector.push_back(moments2_out);
-  input_vector.push_back(moments2_max_out);
+  if (amsgrad) {
+    input_vector.push_back(moments2_max_out);
+  }
   if (multi_precision) {
     input_vector.push_back(master_params_out);
   }
@@ -397,7 +412,8 @@ void FusedAdamKernel(
 #define PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(                       \
     __multi_precision, __is_cpu_betapow, __use_adamw, __amsgrad, __vec_size) \
   do {                                                                       \
-    constexpr int kInputNum = __multi_precision ? 6 : 5;                     \
+    constexpr int kInputNum =                                                \
+        (__multi_precision ? 5 : 4) + (__amsgrad ? 1 : 0);                   \
     constexpr int kMaxTensorSize = __multi_precision ? 48 : 60;              \
     constexpr int kMaxBlockSize = __multi_precision ? 320 : 320;             \
     constexpr int kBlockSize = 512;                                          \
@@ -515,7 +531,9 @@ void FusedAdamKernel(
   int vec_size = GetVecSizeFromTensors<T>(params_out);
   vec_size = GetVecSizeFromTensors<MPDType>(moments1_out, vec_size);
   vec_size = GetVecSizeFromTensors<MPDType>(moments2_out, vec_size);
-  vec_size = GetVecSizeFromTensors<MPDType>(moments2_max_out, vec_size);
+  if (amsgrad) {
+    vec_size = GetVecSizeFromTensors<MPDType>(moments2_max_out, vec_size);
+  }
   if (master_params) {
     vec_size = GetVecSizeFromTensors<MPDType>(master_params_out, vec_size);
   }

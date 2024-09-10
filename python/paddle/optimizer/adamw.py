@@ -104,7 +104,8 @@ class AdamW(Optimizer):
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
-        amsgrad (bool, optional): Whether to use the AMSGrad of this algorithm. Default is false.
+        amsgrad (bool, optional): Whether to use the AMSGrad variant of this algorithm from the paper
+            `On the Convergence of Adam and Beyond <https://openreview.net/forum?id=ryQu7f-RZ>`_. Default is false.
         name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -380,21 +381,26 @@ class AdamW(Optimizer):
                 self._add_accumulator(
                     self._moment2_acc_str, p, dtype=core.VarDesc.VarType.FP16
                 )
-                self._add_accumulator(
-                    self._moment2_acc_max_str,
-                    p,
-                    dtype=core.VarDesc.VarType.FP16,
-                )
+                if self._amsgrad:
+                    self._add_accumulator(
+                        self._moment2_acc_max_str,
+                        p,
+                        dtype=core.VarDesc.VarType.FP16,
+                    )
             else:
                 self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
                 self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
-                self._add_accumulator(
-                    self._moment2_acc_max_str, p, dtype=acc_dtype
-                )
+                if self._amsgrad:
+                    self._add_accumulator(
+                        self._moment2_acc_max_str, p, dtype=acc_dtype
+                    )
         else:
             self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
             self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
-            self._add_accumulator(self._moment2_acc_max_str, p, dtype=acc_dtype)
+            if self._amsgrad:
+                self._add_accumulator(
+                    self._moment2_acc_max_str, p, dtype=acc_dtype
+                )
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
             param=p,
@@ -467,8 +473,12 @@ class AdamW(Optimizer):
         moment2 = self._get_accumulator_master(
             self._moment2_acc_str, param_and_grad[0]
         )
-        moment2_max = self._get_accumulator_master(
-            self._moment2_acc_max_str, param_and_grad[0]
+        moment2_max = (
+            self._get_accumulator_master(
+                self._moment2_acc_max_str, param_and_grad[0]
+            )
+            if self._amsgrad
+            else None
         )
         beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
@@ -540,7 +550,6 @@ class AdamW(Optimizer):
                 "LearningRate": [lr],
                 "Moment1": [moment1],
                 "Moment2": [moment2],
-                "Moment2Max": [moment2_max],
                 "Beta1Pow": [beta1_pow_acc],
                 "Beta2Pow": [beta2_pow_acc],
             }
@@ -555,7 +564,6 @@ class AdamW(Optimizer):
                 "ParamOut": [param_and_grad[0]],
                 "Moment1Out": [moment1],
                 "Moment2Out": [moment2],
-                "Moment2MaxOut": [moment2_max],
                 "Beta1PowOut": [beta1_pow_acc],
                 "Beta2PowOut": [beta2_pow_acc],
             }
@@ -585,6 +593,10 @@ class AdamW(Optimizer):
                 inputs['EpsilonTensor'] = self._epsilon
             else:
                 attrs['epsilon'] = self._epsilon
+
+            if self._amsgrad:
+                inputs["Moment2Max"] = [moment2_max]
+                outputs["Moment2MaxOut"] = [moment2_max]
 
             if find_master:
                 inputs["MasterParam"] = master_weight
