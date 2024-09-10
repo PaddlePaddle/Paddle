@@ -55,7 +55,6 @@ NestedList = Union[_T, List["NestedList[_T]"]]
 NestedStructure = Union[
     _T, Dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
 ]
-IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]

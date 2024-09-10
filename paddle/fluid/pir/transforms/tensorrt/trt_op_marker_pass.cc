@@ -1088,6 +1088,32 @@ class RemainderOpPattern
     return true;
   }
 };
+class MaxOpPattern : public pir::OpRewritePattern<paddle::dialect::MaxOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MaxOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MaxOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op->HasAttribute("keepdim")) {
+      VLOG(3) << "the max does not have attr keep_dim ";
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    if (!(x_dtype.isa<pir::Float32Type>() || x_dtype.isa<pir::Float64Type>() ||
+          x_dtype.isa<pir::Int32Type>() || x_dtype.isa<pir::Int64Type>())) {
+      VLOG(3) << "max input data type must be int32 or int64 or "
+                 "float32 or "
+                 "float64";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1110,7 +1136,6 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Full)
     ADD_PATTERN(Fused_gemm_epilogue)
     ADD_PATTERN(Add)
-    ADD_PATTERN(Layer_norm)
     ADD_PATTERN(Silu)
     ADD_PATTERN(Conv2d)
     ADD_PATTERN(FusedConv2dAddAct)
@@ -1120,7 +1145,9 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Shape)
     ADD_PATTERN(Expand)
     ADD_PATTERN(Sigmoid)
-
+#if IS_TRT_VERSION_GE(8600)
+    ADD_PATTERN(Layer_norm)
+#endif
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
@@ -1152,6 +1179,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MaximumOpPattern>(context));
     ps.Add(std::make_unique<FloorDivideOpPattern>(context));
     ps.Add(std::make_unique<RemainderOpPattern>(context));
+    ps.Add(std::make_unique<MaxOpPattern>(context));
     return ps;
   }
 };

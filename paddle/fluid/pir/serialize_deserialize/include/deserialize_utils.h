@@ -16,6 +16,7 @@
 #include <initializer_list>
 #include <string>
 #include <vector>
+#include "float.h"  // NOLINT
 
 #include "paddle/common/layout.h"
 #include "paddle/fluid/framework/data_layout.h"
@@ -76,6 +77,41 @@ template <typename T, typename CPP_T>
 T deserializeAttrFromJson(Json* attr_json, pir::IrContext* ctx) {
   CPP_T data = attr_json->at(DATA).template get<CPP_T>();
   return T::get(ctx, data);
+}
+
+template <>
+pir::FloatAttribute deserializeAttrFromJson<pir::FloatAttribute, float>(
+    Json* attr_json, pir::IrContext* ctx) {
+  if (attr_json->contains(VOILD_DATA)) {
+    auto string = attr_json->at(DATA).template get<std::string>();
+    if (string == "NAN") {
+      return pir::FloatAttribute::get(ctx, std::nanf(""));
+    } else if (string == "INF") {
+      return pir::FloatAttribute::get(ctx, FLT_MAX);
+    } else if (string == "-INF") {
+      return pir::FloatAttribute::get(ctx, FLT_MIN);
+    }
+  }
+
+  float data = attr_json->at(DATA).template get<float>();
+  return pir::FloatAttribute::get(ctx, data);
+}
+
+template <>
+pir::DoubleAttribute deserializeAttrFromJson<pir::DoubleAttribute, double>(
+    Json* attr_json, pir::IrContext* ctx) {
+  if (attr_json->contains(VOILD_DATA)) {
+    auto string = attr_json->at(VOILD_DATA).template get<std::string>();
+    if (string == "NAN") {
+      return pir::DoubleAttribute::get(ctx, std::nanf(""));
+    } else if (string == "INF") {
+      return pir::DoubleAttribute::get(ctx, DBL_MAX);
+    } else if (string == "-INF") {
+      return pir::DoubleAttribute::get(ctx, DBL_MIN);
+    }
+  }
+  double data = attr_json->at(DATA).template get<double>();
+  return pir::DoubleAttribute::get(ctx, data);
 }
 
 template <>
@@ -413,7 +449,7 @@ pir::Attribute AttrTypeReader::ReadPaddleDistAttr(const std::string attr_name,
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse paddle dist dialect attr", attr_name));
   }
   return pir::Attribute();
@@ -649,7 +685,7 @@ pir::Type AttrTypeReader::ReadPaddleDistType(const std::string type_name,
         paddle::dialect::DistDenseTensorType>(type_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type %s for parse paddleoperator dialect type",
                        type_name));
     return pir::Type();

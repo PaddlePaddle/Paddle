@@ -15,6 +15,9 @@
 import argparse
 import ast
 import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import pickle
 import random
 import socket

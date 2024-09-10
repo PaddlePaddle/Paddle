@@ -39,6 +39,12 @@ class EnvironmentVariable(Generic[T]):
     def __init__(self, name: str, default: T):
         self.name = name
         self.default = default
+        self._cached_value: T | None = None
+
+    def get_with_cache(self) -> T:
+        if self._cached_value is None:
+            self._cached_value = self.get()
+        return self._cached_value
 
     def get(self) -> T:
         raise NotImplementedError

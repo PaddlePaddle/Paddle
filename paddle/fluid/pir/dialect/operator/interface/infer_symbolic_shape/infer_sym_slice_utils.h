@@ -85,6 +85,13 @@ inline void CheckAndUpdateSliceAttrs(
     // following different arrangements.
     ends.at(i) = IsMaxInt(ends.at(i)) ? in_dims.at(axis) : ends.at(i);
 
+    // If in_dims[axis] or ends[i] have symbol, nedd get Min(in_dims[axis],
+    // ends[i])
+    if (!in_dims[axis].isa<int64_t>() || !ends[i].isa<int64_t>()) {
+      symbol::List<symbol::DimExpr> min_lists{in_dims[axis], ends[i]};
+      ends.at(i) = symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+    }
+
     bool both_negative_or_positive =
         (start_i >= 0 && end_i >= 0) || (start_i <= 0 && end_i <= 0);
     bool start_negative_end_positive = start_i <= 0 && end_i >= 0;
@@ -114,8 +121,8 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
       common::errors::InvalidArgument(
           "The size of axes must equal size of starts and ends."));
   for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes.at(i);
-    slice_dims.at(axis) = ends.at(i) - starts.at(i);
+    int64_t axis = axes[i];
+    slice_dims[axis] = ends[i] - starts[i];
   }
 
   return slice_dims;

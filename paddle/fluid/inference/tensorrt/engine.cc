@@ -60,7 +60,11 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
 void TensorRTEngine::InitNetwork() {
   FreshDeviceId();
   infer_builder_.reset(createInferBuilder(&logger_));
-
+#if IS_TRT_VERSION_GE(8500)
+  infer_network_.reset(infer_builder_->createNetworkV2(
+      1U << static_cast<int>(
+          nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
+#else
   if (with_dynamic_shape()) {
     infer_network_.reset(infer_builder_->createNetworkV2(
         1U << static_cast<int>(
@@ -68,7 +72,7 @@ void TensorRTEngine::InitNetwork() {
   } else {
     infer_network_.reset(infer_builder_->createNetworkV2(0U));
   }
-
+#endif
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
   optim_profiles_.resize(max_profile_num_);
   for (int i = 0; i < max_profile_num_; i++)
@@ -188,6 +192,9 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
 #endif
 
   bool ret;
+#if IS_TRT_VERSION_GE(8500)
+  ret = context->enqueueV3(stream);
+#else
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
@@ -197,6 +204,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
 #endif
   }
+#endif
   return ret;
 }
 
@@ -211,9 +219,11 @@ void TensorRTEngine::FreezeNetwork() {
                           common::errors::InvalidArgument(
                               "Call InitNetwork first to initialize network."));
   // build engine.
+#if IS_TRT_VERSION_LT(10000)
   if (!with_dynamic_shape()) {
     infer_builder_->setMaxBatchSize(params_.max_batch_size);
   }
+#endif
 #if IS_TRT_VERSION_GE(8300)
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, params_.max_workspace_size);
@@ -427,7 +437,7 @@ void TensorRTEngine::FreezeNetwork() {
       common::errors::Fatal("Build TensorRT cuda engine failed! Please recheck "
                             "you configurations related to paddle-TensorRT."));
 
-#if IS_TRT_VERSION_GE(10000)
+#if IS_TRT_VERSION_GE(8600)
   binding_num_ = infer_engine_->getNbIOTensors();
 #else
   binding_num_ = infer_engine_->getNbBindings();
@@ -586,14 +596,6 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
   if (trt_in_shape.nbDims == 0) {
     trt_in_shape.nbDims = 1;
     trt_in_shape.d[0] = 1;
-  }
-  // In fact , this is not always right, because we can't determine if the
-  // 0th dimension is batch. Just for run chenqu's model
-  if (!with_dynamic_shape()) {
-    trt_in_shape.nbDims--;
-    for (int i = 0; i < trt_in_shape.nbDims; i++) {
-      trt_in_shape.d[i] = trt_in_shape.d[i + 1];
-    }
   }
   if (scalar) {
     trt_in_shape.nbDims = 0;

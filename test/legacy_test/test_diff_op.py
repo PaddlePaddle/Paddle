@@ -171,6 +171,77 @@ class TestDiffOpN(TestDiffOp):
         self.append = None
 
 
+class TestDiffOpNAxis(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = 1
+        self.prepend = None
+        self.append = None
+
+
+class TestDiffOpNPrepend(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = -1
+        self.prepend = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype(
+            'float32'
+        )
+        self.append = None
+
+
+class TestDiffOpNAppend(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = -1
+        self.prepend = None
+        self.append = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype('float32')
+
+
+class TestDiffOpNPreAppend(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = -1
+        self.prepend = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype(
+            'float32'
+        )
+        self.append = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype('float32')
+
+
+class TestDiffOpNPrependAxis(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = 0
+        self.prepend = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype(
+            'float32'
+        )
+        self.append = None
+
+
+class TestDiffOpNAppendAxis(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = 0
+        self.prepend = None
+        self.append = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype('float32')
+
+
+class TestDiffOpNPreAppendAxis(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
+        self.n = 2
+        self.axis = 0
+        self.prepend = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype(
+            'float32'
+        )
+        self.append = np.array([[2, 3, 4, 11], [1, 3, 5, 10]]).astype('float32')
+
+
 class TestDiffOpAxis(TestDiffOp):
     def set_args(self):
         self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
