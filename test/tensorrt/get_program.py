@@ -150,7 +150,7 @@ def get_bert_program():
         else paddle.CPUPlace()
     )
     pir_program = main_program
-  
+
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(pir_program, startup_program):
             x = np.ones([1, seq_length]).astype('int64')
@@ -161,7 +161,6 @@ def get_bert_program():
                 feed={"input_ids": x},
                 fetch_list=pir_program.list_vars()[-3],
             )
-
 
     params = main_program.global_block().all_parameters()
     param_dict = {}
