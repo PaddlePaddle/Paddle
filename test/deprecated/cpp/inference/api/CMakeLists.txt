@@ -432,7 +432,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   if(NOT EXISTS ${MOBILENET_INSTALL_DIR}/mobilenet.tar.gz)
     inference_download_and_uncompress_without_verify(
       ${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
-      "inference-vis-demos/mobilenet.tar.gz")
+      "inference-vis-demos/mobilenetv1.tar.gz")
   endif()
   inference_analysis_api_test(
     test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR}
