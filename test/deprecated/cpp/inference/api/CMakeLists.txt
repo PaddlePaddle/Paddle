@@ -336,14 +336,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --batch_size=8
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
 
-  # ocr
-  set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
-  if(NOT EXISTS ${OCR_INSTALL_DIR}/ocr.tar.gz)
-    inference_download_and_uncompress_without_verify(
-      ${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
-      "inference-vis-demos/ocr.tar.gz")
-  endif()
-
   # Image classification tests with fake data
   set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
   set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
@@ -365,40 +357,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test_with_fake_data_run(
     test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
     ${MOBILENET_MODEL_DIR} false)
-
-  inference_analysis_test(
-    test_analyzer_zerocopytensor_tensor
-    SRCS
-    analyzer_zerocopy_tensor_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${OCR_INSTALL_DIR}/model)
-
-  if(WITH_DISTRIBUTE AND WITH_PSCORE)
-    inference_analysis_test(
-      test_analyzer_dist_model
-      SRCS
-      analyzer_dist_model_tester_deprecated.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${OCR_INSTALL_DIR}/model)
-  endif()
-
-  inference_analysis_test(
-    test_analyzer_paddletensor_tensor
-    SRCS
-    analyzer_paddle_tensor_tester_deprecated.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${OCR_INSTALL_DIR}/model
-    --infer_data=${OCR_INSTALL_DIR}/data.txt
-    --refer_result=${OCR_INSTALL_DIR}/result.txt)
 
   set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)

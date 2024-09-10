@@ -1555,6 +1555,25 @@ struct BoxCoderOpTranscriber : public OpTranscriber {
   }
 };
 
+struct Im2sequenceOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "out_stride") {
+      std::vector<pir::Attribute> vec_out_stride;
+      std::vector<int> out_stride = {1, 1};
+      for (size_t i = 0; i < static_cast<size_t>(out_stride.size()); i++) {
+        pir::Attribute attr_out_stride =
+            pir::Int32Attribute::get(pir::IrContext::Instance(), out_stride[i]);
+
+        vec_out_stride.push_back(attr_out_stride);
+      }
+      (*attribute_map)[info.name] =
+          pir::ArrayAttribute::get(ctx, vec_out_stride);
+    }
+  }
+};
+
 struct DepthwiseConv2dOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -3901,6 +3920,7 @@ OpTranslator::OpTranslator() {
       CrossEntropyWithSoftmaxOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["depthwise_conv2d"] = DepthwiseConv2dOpTranscriber();
+  special_handlers["im2sequence"] = Im2sequenceOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
