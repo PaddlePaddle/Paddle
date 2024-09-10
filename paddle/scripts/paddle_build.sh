@@ -449,13 +449,6 @@ EOF
         echo "Paddle_Inference Dynamic Library Size: $soLibSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_Paddle_Inference_So_Size: $soLibSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-    elif [ "$1" == "paddle_inference_c" ]; then
-        cd ${PADDLE_ROOT}/build
-        cp -r paddle_inference_c_install_dir paddle_inference_c
-        tar -czf paddle_inference_c.tgz paddle_inference_c
-        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_c.tgz |awk '{print $1}')
-        echo "Paddle_Inference Capi Size: $buildSize"
-        echo "ipipe_log_param_Paddle_Inference_capi_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -3489,7 +3482,6 @@ EOF
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     build_size "paddle_inference"
-    build_size "paddle_inference_c"
 }
 function gen_fluid_lib() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -3525,7 +3517,6 @@ EOF
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     build_size "paddle_inference"
-    build_size "paddle_inference_c"
 }
 
 
@@ -3567,26 +3558,6 @@ EOF
     echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
     echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
     if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
-        exit 8;
-    fi
-}
-
-function test_go_inference_api() {
-    cat <<EOF
-    ========================================
-    Testing go inference api ...
-    ========================================
-EOF
-
-    # ln paddle_inference_c lib
-    cd ${PADDLE_ROOT}/build
-    ln -s ${PADDLE_ROOT}/build/paddle_inference_c_install_dir/ ${PADDLE_ROOT}/paddle/fluid/inference/goapi/paddle_inference_c
-
-    # run go test
-    cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
-    bash test.sh
-    EXIT_CODE=$?
-    if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;
     fi
 }
@@ -4689,7 +4660,6 @@ function main() {
         test_fluid_lib
         #test_fluid_lib_train
         #go inference test
-        test_go_inference_api
         check_approvals_of_unittest 3
         ;;
       build_inference)
@@ -4702,7 +4672,6 @@ function main() {
         ;;
       gpu_inference)
         test_fluid_lib
-        test_go_inference_api
         check_approvals_of_unittest 3
         ;;
       test_train)

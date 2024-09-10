@@ -141,7 +141,6 @@ if "%WITH_CACHE%"=="OFF" (
 rmdir %BUILD_DIR%\python /s/q
 rmdir %BUILD_DIR%\paddle_install_dir /s/q
 rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
 del %BUILD_DIR%\CMakeCache.txt
 
 : set /p error_code=< %cache_dir%\error_code.txt
@@ -734,7 +733,7 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\onednn\lib;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
-%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\pybind;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\pybind;%work_dir%\%BUILD_DIR%\paddle\ir;^
 %PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
@@ -872,20 +871,6 @@ goto:eof
 :zip_cc_file_error
 echo Tar inference library failed!
 exit /b 1
-
-rem ---------------------------------------------------------------------------------------------
-:zip_c_file
-cd /d %work_dir%\%BUILD_DIR%
-tree /F %cd%\paddle_inference_c_install_dir\paddle
-if exist paddle_inference_c.zip del paddle_inference_c.zip
-python -c "import shutil;shutil.make_archive('paddle_inference_c', 'zip', root_dir='paddle_inference_c_install_dir')"
-%cache_dir%\tools\busybox64.exe du -h -k paddle_inference_c.zip > lib_size.txt
-set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do (
-    set /a libsize_m=%%i/1024
-    echo "Windows Paddle_Inference CAPI ZIP Size: !libsize_m!M"
-)
-goto:eof
 
 :zip_c_file_error
 echo Tar inference capi library failed!

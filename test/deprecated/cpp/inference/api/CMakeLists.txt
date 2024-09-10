@@ -485,26 +485,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_mmp_tester.cc EXTRA_DEPS common)
 
   inference_analysis_test(
-    test_analyzer_capi_exp_pd_tensor
-    SRCS
-    analyzer_capi_exp_pd_tensor_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${MOBILENET_INSTALL_DIR}/model)
-
-  if(NOT APPLE AND NOT WIN32)
-    inference_analysis_test(
-      test_analyzer_capi_exp_pd_threads
-      SRCS
-      analyzer_capi_exp_pd_threads_tester.cc
-      EXTRA_DEPS
-      paddle_inference_c_shared
-      ARGS
-      --infer_model=${MOBILENET_INSTALL_DIR}/model)
-  endif()
-
-  inference_analysis_test(
     test_analyzer_zerocopytensor_tensor
     SRCS
     analyzer_zerocopy_tensor_tester.cc

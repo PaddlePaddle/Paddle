@@ -214,8 +214,7 @@ function(copy_part_of_third_party TARGET DST)
 endfunction()
 
 # inference library for only inference
-set(inference_lib_deps third_party paddle_inference paddle_inference_c
-                       paddle_inference_shared paddle_inference_c_shared)
+set(inference_lib_deps third_party paddle_inference paddle_inference_shared)
 add_custom_target(inference_lib_dist ALL DEPENDS ${inference_lib_deps})
 
 set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/threadpool")
@@ -425,40 +424,4 @@ add_custom_command(
           "${PADDLE_SOURCE_DIR}/cmake/export_paddle_header.cmake"
   COMMENT "Change paddle header include path to adapt to inference api path")
 
-# CAPI inference library for only inference
-set(PADDLE_INFERENCE_C_INSTALL_DIR
-    "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir"
-    CACHE STRING "A path setting CAPI paddle inference shared")
-copy_part_of_third_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
-
-set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
-if(WIN32)
-  set(paddle_inference_c_lib
-      $<TARGET_FILE_DIR:paddle_inference_c>/paddle_inference_c.*)
-else()
-  set(paddle_inference_c_lib
-      ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp/libpaddle_inference_c.*
-  )
-endif()
-
-copy(
-  inference_lib_dist
-  SRCS ${src_dir}/inference/capi_exp/pd_*.h ${paddle_inference_c_lib}
-  DSTS ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/include
-       ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib)
-
-if(WITH_STRIP AND NOT WIN32)
-  add_custom_command(
-    TARGET inference_lib_dist
-    POST_BUILD
-    COMMAND
-      strip -s
-      ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib/libpaddle_inference_c.so
-    COMMAND strip -s
-            ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib/libpaddle_inference.so
-    COMMENT "striping libpaddle_inference_c.so\nstriping libpaddle_inference.so"
-  )
-endif()
-
 version(${PADDLE_INFERENCE_INSTALL_DIR}/version.txt)
-version(${PADDLE_INFERENCE_C_INSTALL_DIR}/version.txt)

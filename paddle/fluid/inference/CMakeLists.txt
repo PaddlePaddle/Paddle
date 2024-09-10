@@ -26,7 +26,7 @@ if(TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-# fluid_modules exclude API-interface of inference/api and inference/capi_exp
+# fluid_modules exclude API-interface of inference/api
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
@@ -68,8 +68,6 @@ if(NOT APPLE)
   )
   set_target_properties(paddle_inference PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
 endif()
-# C inference API
-add_subdirectory(capi_exp)
 
 set(SHARED_INFERENCE_SRCS
     io.cc

@@ -94,17 +94,10 @@ function(inference_base_test_build TARGET)
     target_link_libraries(${TARGET}
                           $<TARGET_LINKER_FILE:paddle_inference_shared>)
     add_dependencies(${TARGET} paddle_inference_shared)
-
-  elseif("${base_test_DEPS};" MATCHES "paddle_inference_c_shared;")
-    list(REMOVE_ITEM base_test_DEPS paddle_inference_c_shared)
-    target_link_libraries(
-      ${TARGET} $<TARGET_LINKER_FILE:paddle_inference_c_shared> common)
-    add_dependencies(${TARGET} paddle_inference_c_shared)
   else()
     message(
       FATAL_ERROR
-        "inference_base_test_build must link either paddle_inference_shared or paddle_inference_c_shared"
-    )
+        "inference_base_test_build must link either paddle_inference_shared")
   endif()
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     target_link_libraries(${TARGET} ${PYTHON_LIBRARIES})

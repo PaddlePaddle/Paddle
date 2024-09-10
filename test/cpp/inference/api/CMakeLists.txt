@@ -647,24 +647,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       common
       ARGS
       --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
-    inference_analysis_test(
-      test_analyzer_capi_exp_gpu
-      SRCS
-      analyzer_capi_exp_gpu_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_c_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(
-      test_analyzer_capi_exp_xpu
-      SRCS
-      analyzer_capi_exp_xpu_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_c_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+
     #TODO(inference): windows encounter a SEH error, we need to fix it.
     if(NOT WIN32)
       inference_analysis_test(
@@ -819,15 +802,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
 
-  inference_analysis_test(
-    test_analyzer_capi_exp_pd_config
-    SRCS
-    analyzer_capi_exp_pd_config_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${MOBILENET_INSTALL_DIR}/model)
-
   if(WITH_DISTRIBUTE
      AND WITH_PSCORE
      AND WITH_XPU
@@ -843,43 +817,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --infer_model=${OCR_INSTALL_DIR}/model)
   endif()
 
-  if(WITH_ONEDNN)
-    inference_analysis_test(
-      test_analyzer_capi_exp_int
-      SRCS
-      analyzer_capi_exp_int_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_c_shared
-      ARGS
-      --infer_model=${INT8_DATA_DIR}/resnet50/model)
-  endif()
-
-  # chinese_ner
-  set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
-  download_model_and_data_without_verify(
-    ${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz"
-    "chinese_ner-data.txt.tar.gz")
-  inference_analysis_test(
-    test_analyzer_capi_exp_ner
-    SRCS
-    analyzer_capi_exp_ner_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
-
   # resnet50
   set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
   download_data_without_verify(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
-  inference_analysis_test(
-    test_analyzer_capi_exp
-    SRCS
-    analyzer_capi_exp_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${RESNET50_MODEL_DIR}/model)
 
   if(WITH_GPU)
     inference_analysis_test(
