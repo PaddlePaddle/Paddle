@@ -437,34 +437,33 @@ class BuildExtension(build_ext):
             cflags = copy.deepcopy(extra_postargs)
             try:
                 original_compiler = self.compiler.compiler_so
-                # nvcc or hipcc compile CUDA source
-                if is_cuda_file(src):
-                    if core.is_compiled_with_rocm():
-                        assert (
-                            ROCM_HOME is not None
-                        ), "Not found ROCM runtime, \
-                            please use `export ROCM_PATH= XXX` to specify it."
+                # In maca platform we use cucc to compile all kinds of source files, cucc will ensure header files replaced correctly.
+                if core.is_compiled_with_rocm():
+                    assert (
+                        ROCM_HOME is not None
+                    ), "Not found ROCM runtime, \
+                        please use `export ROCM_PATH= XXX` to specify it."
 
-                        hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
-                        self.compiler.set_executable('compiler_so', hipcc_cmd)
-                        # {'nvcc': {}, 'cxx: {}}
-                        if isinstance(cflags, dict):
-                            cflags = cflags['hipcc']
-                    else:
-                        assert (
-                            CUDA_HOME is not None
-                        ), "Not found CUDA runtime, \
-                            please use `export CUDA_HOME= XXX` to specify it."
+                    hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
+                    self.compiler.set_executable('compiler_so', hipcc_cmd)
+                    # {'nvcc': {}, 'cxx: {}}
+                    if isinstance(cflags, dict):
+                        cflags = cflags['hipcc']
+                else:
+                    assert (
+                        CUDA_HOME is not None
+                    ), "Not found MACA runtime, \
+                        please use `export MACA_PATH= XXX` to specify it."
+                    os.environ["CUDA_PATH"] = CUDA_HOME
+                    nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'cucc')
+                    self.compiler.set_executable('compiler_so', nvcc_cmd)
+                    # {'nvcc': {}, 'cxx: {}}
+                    if isinstance(cflags, dict):
+                        cflags = cflags['nvcc']
 
-                        nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
-                        self.compiler.set_executable('compiler_so', nvcc_cmd)
-                        # {'nvcc': {}, 'cxx: {}}
-                        if isinstance(cflags, dict):
-                            cflags = cflags['nvcc']
-
-                    cflags = prepare_unix_cudaflags(cflags)
+                cflags = prepare_unix_cudaflags(cflags)
                 # cxx compile Cpp source
-                elif isinstance(cflags, dict):
+                if isinstance(cflags, dict):
                     cflags = cflags['cxx']
 
                 # Note(qili93): HIP require some additional flags for CMAKE_C_FLAGS
