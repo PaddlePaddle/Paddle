@@ -3457,11 +3457,35 @@ bool UniformInplace_OpInferSymbolicShape(
   return UniformInplaceOpInferSymbolicShape(op, infer_context);
 }
 
-// bool UniformRandomBatchSizeLikeOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UniformRandomBatchSizeLikeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &input_shape = input_shape_or_data.shape();
+
+  const std::vector<int> &shape = details::GetVectorAttr<int>(op, "shape");
+  const int &input_dim_idx =
+      op->attribute<pir::Int32Attribute>("input_dim_idx").data();
+  const int &output_dim_idx =
+      op->attribute<pir::Int32Attribute>("output_dim_idx").data();
+
+  std::vector<int64_t> shape_int64(shape.size(), 0);
+  std::transform(shape.begin(), shape.end(), shape_int64.begin(), [](int a) {
+    return static_cast<int64_t>(a);
+  });
+
+  std::vector<symbol::DimExpr> output_shape = {};
+  for (size_t i = 0; i < shape_int64.size(); ++i)
+    output_shape.emplace_back(symbol::DimExpr{shape_int64[i]});
+  output_shape[output_dim_idx] = input_shape[input_dim_idx];
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
 
 bool UniqueOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
