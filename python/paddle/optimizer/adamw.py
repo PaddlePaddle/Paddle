@@ -83,7 +83,7 @@ class AdamW(Optimizer):
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
+        weight_decay (int|float|Tensor, optional): The weight decay coefficient, it can be int, float or Tensor. The default value is 0.01.
         lr_ratio (Callable|None, optional): If it is not None,
             the learning rate will be updated with layer-wise learning rate ratio.
             Otherwise, the learning rate is the original.
@@ -195,10 +195,10 @@ class AdamW(Optimizer):
             raise ValueError("Invalid value of beta2, expect beta2 in [0,1).")
         if not isinstance(epsilon, Value) and not 0 <= epsilon:
             raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
-        if not isinstance(weight_decay, float) and not isinstance(
+        if not isinstance(weight_decay, (int, float)) and not isinstance(
             weight_decay, (framework.Variable, Value)
         ):
-            raise TypeError("weight_decay should be float or Tensor.")
+            raise TypeError("weight_decay should be int, float or Tensor.")
         if lr_ratio is not None:
             assert isinstance(lr_ratio, Callable)
             if (
@@ -275,7 +275,7 @@ class AdamW(Optimizer):
         self._learning_rate = learning_rate
         self._params_name = set()
         self._apply_decay_param_fun = apply_decay_param_fun
-        self._weight_decay = weight_decay
+        self._weight_decay = float(weight_decay)
         self._grad_clip = grad_clip
         self._lr_ratio = lr_ratio
         self._beta1 = beta1
@@ -286,7 +286,7 @@ class AdamW(Optimizer):
         self._master_weights = {}
 
         self._default_dict = {
-            'weight_decay': weight_decay,
+            'weight_decay': float(weight_decay),
             'beta1': beta1,
             'beta2': beta2,
             'epsilon': epsilon,
