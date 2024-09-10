@@ -1059,14 +1059,14 @@ def calc_gradient_helper(
     # set struct name for grad ops
     for op in block.ops:
         if op in state.op_to_opgrad:
+            if op.dist_attr is None:
+                continue
+
             op_chunk_id = op.dist_attr.chunk_id
             if op_chunk_id == -1 and op.name() == "dist_op.reshard":
-                if op.dist_attr is not None:
-                    op_chunk_id = (
-                        op.operand_source(0)
-                        .get_defining_op()
-                        .dist_attr.chunk_id
-                    )
+                op_chunk_id = (
+                    op.operand_source(0).get_defining_op().dist_attr.chunk_id
+                )
 
             for bwd_op in state.op_to_opgrad[op]:
                 if bwd_op.dist_attr is None:
