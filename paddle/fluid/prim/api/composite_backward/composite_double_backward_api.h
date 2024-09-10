@@ -159,6 +159,31 @@ void maximum_double_grad(const Tensor& x,
 }
 
 template <typename T>
+void where_double_grad(const Tensor& condition,
+                       const paddle::optional<Tensor>& grad_x_grad,
+                       const paddle::optional<Tensor>& grad_y_grad,
+                       Tensor* grad_out_grad) {
+  if (grad_x_grad && grad_y_grad) {
+    auto condition_mask = cast<T>(condition, grad_x_grad.get().dtype());
+    auto ddout = condition_mask * grad_x_grad.get() +
+                 (1 - condition_mask) * grad_y_grad.get();
+    set_output<T>(ddout, grad_out_grad);
+  } else if (grad_x_grad) {
+    auto condition_mask = cast<T>(condition, grad_x_grad.get().dtype());
+    auto ddout = condition_mask * grad_x_grad.get();
+    set_output<T>(ddout, grad_out_grad);
+  } else if (grad_y_grad) {
+    auto condition_mask = cast<T>(condition, grad_x_grad.get().dtype());
+    auto ddout = (1 - condition_mask) * grad_y_grad.get();
+    set_output<T>(ddout, grad_out_grad);
+  } else {
+    auto ddout =
+        full<T>(common::vectorize(condition.dims()), 0, grad_out_grad->dtype());
+    set_output<T>(ddout, grad_out_grad);
+  }
+}
+
+template <typename T>
 void tanh_triple_grad(const Tensor& out,
                       const Tensor& grad_out_forward,
                       const Tensor& grad_x_grad_forward,

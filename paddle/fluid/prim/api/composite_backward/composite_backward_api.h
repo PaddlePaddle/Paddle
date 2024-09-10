@@ -1393,6 +1393,60 @@ void maximum_grad(const Tensor& x,
 }
 
 template <typename T>
+void p_norm_grad(const Tensor& x,
+                 const float& porder,
+                 const int& axis,
+                 const float epsilon,
+                 const bool& keepdim,
+                 const bool& asvector,
+                 Tensor* x_grad) {
+  if (x_grad) {
+    auto org_dtype = x.dtype();
+    auto x_tmp = x;
+
+    bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
+                     org_dtype == phi::DataType::BFLOAT16;
+    if (need_cast) {
+      x_tmp = cast<T>(x, DataType::FLOAT32);
+    }
+
+    Tensor res;
+    if (porder == 0.0) {
+      // 0-norm
+      auto zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+      auto none_zero = not_equal<T>(x_tmp, zero_tensor);
+      res = cast<T>(none_zero, x_tmp.dtype());
+      res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+    } else if (porder == 1.0) {
+      // 1-norm
+      res = abs<T>(x_tmp);
+      res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+    } else if (porder == 2.0) {
+      // 2-norm
+      res = sqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+    } else if (porder == INFINITY) {
+      // +INF-norm
+      res = abs<T>(x_tmp);
+      res = max<T>(x_tmp, {axis}, keepdim);
+    } else if (porder == -INFINITY) {
+      // -INF-norm
+      res = abs<T>(x_tmp);
+      res = min<T>(x_tmp, {axis}, keepdim);
+    } else {
+      // vanilla p-norm
+      res = x_tmp.pow(porder);
+      res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+      res = res.pow(1 / porder);
+    }
+
+    if (need_cast) {
+      res = cast<T>(res, org_dtype);
+    }
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
 void dropout_grad(const Tensor& mask,
                   const Tensor& out_grad,
                   const Scalar& p,
