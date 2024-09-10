@@ -1091,6 +1091,50 @@ struct Conv2dOpTranscriber : public OpTranscriber {
   }
 };
 
+struct Conv3dOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "padding_algorithm") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "EXPLICIT");
+    }
+  }
+};
+
+struct ScaleOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "bias") {
+      (*attribute_map)[info.name] =
+          paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0.0));
+    } else if (info.name == "bias_after_scale") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
+    }
+  }
+};
+
+struct DropoutOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "mode") {
+      (*attribute_map)[info.name] =
+          pir::StrAttribute::get(ctx, "downscale_in_infer");
+    }
+  }
+};
+
+struct SequencePoolOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "pad_value") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0f);
+    }
+  }
+};
+
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
 
@@ -2633,6 +2677,22 @@ struct Pool2dOpTranscriber : public OpTranscriber {
   }
 };
 
+struct Pool3dOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "exclusive") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
+    }
+    if (info.name == "adaptive") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+    if (info.name == "padding_algorithm") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "EXPLICIT");
+    }
+  }
+};
+
 pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
                                        const OpDesc& op_desc,
                                        const OpAttributeInfo& attr_info) {
@@ -3836,10 +3896,12 @@ OpTranslator::OpTranslator() {
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
+  special_handlers["conv3d"] = Conv3dOpTranscriber();
   special_handlers["cross_entropy_with_softmax"] =
       CrossEntropyWithSoftmaxOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["depthwise_conv2d"] = DepthwiseConv2dOpTranscriber();
+  special_handlers["dropout"] = DropoutOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
@@ -3863,6 +3925,7 @@ OpTranslator::OpTranslator() {
   special_handlers["lookup_table"] = EmbeddingOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["pool2d"] = Pool2dOpTranscriber();
+  special_handlers["pool3d"] = Pool3dOpTranscriber();
   special_handlers["randint"] = RandIntOpTranscriber();
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
@@ -3874,8 +3937,10 @@ OpTranslator::OpTranslator() {
   special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["share_buffer"] = ShareBufferOpTranscriber();
+  special_handlers["sequence_pool"] = SequencePoolOpTranscriber();
   special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
+  special_handlers["scale"] = ScaleOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["top_p_sampling"] = TopPSamplingOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();

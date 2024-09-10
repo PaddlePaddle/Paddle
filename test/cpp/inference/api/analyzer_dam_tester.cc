@@ -195,8 +195,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   cfg->SwitchSpecifyInputNames();
-  auto pass_builder = cfg->pass_builder();
-  pass_builder->DeletePass("constant_folding_pass");
+  cfg->DeletePass("constant_folding_pass");
   cfg->SwitchIrOptim(true);
 }
 
