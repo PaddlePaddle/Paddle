@@ -807,7 +807,7 @@ https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
 and paddle/phi/api/lib/tensor_utils.cc
 */
 using Deleter = std::function<void(void*)>;
-using AllocationDeleter = void (*)(phi::Allocation*);
+using AllocationDeleter = std::function<void(phi::Allocation*)>;
 
 phi::DenseTensor from_blob(void* data,
                            DLManagedTensor* src,
@@ -823,12 +823,11 @@ phi::DenseTensor from_blob(void* data,
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
   AllocationDeleter f = nullptr;
   if (deleter) {
-    auto g = [deleter, src] {
+    f = [deleter, src](phi::Allocation* p) {
       if (src->manager_ctx) {
         deleter(src);
       }
     };
-    f = [](phi::Allocation* p) { g(); };
   }
   auto alloc = std::make_shared<phi::Allocation>(data, size, f, place);
   return phi::DenseTensor(alloc, meta);
