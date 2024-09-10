@@ -1274,19 +1274,8 @@ PYBIND11_MODULE(libpaddle, m) {
             "Note that DLTensor capsules can be consumed only once, "
             "so you might have already constructed a tensor from it once."));
 
-    // auto deleter_with_gil = [dlMTensor](void*) {
-    //   if (dlMTensor->deleter) {
-    //     pybind11::gil_scoped_acquire gil;
-    //     printf("call gil deleter begin\n");
-    //     dlMTensor->deleter(dlMTensor);
-    //     printf("call gil deleter end\n");
-    //   } else {
-    //     printf("dlMTensor->deleter is nullptr\n");
-    //   }
-    // };
-
-    // auto ptensor = paddle::framework::TensorFromDLPack(dlMTensor,
-    // std::move(deleter_with_gil));
+    // NOTE: Might meet bugged numpy version, see:
+    // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
     auto ptensor = paddle::framework::TensorFromDLPack(dlMTensor);
 
     PyCapsule_SetName(data.ptr(), "used_dltensor");

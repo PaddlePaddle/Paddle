@@ -35,7 +35,6 @@ __all__ = [
 
 
 class DLDeviceType(enum.IntEnum):
-    # Enums as in DLPack specification (aten/src/ATen/dlpack.h)
     kDLCPU = (1,)
     kDLGPU = (2,)
     kDLCPUPinned = (3,)

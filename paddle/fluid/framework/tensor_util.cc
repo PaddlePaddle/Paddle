@@ -31,7 +31,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DNNL
 #include "dnnl_debug.h"  // NOLINT
 #endif
-#include <cuda_runtime.h>
+
 namespace paddle {
 namespace framework {
 
@@ -801,15 +801,13 @@ phi::Place GetPlaceFromPtr(void* data) {
   return phi::CPUPlace();
 }
 
-// NOTE: set 'g_deleter' and 'g_src' as static variable
-// for being used in lambda function 'f' without specified in capture list
 using Deleter = std::function<void(void*)>;
-using AllocationDeleter = std::function<void(phi::Allocation*)>;
-
 /*
 code ref:
 https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
 */
+using AllocationDeleter = void (*)(phi::Allocation*);
+
 phi::DenseTensor from_blob(void* data,
                            DLManagedTensor* src,
                            const phi::DDim& shape,
@@ -824,11 +822,12 @@ phi::DenseTensor from_blob(void* data,
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
   AllocationDeleter f = nullptr;
   if (deleter) {
-    f = [deleter, src](phi::Allocation* p) {
+    auto g = [deleter, src] {
       if (src->manager_ctx) {
         deleter(src);
       }
     };
+    f = [](phi::Allocation* p) { g(); };
   }
   auto alloc = std::make_shared<phi::Allocation>(data, size, f, place);
   return phi::DenseTensor(alloc, meta);
