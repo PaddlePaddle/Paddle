@@ -871,12 +871,12 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
-  # ocr
-  set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
-  if(NOT EXISTS ${OCR_INSTALL_DIR}/ocr.tar.gz)
+  # ch_PP-OCRv3_det
+  set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ch_PP-OCRv3_det")
+  if(NOT EXISTS ${OCR_INSTALL_DIR}/ch_PP-OCRv3_det.tar.gz)
     inference_download_and_uncompress_without_verify(
       ${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
-      "inference-vis-demos/ocr.tar.gz")
+      "inference-vis-demos/ch_PP-OCRv3_det.tar.gz")
   endif()
 
   inference_analysis_test(
