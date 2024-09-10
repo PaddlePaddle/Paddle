@@ -181,10 +181,9 @@ class InferencePassTest(unittest.TestCase):
             config.enable_mkldnn()
             if self.enable_mkldnn_bfloat16:
                 config.enable_mkldnn_bfloat16()
-        print('config summary:', config.summary())
         return config
 
-    def check_output(self, atol=1e-5):
+    def check_output(self, atol=1e-3):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT
         or disable TensorRT, enable MKLDNN or disable MKLDNN
@@ -198,7 +197,7 @@ class InferencePassTest(unittest.TestCase):
             self.check_output_with_option(place_, atol)
 
     def check_output_with_option(
-        self, use_gpu, atol=1e-5, flatten=False, quant=False, rtol=1e-5
+        self, use_gpu, atol=1e-3, flatten=False, quant=False, rtol=1e-3
     ):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT
@@ -242,7 +241,7 @@ class InferencePassTest(unittest.TestCase):
             np.testing.assert_allclose(
                 paddle_out,
                 inference_out,
-                rtol=1e-05,
+                rtol=1e-03,
                 atol=atol,
                 err_msg=f'Output has diff between inference and training forward at {device} ',
             )

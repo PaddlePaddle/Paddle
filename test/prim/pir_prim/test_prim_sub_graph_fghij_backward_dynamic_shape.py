@@ -15,14 +15,27 @@
 import unittest
 
 import numpy as np
-from test_prim_sub_graph_backward_dynamic_shape import TestPrimBaseWithGrad
+from test_prim_sub_graph_backward_dynamic_shape import (
+    TestPrimBaseWithGrad,
+    TestPrimTwoWithGrad,
+    apply_to_static,
+)
 
 import paddle
 from paddle.framework import core
+from paddle.static import InputSpec
 
 
 def floor_net(x):
     return paddle.floor(x)
+
+
+def gather_net(x, y):
+    return paddle.gather(x, y, 1)
+
+
+def gather_nd_net(x, y):
+    return paddle.gather_nd(x, y)
 
 
 def gelu_net1(x):
@@ -45,6 +58,75 @@ class TestPrimFloorWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = floor_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimGatherWithGrad1(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [10, 88, 10]
+        self.init_x_shape = [None, None, 10]
+        self.y_shape = [3]
+        self.init_y_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.array([1, 3, 5], dtype="int32")
+        self.net = gather_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+    def base_net(self, flag=None):
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
+        x = paddle.to_tensor(self.x, stop_gradient=False)
+        y = paddle.to_tensor(self.y)
+        if flag == "prim":
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=self.init_x_shape, dtype='float32'),
+                    InputSpec(shape=self.init_y_shape, dtype='int32'),
+                ],
+            )
+            fn.train()
+        else:
+            fn = self.net
+        res = fn(x, y)
+        res.backward()
+        x_grad = x.gradient()
+        if flag == "prim":
+            core._set_prim_all_enabled(False)
+        return res, [x_grad]
+
+
+class TestPrimGatherWithGrad2(TestPrimGatherWithGrad1):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [10, 88, 10]
+        self.init_x_shape = [None, 88, None]
+        self.y_shape = [3]
+        self.init_y_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.array([1, 3, 5], dtype="int32")
+        self.net = gather_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimGatherNdWithGrad(TestPrimGatherWithGrad1):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [100, 100]
+        self.init_x_shape = [None, None, 10]
+        self.y_shape = [2, 2]
+        self.init_y_shape = [None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.array([[1, 1], [2, 1]], dtype="int32")
+        self.net = gather_nd_net
         self.enable_cinn = False
         self.tol = 1e-6
 
