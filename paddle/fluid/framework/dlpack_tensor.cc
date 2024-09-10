@@ -122,39 +122,57 @@ struct DLDeviceVisitor {
 };
 }  // namespace internal
 
-struct PTenDLMTensor {
+struct PaddleDLMTensor {
   phi::DenseTensor handle;
   DLManagedTensor tensor;
-  // PTenDLMTensor() : tensor() {}
 };
 
 static void deleter(DLManagedTensor *self) {
-  delete static_cast<PTenDLMTensor *>(self->manager_ctx);
+  if (self && self->manager_ctx) {
+    delete[] self->dl_tensor
+        .shape;  // delete shape allocated in toDLPack manually
+    delete[] self->dl_tensor
+        .strides;  // delete strides allocated in toDLPack manually
+    delete static_cast<PaddleDLMTensor *>(self->manager_ctx);
+  }
 }
 
 DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
+  PaddleDLMTensor *pdDLMTensor(new PaddleDLMTensor);
+  pdDLMTensor->handle = const_cast<phi::DenseTensor &>(src);
+  pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
+  pdDLMTensor->tensor.deleter = &deleter;
+
+  // init ndim
+  using DimType = decltype(pdDLMTensor->tensor.dl_tensor.ndim);  // int32_t
+  auto _shape = src.dims();
+  pdDLMTensor->tensor.dl_tensor.ndim = static_cast<DimType>(_shape.size());
+  DimType ndim = pdDLMTensor->tensor.dl_tensor.ndim;
+
   // init shape
-  auto shape = common::vectorize(src.dims());
-  auto strides = common::vectorize(src.strides());
+  int64_t *shape = new int64_t[ndim];
+  for (DimType i = 0; i < ndim; ++i) {
+    shape[i] = _shape[i];
+  }
+  pdDLMTensor->tensor.dl_tensor.shape = shape;
+
+  // init strides
+  auto _strides = src.strides();
+  int64_t *strides = new int64_t[ndim];
   for (int i = 0; i < src.dims().size(); i++) {
+    strides[i] = _strides[i];
     if (shape[i] < 2) {
       strides[i] = 1;
     }
   }
+  pdDLMTensor->tensor.dl_tensor.strides = strides;
 
-  PTenDLMTensor *pdDLMTensor(new PTenDLMTensor);
-  pdDLMTensor->handle = const_cast<phi::DenseTensor &>(src);
-  pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
-  pdDLMTensor->tensor.deleter = &deleter;
   pdDLMTensor->tensor.dl_tensor.data = const_cast<void *>(src.data());
   auto place = src.place();
   pdDLMTensor->tensor.dl_tensor.device =
       phi::VisitPlace(place, internal::DLDeviceVisitor());
-  pdDLMTensor->tensor.dl_tensor.ndim = static_cast<int32_t>(src.dims().size());
   pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
       framework::TransToProtoVarType(src.dtype()));
-  pdDLMTensor->tensor.dl_tensor.shape = shape.data();
-  pdDLMTensor->tensor.dl_tensor.strides = strides.data();
   pdDLMTensor->tensor.dl_tensor.byte_offset = 0;
   return &(pdDLMTensor->tensor);
 }

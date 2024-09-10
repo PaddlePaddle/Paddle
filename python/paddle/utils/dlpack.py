@@ -136,4 +136,10 @@ def from_dlpack(ext_tensor) -> Tensor:
     else:
         # Old versions just call the converter
         dlpack = ext_tensor
-    return paddle.base.core.from_dlpack(dlpack)
+
+    out: paddle.base.libpaddle.Tensor = paddle.base.core.from_dlpack(dlpack)
+
+    if in_dygraph_mode():
+        out: Tensor = paddle.to_tensor(out)
+
+    return out

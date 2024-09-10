@@ -725,10 +725,8 @@ void TensorFromStream(std::istream& is,
   }
 }
 
-// get tensor data point by DLDataType
-void* GetDstPtrByDLDataType(DLDataType type,
-                            phi::DenseTensor* dst,
-                            const phi::Place& dst_place) {
+// get Tensor data dtype from given DLDataType
+phi::DataType GetDstPtrByDLDataType(DLDataType type) {
   // vector types not currently supported
   PADDLE_ENFORCE_LE(
       type.lanes,
@@ -737,52 +735,37 @@ void* GetDstPtrByDLDataType(DLDataType type,
 
   switch (type.bits) {
     case 8:
-      if (type.code == kDLInt)
-        return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
-      if (type.code == kDLUInt)
-        return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
+      if (type.code == kDLInt) return phi::DataType::INT8;
+      if (type.code == kDLUInt) return phi::DataType::UINT8;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 16:
-      if (type.code == kDLInt)
-        return static_cast<void*>(dst->mutable_data<int16_t>(dst_place));
-      if (type.code == kDLFloat)
-        return static_cast<void*>(
-            dst->mutable_data<phi::dtype::float16>(dst_place));
-      if (type.code == kDLBfloat)
-        return static_cast<void*>(
-            dst->mutable_data<phi::dtype::bfloat16>(dst_place));
+      if (type.code == kDLInt) return phi::DataType::INT16;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT16;
+      if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 32:
-      if (type.code == kDLInt)
-        return static_cast<void*>(dst->mutable_data<int32_t>(dst_place));
-      if (type.code == kDLFloat)
-        return static_cast<void*>(dst->mutable_data<float>(dst_place));
+      if (type.code == kDLInt) return phi::DataType::INT32;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT32;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 64:
-      if (type.code == kDLInt)
-        return static_cast<void*>(dst->mutable_data<int64_t>(dst_place));
-      if (type.code == kDLFloat)
-        return static_cast<void*>(dst->mutable_data<double>(dst_place));
-      if (type.code == kDLComplex)
-        return static_cast<void*>(
-            dst->mutable_data<phi::dtype::complex<float>>(dst_place));
+      if (type.code == kDLInt) return phi::DataType::INT64;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT64;
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 128:
-      if (type.code == kDLComplex)
-        return static_cast<void*>(
-            dst->mutable_data<phi::dtype::complex<double>>(dst_place));
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX128;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
@@ -821,25 +804,19 @@ phi::Place GetPlaceFromPtr(void* data) {
 // NOTE: set 'g_deleter' and 'g_src' as static variable
 // for being used in lambda function 'f' without specified in capture list
 using Deleter = std::function<void(void*)>;
-using AllocationDeleter = void (*)(phi::Allocation*);
+using AllocationDeleter = std::function<void(phi::Allocation*)>;
 
-static Deleter g_deleter = nullptr;
-static DLManagedTensor* g_src = nullptr;
-
-void set_global_deleter_and_src(const Deleter& deleter, DLManagedTensor* src) {
-  /*Update static variable g_deleter and g_src manually each time in a
-   * function*/
-  g_deleter = deleter;
-  g_src = src;
-}
-
-inline phi::DenseTensor from_blob(void* data,
-                                  DLManagedTensor* src,
-                                  const phi::DDim& shape,
-                                  phi::DataType dtype,
-                                  phi::DataLayout layout,
-                                  const phi::Place& place,
-                                  const Deleter& deleter) {
+/*
+code ref:
+https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
+*/
+phi::DenseTensor from_blob(void* data,
+                           DLManagedTensor* src,
+                           const phi::DDim& shape,
+                           phi::DataType dtype,
+                           phi::DataLayout layout,
+                           const phi::Place& place,
+                           const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
       data, phi::errors::InvalidArgument("data can not be nullptr."));
 
@@ -847,10 +824,9 @@ inline phi::DenseTensor from_blob(void* data,
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
   AllocationDeleter f = nullptr;
   if (deleter) {
-    set_global_deleter_and_src(deleter, src);
-    f = [](phi::Allocation* p) {
-      if (g_src) {
-        g_deleter(g_src);
+    f = [deleter, src](phi::Allocation* p) {
+      if (src->manager_ctx) {
+        deleter(src);
       }
     };
   }
@@ -874,11 +850,13 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src,
     PADDLE_THROW(phi::errors::Unimplemented("Given Place is not supported"));
   }
 
+  ::DLDataType type = src->dl_tensor.dtype;
+  auto dtype = GetDstPtrByDLDataType(type);
   if (!src->dl_tensor.strides) {
     return from_blob(src->dl_tensor.data,
                      src,
                      common::make_ddim(vec),
-                     phi::DataType::FLOAT32,
+                     dtype,
                      phi::DataLayout::NCHW,
                      place,
                      std::move(deleter));
@@ -886,17 +864,13 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src,
     return from_blob(src->dl_tensor.data,
                      src,
                      common::make_ddim(vec),
-                     phi::DataType::FLOAT32,
+                     dtype,
                      phi::DataLayout::NCHW,
                      place,
-                     std::move(deleter));
+                     deleter);
   }
 }
 
-/*
-refer:
-https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp#L297
-*/
 phi::DenseTensor TensorFromDLPack(DLManagedTensor* src) {
   auto deleter = [src](void* self [[maybe_unused]]) {
     if (src->deleter) {

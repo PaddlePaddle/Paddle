@@ -430,24 +430,22 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> print(t.shape())
                     [5, 30]
            )DOC")
-      .def("_to_dlpack",
-           [](phi::DenseTensor &self) {
-             DLManagedTensor *dlMTensor = framework::toDLPack(self);
-
-             auto DLPack_Capsule_Destructor = [](PyObject *data) {
-               if (!PyCapsule_IsValid(data, "dltensor")) {
-                 // early out, see DLPack spec: if a consuming library sets the
-                 // capsule name to something else, they own it and we don't
-                 // need to do anything
-                 return;
-               }
-               DLManagedTensor *dlMTensor = reinterpret_cast<DLManagedTensor *>(
-                   PyCapsule_GetPointer(data, "dltensor"));
-               dlMTensor->deleter(dlMTensor);
-             };
-             return PyCapsule_New(
-                 dlMTensor, "dltensor", DLPack_Capsule_Destructor);
-           })
+      .def(
+          "_to_dlpack",
+          [](phi::DenseTensor &self) {
+            DLManagedTensor *dlMTensor = framework::toDLPack(self);
+            auto capsule = pybind11::capsule(
+                static_cast<void *>(dlMTensor), "dltensor", [](PyObject *data) {
+                  if (!PyCapsule_IsValid(data, "dltensor")) {
+                    return;
+                  }
+                  DLManagedTensor *dlMTensor =
+                      reinterpret_cast<DLManagedTensor *>(
+                          PyCapsule_GetPointer(data, "dltensor"));
+                  dlMTensor->deleter(dlMTensor);
+                });
+            return capsule;
+          })
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
