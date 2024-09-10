@@ -476,11 +476,11 @@ bool BatchSizeLikeInferSymbolicShape(
                         "Shape size must be larger than 0, but received: %d.",
                         shape_attr.size()));
   std::vector<symbol::DimExpr> out_shape;
-  for (int i = 0; i < shape_attr.size(); ++i) {
-    if (shape_attr[i] > 0) {
-      out_shape.emplace_back(symbol::DimExpr(shape_attr[i]));
+  for (size_t i = 0; i < shape_attr.size(); ++i) {
+    if (shape_attr[i] == -1) {
+      out_shape.emplace_back(x_shape[i]);
     } else {
-      out_shape.emplace_back(infer_context->GetNextSymName());
+      out_shape.emplace_back(symbol::DimExpr(shape_attr[i]));
     }
   }
 
@@ -490,12 +490,14 @@ bool BatchSizeLikeInferSymbolicShape(
       common::errors::InvalidArgument(
           "Input dimension index must be larger than or equal to 0."));
   size_t input_dim_size = x_shape.size();
+
   PADDLE_ENFORCE_GE(
       output_dim_idx,
       0,
       common::errors::InvalidArgument(
           "Output dimension index must be larger than or equal to 0."));
-  PADDLE_ENFORCE(static_cast<int>(input_dim_size) > input_dim_idx,
+  PADDLE_ENFORCE(static_cast<int>(input_dim_size) > input_dim_idx ||
+                     static_cast<int>(input_dim_size) == -1,
                  common::errors::InvalidArgument(
                      "Input dimension size must be larger than "
                      "input dimension index, but received input "
