@@ -3901,12 +3901,8 @@ bool UnsqueezeOpInferSymbolicShape(
   int x_dims_size = x_sym_shape.size();
 
   std::vector<symbol::DimExpr> axis_sym;
-  if (axis_shape_or_data.data().has_value()) {
-    axis_sym = axis_shape_or_data.data().value();
-  } else {
-    axis_sym =
-        details::GetOrCreateExprVecFromData(axis_shape_or_data, infer_context);
-  }
+  axis_sym =
+      details::GetOrCreateExprVecFromData(axis_shape_or_data, infer_context);
   int axis_sym_size = axis_sym.size();
 
   // GetUnsqueezeShape
