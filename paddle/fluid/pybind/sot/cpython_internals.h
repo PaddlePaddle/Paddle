@@ -19,6 +19,10 @@ extern "C" {
 
 #include <Python.h>
 
+#include "paddle/fluid/pybind/sot/macros.h"
+
+#if SOT_IS_SUPPORTED
+
 #if PY_VERSION_HEX >= 0x030b0000
 #include <internal/pycore_frame.h>
 #endif
@@ -44,6 +48,8 @@ void Internal_PyEvalFrameClearAndPop(PyThreadState *tstate,
 _PyInterpreterFrame *Internal_PyThreadState_PushFrame(PyThreadState *tstate,
                                                       size_t size);
 void Internal_PyFrame_ClearExceptCode(_PyInterpreterFrame *frame);
+#endif
+
 #endif
 
 #endif

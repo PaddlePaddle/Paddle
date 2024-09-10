@@ -147,16 +147,10 @@ if(WITH_ONEDNN
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-  set_tests_properties(test_trt_subgraph_pass PROPERTIES TIMEOUT 120)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
-  set_tests_properties(test_trt_conv_pass PROPERTIES TIMEOUT 120)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
+
   set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
   if(NOT WIN32)
     set_tests_properties(test_trt_explicit_quantization_resnet
@@ -167,32 +161,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_trt_convert_fill_constant PROPERTIES TIMEOUT 450)
   endif()
 
-  if(WITH_NV_JETSON)
-    set_tests_properties(
-      test_trt_pool_op
-      PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 450)
-    set_tests_properties(
-      test_trt_pool3d_op
-      PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 450)
-  else()
-    set_tests_properties(
-      test_trt_pool_op
-      PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 300)
-    set_tests_properties(
-      test_trt_pool3d_op
-      PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT 45)
-  endif()
-  set_tests_properties(test_trt_tile_op PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
-                                                                      100)
-  set_tests_properties(test_trt_conv_quant_dequant_pass PROPERTIES TIMEOUT 180)
-  set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 450)
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
   set_tests_properties(test_trt_multiclass_nms3_op PROPERTIES TIMEOUT 60)
 
   if(WITH_ONEDNN)
