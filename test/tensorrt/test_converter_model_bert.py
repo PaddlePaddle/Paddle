@@ -57,14 +57,12 @@ class TestConverterBert(unittest.TestCase):
         program_with_trt = convert_to_trt(program, trt_config, scope)
         output_var = program_with_trt.global_block().ops[-1].result(0)
 
-        print("program_with_trt",program_with_trt)
         # run inference(converted_program)
         output_converted = predict_program(
             program_with_trt,
             {"input_ids": input_min_data},
             [output_var],
         )
-       
 
         # # Check that the results are close to each other within a tolerance of 1e-2
         np.testing.assert_allclose(

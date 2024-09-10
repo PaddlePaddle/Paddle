@@ -270,7 +270,7 @@ def convert_to_trt(program, trt_config, scope):
 
 
 # Obtain a program with tensorrt_op for dynamic-to-static scenarios.
-def export(function=None, input_spec=None, config=None, **kwargs):
+def convert(function=None, input_spec=None, config=None, **kwargs):
     """
     Convert a dynamic graph API to a static graph and apply TensorRT optimizations if relevant parameters are configured.
 
@@ -291,13 +291,13 @@ def export(function=None, input_spec=None, config=None, **kwargs):
         >>> # example
         >>> from paddle import nn
         >>> from paddle.static import InputSpec
-        >>> import unittest
         >>> import paddle
         >>> from paddle.tensorrt.export import (
         ...    Input,
         ...    TensorRTConfig,
-        ...    export,
+        ...    convert,
         ... )
+        >>> import paddle.nn.functional as F
 
         >>> class CumsumModel(nn.Layer):
         ...    def __init__(self, input_dim):
@@ -313,34 +313,31 @@ def export(function=None, input_spec=None, config=None, **kwargs):
 
         >>> def test_run():
         ...     with paddle.pir_utils.IrGuard():
-        ...        input_config = Input(
-        ...            min_input_shape=(9, 10, 11),
-        ...            optim_input_shape=(9, 10, 11),
-        ...            max_input_shape=(9, 10, 11),
-        ...        )
-        ...        trt_config = TensorRTConfig(inputs=[input_config])
-        ...        for i, input_instrance in enumerate(trt_config.inputs):
-        ...            min_data, _, max_data = input_instrance[i].generate_input_data()
-        ...            paddle.disable_static()
-        ...            x = paddle.to_tensor(min_data)
-        ...            net = CumsumModel(input_dim=min_data.shape[-1])
-        ...            out=net(x)
-        ...            paddle.disable_static()
+        ...         input_config = Input(
+        ...             min_input_shape=(9, 10, 11),
+        ...             optim_input_shape=(9, 10, 11),
+        ...             max_input_shape=(9, 10, 11),
+        ...         )
+        ...         trt_config = TensorRTConfig(inputs=[input_config])
+        ...         for i, input_instrance in enumerate(trt_config.inputs):
+        ...             min_data, _, max_data = input_instrance[i].generate_input_data()
+        ...             paddle.disable_static()
+        ...             x = paddle.to_tensor(min_data)
+        ...             net = CumsumModel(input_dim=min_data.shape[-1])
+        ...             out=net(x)
         ...            input_spec = [InputSpec(shape=min_data.shape, dtype='float32')]
-        ...            program_with_trt ,scope= export(
-        ...                net,
-        ...                input_spec=input_spec,
-        ...                config=trt_config,
-        ...                full_graph=True,
-        ...            )
-        ...            output_var = program_with_trt.list_vars()[-1]
-        ...            output_converted = predict_program(
-        ...                program_with_trt, {"input": input_optim_data}, [output_var]
-        ...            )
-        ...            with paddle.static.program_guaed(program_with_trt):
-        ...                place=paddle.CUDAPlace(0)
-        ...                executor=paddle.static.Executor(place)
-        ...                output=executor.run(program_with_trt, feed={"input": input_optim_data}, fetch=[output_var])
+        ...             program_with_trt ,scope= convert(
+        ...                 net,
+        ...                 input_spec=input_spec,
+        ...                 config=trt_config,
+        ...                 full_graph=True,
+        ...             )
+        ...             output_var = program_with_trt.list_vars()[-1]
+        ...             with paddle.pir_utils.IrGuard():
+        ...                with paddle.static.scope_guard(scope):
+        ...                  place=paddle.CUDAPlace(0)
+        ...                  executor=paddle.static.Executor(place)
+        ...                  output=executor.run(program_with_trt, feed={"x": min_data}, fetch_list=[output_var],scope=scope)
 
         >>> test_run()
 
@@ -515,7 +512,7 @@ def export(function=None, input_spec=None, config=None, **kwargs):
 
 
 # Obtain a program with tensorrt_op by directly loading the model.
-def export_loaded_model(model_dir, config):
+def convert_loaded_model(model_dir, config):
     """
     Loading a PaddlePaddle Model and Exporting the TensorRT-Optimized Program.
 
@@ -536,7 +533,7 @@ def export_loaded_model(model_dir, config):
             ...      Input,
             ...      TensorRTConfig,
             ...      export,
-            ...      export_loaded_model,
+            ...      convert_loaded_model,
             ... )
             >>> import os
             >>> from paddle import nn
@@ -600,7 +597,7 @@ def export_loaded_model(model_dir, config):
             ...    trt_save_path = os.path.join(temp_dir.name, 'trt')
             ...    trt_config.save_model_dir = trt_save_path
 
-            ...    program_with_trt = export_loaded_model(save_path, trt_config)
+            ...    program_with_trt = convert_loaded_model(save_path, trt_config)
 
             ...    # Create a config for inference.
             ...    config = paddle_infer.Config(

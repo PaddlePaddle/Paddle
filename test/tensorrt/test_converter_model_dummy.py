@@ -41,7 +41,6 @@ class TestConverterDummy(unittest.TestCase):
             input_data_type='float32',
         )
         _, input_optim_data, _ = input_config.generate_input_data()
-
         # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
 

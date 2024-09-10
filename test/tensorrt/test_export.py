@@ -25,8 +25,8 @@ from paddle.static import InputSpec
 from paddle.tensorrt.export import (
     Input,
     TensorRTConfig,
-    export,
-    export_loaded_model,
+    convert,
+    convert_loaded_model,
 )
 from paddle.tensorrt.util import (
     predict_program,
@@ -46,7 +46,7 @@ class CumsumModel(nn.Layer):
         return out
 
 
-class TestExport_to_loaded_model(unittest.TestCase):
+class TestConvert_loaded_model(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -79,7 +79,6 @@ class TestExport_to_loaded_model(unittest.TestCase):
                 static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
                 # run infer
-                print("self.save_path: ", self.save_path)
                 paddle.static.save_inference_model(
                     self.save_path, [x], [out], exe
                 )
@@ -105,7 +104,7 @@ class TestExport_to_loaded_model(unittest.TestCase):
 
             model_dir = self.save_path
             # Obtain tensorrt_engine_op by passing the model path and trt_config.(converted_program)
-            program_with_trt = export_loaded_model(model_dir, trt_config)
+            program_with_trt = convert_loaded_model(model_dir, trt_config)
 
             # Create a config for inference.
             config = paddle_infer.Config(
@@ -127,7 +126,7 @@ class TestExport_to_loaded_model(unittest.TestCase):
             output_converted = predictor.run([model_inputs])
 
 
-class TestExport(unittest.TestCase):
+class TestConvert(unittest.TestCase):
     def test_run(self):
         with paddle.pir_utils.IrGuard():
             input_config = Input(
@@ -145,7 +144,7 @@ class TestExport(unittest.TestCase):
 
                 # 创建 InputSpec
                 input_spec = [InputSpec(shape=min_data.shape, dtype='float32')]
-                program_with_trt, scope = export(
+                program_with_trt, scope = convert(
                     net,
                     input_spec=input_spec,
                     config=trt_config,
