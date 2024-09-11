@@ -26,6 +26,7 @@ from paddle.static import nn
 
 class PadOpTRTTest(InferencePassTest):
     def setUp(self):
+        paddle.enable_static()
         with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[1, 3, 128, 128], dtype="float32"

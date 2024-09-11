@@ -184,6 +184,34 @@ void IrPrinter::Visit(const StringImm *x) {
   str_ += "\"";
 }
 
+void IrPrinter::Visit(const IterMark *x) {
+  str_ += "IterMark(";
+  Visit(x->source);
+  str_ += ",";
+  Visit(x->extent);
+  str_ += ")";
+}
+void IrPrinter::Visit(const IterSum *x) {
+  str_ += "IterSum(";
+  for (const auto &arg : x->args) {
+    Visit(arg);
+    str_ += "+";
+  }
+  Visit(x->base);
+  str_ += ")";
+}
+void IrPrinter::Visit(const IterSplit *x) {
+  str_ += "IterSplit(";
+  Visit(x->source);
+  str_ += "/";
+  Visit(x->lower_factor);
+  str_ += "%";
+  Visit(x->extent);
+  str_ += "*";
+  Visit(x->scale);
+  str_ += ")";
+}
+
 void IrPrinter::Visit(const Add *x) { PrintBinaryOp("+", x); }
 void IrPrinter::Visit(const Sub *x) { PrintBinaryOp("-", x); }
 void IrPrinter::Visit(const Mul *x) { PrintBinaryOp("*", x); }

@@ -44,6 +44,12 @@ class IrEqualVisitor : public IRVisitorRequireReImpl<bool, const Expr*> {
   NODETY_FORALL(__)
 #undef __
 
+  bool Visit(const IterMark* lhs, const Expr* other);
+
+  bool Visit(const IterSplit* lhs, const Expr* other);
+
+  bool Visit(const IterSum* lhs, const Expr* other);
+
   // whether allowing name suffix ends with "_[0-9]+" different
   bool allow_name_suffix_diff_ = false;
   // not compare name field of Expr
