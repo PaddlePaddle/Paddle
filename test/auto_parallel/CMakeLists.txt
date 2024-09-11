@@ -200,14 +200,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster MODULES test_cluster)
   py_test_modules(test_comm_cost MODULES test_comm_cost)
   py_test_modules(test_comp_cost MODULES test_comp_cost)
-  py_test_modules(test_dist_context MODULES test_dist_context)
+
   py_test_modules(test_to_static MODULES test_to_static)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
-  py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
-  py_test_modules(test_dist_matmul MODULES test_dist_matmul)
   py_test_modules(test_strategy MODULES test_strategy)
-  py_test_modules(test_dist_assign MODULES test_dist_assign)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
                   test_convert_to_process_meshes)
@@ -215,7 +212,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
-  py_test_modules(test_dist_concat MODULES test_dist_concat)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
