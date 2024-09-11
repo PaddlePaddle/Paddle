@@ -730,10 +730,7 @@ def _to_tensor_non_static(
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
             # Currently, there is no copy when places are same
-            if in_dynamic_mode():
-                data = core.eager.Tensor(data)
-            else:
-                data = paddle.Tensor(data)
+            data = paddle.Tensor(data, place=place)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
             data = _handle_tensor_dtype(data, dtype)
