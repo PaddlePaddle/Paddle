@@ -90,7 +90,8 @@ bool ReadModuleForTest(const std::string &file_path,
       builder.BuildPatch(patch_path.string(), 2, 2);
     }
   } else {
-    PADDLE_THROW(::common::errors::InvalidArgument("Invalid model file."));
+    PADDLE_THROW(::common::errors::InvalidArgument("Invalid model file: %s.",
+                                                   file_path));
   }
 
   pir::ProgramReader reader(pir_version);
