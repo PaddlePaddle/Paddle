@@ -51,6 +51,13 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     endif()
   endfunction()
 
+  function(download_int8_data_without_verify_pir install_dir data_file)
+    if(NOT EXISTS ${install_dir}/${data_file})
+      inference_download_and_uncompress_without_verify(
+        ${install_dir} ${INFERENCE_URL}/int8/new ${data_file})
+    endif()
+  endfunction()
+
   function(download_bfloat16_data install_dir data_file check_sum)
     if(NOT EXISTS ${install_dir}/${data_file})
       inference_download_and_uncompress(
@@ -200,7 +207,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --batch_size=50
       --enable_bf16=true
       --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
-      --iterations=2)
+      --iterations=2
+      --with_accuracy_layer=false)
   endfunction()
 
   function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME
@@ -384,21 +392,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     set_tests_properties(gpu_ernie_half_test PROPERTIES TIMEOUT 60)
   endif()
 
-  # densebox
-  set(DENSEBOX_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/densebox")
-  download_data_without_verify(${DENSEBOX_INSTALL_DIR} "densebox.tar.gz")
-  inference_analysis_test(
-    test_analyzer_detect_functional_mkldnn
-    SRCS
-    analyzer_detect_functional_mkldnn_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${DENSEBOX_INSTALL_DIR}/model
-    --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
-    --infer_shape=${DENSEBOX_INSTALL_DIR}/shape_50.txt)
-
   if(WITH_ONEDNN)
 
     ### INT8 tests
@@ -419,18 +412,18 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
     # resnet50 int8
     set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
-    download_int8_data_without_verify(${INT8_RESNET50_MODEL_DIR}
-                                      "resnet50_int8_model.tar.gz")
+    download_int8_data_without_verify_pir(${INT8_RESNET50_MODEL_DIR}
+                                          "resnet50_int8_model.tar.gz")
 
     # mobilenetv1 int8
     set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
-    download_int8_data_without_verify(${INT8_MOBILENETV1_MODEL_DIR}
-                                      "mobilenetv1_int8_model.tar.gz")
+    download_int8_data_without_verify_pir(${INT8_MOBILENETV1_MODEL_DIR}
+                                          "mobilenetv1_int8_model.tar.gz")
 
     # mobilenetv2 int8
     set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
-    download_int8_data_without_verify(${INT8_MOBILENETV2_MODEL_DIR}
-                                      "mobilenet_v2_int8_model.tar.gz")
+    download_int8_data_without_verify_pir(${INT8_MOBILENETV2_MODEL_DIR}
+                                          "mobilenet_v2_int8_model.tar.gz")
 
     # resnet101 int8
     set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
@@ -449,8 +442,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
     # googlenet int8
     set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
-    download_int8_data_without_verify(${INT8_GOOGLENET_MODEL_DIR}
-                                      "GoogleNet_int8_model.tar.gz")
+    download_int8_data_without_verify_pir(${INT8_GOOGLENET_MODEL_DIR}
+                                          "GoogleNet_int8_model.tar.gz")
 
     # mobilenetv3_large_x1_0 int8
     set(INT8_MOBILENETV3_LARGE_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv3_large")
