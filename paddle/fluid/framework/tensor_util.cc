@@ -810,14 +810,14 @@ and paddle/phi/api/lib/tensor_utils.cc
 using Deleter = std::function<void(void*)>;
 
 std::unordered_map<void*, std::function<void(phi::Allocation*)>> ptr_to_deleter;
-std::mutex ptr_to_deleter_mutex;
+std::mutex ptr_to_deleter_mutex;  // use mutex to keep thread safe
 
 void DeleterBridge(phi::Allocation* alloc) {
   std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
   auto it = ptr_to_deleter.find(static_cast<void*>(alloc->ptr()));
   if (it != ptr_to_deleter.end()) {
-    it->second(alloc);         // 调用实际的删除器
-    ptr_to_deleter.erase(it);  // 删除对应的条目
+    it->second(alloc);         // call the deleter
+    ptr_to_deleter.erase(it);  // remove the entry from the map safely
   }
 }
 
