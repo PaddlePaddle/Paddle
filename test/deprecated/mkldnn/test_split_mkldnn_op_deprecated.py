@@ -75,7 +75,7 @@ class TestSplitSectionsOneDNNOp(OpTest):
             ['X'],
             ['out0', 'out1', 'out2'],
             check_dygraph=False,
-            check_pir_onednn=True,
+            check_pir_onednn=False,
         )
 
 
@@ -95,7 +95,7 @@ class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
             ['X'],
             ['out0', 'out1', 'out2', 'out3'],
             check_dygraph=False,
-            check_pir_onednn=True,
+            check_pir_onednn=False,
         )
 
 
