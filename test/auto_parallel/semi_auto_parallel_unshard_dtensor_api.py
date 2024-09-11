@@ -76,7 +76,7 @@ class TestUnshardDTensor(unittest.TestCase):
     def run_test_cases(self):
         self.run_dynamic()
         self.run_static()
-        # self.run_dy2static()
+        # self.run_dy2static() ## not support
 
 
 if __name__ == "__main__":
