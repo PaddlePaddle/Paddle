@@ -51,6 +51,13 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     endif()
   endfunction()
 
+  function(download_int8_data_without_verify_pir install_dir data_file)
+    if(NOT EXISTS ${install_dir}/${data_file})
+      inference_download_and_uncompress_without_verify(
+        ${install_dir} ${INFERENCE_URL}/int8/pir ${data_file})
+    endif()
+  endfunction()
+
   function(download_bfloat16_data install_dir data_file check_sum)
     if(NOT EXISTS ${install_dir}/${data_file})
       inference_download_and_uncompress(
@@ -460,10 +467,10 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
     # build test binary to be used in subsequent tests
 
-    # resnet50 int8
-    set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
-    download_int8_data_without_verify(${INT8_RESNET50_MODEL_DIR}
-                                      "resnet50_int8_model.tar.gz")
+    # new resnet50 int8
+    set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50_pir")
+    download_int8_data_without_verify_pir(${INT8_RESNET50_MODEL_DIR}
+                                          "resnet50_int8_model.tar.gz")
 
     # mobilenetv1 int8
     set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
@@ -913,7 +920,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       common
       paddle_inference_c_shared
       ARGS
-      --infer_model=${INT8_DATA_DIR}/resnet50/model)
+      --infer_model=${INT8_DATA_DIR}/resnet50_pir/model)
   endif()
 
   # chinese_ner
