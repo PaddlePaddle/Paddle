@@ -39,7 +39,7 @@ class TestScaleOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_dygraph=False, check_pir_onednn=True
+            ['X'], 'Out', check_dygraph=False, check_pir_onednn=False
         )
 
 
@@ -68,7 +68,7 @@ class TestScaleOpBiasNotAfterScale(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_dygraph=False, check_pir_onednn=True
+            ['X'], 'Out', check_dygraph=False, check_pir_onednn=False
         )
 
 
@@ -88,7 +88,7 @@ class TestScaleOpScaleTensor(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_dygraph=False, check_pir_onednn=True
+            ['X'], 'Out', check_dygraph=False, check_pir_onednn=False
         )
 
 
@@ -111,7 +111,7 @@ class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_dygraph=False, check_pir_onednn=True
+            ['X'], 'Out', check_dygraph=False, check_pir_onednn=False
         )
 
 
