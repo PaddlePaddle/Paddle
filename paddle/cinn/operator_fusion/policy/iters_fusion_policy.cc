@@ -43,12 +43,16 @@ ItersTransformRoute ItersFusionPolicy::GetItersTransformRoute(
   return routes_[source][target];
 }
 
-FusionItersSignature ItersFusionPolicy::FuseItersSignature(
-    const PatternNodePtr& upstream,
-    const PatternNodePtr& downstream,
-    bool is_sink) {
-  return iters_manager_->FuseItersSignature(
-      upstream->fusion_iters(), downstream->fusion_iters(), is_sink);
+FusionItersSignature ItersFusionPolicy::SingleDownstreamItersFusion(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+  return iters_manager_->SingleDownstreamItersFusion(
+      upstream->fusion_iters(), downstream->fusion_iters());
+}
+
+FusionItersSignature ItersFusionPolicy::MultiDownstreamItersFusion(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+  return iters_manager_->MultiDownstreamItersFusion(upstream->fusion_iters(),
+                                                    downstream->fusion_iters());
 }
 
 std::optional<ItersTransformRoute> GetItersTransforms(

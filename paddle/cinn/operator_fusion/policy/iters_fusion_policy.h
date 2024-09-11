@@ -35,9 +35,10 @@ struct ItersFusionPolicy final : public PolicyBase {
                             const PatternNodePtr& target);
   ItersTransformRoute GetItersTransformRoute(const PatternNodePtr& source,
                                              const PatternNodePtr& target);
-  FusionItersSignature FuseItersSignature(const PatternNodePtr& upstream,
-                                          const PatternNodePtr& downstream,
-                                          bool is_sink);
+  FusionItersSignature SingleDownstreamItersFusion(
+      const PatternNodePtr& upstream, const PatternNodePtr& downstream);
+  FusionItersSignature MultiDownstreamItersFusion(
+      const PatternNodePtr& upstream, const PatternNodePtr& downstream);
 
  private:
   using NodeRouteMap = std::unordered_map<PatternNodePtr, ItersTransformRoute>;

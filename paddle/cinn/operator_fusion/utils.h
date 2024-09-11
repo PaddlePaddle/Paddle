@@ -198,6 +198,22 @@ bool IsAnyFirstInSecond(const std::vector<T>& first,
 }
 
 template <typename T>
+std::pair<std::vector<T>, std::vector<T>> SplitFirstIfFoundInSecond(
+    const std::vector<T>& first, const std::vector<T>& second) {
+  std::vector<T> used;
+  std::vector<T> unused;
+  const auto& second_set = ToUnorderedSet(second);
+  for (size_t i = 0; i < first.size(); ++i) {
+    if (second_set.count(first[i])) {
+      used.emplace_back(first[i]);
+    } else {
+      unused.emplace_back(first[i]);
+    }
+  }
+  return {used, unused};
+}
+
+template <typename T>
 std::vector<T> UniqueVectorBySet(const std::vector<T>& v) {
   std::unordered_set<T> unique(v.begin(), v.end());
   return std::vector<T>(unique.begin(), unique.end());

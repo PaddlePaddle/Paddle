@@ -45,8 +45,8 @@ struct MergeTrivialPatternOperation {
       if (can_fuse) {
         auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
         merged_node->set_fusion_iters(
-            graph->iters_fusion_policy()->FuseItersSignature(
-                upstream, downstream, true));
+            graph->iters_fusion_policy()->SingleDownstreamItersFusion(
+                upstream, downstream));
         graph->RemoveNode(downstream);
         VLOG(4) << "Spliting trivial pattern: \nupstream "
                 << upstream->DebugStr() << "\ndownstream "
@@ -75,8 +75,8 @@ struct MergeReduceTreeOperation {
     auto downstream = node->downstream().at(0);
     auto merged_node = graph->MergeNode(node, downstream, MergePattern);
     merged_node->set_fusion_iters(
-        graph->iters_fusion_policy()->FuseItersSignature(
-            node, downstream, true));
+        graph->iters_fusion_policy()->SingleDownstreamItersFusion(node,
+                                                                  downstream));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
@@ -110,8 +110,8 @@ struct MergeReduceTreeAndTrivialOperation {
     PatternNodePtr merged_node =
         graph->MergeNode(node, downstream, merge_pattern_fn);
     merged_node->set_fusion_iters(
-        graph->iters_fusion_policy()->FuseItersSignature(
-            node, downstream, false));
+        graph->iters_fusion_policy()->SingleDownstreamItersFusion(node,
+                                                                  downstream));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
@@ -184,8 +184,8 @@ struct RiseDownstreamOperation {
 
     auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
     merged_node->set_fusion_iters(
-        graph->iters_fusion_policy()->FuseItersSignature(
-            upstream, downstream, false));
+        graph->iters_fusion_policy()->MultiDownstreamItersFusion(upstream,
+                                                                 downstream));
     std::string downstream_tmp_id = GetNewTmpId(downstream->id());
     merged_node->AppendInstr(std::make_shared<ItersTransformInstr>(
         downstream->id(), downstream_tmp_id, iters_transform_route));

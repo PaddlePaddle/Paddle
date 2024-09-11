@@ -51,6 +51,7 @@ ShardableAxesSignature ShardableAxesInfoManager::GetModifiedSignature(
     result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes, true));
   }
   result.loop = ReplaceShardableAxesWithRootName(origin_sig.loop, true);
+  result.reduce_axis = origin_sig.reduce_axis;
   return result;
 }
 
@@ -152,8 +153,9 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   result.inputs.emplace_back(input_axes);
   result.outputs.emplace_back(output_axes);
   result.loop = ShardableAxes(
-      ConcatVector(output_axes, GatherVector(input_axes, reduce_axis_idx)));
-
+      ConcatVector(GatherVectorExcept(input_axes, reduce_axis_idx),
+                   GatherVector(input_axes, reduce_axis_idx)));
+  result.reduce_axis = reduce_axis_idx;
   return result;
 }
 

@@ -28,6 +28,7 @@ struct ShardableAxes {
 
 struct ShardableAxesSignature {
   ShardableAxes loop;
+  std::vector<int64_t> reduce_axis;
   std::vector<ShardableAxes> inputs;
   std::vector<ShardableAxes> outputs;
   std::string DebugStr() const;
