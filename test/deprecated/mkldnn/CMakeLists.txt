@@ -8,6 +8,7 @@ if(WIN32)
 elseif(WITH_ONEDNN)
   foreach(target ${TEST_MKLDNN_LISTS})
     py_test_modules(${target} MODULES ${target})
-    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER" TIMEOUT
+                                              120)
   endforeach()
 endif()
