@@ -27,9 +27,6 @@ list(REMOVE_ITEM TEST_TRT_IR_PASSES
      "test_trt_convert_temporal_shift_deprecated")
 list(REMOVE ITEM TEST_TRT_CONVERTER
      "test_trt_convert_temporal_shift_deprecated")
-list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_gelu_deprecated")
-list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_gelu_deprecated")
-list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_gelu_deprecated")
 ist(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_pad3d_deprecated")
 list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_pad3d_deprecated")
 list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_pad3d_deprecated")
