@@ -1503,16 +1503,20 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         fc1_w = np.array(linear1.weight)
         fc1_w_mon1 = np.zeros_like(fc1_w)
         fc1_w_mon2 = np.zeros_like(fc1_w)
+        fc1_w_mon2_max = np.zeros_like(fc1_w)
         fc1_b = np.array(linear1.bias)
         fc1_b_mon1 = np.zeros_like(fc1_b)
         fc1_b_mon2 = np.zeros_like(fc1_b)
+        fc1_b_mon2_max = np.zeros_like(fc1_b)
 
         fc2_w = np.array(linear2.weight)
         fc2_w_mon1 = np.zeros_like(fc2_w)
         fc2_w_mon2 = np.zeros_like(fc2_w)
+        fc2_w_mon2_max = np.zeros_like(fc2_w)
         fc2_b = np.array(linear2.bias)
         fc2_b_mon1 = np.zeros_like(fc2_b)
         fc2_b_mon2 = np.zeros_like(fc2_b)
+        fc2_b_mon2_max = np.zeros_like(fc2_b)
 
         simple_lr_fun = partial(simple_lr_setting, decay_rate=0.8, n_layers=2)
         learning_rate = 0.001
@@ -1531,14 +1535,18 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             apply_decay_param_fun=lambda name: True,
             weight_decay=weight_decay,
             lr_ratio=simple_lr_fun,
+            amsgrad=self.amsgrad,
         )
 
-        def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
+        def get_numpy_output(
+            param, grad, moment1, moment2, moment2_max, lr_ratio, t
+        ):
             np_inputs = {
                 'Param': param,
                 'Grad': grad,
                 'Moment1': moment1,
                 'Moment2': moment2,
+                'Moment2Max': moment2_max,
                 'LearningRate': np.array([learning_rate]).astype("float32"),
                 'Beta1Pow': np.array([beta1**t]).astype("float32"),
                 'Beta2Pow': np.array([beta2**t]).astype("float32"),
@@ -1551,11 +1559,12 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 "lr_ratio": lr_ratio,
                 "coeff": float(weight_decay),
                 "with_decay": True,
+                "amsgrad": self.amsgrad,
             }
-            param_out, moment1_out, moment2_out = adamw_step(
+            param_out, moment1_out, moment2_out, moment2_out_max = adamw_step(
                 np_inputs, np_attrs
             )
-            return param_out, moment1_out, moment2_out
+            return param_out, moment1_out, moment2_out, moment2_out_max
 
         for i in range(5):
             a = paddle.to_tensor(
@@ -1566,35 +1575,39 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             out = paddle.mean(out)
             out.backward()
 
-            fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
+            fc1_w, fc1_w_mon1, fc1_w_mon2, fc1_w_mon2_max = get_numpy_output(
                 fc1_w,
                 np.array(linear1.weight.grad),
                 fc1_w_mon1,
                 fc1_w_mon2,
+                fc1_w_mon2_max,
                 simple_lr_fun(linear1.weight),
                 i + 1,
             )
-            fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
+            fc1_b, fc1_b_mon1, fc1_b_mon2, fc1_b_mon2_max = get_numpy_output(
                 fc1_b,
                 np.array(linear1.bias.grad),
                 fc1_b_mon1,
                 fc1_b_mon2,
+                fc1_b_mon2_max,
                 simple_lr_fun(linear1.bias),
                 i + 1,
             )
-            fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
+            fc2_w, fc2_w_mon1, fc2_w_mon2, fc2_w_mon2_max = get_numpy_output(
                 fc2_w,
                 np.array(linear2.weight.grad),
                 fc2_w_mon1,
                 fc2_w_mon2,
+                fc2_w_mon2_max,
                 simple_lr_fun(linear2.weight),
                 i + 1,
             )
-            fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
+            fc2_b, fc2_b_mon1, fc2_b_mon2, fc2_b_mon2_max = get_numpy_output(
                 fc2_b,
                 np.array(linear2.bias.grad),
                 fc2_b_mon1,
                 fc2_b_mon2,
+                fc2_b_mon2_max,
                 simple_lr_fun(linear2.bias),
                 i + 1,
             )
