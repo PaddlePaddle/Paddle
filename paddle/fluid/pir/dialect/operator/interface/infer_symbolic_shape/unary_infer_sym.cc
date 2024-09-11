@@ -477,11 +477,7 @@ bool BatchSizeLikeInferSymbolicShape(
                         shape_attr.size()));
   std::vector<symbol::DimExpr> out_shape;
   for (size_t i = 0; i < shape_attr.size(); ++i) {
-    if (shape_attr[i] == -1) {
-      out_shape.emplace_back(x_shape[i]);
-    } else {
-      out_shape.emplace_back(symbol::DimExpr(shape_attr[i]));
-    }
+    out_shape.emplace_back(symbol::DimExpr(shape_attr[i]));
   }
 
   PADDLE_ENFORCE_GE(
@@ -511,6 +507,9 @@ bool BatchSizeLikeInferSymbolicShape(
       output_dim_idx,
       common::errors::InvalidArgument(
           "Output dimension size must be larger than output dimension index."));
+  // NOTE(gongshaotian):The Python API for this operator has been discontinued
+  // in version 2.6. Currently, only the situation where one -1 appears in the
+  // shape parameter (shape[input_id_idx] == -1) is supported.
   out_shape[output_dim_idx] = x_shape[input_dim_idx];
 
   infer_context->SetShapeOrDataForValue(
