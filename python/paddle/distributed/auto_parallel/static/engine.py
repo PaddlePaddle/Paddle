@@ -199,6 +199,7 @@ class Engine:
         param_list = []
         if optimizer is not None and (
             optimizer._parameter_list is not None
+            and len(optimizer._parameter_list) > 0
             and not isinstance(optimizer._parameter_list[0], dict)
         ):
             for p in optimizer._parameter_list:
