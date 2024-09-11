@@ -846,7 +846,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if pp_stage0_mesh is None:
                         pp_stage0_mesh = p.dist_attr().process_mesh
                     else:
-                        assert p.dist_attr().process_mesh == pp_stage0_mesh
+                        p_mesh = p.dist_attr().process_mesh
+                        if set(pp_stage0_mesh.process_ids) < set(
+                            p_mesh.process_ids
+                        ):
+                            pp_stage0_mesh = p_mesh
+                        assert set(p_mesh.process_ids) <= set(
+                            pp_stage0_mesh.process_ids
+                        )
 
         if len(pp_meshes) > 1:
             from paddle.distributed.auto_parallel.placement_type import (
