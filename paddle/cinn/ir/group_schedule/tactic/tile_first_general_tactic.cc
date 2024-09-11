@@ -176,9 +176,6 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   BindCudaInfo(sch, block_id);
   VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
-  // Vectorize(sch, block_id);
-  VLOG(6) << "After Vectorize on block: [" << block_id << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
   VariableTypeAssignment(sch, block_id);
   VLOG(6) << "After VariableTypeAssignment on block: [" << block_id
           << "], loop nest:\n"
