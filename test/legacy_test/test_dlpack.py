@@ -133,11 +133,13 @@ class TestDLPack(unittest.TestCase):
 
     def test_to_dlpack_data_ptr_consistency(self):
         # See Paddle issue 50120
-        for i in range(2):
-            x = paddle.rand([3, 5])
-            dlpack = paddle.utils.dlpack.to_dlpack(x)
-            y = paddle.utils.dlpack.from_dlpack(dlpack)
-            self.assertEqual(x.data_ptr(), y.data_ptr())
+        for place in [base.CPUPlace(), base.CUDAPlace(0)]:
+            for i in range(10):
+                x = paddle.rand([3, 5]).to(device=place)
+                dlpack = paddle.utils.dlpack.to_dlpack(x)
+                y = paddle.utils.dlpack.from_dlpack(dlpack)
+
+                self.assertEqual(x.data_ptr(), y.data_ptr())
 
 
 class TestRaiseError(unittest.TestCase):
