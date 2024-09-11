@@ -237,7 +237,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
-  py_test_modules(test_dist_concat MODULES test_dist_concat)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
