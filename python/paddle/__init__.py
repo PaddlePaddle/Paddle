@@ -95,7 +95,7 @@ from paddle import (
     decomposition as decomposition,
     device as device,
     distributed as distributed,
-    distributions as distributions,
+    distribution as distribution,
     geometric as geometric,
     incubate as incubate,
     inference as inference,
@@ -123,6 +123,7 @@ from . import (
     hub as hub,
     linalg as linalg,
     signal as signal,
+    tensor as tensor,
 )
 from .autograd import (
     enable_grad,
