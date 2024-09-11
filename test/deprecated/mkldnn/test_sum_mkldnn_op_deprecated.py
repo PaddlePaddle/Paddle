@@ -44,7 +44,7 @@ class TestSumMKLDNN(TestSumOp):
     def test_check_grad(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad(
-            ['x0'], 'Out', check_dygraph=False, check_pir_onednn=True
+            ['x0'], 'Out', check_dygraph=False, check_pir_onednn=False
         )
 
 

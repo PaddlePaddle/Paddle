@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
+sys.path.append("../../mkldnn")
 import numpy as np
 from mkldnn_op_test import format_reorder
 from op_test import OpTest
@@ -341,38 +343,39 @@ class TestReQuantizeOpReused(TestReQuantizeOp):
             "input": self.input,
             "output": self.output,
         }
-        program = base.Program()
-        with base.program_guard(program):
-            block = program.global_block()
-            for name in variables:
-                block.create_var(
-                    name=name, dtype="int8", shape=variables[name].shape
+        with paddle.pir_utils.OldIrGuard():
+            program = base.Program()
+            with base.program_guard(program):
+                block = program.global_block()
+                for name in variables:
+                    block.create_var(
+                        name=name, dtype="int8", shape=variables[name].shape
+                    )
+                block.append_op(
+                    type="requantize",
+                    inputs={
+                        'Input': block.var('input'),
+                    },
+                    outputs={"Output": block.var('output')},
+                    attrs={
+                        'Scale_in': self.scale_in,
+                        'Scale_out': self.scale_out,
+                        'Shift_in': self.shift_in,
+                        'Shift_out': self.shift_out,
+                    },
                 )
-            block.append_op(
-                type="requantize",
-                inputs={
-                    'Input': block.var('input'),
-                },
-                outputs={"Output": block.var('output')},
-                attrs={
-                    'Scale_in': self.scale_in,
-                    'Scale_out': self.scale_out,
-                    'Shift_in': self.shift_in,
-                    'Shift_out': self.shift_out,
-                },
-            )
-            place = core.CPUPlace()
-            exe = base.Executor(place)
-            for i in range(2):
-                out = exe.run(
-                    program,
-                    feed={'input': variables['input']},
-                    fetch_list=['output'],
-                )
+                place = core.CPUPlace()
+                exe = base.Executor(place)
+                for i in range(2):
+                    out = exe.run(
+                        program,
+                        feed={'input': variables['input']},
+                        fetch_list=['output'],
+                    )
 
-            np.testing.assert_allclose(
-                variables['output'], out[0], rtol=1e-05, atol=1e-4
-            )
+                np.testing.assert_allclose(
+                    variables['output'], out[0], rtol=1e-05, atol=1e-4
+                )
 
 
 # ---------------test reused requantize op, no shift------------------------
