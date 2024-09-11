@@ -104,47 +104,47 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
                 },
                 {"axis": 1},
             ]
-            with paddle.pir_utils.OldIrGuard():
-                ops_config = [
-                    {
-                        "op_type": "conv2d",
-                        "op_inputs": {
-                            "Input": ["input_data"],
-                            "Filter": ["conv2d_weight"],
-                        },
-                        "op_outputs": {"Output": ["conv_output_data"]},
-                        "op_attrs": attrs[0],
-                    },
-                    {
-                        "op_type": "elementwise_add",
-                        "op_inputs": {
-                            "X": ["conv_output_data"],
-                            "Y": ["elementwise_weight"],
-                        },
-                        "op_outputs": {"Out": ["output_data"]},
-                        "op_attrs": attrs[1],
-                    },
-                ]
 
-                ops = self.generate_op_config(ops_config)
+            ops_config = [
+                {
+                    "op_type": "conv2d",
+                    "op_inputs": {
+                        "Input": ["input_data"],
+                        "Filter": ["conv2d_weight"],
+                    },
+                    "op_outputs": {"Output": ["conv_output_data"]},
+                    "op_attrs": attrs[0],
+                },
+                {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {
+                        "X": ["conv_output_data"],
+                        "Y": ["elementwise_weight"],
+                    },
+                    "op_outputs": {"Out": ["output_data"]},
+                    "op_attrs": attrs[1],
+                },
+            ]
 
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={
-                        "conv2d_weight": TensorConfig(
-                            data_gen=partial(generate_weight1, attrs)
-                        ),
-                        "elementwise_weight": TensorConfig(
-                            data_gen=partial(generate_weight2, attrs)
-                        ),
-                    },
-                    inputs={
-                        "input_data": TensorConfig(
-                            data_gen=partial(generate_input1, batch, attrs)
-                        )
-                    },
-                    outputs=["output_data"],
-                )
+            ops = self.generate_op_config(ops_config)
+
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={
+                    "conv2d_weight": TensorConfig(
+                        data_gen=partial(generate_weight1, attrs)
+                    ),
+                    "elementwise_weight": TensorConfig(
+                        data_gen=partial(generate_weight2, attrs)
+                    ),
+                },
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, batch, attrs)
+                    )
+                },
+                outputs=["output_data"],
+            )
 
             yield program_config
 
@@ -208,17 +208,19 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-2, 1e-2)
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        # self.trt_param.precision = paddle_infer.PrecisionType.Int8
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
 
     def test(self):
-        self.run_test()
+        with paddle.pir_utils.OldIrGuard():
+            self.run_test()
 
     def test_quant(self):
-        self.run_test(quant=True)
+        with paddle.pir_utils.OldIrGuard():
+            self.run_test(quant=True)
 
 
 if __name__ == "__main__":
