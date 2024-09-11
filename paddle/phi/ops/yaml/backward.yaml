@@ -444,6 +444,7 @@
   output : Tensor(input_grad), Tensor(filter_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
+    spmd_rule : Conv2dGradInferSpmd
     param : [input, filter]
   kernel :
     func : conv2d_grad
