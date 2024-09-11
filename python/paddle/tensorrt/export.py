@@ -638,15 +638,20 @@ def convert_loaded_model(model_dir, config):
             f"No valid model file found in the directory '{model_dir}'. Expected either 'json' or 'pdmodel'. Please ensure that the directory contains one of these files."
         )
 
-    params_filename = model_dir + '.pdiparams'
-
-    with paddle.pir_utils.IrGuard():
+    if model_filename.endswith('.json'):
+        with paddle.pir_utils.IrGuard():
+            [program, feed_target_names, fetch_targets] = (
+                paddle.static.io.load_inference_model(
+                    model_dir,
+                    executor=exe,
+                )
+            )
+    else:
+        paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
         [program, feed_target_names, fetch_targets] = (
             paddle.static.io.load_inference_model(
                 model_dir,
                 executor=exe,
-                model_filename=model_filename,
-                params_filename=params_filename,
             )
         )
 
