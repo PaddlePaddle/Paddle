@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 import errno
 import os
 import random
-import tempfile
 import unittest
+import warnings
 
 import numpy as np
 
@@ -24,56 +24,118 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.core import AnalysisConfig, create_paddle_predictor
+from paddle.base.framework import IrGraph
+from paddle.static import Variable
+from paddle.static.io import append_fetch_ops, prepend_feed_ops
+from paddle.static.quantization import (
+    AddQuantDequantPass,
+    OutScaleForInferencePass,
+    OutScaleForTrainingPass,
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+)
 
 
-class InferencePassTest(unittest.TestCase):
+class QuantDequantTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
-        paddle.enable_static()
         super().__init__(methodName)
         paddle.enable_static()
-        with paddle.pir_utils.OldIrGuard():
-            self.main_program = base.Program()
-            self.startup_program = base.Program()
+        self.main_program = paddle.static.Program()
+        self.startup_program = paddle.static.Program()
+        self.test_main_program = paddle.static.Program()
+        self.test_startup_program = paddle.static.Program()
         self.feeds = None
         self.fetch_list = None
-
         self.enable_mkldnn = False
         self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
-        self.enable_tensorrt_varseqlen = False
+        self.enable_tensorrt_varseqlen = True
         self.trt_parameters = None
         self.dynamic_shape_params = None
         self.enable_lite = False
         self.lite_parameters = None
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.path = os.path.join(
-            self.temp_dir.name, 'inference_pass', self.__class__.__name__
-        )
+        self.path = "./inference_pass/" + self.__class__.__name__
+        self.data = None
+        self.label = None
+        self.result = None
         np.random.seed(1)
         random.seed(1)
 
-    def _get_place(self):
-        return {False, core.is_compiled_with_cuda()}
+    # from Paddle release2.1
+    def _normalize_program(self, program, feed_vars, fetch_vars):
+        if not isinstance(program, paddle.static.Program):
+            raise TypeError(
+                f"program type must be `paddle.static.Program`, but received `{type(program)}`"
+            )
+        if not isinstance(feed_vars, list):
+            feed_vars = [feed_vars]
+        if not all(isinstance(v, Variable) for v in feed_vars):
+            raise TypeError(
+                "feed_vars type must be a Variable or a list of Variable."
+            )
+        if not isinstance(fetch_vars, list):
+            fetch_vars = [fetch_vars]
+        if not all(isinstance(v, Variable) for v in fetch_vars):
+            raise TypeError(
+                "fetch_vars type must be a Variable or a list of Variable."
+            )
+
+        # remind users to set auc_states to 0 if auc op were found.
+        for op in program.global_block().ops:
+            # clear device of Op
+            device_attr_name = (
+                core.op_proto_and_checker_maker.kOpDeviceAttrName()
+            )
+            op._set_attr(device_attr_name, "")
+            if op.type == 'auc':
+                warnings.warn(
+                    "Be sure that you have set auc states to 0 "
+                    "before saving inference model."
+                )
+                break
+
+        # serialize program
+        copy_program = program.clone()
+        global_block = copy_program.global_block()
+        remove_op_idx = []
+        for i, op in enumerate(global_block.ops):
+            op.desc.set_is_target(False)
+            if op.type == "feed" or op.type == "fetch":
+                remove_op_idx.append(i)
+        for idx in remove_op_idx[::-1]:
+            global_block._remove_op(idx)
+        copy_program.desc.flush()
+
+        feed_var_names = [var.name for var in feed_vars]
+        copy_program = copy_program._prune_with_input(
+            feeded_var_names=feed_var_names, targets=fetch_vars
+        )
+        copy_program = copy_program._inference_optimize(prune_read_op=True)
+        fetch_var_names = [var.name for var in fetch_vars]
+        prepend_feed_ops(copy_program, feed_var_names)
+        append_fetch_ops(copy_program, fetch_var_names)
+        copy_program.desc._set_version()
+        return copy_program
 
     def _save_models(
         self, dirname, feeded_var_names, target_vars, executor, program, scope
     ):
-        with base.scope_guard(scope):
-            # save models as combined but sometimes params is null
-            # To adapt to this situation, the path needs to be adjusted to the old version format.
-            feeded_vars = []
-            for var in program.list_vars():
-                if var.name in feeded_var_names:
-                    feeded_vars.append(var)
+        # save models as combined but sometimes params is null
+        # To adapt to this situation, the path needs to be adjusted to the old version format.
+        feeded_vars = []
+        for var in program.list_vars():
+            if var.name in feeded_var_names:
+                feeded_vars.append(var)
 
+        with paddle.static.scope_guard(scope):
             paddle.static.io.save_inference_model(
                 dirname,
                 feeded_vars,
                 target_vars,
                 executor,
                 program=program,
+                clip_extra=True,
             )
-
             # if the param save is null
             # replace model_path to old version
             param_file = dirname + ".pdiparams"
@@ -89,16 +151,16 @@ class InferencePassTest(unittest.TestCase):
                 if not os.path.exists(model_path_old):
                     os.rename(model_path, model_path_old)
 
-    def _get_paddle_outs(self, executor, program, scope):
+    def _get_paddle_outs(self, feed, fetch_list, executor, program, scope):
         '''
         Return PaddlePaddle outputs.
         '''
-        with base.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             outs = executor.run(
                 program=program,
-                feed=self.feeds,
-                fetch_list=self.fetch_list,
-                return_numpy=False,
+                feed=feed,
+                fetch_list=fetch_list,
+                return_numpy=True,
             )
         return outs
 
@@ -125,7 +187,6 @@ class InferencePassTest(unittest.TestCase):
             predictor.get_output_tensor(out_name).copy_to_cpu()
             for out_name in output_names
         ]
-
         return outs
 
     def _get_analysis_config(
@@ -158,14 +219,6 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.use_static,
                     self.trt_parameters.use_calib_mode,
                 )
-                if self.trt_parameters.use_inspector:
-                    config.enable_tensorrt_inspector(
-                        self.trt_parameters.inspector_serialize
-                    )
-                    self.assertTrue(
-                        config.tensorrt_inspector_enabled(),
-                        "The inspector option is not set correctly.",
-                    )
 
                 if self.dynamic_shape_params:
                     config.set_trt_dynamic_shape_info(
@@ -181,21 +234,7 @@ class InferencePassTest(unittest.TestCase):
             config.enable_mkldnn()
             if self.enable_mkldnn_bfloat16:
                 config.enable_mkldnn_bfloat16()
-        print('config summary:', config.summary())
         return config
-
-    def check_output(self, atol=1e-5):
-        '''
-        Check whether calculating on CPU and GPU, enable TensorRT
-        or disable TensorRT, enable MKLDNN or disable MKLDNN
-        are all the same.
-        '''
-        self.assertFalse(
-            self.feeds is None, "The inputs of the model is None. "
-        )
-        use_gpu = self._get_place()
-        for place_ in use_gpu:
-            self.check_output_with_option(place_, atol)
 
     def check_output_with_option(
         self, use_gpu, atol=1e-5, flatten=False, quant=False, rtol=1e-5
@@ -205,27 +244,88 @@ class InferencePassTest(unittest.TestCase):
         or disable TensorRT, enable MKLDNN or disable MKLDNN
         are all the same.
         '''
-        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
-        executor = base.Executor(place)
-        with paddle.pir_utils.OldIrGuard():
-            scope = base.Scope()
-            device = "GPU" if use_gpu else "CPU"
-            with base.scope_guard(scope):
-                executor.run(self.startup_program)
-            self._save_models(
-                self.path,
-                list(self.feeds.keys()),
-                self.fetch_list,
-                executor,
-                self.main_program,
-                scope,
+        place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+        executor = paddle.static.Executor(place)
+        scope = paddle.static.Scope()
+        device = "GPU" if use_gpu else "CPU"
+
+        with paddle.static.scope_guard(scope):
+            executor.run(self.startup_program)
+            executor.run(self.test_startup_program)
+        main_graph = IrGraph(core.Graph(self.main_program.desc), for_test=False)
+        test_graph = IrGraph(
+            core.Graph(self.test_main_program.desc), for_test=True
+        )
+
+        transform_pass = QuantizationTransformPass(
+            scope=scope,
+            place=place,
+            activation_quantize_type=self.activation_quantize_type,
+            weight_quantize_type=self.weight_quantize_type,
+        )
+        transform_pass.apply(main_graph)
+        transform_pass.apply(test_graph)
+
+        add_quant_dequant_pass = AddQuantDequantPass(scope=scope, place=place)
+        add_quant_dequant_pass.apply(main_graph)
+        add_quant_dequant_pass.apply(test_graph)
+
+        scale_training_pass = OutScaleForTrainingPass(scope=scope, place=place)
+        scale_training_pass.apply(main_graph)
+
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.memory_optimize = False
+        build_strategy.enable_inplace = False
+        build_strategy.fuse_all_reduce_ops = False
+        binary = paddle.static.CompiledProgram(main_graph.graph)
+
+        iters = 10
+        batch_size = 1
+        train_reader = paddle.batch(
+            paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
+            batch_size=batch_size,
+        )
+        feeder = base.DataFeeder(feed_list=[self.data, self.label], place=place)
+        with paddle.static.scope_guard(scope):
+            for _ in range(iters):
+                data = next(train_reader())
+                loss_v = executor.run(
+                    binary, feed=feeder.feed(data), fetch_list=[self.loss]
+                )
+
+        scale_inference_pass = OutScaleForInferencePass(scope=scope)
+        scale_inference_pass.apply(test_graph)
+
+        # Freeze graph for inference, but the weight of fc/conv is still float type.
+        freeze_pass = QuantizationFreezePass(
+            scope=scope,
+            place=place,
+            weight_quantize_type=self.weight_quantize_type,
+        )
+        freeze_pass.apply(test_graph)
+
+        self.main_program = test_graph.to_program()
+
+        with paddle.static.scope_guard(scope):
+            self.main_program = self._normalize_program(
+                self.main_program, self.data, self.fetch_list
             )
-            paddle_outs = self._get_paddle_outs(
-                executor, self.main_program, scope
-            )
-            inference_outs = self._get_inference_outs(
-                self._get_analysis_config(use_gpu=use_gpu)
-            )
+
+        self._save_models(
+            self.path,
+            list(self.feeds.keys()),
+            self.fetch_list,
+            executor,
+            self.main_program,
+            scope,
+        )
+
+        paddle_outs = self._get_paddle_outs(
+            self.feeds, self.fetch_list, executor, self.main_program, scope
+        )
+        inference_outs = self._get_inference_outs(
+            self._get_analysis_config(use_gpu=use_gpu)
+        )
 
         # Check whether the results calculated on CPU and on GPU are the same.
         self.assertTrue(
@@ -235,6 +335,7 @@ class InferencePassTest(unittest.TestCase):
 
         for out, inference_out in zip(paddle_outs, inference_outs):
             paddle_out = np.array(out)
+
             if flatten:
                 paddle_out = paddle_out.flatten()
                 inference_out = inference_out.flatten()
@@ -272,13 +373,14 @@ class InferencePassTest(unittest.TestCase):
                 paddle_outs, tensorrt_outputs
             ):
                 paddle_out = np.array(paddle_out)
+
                 if flatten:
                     paddle_out = paddle_out.flatten()
                     tensorrt_output = tensorrt_output.flatten()
 
                 np.testing.assert_allclose(
-                    tensorrt_output,
                     paddle_out,
+                    tensorrt_output,
                     rtol=rtol,
                     atol=atol,
                     err_msg='Output has diff between GPU and TensorRT. ',
@@ -321,8 +423,6 @@ class InferencePassTest(unittest.TestCase):
             precision,
             use_static,
             use_calib_mode,
-            use_inspector=False,
-            inspector_serialize=False,
         ):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
@@ -330,8 +430,6 @@ class InferencePassTest(unittest.TestCase):
             self.precision = precision
             self.use_static = use_static
             self.use_calib_mode = use_calib_mode
-            self.use_inspector = use_inspector
-            self.inspector_serialize = inspector_serialize
 
     class DynamicShapeParam:
         '''
@@ -350,12 +448,7 @@ class InferencePassTest(unittest.TestCase):
             self.optim_input_shape = optim_input_shape
             self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
 
-    class LiteParam:
-        '''
-        Prepare Lite subgraph engine parameters.
-        '''
-
-        def __init__(self, precision, passes_filter, ops_filter):
-            self.precision = precision
-            self.passes_filter = passes_filter
-            self.ops_filter = ops_filter
+    def quant_dequant(self):
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        scope = paddle.static.Scope()
