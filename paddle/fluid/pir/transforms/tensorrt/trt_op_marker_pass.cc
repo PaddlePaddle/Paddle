@@ -1165,11 +1165,6 @@ class ArgmaxOpPattern
       return false;
     }
     auto x = op.x();
-    if (!x.type().isa<paddle::dialect::DenseTensorType>()) {
-      VLOG(3) << "Skip to convert into TRT while found x is not DenseTensor "
-                 "type in arg_max.";
-      return false;
-    }
     auto x_tensor_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto data_type = paddle::dialect::TransToPhiDataType(x_tensor_type.dtype());
     if (!(data_type == phi::DataType::FLOAT32 ||

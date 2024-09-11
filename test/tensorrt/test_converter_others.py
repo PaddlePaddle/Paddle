@@ -67,5 +67,19 @@ class TestMulticlassNMS3TRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestMulticlassNMS3Marker(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = multiclass_nms3
+        self.api_args = {
+            "bboxes": np.random.randn(2, 5, 4, 1).astype(np.float32),
+            "scores": np.random.randn(2, 4, 5, 1).astype(np.float32),
+        }
+        self.program_config = {"feed_list": ["bboxes", "scores"]}
+        self.target_marker_op = "pd_op.multiclass_nms3"
+
+    def test_trt_result(self):
+        self.check_marker(expected_result=False)
+
+
 if __name__ == '__main__':
     unittest.main()

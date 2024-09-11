@@ -34,6 +34,7 @@ class TensorRTBaseTest(unittest.TestCase):
         self.program_config = None
         self.min_shape = None
         self.max_shape = None
+        self.target_marker_op = ""
 
     def create_fake_program(self):
         if self.python_api is None:
@@ -210,3 +211,16 @@ class TensorRTBaseTest(unittest.TestCase):
                 rtol=1e-3,
                 atol=1e-3,
             )
+
+    def check_marker(self, expected_result):
+        paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
+        with paddle.pir_utils.IrGuard():
+            main_program, startup_program, fetch_list = (
+                self.create_fake_program()
+            )
+            main_program = run_pir_pass(main_program, partition_mode=False)
+            marker_result = False
+            for op in main_program.global_block().ops:
+                if op.name() == self.target_marker_op:
+                    marker_result = op.attrs().get("__l_trt__", False)
+            self.assertEqual(marker_result, expected_result)
