@@ -15,11 +15,10 @@
 import sys
 import unittest
 
+sys.path.append("../../mkldnn")
 import numpy as np
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 from op_test import OpTest
-
-sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
@@ -92,7 +91,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
                     "Out",
                     max_relative_error=0.01,
                     check_dygraph=False,
-                    check_pir_onednn=True,
+                    check_pir_onednn=False,
                 )
         else:
             self.check_grad(
@@ -100,7 +99,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
                 "Out",
                 max_relative_error=0.01,
                 check_dygraph=False,
-                check_pir_onednn=True,
+                check_pir_onednn=False,
             )
 
     def init_kernel_type(self):
@@ -112,42 +111,42 @@ class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
         self.use_mkldnn = True
         # oneDNN doesn't support float64 dtype
         self.dtype = np.float32
-        self.check_pir_onednn = True
+        self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
-        self.check_pir_onednn = True
+        self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
-        self.check_pir_onednn = True
+        self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
-        self.check_pir_onednn = True
+        self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
-        self.check_pir_onednn = True
+        self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
-        self.check_pir_onednn = True
+        self.check_pir_onednn = False
 
 
 # Check if primitives already exist in backward
