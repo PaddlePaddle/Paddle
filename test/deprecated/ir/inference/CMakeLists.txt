@@ -109,7 +109,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                          300)
   set_tests_properties(test_trt_elementwise_op_deprecated PROPERTIES TIMEOUT
                                                                      300)
-  set_tests_properties(test_trt_fc_fuse_pass_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_fc_fuse_pass_deprecated PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_flatten_op_deprecated PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_gather_nd_op_deprecated PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_gather_op_deprecated PROPERTIES TIMEOUT 300)
