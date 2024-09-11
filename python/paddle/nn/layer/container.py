@@ -595,6 +595,20 @@ class Sequential(Layer):
             >>> model2.add_sublayer('l3', paddle.nn.Linear(3, 3))  # add sublayer
             >>> res2 = model2(data)  # sequential execution
 
+            >>> # append single layer at the end of sequential
+            >>> model2 = paddle.nn.Sequential(paddle.nn.Linear(10, 20))
+            >>> model2.append(paddle.nn.Linear(20, 30))
+            >>> res2 = model2(data)  # [30, 30]
+
+            >>> # insert single layer at the given position
+            >>> model2 = paddle.nn.Sequential(paddle.nn.Linear(20, 30))
+            >>> model2.insert(0, paddle.nn.Linear(10, 20))
+            >>> res2 = model2(data)  # [30, 30]
+
+            >>> # extend sequential with given sequence of layer(s) at the end
+            >>> model2 = paddle.nn.Sequential()
+            >>> model2.extend([paddle.nn.Linear(10, 20), paddle.nn.Linear(20, 30)])
+            >>> res2 = model2(data)  # [30, 30]
     """
 
     def __init__(self, *layers: Layer | tuple[str, Layer] | list[Any]) -> None:
@@ -636,3 +650,28 @@ class Sequential(Layer):
         for layer in self._sub_layers.values():
             input = layer(input)
         return input
+
+    def append(self, module: Layer) -> Sequential:
+        self.add_sublayer(str(len(self)), module)
+        return self
+
+    def insert(self, index: int, module: Layer) -> Sequential:
+        if not isinstance(module, Layer):
+            raise AssertionError(f'module should be of type: {Layer}')
+        n = len(self._sub_layers)
+        if not (-n <= index <= n):
+            raise IndexError(f'Index out of range: {index}')
+        if index < 0:
+            index += n
+        for i in range(n, index, -1):
+            self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
+        self._sub_layers[str(index)] = module
+        return self
+
+    def extend(self, sequential: Iterable[Layer]) -> Sequential:
+        for layer in sequential:
+            self.append(layer)
+        return self
+
+    def __iter__(self) -> Iterator[Layer]:
+        return iter(self._sub_layers.values())

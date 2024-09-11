@@ -75,6 +75,10 @@ def concat_net3(x):
     return paddle.concat(x, axis=0)
 
 
+def cumprod_net(x):
+    return paddle.cumprod(x, 1)
+
+
 def cumsum_net(x):
     return paddle.cumsum(x, axis=1)
 
@@ -497,6 +501,18 @@ class TestPrimConcatWithGrad6(TestPrimConcatWithGrad5):
         x = np.random.random(self.x_shape).astype(self.dtype)
         self.x = [x + i for i in range(4)]
         self.net = concat_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimCumprodWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = cumprod_net
         self.enable_cinn = False
         self.tol = 1e-6
 

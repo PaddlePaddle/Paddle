@@ -1152,15 +1152,6 @@ void FusedConvInferMeta(const MetaTensor& input,
                         MetaTensor* out,
                         MetaConfig config = MetaConfig());
 
-void MoeInferMeta(const MetaTensor& x,
-                  const MetaTensor& gate,
-                  const MetaTensor& bmm0,
-                  const MetaTensor& bias0,
-                  const MetaTensor& bmm1,
-                  const MetaTensor& bias1,
-                  const std::string& act_type,
-                  MetaTensor* out);
-
 void FusedMoeInferMeta(const MetaTensor& X,
                        const MetaTensor& gate_weight,
                        const MetaTensor& ffn1_weight,
