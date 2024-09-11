@@ -111,7 +111,6 @@ from paddle import (
     sparse as sparse,
     static as static,
     sysconfig as sysconfig,
-    tensor as tensor,
     vision as vision,
 )
 
@@ -124,6 +123,7 @@ from . import (
     hub as hub,
     linalg as linalg,
     signal as signal,
+    tensor as tensor,
 )
 from .autograd import (
     enable_grad,
