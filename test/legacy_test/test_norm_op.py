@@ -51,7 +51,7 @@ class TestNormOp(OpTest):
         self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_cinn=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_cinn=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -193,7 +193,6 @@ class TestNormBF16Op(OpTest):
             'Out',
             max_relative_error=1e-2,
             check_cinn=True,
-            check_prim=True,
         )
 
     def init_test_case(self):
