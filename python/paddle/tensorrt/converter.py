@@ -325,7 +325,7 @@ class PaddleToTensorRTConverter:
         if isinstance(outs, trt.ITensor):
             return (outs,)
         else:
-            return (outs,)
+            return outs
         # else:
         #     raise TypeError(
         #         f"Expected outputs to be a tuple or ITensor, but got {type(outs)}"
