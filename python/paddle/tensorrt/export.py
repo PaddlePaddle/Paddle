@@ -654,5 +654,6 @@ def convert_loaded_model(model_dir, config):
                 executor=exe,
             )
         )
+        paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": False})
 
     return convert_to_trt(program, config, scope)
