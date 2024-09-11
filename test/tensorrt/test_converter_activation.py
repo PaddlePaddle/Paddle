@@ -20,22 +20,9 @@ from tensorrt_test_base import TensorRTBaseTest
 import paddle
 
 
-class TestSqrtTRTPattern(TensorRTBaseTest):
+class TestHardSigmoidTRTPattern(TensorRTBaseTest):
     def setUp(self):
-        self.python_api = paddle.sqrt
-        self.api_args = {
-            "x": np.random.randn(7, 3).astype(np.float32),
-        }
-        self.program_config = {"feed_list": ["x"]}
-        self.min_shape = {"x": [3, 3]}
-        self.max_shape = {"x": [10, 3]}
-    def test_trt_result(self):
-        self.check_trt_result()
-
-
-class TestSigmoidTRTPattern(TensorRTBaseTest):
-    def setUp(self):
-        self.python_api = paddle.nn.functional.sigmoid
+        self.python_api = paddle.nn.functional.hardsigmoid
         self.api_args = {
             "x": np.random.randn(2, 3).astype(np.float32),
         }
@@ -47,5 +34,19 @@ class TestSigmoidTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-if __name__ == "__main__":
+class TestHardSwishTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.nn.functional.hardswish
+        self.api_args = {
+            "x": np.random.randn(2, 3).astype(np.float32),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3], "y": [1, 3]}
+        self.max_shape = {"x": [5, 3], "y": [5, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+if __name__ == '__main__':
     unittest.main()
