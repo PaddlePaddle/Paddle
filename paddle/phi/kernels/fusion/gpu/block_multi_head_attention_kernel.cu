@@ -570,12 +570,7 @@ void DispatchWithDtype(
       // Reshape fmha_buf back (to 2-D), to not affect following codes.
       fmha_buf.Resize(fmha_shape);
     } else {
-      // NOTE: not support gqa
       if (sm < 80 && !use_pre_cache) {
-        if (q_num_head != kv_num_head) {
-          PADDLE_THROW(common::errors::Unimplemented(
-              "Only supported MHA on Volta/Turing(sm < 80) now."));
-        }
         qkv_transpose_split<T>(
             dev_ctx,
             q_trans.data<T>(),
@@ -589,6 +584,7 @@ void DispatchWithDtype(
             token_num,
             bsz,
             q_num_head,
+            kv_num_head,
             max_enc_len_this_time_data,
             max_seq_len,
             pre_cache_length,
@@ -607,6 +603,7 @@ void DispatchWithDtype(
             token_num,
             bsz,
             q_num_head,
+            kv_num_head,
             max_enc_len_this_time_data,
             max_seq_len,
             pre_cache_length,

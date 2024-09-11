@@ -13,18 +13,21 @@
 # limitations under the License.
 
 # from test_layer_norm_op import *
+import sys
 import unittest
 from functools import reduce
 from operator import mul
 
+sys.path.append("../../mkldnn")
 import numpy as np
 from op_test import _set_use_system_allocator, convert_float_to_uint16
-from test_layer_norm_mkldnn_op import (
+from test_layer_norm_mkldnn_op_deprecated import (
     TestLayerNormMKLDNNOp,
     _reference_layer_norm_naive,
 )
 from utils import pir_executor_guard
 
+import paddle
 from paddle import base, enable_static
 from paddle.base import core
 
@@ -75,63 +78,65 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
             var_names.append('scale')
             var_names.append('bias')
         ground_truth = {name: var_dict[name] for name in var_names}
+        with paddle.pir_utils.OldIrGuard():
+            program = base.Program()
+            with base.program_guard(program):
+                block = program.global_block()
 
-        program = base.Program()
-        with base.program_guard(program):
-            block = program.global_block()
+                # scale and bias are fp32 and other vars are of bf16
+                for name in ground_truth:
+                    if name == 'x_bf16' or name == 'y_bf16':
+                        block.create_var(
+                            name=name,
+                            dtype='uint16',
+                            shape=ground_truth[name].shape,
+                        )
+                    else:
+                        block.create_var(
+                            name=name,
+                            dtype='float32',
+                            shape=ground_truth[name].shape,
+                        )
 
-            # scale and bias are fp32 and other vars are of bf16
-            for name in ground_truth:
-                if name == 'x_bf16' or name == 'y_bf16':
-                    block.create_var(
-                        name=name,
-                        dtype='uint16',
-                        shape=ground_truth[name].shape,
-                    )
-                else:
-                    block.create_var(
-                        name=name,
-                        dtype='float32',
-                        shape=ground_truth[name].shape,
-                    )
+                inputs = {"X": block.var('x_bf16')}
+                if with_scale_bias:
+                    inputs["Scale"] = block.var('scale')
+                    inputs["Bias"] = block.var('bias')
 
-            inputs = {"X": block.var('x_bf16')}
-            if with_scale_bias:
-                inputs["Scale"] = block.var('scale')
-                inputs["Bias"] = block.var('bias')
+                block.append_op(
+                    type="layer_norm",
+                    inputs=inputs,
+                    outputs={
+                        "Y": block.var('y_bf16'),
+                        "Mean": block.var('mean'),  # share the same memory
+                        "Variance": block.var(
+                            'variance'
+                        ),  # share the same memory
+                    },
+                    attrs={
+                        "epsilon": epsilon,
+                        "begin_norm_axis": begin_norm_axis,
+                        "use_mkldnn": True,
+                        "is_test": with_is_test,
+                    },
+                )
 
-            block.append_op(
-                type="layer_norm",
-                inputs=inputs,
-                outputs={
-                    "Y": block.var('y_bf16'),
-                    "Mean": block.var('mean'),  # share the same memory
-                    "Variance": block.var('variance'),  # share the same memory
-                },
-                attrs={
-                    "epsilon": epsilon,
-                    "begin_norm_axis": begin_norm_axis,
-                    "use_mkldnn": True,
-                    "is_test": with_is_test,
-                },
-            )
+                exe = base.Executor(core.CPUPlace())
 
-            exe = base.Executor(core.CPUPlace())
+                input_list = ['x_bf16']
+                if with_scale_bias:
+                    input_list.append('scale')
+                    input_list.append('bias')
 
-            input_list = ['x_bf16']
-            if with_scale_bias:
-                input_list.append('scale')
-                input_list.append('bias')
-
-            out = exe.run(
-                program,
-                feed={name: var_dict[name] for name in input_list},
-                fetch_list=['y_bf16', 'mean', 'variance'],
-            )
-            self.__assert_close(y_bf16, out[0], "y_bf16", 2)
-            if not with_is_test:
-                self.__assert_close(mean, out[1], "mean")
-                self.__assert_close(variance, out[2], "variance", 1e-3)
+                out = exe.run(
+                    program,
+                    feed={name: var_dict[name] for name in input_list},
+                    fetch_list=['y_bf16', 'mean', 'variance'],
+                )
+                self.__assert_close(y_bf16, out[0], "y_bf16", 2)
+                if not with_is_test:
+                    self.__assert_close(mean, out[1], "mean")
+                    self.__assert_close(variance, out[2], "variance", 1e-3)
 
     def test_check_forward_with_is_test(self):
         with pir_executor_guard():
