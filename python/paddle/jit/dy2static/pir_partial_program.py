@@ -698,7 +698,7 @@ class PartialProgramLayer:
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runnable_program.clone()
             for hooker in self._hookers:
-                hooker.after_infer(infer_program)
+                infer_program = hooker.after_infer(infer_program)
             infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:

@@ -1250,8 +1250,6 @@ class _ExecutorCache:
                     value.block.program, value, fetch_var_name + str(i), i
                 )
 
-        new_exe = _StandaloneExecutor(place, plan, scope)
-
         data_op_infos = []
         global_block = program.global_block()
         for op in global_block.ops:
@@ -1279,6 +1277,11 @@ class _ExecutorCache:
 
         if in_cinn_mode():
             apply_cinn_pass(program)
+
+        if cached_data.plan is None:
+            type_to_program = {"default": program}
+            plan = core.Plan([default_job], type_to_program)
+        new_exe = _StandaloneExecutor(place, plan, scope)
         return program, new_exe, data_op_infos
 
 
@@ -2262,6 +2265,7 @@ class Executor:
             scope,
             self.plan,
         )
+        # breakpoint()
         self._pir_feed_data(program, feed, scope, data_op_infos)
 
         if hasattr(program, 'lr_scheduler'):
