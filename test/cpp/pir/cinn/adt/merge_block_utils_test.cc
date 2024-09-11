@@ -17,86 +17,91 @@
 #include <sstream>
 
 #include "paddle/cinn/optim/merge_block_utils.h"
-#include "test/cpp/pir/tools/test_pir_utils.h"
 
 namespace cinn {
 namespace optim {
 
 namespace {
 
-ir::Expr MakeFor(const std::vector<int> extents,
-                 const std::string& name,
-                 const int index) {
-  if (index == extents.size()) {
-    ir::Expr expr = ir::Expr(0);
-    ir::Expr sb = ir::ScheduleBlock::Make(std::vector<Var>(),
-                                          std::vector<Expr>(),
-                                          std::vector<Expr>(),
-                                          name,
-                                          expr);
-    return sb;
+std::vector<ir::Expr> MakeFor(const std::vector<int> extents) {
+  ir::Expr sb = ir::ScheduleBlock::Make(std::vector<Var>(),
+                                        std::vector<Expr>(),
+                                        std::vector<Expr>(),
+                                        "block",
+                                        ir::Expr(0));
+  std::vector<ir::Expr> for_loops;
+  for (size_t i = 0; i < extents.size(); ++i) {
+    ir::Expr extent = ir::Expr(extents.at(i));
+    ir::Expr for_expr = ir::For::Make(ir::Var("i"),
+                                      ir::Expr(0),
+                                      extent,
+                                      ir::ForType::Serial,
+                                      ir::DeviceAPI::CUDA,
+                                      sb,
+                                      ir::VectorizeInfo(),
+                                      ir::BindInfo());
+    for_loops.push_back(for_expr);
   }
-  ir::Expr min = ir::Expr(0);
-  ir::Expr extent = ir::Expr(extents.at(index));
-  ir::Expr f1 = ir::For::Make(ir::Var("i"),
-                              min,
-                              extent,
-                              ir::ForType::Serial,
-                              ir::DeviceAPI::CUDA,
-                              MakeFor(extents, name, index + 1),
-                              ir::VectorizeInfo(),
-                              ir::BindInfo());
-  return f1;
+
+  return for_loops;
+}
+
+std::vector<ir::For*> ConvertForLoops(std::vector<ir::Expr> loops) {
+  std::vector<ir::For*> p_for_loops;
+  for (auto& loop : loops) {
+    p_for_loops.push_back(loop.As<ir::For>());
+  }
+  return p_for_loops;
 }
 
 TEST(ForInfo, ForInfoCheckerEqual) {
-  ir::Expr* source;
-  ir::Expr expr;
-  ir::Expr f1;
-  ir::Expr f2;
+  std::vector<ir::Expr> for_loop1;
+  std::vector<ir::Expr> for_loop2;
+  std::vector<ir::For*> f1;
+  std::vector<ir::For*> f2;
 
-  f1 = MakeFor({10}, "f1", 0);
-  f2 = MakeFor({10}, "f2", 0);
-  expr = ir::Block::Make({f1, f2});
-  source = &expr;
-  EXPECT_TRUE(CanMergeBlocks(source, "f1", "f2"));
+  for_loop1 = MakeFor({10});
+  for_loop2 = MakeFor({10});
+  f1 = ConvertForLoops(for_loop1);
+  f2 = ConvertForLoops(for_loop2);
+  EXPECT_TRUE(CanMergeBlocks(f1, f2));
 
-  f1 = MakeFor({10, 5}, "f1", 0);
-  f2 = MakeFor({10, 5}, "f2", 0);
-  expr = ir::Block::Make({f1, f2});
-  source = &expr;
-  EXPECT_TRUE(CanMergeBlocks(source, "f1", "f2"));
+  for_loop1 = MakeFor({10, 5});
+  for_loop2 = MakeFor({10, 5});
+  f1 = ConvertForLoops(for_loop1);
+  f2 = ConvertForLoops(for_loop2);
+  EXPECT_TRUE(CanMergeBlocks(f1, f2));
 
-  f1 = MakeFor({10, 5, 3}, "f1", 0);
-  f2 = MakeFor({10, 5, 3}, "f2", 0);
-  expr = ir::Block::Make({f1, f2});
-  source = &expr;
-  EXPECT_TRUE(CanMergeBlocks(source, "f1", "f2"));
+  for_loop1 = MakeFor({10, 5, 3});
+  for_loop2 = MakeFor({10, 5, 3});
+  f1 = ConvertForLoops(for_loop1);
+  f2 = ConvertForLoops(for_loop2);
+  EXPECT_TRUE(CanMergeBlocks(f1, f2));
 }
 
 TEST(ForInfo, ForInfoCheckerNotEqual) {
-  ir::Expr* source;
-  ir::Expr expr;
-  ir::Expr f1;
-  ir::Expr f2;
+  std::vector<ir::Expr> for_loop1;
+  std::vector<ir::Expr> for_loop2;
+  std::vector<ir::For*> f1;
+  std::vector<ir::For*> f2;
 
-  f1 = MakeFor({10}, "f1", 0);
-  f2 = MakeFor({9}, "f2", 0);
-  expr = ir::Block::Make({f1, f2});
-  source = &expr;
-  EXPECT_FALSE(CanMergeBlocks(source, "f1", "f2"));
+  for_loop1 = MakeFor({10});
+  for_loop2 = MakeFor({9});
+  f1 = ConvertForLoops(for_loop1);
+  f2 = ConvertForLoops(for_loop2);
+  EXPECT_FALSE(CanMergeBlocks(f1, f2));
 
-  f1 = MakeFor({10, 5}, "f1", 0);
-  f2 = MakeFor({10, 4}, "f2", 0);
-  expr = ir::Block::Make({f1, f2});
-  source = &expr;
-  EXPECT_FALSE(CanMergeBlocks(source, "f1", "f2"));
+  for_loop1 = MakeFor({10, 5});
+  for_loop2 = MakeFor({10, 2});
+  f1 = ConvertForLoops(for_loop1);
+  f2 = ConvertForLoops(for_loop2);
+  EXPECT_FALSE(CanMergeBlocks(f1, f2));
 
-  f1 = MakeFor({10, 5, 3}, "f1", 0);
-  f2 = MakeFor({10, 5, 2}, "f2", 0);
-  expr = ir::Block::Make({f1, f2});
-  source = &expr;
-  EXPECT_FALSE(CanMergeBlocks(source, "f1", "f2"));
+  for_loop1 = MakeFor({10, 5, 3});
+  for_loop2 = MakeFor({10, 5, 1});
+  f1 = ConvertForLoops(for_loop1);
+  f2 = ConvertForLoops(for_loop2);
+  EXPECT_FALSE(CanMergeBlocks(f1, f2));
 }
 
 }  // namespace
