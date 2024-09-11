@@ -21,6 +21,10 @@ extern "C" {
 #include <Python.h>
 #include <frameobject.h>
 #include <string.h>
+#include "paddle/fluid/pybind/sot/macros.h"
+
+#if SOT_IS_SUPPORTED
+
 #if PY_VERSION_HEX >= 0x030b0000
 #include <internal/pycore_frame.h>
 typedef _PyInterpreterFrame FrameObject;
@@ -35,6 +39,8 @@ PyObject* set_with_graph(PyObject* code);
 PyObject* setup_codes_with_graph(PyObject* code_tuple);
 PyObject* no_skip_codes(PyObject* code_tuple);
 PyObject* skip_file_prefix(PyObject* filepath_tuple);
+
+#endif
 
 #ifdef __cplusplus
 }
