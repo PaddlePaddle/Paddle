@@ -306,21 +306,12 @@ def disable_dygraph() -> None:
 def _switch_tracer_mode_guard_(
     is_train: bool = True,
 ) -> Generator[None, None, None]:
-    tracer = framework._dygraph_tracer()
-    if tracer:
-        has_grad = tracer._has_grad
-        tracer._has_grad = is_train
-        try:
-            yield
-        finally:
-            tracer._has_grad = has_grad
-    else:
-        has_grad = core._get_g_has_grad()
-        core._set_g_has_grad(is_train)
-        try:
-            yield
-        finally:
-            core._set_g_has_grad(has_grad)
+    has_grad = core._has_grad()
+    core._set_has_grad(is_train)
+    try:
+        yield
+    finally:
+        core._set_has_grad(has_grad)
 
 
 @overload

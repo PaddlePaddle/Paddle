@@ -44,8 +44,6 @@ namespace paddle {
 namespace imperative {
 thread_local std::string Tracer::python_stack_ = "";
 
-thread_local bool Tracer::has_grad_ = true;
-
 thread_local bool Tracer::use_layout_autotune_ = false;
 
 static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
@@ -419,7 +417,7 @@ void Tracer::TraceOp(const std::string& type,
                    outs,
                    std::move(attrs),
                    expected_place_,
-                   has_grad_,
+                   g_has_grad,
                    inplace_map);
 }
 
@@ -548,9 +546,9 @@ void Tracer::TraceOp(const std::string& type,
 TEST_API void Tracer::SetExpectedPlace(phi::Place place) {
   expected_place_ = place;
 }
-TEST_API bool Tracer::HasGrad() const { return has_grad_; }
+TEST_API bool Tracer::HasGrad() const { return g_has_grad; }
 
-TEST_API void Tracer::SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
+TEST_API void Tracer::SetHasGrad(bool has_grad) { g_has_grad = has_grad; }
 
 TEST_API void Tracer::SetUsePromote(bool use_promote) {
   VLOG(4) << "set use_promote to " << use_promote;
@@ -650,10 +648,6 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
         opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx));
   }
 }
-
-bool GetGHasGrad() { return g_has_grad; }
-
-void SetGHasGrad(bool has_grad) { g_has_grad = has_grad; }
 
 }  // namespace imperative
 }  // namespace paddle

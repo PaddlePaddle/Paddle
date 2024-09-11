@@ -50,10 +50,4 @@ void Controller::SetIsInBackward(bool is_in_backward) {
 
 bool Controller::GetIsInBackward() const { return is_in_backward_; }
 
-bool Controller::GetGHasGrad() { return paddle::imperative::GetGHasGrad(); }
-
-void Controller::SetGHasGrad(bool has_grad) {
-  return paddle::imperative::SetGHasGrad(has_grad);
-}
-
 }  // namespace egr

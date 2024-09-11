@@ -182,7 +182,6 @@ class Tracer {
   static thread_local std::string python_stack_;
   static thread_local bool enable_program_desc_tracing_;
   static thread_local bool use_layout_autotune_;
-  static thread_local bool has_grad_;
 };
 
 // To access static variable current_tracer
@@ -193,9 +192,6 @@ void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const std::shared_ptr<imperative::VarBase>& var, const phi::Place& place);
 
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad);
-
-bool GetGHasGrad();
-void SetGHasGrad(bool has_grad);
 
 }  // namespace imperative
 }  // namespace paddle

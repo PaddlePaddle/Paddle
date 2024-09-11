@@ -151,7 +151,7 @@ API_INNER_CODE_TEMPLATE = """
     {return_result}"""
 
 SET_STOP_GRADIENT_TEMPLATE = """
-    if (!egr::Controller::Instance().GetGHasGrad()) {{
+    if (!egr::Controller::Instance().HasGrad()) {{
         SetStopGradient({value_list});
     }}
 """

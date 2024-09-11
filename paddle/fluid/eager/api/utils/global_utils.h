@@ -93,9 +93,6 @@ class Controller {
     return paddle::imperative::GetCurrentAmpAttrs();
   }
 
-  bool GetGHasGrad();
-  void SetGHasGrad(bool has_grad);
-
   const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
   GetOpMetaInfoMap() {
     return op_meta_info_map_;
