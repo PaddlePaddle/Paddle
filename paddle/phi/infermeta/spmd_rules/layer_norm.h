@@ -53,7 +53,7 @@ SpmdInfo FastLnGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& scale,
                              const DistMetaTensor& mean,
                              const DistMetaTensor& invvar,
-                             const DistMetaTensor y_grad,
+                             const DistMetaTensor& y_grad,
                              float epsilon);
 
 }  // namespace distributed
