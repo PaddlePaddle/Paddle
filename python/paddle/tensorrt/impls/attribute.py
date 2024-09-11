@@ -11,14 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
 
-from paddle.base.log_helper import get_logger
 from paddle.tensorrt.register import converter_registry
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
-)
 
 
 @converter_registry.register("pd_op.shape", trt_version="8.x")
