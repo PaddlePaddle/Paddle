@@ -200,14 +200,8 @@ def convert_to_trt(program, trt_config, scope):
             f"program type must be paddle.base.libpaddle.pir.Program, but received {type(program)}"
         )
 
-    output_var = []
     feed_name = []
-
     for op in program.global_block().ops:
-        if op.name() == "pd_op.fetch":
-            for operand in op.operands():
-                source = operand.source()
-                output_var.append(source)
         if op.name() == "pd_op.data" or op.name() == "pd_op.feed":
             param_name = op.attrs()["name"]
             feed_name.append(param_name)
@@ -235,6 +229,10 @@ def convert_to_trt(program, trt_config, scope):
 
         # run pir pass (including trt_sub_graph_extract_pass)
         program_with_pir = run_pir_pass(program, partition_mode=True)
+
+        # Step4: run TRTConverter (would lower group_op into tensorrt_engine_op)
+        converter = PaddleToTensorRTConverter(program_with_pir, scope)
+        converter.convert_program_to_trt()
         trt_output_var = []
 
         for op in program_with_pir.global_block().ops:
@@ -242,10 +240,6 @@ def convert_to_trt(program, trt_config, scope):
                 for operand in op.operands():
                     source = operand.source()
                     trt_output_var.append(source)
-
-        # Step4: run TRTConverter (would lower group_op into tensorrt_engine_op)
-        converter = PaddleToTensorRTConverter(program_with_pir, scope)
-        converter.convert_program_to_trt()
 
         # Save PIR program as JSON
         if trt_config.save_model_dir:
@@ -628,17 +622,17 @@ def convert_loaded_model(model_dir, config):
     place = paddle.CUDAPlace(0)
     exe = paddle.static.Executor(place)
 
-    model_filename = model_dir + '.json'
+    is_json = True
     if os.path.exists(model_dir + '.json'):
-        model_filename = model_dir + '.json'
+        is_json = True
     elif os.path.exists(model_dir + '.pdmodel'):
-        model_filename = model_dir + '.pdmodel'
+        is_json = False
     else:
         raise ValueError(
             f"No valid model file found in the directory '{model_dir}'. Expected either 'json' or 'pdmodel'. Please ensure that the directory contains one of these files."
         )
 
-    if model_filename.endswith('.json'):
+    if is_json:
         with paddle.pir_utils.IrGuard():
             [program, feed_target_names, fetch_targets] = (
                 paddle.static.io.load_inference_model(
