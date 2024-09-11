@@ -29,6 +29,7 @@ class TestSqrtTRTPattern(TensorRTBaseTest):
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [3, 3]}
         self.max_shape = {"x": [10, 3]}
+
     def test_trt_result(self):
         self.check_trt_result()
 
