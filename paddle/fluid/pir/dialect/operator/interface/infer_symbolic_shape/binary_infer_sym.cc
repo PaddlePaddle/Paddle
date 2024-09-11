@@ -1272,7 +1272,6 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
           hop_length));
 
   infer_context->AddEqualCstr(window_shape[0], symbol::DimExpr{n_fft});
-
   const symbol::DimExpr seq_length = x_shape[x_rank - 1];
   const symbol::DimExpr n_frames =
       (symbol::DimExpr{1}) +
