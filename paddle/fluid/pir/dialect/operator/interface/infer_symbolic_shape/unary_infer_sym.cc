@@ -2597,7 +2597,6 @@ bool SvdOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-
   bool full_matrices =
       op->attribute<pir::BoolAttribute>("full_matrices").data();
 
