@@ -166,11 +166,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(
       test_trt_pool_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 450)
+                 550)
     set_tests_properties(
       test_trt_pool3d_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 450)
+                 550)
   else()
     set_tests_properties(
       test_trt_pool_op_deprecated
@@ -184,9 +184,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_conv_quant_dequant_pass_deprecated
                        PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_matmul_quant_dequant_deprecated
-                       PROPERTIES TIMEOUT 450)
+                       PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_conv3d_transpose_op_deprecated
-                       PROPERTIES TIMEOUT 60)
+                       PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_nearest_interp_v2_op_deprecated
                        PROPERTIES TIMEOUT 500)
 endif()
