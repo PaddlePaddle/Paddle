@@ -20,8 +20,6 @@
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
-// #include "device_launch_parameters.h"
-
 namespace cinn {
 namespace ir {
 
@@ -178,7 +176,6 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   BindCudaInfo(sch, block_id);
   VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
-  VLOG(6) << "nihao";
   // Vectorize(sch, block_id);
   VLOG(6) << "After Vectorize on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
@@ -269,7 +266,6 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
 
   // Vectorize
   const auto DoVectorize = [&](const std::vector<ir::Expr>& loops) {
-    VLOG(-1) << "loops in vectorize " << loops[0];
     std::vector<size_t> unroll_loops_idx = [&] {
       if (!vec_flatten_axis_.empty() && sp_thread > 1) {
         if (vec_reduce_axis_.empty()) {
@@ -304,7 +300,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
           if ((devProp.minor == 0) || (devProp.minor == 5))
             sps = mp * 4;
           else
-            printf("Unknown device type\n");
+            VLOG(6) << "Unknown device type";
           break;
         case 8:  // Ampere
           if (devProp.minor == 0)
@@ -314,16 +310,16 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
           else if (devProp.minor == 9)
             sps = mp * 4;  // ada lovelace
           else
-            printf("Unknown device type\n");
+            VLOG(6) << "Unknown device type";
           break;
         case 9:  // Hopper
           if (devProp.minor == 0)
             sps = mp * 4;
           else
-            printf("Unknown device type\n");
+            VLOG(6) << "Unknown device type\n";
           break;
         default:
-          printf("Unknown device type\n");
+          VLOG(6) << "Unknown device type\n";
           break;
       }
       return sps;
@@ -391,9 +387,6 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
     bool is_merge_threads =
         (getThreadInnerExtent(sch->GetLoops(block_id)) == 1l);
 
-    VLOG(-1) << "is_vec: " << is_vec;
-    VLOG(-1) << "is_merge_threads: " << is_merge_threads;
-
     // is_vec = false;
     //    start vectorizing
     if (is_vec) {
@@ -417,7 +410,6 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
         //    do nothing
         if (!vec_flatten_axis_.empty()) {
           if (sp_loop > 1 && sp_thread > 1) {
-            VLOG(-1) << "enter First condition";
             do_flatten_vec = true;
             bool is_merge_threads = sp_loop < vec_factor;
             if (is_merge_threads) {
@@ -468,7 +460,6 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
               }
             }
           } else if (sp_loop > 1 || sp_thread > 1) {
-            VLOG(-1) << "enter Second condition";
             // is_merge_threads always be true
             do_flatten_vec = true;
 
@@ -496,7 +487,6 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
           }
         }
       } else {
-        VLOG(-1) << "enter Third condition";
         // reduce
         //   shape[rd_thread, rd_loop]
         //   condition:
@@ -566,7 +556,6 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
     }
   };
 
-  VLOG(-1) << "Start Vectorize";
   DoVectorize(sch->GetLoops(block_id));
   VLOG(6) << "After Vectorize on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];

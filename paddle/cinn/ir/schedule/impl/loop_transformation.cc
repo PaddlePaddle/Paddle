@@ -142,9 +142,6 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     return extent;
   }());
 
-  VLOG(-1) << "exact_split: " << exact_split << " tot_extent: " << tot_extent
-           << " process_factors[0]: " << process_factors[0]
-           << " process_factors[1]: " << process_factors[1];
   if (!exact_split) {
     process_factors[idx_neg1] =
         cinn::common::AutoSimplify(process_factors[idx_neg1] + Expr(1));
