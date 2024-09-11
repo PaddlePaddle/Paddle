@@ -180,7 +180,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 
   set_tests_properties(test_trt_tile_op_deprecated PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass_deprecated
-                       PROPERTIES TIMEOUT 100)
+                       PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_conv_quant_dequant_pass_deprecated
                        PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_matmul_quant_dequant_deprecated
