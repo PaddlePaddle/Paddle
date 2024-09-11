@@ -12,9 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/pybind/eval_frame.h"
-#include "paddle/fluid/pybind/cpython_internals.h"
-#include "paddle/fluid/pybind/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/eval_frame.h"
+
+#if SOT_IS_SUPPORTED
+
+#include "paddle/fluid/pybind/sot/cpython_internals.h"
+#include "paddle/fluid/pybind/sot/eval_frame_tools.h"
 
 #include <Python.h>
 #include <frameobject.h>
@@ -505,3 +508,5 @@ PyMODINIT_FUNC PyInit__eval_frame() {
 
   return NULL;
 }
+
+#endif
