@@ -1443,7 +1443,6 @@ FIFTH_PARALLEL_JOB_NEW = [
     'test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass',
     'test_multiprocess_reader_exception',
     'test_multiprocess_reader_exception_deprecated',
-    'buddy_allocator_test',
     'test_multiprocess_dataloader_dataset',
     'test_multiprocess_dataloader_dynamic',
     'test_multiprocess_dataloader_static',
