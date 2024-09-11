@@ -731,8 +731,6 @@ def _to_tensor_non_static(
             # convert core.Tensor/core.LoDTensor to Tensor first
             # Currently, there is no copy when places are same
             data = paddle.Tensor(data, place=place)
-            if not data.place._equals(place):
-                data = data._copy_to(place, False)
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
