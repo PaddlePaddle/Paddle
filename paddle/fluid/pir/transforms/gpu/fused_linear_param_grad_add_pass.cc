@@ -192,7 +192,7 @@ class SplitMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
          &res.Tensor("out_grad"),
          &res.InputNoneTensor(),
          &res.InputNoneTensor()},
-        {&res.Tensor("weight_grad"), &res.InputNoneTensor()});
+        {&res.Tensor("weight_grad"), &res.OutputNoneTensor()});
   }
 };
 
