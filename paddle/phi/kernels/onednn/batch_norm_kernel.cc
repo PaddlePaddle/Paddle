@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace phi {
 
@@ -112,9 +113,22 @@ void BatchNormKernel(const Context &dev_ctx,
     EigenVectorArrayMap<T> running_variance_e(
         dev_ctx.template Alloc<T>(variance_out), C);
 
+    const auto &x_dims = x.dims();
+    int N = -1, C = -1, H = -1, W = -1, D = -1;
+    funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    N = (N == 0) ? 1 : N;
+    C = (C == 0) ? 1 : C;
+    H = (H == 0) ? 1 : H;
+    W = (W == 0) ? 1 : W;
+    D = (D == 0) ? 1 : D;
+
+    float normalization_factor =
+        static_cast<float>(N * H * W) / static_cast<float>(N * H * W - 1);
+
     running_mean_e = running_mean_e * momentum + batch_mean_e * (1. - momentum);
     running_variance_e =
-        running_variance_e * momentum + batch_variance_e * (1. - momentum);
+        running_variance_e * momentum +
+        batch_variance_e * normalization_factor * (1. - momentum);
   }
 }
 

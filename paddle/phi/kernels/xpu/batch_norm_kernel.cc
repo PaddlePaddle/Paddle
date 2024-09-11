@@ -132,6 +132,17 @@ void BatchNormKernel(const Context& dev_ctx,
                                      variance_out_data,
                                      is_nchw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm");
+
+    float normalization_factor =
+        static_cast<float>(N * H * W) / static_cast<float>(N * H * W - 1);
+    r = xpu::scale(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(variance_out_data),
+                   reinterpret_cast<XPUType*>(variance_out_data),
+                   C,
+                   false,
+                   normalization_factor,
+                   0.0f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale_variance_out");
   } else {
     const auto* mean_data = mean.data<float>();
     const auto* variance_data = variance.data<float>();

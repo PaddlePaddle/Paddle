@@ -79,6 +79,9 @@ def ref_batch_norm_train(
         bias_tile = np.reshape(bias, (1, c, 1, 1))
         bias_tile = np.reshape(bias_tile, (1, c, 1, 1))
         y = normalized_x * scale_tile + bias_tile
+        saved_variance_out = (
+            saved_variance * element_count / (element_count - 1)
+        )
     elif data_layout == "NHWC":
         x_square = x * x
         x_square_sum = np.sum(x_square, (0, 1, 2))
@@ -88,13 +91,16 @@ def ref_batch_norm_train(
         saved_variance = x_square_sum / element_count - saved_mean * saved_mean
         normalized_x = (x - saved_mean) / np.sqrt(saved_variance + epsilon)
         y = normalized_x * scale + bias
+        saved_variance_out = (
+            saved_variance * element_count / (element_count - 1)
+        )
     else:
         raise ValueError(
             "Unsupported data layout! Only NCHW and NHWC is supported, but received "
             + data_layout
         )
     mean_out = saved_mean * (1.0 - momentum) + momentum * mean
-    variance_out = saved_variance * (1.0 - momentum) + momentum * variance
+    variance_out = saved_variance_out * (1.0 - momentum) + momentum * variance
     saved_inv_std = 1.0 / np.sqrt(saved_variance + epsilon)
     # Backward
     # Use the following formulas to calculate gradients:

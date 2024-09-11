@@ -45,7 +45,8 @@ def _cal_mean_variance(x, epsilon, data_format):
     element_count = np.size(x) / C
     mean = x_sum / element_count
     var = x_square_sum / element_count - mean * mean
-    return mean, var
+    var_out = var * element_count / (element_count - 1)
+    return mean, var_out
 
 
 def _reference_training(x, scale, offset, epsilon, data_format):
@@ -75,6 +76,7 @@ def _reference_training(x, scale, offset, epsilon, data_format):
         offset_tile = np.reshape(offset, (1, c, 1, 1))
         offset_tile = np.reshape(offset_tile, (1, c, 1, 1))
         y = normalized * scale_tile + offset_tile
+        var_out = var * element_count / (element_count - 1)
     elif data_format == "NHWC":
         x_square = x * x
         x_square_sum = np.sum(x_square, (0, 1, 2))
@@ -84,12 +86,13 @@ def _reference_training(x, scale, offset, epsilon, data_format):
         var = x_square_sum / element_count - mean * mean
         normalized = (x - mean) / np.sqrt(var + epsilon)
         y = normalized * scale + offset
+        var_out = var * element_count / (element_count - 1)
     else:
         raise ValueError("Unknown data order.")
 
     if len(x_shape) == 3:
         y = np.reshape(y, x_shape)
-    return y, mean, var
+    return y, mean, var, var_out
 
 
 def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
@@ -190,11 +193,11 @@ class TestBatchNormOpTraining(unittest.TestCase):
         data_layout,
     ):
         # run forward
-        y, saved_mean, var_ref = _reference_training(
+        y, saved_mean, var_ref, var_out = _reference_training(
             x, scale, bias, epsilon, data_layout
         )
         mean_out = saved_mean * (1.0 - momentum) + momentum * mean
-        variance_out = var_ref * (1.0 - momentum) + momentum * variance
+        variance_out = var_out * (1.0 - momentum) + momentum * variance
         saved_variance = 1.0 / np.sqrt(var_ref + epsilon)
         # run backward
         x_grad, scale_grad, bias_grad = _reference_grad(
@@ -526,6 +529,245 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
         self.use_global_stats = True
         self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
+
+
+def np_running_variance(x, running_variance, momentum, data_format='NCHW'):
+    if data_format[1] == 'C':
+        C = x.shape[1]
+    else:
+        C = x.shape[-1]
+    unbiased_variance = np.zeros(C)
+    for i in range(C):
+        if data_format[1] == 'C':
+            unbiased_variance[i] = x[:, i, ...].var(ddof=1)
+        else:
+            unbiased_variance[i] = x[..., i].var(ddof=1)
+    running_variance = (
+        momentum * running_variance + (1 - momentum) * unbiased_variance
+    )
+    return running_variance
+
+
+class TestBatchNormTrainingVarianceOut(unittest.TestCase):
+    def test_NCHW_dygraph(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            paddle.disable_static(place)
+            x_np = np.arange(12).astype("float32").reshape([2, 1, 2, 3])
+            running_variance_np = np.array([1]).astype("float32")
+
+            x = paddle.to_tensor(x_np)
+            running_variance = paddle.to_tensor(running_variance_np)
+            running_mean = paddle.to_tensor([0], dtype="float32")
+            weight = paddle.to_tensor([2], dtype="float32")
+            bias = paddle.to_tensor([1], dtype="float32")
+            momentum = 0.9
+
+            paddle.nn.functional.batch_norm(
+                x,
+                running_mean,
+                running_variance,
+                weight,
+                bias,
+                training=True,
+                momentum=momentum,
+            )
+
+            ref_running_variance = np_running_variance(
+                x_np, running_variance_np, momentum
+            )
+            np.testing.assert_allclose(
+                ref_running_variance, running_variance.numpy(), atol=1e-6
+            )
+
+        paddle.enable_static()
+
+    def test_NCHW_static(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_np = np.arange(12).astype("float32").reshape([2, 1, 2, 3])
+                running_variance_np = np.array([1]).astype("float32")
+                running_mean_np = np.array([0]).astype("float32")
+                weight_np = np.array([2]).astype("float32")
+                bias_np = np.array([1]).astype("float32")
+                momentum = 0.8
+
+                x = paddle.static.data(
+                    name='x', shape=[2, 1, 2, 3], dtype='float32'
+                )
+                running_variance = paddle.static.data(
+                    name='running_variance', shape=[1], dtype='float32'
+                )
+                running_mean = paddle.static.data(
+                    name='running_mean', shape=[1], dtype='float32'
+                )
+                weight = paddle.static.data(
+                    name='weight', shape=[1], dtype='float32'
+                )
+                bias = paddle.static.data(
+                    name='bias', shape=[1], dtype='float32'
+                )
+                paddle.nn.functional.batch_norm(
+                    x,
+                    running_mean,
+                    running_variance,
+                    weight,
+                    bias,
+                    training=True,
+                    momentum=momentum,
+                )
+
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    feed={
+                        'x': x_np,
+                        'running_mean': running_mean_np,
+                        'running_variance': running_variance_np,
+                        'weight': weight_np,
+                        'bias': bias_np,
+                    },
+                    fetch_list=[running_variance],
+                )
+
+                ref_running_variance = np_running_variance(
+                    x_np, running_variance_np, momentum
+                )
+                np.testing.assert_allclose(
+                    ref_running_variance, fetches[0], atol=1e-6
+                )
+
+    def test_NHWC_dygraph(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            paddle.disable_static(place)
+            x_np = np.arange(24).astype("float32").reshape([2, 2, 2, 3])
+            running_variance_np = np.array([1, 0.5, 1.5]).astype("float32")
+
+            x = paddle.to_tensor(x_np)
+            running_variance = paddle.to_tensor(running_variance_np)
+            running_mean = paddle.to_tensor([0.1, 0.2, 0.3], dtype="float32")
+            weight = paddle.to_tensor([2.0, 0.7, 1.1], dtype="float32")
+            bias = paddle.to_tensor([-1.0, 1.0, -3.0], dtype="float32")
+            momentum = 0.87
+            data_format = "NHWC"
+
+            paddle.nn.functional.batch_norm(
+                x,
+                running_mean,
+                running_variance,
+                weight,
+                bias,
+                training=True,
+                momentum=momentum,
+                data_format=data_format,
+            )
+
+            ref_running_variance = np_running_variance(
+                x_np, running_variance_np, momentum, data_format=data_format
+            )
+            np.testing.assert_allclose(
+                ref_running_variance, running_variance.numpy(), atol=1e-6
+            )
+
+        paddle.enable_static()
+
+    def test_NHWC_static(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_np = np.arange(24).astype("float32").reshape([2, 2, 2, 3])
+                running_variance_np = np.array([1, 0.5, 1.5]).astype("float32")
+                running_mean_np = np.array([0.1, 0.2, 0.3]).astype("float32")
+                weight_np = np.array([2.0, 0.7, 1.1]).astype("float32")
+                bias_np = np.array([-1.0, 1.0, -3.0]).astype("float32")
+                momentum = 0.92
+                data_format = "NHWC"
+
+                x = paddle.static.data(
+                    name='x', shape=[2, 2, 2, 3], dtype='float32'
+                )
+                running_variance = paddle.static.data(
+                    name='running_variance', shape=[3], dtype='float32'
+                )
+                running_mean = paddle.static.data(
+                    name='running_mean', shape=[3], dtype='float32'
+                )
+                weight = paddle.static.data(
+                    name='weight', shape=[3], dtype='float32'
+                )
+                bias = paddle.static.data(
+                    name='bias', shape=[3], dtype='float32'
+                )
+                paddle.nn.functional.batch_norm(
+                    x,
+                    running_mean,
+                    running_variance,
+                    weight,
+                    bias,
+                    training=True,
+                    momentum=momentum,
+                    data_format=data_format,
+                )
+
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    feed={
+                        'x': x_np,
+                        'running_mean': running_mean_np,
+                        'running_variance': running_variance_np,
+                        'weight': weight_np,
+                        'bias': bias_np,
+                    },
+                    fetch_list=[running_variance],
+                )
+
+                ref_running_variance = np_running_variance(
+                    x_np, running_variance_np, momentum, data_format=data_format
+                )
+                np.testing.assert_allclose(
+                    ref_running_variance, fetches[0], atol=1e-6
+                )
 
 
 if __name__ == '__main__':

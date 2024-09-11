@@ -54,11 +54,13 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
             raise ValueError("Unknown data order.")
 
         # run forward
-        y, saved_mean, saved_variance = _reference_training(
+        y, saved_mean, saved_variance, saved_variance_out = _reference_training(
             x, scale, bias, epsilon, data_layout
         )
         mean_out = saved_mean * (1.0 - momentum) + momentum * mean
-        variance_out = saved_variance * (1.0 - momentum) + momentum * variance
+        variance_out = (
+            saved_variance_out * (1.0 - momentum) + momentum * variance
+        )
         # run backward
         x_grad, scale_grad, bias_grad = _reference_grad(
             x, y_grad, scale, saved_mean, saved_variance, epsilon, data_layout

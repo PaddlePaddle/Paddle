@@ -159,10 +159,15 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
         save_mean[i] = mean_val;
         save_inv_variance[i] = inv_var_val;
       }
-      mean[i] = (1 - exponentialAverageFactor) * mean_val +
-                exponentialAverageFactor * mean[i];
-      variance[i] = (1 - exponentialAverageFactor) * variance_val +
-                    exponentialAverageFactor * variance[i];
+
+      double normalization_factor =
+          static_cast<double>(inner_size) /
+          static_cast<double>(inner_size - 1.0) mean[i] =
+              (1 - exponentialAverageFactor) * mean_val +
+              exponentialAverageFactor * mean[i];
+      variance[i] =
+          (1 - exponentialAverageFactor) * variance_val * normalization_factor +
+          exponentialAverageFactor * variance[i];
     }
     __syncthreads();
 
@@ -279,9 +284,14 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
             save_mean[i] = compute_mean_val;
             save_inv_variance[i] = compute_inv_var_val;
           }
-          global_mean[i] = (1 - exponentialAverageFactor) * compute_mean_val +
-                           exponentialAverageFactor * global_mean[i];
-          global_variance[i] = (1 - exponentialAverageFactor) * variance_val +
+
+          double normalization_factor =
+              static_cast<double>(inner_size) /
+              static_cast<double>(inner_size - 1.0) global_mean[i] =
+                  (1 - exponentialAverageFactor) * compute_mean_val +
+                  exponentialAverageFactor * global_mean[i];
+          global_variance[i] = (1 - exponentialAverageFactor) * variance_val *
+                                   normalization_factor +
                                exponentialAverageFactor * global_variance[i];
 
           compute_mean[i] = compute_mean_val;
@@ -300,9 +310,14 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
           save_mean[i] = compute_mean_val;
           save_inv_variance[i] = compute_inv_var_val;
         }
-        global_mean[i] = (1 - exponentialAverageFactor) * compute_mean_val +
-                         exponentialAverageFactor * global_mean[i];
-        global_variance[i] = (1 - exponentialAverageFactor) * variance_val +
+
+        double normalization_factor =
+            static_cast<double>(inner_size) /
+            static_cast<double>(inner_size - 1.0) global_mean[i] =
+                (1 - exponentialAverageFactor) * compute_mean_val +
+                exponentialAverageFactor * global_mean[i];
+        global_variance[i] = (1 - exponentialAverageFactor) * variance_val *
+                                 normalization_factor +
                              exponentialAverageFactor * global_variance[i];
 
         compute_mean[i] = compute_mean_val;
@@ -447,9 +462,14 @@ static __global__ void BNForwardTraining2DCompStat(
             save_mean[i] = compute_mean_val;
             save_inv_variance[i] = compute_inv_var_val;
           }
-          global_mean[i] = (1 - exponentialAverageFactor) * compute_mean_val +
-                           exponentialAverageFactor * global_mean[i];
-          global_variance[i] = (1 - exponentialAverageFactor) * variance_val +
+
+          double normalization_factor =
+              static_cast<double>(inner_size) /
+              static_cast<double>(inner_size - 1.0) global_mean[i] =
+                  (1 - exponentialAverageFactor) * compute_mean_val +
+                  exponentialAverageFactor * global_mean[i];
+          global_variance[i] = (1 - exponentialAverageFactor) * variance_val *
+                                   normalization_factor +
                                exponentialAverageFactor * global_variance[i];
 
           compute_mean[i] = compute_mean_val;
@@ -468,9 +488,14 @@ static __global__ void BNForwardTraining2DCompStat(
           save_mean[i] = compute_mean_val;
           save_inv_variance[i] = compute_inv_var_val;
         }
-        global_mean[i] = (1 - exponentialAverageFactor) * compute_mean_val +
-                         exponentialAverageFactor * global_mean[i];
-        global_variance[i] = (1 - exponentialAverageFactor) * variance_val +
+
+        double normalization_factor =
+            static_cast<double>(inner_size) /
+            static_cast<double>(inner_size - 1.0) global_mean[i] =
+                (1 - exponentialAverageFactor) * compute_mean_val +
+                exponentialAverageFactor * global_mean[i];
+        global_variance[i] = (1 - exponentialAverageFactor) * variance_val *
+                                 normalization_factor +
                              exponentialAverageFactor * global_variance[i];
 
         compute_mean[i] = compute_mean_val;

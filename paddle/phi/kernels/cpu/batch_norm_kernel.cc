@@ -127,7 +127,6 @@ void BatchNormKernel(const Context& ctx,
           saved_variance_e(nc % C) +=
               (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
         }
-        saved_variance_e /= N * sample_size;
         break;
       }
       case DataLayout::kNHWC: {
@@ -140,7 +139,6 @@ void BatchNormKernel(const Context& ctx,
           saved_variance_e +=
               (x_arr.col(i) - saved_mean_e) * (x_arr.col(i) - saved_mean_e);
         }
-        saved_variance_e /= N * sample_size;
         break;
       }
       default:
@@ -153,8 +151,11 @@ void BatchNormKernel(const Context& ctx,
 
     running_mean_arr =
         running_mean_arr * momentum + saved_mean_e * (1. - momentum);
-    running_var_arr =
-        running_var_arr * momentum + saved_variance_e * (1. - momentum);
+    running_var_arr = running_var_arr * momentum + saved_variance_e /
+                                                       (N * sample_size - 1.) *
+                                                       (1. - momentum);
+
+    saved_variance_e /= N * sample_size;
   }
 
   // use SavedMean and SavedVariance to do normalize
