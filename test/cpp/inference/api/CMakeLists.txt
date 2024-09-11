@@ -54,7 +54,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   function(download_int8_data_without_verify_pir install_dir data_file)
     if(NOT EXISTS ${install_dir}/${data_file})
       inference_download_and_uncompress_without_verify(
-        ${install_dir} ${INFERENCE_URL}/int8/new ${data_file})
+        ${install_dir} ${INFERENCE_URL}/int8/pir ${data_file})
     endif()
   endfunction()
 
@@ -411,17 +411,17 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     # build test binary to be used in subsequent tests
 
     # resnet50 int8
-    set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
+    set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50_pir")
     download_int8_data_without_verify_pir(${INT8_RESNET50_MODEL_DIR}
                                           "resnet50_int8_model.tar.gz")
 
     # mobilenetv1 int8
-    set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
+    set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1_pir")
     download_int8_data_without_verify_pir(${INT8_MOBILENETV1_MODEL_DIR}
                                           "mobilenetv1_int8_model.tar.gz")
 
     # mobilenetv2 int8
-    set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
+    set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2_pir")
     download_int8_data_without_verify_pir(${INT8_MOBILENETV2_MODEL_DIR}
                                           "mobilenet_v2_int8_model.tar.gz")
 
@@ -441,7 +441,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                       "VGG19_int8_model.tar.gz")
 
     # googlenet int8
-    set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
+    set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet_pir")
     download_int8_data_without_verify_pir(${INT8_GOOGLENET_MODEL_DIR}
                                           "GoogleNet_int8_model.tar.gz")
 
