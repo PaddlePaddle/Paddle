@@ -123,7 +123,6 @@ from . import (
     hub as hub,
     linalg as linalg,
     signal as signal,
-    tensor as tensor,
 )
 from .autograd import (
     enable_grad,
