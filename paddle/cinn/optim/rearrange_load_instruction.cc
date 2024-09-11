@@ -64,7 +64,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
     return false;
   }
   void Visit(const ir::Load *op, Expr *expr) override {
-    auto load_op = const_cast<ir::Load *>(op);
+    auto load_op = expr->As<ir::Load>();
     if (is_inner_store) {
       if (op->tensor.as_tensor_ref()->buffer.operator->() != nullptr &&
               (op->tensor.as_tensor_ref()->buffer->memory_type ==
