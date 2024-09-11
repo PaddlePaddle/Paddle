@@ -148,6 +148,6 @@ def from_dlpack(dlpack) -> Tensor:
     out: paddle.base.libpaddle.Tensor = paddle.base.core.from_dlpack(dlpack_)
 
     if in_dygraph_mode():
-        out: Tensor = paddle.to_tensor(out)
+        out: Tensor = paddle.Tensor(out, place=out._place())
 
     return out

@@ -834,6 +834,7 @@ phi::DenseTensor from_blob(void* data,
   auto meta = phi::DenseTensorMeta(dtype, shape, layout);
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
   phi::Allocation::DeleterFnPtr f = nullptr;
+
   if (deleter) {
     auto g = [deleter, src](phi::Allocation* p) {
       if (src->manager_ctx) {
@@ -845,8 +846,10 @@ phi::DenseTensor from_blob(void* data,
       std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
       ptr_to_deleter[data] = g;
     }
+
     f = DeleterBridge;
   }
+
   auto alloc = std::make_shared<phi::Allocation>(data, size, f, place);
   return phi::DenseTensor(alloc, meta);
 }
