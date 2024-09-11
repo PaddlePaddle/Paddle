@@ -164,8 +164,4 @@ class TestShardTensorParameter(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    print("@@@@@@@@@@" * 8)
-    print("in_pir_mode: ", in_pir_mode)
-    print("@@@@@@@@@@" * 8)
-
     unittest.main()

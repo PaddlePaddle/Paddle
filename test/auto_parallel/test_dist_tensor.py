@@ -83,7 +83,6 @@ class TestDistTensorFromFn(unittest.TestCase):
         else:
             dist_attr.dynamic_dims = [0]
             dist_attr.chunk_id = 0
-            print(type(result))
             self.assertIsInstance(result, paddle.base.libpaddle.pir.Value)
             self.assertEqual(result.shape, [16])
             self.assertEqual(
