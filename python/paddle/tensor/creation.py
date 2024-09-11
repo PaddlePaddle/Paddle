@@ -726,7 +726,7 @@ def _to_tensor_non_static(
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
-        elif isinstance(data, (core.LoDTensor, core.Tensor)):
+        elif isinstance(data, core.Tensor):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
             # Currently, there is no copy when places are same
