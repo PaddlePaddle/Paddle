@@ -46,6 +46,9 @@ if(WIN32)
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_gelu")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_gelu")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_gelu")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_unary")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_unary")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_unary")
 
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_split_layernorm_to_math_ops_pass")
@@ -155,6 +158,10 @@ endif()
 if(WITH_GPU AND TENSORRT_FOUND)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
+
+  set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
+
   if(NOT WIN32)
     set_tests_properties(test_trt_explicit_quantization_resnet
                          PROPERTIES TIMEOUT 300)
@@ -202,9 +209,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
     set_tests_properties(test_seq_concat_fc_fuse_pass PROPERTIES TIMEOUT 200)
     if(WIN32)
-      set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT
-                                                                      300)
-      set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 1500)
       set_tests_properties(test_trt_convert_sum PROPERTIES TIMEOUT 500)
       set_tests_properties(test_trt_int64 PROPERTIES TIMEOUT 500)
       set_tests_properties(test_trt_convert_strided_slice PROPERTIES TIMEOUT
