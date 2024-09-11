@@ -76,6 +76,32 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
+class TestUniformRandomBatchSizeLikeOp_attr_tensorlist(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random_batch_size_like"
+        self.python_api = paddle.uniform
+        self.new_shape = (1000, 784)
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(
+                ("x" + str(index), np.ones(1).astype("int64") * ele)
+            )
+        self.inputs = {'Input': shape_tensor}
+        self.init_attrs()
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+
+    def init_attrs(self):
+        self.attrs = {"min": -5.0, "max": 10.0, "seed": 10}
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output, check_pir=True)
+
+    def verify_output(self, outs):
+        hist, prob = self.output_hist(np.array(outs[0]))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
+
+
 class TestMaxMinAreInt(TestUniformRandomOp_attr_tensorlist):
     def init_attrs(self):
         self.attrs = {"min": -5, "max": 10, "seed": 10}
