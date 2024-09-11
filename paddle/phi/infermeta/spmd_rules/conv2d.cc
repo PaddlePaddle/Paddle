@@ -206,6 +206,106 @@ SpmdInfo Conv2dGradInferSpmdBase(const DistMetaTensor& input,
                                  const DistMetaTensor& filter,
                                  const DistMetaTensor& output_grad) {
   VLOG(4) << "Conv2dGrad InferSpmd Called";
+  auto check_channel_dist_attr = [&](const ArgDistAttr& input_attr,
+                                     const ArgDistAttr& filter_attr,
+                                     const ArgDistAttr& output_grad_attr) {
+    const auto& input_dist_attr = paddle::get<TensorDistAttr>(input_attr);
+    const auto& filter_dist_attr = paddle::get<TensorDistAttr>(filter_attr);
+    const auto& output_grad_dist_attr =
+        paddle::get<TensorDistAttr>(output_grad_attr);
+
+    int channel_dim = 1;  // NCHW support
+    if (output_grad_dist_attr.is_partial()) {
+      std::set<int64_t> partial_dims = output_grad_dist_attr.partial_dims();
+      PADDLE_ENFORCE_EQ(
+          partial_dims.size(),
+          1,
+          common::errors::InvalidArgument(
+              "For conv2d output, only support partial on channel_dim for "
+              "output, "
+              "which means shard on channel_dim for input and filter."
+              "But now the output is partial on [%d] dims.",
+              partial_dims.size()));
+
+      int64_t partial_dim = *partial_dims.begin();
+      auto input_dims_mapping = input_dist_attr.dims_mapping();
+      auto filter_dims_mapping = filter_dist_attr.dims_mapping();
+      if (input_dims_mapping[channel_dim] == partial_dim &&
+          filter_dims_mapping[channel_dim] == partial_dim) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  auto input_dist_attr_src = input.dist_attr();
+  auto filter_dist_attr_src = filter.dist_attr();
+  auto output_grad_dist_attr_src = output_grad.dist_attr();
+
+  std::string input_axes = "nchw";
+  std::string filter_axes = "mcij";
+  std::string output_axes = "nmhw";
+
+  std::pair<std::string, std::vector<int64_t>> input_pair(
+      input_axes, input_dist_attr_src.dims_mapping());
+  std::pair<std::string, std::vector<int64_t>> filter_pair(
+      filter_axes, filter_dist_attr_src.dims_mapping());
+  std::pair<std::string, std::vector<int64_t>> output_grad_pair(
+      output_axes, output_grad_dist_attr_src.dims_mapping());
+
+  // input_grad_dist, copy n_dim and merge m_dim
+  auto axis_to_dim_map_1 =
+      ShardingMergeForTensors({filter_pair, output_grad_pair});
+  TensorDistAttr input_grad_dist_attr_dst =
+      GetReplicatedDistAttr(input_dist_attr_src);
+  input_grad_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(input_axes, axis_to_dim_map_1));
+  TensorDistAttr filter_dist_attr_dst =
+      CopyTensorDistAttrForOutput(filter_dist_attr_src);
+  filter_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(filter_axes, axis_to_dim_map_1));
+
+  // filter_grad_dist, copy m_dim and merge n_dim
+  auto axis_to_dim_map_2 =
+      ShardingMergeForTensors({input_pair, output_grad_pair});
+  TensorDistAttr filter_grad_dist_attr_dst =
+      GetReplicatedDistAttr(filter_dist_attr_src);
+  filter_grad_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(filter_axes, axis_to_dim_map_2));
+  TensorDistAttr input_dist_attr_dst =
+      CopyTensorDistAttrForOutput(input_dist_attr_src);
+  input_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(input_axes, axis_to_dim_map_2));
+
+  // output_grad
+  auto axis_to_dim_map_3 =
+      ShardingMergeForTensors({input_pair, filter_pair, output_grad_pair});
+  TensorDistAttr output_grad_dist_attr_dst =
+      CopyTensorDistAttrForOutput(output_grad_dist_attr_src);
+  output_grad_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(output_axes, axis_to_dim_map_3));
+
+  // process channel_dim, handle partial
+  int channel_dim = 1;  // NCHW format
+  if (check_channel_dist_attr(input_dist_attr_src,
+                              filter_dist_attr_src,
+                              output_grad_dist_attr_src)) {
+    std::vector<int64_t> input_grad_dims_mapping_dst =
+        input_grad_dist_attr_dst.dims_mapping();
+    input_grad_dims_mapping_dst[channel_dim] =
+        *output_grad_dist_attr_src.partial_dims().begin();
+    input_grad_dist_attr_dst.set_dims_mapping(input_grad_dims_mapping_dst);
+    std::vector<int64_t> filter_grad_dims_mapping_dst =
+        filter_grad_dist_attr_dst.dims_mapping();
+    filter_grad_dims_mapping_dst[channel_dim] =
+        *output_grad_dist_attr_src.partial_dims().begin();
+    filter_grad_dist_attr_dst.set_dims_mapping(filter_grad_dims_mapping_dst);
+  }
+
+  return {
+      {input_dist_attr_dst, filter_dist_attr_dst, output_grad_dist_attr_dst},
+      {input_grad_dist_attr_dst, filter_grad_dist_attr_dst}};
 }
 
 SpmdInfo Conv2dInferSpmd(const DistMetaTensor& input,
