@@ -83,7 +83,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   }
 
   void Visit(const ir::Store *op, Expr *expr) override {
-    auto store_op = const_cast<ir::Store *>(op);
+    auto store_op = expr->As<ir::Store>();
     auto old_last_op = last_op;
     local_stores.push_back(store_op);
     last_op = Expr(store_op);
