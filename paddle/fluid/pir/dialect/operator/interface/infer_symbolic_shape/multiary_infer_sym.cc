@@ -682,7 +682,6 @@ bool BroadcastTensorsOpInferSymbolicShape(
   for (size_t i = 0; i < input_shape_or_data_list.size(); i++) {
     out_shapes.emplace_back(out_shape);
   }
-
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::ShapeOrDataDimExprs{out_shapes});
   return true;
