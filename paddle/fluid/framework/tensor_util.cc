@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 
 #include <algorithm>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <string>
@@ -807,7 +808,18 @@ https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
 and paddle/phi/api/lib/tensor_utils.cc
 */
 using Deleter = std::function<void(void*)>;
-using AllocationDeleter = std::function<void(phi::Allocation*)>;
+
+std::unordered_map<void*, std::function<void(phi::Allocation*)>> ptr_to_deleter;
+std::mutex ptr_to_deleter_mutex;
+
+void DeleterBridge(phi::Allocation* alloc) {
+  std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
+  auto it = ptr_to_deleter.find(static_cast<void*>(alloc->ptr()));
+  if (it != ptr_to_deleter.end()) {
+    it->second(alloc);         // 调用实际的删除器
+    ptr_to_deleter.erase(it);  // 删除对应的条目
+  }
+}
 
 phi::DenseTensor from_blob(void* data,
                            DLManagedTensor* src,
@@ -821,20 +833,25 @@ phi::DenseTensor from_blob(void* data,
 
   auto meta = phi::DenseTensorMeta(dtype, shape, layout);
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
-  AllocationDeleter f = nullptr;
+  phi::Allocation::DeleterFnPtr f = nullptr;
   if (deleter) {
-    f = [deleter, src](phi::Allocation* p) {
+    auto g = [deleter, src](phi::Allocation* p) {
       if (src->manager_ctx) {
         deleter(src);
       }
     };
+
+    {
+      std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
+      ptr_to_deleter[data] = g;
+    }
+    f = DeleterBridge;
   }
   auto alloc = std::make_shared<phi::Allocation>(data, size, f, place);
   return phi::DenseTensor(alloc, meta);
 }
 
-phi::DenseTensor TensorFromDLPack(DLManagedTensor* src,
-                                  std::function<void(void*)> deleter) {
+phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
   std::vector<int64_t> vec;
   std::copy(src->dl_tensor.shape,
             src->dl_tensor.shape + src->dl_tensor.ndim,

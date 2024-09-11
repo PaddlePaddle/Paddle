@@ -29,7 +29,7 @@ namespace phi {
 class Allocation {
  public:
   using Place = phi::Place;
-  using DeleterFnPtr = std::function<void(phi::Allocation*)>;
+  using DeleterFnPtr = void (*)(Allocation*);
 
   Allocation() = default;
 
