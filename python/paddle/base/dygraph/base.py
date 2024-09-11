@@ -369,10 +369,6 @@ def no_grad(func=None):
             >>> test_layer()
 
     """
-    if in_to_static_mode():
-        warnings.warn(
-            "paddle.no_grad is only supported for inference model, and not supported for training under @to_static."
-        )
     if func is None:
         return _switch_tracer_mode_guard_(is_train=False)
     else:

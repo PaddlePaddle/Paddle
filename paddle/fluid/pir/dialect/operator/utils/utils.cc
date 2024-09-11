@@ -569,11 +569,15 @@ void SetStopGradient(std::vector<pir::Value>* values) {
 }
 
 void SetStopGradient(paddle::optional<pir::Value>* value) {
-  SetStopGradient(value->get());
+  if (value->get_ptr() != nullptr) {
+    SetStopGradient(value->get_ptr());
+  }
 }
 
 void SetStopGradient(paddle::optional<std::vector<pir::Value>>* values) {
-  SetStopGradient(values->get());
+  if (values->get_ptr() != nullptr) {
+    SetStopGradient(values->get_ptr());
+  }
 }
 
 }  // namespace dialect
