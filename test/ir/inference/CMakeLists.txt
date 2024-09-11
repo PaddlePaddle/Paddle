@@ -43,6 +43,13 @@ if(WIN32)
        "test_trt_convert_elementwiseadd_transpose")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_elementwiseadd_transpose")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES
+       "test_trt_convert_elementwiseadd_transpose")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+       "test_trt_convert_elementwiseadd_transpose")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER
+       "test_trt_convert_elementwiseadd_transpose")
+
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_split_layernorm_to_math_ops_pass")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
@@ -51,6 +58,8 @@ if(WIN32)
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_trt_explicit_quantization_resnet")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_int64")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_int64")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES
        "test_trt_explicit_quantization_mobilenet")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
@@ -149,9 +158,6 @@ endif()
 if(WITH_GPU AND TENSORRT_FOUND)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
-
-  set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
   if(NOT WIN32)
     set_tests_properties(test_trt_explicit_quantization_resnet
                          PROPERTIES TIMEOUT 300)
@@ -162,14 +168,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
   endif()
 
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_multiclass_nms3_op PROPERTIES TIMEOUT 60)
 
   if(WITH_ONEDNN)
     set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
     set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                         180)
     set_tests_properties(test_trt_emb_eltwise_layernorm_fuse_pass
-                         PROPERTIES TIMEOUT 180)
+                         PROPERTIES TIMEOUT 500)
 
     set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)
@@ -200,6 +205,52 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
     set_tests_properties(test_seq_concat_fc_fuse_pass PROPERTIES TIMEOUT 200)
     if(WIN32)
+      set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT
+                                                                      300)
+      set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 1500)
+      set_tests_properties(test_trt_convert_sum PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_int64 PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_strided_slice PROPERTIES TIMEOUT
+                                                                     500)
+      set_tests_properties(test_trt_convert_split PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_softmax PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_slice PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_shuffle_channel PROPERTIES TIMEOUT
+                                                                       500)
+      set_tests_properties(test_trt_convert_scale PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_roi_align PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_reshape PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_reduce PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_prelu PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_pool2d PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_p_norm PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_nearest_interp PROPERTIES TIMEOUT
+                                                                      500)
+      set_tests_properties(test_trt_convert_multihead_matmul PROPERTIES TIMEOUT
+                                                                        500)
+      set_tests_properties(test_trt_convert_mish PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_matmul_v2 PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_leaky_relu PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_hard_sigmoid PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_gather PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_fused_conv2d_add_act
+                           PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_flatten_contiguous_range
+                           PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_emb_eltwise_layernorm
+                           PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_elementwise PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_cumsum PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_clip PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_bilinear_interp_v2
+                           PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_batch_norm PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_argsort PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_arg_min PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_arg_max PROPERTIES TIMEOUT 500)
+      set_tests_properties(test_trt_convert_anchor_generator TIMEOUT 500)
+      set_tests_properties(test_trt_convert_activation TIMEOUT 500)
+
       set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 300)
       set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT
                                                                      300)

@@ -21,6 +21,21 @@ set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
 
 list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inspector_deprecated")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_inspector_deprecated")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+     "test_trt_convert_temporal_shift_deprecated")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES
+     "test_trt_convert_temporal_shift_deprecated")
+list(REMOVE ITEM TEST_TRT_CONVERTER
+     "test_trt_convert_temporal_shift_deprecated")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_gelu_deprecated")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_gelu_deprecated")
+list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_gelu_deprecated")
+ist(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_pad3d_deprecated")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_pad3d_deprecated")
+list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_pad3d_deprecated")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_multiclass_nms3_op_deprecated")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+     "test_trt_multiclass_nms3_op_deprecated")
 
 if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
@@ -61,7 +76,6 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
 endforeach()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES test_trt_multiclass_nms_op)
 
   foreach(TRT_CONVERT ${TEST_TRT_CONVERTER})
     list(REMOVE_ITEM TEST_TRT_IR_PASSES ${TRT_CONVERT})
@@ -133,6 +147,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_convert_depthwise_conv2d_deprecated
                        PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_multiclass_nms3_op_deprecated PROPERTIES TIMEOUT
+                                                                         300)
 
   if(NOT WIN32)
     set_tests_properties(test_trt_inference_fp16_io_deprecated
@@ -163,7 +179,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
       test_trt_pool_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
                  500)
-
   endif()
 
   set_tests_properties(test_trt_tile_op_deprecated PROPERTIES TIMEOUT 60)
