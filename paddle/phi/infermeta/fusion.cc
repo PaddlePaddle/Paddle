@@ -1768,7 +1768,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                                 bool trans_y,
                                 const std::string& activation,
                                 MetaTensor* out,
-                                MetaTensor* reserve_space) {
+                                MetaTensor* reserve_space,
+                                MetaConfig config) {
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
   const auto& bias_dims = bias.dims();
@@ -1809,15 +1810,17 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
 
   int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
   int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
-
-  PADDLE_ENFORCE_EQ(
-      K_from_x,
-      K_from_y,
-      common::errors::InvalidArgument(
-          "The last dimension of X should be equal with Y's first dimension."
-          "But received X[-1] = [%d], Y[0] = [%d].",
-          K_from_x,
-          K_from_y));
+  bool check_dim = (!config.is_runtime && K_from_x != -1) || config.is_runtime;
+  if (check_dim) {
+    PADDLE_ENFORCE_EQ(
+        K_from_x,
+        K_from_y,
+        common::errors::InvalidArgument(
+            "The last dimension of X should be equal with Y's first dimension."
+            "But received X[-1] = [%d], Y[0] = [%d].",
+            K_from_x,
+            K_from_y));
+  }
 
   std::vector<int64_t> out_dims;
   out_dims.reserve(static_cast<size_t>(x_dims.size()));
@@ -5319,6 +5322,155 @@ void ResnetUnitGradInferMeta(const MetaTensor& x,
     scale_z_grad->set_dtype(scale_z.dtype());
     bias_z_grad->set_dtype(bias_z.dtype());
   }
+}
+
+void FusedGateAttentionInferMeta(const MetaTensor& query,
+                                 const MetaTensor& key,
+                                 const MetaTensor& query_weight,
+                                 const MetaTensor& key_weight,
+                                 const MetaTensor& value_weight,
+                                 const MetaTensor& qkv_weight,
+                                 const MetaTensor& nonbatched_bias,
+                                 const MetaTensor& src_mask,
+                                 const MetaTensor& gate_weight,
+                                 const MetaTensor& gate_bias,
+                                 const MetaTensor& out_linear_weight,
+                                 const MetaTensor& out_linear_bias,
+                                 bool has_gating,
+                                 bool merge_qkv,
+                                 bool use_flash_attn,
+                                 MetaTensor* query_transpose_out,
+                                 MetaTensor* key_transpose_out,
+                                 MetaTensor* value_transpose_out,
+                                 MetaTensor* qkv_transpose_out,
+                                 MetaTensor* softmax_out,
+                                 MetaTensor* softmax_lse,
+                                 MetaTensor* fmha_out,
+                                 MetaTensor* gate_out,
+                                 MetaTensor* out,
+                                 MetaConfig config) {
+  const auto& input_q_dims = query.dims();
+  int batch_size = input_q_dims[0];
+  int seq_len_m = input_q_dims[1];
+  int seq_len_r = input_q_dims[2];
+
+  int num_head, m_size, head_dim;
+  if (merge_qkv) {
+    // QKV's input: [batch_size, seq_len_m, seq_len_r, qkv_dim]
+    // QKV's weight: [3, num_head, head_dim, qkv_dim]
+    const auto& qkv_w_dims = qkv_weight.dims();
+
+    num_head = qkv_w_dims[1];
+    head_dim = qkv_w_dims[2];
+    m_size = seq_len_r;
+
+    qkv_transpose_out->set_dims(
+        {3, batch_size, seq_len_m, num_head, seq_len_r, head_dim});
+    qkv_transpose_out->set_dtype(query.dtype());
+  } else {
+    const auto& input_k_dims = key.dims();
+    const auto& q_w_dims = query_weight.dims();
+
+    num_head = q_w_dims[1];
+    head_dim = q_w_dims[2];
+    m_size = input_k_dims[2];
+
+    query_transpose_out->set_dims(
+        {batch_size, seq_len_m, num_head, seq_len_r, head_dim});
+    key_transpose_out->set_dims(
+        {batch_size, seq_len_m, num_head, m_size, head_dim});
+    value_transpose_out->set_dims(
+        {batch_size, seq_len_m, num_head, m_size, head_dim});
+    query_transpose_out->set_dtype(query.dtype());
+    key_transpose_out->set_dtype(query.dtype());
+    value_transpose_out->set_dtype(query.dtype());
+  }
+
+  softmax_out->set_dims({batch_size, seq_len_m, num_head, seq_len_r, m_size});
+  fmha_out->set_dims({batch_size, seq_len_m, seq_len_r, num_head, head_dim});
+  softmax_out->set_dtype(query.dtype());
+  fmha_out->set_dtype(query.dtype());
+
+  if (has_gating) {
+    gate_out->set_dims({batch_size, seq_len_m, seq_len_r, num_head, head_dim});
+    gate_out->set_dtype(query.dtype());
+  }
+  out->set_dims(query.dims());
+  out->set_dtype(query.dtype());
+}
+
+void FusedGateAttentionGradInferMeta(const MetaTensor& query,
+                                     const MetaTensor& key,
+                                     const MetaTensor& query_weight,
+                                     const MetaTensor& key_weight,
+                                     const MetaTensor& value_weight,
+                                     const MetaTensor& qkv_weight,
+                                     const MetaTensor& nonbatched_bias,
+                                     const MetaTensor& src_mask,
+                                     const MetaTensor& gate_weight,
+                                     const MetaTensor& gate_bias,
+                                     const MetaTensor& out_linear_weight,
+                                     const MetaTensor& out_linear_bias,
+                                     const MetaTensor& query_transpose_out,
+                                     const MetaTensor& key_transpose_out,
+                                     const MetaTensor& value_transpose_out,
+                                     const MetaTensor& qkv_transpose_out,
+                                     const MetaTensor& softmax_out,
+                                     const MetaTensor& softmax_lse,
+                                     const MetaTensor& fmha_out,
+                                     const MetaTensor& gate_out,
+                                     const MetaTensor& out_grad,
+                                     bool has_gating,
+                                     bool merge_qkv,
+                                     bool use_flash_attn,
+                                     MetaTensor* query_grad,
+                                     MetaTensor* key_grad,
+                                     MetaTensor* query_weight_grad,
+                                     MetaTensor* key_weight_grad,
+                                     MetaTensor* value_weight_grad,
+                                     MetaTensor* qkv_weight_grad,
+                                     MetaTensor* nonbatched_bias_grad,
+                                     MetaTensor* gate_weight_grad,
+                                     MetaTensor* gate_bias_grad,
+                                     MetaTensor* out_linear_weight_grad,
+                                     MetaTensor* out_linear_bias_grad,
+                                     MetaConfig config) {
+  if (query_grad != nullptr) {
+    query_grad->set_dims(query.dims());
+    query_grad->set_dtype(query.dtype());
+  }
+  if (key_grad != nullptr) {
+    key_grad->set_dims(key.dims());
+    key_grad->set_dtype(key.dtype());
+  }
+
+  if (merge_qkv) {
+    qkv_weight_grad->set_dims(qkv_weight.dims());
+    qkv_weight_grad->set_dtype(qkv_weight.dtype());
+  } else {
+    query_weight_grad->set_dims(query_weight.dims());
+    key_weight_grad->set_dims(key_weight.dims());
+    value_weight_grad->set_dims(value_weight.dims());
+    query_weight_grad->set_dtype(query_weight.dtype());
+    key_weight_grad->set_dtype(key_weight.dtype());
+    value_weight_grad->set_dtype(value_weight.dtype());
+  }
+
+  if (has_gating) {
+    gate_weight_grad->set_dims(gate_weight.dims());
+    gate_bias_grad->set_dims(gate_bias.dims());
+    gate_weight_grad->set_dtype(gate_weight.dtype());
+    gate_bias_grad->set_dtype(gate_bias.dtype());
+  }
+
+  if (nonbatched_bias_grad != nullptr) {
+    nonbatched_bias_grad->set_dims(nonbatched_bias.dims());
+    nonbatched_bias_grad->set_dtype(nonbatched_bias.dtype());
+  }
+  out_linear_weight_grad->set_dims(out_linear_weight.dims());
+  out_linear_bias_grad->set_dims(out_linear_bias.dims());
+  out_linear_weight_grad->set_dtype(out_linear_weight.dtype());
+  out_linear_bias_grad->set_dtype(out_linear_bias.dtype());
 }
 
 void ResnetBasicBlockInferMeta(const MetaTensor& x,

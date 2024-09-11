@@ -153,6 +153,4 @@ REGISTER_ERROR(InvalidType, ErrorCode::INVALID_TYPE)
 
 namespace phi {
 namespace errors = ::common::errors;
-using ErrorCode = ::common::ErrorCode;
-using ErrorSummary = ::common::ErrorSummary;
 }  // namespace phi

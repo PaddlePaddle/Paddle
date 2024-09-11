@@ -44,10 +44,14 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
   std::string primitive = "MutateForType";
   std::ostringstream os;
   auto* for_node = loop.As<ir::For>();
-  if (!for_node) {
-    os << "Loop param must be For node! Please check!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      for_node,
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<MutateForType>.\n"
+          "[Error info] Loop parameter should be For nod3!\n"
+          "[Expr info] The Expr of current schedule is: %s. Please check!",
+          module_expr_.GetExprs()));
 
   if (!for_node->is_serial()) {
     os << "Loop is not serial, current for loop type is "
@@ -86,14 +90,25 @@ void DyScheduleImpl::Vectorize(const Expr& loop, int factor) {
   std::string primitive = "Vectorize";
   std::ostringstream os;
 
-  if (factor <= 0) {
-    os << "vectorize factor should be more than 0\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (!loop.As<For>()->extent.is_constant()) {
-    os << "The loop to be vectorized should be constant!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_GT(factor,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "[IRScheduleError] An error occurred in the schedule "
+                        "primitive <Vectorize>.\n"
+                        "[Error info] Vectorize factor should be more than 0.\n"
+                        "[Expr info] The Expr of current schedule is: %s.",
+                        module_expr_.GetExprs()));
+
+  PADDLE_ENFORCE_EQ(
+      loop.As<For>()->extent.is_constant(),
+      true,
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<Vectorize>.\n"
+          "[Error info] The loop to be vectorized should be constant!\n"
+          "[Expr info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
+
   MutateForType(loop, ForType::Vectorized, factor);
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
@@ -102,10 +117,17 @@ void DyScheduleImpl::Unroll(const Expr& loop) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "Unroll";
   std::ostringstream os;
-  if (!loop.As<For>()->extent.is_constant()) {
-    os << "The loop to be unrolled should be constant!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+
+  PADDLE_ENFORCE_EQ(
+      loop.As<For>()->extent.is_constant(),
+      true,
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<Unroll>.\n"
+          "[Error info] The loop to be unrolled should be constant!\n"
+          "[Expr info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
+
   MutateForType(loop, ForType::Unrolled);
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
@@ -123,10 +145,18 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
                                                 "threadIdx.x",
                                                 "threadIdx.y",
                                                 "threadIdx.z"};
-    if (!thread_axes.count(thread_axis)) {
-      os << "The thread_axis which is " << thread_axis << " is not supported\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
+
+    PADDLE_ENFORCE_EQ(
+        thread_axes.count(thread_axis),
+        true,
+        phi::errors::InvalidArgument(
+            "[IRScheduleError] An error occurred in the schedule primitive "
+            "<Bind>.\n"
+            "[Error info] The thread_axis which is %s is not supported\n"
+            "[Expr info] The Expr of current schedule is: %s.",
+            thread_axis,
+            module_expr_.GetExprs()));
+
     int offset = thread_axis.back() - 'x';
     auto check_offset = [&](const char& c) -> bool {
       // TODO(BiynXu): rewrite the function after we have a mechanism to
@@ -134,18 +164,28 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       return true;
     };
     if (thread_axis[0] == 'b') {
-      if (!check_offset(thread_axis[0])) {
-        os << "Invalid Bind! The extent of loop is out of range on grid "
-              "size!\n";
-        throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-      }
+      PADDLE_ENFORCE_EQ(check_offset(thread_axis[0]),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "[IRScheduleError] An error occurred in the "
+                            "schedule primitive <Bind>.\n"
+                            "[Error info] Invalid Bind! The extent of loop is "
+                            "out of range on grid size!\n"
+                            "[Expr info] The Expr of current schedule is: %s.",
+                            module_expr_.GetExprs()));
+
       MutateForType(loop, ForType::GPUBlock, offset);
     } else {
-      if (!check_offset(thread_axis[0])) {
-        os << "Invalid Bind! The extent of loop is out of range on block "
-              "size!\n";
-        throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-      }
+      PADDLE_ENFORCE_EQ(check_offset(thread_axis[0]),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "[IRScheduleError] An error occurred in the "
+                            "schedule primitive <Bind>.\n"
+                            "[Error info] Invalid Bind! The extent of loop is "
+                            "out of range on block size!\n"
+                            "[Expr info] The Expr of current schedule is: %s.",
+                            module_expr_.GetExprs()));
+
       MutateForType(loop, ForType::GPUThread, offset);
     }
     CINN_IR_SCHEDULE_END(this->err_msg_level_);

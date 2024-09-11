@@ -32,7 +32,6 @@ from .envs import (  # noqa: F401
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,
-    DynamicShapeFallbackError,
     ExportError,
     FallbackError,
     InnerError,
