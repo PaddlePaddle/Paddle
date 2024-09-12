@@ -15,7 +15,7 @@ import queue
 import sys
 import time
 import warnings
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Callable
 
 import paddle
@@ -1064,6 +1064,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._virtual_pp_world_size = self.num_model_chunks
         self._virtual_pp_rank = 0
         self._reset_counter()
+        self._best_unbalanced_scheduler = strategy.pipeline_configs[
+            "best_unbalanced_scheduler"
+        ]
+        assert (
+            self._comm_overlap and self._best_unbalanced_scheduler
+        ), "pp best unbalaced scheduler can not run together with dp/sharding overlap"
 
     def _check_sanity(self):
         assert (
@@ -1128,18 +1134,77 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self.accumulate_steps % self.num_stages + self.num_stages
         )
         first_chunk_steps = first_chunk_acc * self.num_model_chunks
+        if self._best_unbalanced_scheduler:
+            num_group_last_chunk_forward = (
+                (micro_step - first_chunk_acc) // self.num_stages
+            ) // self.num_model_chunks
+            misplace_start = (
+                first_chunk_acc
+                + self.num_model_chunks
+                * self.num_stages
+                * num_group_last_chunk_forward
+            )
+            misplace_end = (
+                self.accumulate_steps % self.num_stages
+                + num_group_last_chunk_forward * self.num_stages
+            ) * self.num_model_chunks + self.num_stages
+            forward_virtual_pp_stage = (
+                (micro_step - first_chunk_acc) // self.num_stages
+            ) % self.num_model_chunks
 
         if micro_step < first_chunk_steps:
             virtual_pp_stage = micro_step // first_chunk_acc
+            if not forward and self._best_unbalanced_scheduler:
+                if (
+                    micro_step
+                    >= first_chunk_acc
+                    + (self.num_model_chunks - 1) * self.num_stages
+                ):
+                    if forward_virtual_pp_stage == self.num_model_chunks - 1:
+                        virtual_pp_stage = 0
+                    elif (
+                        micro_step >= misplace_start
+                        and micro_step < misplace_end
+                    ):
+                        virtual_pp_stage = (
+                            micro_step - self.num_stages
+                        ) // first_chunk_acc
         else:
+            origin_micro_step = micro_step
             micro_step -= first_chunk_steps
             virtual_pp_stage = micro_step % (
                 self.num_stages * self.num_model_chunks
             )
             virtual_pp_stage = virtual_pp_stage // self.num_stages
+            if not forward and self._best_unbalanced_scheduler:
+                total_num_forward_step_from_steady = (
+                    first_chunk_acc
+                    + (self.accumulate_steps - first_chunk_acc)
+                    * self.num_model_chunks
+                )
+                if (
+                    origin_micro_step <= total_num_forward_step_from_steady
+                    and forward_virtual_pp_stage == self.num_model_chunks - 1
+                ):
+                    virtual_pp_stage = 0
+                elif (
+                    misplace_start <= total_num_forward_step_from_steady
+                    and origin_micro_step >= misplace_start
+                    and origin_micro_step < misplace_end
+                ):
+                    if origin_micro_step < first_chunk_steps + self.num_stages:
+                        virtual_pp_stage = (
+                            origin_micro_step - self.num_stages
+                        ) // first_chunk_acc
+                    else:
+                        virtual_pp_stage = (micro_step - self.num_stages) % (
+                            self.num_stages * self.num_model_chunks
+                        )
+                        virtual_pp_stage = virtual_pp_stage // self.num_stages
 
         if not forward:
             virtual_pp_stage = self.num_model_chunks - virtual_pp_stage - 1
+
         return virtual_pp_stage
 
     def _forward_step_helper(self, micro_dataset, micro_step):
@@ -1210,7 +1275,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert hasattr(self, 'output_tensor_grads')
 
         assert (
-            len(self.output_tensor_grads[virtual_pp_rank]) == 1
+            len(self.output_tensor_grads[virtual_pp_rank]) > 0
         ), f"output_tensor_grads is empty for virtual_pp_rank {virtual_pp_rank}"
 
         assert len(self.input_tensors[virtual_pp_rank]) > 0
@@ -1293,6 +1358,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         fwd_buffer_queue = queue.Queue()
         bwd_buffer_queue = queue.Queue()
         skip_steps = self.accumulate_steps % self.num_stages
+        last_stage_recv_queue = deque()
 
         left_id = skip_steps
         right_id = left_id + first_chunk_acc * (self.num_model_chunks - 1)
@@ -1310,17 +1376,48 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     tensor = None
             return tensor
 
+        def _last_stage_need_recv_next(micro_step):
+            if micro_step >= first_chunk_acc:
+                if len(last_stage_recv_queue) == 0:
+                    return False
+                else:
+                    res = last_stage_recv_queue[0]
+                    if micro_step - res[0] < self.num_stages:
+                        return False
+                    else:
+                        return True
+            else:
+                return False
+
+        def _last_stage_recv_pp_rank(micro_step):
+            if micro_step >= first_chunk_acc:
+                assert (
+                    len(last_stage_recv_queue) != 0
+                ), "last_stage_recv_queue can't be empty"
+                virtual_pp_stage = (last_stage_recv_queue.popleft())[1]
+                return virtual_pp_stage - 1
+            else:
+                return self.num_model_chunks - 1
+
         def _process_bwd_buffer(step_id, tensor):
-            if step_id < first_chunk_steps:
+            if self._best_unbalanced_scheduler:
                 if not self.is_pipeline_first_stage():
                     bwd_buffer_queue.put(tensor)
-                if left_id <= step_id < right_id:
+                if step_id >= left_id and not bwd_buffer_queue.empty():
                     tensor = bwd_buffer_queue.get()
                 else:
                     tensor = None
             else:
-                if self.is_pipeline_first_stage():
-                    tensor = None
+                if step_id < first_chunk_steps:
+                    if not self.is_pipeline_first_stage():
+                        bwd_buffer_queue.put(tensor)
+                    if left_id <= step_id < right_id:
+                        tensor = bwd_buffer_queue.get()
+                    else:
+                        tensor = None
+                else:
+                    if self.is_pipeline_first_stage():
+                        tensor = None
             return tensor
 
         per_stage_accumulate_steps = self.accumulate_steps // self.num_stages
@@ -1597,18 +1694,33 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
                 recv_next = True
                 if self.is_pipeline_last_stage(ignore_virtual=True):
+                    if self._best_unbalanced_scheduler:
+                        next_backward_virtual_pp_rank = (
+                            self._get_virtual_pp_rank(
+                                backward_micro_step_id + 1,
+                                forward=False,
+                            )
+                        )
+                        if self.is_pipeline_last_stage(ignore_virtual=True):
+                            recv_next = _last_stage_need_recv_next(
+                                backward_micro_step_id + 1
+                            )
+                    else:
+                        next_backward_virtual_pp_rank = (
+                            self._get_virtual_pp_rank(
+                                backward_micro_step_id + 1,
+                                forward=False,
+                            )
+                        )
+                        if next_backward_virtual_pp_rank == (
+                            self.num_model_chunks - 1
+                        ):
+                            # next chunk is the last chunk, not need to pre recv an output tensor grad
+                            recv_next = False
+                else:
                     next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
                         backward_micro_step_id + 1,
                         forward=False,
-                    )
-                    if next_backward_virtual_pp_rank == (
-                        self.num_model_chunks - 1
-                    ):
-                        # next chunk is the last chunk, not need to pre recv an output tensor grad
-                        recv_next = False
-                else:
-                    next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
-                        backward_micro_step_id + 1, forward=False
                     )
 
                 (
@@ -1642,6 +1754,17 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 self._record_stamp(
                     "B", backward_micro_step_id, '"E"', forward=False
                 )
+                if (
+                    self._best_unbalanced_scheduler
+                    and self.is_pipeline_last_stage(ignore_virtual=True)
+                ):
+                    cur_pp_rank = self._get_virtual_pp_rank(
+                        backward_micro_step_id, forward=False
+                    )
+                    if cur_pp_rank != 0:
+                        last_stage_recv_queue.append(
+                            (backward_micro_step_id, cur_pp_rank)
+                        )
 
                 # four directions comm
                 # send output tensor to downstream
@@ -1686,14 +1809,25 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
                 # determine whether to recv grad from downstream
                 recv_next = True
-                next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    backward_micro_step_id + 1, forward=False
-                )
-                if self.is_pipeline_last_stage(ignore_virtual=True) and (
-                    next_backward_virtual_pp_rank == (self.num_model_chunks - 1)
-                ):
-                    # last pp stage and last virtual stage
-                    recv_next = False
+                if self._best_unbalanced_scheduler:
+                    next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                        backward_micro_step_id + 1,
+                        forward=False,
+                    )
+                    if self.is_pipeline_last_stage(ignore_virtual=True):
+                        recv_next = _last_stage_need_recv_next(
+                            backward_micro_step_id + 1
+                        )
+                else:
+                    next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                        backward_micro_step_id + 1, forward=False
+                    )
+                    if self.is_pipeline_last_stage(ignore_virtual=True) and (
+                        next_backward_virtual_pp_rank
+                        == (self.num_model_chunks - 1)
+                    ):
+                        # last pp stage and last virtual stage
+                        recv_next = False
 
                 (
                     input_tensor,
@@ -1709,10 +1843,42 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self.input_tensors[next_forward_virtual_pp_rank].append(
                 input_tensor
             )
+
             # append output_tensor_grad no matter none or not
-            self.output_tensor_grads[next_backward_virtual_pp_rank].append(
-                output_tensor_grad
-            )
+            if self._best_unbalanced_scheduler:
+                if self.is_pipeline_last_stage(ignore_virtual=True):
+                    if recv_next:
+                        recv_next_virtual_pp_rank = _last_stage_recv_pp_rank(
+                            backward_micro_step_id + 1
+                        )
+                        self.output_tensor_grads[
+                            recv_next_virtual_pp_rank
+                        ].append(output_tensor_grad)
+                        if (
+                            next_backward_virtual_pp_rank
+                            == self.num_model_chunks - 1
+                            and recv_next_virtual_pp_rank
+                            != next_backward_virtual_pp_rank
+                        ):
+                            self.output_tensor_grads[
+                                self.num_model_chunks - 1
+                            ].append(None)
+                    elif (
+                        next_backward_virtual_pp_rank
+                        == self.num_model_chunks - 1
+                    ):
+                        self.output_tensor_grads[
+                            self.num_model_chunks - 1
+                        ].append(None)
+                else:
+                    self.output_tensor_grads[
+                        next_backward_virtual_pp_rank
+                    ].append(output_tensor_grad)
+            else:
+                self.output_tensor_grads[next_backward_virtual_pp_rank].append(
+                    output_tensor_grad
+                )
+
             self._release_output(output_tensor)
 
         assert fwd_buffer_queue.empty(), "forward buffer should be empty"
@@ -1761,15 +1927,22 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 input_tensor_grad = self._backward_step_helper(micro_step)
                 self._record_stamp("B", micro_step, '"E"', forward=False)
                 next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    micro_step + 1, forward=False
+                    micro_step + 1,
+                    forward=False,
                 )
+                if (
+                    self._best_unbalanced_scheduler
+                    and self.is_pipeline_last_stage(ignore_virtual=True)
+                ):
+                    cur_pp_rank = self._get_virtual_pp_rank(
+                        micro_step, forward=False
+                    )
+                    if cur_pp_rank != 0:
+                        last_stage_recv_queue.append((micro_step, cur_pp_rank))
 
                 recv_next = True
                 if self.is_pipeline_last_stage(ignore_virtual=True):
-                    if next_backward_virtual_pp_rank == (
-                        self.num_model_chunks - 1
-                    ):
-                        recv_next = False
+                    recv_next = _last_stage_need_recv_next(micro_step + 1)
 
                 if micro_step == (num_steps - 1):
                     recv_next = False
@@ -1780,13 +1953,46 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     )
 
                 # append output_tensor_grad no matter none or not
-                self.output_tensor_grads[next_backward_virtual_pp_rank].append(
-                    self._p2p_helper.send_backward_recv_backward(
-                        input_tensor_grad,
-                        recv_next=recv_next,
-                        batch_p2p_comm=self._use_batch_p2p_comm,
+                if self._best_unbalanced_scheduler:
+                    if self.is_pipeline_last_stage(ignore_virtual=True):
+                        output_tensor_grad = (
+                            self._p2p_helper.send_backward_recv_backward(
+                                input_tensor_grad,
+                                recv_next=recv_next,
+                                batch_p2p_comm=self._use_batch_p2p_comm,
+                            )
+                        )
+                        if recv_next:
+                            recv_next_virtual_pp_rank = (
+                                _last_stage_recv_pp_rank(micro_step + 1)
+                            )
+                            self.output_tensor_grads[
+                                recv_next_virtual_pp_rank
+                            ].append(output_tensor_grad)
+                        else:
+                            self.output_tensor_grads[
+                                next_backward_virtual_pp_rank
+                            ].append(output_tensor_grad)
+                    else:
+                        self.output_tensor_grads[
+                            next_backward_virtual_pp_rank
+                        ].append(
+                            self._p2p_helper.send_backward_recv_backward(
+                                input_tensor_grad,
+                                recv_next=recv_next,
+                                batch_p2p_comm=self._use_batch_p2p_comm,
+                            )
+                        )
+                else:
+                    self.output_tensor_grads[
+                        next_backward_virtual_pp_rank
+                    ].append(
+                        self._p2p_helper.send_backward_recv_backward(
+                            input_tensor_grad,
+                            recv_next=recv_next,
+                            batch_p2p_comm=self._use_batch_p2p_comm,
+                        )
                     )
-                )
 
             self._sync_overlap_grads()
 
