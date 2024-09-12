@@ -404,7 +404,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_text_classification_tester.cc EXTRA_DEPS common)
 
   # mobilenet
-  set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
+  set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_pir")
   if(NOT EXISTS ${MOBILENET_INSTALL_DIR}/mobilenetv1.tar.gz)
     inference_download_and_uncompress_without_verify(
       ${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
@@ -880,7 +880,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
   # ch_PP-OCRv3_det
-  set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ch_PP-OCRv3_det")
+  set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ch_PP-OCRv3_det_pir")
   if(NOT EXISTS ${OCR_INSTALL_DIR}/ch_PP-OCRv3_det.tar.gz)
     inference_download_and_uncompress_without_verify(
       ${OCR_INSTALL_DIR} "http://paddle-inference-dist.bj.bcebos.com/"
