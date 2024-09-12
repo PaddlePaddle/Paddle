@@ -49,6 +49,8 @@ struct FusionItersManager {
       const FusionItersSignature& upstream,
       const FusionItersSignature& downstream);
 
+  bool IterSymbolEqual(const std::string& lhs, const std::string& rhs);
+
  private:
   void StoreIter2DimExprForValue(const pir::Value& value);
 
@@ -72,7 +74,7 @@ struct TransposeItersTransform {
   std::string DebugStr() const {
     return "Transpose(perm={" + cinn::utils::Join(perm_, ",") + "})";
   }
-  std::vector<int32_t> perm_ = {};
+  std::vector<int32_t> perm_;
 };
 struct AppendItersTransform {
   AppendItersTransform() = default;
@@ -81,24 +83,26 @@ struct AppendItersTransform {
   std::string DebugStr() const {
     return "AppendIters(axis={" + cinn::utils::Join(axis_, ",") + "})";
   }
-  std::vector<int32_t> axis_ = {};
+  std::vector<int32_t> axis_;
 };
-struct ReplaceItersTransform {
-  ReplaceItersTransform() = default;
-  ReplaceItersTransform(const std::vector<int32_t>& axis,
-                        const std::vector<std::string>& targets)
-      : axis_(axis), targets_(targets) {}
+struct ReuseItersTransform {
+  using IterMap = std::unordered_map<std::string, std::string>;
+  ReuseItersTransform() = default;
+  explicit ReuseItersTransform(const IterMap& reuse_target_to_source)
+      : reuse_target_to_source_(reuse_target_to_source) {}
   std::string DebugStr() const {
-    return "ReplaceIters(axis={" + cinn::utils::Join(axis_, ",") +
-           "}, targets={" + cinn::utils::Join(targets_, ",") + "})";
+    std::string result = "ReuseIters(";
+    for (const auto& [t, s] : reuse_target_to_source_) {
+      result += s + "->" + t + ",";
+    }
+    return result.substr(0, result.size() - 1) + ")";
   }
-  std::vector<int32_t> axis_ = {};
-  std::vector<std::string> targets_ = {};
+  IterMap reuse_target_to_source_;
 };
 using ItersTransform = std::variant<IdentityItersTransform,
                                     TransposeItersTransform,
                                     AppendItersTransform,
-                                    ReplaceItersTransform>;
+                                    ReuseItersTransform>;
 using ItersTransformRoute = std::vector<ItersTransform>;
 
 }  // namespace cinn::fusion

@@ -577,16 +577,8 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
 }
 
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
-  const auto& get_loop_iters =
-      [](const ir::Expr& root) -> std::vector<ir::Var> {
-    const auto& iter_exprs =
-        (ExprSetFinderUtils::ChildScheduleBlockRealizes *
-         ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
-         ExprSetFinderUtils::Realizer2IterValues)(root);
-    return AppendBound(ComposeUtils::ExprVec2VarVec(iter_exprs), root);
-  };
   const auto& f = [=](const ir::Expr& root) -> ir::Expr {
-    const auto& iters = get_loop_iters(root);
+    const auto& iters = GetLoopVars(root);
     PADDLE_ENFORCE_EQ(iters.size(),
                       perm.size(),
                       "Transposed iters size and perm size should be equal.");
@@ -595,8 +587,7 @@ ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
         PADDLE_ENFORCE_EQ(i, perm[i], "Can only transpose non reduce iters.");
       }
     }
-    const auto& transposed_iters =
-        cinn::fusion::TransposeVector(get_loop_iters(root), perm);
+    const auto& transposed_iters = cinn::fusion::TransposeVector(iters, perm);
     const auto& non_reduce_iters = cinn::fusion::FilterVector(
         transposed_iters, [](const ir::Var& v) { return !v->is_reduce_axis; });
     const auto& body_block =
@@ -675,6 +666,13 @@ std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
             v->name,
             v->is_reduce_axis);
       });
+}
+
+std::vector<ir::Var> GetLoopVars(const ir::Expr& root) {
+  const auto& iter_exprs = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                            ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+                            ExprSetFinderUtils::Realizer2IterValues)(root);
+  return AppendBound(ComposeUtils::ExprVec2VarVec(iter_exprs), root);
 }
 
 }  // namespace trivial_fusion_detail

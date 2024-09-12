@@ -197,8 +197,8 @@ void PatternGraph::LiftToItersPermutationPattern() {
 
 void PatternGraph::ItersPermutationFusion() {
   GraphTransformer<ReverseTopoNodePairPattern,
-                   CanRiseDownstreamMatcher,
-                   RiseDownstreamOperation>(this);
+                   CanFuseItersPermutationMatcher,
+                   FuseItersPermutatioOperation>(this);
 }
 
 void PatternGraph::LiftToAnchorPattern() {

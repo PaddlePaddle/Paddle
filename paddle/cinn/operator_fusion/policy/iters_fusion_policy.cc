@@ -19,9 +19,8 @@ namespace cinn::fusion {
 
 bool ItersFusionPolicy::CanFuseSource2Target(const PatternNodePtr& source,
                                              const PatternNodePtr& target) {
-  const auto source_iters = source->fusion_iters().loop_iters;
-  const auto target_iters = target->fusion_iters().loop_iters;
-  const auto iters_transforms = GetItersTransforms(source_iters, target_iters);
+  const auto iters_transforms = GetItersTransformRouteImpl(
+      source->fusion_iters(), target->fusion_iters());
   if (iters_transforms != std::nullopt) {
     VLOG(4) << "Find iters transform: "
             << DebugStrItersTransformRoute(iters_transforms.value());
@@ -31,16 +30,17 @@ bool ItersFusionPolicy::CanFuseSource2Target(const PatternNodePtr& source,
   return false;
 }
 
-ItersTransformRoute ItersFusionPolicy::GetItersTransformRoute(
+std::optional<ItersTransformRoute> ItersFusionPolicy::GetItersTransformRoute(
     const PatternNodePtr& source, const PatternNodePtr& target) {
-  PADDLE_ENFORCE(
-      routes_.count(source) && routes_[source].count(target),
-      ::common::errors::InvalidArgument("Can not find iters transform route."));
-  PADDLE_ENFORCE_NE(routes_[source][target].size(),
-                    0,
-                    ::common::errors::InvalidArgument(
-                        "Iters transform route should not be empty."));
-  return routes_[source][target];
+  if (routes_.count(source) == 0 || routes_[source].count(target) == 0) {
+    return std::nullopt;
+  } else {
+    PADDLE_ENFORCE_GT(routes_[source][target].size(),
+                      0,
+                      ::common::errors::InvalidArgument(
+                          "Iters transform route should not be empty."));
+    return routes_[source][target];
+  }
 }
 
 FusionItersSignature ItersFusionPolicy::SingleDownstreamItersFusion(
@@ -55,77 +55,118 @@ FusionItersSignature ItersFusionPolicy::MultiDownstreamItersFusion(
                                                     downstream->fusion_iters());
 }
 
-std::optional<ItersTransformRoute> GetItersTransforms(
-    const FusionIters& source, const FusionIters& target) {
+std::optional<ItersTransformRoute>
+ItersFusionPolicy::GetItersTransformRouteImpl(
+    const FusionItersSignature& source, const FusionItersSignature& target) {
+  const auto source_iters = source.loop_iters;
+  const auto target_iters = target.loop_iters;
   VLOG(4) << "Search iters transform route from "
-          << cinn::utils::Join(source, ",") << " to "
-          << cinn::utils::Join(target, ",");
-  // ItesTransform can not support decreasing iters
-  if (source.size() > target.size()) {
+          << cinn::utils::Join(source_iters, ",") << " to "
+          << cinn::utils::Join(target_iters, ",");
+  // ItesTransform can not support decreasing iters in multi downstream fusion
+  if (source_iters.size() > target_iters.size()) {
     return std::nullopt;
   }
+  ItersTransformRoute iters_transforms;
 
-  // Can apply IdentityItersTransform
-  if (source == target) {
-    ItersTransformRoute iters_transforms;
+  // Search ItersTransform including reduce iters
+  if (source.reduce_iter_nums && target.reduce_iter_nums) {
+    // Reduce -> Reduce ItersTransform
+    VLOG(4) << "Unimplemented case.";
+    return std::nullopt;
+  } else if (!source.reduce_iter_nums && target.reduce_iter_nums) {
+    // Trivial -> Reduce ItersTransform
+    VLOG(4) << "Unimplemented case.";
+    return std::nullopt;
+  } else if (source.reduce_iter_nums && !target.reduce_iter_nums) {
+    // Can not support Reduce -> Trivial ItersTransform
+    return std::nullopt;
+  }
+  // else: Trivial -> Trivial ItersTransform
+
+  if (source_iters == target_iters) {
+    // Can apply IdentityItersTransform
     iters_transforms.push_back(IdentityItersTransform());
     return iters_transforms;
   }
 
-  std::set<std::string> source_iters(source.begin(), source.end());
-  std::set<std::string> target_iters(target.begin(), target.end());
+  const auto source_iters_set = ToSet(source_iters);
+  const auto target_iters_set = ToSet(target_iters);
   PADDLE_ENFORCE_EQ(
-      source.size(),
+      source_iters_set.size(),
       source_iters.size(),
       ::common::errors::InvalidArgument(
           "The source iters should not contain duplicate elements."));
   PADDLE_ENFORCE_EQ(
-      target.size(),
+      target_iters_set.size(),
       target_iters.size(),
       ::common::errors::InvalidArgument(
           "The target iters should not contain duplicate elements."));
 
-  // Source and target have the same iters but different order
-  if (source_iters == target_iters) {
-    ItersTransformRoute iters_transforms;
-    auto perm = GetTransposePerm<int32_t>(source, target);
+  if (source_iters_set == target_iters_set) {
+    // Source and target have the same iters but different order
+    const auto perm = GetTransposePerm<int32_t>(source_iters, target_iters);
     iters_transforms.push_back(TransposeItersTransform(perm));
     return iters_transforms;
   }
 
-  std::set<std::string> shared_iters =
-      SetIntersection(source_iters, target_iters);
-  std::set<std::string> source_unique_iters =
-      SetDifference(source_iters, shared_iters);
-  std::set<std::string> target_unique_iters =
-      SetDifference(target_iters, shared_iters);
+  const auto shared_iters = SetIntersection(source_iters_set, target_iters_set);
+  const auto source_unique_iters =
+      SetDifference(source_iters_set, shared_iters);
+  const auto target_unique_iters =
+      SetDifference(target_iters_set, shared_iters);
 
-  if (source_unique_iters.empty() && !target_unique_iters.empty()) {
+  FusionIters reused_source_iters = source_iters;
+  if (!source_unique_iters.empty() && !target_unique_iters.empty()) {
+    // Search whether exist iters in source can reuse target iter
+    std::unordered_map<std::string, std::string> reuse_target_to_source;
+    for (const auto& source_iter : source_unique_iters) {
+      for (const auto& target_iter : target_unique_iters) {
+        if (iters_manager_->IterSymbolEqual(source_iter, target_iter) &&
+            !reuse_target_to_source.count(target_iter)) {
+          reuse_target_to_source[target_iter] = source_iter;
+          break;
+        }
+      }
+    }
+    if (reuse_target_to_source.size() != source_unique_iters.size()) {
+      // Exist iters in source can not reuse target iter
+      return std::nullopt;
+    }
+    for (const auto& [target_iter, source_iter] : reuse_target_to_source) {
+      const auto it = std::find(
+          reused_source_iters.begin(), reused_source_iters.end(), source_iter);
+      if (it != reused_source_iters.end()) {
+        *it = target_iter;
+      }
+    }
+    iters_transforms.push_back(ReuseItersTransform(reuse_target_to_source));
+  }
+
+  const auto reused_source_iters_set = ToSet(reused_source_iters);
+  PADDLE_ENFORCE_EQ(
+      SetDifference(reused_source_iters_set, target_iters_set).empty(),
+      true,
+      ::common::errors::PreconditionNotMet("The reused source iters should not "
+                                           "contains element not in target."));
+  if (reused_source_iters_set != target_iters_set) {
     // Source iters are a subset of target iters
     std::vector<int32_t> append_axis;
-    std::vector<std::string> decreased_target(target.begin(), target.end());
+    std::vector<std::string> decreased_target = target_iters;
     for (const auto& iter : target_unique_iters) {
-      auto idx =
+      auto it =
           std::find(decreased_target.begin(), decreased_target.end(), iter);
-      append_axis.push_back(idx - decreased_target.begin());
-      decreased_target.erase(idx);
+      append_axis.push_back(it - decreased_target.begin());
+      decreased_target.erase(it);
     }
-
-    ItersTransformRoute iters_transforms;
-    if (decreased_target != source) {
+    if (decreased_target != source_iters) {
       iters_transforms.push_back(TransposeItersTransform(
-          GetTransposePerm<int32_t>(source, decreased_target)));
+          GetTransposePerm<int32_t>(source_iters, decreased_target)));
     }
     iters_transforms.push_back(AppendItersTransform(append_axis));
-    return iters_transforms;
-  } else if (!source_unique_iters.empty() && !target_unique_iters.empty()) {
-    VLOG(4) << "Unimplement condition: !source_unique_iters.empty() && "
-               "!target_unique_iters.empty()";
-    return std::nullopt;
-  } else {
-    PADDLE_THROW(
-        ::common::errors::PreconditionNotMet("Unexpected iters condition."));
   }
+
+  return iters_transforms;
 }
 
 std::ostream& operator<<(std::ostream& os, const ItersTransform& trans) {

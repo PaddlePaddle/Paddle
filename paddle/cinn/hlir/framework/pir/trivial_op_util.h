@@ -279,6 +279,8 @@ static bool IsReduceBody(const ir::Expr& expr_body) {
 std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                                  const ir::Expr& root);
 
+std::vector<ir::Var> GetLoopVars(const ir::Expr& root);
+
 }  // namespace trivial_fusion_detail
 }  // namespace pir
 }  // namespace framework

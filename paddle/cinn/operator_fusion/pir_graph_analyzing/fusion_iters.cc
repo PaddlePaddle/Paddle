@@ -212,4 +212,12 @@ FusionItersSignature FusionItersManager::MultiDownstreamItersFusion(
   return fused_signature;
 }
 
+bool FusionItersManager::IterSymbolEqual(const std::string& lhs,
+                                         const std::string& rhs) {
+  PADDLE_ENFORCE(iter2dimexpr_.count(lhs) && iter2dimexpr_.count(rhs),
+                 ::common::errors::InvalidArgument(
+                     "Cannot found symbol of input iter %s or %s", lhs, rhs));
+  return shape_analysis_->IsEqual(iter2dimexpr_[lhs], iter2dimexpr_[rhs]);
+}
+
 }  // namespace cinn::fusion

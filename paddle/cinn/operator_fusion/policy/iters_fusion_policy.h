@@ -33,21 +33,21 @@ struct ItersFusionPolicy final : public PolicyBase {
 
   bool CanFuseSource2Target(const PatternNodePtr& source,
                             const PatternNodePtr& target);
-  ItersTransformRoute GetItersTransformRoute(const PatternNodePtr& source,
-                                             const PatternNodePtr& target);
+  std::optional<ItersTransformRoute> GetItersTransformRoute(
+      const PatternNodePtr& source, const PatternNodePtr& target);
   FusionItersSignature SingleDownstreamItersFusion(
       const PatternNodePtr& upstream, const PatternNodePtr& downstream);
   FusionItersSignature MultiDownstreamItersFusion(
       const PatternNodePtr& upstream, const PatternNodePtr& downstream);
 
  private:
+  std::optional<ItersTransformRoute> GetItersTransformRouteImpl(
+      const FusionItersSignature& source, const FusionItersSignature& target);
+
   using NodeRouteMap = std::unordered_map<PatternNodePtr, ItersTransformRoute>;
   std::unordered_map<PatternNodePtr, NodeRouteMap> routes_;
   std::shared_ptr<FusionItersManager> iters_manager_;
 };
-
-std::optional<ItersTransformRoute> GetItersTransforms(
-    const FusionIters& source, const FusionIters& target);
 
 std::string DebugStrItersTransformRoute(const ItersTransformRoute& route);
 

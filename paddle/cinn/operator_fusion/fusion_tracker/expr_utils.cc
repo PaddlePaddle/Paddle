@@ -28,6 +28,12 @@ ir::Expr ApplyItersTransform::operator()(const TransposeItersTransform& trans) {
   return result;
 }
 
+ir::Expr ApplyItersTransform::operator()(const AppendItersTransform& trans) {
+  PADDLE_THROW(
+      ::common::errors::Unimplemented("Unimplemented AppendItersTransform."));
+  return expr_;
+}
+
 std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops) {
   std::vector<ir::Expr> exprs;
   for (auto& fusion_op : fusion_ops) {

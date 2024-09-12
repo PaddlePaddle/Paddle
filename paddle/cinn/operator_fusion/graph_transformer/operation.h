@@ -168,30 +168,52 @@ struct LiftToItersPermutationPatternOperation {
   }
 };
 
-struct RiseDownstreamOperation {
+struct FuseItersPermutatioOperation {
   PatternNodePtr operator()(PatternGraph* graph,
                             const PatternNodePtr& upstream,
                             const PatternNodePtr& downstream) {
-    VLOG(4) << "Start RiseDownstreamOperation";
+    VLOG(4) << "Start FuseItersPermutatioOperation";
     VLOG(4) << "Upstream: \n" << upstream->DebugStr();
     VLOG(4) << "Downstream: \n" << downstream->DebugStr();
-    auto iters_transform_route =
-        graph->policy_manager()
-            .template GetPolicy<ItersFusionPolicy>()
-            ->GetItersTransformRoute(downstream, upstream);
-    VLOG(4) << "iters_transform_route: "
-            << DebugStrItersTransformRoute(iters_transform_route);
+    const auto rise_transform_route =
+        graph->iters_fusion_policy()->GetItersTransformRoute(downstream,
+                                                             upstream);
+    const auto sink_transform_route =
+        graph->iters_fusion_policy()->GetItersTransformRoute(upstream,
+                                                             downstream);
+    PADDLE_ENFORCE_EQ(
+        rise_transform_route != std::nullopt ||
+            sink_transform_route != std::nullopt,
+        true,
+        ::common::errors::NotFound("Can not find Transform route."));
+    const bool is_rise = rise_transform_route != std::nullopt;
+    const auto transform_route =
+        is_rise ? rise_transform_route.value() : sink_transform_route.value();
 
     auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
     merged_node->set_fusion_iters(
         graph->iters_fusion_policy()->MultiDownstreamItersFusion(upstream,
                                                                  downstream));
-    std::string downstream_tmp_id = GetNewTmpId(downstream->id());
-    merged_node->AppendInstr(std::make_shared<ItersTransformInstr>(
-        downstream->id(), downstream_tmp_id, iters_transform_route));
-    merged_node->AppendInstr(std::make_shared<CombineInstr>(
-        std::vector<std::string>{upstream->id(), downstream_tmp_id},
-        merged_node->id()));
+    const auto update_tracker_fn = [=](const PatternNodePtr& source,
+                                       const PatternNodePtr& target) {
+      VLOG(4) << "Transform from " << source->fusion_iters().DebugStr()
+              << " to " << target->fusion_iters().DebugStr();
+      VLOG(4) << "TransformRoute: "
+              << DebugStrItersTransformRoute(transform_route);
+      const std::string source_tmp_id = GetNewTmpId(source->id());
+      merged_node->AppendInstr(std::make_shared<ItersTransformInstr>(
+          source->id(), source_tmp_id, transform_route));
+      const std::vector<std::string> names =
+          is_rise ? std::vector<std::string>({target->id(), source_tmp_id})
+                  : std::vector<std::string>({source_tmp_id, target->id()});
+      merged_node->AppendInstr(
+          std::make_shared<CombineInstr>(names, merged_node->id()));
+    };
+    if (is_rise) {
+      update_tracker_fn(downstream, upstream);
+    } else {
+      update_tracker_fn(upstream, downstream);
+    }
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
     VLOG(4) << "Merged: \n" << merged_node->DebugStr();

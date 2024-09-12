@@ -71,22 +71,21 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
-struct CanRiseDownstreamMatcher {
-  bool operator()(const PatternGraph& graph,
+struct CanFuseItersPermutationMatcher {
+  bool operator()(PatternGraph* graph,
                   const PatternNodePtr& upstream,
                   const PatternNodePtr& downstream) {
-    VLOG(4) << "CanRiseDownstreamMatcher: upstream: " << upstream->id()
-            << ", downstream: " << downstream->id();
     return StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
                                                               upstream) &&
            StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
                                                               downstream) &&
-           graph.policy_manager()
+           graph->policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
                ->CanFuse(upstream, downstream) &&
-           graph.policy_manager()
-               .template GetPolicy<ItersFusionPolicy>()
-               ->CanFuseSource2Target(downstream, upstream);
+           (graph->iters_fusion_policy()->CanFuseSource2Target(downstream,
+                                                               upstream) ||
+            graph->iters_fusion_policy()->CanFuseSource2Target(upstream,
+                                                               downstream));
   }
 };
 

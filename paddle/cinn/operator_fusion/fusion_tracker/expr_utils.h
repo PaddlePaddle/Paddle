@@ -44,14 +44,8 @@ struct ApplyItersTransform {
   explicit ApplyItersTransform(const ir::Expr& expr) : expr_(expr) {}
   ir::Expr operator()(const IdentityItersTransform& trans) { return expr_; }
   ir::Expr operator()(const TransposeItersTransform& trans);
-  ir::Expr operator()(const AppendItersTransform& trans) {
-    PADDLE_THROW(
-        ::common::errors::Unimplemented("Unimplemented AppendItersTransform."));
-  }
-  ir::Expr operator()(const ReplaceItersTransform& trans) {
-    PADDLE_THROW(::common::errors::Unimplemented(
-        "Unimplemented ReplaceItersTransform."));
-  }
+  ir::Expr operator()(const AppendItersTransform& trans);
+  ir::Expr operator()(const ReuseItersTransform& trans) { return expr_; }
 
  private:
   ir::Expr expr_;
