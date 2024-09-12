@@ -51,7 +51,10 @@ class SameStatusReshardFunction(ReshardFunction):
         for src, dst in zip(src_mesh.process_ids, dst_mesh.process_ids):
             if src == cur_global_rank:
                 dst_local_rank = all_process_ids.index(dst)
-                chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+                chunk_id = -1
+                if src_value.get_defining_op().dist_attr:
+                    chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+
                 paddle._C_ops.send_v2(
                     src_value,
                     comm_group.id,

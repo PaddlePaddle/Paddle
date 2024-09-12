@@ -47,7 +47,9 @@ class RToSReshardFunction(ReshardFunction):
 
         mesh = src_dist_attr.process_mesh
         curr_global_rank = paddle.distributed.get_rank()
-        chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+        chunk_id = -1
+        if src_value.get_defining_op().dist_attr:
+            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
 
         if curr_global_rank in mesh.process_ids:
             total_nums = src_value.shape[split_axis]

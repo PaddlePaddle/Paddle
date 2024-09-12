@@ -80,7 +80,10 @@ class SToRReshardFunction(ReshardFunction):
             share_data_op = dst_value.get_defining_op()
             # set dist type and dist attr
             dst_value.set_type(dst_type)
-            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+
+            chunk_id = -1
+            if src_value.get_defining_op().dist_attr:
+                chunk_id = src_value.get_defining_op().dist_attr.chunk_id
             share_data_op.dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
                     src_dist_attr.process_mesh,
@@ -229,7 +232,9 @@ class SToRReshardFunction(ReshardFunction):
     ):
         src_mesh = src_dist_attr.process_mesh
         num_of_process = len(src_mesh.process_ids)
-        chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+        chunk_id = -1
+        if src_value.get_defining_op().dist_attr:
+            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
 
         group = new_process_group(sorted(src_mesh.process_ids))
         allgather_value = paddle._C_ops.all_gather(

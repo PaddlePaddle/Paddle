@@ -52,7 +52,9 @@ class GlobaleToSubMeshFunction(ReshardFunction):
             share_data_op = dst_value.get_defining_op()
             # set dist type and dist attr
             dst_value.set_type(dst_type)
-            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+            chunk_id = -1
+            if src_value.get_defining_op().dist_attr:
+                chunk_id = src_value.get_defining_op().dist_attr.chunk_id
             share_data_op.dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
                     src_dist_attr.process_mesh,

@@ -28,7 +28,6 @@ from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
 )
 from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.framework import _current_expected_place
 
 BATCH_SIZE = 4
 BATCH_NUM = 10
@@ -218,17 +217,6 @@ class TestML3DParallel(unittest.TestCase):
         dist_model._fetch_value(
             dist_program.global_block().ops[4].result(0), "fetch_value"
         )
-
-        # TODO(2024-Q2) hack for engine api
-        dist_model._engine._has_prepared[mode] = True
-        dist_model._mode = mode
-        dist_model._engine._mode = mode
-        paddle.disable_static()
-        dist_model._engine._initialize(mode)
-        dist_model._engine._executor = paddle.static.Executor(
-            _current_expected_place()
-        )
-        dist_model._engine._init_comm()
 
         loss_list = []
         for batch_id, data in enumerate(dist_loader()):
