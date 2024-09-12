@@ -367,7 +367,7 @@ def replace_moe_global_mesh_tensor(op):
 
 
 # pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(dist_program, dist_params_grads):
+def remove_other_rank_op_pass(dist_program, dist_params_grads=[]):
     cur_rank = paddle.distributed.get_rank()
 
     _remove_other_rank_params_grads(dist_params_grads)

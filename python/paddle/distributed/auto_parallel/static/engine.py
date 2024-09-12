@@ -195,6 +195,17 @@ class Engine:
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
             )
+        # NOTE(ljz) Not support parameter groups
+        param_list = []
+        if optimizer is not None and (
+            optimizer._parameter_list is not None
+            and len(optimizer._parameter_list) > 0
+            and not isinstance(optimizer._parameter_list[0], dict)
+        ):
+            for p in optimizer._parameter_list:
+                if not p.stop_gradient:
+                    param_list.append(p)
+        self._parameter_name_list = [p.name for p in param_list]
         self._optimizer = auto_utils.validate_opt(optimizer)
 
         metrics = metrics or []
@@ -714,6 +725,11 @@ class Engine:
                             dtype=self._strategy.amp.dtype,
                         )
                         self._optimizer._sorted = False
+                        parameter_value_list = [
+                            dist_program.get_parameter_value_by_name(pname)
+                            for pname in self._parameter_name_list
+                        ]
+
                         self._optimizer = paddle.static.amp.decorator.OptimizerWithMixedPrecision(
                             optimizer=self._optimizer,
                             amp_lists=amp_lists,
@@ -745,7 +761,9 @@ class Engine:
                             )
                             scaled = scaler.scale(loss)
                         optimizer_ops, params_grads = scaler.minimize(
-                            self._optimizer, scaled
+                            self._optimizer,
+                            scaled,
+                            parameter_list=parameter_value_list,
                         )
                     else:
                         with auto_complete_op_role(
