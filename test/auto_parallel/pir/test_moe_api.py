@@ -82,7 +82,7 @@ class TestMoEApi(unittest.TestCase):
         global_mesh = [0, 1, 2, 3, 4, 5, 6, 7]
         local_meshes = [[0, 1], [2, 3], [4, 5], [6, 7]]
         global_dims_mapping = [0, -1, 1]
-        local_dims_mapping = [-1, -1, 0]
+        local_dims_mapping = [-1, -1, 1]
         self.check_results(
             ops,
             global_mesh,

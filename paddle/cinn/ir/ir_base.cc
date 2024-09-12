@@ -41,12 +41,22 @@ using cinn::common::float16;
 
 std::ostream &operator<<(std::ostream &os, IrNodeTy type) {
   switch (type) {
+    case IrNodeTy::IterMark:
+      os << "<node: IterMark>";
+      break;
+    case IrNodeTy::IterSplit:
+      os << "<node: IterSplit>";
+      break;
+    case IrNodeTy::IterSum:
+      os << "<node: IterSum>";
+      break;
+
 #define __m(t__)                    \
   case IrNodeTy::t__:               \
     os << "<node: " << #t__ << ">"; \
     break;
 
-    NODETY_FORALL(__m)
+      NODETY_FORALL(__m)
 #undef __m
 
     default:
