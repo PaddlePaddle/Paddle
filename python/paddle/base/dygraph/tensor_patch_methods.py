@@ -1248,6 +1248,61 @@ def monkey_patch_tensor():
         """
         return _C_ops.sparse_coalesce(self)
 
+    @property
+    def __cuda_array_interface__(self):
+        """Array view description for cuda tensors.
+
+        See:
+        https://numba.pydata.org/numba-doc/latest/cuda/cuda_array_interface.html
+        """
+
+        # raise AttributeError for unsupported tensors, so that
+        if "gpu" not in str(self.place):
+            raise AttributeError(
+                f"Can't get __cuda_array_interface__ on non-CUDA tensor type: {self.type()} "
+                "If CUDA data is required use tensor.cuda() to copy tensor to device memory."
+            )
+
+        if self.is_sparse():
+            raise AttributeError(
+                f"Can't get __cuda_array_interface__ on sparse type: {self.type()} "
+                "Use Tensor.to_dense() to convert to a dense tensor first."
+            )
+
+        # RuntimeError, matching tensor.__array__() behavior.
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Can't get __cuda_array_interface__ on Variable that stop_gradient=False. "
+                "If gradients aren't required, use var.detach() to get Variable that doesn't require grad."
+            )
+
+        # CUDA devices are little-endian and tensors are stored in native byte
+        # order. 1-byte entries are endian-agnostic.
+        typestr = {
+            paddle.float16: "<f2",
+            paddle.float32: "<f4",
+            paddle.float64: "<f8",
+            paddle.uint8: "|u1",
+            paddle.int8: "|i1",
+            paddle.int16: "<i2",
+            paddle.int32: "<i4",
+            paddle.int64: "<i8",
+        }[self.dtype]
+
+        itemsize = self.element_size()
+
+        shape = tuple(self.shape)
+        strides = tuple(s * itemsize for s in self.strides)
+        data = (self.data_ptr(), False)  # read-only is false
+
+        return {
+            "typestr": typestr,
+            "shape": shape,
+            "strides": strides,
+            "data": data,
+            "version": 0,
+        }
+
     if not hasattr(core, "eager"):
         return
 
@@ -1290,6 +1345,7 @@ def monkey_patch_tensor():
         ("__hash__", __hash__),
         ("_use_gpudnn", _use_gpudnn),
         ("_md5sum", _md5sum),
+        ("__cuda_array_interface__", __cuda_array_interface__),
     ):
         setattr(core.eager.Tensor, method_name, method)
 
