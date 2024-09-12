@@ -207,7 +207,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --batch_size=50
       --enable_bf16=true
       --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
-      --iterations=2)
+      --iterations=2
+      --with_accuracy_layer=false)
   endfunction()
 
   function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME
