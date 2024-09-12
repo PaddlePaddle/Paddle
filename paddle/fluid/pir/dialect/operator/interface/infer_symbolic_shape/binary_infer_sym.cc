@@ -1807,13 +1807,7 @@ bool WeightDequantizeOpInferSymbolicShape(
                           "The scale tensor of dequantize op must "
                           "be 1D in per-channel mode, but got[%d]",
                           scale_shape.size()));
-    PADDLE_ENFORCE_EQ(scale_shape[0],
-                      real_channel_shape,
-                      common::errors::InvalidArgument(
-                          "The scale tensor's shape must be equal to the x "
-                          "tensor's shape, but got [%d] not equal to [%d]",
-                          scale_shape[0],
-                          x_shape[0]));
+    infer_context->AddEqualCstr(scale_shape[0], real_channel_shape);
   } else {
     PADDLE_ENFORCE_EQ(scale_shape.size(),
                       2UL,
@@ -1821,22 +1815,9 @@ bool WeightDequantizeOpInferSymbolicShape(
                           "The scale tensor of dequantize op must "
                           "be 2D in group-wise mode, but got[%d]",
                           scale_shape.size()));
-    PADDLE_ENFORCE_EQ(scale_shape[0],
-                      (x_shape[1] + (group_size - 1)) / group_size,
-                      common::errors::InvalidArgument(
-                          "The input(weight_scale) dim[0] must be equal "
-                          "to (Input(weight).dim[1] + (group_size -1))"
-                          " / group_size"
-                          "But receive %d and %d",
-                          scale_shape[0],
-                          (x_shape[1] + (group_size - 1)) / group_size));
-    PADDLE_ENFORCE_EQ(scale_shape[1],
-                      real_channel_shape,
-                      common::errors::InvalidArgument(
-                          "The scale tensor's shape must be equal to the real "
-                          "channel size, but got [%d] not equal to [%d]",
-                          scale_shape[0],
-                          real_channel_shape));
+    infer_context->AddEqualCstr(scale_shape[0],
+                                (x_shape[1] + (group_size - 1)) / group_size);
+    infer_context->AddEqualCstr(scale_shape[1], real_channel_shape);
   }
   std::vector<symbol::DimExpr> out_shape{x_shape[1], real_channel_shape};
   infer_context->SetShapeOrDataForValue(
