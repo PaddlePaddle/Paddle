@@ -33,10 +33,12 @@ static ::DLDataType GetDLDataTypeCode() {
   } else if (std::is_same<T, phi::dtype::float16>::value ||
              std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
+  } else if (std::is_same<T, bool>::value) {
+    // Since std::is_unsigned<bool>::value is True,
+    // it is necessary to evaluate bool before std::is_unsigned.
+    dtype.code = kDLBool;
   } else if (std::is_unsigned<T>::value) {
     dtype.code = kDLUInt;
-  } else if (std::is_same<T, bool>::value) {
-    dtype.code = kDLBool;
   } else if (std::is_integral<T>::value) {
     dtype.code = kDLInt;
   } else {

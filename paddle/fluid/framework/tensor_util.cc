@@ -736,6 +736,7 @@ phi::DataType GetDstPtrByDLDataType(DLDataType type) {
 
   switch (type.bits) {
     case 8:
+      if (type.code == kDLBool) return phi::DataType::BOOL;
       if (type.code == kDLInt) return phi::DataType::INT8;
       if (type.code == kDLUInt) return phi::DataType::UINT8;
       PADDLE_THROW(common::errors::Unimplemented(
