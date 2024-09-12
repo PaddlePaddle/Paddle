@@ -492,21 +492,24 @@ def monkey_patch_value():
 
     def _bool_(self):
         error_msg = """\
-            bool(Tensor) is not supported in static graph mode. Because the value is not available during the static mode.
-            If you haven't call bool(Tensor) explicitly, it's usually triggered by implicitly the control flow, for example:
+            bool(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
+            If you haven't call bool(Tensor) explicitly, it's usually triggered by the control flow implicitly, for example:
                 >>> if x > 0:
-                        ^ `x` is Tensor, `x` > 0 is also a Tensor, `if x > 0` triggers bool(Tensor)
+                       ^ `x` is Tensor, `x` > 0 is also a Tensor, `if x > 0` triggers bool(Tensor)
                 ...     y = y + 1
 
-            There are two common scenarios and fixes available:
+            There are two common workarounds available:
             If you are checking for Tensor values, then consider checking only at dynamic graphs, for example:
+
                 Modify the following code
                 >>> if x > 0:
                 ...     raise ValueError("x should be positive")
                 to
                 >>> if paddle.in_dynamic_mode() and x < 0:
                 >>>     raise ValueError("x should be positive")
+
             If you need to control the flow of execution based on the value of the Tensor, then you need to rewrite the code as a control flow, for example:
+
                 Modify the following code
                 >>> if x < y:
                 ...     y = y + 1
@@ -515,7 +518,7 @@ def monkey_patch_value():
                 to
                 >>> pred = paddle.less_than(x=x, y=y, name=None)
                 >>> y = paddle.static.nn.cond(pred, lambda: y + 1, lambda: y - 1)
-                more info please refer to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/static/nn/cond_cn.html
+                For more info, please refer to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/static/nn/cond_cn.html
             """
         raise TypeError(textwrap.dedent(error_msg))
 
