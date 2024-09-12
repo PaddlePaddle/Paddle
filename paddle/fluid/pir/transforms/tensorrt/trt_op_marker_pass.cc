@@ -641,6 +641,8 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
 
     auto inputs = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto inputs_shape = inputs.dims();
+    LOG(INFO)<<"axes.size"<<axes.size();
+    LOG(INFO)<<"inputs_shape.size()"<<inputs_shape.size();
     if (axes.size() !=
         static_cast<std::vector<int64_t>::size_type>(inputs_shape.size())) {
       VLOG(3) << "The shape of attributes of the slice operator axes "
