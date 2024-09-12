@@ -1188,7 +1188,12 @@ phi::KernelKey GetKernelKey(
                      .dyn_cast<paddle::dialect::DenseTensorArrayType>()
                      .dtype();
 
-    return {backend, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
+    phi::KernelKey res(
+        backend, phi::DataLayout::ANY, TransToPhiDataType(dtype));
+    if (NeedFallBackCpu(op, kernel_fn_str, res)) {
+      res.set_backend(phi::Backend::CPU);
+    }
+    return res;
   }
 
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
