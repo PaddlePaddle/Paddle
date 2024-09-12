@@ -898,9 +898,13 @@ class Engine:
                         eliminate_transpose_by_reshape,
                     )
 
-                    for job_type in self._job_plan.job_types():
-                        ir_program = self._job_plan.ir_program(job_type)
-                        eliminate_transpose_by_reshape(ir_program)
+                    if self._job_plan is None:
+                        eliminate_transpose_by_reshape(dense_program)
+                    else:
+                        for job_type in self._job_plan.job_types():
+                            ir_program = self._job_plan.ir_program(job_type)
+                            eliminate_transpose_by_reshape(ir_program)
+
                 else:
                     pm.add_pass(p, {})
 
