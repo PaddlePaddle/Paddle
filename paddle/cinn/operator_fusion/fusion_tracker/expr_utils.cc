@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/cinn/operator_fusion/fusion_tracker/expr_utils.h"
+#include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 
 namespace cinn::fusion {
@@ -29,9 +30,17 @@ ir::Expr ApplyItersTransform::operator()(const TransposeItersTransform& trans) {
 }
 
 ir::Expr ApplyItersTransform::operator()(const AppendItersTransform& trans) {
-  PADDLE_THROW(
-      ::common::errors::Unimplemented("Unimplemented AppendItersTransform."));
-  return expr_;
+  VLOG(4) << "[ItersTransform] Start AppendItersTransform: "
+          << trans.DebugStr();
+  std::vector<ir::Var> append_vars;
+  for (size_t i = 0; i < trans.symbols_.size(); ++i) {
+    const auto upper_bound =
+        cinn::common::DimExprConverter().ConvertToIrExpr(trans.symbols_[i]);
+    append_vars.push_back(ir::Var(upper_bound, trans.iter_var_names_[i]));
+  }
+  auto result = InsertForsTransformer(trans.axis_, append_vars)(expr_);
+  VLOG(4) << "[ItersTransform] After AppendItersTransform: " << result;
+  return result;
 }
 
 std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops) {

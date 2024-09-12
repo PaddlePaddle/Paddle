@@ -73,9 +73,9 @@ FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
                                         "equal to the number of results."));
   PADDLE_ENFORCE_LE(
       axes.reduce_axis.size(),
-      op->num_operands(),
+      axes.loop.axis_names.size(),
       ::common::errors::InvalidArgument("The number of reduce_axis should be "
-                                        "no more than input nums."));
+                                        "no more than number of loop iters."));
   FusionItersSignature result;
   result.loop_iters = axes.loop.axis_names;
   result.reduce_iter_nums = axes.reduce_axis.size();

@@ -152,18 +152,22 @@ ItersFusionPolicy::GetItersTransformRouteImpl(
   if (reused_source_iters_set != target_iters_set) {
     // Source iters are a subset of target iters
     std::vector<int32_t> append_axis;
+    std::vector<symbol::DimExpr> append_symbols;
     std::vector<std::string> decreased_target = target_iters;
     for (const auto& iter : target_unique_iters) {
       auto it =
           std::find(decreased_target.begin(), decreased_target.end(), iter);
-      append_axis.push_back(it - decreased_target.begin());
+      append_axis.insert(append_axis.begin(), it - decreased_target.begin());
+      append_symbols.insert(append_symbols.begin(),
+                            iters_manager_->GetIterSymbol(iter));
       decreased_target.erase(it);
     }
     if (decreased_target != source_iters) {
       iters_transforms.push_back(TransposeItersTransform(
           GetTransposePerm<int32_t>(source_iters, decreased_target)));
     }
-    iters_transforms.push_back(AppendItersTransform(append_axis));
+    iters_transforms.push_back(
+        AppendItersTransform(append_axis, append_symbols));
   }
 
   return iters_transforms;

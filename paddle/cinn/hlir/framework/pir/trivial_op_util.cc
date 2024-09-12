@@ -578,7 +578,7 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
 
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
   const auto& f = [=](const ir::Expr& root) -> ir::Expr {
-    const auto& iters = GetLoopVars(root);
+    const auto& iters = GetNonReduceLoopVars(root);
     PADDLE_ENFORCE_EQ(iters.size(),
                       perm.size(),
                       "Transposed iters size and perm size should be equal.");
@@ -587,15 +587,39 @@ ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
         PADDLE_ENFORCE_EQ(i, perm[i], "Can only transpose non reduce iters.");
       }
     }
-    const auto& transposed_iters = cinn::fusion::TransposeVector(iters, perm);
-    const auto& non_reduce_iters = cinn::fusion::FilterVector(
+    const auto transposed_iters = cinn::fusion::TransposeVector(iters, perm);
+    const auto non_reduce_iters = cinn::fusion::FilterVector(
         transposed_iters, [](const ir::Var& v) { return !v->is_reduce_axis; });
-    const auto& body_block =
-        (ExprSetFinderUtils::ChildFors *
-         ExprSetFinderUtils::IsForIterVar(iters[non_reduce_iters.size() - 1]))
-            .GetSingle(root)
-            .As<ir::For>()
-            ->body;
+    const auto body_block = GetBodyBlock(root);
+    return ir::Block::Make({(WrapForsTransformer(non_reduce_iters) *
+                             WrapScheduleRealizer({}, "root"))(body_block)});
+  };
+  return ExprTransformer(f);
+}
+
+ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
+                                      const std::vector<ir::Var>& vars) {
+  const auto& f = [=](const ir::Expr& root) -> ir::Expr {
+    auto iters = GetNonReduceLoopVars(root);
+    PADDLE_ENFORCE_EQ(
+        axis.size(),
+        vars.size(),
+        ::common::errors::InvalidArgument(
+            "The number of axis to insert and vars should be equal"));
+    const size_t reduce_size =
+        std::count_if(iters.begin(), iters.end(), [](const ir::Var& v) {
+          return v->is_reduce_axis;
+        });
+    for (size_t i = 0; i < axis.size(); ++i) {
+      PADDLE_ENFORCE_LE(axis[i],
+                        iters.size() - reduce_size,
+                        ::common::errors::OutOfRange(
+                            "Insert axis should not be behind reduce axis"));
+      iters.insert(iters.begin() + axis[i], vars[i]);
+    }
+    const auto non_reduce_iters =
+        cinn::fusion::SliceVector(iters, 0, iters.size() - reduce_size);
+    const auto body_block = GetBodyBlock(root);
     return ir::Block::Make({(WrapForsTransformer(non_reduce_iters) *
                              WrapScheduleRealizer({}, "root"))(body_block)});
   };
@@ -668,11 +692,35 @@ std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
       });
 }
 
-std::vector<ir::Var> GetLoopVars(const ir::Expr& root) {
-  const auto& iter_exprs = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
-                            ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
-                            ExprSetFinderUtils::Realizer2IterValues)(root);
-  return AppendBound(ComposeUtils::ExprVec2VarVec(iter_exprs), root);
+std::vector<ir::Var> GetNonReduceLoopVars(const ir::Expr& root) {
+  const auto& fors_expr = (ExprSetFinderUtils::ChildFors)(root);
+  std::vector<ir::Var> loop_vars;
+  for (const auto& for_expr : fors_expr) {
+    loop_vars.push_back(for_expr.As<ir::For>()->loop_var);
+  }
+  const auto non_reduce_loop_vars = cinn::fusion::FilterVector(
+      loop_vars, [](const ir::Var& v) { return !v->is_reduce_axis; });
+  return AppendBound(non_reduce_loop_vars, root);
+}
+
+ir::Expr GetBodyBlock(const ir::Expr& root) {
+  const auto& iters = GetNonReduceLoopVars(root);
+  const size_t reduce_size =
+      std::count_if(iters.begin(), iters.end(), [](const ir::Var& v) {
+        return v->is_reduce_axis;
+      });
+  if (reduce_size == iters.size()) {
+    PADDLE_THROW(::common::errors::Unimplemented(
+        "Unimplemented get body block for reduce all op."));
+    return root;
+  } else {
+    return (ExprSetFinderUtils::ChildFors *
+            ExprSetFinderUtils::IsForIterVar(
+                iters[iters.size() - reduce_size - 1]))
+        .GetSingle(root)
+        .As<ir::For>()
+        ->body;
+  }
 }
 
 }  // namespace trivial_fusion_detail

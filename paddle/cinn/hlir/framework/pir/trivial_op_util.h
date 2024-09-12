@@ -251,6 +251,9 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
                                      const std::string& tensor_name);
 
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm);
+
+ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
+                                      const std::vector<ir::Var>& vars);
 }  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(
@@ -279,7 +282,9 @@ static bool IsReduceBody(const ir::Expr& expr_body) {
 std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                                  const ir::Expr& root);
 
-std::vector<ir::Var> GetLoopVars(const ir::Expr& root);
+std::vector<ir::Var> GetNonReduceLoopVars(const ir::Expr& root);
+
+ir::Expr GetBodyBlock(const ir::Expr& root);
 
 }  // namespace trivial_fusion_detail
 }  // namespace pir
