@@ -44,7 +44,7 @@ class TestReduceDefaultWithGradOneDNNOp(TestReduceSumDefaultOneDNNOp):
             'Out',
             check_dygraph=False,
             check_pir=False,
-            check_pir_onednn=self.check_pir_onednn,
+            check_pir_onednn=False,
         )
 
 

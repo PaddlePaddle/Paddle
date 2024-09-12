@@ -861,7 +861,8 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
       trans_y,
       activation,
       &meta_out,
-      activation == "none" ? nullptr : &meta_reserve_space);
+      activation == "none" ? nullptr : &meta_reserve_space,
+      phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(

@@ -31,10 +31,10 @@ class Config:
         self.hidden_size = 16
         self.class_num = 10
         self.run_ep = False
-        self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self.mesh = dist.ProcessMesh([0, 1])
         self.expert_mesh_list = []
-        self.expert_mesh_list.append(dist.ProcessMesh([0], dim_names=["x"]))
-        self.expert_mesh_list.append(dist.ProcessMesh([1], dim_names=["x"]))
+        self.expert_mesh_list.append(dist.ProcessMesh([0]))
+        self.expert_mesh_list.append(dist.ProcessMesh([1]))
 
 
 class RandomDataset(paddle.io.Dataset):
@@ -201,7 +201,7 @@ class TestSimpleNetForEP:
         model, train_dataloader, criterion, optimizer = self.build(config)
 
         dist_dataloader = dist.shard_dataloader(
-            train_dataloader, config.mesh, shard_dims="x"
+            train_dataloader, config.mesh, shard_dims=0
         )
         loss = self.train(config, model, dist_dataloader, criterion, optimizer)
 
@@ -216,10 +216,53 @@ class TestSimpleNetForEP:
         loss = self.train(config, model, train_dataloader, criterion, optimizer)
         return loss
 
+    def run_dy2st(self):
+        self.set_seed(self._seed)
+        config = Config()
+        config.run_ep = True
+        model, train_dataloader, criterion, optimizer = self.build(config)
+
+        dist_dataloader = dist.shard_dataloader(
+            train_dataloader, config.mesh, shard_dims=0
+        )
+
+        mode = "train"
+        dist_model = dist.to_static(
+            model, dist_dataloader, criterion, optimizer
+        )
+        dist_model.train()
+
+        loss_list = []
+        for batch_id, data in enumerate(dist_dataloader()):
+            if isinstance(data, dict):
+                image = data['image']
+                label = data['label']
+            else:
+                image, label = data
+            loss = dist_model(image, label)
+            loss_list.append(loss)
+
+        return np.array(loss_list)
+
     def test_ep_demo_net(self):
-        ep_loss = self.run_ep()
         replicate_loss = self.run_replicate()
+        ep_loss = self.run_ep()
         np.testing.assert_allclose(ep_loss, replicate_loss, rtol=1e-6)
+
+        dy2st_loss = self.run_dy2st()
+        paddle.disable_static()
+        global_mesh = dist.ProcessMesh([0, 1])
+        pd_loss_dy2st = paddle.to_tensor(dy2st_loss)
+        pd_loss_dy2st = dist.auto_parallel.api.dtensor_from_local(
+            pd_loss_dy2st,
+            global_mesh,
+            [dist.Partial(dist.ReduceType.kRedAvg)],
+        )
+        pd_loss_dy2st = dist.reshard(
+            pd_loss_dy2st, global_mesh, [dist.Replicate()]
+        )
+        dy2st_loss = pd_loss_dy2st.numpy()
+        np.testing.assert_equal(ep_loss, dy2st_loss)
 
     def run_test_case(self):
         self.test_ep_demo_net()
