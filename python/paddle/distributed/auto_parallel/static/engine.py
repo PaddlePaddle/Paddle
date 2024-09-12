@@ -699,7 +699,7 @@ class Engine:
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
-        set_all_ops_op_role(dist_program, OpRole.Forward)
+        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
 
         if (
             self._strategy.pipeline.enable
@@ -1338,7 +1338,7 @@ class Engine:
                 for del_op in del_ops:
                     del_op.erase()
 
-                set_all_ops_op_role(startup_prog, OpRole.Forward)
+                set_all_ops_op_role(startup_prog.global_block(), OpRole.Forward)
                 apply_reshard_pass(startup_prog)
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
