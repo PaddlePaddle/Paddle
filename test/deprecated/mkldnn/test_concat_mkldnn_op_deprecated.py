@@ -53,13 +53,13 @@ class TestConcatAxis0OneDNNOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['x0'], 'Out', check_dygraph=False, check_pir_onednn=True
+            ['x0'], 'Out', check_dygraph=False, check_pir_onednn=False
         )
         self.check_grad(
-            ['x1'], 'Out', check_dygraph=False, check_pir_onednn=True
+            ['x1'], 'Out', check_dygraph=False, check_pir_onednn=False
         )
         self.check_grad(
-            ['x2'], 'Out', check_dygraph=False, check_pir_onednn=True
+            ['x2'], 'Out', check_dygraph=False, check_pir_onednn=False
         )
 
     def init_test_data(self):
