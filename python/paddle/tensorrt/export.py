@@ -47,15 +47,15 @@ class Input:
     This class supports generating random input data for minimum, optimal, and maximum shapes, with configurable data types (e.g., 'int' or 'float') and value ranges.
 
     Args:
-        min_input_shape : tuple
+        min_input_shape (tuple):
             The shape of the minimum input tensor.
-        max_input_shape : tuple
+        max_input_shape (tuple):
             The shape of the maximum input tensor.
-        optim_input_shape : tuple, optional
+        optim_input_shape (tuple, optional):
             The shape of the optimal input tensor (default is None).
-        input_data_type : str, optional
+        input_data_type (str, optional):
             The data type for the input tensors, such as 'float32' or 'int64' or 'float32' or 'int32'  (default is float32).
-        input_range : tuple, optional
+        input_range (tuple, optional):
             The range of values used to generate input data. For floats, the default range is (0.0, 1.0). For integers, the default range is (1, 10).
     Returns:
         None
@@ -148,19 +148,19 @@ class TensorRTConfig:
         inputs: list,
         min_subgraph_size: int | None = 3,
         save_model_dir: str | None = None,
-        disable_ops: str | None = None,
+        disable_ops: str | list | None = None,
     ) -> None:
         """
         A class for configuring TensorRT optimizations.
 
         Args:
-            inputs : list
+            inputs (list):
                 A list of Input configurations
-            min_subgraph_size : int, optional
+            min_subgraph_size (int, optional):
                 The minimum number of operations in a subgraph for TensorRT to optimize (default is 3).
-            save_model_dir : str, optional
+            save_model_dir (str, optional):
                 The directory where the optimized model will be saved (default is None).
-            disable_ops : str, optional
+            disable_ops : (str|list, optional):
                 A string representing the names of operations that should not be entering by TensorRT (default is None).
 
         Returns:
@@ -273,7 +273,7 @@ def convert(function=None, input_spec=None, config=None, **kwargs):
             decorator, the decorated function will be parsed as this parameter.
         input_spec (list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to
             specific the shape/dtype/name information of each input Tensor.
-        config: TensorRTConfig configurations
+        config: (TensorRTConfig): The configuration of TensorRTConfig.
         kwargs: Support keys including `property`, set `property` to True if the function
             is python property.
 
@@ -512,7 +512,7 @@ def convert_loaded_model(model_dir, config):
 
     Args:
        model_dir(str):The directory path where the PaddlePaddle model is located.
-       config(TensorRTConfig):The configuration of TensorRTConfig
+       config(TensorRTConfig):The configuration of TensorRTConfig.
 
     Returns:
         program:The TensorRT optimized program.
