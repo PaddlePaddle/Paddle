@@ -1531,7 +1531,7 @@ bool FlashAttnOpInferSymbolicShape(
 
 static std::vector<symbol::DimExpr> sliceFlattenView(
     const std::vector<symbol::DimExpr> &in_shape,
-    int axis,
+    size_t axis,
     symbol::DimExpr offset,
     symbol::DimExpr sliceLength) {
   PADDLE_ENFORCE_LT(
