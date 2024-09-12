@@ -75,9 +75,9 @@ struct CanFuseItersPermutationMatcher {
   bool operator()(PatternGraph* graph,
                   const PatternNodePtr& upstream,
                   const PatternNodePtr& downstream) {
-    return StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
+    return StmtPatternGraphMatcher<ItersPermutationPattern>()(*graph,
                                                               upstream) &&
-           StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
+           StmtPatternGraphMatcher<ItersPermutationPattern>()(*graph,
                                                               downstream) &&
            graph->policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
