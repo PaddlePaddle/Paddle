@@ -3747,6 +3747,12 @@ bool WeightQuantizeOpInferSymbolicShape(
   int group_size = op->attribute<pir::Int32Attribute>("group_size").data();
   std::string algo = op->attribute<pir::StrAttribute>("algo").AsString();
 
+  PADDLE_ENFORCE_EQ(
+      ((group_size == -1) || (group_size == 64) || (group_size == 128)),
+      true,
+      common::errors::InvalidArgument(
+          "Currently, group_size only support -1, 64 or 128."));
+
   std::vector<symbol::DimExpr> out_shape;
   std::vector<symbol::DimExpr> scale_shape;
 
@@ -3758,10 +3764,14 @@ bool WeightQuantizeOpInferSymbolicShape(
     scale_shape = std::vector<symbol::DimExpr>{x_shape[1]};
   }
 
-  if (algo == "weight_only_int8" || algo == "llm.int8") {
+  if (algo == "weight_only_int8") {
     out_shape = std::vector<symbol::DimExpr>{x_shape[1], x_shape[0]};
   } else if (algo == "weight_only_int4") {
     out_shape = std::vector<symbol::DimExpr>{x_shape[1] / 2, x_shape[0]};
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Currently, we only support weight_only_int8"
+        " and weight_only_int4 algo."));
   }
 
   infer_context->SetShapeOrDataForValue(
