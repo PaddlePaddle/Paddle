@@ -27,8 +27,6 @@ struct ForInfoAnalyzer {
                           const std::vector<ir::For*>& second) {
     auto ForVarExtentEqual = [&](const std::vector<ir::For*>& first,
                                  const std::vector<ir::For*>& second) -> bool {
-      if (first.size() != second.size()) return false;
-
       for (size_t i = 0; i < first.size(); ++i) {
         const ir::Expr lhs = first[i]->extent;
         const ir::Expr rhs = second[i]->extent;
@@ -40,6 +38,7 @@ struct ForInfoAnalyzer {
       return true;
     };
 
+    if (first.size() != second.size()) return false;
     return ForVarExtentEqual(first, second);
   }
 };
