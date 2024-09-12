@@ -40,6 +40,7 @@ def hardswish_net(x):
 class TestPrimFloorWithGrad(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
+        self.op_name = "pd_op.floor_grad"
         self.dtype = "float32"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, None]
@@ -52,6 +53,7 @@ class TestPrimFloorWithGrad(TestPrimBaseWithGrad):
 class TestPrimGeluWithGrad1(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
+        self.op_name = "pd_op.gelu_grad"
         self.dtype = "float32"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, None]
@@ -64,6 +66,7 @@ class TestPrimGeluWithGrad1(TestPrimBaseWithGrad):
 class TestPrimGeluWithGrad2(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
+        self.op_name = "pd_op.gelu_grad"
         self.dtype = "float32"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, None]
@@ -76,6 +79,7 @@ class TestPrimGeluWithGrad2(TestPrimBaseWithGrad):
 class TestPrimGeluWithGrad3(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
+        self.op_name = "pd_op.gelu_grad"
         self.dtype = "float16"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, None]
@@ -107,6 +111,7 @@ class TestPrimGeluWithGrad3(TestPrimBaseWithGrad):
 class TestPrimGeluWithGrad4(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
+        self.op_name = "pd_op.gelu_grad"
         self.dtype = "float16"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, None]
@@ -138,6 +143,7 @@ class TestPrimGeluWithGrad4(TestPrimBaseWithGrad):
 class TestPrimHardswishWithGrad(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
+        self.op_name = "pd_op.hardswish_grad"
         self.dtype = "float32"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, None]

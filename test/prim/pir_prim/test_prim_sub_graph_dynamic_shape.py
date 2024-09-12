@@ -332,8 +332,8 @@ class TestPrimBase(unittest.TestCase):
         if flag == "prim":
             ops = [
                 op.name()
-                for op in fn.program_cache.last()[-1][-1]
-                .infer_program.program.global_block()
+                for op in fn.get_concrete_program(x)[-1]
+                .program.backward_program.global_block()
                 .ops
             ]
             assert self.necessary_ops not in ops
@@ -503,8 +503,8 @@ class TestPrimTwo(unittest.TestCase):
         if flag == "prim":
             ops = [
                 op.name()
-                for op in fn.program_cache.last()[-1][-1]
-                .infer_program.program.global_block()
+                for op in fn.get_concrete_program(x, y)[-1]
+                .program.backward_program.global_block()
                 .ops
             ]
             assert self.necessary_ops not in ops
@@ -808,8 +808,8 @@ class TestPrimThree(unittest.TestCase):
         if flag == "prim":
             ops = [
                 op.name()
-                for op in fn.program_cache.last()[-1][-1]
-                .infer_program.program.global_block()
+                for op in fn.get_concrete_program(x, y, z)[-1]
+                .program.backward_program.global_block()
                 .ops
             ]
             assert self.necessary_ops not in ops
