@@ -883,8 +883,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ch_PP-OCRv3_det")
   if(NOT EXISTS ${OCR_INSTALL_DIR}/ch_PP-OCRv3_det.tar.gz)
     inference_download_and_uncompress_without_verify(
-      ${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
-      "inference-vis-demos/ch_PP-OCRv3_det.tar.gz")
+      ${OCR_INSTALL_DIR} "http://paddle-inference-dist.bj.bcebos.com/"
+      "int8/pir/ch_PP-OCRv3_det.tar.gz")
   endif()
 
   inference_analysis_test(
