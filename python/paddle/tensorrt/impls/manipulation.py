@@ -14,7 +14,7 @@
 import logging
 import os
 import sys
-
+import numpy as np
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 if parent_dir not in sys.path:
@@ -83,6 +83,7 @@ def flatten_converter(network, paddle_op, inputs):
     start_axis = paddle_op.attrs().get("start_axis")
     stop_axis = paddle_op.attrs().get("stop_axis")
 
+    print("start_axis: ", start_axis, "stop_axis: ", stop_axis)
     flatten_layer = network.add_shuffle(input_val)
 
     if not has_dynamic_shape(input_val_shape):
@@ -123,6 +124,7 @@ def flatten_converter(network, paddle_op, inputs):
             prefix_shape_layer.name = f"{input_val.name}_prefix_shape"
             final_shapes.append(prefix_shape_layer.get_output(0))
 
+        print("start_axis: ", start_axis, "stop_axis: ", stop_axis,)
         flatten_shape_layer = network.add_slice(
             input_shape_layer.get_output(0),
             start=(start_axis,),
@@ -217,3 +219,53 @@ def squeeze_converter(network, paddle_op, inputs):
     layer = network.add_shuffle(input_val)
     layer.reshape_dims = tuple(output_shape)
     return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.slice", trt_version="8.x")
+def slice_converter(network, paddle_op, inputs):
+    input_val=inputs[0]
+    input_shape = paddle_op.operands()[0].source().shape
+    print("input_shape",input_shape)
+    start=paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    ends=paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
+    print("start: ", start, "ends: ", ends)
+    axes = paddle_op.attrs().get("axes")
+    decrease_axis=paddle_op.attrs().get("decrease_axis")
+    #获取输入的维度数量
+    input_dim=len(input_shape)
+
+    shape_tensor=network.add_shape(input_val)
+    
+    trt_start_dims=[0]*input_dim # start 
+    trt_step_dims=[1]*input_dim #stride 
+    
+    start_tensor=None
+    end_tensor=None
+    
+    starts_tensor=[]
+    ends_tensor=[]
+    
+    for i in range(input_dim):
+        starts_tensor.append(network.add_constant([1],np.array([0],dtype=np.int32)).get_output(0))
+        index_val = network.add_constant([1], np.array([i], dtype=np.int32))
+        end_val =network.add_gather(shape_tensor.get_output(0),index_val.get_output(0),0)
+        ends_tensor.append(end_val.get_output(0))
+    print("starts_tensor", starts_tensor)
+    print("ends_tensor", ends_tensor)
+        
+    
+    
+    
+    
+    
+    
+    
+        
+    
+   
+       
+    
+       
+    
+       
+    
