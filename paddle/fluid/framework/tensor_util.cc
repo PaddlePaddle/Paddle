@@ -726,6 +726,74 @@ void TensorFromStream(std::istream& is,
   }
 }
 
+// get tensor data point by DLDataType
+void* GetDstPtrByDLDataType(DLDataType type,
+                            phi::DenseTensor* dst,
+                            const phi::Place& dst_place) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(
+      type.lanes,
+      1,
+      common::errors::Unimplemented("Vector type is not supported currently."));
+
+  switch (type.bits) {
+    case 8:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
+      if (type.code == kDLUInt)
+        return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 16:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int16_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(
+            dst->mutable_data<phi::dtype::float16>(dst_place));
+      if (type.code == kDLBfloat)
+        return static_cast<void*>(
+            dst->mutable_data<phi::dtype::bfloat16>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 32:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int32_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dst->mutable_data<float>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 64:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int64_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dst->mutable_data<double>(dst_place));
+      if (type.code == kDLComplex)
+        return static_cast<void*>(
+            dst->mutable_data<phi::dtype::complex<float>>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 128:
+      if (type.code == kDLComplex)
+        return static_cast<void*>(
+            dst->mutable_data<phi::dtype::complex<double>>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported DLDataType.bits %d.", type.bits));
+  }
+}
+
 // get Tensor data dtype from given DLDataType
 phi::DataType GetDstPtrByDLDataType(DLDataType type) {
   // vector types not currently supported
@@ -923,7 +991,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (dl_tensor.device.device_type == kDLGPU) {
+  if (dl_tensor.device.device_type == kDLCUDA) {
     phi::GPUPlace dst_place = phi::GPUPlace(dl_tensor.device.device_id);
     phi::GPUPlace src_place = phi::GPUPlace(dl_tensor.device.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);

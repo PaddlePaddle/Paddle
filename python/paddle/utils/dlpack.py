@@ -70,6 +70,13 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "dltensor" at 0x7f6103c681b0>
+            >>> #doctest: -SKIP
+
+            >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
+            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> print(dlpack)
+            >>> # doctest: +SKIP('the address will change in every run')
+            <capsule object "used_dltensor" at 0x7f6103c681b0>
     """
 
     if in_dygraph_mode():
@@ -87,7 +94,8 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
 def from_dlpack(dlpack) -> Tensor:
     """
-    Decodes a DLPack to a tensor.
+    Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
+    the tensor from given dlpack.
 
     Args:
         dlpack (PyCapsule): a PyCapsule object with the dltensor.
@@ -105,10 +113,16 @@ def from_dlpack(dlpack) -> Tensor:
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
             ...                       [0.1, 0.2, 0.6, 0.7]])
             >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
-            >>> x = paddle.utils.dlpack.from_dlpack(dlpack)
-            >>> print(x)
+            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> print(y)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
+                    [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
+            >>> # data of tensor x is shared with tensor y
+            >>> y[0, 0] = 10.0
+            >>> print(x)
+            Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[10.       , 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
     """
 
@@ -123,9 +137,9 @@ def from_dlpack(dlpack) -> Tensor:
 
     if hasattr(dlpack, '__dlpack__'):
         device = dlpack.__dlpack_device__()
-        # device is either CUDA or ROCm, we need to pass the current
+        # device is CUDA, we need to pass the current
         # stream
-        if device[0] in (DLDeviceType.kDLCUDA, DLDeviceType.kDLROCM):
+        if device[0] in (DLDeviceType.kDLCUDA,):
             stream = paddle.device.cuda.current_stream(device[1])
             # cuda_stream is the pointer to the stream and it is a public
             # attribute, but it is not documented
@@ -133,8 +147,6 @@ def from_dlpack(dlpack) -> Tensor:
             # with a value of 1 for CUDA
             # https://data-apis.org/array-api/latest/API_specification/array_object.html?dlpack-self-stream-none#dlpack-self-stream-none
             is_gpu = device[0] == DLDeviceType.kDLCUDA
-            # Since pytorch is not using PTDS by default, lets directly pass
-            # the legacy stream
             stream_ptr = (
                 1 if is_gpu and stream.cuda_stream == 0 else stream.cuda_stream
             )
