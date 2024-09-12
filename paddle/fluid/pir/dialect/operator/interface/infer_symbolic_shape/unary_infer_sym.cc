@@ -679,7 +679,7 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
   std::vector<symbol::DimExpr> offsets;
-  std::vector<symbol::DimExpr> shape;
+  std::vector<symbol::DimExpr> in_shape;
   std::vector<symbol::DimExpr> out_dims;
 
   if (op->HasAttribute("offsets")) {
@@ -689,29 +689,28 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
   } else {
     const auto &offsets_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
-    offsets = offsets_shape_or_data.data().has_value()
-                  ? offsets_shape_or_data.data().value()
-                  : offsets_shape_or_data.shape();
+    offsets = details::GetOrCreateExprVecFromData(offsets_shape_or_data,
+                                                  infer_context);
   }
 
   if (op->HasAttribute("shape")) {
-    std::vector<int64_t> shape =
+    std::vector<int64_t> shape_ =
         paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
-    for (const auto &i : shape) out_dims.emplace_back(symbol::DimExpr{i});
+    for (const auto &i : shape_) in_shape.emplace_back(symbol::DimExpr{i});
   } else {
-    const auto &shape_or_data =
+    const auto &in_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    shape = shape_or_data.data().has_value() ? shape_or_data.data().value()
-                                             : shape_or_data.shape();
+    in_shape =
+        details::GetOrCreateExprVecFromData(in_shape_or_data, infer_context);
   }
 
-  PADDLE_ENFORCE_EQ(shape.size(),
+  PADDLE_ENFORCE_EQ(in_shape.size(),
                     x_shape.size(),
                     phi::errors::InvalidArgument(
                         "The number of elements (%d) of attribute 'shape' for "
                         "CropTensor must be equal to the number of "
                         "dimensions (%d) of the input.",
-                        shape.size(),
+                        in_shape.size(),
                         x_shape.size()));
   PADDLE_ENFORCE_EQ(
       offsets.size(),
@@ -723,15 +722,15 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
           offsets.size(),
           x_shape.size()));
 
-  for (size_t i = 0; i < shape.size(); ++i) {
-    if (shape[i].isa<int64_t>()) {
-      if (shape[i].Get<int64_t>() == -1) {
+  for (size_t i = 0; i < in_shape.size(); ++i) {
+    if (in_shape[i].isa<int64_t>()) {
+      if (in_shape[i].Get<int64_t>() == -1) {
         out_dims.push_back(symbol::DimExpr(x_shape[i] - offsets[i]));
       } else {
-        out_dims.push_back(symbol::DimExpr(shape[i]));
+        out_dims.push_back(symbol::DimExpr(in_shape[i]));
       }
     } else {
-      out_dims.push_back(shape[i]);
+      out_dims.push_back(in_shape[i]);
     }
   }
 
