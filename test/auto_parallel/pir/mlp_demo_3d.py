@@ -107,7 +107,7 @@ class TestML3DParallel(unittest.TestCase):
         dist_program = engine._fwd_main_progs["train"]
 
         apply_mix2dist_pass(dist_program)
-        set_all_ops_op_role(dist_program, OpRole.Forward)
+        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
         loss = dist_program.get_output_value_by_name(engine._loss_names[0])
         with paddle.static.program_guard(dist_program):
             with auto_complete_op_role(dist_program, OpRole.Backward):

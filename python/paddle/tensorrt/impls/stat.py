@@ -11,23 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import tensorrt as trt
 
+from paddle.tensorrt.converter_utils import get_axes_for_reduce_op
 from paddle.tensorrt.register import converter_registry
 
 
-@converter_registry.register("pd_op.sqrt", trt_version="8.x")
-@converter_registry.register("pd_op.sqrt_", trt_version="8.x")
-def sqrt_converter(network, paddle_op, inputs):
+@converter_registry.register("pd_op.mean", trt_version="8.x")
+def mean_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
+    keep_dim = paddle_op.attrs().get("keepdim")
+    dim = paddle_op.attrs().get("axis")
 
-    sqrt_layer = network.add_unary(input_tensor, trt.UnaryOperation.SQRT)
-    return sqrt_layer.get_output(0)
-
-
-@converter_registry.register("pd_op.sigmoid", trt_version="8.x")
-def sigmoid_converter(network, paddle_op, inputs):
-    sigmoid_layer = network.add_activation(
-        inputs[0], trt.ActivationType.SIGMOID
+    mean_layer = network.add_reduce(
+        input_tensor,
+        trt.ReduceOperation.AVG,
+        axes=get_axes_for_reduce_op(dim, network.has_implicit_batch_dimension),
+        keep_dims=keep_dim,
     )
-    return sigmoid_layer.get_output(0)
+    return mean_layer.get_output(0)
