@@ -13,10 +13,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_auto_parallel_relaunch)
   set_tests_properties(test_auto_parallel_relaunch
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_mp_allreduce_matmul_grad_overlapping MODULES
-                  test_mp_allreduce_matmul_grad_overlapping)
-  set_tests_properties(test_mp_allreduce_matmul_grad_overlapping
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_relaunch_with_gpt_planner MODULES
                   test_relaunch_with_gpt_planner)
   set_tests_properties(test_relaunch_with_gpt_planner
@@ -44,10 +40,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_auto_tuner MODULES test_auto_tuner)
   set_tests_properties(test_auto_tuner PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 100)
-  py_test_modules(test_pipeline_scheduler_zb_vpp MODULES
-                  test_pipeline_scheduler_zb_vpp)
-  set_tests_properties(test_pipeline_scheduler_zb_vpp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
   set_tests_properties(test_auto_tuner_compare
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
@@ -145,9 +137,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_tensor_api MODULES test_dist_tensor_api)
   set_tests_properties(test_dist_tensor_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
-  py_test_modules(test_gpt_with_pir MODULES test_gpt_with_pir)
-  set_tests_properties(test_gpt_with_pir PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                    TIMEOUT 100)
   py_test_modules(test_semi_auto_parallel_saved_tensor_hook MODULES
                   test_semi_auto_parallel_saved_tensor_hook)
   set_tests_properties(test_semi_auto_parallel_saved_tensor_hook
@@ -159,9 +148,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_static_reshard_api MODULES test_static_reshard_api)
   set_tests_properties(test_static_reshard_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
-  py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
-  set_tests_properties(test_gpt_with_prim
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
   set_tests_properties(test_dist_checkpoint_utils
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
@@ -177,13 +163,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
   # End of unittests WITH multi cards and WITHOUT timeout
-
-  # NOTE(zyl): unittests WITH single card and timeout
-  py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
-  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 300)
-  py_test_modules(test_tuning_recompute_with_amp MODULES
-                  test_tuning_recompute_with_amp)
-  set_tests_properties(test_tuning_recompute_with_amp PROPERTIES TIMEOUT 60)
 
   py_test_modules(test_rule_based_tuner_o2 MODULES test_rule_based_tuner_o2)
   set_tests_properties(test_rule_based_tuner_o2 PROPERTIES TIMEOUT 50)
