@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ctypes
 import hashlib
 import logging
 
 import numpy as np
 import tensorrt as trt
+
+# init tensorrt plugin
+trt_plugin_lib = ctypes.CDLL('libnvinfer_plugin.so')
+trt_plugin_lib.initLibNvInferPlugins(None, "")
 
 import paddle
 from paddle import pir
@@ -30,6 +35,8 @@ from .impls.linalg import *  # noqa: F403
 from .impls.manipulation import *  # noqa: F403
 from .impls.math import *  # noqa: F403
 from .impls.norm import *  # noqa: F403
+from .impls.ops import *  # noqa: F403
+from .impls.others import *  # noqa: F403
 from .impls.pooling import *  # noqa: F403
 from .impls.search import *  # noqa: F403
 from .register import converter_registry
@@ -95,7 +102,11 @@ class PaddleToTensorRTConverter:
                     graph_output_values.append(result)
             for operand in op.operands():
                 source = operand.source()
-                all_values[source.id] = source
+                if not source.initialized():
+                    _logger.warning(f"Skipping uninitialized source: {source}")
+                    continue
+                else:
+                    all_values[source.id] = source
 
         # Input values are those that are in all_values but not in output_values
         input_values = [
@@ -186,6 +197,9 @@ class PaddleToTensorRTConverter:
             operands = []
             for operand in op.operands():
                 source = operand.source()
+                if not source.initialized():
+                    _logger.warning(f"Skipping uninitialized source: {source}")
+                    continue
                 define_op_name = source.get_defining_op().name()
                 if define_op_name == "builtin.combine":
                     for combined_operand in source.get_defining_op().operands():

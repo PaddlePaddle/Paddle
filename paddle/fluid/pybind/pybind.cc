@@ -129,6 +129,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
@@ -2794,6 +2795,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
+  m.def("size_of_dtype", phi::SizeOf);
   py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")
       .def(py::init<>())
       .def("get_data",
