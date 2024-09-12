@@ -807,7 +807,7 @@ class Engine:
         #     'after remove_other_rank_input_output_pass', dist_program, flush=1
         # )
 
-        remove_other_rank_op_pass(dist_program, params_grads)
+        remove_other_rank_op_pass(dist_program, params_grads, startup_program)
 
         # print('after remove_other_rank_op_pass', dist_program, flush=1)
 

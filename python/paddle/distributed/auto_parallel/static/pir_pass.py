@@ -367,10 +367,14 @@ def replace_moe_global_mesh_tensor(op):
 
 
 # pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(dist_program, dist_params_grads):
-    cur_rank = paddle.distributed.get_rank()
-
+def remove_other_rank_op_pass(dist_program, dist_params_grads, startup_program):
     _remove_other_rank_params_grads(dist_params_grads)
+    _remove_no_need_in_main(dist_program)
+    _remove_no_need_in_startup(startup_program, dist_program)
+
+
+def _remove_no_need_in_main(dist_program):
+    cur_rank = paddle.distributed.get_rank()
     for op in dist_program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
             can_delete = True
@@ -406,6 +410,50 @@ def remove_other_rank_op_pass(dist_program, dist_params_grads):
             lr = op.result(0)
             lr.replace_all_uses_with(lr_value)
             op.erase()
+
+
+def _remove_no_need_in_startup(startup_program, dist_program):
+    cur_rank = paddle.distributed.get_rank()
+    # 1. remove op of other rank
+    for op in startup_program.global_block().ops[::-1]:
+        if op.name() == 'pd_op.full':
+            if op.result(0).dist_attr():
+                if (
+                    cur_rank
+                    not in op.result(0).dist_attr().process_mesh.process_ids
+                ):
+                    op.erase()
+        elif op.name() == 'builtin.set_parameter':
+            if op.operand(0).source().process_mesh:
+                if (
+                    cur_rank
+                    not in op.operand(0).source().process_mesh.process_ids
+                ):
+                    op.erase()
+
+    # 2. var used in dist_program
+    dist_program_var_names = []
+    for op in dist_program.global_block().ops:
+        if op.name() == 'pd_op.data':
+            dist_program_var_names.append(op.attrs()['name'])
+        elif op.name() == 'builtin.parameter':
+            dist_program_var_names.append(op.attrs()['parameter_name'])
+
+    # 3 remove var op not used in dist_program
+    for op in startup_program.global_block().ops:
+        if op.name() == 'builtin.shadow_output':
+            output_name = op.attrs()['output_name']
+            if output_name not in dist_program_var_names:
+                def_op = op.operand_source(0).get_defining_op()
+                op.erase()
+                def_op.erase()
+
+        elif op.name() == 'builtin.set_parameter':
+            parameter_name = op.attrs()['parameter_name']
+            if parameter_name not in dist_program_var_names:
+                def_op = op.operand_source(0).get_defining_op()
+                op.erase()
+                def_op.erase()
 
 
 # Pruning value not belong to cur rank
