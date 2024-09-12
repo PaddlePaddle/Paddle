@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -23,123 +24,146 @@ from paddle.base import core
 
 class TestDLPack(unittest.TestCase):
     def test_dlpack_dygraph(self):
-        paddle.disable_static()
-        tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype('int'))
-        dlpack = paddle.utils.dlpack.to_dlpack(tensor)
-        out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
-        if paddle.in_dynamic_mode():
+        with dygraph_guard():
+            tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype("int"))
+            dlpack = paddle.utils.dlpack.to_dlpack(tensor)
+            out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
             self.assertTrue(
                 isinstance(out_from_dlpack, paddle.base.core.eager.Tensor)
             )
-        else:
-            self.assertTrue(isinstance(out_from_dlpack, paddle.Tensor))
-        np.testing.assert_array_equal(
-            np.array(out_from_dlpack), np.array([1, 2, 3, 4]).astype('int')
-        )
+            np.testing.assert_array_equal(
+                out_from_dlpack.numpy(), np.array([1, 2, 3, 4]).astype("int")
+            )
 
     def test_dlpack_tensor_larger_than_2dim(self):
-        paddle.disable_static()
-        numpy_data = np.random.randn(4, 5, 6)
-        t = paddle.to_tensor(numpy_data)
-        # TODO: There may be a reference count problem of to_dlpack.
-        dlpack = paddle.utils.dlpack.to_dlpack(t)
-        out = paddle.utils.dlpack.from_dlpack(dlpack)
-        np.testing.assert_allclose(numpy_data, out.numpy(), rtol=1e-05)
+        with dygraph_guard():
+            numpy_data = np.random.randn(4, 5, 6)
+            t = paddle.to_tensor(numpy_data)
+            dlpack = paddle.utils.dlpack.to_dlpack(t)
+            out = paddle.utils.dlpack.from_dlpack(dlpack)
+            np.testing.assert_allclose(numpy_data, out.numpy(), rtol=1e-05)
 
     def test_dlpack_static(self):
-        paddle.enable_static()
-        tensor = base.create_lod_tensor(
-            np.array([[1], [2], [3], [4]]).astype('int'),
-            [[1, 3]],
-            base.CPUPlace(),
-        )
-        dlpack = paddle.utils.dlpack.to_dlpack(tensor)
-        out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
-        self.assertTrue(isinstance(out_from_dlpack, base.core.Tensor))
-        np.testing.assert_array_equal(
-            np.array(out_from_dlpack),
-            np.array([[1], [2], [3], [4]]).astype('int'),
-        )
-
-        # when build with cuda
-        if core.is_compiled_with_cuda():
-            gtensor = base.create_lod_tensor(
-                np.array([[1], [2], [3], [4]]).astype('int'),
+        with static_guard():
+            tensor = base.create_lod_tensor(
+                np.array([[1], [2], [3], [4]]).astype("int"),
                 [[1, 3]],
-                base.CUDAPlace(0),
+                base.CPUPlace(),
             )
-            gdlpack = paddle.utils.dlpack.to_dlpack(gtensor)
-            gout_from_dlpack = paddle.utils.dlpack.from_dlpack(gdlpack)
-            self.assertTrue(isinstance(gout_from_dlpack, base.core.Tensor))
+            dlpack = paddle.utils.dlpack.to_dlpack(tensor)
+            out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
+            self.assertTrue(isinstance(out_from_dlpack, base.core.Tensor))
             np.testing.assert_array_equal(
-                np.array(gout_from_dlpack),
-                np.array([[1], [2], [3], [4]]).astype('int'),
+                np.array(out_from_dlpack),
+                np.array([[1], [2], [3], [4]]).astype("int"),
             )
+
+            # when build with cuda
+            if core.is_compiled_with_cuda():
+                gtensor = base.create_lod_tensor(
+                    np.array([[1], [2], [3], [4]]).astype("int"),
+                    [[1, 3]],
+                    base.CUDAPlace(0),
+                )
+                gdlpack = paddle.utils.dlpack.to_dlpack(gtensor)
+                gout_from_dlpack = paddle.utils.dlpack.from_dlpack(gdlpack)
+                self.assertTrue(isinstance(gout_from_dlpack, base.core.Tensor))
+                np.testing.assert_array_equal(
+                    np.array(gout_from_dlpack),
+                    np.array([[1], [2], [3], [4]]).astype("int"),
+                )
 
     def test_dlpack_dtype_conversion(self):
-        paddle.disable_static()
-        # DLpack does not explicitly support bool data type.
-        dtypes = [
-            "float16",
-            "float32",
-            "float64",
-            "int8",
-            "int16",
-            "int32",
-            "int64",
-            "uint8",
-        ]
-        data = np.ones((2, 3, 4))
-        for dtype in dtypes:
-            x = paddle.to_tensor(data, dtype=dtype)
-            dlpack = paddle.utils.dlpack.to_dlpack(x)
-            o = paddle.utils.dlpack.from_dlpack(dlpack)
-            self.assertEqual(x.dtype, o.dtype)
-            np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
+        with dygraph_guard():
+            dtypes = [
+                "float16",
+                "float32",
+                "float64",
+                "int8",
+                "int16",
+                "int32",
+                "int64",
+                "uint8",
+                "bool",
+            ]
+            places = [base.CPUPlace()]
+            if paddle.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
 
-        complex_dtypes = ["complex64", "complex128"]
-        for dtype in complex_dtypes:
-            x = paddle.to_tensor(
-                [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]],
-                dtype=dtype,
-            )
-            dlpack = paddle.utils.dlpack.to_dlpack(x)
-            o = paddle.utils.dlpack.from_dlpack(dlpack)
-            self.assertEqual(x.dtype, o.dtype)
-            np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
+            data = np.ones((2, 3, 4))
+            for place in places:
+                for dtype in dtypes:
+                    x = paddle.to_tensor(data, dtype=dtype, place=place)
+                    dlpack = paddle.utils.dlpack.to_dlpack(x)
+                    o = paddle.utils.dlpack.from_dlpack(dlpack)
+                    self.assertEqual(x.dtype, o.dtype)
+                    np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
+
+            complex_dtypes = ["complex64", "complex128"]
+            for place in places:
+                for dtype in complex_dtypes:
+                    x = paddle.to_tensor(
+                        [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]],
+                        dtype=dtype,
+                        place=place,
+                    )
+                    dlpack = paddle.utils.dlpack.to_dlpack(x)
+                    o = paddle.utils.dlpack.from_dlpack(dlpack)
+                    self.assertEqual(x.dtype, o.dtype)
+                    np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
 
     def test_dlpack_deletion(self):
         # See Paddle issue 47171
-        if paddle.is_compiled_with_cuda():
-            for i in range(80):
-                a = paddle.rand(shape=[1024 * 128, 1024], dtype="float32")
-                dlpack = paddle.utils.dlpack.to_dlpack(a)
-                b = paddle.utils.dlpack.from_dlpack(dlpack)
+        with dygraph_guard():
+            places = [base.CPUPlace()]
+            if paddle.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                for _ in range(20):
+                    a = paddle.rand(
+                        shape=[1024 * 128, 1024], dtype="float32"
+                    ).to(device=place)
+                    dlpack = paddle.utils.dlpack.to_dlpack(a)
+                    b = paddle.utils.dlpack.from_dlpack(dlpack)
 
     def test_to_dlpack_for_loop(self):
         # See Paddle issue 50120
-        for i in range(10):
-            x = paddle.rand([3, 5])
-            dlpack = paddle.utils.dlpack.to_dlpack(x)
+        with dygraph_guard():
+            places = [base.CPUPlace()]
+            if paddle.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                for _ in range(10):
+                    x = paddle.rand([3, 5]).to(device=place)
+                    dlpack = paddle.utils.dlpack.to_dlpack(x)
 
     def test_to_dlpack_modification(self):
         # See Paddle issue 50120
-        for i in range(10):
-            x = paddle.rand([3, 5])
-            dlpack = paddle.utils.dlpack.to_dlpack(x)
-            y = paddle.utils.dlpack.from_dlpack(dlpack)
-            y[1:2, 2:5] = 2.0
-            np.testing.assert_allclose(x.numpy(), y.numpy())
+        with dygraph_guard():
+            places = [base.CPUPlace()]
+            if paddle.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                for _ in range(10):
+                    x = paddle.rand([3, 5]).to(device=place)
+                    dlpack = paddle.utils.dlpack.to_dlpack(x)
+                    y = paddle.utils.dlpack.from_dlpack(dlpack)
+                    y[1:2, 2:5] = 2.0
+                    np.testing.assert_allclose(x.numpy(), y.numpy())
 
     def test_to_dlpack_data_ptr_consistency(self):
         # See Paddle issue 50120
-        for place in [base.CPUPlace(), base.CUDAPlace(0)]:
-            for i in range(10):
-                x = paddle.rand([3, 5]).to(device=place)
-                dlpack = paddle.utils.dlpack.to_dlpack(x)
-                y = paddle.utils.dlpack.from_dlpack(dlpack)
+        with dygraph_guard():
+            places = [base.CPUPlace()]
+            if paddle.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                for _ in range(10):
+                    x = paddle.rand([3, 5]).to(device=place)
+                    dlpack = paddle.utils.dlpack.to_dlpack(x)
+                    y = paddle.utils.dlpack.from_dlpack(dlpack)
 
-                self.assertEqual(x.data_ptr(), y.data_ptr())
+                    self.assertEqual(x.data_ptr(), y.data_ptr())
 
 
 class TestRaiseError(unittest.TestCase):
@@ -152,5 +176,5 @@ class TestRaiseError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.utils.dlpack.to_dlpack, np.zeros(5))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

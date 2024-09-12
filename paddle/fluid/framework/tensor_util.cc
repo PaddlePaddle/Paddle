@@ -863,7 +863,7 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
   phi::Place place;
   if (src->dl_tensor.device.device_type == kDLCPU) {
     place = phi::CPUPlace();
-  } else if (src->dl_tensor.device.device_type == kDLGPU) {
+  } else if (src->dl_tensor.device.device_type == kDLCUDA) {
     place = phi::GPUPlace();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("Given Place is not supported"));

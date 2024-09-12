@@ -36,8 +36,8 @@ __all__ = [
 
 class DLDeviceType(enum.IntEnum):
     kDLCPU = (1,)
-    kDLGPU = (2,)
-    kDLCPUPinned = (3,)
+    kDLCUDA = (2,)
+    kDLCUDAHost = (3,)
     kDLOpenCL = (4,)
     kDLVulkan = (7,)
     kDLMetal = (8,)
@@ -125,14 +125,14 @@ def from_dlpack(dlpack) -> Tensor:
         device = dlpack.__dlpack_device__()
         # device is either CUDA or ROCm, we need to pass the current
         # stream
-        if device[0] in (DLDeviceType.kDLGPU, DLDeviceType.kDLROCM):
+        if device[0] in (DLDeviceType.kDLCUDA, DLDeviceType.kDLROCM):
             stream = paddle.device.cuda.current_stream(device[1])
             # cuda_stream is the pointer to the stream and it is a public
             # attribute, but it is not documented
             # The array API specify that the default legacy stream must be passed
             # with a value of 1 for CUDA
             # https://data-apis.org/array-api/latest/API_specification/array_object.html?dlpack-self-stream-none#dlpack-self-stream-none
-            is_gpu = device[0] == DLDeviceType.kDLGPU
+            is_gpu = device[0] == DLDeviceType.kDLCUDA
             # Since pytorch is not using PTDS by default, lets directly pass
             # the legacy stream
             stream_ptr = (

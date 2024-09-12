@@ -79,10 +79,10 @@ void TestMain(const phi::Place &place, uint16_t lanes) {
                                         "but got %d",
                                         dl_tensor.device.device_id));
   } else if (phi::is_gpu_place(place)) {
-    PADDLE_ENFORCE_EQ(kDLGPU,
+    PADDLE_ENFORCE_EQ(kDLCUDA,
                       dl_tensor.device.device_type,
                       common::errors::InvalidArgument(
-                          "Device type should be kDLGPU, but got %d",
+                          "Device type should be kDLCUDA, but got %d",
                           dl_tensor.device.device_type));
     PADDLE_ENFORCE_EQ(
         place.device,
@@ -93,9 +93,9 @@ void TestMain(const phi::Place &place, uint16_t lanes) {
                                         dl_tensor.device.device_id));
   } else if (phi::is_cuda_pinned_place(place)) {
     PADDLE_ENFORCE_EQ(
-        kDLCPUPinned,
+        kDLCUDAHost,
         dl_tensor.device.device_type,
-        common::errors::InvalidArgument("Device type should be kDLCPUPinned, "
+        common::errors::InvalidArgument("Device type should be kDLCUDAHost, "
                                         "but got %d",
                                         dl_tensor.device.device_type));
     PADDLE_ENFORCE_EQ(

@@ -35,6 +35,8 @@ static ::DLDataType GetDLDataTypeCode() {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
     dtype.code = kDLUInt;
+  } else if (std::is_same<T, bool>::value) {
+    dtype.code = kDLBool;
   } else if (std::is_integral<T>::value) {
     dtype.code = kDLInt;
   } else {
@@ -99,7 +101,7 @@ struct DLDeviceVisitor {
   inline ::DLDevice operator()(const phi::GPUPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
-    device.device_type = kDLGPU;
+    device.device_type = kDLCUDA;
     device.device_id = place.device;  // NOLINT
     return device;
 #else
@@ -111,7 +113,7 @@ struct DLDeviceVisitor {
   inline ::DLDevice operator()(const phi::GPUPinnedPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
-    device.device_type = kDLCPUPinned;
+    device.device_type = kDLCUDAHost;
     device.device_id = 0;
     return device;
 #else
