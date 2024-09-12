@@ -23,10 +23,13 @@ class GlobaleToSubMeshFunction(ReshardFunction):
             return False
         in_mesh = src_dist_attr.process_mesh
         out_mesh = dst_dist_attr.process_mesh
-        if in_mesh.ndim != out_mesh.ndim + 1:
+        if in_mesh.ndim > out_mesh.ndim + 1:
             return False
-        sub_meshes = paddle.base.libpaddle.pir.get_sub_meshes(in_mesh)
-        return out_mesh in sub_meshes
+        if in_mesh.ndim == out_mesh.ndim:
+            return set(out_mesh.process_ids) < set(in_mesh.process_ids)
+        else:
+            sub_meshes = paddle.base.libpaddle.pir.get_sub_meshes(in_mesh)
+            return out_mesh in sub_meshes
 
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
         if src_value.has_one_use():
