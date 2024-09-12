@@ -63,9 +63,8 @@ class TestReshardRToSCrossMesh:
             assert 'dist_op.reshard' in old_ops
 
             apply_mix2dist_pass(main_program)
-            set_all_ops_op_role(main_program, OpRole.Forward)
+            set_all_ops_op_role(main_program.global_block(), OpRole.Forward)
             apply_partition_pass(main_program)
-
             apply_reshard_pass(main_program)
             remove_other_rank_op_pass(main_program)
 
