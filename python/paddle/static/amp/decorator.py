@@ -23,7 +23,7 @@ from paddle.base import (
     program_guard,
     unique_name,
 )
-from paddle.base.framework import in_pir_mode
+from paddle.base.framework import auto_complete_op_role, in_pir_mode
 
 from .amp_nn import check_finite_and_unscale, update_loss_scaling
 from .fp16_lists import AutoMixedPrecisionLists, check_amp_dtype
@@ -33,6 +33,8 @@ from .fp16_utils import (
     update_role_var_grad,
 )
 from .function_overload import FunctionType, overload
+
+OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 def _set_multi_precision(optimizer, multi_precision):
@@ -740,16 +742,18 @@ class OptimizerWithMixedPrecision:
                 "The decorated optimizer has its own `minimize` method, but it will not be executed."
             )
 
-        scaled_params_grads = self.backward(
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set,
-        )
+        with auto_complete_op_role(loss.block.program, op_role=OpRole.Backward):
+            scaled_params_grads = self.backward(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set,
+            )
 
-        optimize_ops = self.apply_optimize(
-            loss, startup_program, scaled_params_grads
-        )
+        with auto_complete_op_role(loss.block.program, op_role=OpRole.Optimize):
+            optimize_ops = self.apply_optimize(
+                loss, startup_program, scaled_params_grads
+            )
 
         return optimize_ops, scaled_params_grads
 

@@ -30,7 +30,6 @@ from paddle.base import (
     Variable,
     core,
     default_main_program,
-    program_guard,
     unique_name,
 )
 from paddle.base.executor import Executor, global_scope
@@ -245,6 +244,11 @@ def normalize_program(
             "fetch_vars type must be a Variable or a list of Variable."
         )
 
+    if len(program.global_block().ops) == 0:
+        raise ValueError(
+            "program must not be empty. at least one operator is required!"
+        )
+
     # remind users to set auc_states to 0 if auc op were found.
     for op in program.global_block().ops:
         # clear device of Op
@@ -255,17 +259,6 @@ def normalize_program(
                 "Be sure that you have set auc states to 0 before saving inference model."
             )
             break
-
-    # fix the bug that the activation op's output as target will be pruned.
-    # will affect the inference performance.
-    # TODO(Superjomn) add an IR pass to remove 1-scale op.
-    with program_guard(program):
-        uniq_fetch_vars = []
-        for i, var in enumerate(fetch_vars):
-            if var.dtype != paddle.bool:
-                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
-            uniq_fetch_vars.append(var)
-        fetch_vars = uniq_fetch_vars
 
     # serialize program
     copy_program = program.clone()
