@@ -1,6 +1,5 @@
 httpx
-numpy>=1.21; python_version < '3.10'
-numpy==2.1; python_version >= '3.10'
+numpy>=1.21
 protobuf>=3.20.2
 Pillow
 decorator
