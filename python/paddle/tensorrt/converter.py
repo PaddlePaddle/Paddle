@@ -209,9 +209,13 @@ class PaddleToTensorRTConverter:
                             f'{source_id} not found in value_to_trt_tensor'
                         )
 
+            print(f'op:{op}')
+            print(f'op.results():{op.results()}')
             trt_outs = self.convert(network, op, operands)
-
+            print(f'trt_outs:{trt_outs}')
             for idx, result in enumerate(op.results()):
+                print(f'idx:{idx}')
+                print(f'result:{result}')
                 if idx < len(trt_outs):
                     value_to_trt_tensor[result.id] = trt_outs[idx]
                 else:
@@ -227,6 +231,9 @@ class PaddleToTensorRTConverter:
                 out_shapes.append([])
                 out_types.append(None)
                 continue
+            print(f'result_value:{type(result_value)}')
+            print(f'result_value:{result_value}')
+            print(f'result_value:{result_value.dtype}')
             network.mark_output(output_tensor)
             out_names.append(output_tensor.name)
             out_shapes.append(result_value.shape)
@@ -316,14 +323,14 @@ class PaddleToTensorRTConverter:
                     f"Converter for {op_name} not implemented."
                 )
             outs = converter_func(network, paddle_op, inputs)
-        if isinstance(outs, tuple):
-            return outs
-        elif isinstance(outs, trt.ITensor):
+        if isinstance(outs, trt.ITensor):
             return (outs,)
         else:
-            raise TypeError(
-                f"Expected outputs to be a tuple or ITensor, but got {type(outs)}"
-            )
+            return outs
+        # else:
+        #     raise TypeError(
+        #         f"Expected outputs to be a tuple or ITensor, but got {type(outs)}"
+        #     )
 
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
