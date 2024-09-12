@@ -1529,12 +1529,93 @@ bool FlashAttnOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool FlashAttnQkvpackedOpInferSymbolicShape(pir::Operation *op,
-//                                             pir::InferSymbolicShapeContext
-//                                             *infer_context) {
-//   // pass
-//   return true;
-// }
+static std::vector<symbol::DimExpr> sliceFlattenView(
+    const std::vector<symbol::DimExpr> &in_shape,
+    int axis,
+    symbol::DimExpr offset,
+    symbol::DimExpr sliceLength) {
+  PADDLE_ENFORCE_LT(
+      axis,
+      in_shape.size(),
+      common::errors::InvalidArgument("sliceView receive axis out of bound"));
+  std::vector<symbol::DimExpr> out_shape = {};
+  for (int i = 0; i < in_shape.size(); i++) {
+    if (i == axis) continue;
+    if (i == axis + 1)
+      out_shape.emplace_back(in_shape[i] * sliceLength);
+    else
+      out_shape.emplace_back(in_shape[i]);
+  }
+
+  return out_shape;
+}
+
+bool FlashAttnQkvpackedOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &qkv_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &qkv_shape = qkv_shape_or_data.shape();
+  const int &qkv_rank = qkv_shape.size();
+
+  PADDLE_ENFORCE(qkv_rank == 4 || qkv_rank == 5,
+                 common::errors::InvalidArgument(
+                     "qkv dims must be 4(unpadded) or 5(padded batch)"));
+
+  std::vector<symbol::DimExpr> output_shape = {
+      qkv_shape[0],
+      (qkv_shape[1] - symbol::DimExpr(2)) * qkv_shape[2],
+      qkv_shape[3]};
+  if (qkv_rank == 5) {
+    output_shape = {qkv_shape[0],
+                    qkv_shape[1],
+                    (qkv_shape[2] - symbol::DimExpr(2)) * qkv_shape[3],
+                    qkv_shape[4]};
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  const auto &head_groupnum = qkv_shape[2];
+  std::vector<symbol::DimExpr> q_shape, k_shape;
+  q_shape = sliceFlattenView(
+      qkv_shape, 2, symbol::DimExpr(0), head_groupnum - symbol::DimExpr(2));
+  k_shape = sliceFlattenView(
+      qkv_shape, 2, head_groupnum - symbol::DimExpr(2), symbol::DimExpr(1));
+  auto round_multiple = [](symbol::DimExpr x) {
+    auto m = symbol::DimExpr{128};
+    auto m_minus_one = symbol::DimExpr{127};
+    return (x + m_minus_one) / m * m;
+  };
+  auto batch_size_expr = q_shape[0];
+  auto num_heads_expr = q_shape[2];
+  auto seqlen_q_rounded_expr = round_multiple(q_shape[1]);
+  auto seqlen_k_rounded_expr = round_multiple(k_shape[1]);
+
+  std::vector<symbol::DimExpr> softmax_shape{batch_size_expr,
+                                             num_heads_expr,
+                                             seqlen_q_rounded_expr,
+                                             seqlen_k_rounded_expr};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(softmax_shape)});
+
+  std::vector<symbol::DimExpr> softmax_lse_shape{
+      batch_size_expr, num_heads_expr, seqlen_q_rounded_expr};
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(softmax_lse_shape)});
+
+  std::vector<symbol::DimExpr> seed_offset_shape{symbol::DimExpr{2}};
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(seed_offset_shape)});
+
+  return true;
+}
 
 // bool FlashAttnUnpaddedOpInferSymbolicShape(pir::Operation *op,
 //                                            pir::InferSymbolicShapeContext
