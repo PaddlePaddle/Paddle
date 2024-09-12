@@ -40,6 +40,17 @@ struct GetSplitedExprFromFusionOp {
   }
 };
 
+struct ApplyItersTransform {
+  explicit ApplyItersTransform(const ir::Expr& expr) : expr_(expr) {}
+  ir::Expr operator()(const IdentityItersTransform& trans) { return expr_; }
+  ir::Expr operator()(const TransposeItersTransform& trans);
+  ir::Expr operator()(const AppendItersTransform& trans);
+  ir::Expr operator()(const ReuseItersTransform& trans) { return expr_; }
+
+ private:
+  ir::Expr expr_;
+};
+
 struct ApplyTransform {
   explicit ApplyTransform(const ir::Expr& expr) : expr_(expr) {}
   ir::Expr operator()(const UnsupportTransformPtr& transform) {

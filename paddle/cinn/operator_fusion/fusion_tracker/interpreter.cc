@@ -124,6 +124,32 @@ void RunTrivialLoopAlignInstr(
   interpreter->scope[instr->result_] = new_pattern;
 }
 
+void RunItersTransformInstr(const std::shared_ptr<ItersTransformInstr>& instr,
+                            FusionInterpreter* interpreter) {
+  auto iters_transform = [transform_route = instr->iters_transform_route_](
+                             ir::Expr op_expr) -> ir::Expr {
+    for (auto trans : transform_route) {
+      op_expr = std::visit(ApplyItersTransform(op_expr), trans);
+    }
+    return op_expr;
+  };
+
+  auto new_pattern = std::make_shared<ScopeElement>();
+  auto fusion_ops = interpreter->scope[instr->source_]->fusion_ops;
+  for (const auto& fusion_op : fusion_ops) {
+    ir::Expr op_expr = std::visit(FusibleOp2Expr(), fusion_op).back();
+    VLOG(4) << "[ItersTransform] expr before transform: \n" << op_expr;
+    ir::Expr transformed_expr = iters_transform(op_expr);
+    if (cinn::hlir::framework::pir::trivial_fusion_detail::IsReduceBody(
+            transformed_expr)) {
+      new_pattern->fusion_ops.emplace_back(ReduceOp(transformed_expr));
+    } else {
+      new_pattern->fusion_ops.emplace_back(TrivialOp(transformed_expr));
+    }
+  }
+  interpreter->scope[instr->target_] = new_pattern;
+}
+
 void RunAnchorTransformInstr(const std::shared_ptr<AnchorTransformInstr>& instr,
                              FusionInterpreter* interpreter) {
   PADDLE_ENFORCE_EQ(interpreter->scope[instr->target_]->fusion_ops.size(),
@@ -210,6 +236,10 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
       case T_TrivialLoopAlign:
         RunTrivialLoopAlignInstr(
             dynamic_cast_instr_with_err<TrivialLoopAlignInstr>(instr), this);
+        break;
+      case T_ItersTransform:
+        RunItersTransformInstr(
+            dynamic_cast_instr_with_err<ItersTransformInstr>(instr), this);
         break;
       default:
         PADDLE_THROW(

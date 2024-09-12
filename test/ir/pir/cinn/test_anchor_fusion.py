@@ -155,33 +155,49 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.compare_result(func, None, init)
 
+    def test_anchor_fusion_7(self):
+        #      T
+        #     / \
+        #    T   Transpose
+        def func(x):
+            a = x + 1
+            b = a * 3
+            c = paddle.transpose(a, [1, 0, 2])
+            # c = a / 2
+            return b, c
+
+        def init():
+            x = paddle.rand((32, 64, 128))
+            return (x,)
+
+        self.compare_result(func, None, init)
+
     def test_fusion_iters(self):
         #     T   T
         #      \ /
         #       T
-        #       |
-        #   Transpose
-        #      / \
-        #     S   R
-        #    /     \
-        #   B       B
-        #            \
-        #             R
+        #    / | | \
+        #   /  | |  \
+        #  T   S R  Transpose
+        #      | |
+        #      B B
+        #        |
+        #        R
         def func(x, y):
             a = x + 1
             b = y * 2
             c = a + b
-            d = paddle.transpose(c, [1, 0])
-            e = d[0, :]
-            f = paddle.expand(e, [16, 16])
-            g = paddle.max(d, axis=0)
-            h = paddle.expand(g, [32, 16])
+            d = paddle.transpose(c, [1, 0, 2])
+            e = c[0, :]
+            f = paddle.expand(e, [16, 32, 64])
+            g = paddle.max(c, axis=0)
+            h = paddle.expand(g, [16, 32, 64])
             i = paddle.sum(h, axis=0)
-            return f, i
+            return c, d, f, i
 
         def init():
-            x = paddle.rand((16, 32))
-            y = paddle.rand((16, 32))
+            x = paddle.rand((16, 32, 64))
+            y = paddle.rand((16, 32, 64))
             return (x, y)
 
         self.compare_result(func, None, init)

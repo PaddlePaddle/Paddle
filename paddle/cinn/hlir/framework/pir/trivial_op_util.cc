@@ -243,6 +243,15 @@ ExprSetFinder Realizer2ScheduleBlock = ExprSetFinder(
     },
     "Realizer2ScheduleBlock");
 
+ExprSetFinder Realizer2IterValues = ExprSetFinder(
+    [](const ir::Expr& e) -> ExprSet {
+      if (e.As<ir::ScheduleBlockRealize>()) {
+        return e.As<ir::ScheduleBlockRealize>()->iter_values;
+      }
+      return {};
+    },
+    "Realizer2IterValues");
+
 ExprSetFinder ScheduleBlock2Body = ExprSetFinder(
     [](const ir::Expr& e) -> ExprSet {
       if (e.As<ir::ScheduleBlock>()) {
@@ -566,6 +575,32 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
   };
   return ExprTransformer(f);
 }
+
+ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
+  const auto& f = [=](const ir::Expr& root) -> ir::Expr {
+    const auto& iters = GetLoopVars(root);
+    PADDLE_ENFORCE_EQ(iters.size(),
+                      perm.size(),
+                      "Transposed iters size and perm size should be equal.");
+    for (size_t i = 0; i < perm.size(); ++i) {
+      if (iters[i]->is_reduce_axis) {
+        PADDLE_ENFORCE_EQ(i, perm[i], "Can only transpose non reduce iters.");
+      }
+    }
+    const auto& transposed_iters = cinn::fusion::TransposeVector(iters, perm);
+    const auto& non_reduce_iters = cinn::fusion::FilterVector(
+        transposed_iters, [](const ir::Var& v) { return !v->is_reduce_axis; });
+    const auto& body_block =
+        (ExprSetFinderUtils::ChildFors *
+         ExprSetFinderUtils::IsForIterVar(iters[non_reduce_iters.size() - 1]))
+            .GetSingle(root)
+            .As<ir::For>()
+            ->body;
+    return ir::Block::Make({(WrapForsTransformer(non_reduce_iters) *
+                             WrapScheduleRealizer({}, "root"))(body_block)});
+  };
+  return ExprTransformer(f);
+}
 }  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(
@@ -604,6 +639,40 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
   VLOG(4) << "op_compute_bodies.size() = " << op_patterns.size();
   PADDLE_ENFORCE_EQ(
       op_patterns.size(), op_compute_bodies.size(), "ops and  size not equal");
+}
+
+std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
+                                 const ir::Expr& root) {
+  return ExprSetFinderUtils::MapVector<ir::Var>(
+      vars, [&](const auto& v) -> ir::Var {
+        VLOG(4) << "Start Append Bound for " << v;
+        VLOG(4) << "AppendBound for " << v << ", lower: "
+                << (ExprSetFinderUtils::ChildFors *
+                    ExprSetFinderUtils::IsForIterVar(v) *
+                    ExprSetFinderUtils::For2Min)
+                       .GetSingle(root)
+                << ", upper: "
+                << (ExprSetFinderUtils::ChildFors *
+                    ExprSetFinderUtils::IsForIterVar(v) *
+                    ExprSetFinderUtils::For2Max)
+                       .GetSingle(root);
+        return ir::Var(
+            (ExprSetFinderUtils::ChildFors *
+             ExprSetFinderUtils::IsForIterVar(v) * ExprSetFinderUtils::For2Min)
+                .GetSingle(root),
+            (ExprSetFinderUtils::ChildFors *
+             ExprSetFinderUtils::IsForIterVar(v) * ExprSetFinderUtils::For2Max)
+                .GetSingle(root),
+            v->name,
+            v->is_reduce_axis);
+      });
+}
+
+std::vector<ir::Var> GetLoopVars(const ir::Expr& root) {
+  const auto& iter_exprs = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                            ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+                            ExprSetFinderUtils::Realizer2IterValues)(root);
+  return AppendBound(ComposeUtils::ExprVec2VarVec(iter_exprs), root);
 }
 
 }  // namespace trivial_fusion_detail

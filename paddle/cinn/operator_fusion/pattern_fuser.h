@@ -176,6 +176,14 @@ static StmtPattern MergePatternImpl(const ReduceTreePattern& first,
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
+static StmtPattern MergePatternImpl(const ItersPermutationPattern& source,
+                                    const ItersPermutationPattern& target) {
+  const auto& ops =
+      UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(target));
+  return ItersPermutationPattern(
+      ops, std::make_shared<FusionTracker>(source.tracker_, target.tracker_));
+}
+
 // Anchor Fusion
 static std::vector<ExprPromise> InitExprPromiseImpl(
     const TrivialPattern& pattern, pir::Value anchor) {
@@ -283,6 +291,11 @@ static std::vector<pir::Operation*> GetOutputOpsInPattern(
                                  return std::visit(Visitor(), pattern.pattern);
                                }));
     }
+    std::vector<pir::Operation*> operator()(
+        const ItersPermutationPattern& pattern) {
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Can't get output ops in ItersPermutationPattern Currently."));
+    }
   };
   return std::visit(Visitor(), pattern);
 }
@@ -379,6 +392,11 @@ struct LoopValueDimsVisitor {
   }
   std::vector<LoopValueDims> operator()(const AnchorPattern& pattern) {
     return {GetAllValueDimFromValue(pattern.anchor())};
+  }
+
+  std::vector<LoopValueDims> operator()(
+      const ItersPermutationPattern& pattern) {
+    return {};
   }
 };
 
@@ -538,6 +556,10 @@ struct LoopFrameworkVisitor {
     }
     return {loops, std::vector<bool>(loops.size(), false)};
   }
+
+  MaybeLoopFramework operator()(const ItersPermutationPattern& pattern) {
+    return {};
+  }
 };
 
 static MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
@@ -623,6 +645,10 @@ static StmtPattern MergePattern(const StmtPattern& first,
         return MergePatternImpl(lhs, rhs);
       },
       [&](const AnchorPattern& lhs, const AnchorPattern& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const ItersPermutationPattern& lhs,
+          const ItersPermutationPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
       [&](const HorizontalFusionPattern& lhs,

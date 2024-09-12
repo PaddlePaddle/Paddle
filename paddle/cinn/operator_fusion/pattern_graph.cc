@@ -44,25 +44,36 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
   ReduceTree_Trivial_Fusion();
   VLOG(4) << "[Group Cluster] After ReduceTree_Trivial_Fusion: " << GraphInfo();
 
-  // All -> AnchorPattern
-  VLOG(4) << "[Group Cluster] Start LiftToAnchorPattern";
-  LiftToAnchorPattern();
-  VLOG(4) << "[Group Cluster] After LiftToAnchorPattern: " << GraphInfo();
+  // All -> ItersPermutationPattern
+  VLOG(4) << "[Group Cluster] Start LiftToItersPermutationPattern";
+  LiftToItersPermutationPattern();
+  VLOG(4) << "[Group Cluster] After LiftToItersPermutationPattern: "
+          << GraphInfo();
 
-  // All -> AnchorPattern
-  VLOG(4) << "[Group Cluster] Start AnchorPatternFusion";
-  AnchorPatternFusion();
-  VLOG(4) << "[Group Cluster] After AnchorPatternFusion: " << GraphInfo();
+  // ItersPermutationPattern x ItersPermutationPattern Fusion
+  VLOG(4) << "[Group Cluster] Start ItersPermutationFusion";
+  ItersPermutationFusion();
+  VLOG(4) << "[Group Cluster] After ItersPermutationFusion: " << GraphInfo();
 
-  // All -> AnchorPattern
-  VLOG(4) << "[Group Cluster] Start SplitRecomputePattern";
-  SplitRecomputePattern();
-  VLOG(4) << "[Group Cluster] After SplitRecomputePattern: " << GraphInfo();
+  // // All -> AnchorPattern
+  // VLOG(4) << "[Group Cluster] Start LiftToAnchorPattern";
+  // LiftToAnchorPattern();
+  // VLOG(4) << "[Group Cluster] After LiftToAnchorPattern: " << GraphInfo();
 
-  // Horizontal fusion.
-  VLOG(4) << "[Group Cluster] Start HorizontalFusion";
-  HorizontalFusion();
-  VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
+  // // All -> AnchorPattern
+  // VLOG(4) << "[Group Cluster] Start AnchorPatternFusion";
+  // AnchorPatternFusion();
+  // VLOG(4) << "[Group Cluster] After AnchorPatternFusion: " << GraphInfo();
+
+  // // All -> AnchorPattern
+  // VLOG(4) << "[Group Cluster] Start SplitRecomputePattern";
+  // SplitRecomputePattern();
+  // VLOG(4) << "[Group Cluster] After SplitRecomputePattern: " << GraphInfo();
+
+  // // Horizontal fusion.
+  // VLOG(4) << "[Group Cluster] Start HorizontalFusion";
+  // HorizontalFusion();
+  // VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
 
   return ReturnFusionResults();
 }
@@ -134,11 +145,11 @@ void PatternGraph::SinkTrivialPattern() {
                        NonSinkNodeMatcher>,
                    MergeTrivialPatternOperation>(this);
 
-  GraphTransformer<NodePattern,
-                   And<StmtPatternGraphMatcher<TrivialPattern>,
-                       NonSinkNodeMatcher,
-                       LEOneElementWiseDownstreamMatcher>,
-                   MergeTrivialPatternOperation>(this);
+  // GraphTransformer<NodePattern,
+  //                  And<StmtPatternGraphMatcher<TrivialPattern>,
+  //                      NonSinkNodeMatcher,
+  //                      LEOneElementWiseDownstreamMatcher>,
+  //                  MergeTrivialPatternOperation>(this);
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
@@ -178,6 +189,18 @@ void PatternGraph::ReduceTree_Trivial_Fusion() {
                    MergeReduceTreeAndTrivialOperation>(this);
 }
 
+void PatternGraph::LiftToItersPermutationPattern() {
+  GraphTransformer<NodePattern,
+                   StmtPatternGraphMatcher<TrivialPattern>,
+                   LiftToItersPermutationPatternOperation>(this);
+}
+
+void PatternGraph::ItersPermutationFusion() {
+  GraphTransformer<ReverseTopoNodePairPattern,
+                   CanFuseItersPermutationMatcher,
+                   FuseItersPermutatioOperation>(this);
+}
+
 void PatternGraph::LiftToAnchorPattern() {
   GraphTransformer<NodePattern,
                    LiftToAnchorPatternMatcher,
@@ -215,11 +238,9 @@ PatternGraph::PatternGraph(const std::vector<PatternContent>& contents,
   }
 
   for (const auto& content : contents) {
-    const auto& axes =
-        policy_manager_.template GetPolicy<RelativeJudgePolicy>()
-            ->GetAxesInfoManager()
-            .GetModifiedSignature(content.op);
-    PatternNodePtr node = std::make_shared<PatternNode>(content, axes);
+    const auto& fusion_iters =
+        iters_fusion_policy()->iters_manager()->GetItersSignature(content.op);
+    PatternNodePtr node = std::make_shared<PatternNode>(content, fusion_iters);
     op_to_node_map[content.op] = node;
     all_pattern_nodes_.emplace(node);
   }

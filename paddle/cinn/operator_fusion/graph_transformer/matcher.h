@@ -71,6 +71,24 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+struct CanFuseItersPermutationMatcher {
+  bool operator()(PatternGraph* graph,
+                  const PatternNodePtr& upstream,
+                  const PatternNodePtr& downstream) {
+    return StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
+                                                              upstream) &&
+           StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
+                                                              downstream) &&
+           graph->policy_manager()
+               .template GetPolicy<GeneralTopoPolicy>()
+               ->CanFuse(upstream, downstream) &&
+           (graph->iters_fusion_policy()->CanFuseSource2Target(downstream,
+                                                               upstream) ||
+            graph->iters_fusion_policy()->CanFuseSource2Target(upstream,
+                                                               downstream));
+  }
+};
+
 struct LiftToAnchorPatternMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     bool not_reduce_tree =
