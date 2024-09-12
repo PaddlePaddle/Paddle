@@ -1135,6 +1135,14 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
   }
 
   n->set_type(body.type());
+
+  // if (reduce_type == ir::Reduce::kSum && body.type().is_int(32)) {
+  //   n->body->set_type(Int(64));
+  //   n->set_type(Int(64));
+  //   n->init->set_type(Int(64));
+  //   VLOG(1) << "set out type to int64 for reduce sum";
+  // }
+
   return Expr(n);
 }
 
