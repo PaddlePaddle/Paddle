@@ -100,7 +100,7 @@ SpmdInfo Conv2dInferSpmdBase(const DistMetaTensor& input,
   // Output HW"...
   VLOG(4) << "step 1: build Einsum Notation";
   std::string input_axes = "nchw";
-  std::string filter_axes = "mcij";
+  std::string filter_axes = "mchw";
   std::string output_axes = "nmhw";
 
   // Step2: sharding propagation
@@ -173,7 +173,7 @@ SpmdInfo Conv2dInferSpmdReverseBase(const DistMetaTensor& input,
   // Output HW"...
   VLOG(4) << "step 1: build Einsum Notation";
   std::string input_axes = "nchw";
-  std::string filter_axes = "mcij";
+  std::string filter_axes = "mchw";
   std::string output_axes = "nmhw";
 
   // Step2: sharding propagation
@@ -244,7 +244,7 @@ SpmdInfo Conv2dGradInferSpmdBase(const DistMetaTensor& input,
   auto output_grad_dist_attr_src = output_grad.dist_attr();
 
   std::string input_axes = "nchw";
-  std::string filter_axes = "mcij";
+  std::string filter_axes = "mchw";
   std::string output_axes = "nmhw";
 
   std::pair<std::string, std::vector<int64_t>> input_pair(
