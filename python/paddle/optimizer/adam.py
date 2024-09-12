@@ -66,16 +66,17 @@ class Adam(Optimizer):
 
     .. math::
 
-        t & = t + 1
-
-        moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
-
-        moment\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
-
-        learning\_rate & = learning\_rate * \
-                          \frac{\sqrt{1 - {\beta}_2^t}}{1 - {\beta}_1^t}
-
-        param\_out & = param - learning\_rate * \frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
+        \begin{aligned}
+            &\hspace{5mm} t = t + 1 \\
+            &\hspace{5mm} moment\_1\_out = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad \\
+            &\hspace{5mm} moment\_2\_out = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad \\
+            &\hspace{5mm} learning\_rate = learning\_rate * \frac{\sqrt{1 - {\beta}_2^t}}{1 - {\beta}_1^t} \\
+            &\hspace{5mm}\textbf{if} \: \textit{amsgrad}: \\
+            &\hspace{15mm} moment\_2\_max\_out = max(moment\_2\_out, moment\_2\_max) \\
+            &\hspace{15mm} param\_out = param - learning\_rate * \frac{moment\_1\_out}{\sqrt{moment\_2\_max\_out} + \epsilon} \\
+            &\hspace{5mm}\textbf{else}: \: \\
+            &\hspace{15mm} param\_out = param - learning\_rate * \frac{moment\_1\_out}{\sqrt{moment\_2\_out} + \epsilon} \\
+        \end{aligned}
 
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
