@@ -459,62 +459,63 @@ bool AsStridedOpInferSymbolicShape(
   return true;
 }
 
-bool BatchSizeLikeOpInferSymbolicShape(
+bool BatchSizeLikeInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &x_dims = x_shape_or_data.shape();
-
-  std::vector<int> shape =
+  const auto &x_shape = x_shape_or_data.shape();
+  std::vector<int> shape_attr =
       paddle::dialect::details::GetVectorAttr<int>(op, "shape");
-  int x_batch_size_dim =
-      op->attribute<pir::Int32Attribute>("x_batch_size_dim").data();
-  int out_batch_size_dim =
-      op->attribute<pir::Int32Attribute>("out_batch_size_dim").data();
-
-  PADDLE_ENFORCE_GT(
-      shape.size(),
-      0,
-      common::errors::InvalidArgument(
-          "Shape size must be larger than 0, but received: %d.", shape.size()));
-
-  std::vector<symbol::DimExpr> shape_exprs(shape.size(), 0);
-  std::transform(shape.begin(), shape.end(), shape_exprs.begin(), [](int dim) {
-    return symbol::DimExpr(dim);
-  });
+  int input_dim_idx =
+      op->attribute<pir::Int32Attribute>("input_dim_idx").data();
+  int output_dim_idx =
+      op->attribute<pir::Int32Attribute>("output_dim_idx").data();
+  PADDLE_ENFORCE_GT(shape_attr.size(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "Shape size must be larger than 0, but received: %d.",
+                        shape_attr.size()));
+  std::vector<symbol::DimExpr> out_shape;
+  for (size_t i = 0; i < shape_attr.size(); ++i) {
+    out_shape.emplace_back(symbol::DimExpr(shape_attr[i]));
+  }
 
   PADDLE_ENFORCE_GE(
-      x_batch_size_dim,
+      input_dim_idx,
       0,
       common::errors::InvalidArgument(
           "Input dimension index must be larger than or equal to 0."));
-  size_t input_dim_size = x_dims.size();
+  size_t input_dim_size = x_shape.size();
+
   PADDLE_ENFORCE_GE(
-      out_batch_size_dim,
+      output_dim_idx,
       0,
       common::errors::InvalidArgument(
           "Output dimension index must be larger than or equal to 0."));
-  PADDLE_ENFORCE(static_cast<int>(input_dim_size) > x_batch_size_dim ||
+  PADDLE_ENFORCE(static_cast<int>(input_dim_size) > input_dim_idx ||
                      static_cast<int>(input_dim_size) == -1,
                  common::errors::InvalidArgument(
                      "Input dimension size must be larger than "
                      "input dimension index, but received input "
                      "dimension size: %s, input dimension index: %s.",
                      static_cast<int>(input_dim_size),
-                     x_batch_size_dim));
+                     input_dim_idx));
 
-  size_t output_dim_size = shape.size();
+  size_t output_shape_size = shape_attr.size();
   PADDLE_ENFORCE_GT(
-      output_dim_size,
-      out_batch_size_dim,
+      output_shape_size,
+      output_dim_idx,
       common::errors::InvalidArgument(
           "Output dimension size must be larger than output dimension index."));
-  shape_exprs[out_batch_size_dim] = x_dims[x_batch_size_dim];
+  // NOTE(gongshaotian):The Python API for this operator has been discontinued
+  // in version 2.6. Currently, only the situation where one -1 appears in the
+  // shape parameter (shape[input_id_idx] == -1) is supported.
+  out_shape[output_dim_idx] = x_shape[input_dim_idx];
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(shape_exprs)});
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   return true;
 }
@@ -1041,7 +1042,7 @@ bool EigvalshOpInferSymbolicShape(
 
 bool FullBatchSizeLikeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return BatchSizeLikeOpInferSymbolicShape(op, infer_context);
+  return BatchSizeLikeInferSymbolicShape(op, infer_context);
 }
 
 bool FractionalMaxPoolOpInferSymbolicShape(
