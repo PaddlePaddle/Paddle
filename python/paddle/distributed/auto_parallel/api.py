@@ -57,6 +57,10 @@ from paddle.io.dataloader.batch_sampler import (
 )
 from paddle.optimizer import Optimizer
 
+from .moe_utils import (
+    _NdMeshAlltoAll,
+    _specific_alltoall_dim,
+)
 from .placement_type import (
     check_placements_equal,
     get_shard_spec,
@@ -424,7 +428,7 @@ def _get_sub_meshes_and_local_placements(
     return sub_mesh_list, local_placements
 
 
-def cal_global_shape(local_shape, mesh, placements):
+def _cal_global_shape(local_shape, mesh, placements):
     # assume the each rank has the same tensor shape for now,
     # just use the local shape to calculate the global shape
     global_shape = list(local_shape)
@@ -449,7 +453,7 @@ def moe_global_mesh_tensor(
     local_tensor = local_tensor_list[local_tensor_idx]
 
     if paddle.in_dynamic_mode():
-        global_dims = cal_global_shape(
+        global_dims = _cal_global_shape(
             local_tensor._local_value().shape, mesh, placements
         )
         resharded_local_tensor_list = []
@@ -478,7 +482,7 @@ def moe_global_mesh_tensor(
             placements,
         )
     elif paddle.framework.in_pir_mode():
-        global_dims = cal_global_shape(
+        global_dims = _cal_global_shape(
             local_tensor._local_shape, mesh, placements
         )
         dist_tensor = paddle._C_ops.moe_global_mesh_tensor(
@@ -748,6 +752,12 @@ def reshard(
         if len(partial_dims) > 0:
             dist_attr._set_partial_dims(partial_dims)
 
+        alltoall_dim = _specific_alltoall_dim(dist_tensor, mesh, placements)
+        if alltoall_dim is not None:
+            # return _nd_mesh_alltoall_reshard(dist_tensor, mesh, placements, alltoall_dim)
+            return _NdMeshAlltoAll.apply(
+                dist_tensor, mesh, placements, alltoall_dim
+            )
         return paddle.base.core.reshard(dist_tensor, dist_attr)
     elif in_pir_mode():
         return paddle._C_ops.reshard(dist_tensor, mesh, placements)
