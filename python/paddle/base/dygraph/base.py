@@ -447,8 +447,7 @@ def is_grad_enabled() -> bool:
             >>> paddle.is_grad_enabled()
             False
     """
-    tracer = framework._dygraph_tracer()
-    return tracer._has_grad if tracer else False
+    return core._has_grad()
 
 
 def _set_grad_enabled(mode: bool) -> None:
