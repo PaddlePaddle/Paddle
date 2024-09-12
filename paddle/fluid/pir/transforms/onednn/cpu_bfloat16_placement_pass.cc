@@ -441,6 +441,8 @@ class CpuBfloat16PlacementTranspose : public paddle::drr::DrrPatternBase {
       // Add this constraint for transpose input size != axis size
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("X"));
       if (perm.size() != x_shape.size()) {
+        LOG(WARNING) << "Transpose Op input tensor's dimension should be equal "
+                        "to or greater than the axis's size.";
         return false;
       }
       return true;
