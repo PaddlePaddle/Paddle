@@ -663,6 +663,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
     size_t tmp_rank = input_shape_or_data.shape().size();
     target_rank = std::max(int64_t(target_rank), int64_t(tmp_rank));
   }
+
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
   std::vector<symbol::DimExpr> out_shape;
   symbol::DimExprBuilder builder;
