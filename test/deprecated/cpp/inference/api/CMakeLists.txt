@@ -476,6 +476,28 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
                               analyzer_bert_tester.cc EXTRA_DEPS common)
 
+  set(TEST_TRT_TRANSFORMER_PRUNE_MODEL
+      "${TRT_MODEL_INSTALL_DIR}/transformer_prune")
+  if(NOT EXISTS ${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune.tar.gz)
+    inference_download_and_uncompress(
+      ${TEST_TRT_TRANSFORMER_PRUNE_MODEL} ${INFERENCE_URL}/tensorrt_test
+      "transformer_prune.tar.gz" 77b56dc73ff0cf44ddb1ce9ca0b0f471)
+  endif()
+
+  if(WITH_GPU AND TENSORRT_FOUND)
+    inference_analysis_test(
+      test_trt_dynamic_shape_transformer_prune_deprecated
+      SRCS
+      trt_dynamic_shape_transformer_prune_test.cc
+      EXTRA_DEPS
+      paddle_inference_shared
+      common
+      ARGS
+      --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
+    set_tests_properties(test_trt_dynamic_shape_transformer_prune_deprecated
+                         PROPERTIES TIMEOUT 300)
+  endif()
+
   # multiple models prediction
   set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
   download_data_without_verify(${MMP_INSTALL_DIR}
