@@ -144,9 +144,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_convert_depthwise_conv2d_deprecated
                        PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_multiclass_nms3_op_deprecated PROPERTIES TIMEOUT
-                                                                         300)
-
   if(NOT WIN32)
     set_tests_properties(test_trt_inference_fp16_io_deprecated
                          PROPERTIES TIMEOUT 500)
