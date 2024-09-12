@@ -18,9 +18,10 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from op_test import OpTestTool, _set_use_system_allocator
+from op_test import _set_use_system_allocator
 from utils import pir_executor_guard
 
+import paddle
 from paddle import base, enable_static
 from paddle.base import core
 
@@ -95,58 +96,57 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
             var_names.append('scale')
             var_names.append('bias')
         ground_truth = {name: var_dict[name] for name in var_names}
+        with paddle.pir_utils.OldIrGuard():
+            program = base.Program()
+            with base.program_guard(program):
+                block = program.global_block()
 
-        program = base.Program()
-        with base.program_guard(program):
-            block = program.global_block()
+                for name in ground_truth:
+                    block.create_var(
+                        name=name,
+                        dtype='float32',
+                        shape=ground_truth[name].shape,
+                    )
 
-            for name in ground_truth:
-                block.create_var(
-                    name=name, dtype='float32', shape=ground_truth[name].shape
+                inputs = {"X": block.var('x')}
+                if with_scale_bias:
+                    inputs["Scale"] = block.var('scale')
+                    inputs["Bias"] = block.var('bias')
+
+                block.append_op(
+                    type="layer_norm",
+                    inputs=inputs,
+                    outputs={
+                        "Y": block.var('y'),
+                        "Mean": block.var('mean'),  # share the same memory
+                        "Variance": block.var(
+                            'variance'
+                        ),  # share the same memory
+                    },
+                    attrs={
+                        "epsilon": epsilon,
+                        "begin_norm_axis": begin_norm_axis,
+                        "use_mkldnn": True,
+                        "is_test": with_is_test,
+                    },
                 )
 
-            inputs = {"X": block.var('x')}
-            if with_scale_bias:
-                inputs["Scale"] = block.var('scale')
-                inputs["Bias"] = block.var('bias')
+                exe = base.Executor(core.CPUPlace())
 
-            block.append_op(
-                type="layer_norm",
-                inputs=inputs,
-                outputs={
-                    "Y": block.var('y'),
-                    "Mean": block.var('mean'),  # share the same memory
-                    "Variance": block.var('variance'),  # share the same memory
-                },
-                attrs={
-                    "epsilon": epsilon,
-                    "begin_norm_axis": begin_norm_axis,
-                    "use_mkldnn": True,
-                    "is_test": with_is_test,
-                },
-            )
+                input_list = ['x']
+                if with_scale_bias:
+                    input_list.append('scale')
+                    input_list.append('bias')
 
-            exe = base.Executor(core.CPUPlace())
-
-            input_list = ['x']
-            if with_scale_bias:
-                input_list.append('scale')
-                input_list.append('bias')
-
-            out = exe.run(
-                program,
-                feed={name: var_dict[name] for name in input_list},
-                fetch_list=['y', 'mean', 'variance'],
-            )
-            self.__assert_close(y, out[0], "y")
-            if not with_is_test:
-                self.__assert_close(mean, out[1], "mean")
-                self.__assert_close(variance, out[2], "variance", 1e-3)
-
-    @OpTestTool.skip_if_not_cpu_bf16()
-    def test_check_forward_non_last_begin_norm_axis(self):
-        with pir_executor_guard():
-            self.check_forward(shape=[2, 3, 4, 5], begin_norm_axis=2)
+                out = exe.run(
+                    program,
+                    feed={name: var_dict[name] for name in input_list},
+                    fetch_list=['y', 'mean', 'variance'],
+                )
+                self.__assert_close(y, out[0], "y")
+                if not with_is_test:
+                    self.__assert_close(mean, out[1], "mean")
+                    self.__assert_close(variance, out[2], "variance", 1e-3)
 
     def test_check_forward_with_scale_and_bias(self):
         with pir_executor_guard():

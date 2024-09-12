@@ -73,3 +73,33 @@ def gelu_converter(network, paddle_op, inputs):
 
     layer = network.add_plugin_v2([input_val], plugin)
     return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.hardsigmoid", trt_version="8.x")
+def hardsigmoid_converter(network, paddle_op, inputs):
+    x = inputs[0]
+    slope = paddle_op.attrs()["slope"]
+    offset = paddle_op.attrs()["offset"]
+    hardsigmoid_layer = network.add_activation(
+        x, trt.ActivationType.HARD_SIGMOID
+    )
+    hardsigmoid_layer.alpha = slope
+    hardsigmoid_layer.beta = offset
+    return hardsigmoid_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.hardswish", trt_version="8.x")
+def hardswish_converter(network, paddle_op, inputs):
+    x = inputs[0]
+    threshold = 6.0
+    scale = 6.0
+    offset = 3.0
+    hardsigmoid_layer = network.add_activation(
+        x, trt.ActivationType.HARD_SIGMOID
+    )
+    hardsigmoid_layer.alpha = 1.0 / scale
+    hardsigmoid_layer.beta = offset / scale
+    hardswish_layer = network.add_elementwise(
+        x, hardsigmoid_layer.get_output(0), trt.ElementWiseOperation.PROD
+    )
+    return hardswish_layer.get_output(0)

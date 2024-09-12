@@ -1201,6 +1201,7 @@
   output : Tensor(out)
   infer_meta :
     func : CumScalarAxisInferMeta
+    spmd_rule : CumSumInferSpmdDynamic
   kernel :
     func : cumsum
     data_type : x
@@ -3511,6 +3512,7 @@
   output : Tensor(out)
   infer_meta :
     func : OneHotInferMeta
+    spmd_rule : OneHotInferSpmdDynamic
   kernel :
     func : one_hot
   traits : paddle::dialect::ForwardOnlyTrait

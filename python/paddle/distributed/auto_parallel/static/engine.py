@@ -769,7 +769,6 @@ class Engine:
 
         # re-run apply_mix2dist_pass to dist accumulator.
         apply_mix2dist_pass(dist_program)
-        # print('program', startup_program, dist_program, flush=1)
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
@@ -791,7 +790,7 @@ class Engine:
 
         # Part 3: Graph partition
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
-        #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
+        #   insert reshard op if operand tensor's placements is different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
         apply_partition_pass(dist_program)
 
