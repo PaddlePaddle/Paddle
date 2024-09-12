@@ -35,6 +35,7 @@ fba_header = '''
 #include "cutlass/epilogue/thread/linear_combination_silu.h"
 #include "cutlass/epilogue/thread/linear_combination_bias_relu.h"
 #include "cutlass/epilogue/thread/linear_combination_sigmoid.h"
+#include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/fast_gelu.h"
 #include "cutlass/util/device_memory.h"
 #include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/gemm_epilogue_util.h"
 
@@ -83,7 +84,7 @@ SupportedAct = [
 ActTag = {
     SupportedAct[0]: 'cutlass::epilogue::thread::LinearCombination',
     SupportedAct[1]: 'cutlass::epilogue::thread::LinearCombinationRelu',
-    SupportedAct[2]: 'cutlass::epilogue::thread::LinearCombinationGELU',
+    SupportedAct[2]: 'cutlass::epilogue::thread::LinearCombinationFastGELU',
     # SupportedAct[3]: 'cutlass::epilogue::thread::LinearCombinationLeakyRelu',
     # SupportedAct[4]: 'cutlass::epilogue::thread::LinearCombinationSigmoid',
     # SupportedAct[5]: 'cutlass::epilogue::thread::LinearCombinationSilu',

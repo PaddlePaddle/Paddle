@@ -58,5 +58,11 @@ void ScaleKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    scale, OneDNN, ONEDNN, phi::ScaleKernel, float, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(scale,
+                   OneDNN,
+                   ONEDNN,
+                   phi::ScaleKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}

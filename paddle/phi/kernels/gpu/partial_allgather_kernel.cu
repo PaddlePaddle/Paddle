@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #include "glog/logging.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
-
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace phi {
 
@@ -29,43 +27,31 @@ void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
                                   const DenseTensor& x_in,
                                   int nranks,
                                   int rank,
-                                  int ring_id,
-                                  bool use_calc_stream,
+                                  int ring_id UNUSED,
+                                  bool use_calc_stream UNUSED,
                                   DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto in = &x_in;
   int64_t numel = in->numel();
   ncclDataType_t dtype = phi::ToNCCLDataType(in->dtype());
-  int rid = ring_id;
+
   gpuStream_t stream = nullptr;
   phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-  const auto& comm_context_manager =
-      phi::distributed::CommContextManager::GetInstance();
 
   int real_nranks = 0;
   int real_rank = 0;
 
-  PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
-                    true,
-                    common::errors::InvalidArgument(
-                        "You choose to use new communication library by "
-                        "setting environment "
-                        "variable FLAGS_dynamic_static_unified_comm True. "
-                        "But ring_id(%d) is "
-                        "not found in comm_context_manager.",
-                        std::to_string(rid)));
-  comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-      comm_context_manager.Get(std::to_string(rid)));
+  comm_ctx =
+      static_cast<phi::distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
   PADDLE_ENFORCE_NE(comm_ctx,
                     nullptr,
                     common::errors::Unavailable(
                         "NCCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
 
-  stream = comm_ctx->GetStream();
+  stream = dev_ctx.stream();
   real_nranks = comm_ctx->GetSize();
   real_rank = comm_ctx->GetRank();
-  VLOG(3) << "new comm_context_manager has ring_id " << rid;
 
   PADDLE_ENFORCE_EQ(nranks,
                     real_nranks,
@@ -90,22 +76,8 @@ void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
   int64_t send_numel = numel / nranks;
   int offset = send_numel * rank;
 
-  auto map = distributed::ProcessGroupMapFromGid::getInstance();
-  if (map->has(rid)) {
-    // Use ProcessGroup
-    distributed::ProcessGroup* pg = map->get(rid);
-    auto task = pg->AllGather(out, *in, offset, send_numel, /*sync_op*/ true);
-    task->Wait();
-  } else {
-    if (use_calc_stream) {
-      // should ExecutionContext for calc stream.
-      stream = dev_ctx.stream();
-    }
-
-    auto send_buf = distributed::GetPartialTensor(*in, offset, send_numel);
-
-    comm_ctx->AllGather(out, send_buf, stream);
-  }
+  auto send_buf = distributed::GetPartialTensor(*in, offset, send_numel);
+  comm_ctx->AllGather(out, send_buf, stream);
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
       "PaddlePaddle should compile with GPU."));

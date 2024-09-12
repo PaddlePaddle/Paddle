@@ -72,7 +72,6 @@ if(NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
-list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -146,7 +145,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
@@ -576,6 +574,20 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     FLAGS_cublaslt_exhaustive_search_times=30)
   py_test_modules(test_fuse_gemm_epilogue_pass MODULES
                   test_fuse_gemm_epilogue_pass)
+endif()
+
+if(WITH_ROCM)
+  py_test_modules(test_fused_gemm_epilogue_op MODULES
+                  test_fused_gemm_epilogue_op)
+  py_test_modules(test_fused_gemm_epilogue_grad_op MODULES
+                  test_fused_gemm_epilogue_grad_op)
+  py_test_modules(
+    test_fused_gemm_epilogue_op_with_es MODULES test_fused_gemm_epilogue_op
+    ENVS FLAGS_cublaslt_exhaustive_search_times=30)
+  py_test_modules(
+    test_fused_gemm_epilogue_grad_op_with_es MODULES
+    test_fused_gemm_epilogue_grad_op ENVS
+    FLAGS_cublaslt_exhaustive_search_times=30)
 endif()
 
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
