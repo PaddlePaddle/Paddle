@@ -90,7 +90,7 @@ class TestReshardPToR:
                 reshard_tensor = paddle._C_ops.reshard(
                     input_tensor, self._mesh, [dist.Replicate()]
                 )
-            set_all_ops_op_role(main_program, OpRole.Forward)
+            set_all_ops_op_role(main_program.global_block(), OpRole.Forward)
             apply_reshard_pass(main_program)
         np.testing.assert_equal(main_program.num_ops(), 4)
         ops = main_program.global_block().ops
