@@ -974,6 +974,15 @@ void FCInferMeta(const MetaTensor& input,
                  const bool padding_weights,
                  MetaTensor* out);
 
+void FCOneDNNInferMeta(const MetaTensor& input,
+                       const MetaTensor& w,
+                       const MetaTensor& bias,
+                       const int in_num_col_dims,
+                       const std::string& activation_type,
+                       const bool padding_weights,
+                       const std::vector<int>& fused_reshape2_shape,
+                       MetaTensor* out);
+
 void VariableLengthMemoryEfficientAttentionInferMeta(
     const MetaTensor& query,
     const MetaTensor& key,
