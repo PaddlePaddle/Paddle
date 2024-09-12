@@ -25,6 +25,7 @@ from paddle.base.core import AnalysisConfig
 
 class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
     def setUp(self):
+        paddle.enable_static()
         with base.program_guard(self.main_program, self.startup_program):
             data1 = paddle.static.data(
                 name="data1", shape=[8, 32, 128], dtype="float32"
