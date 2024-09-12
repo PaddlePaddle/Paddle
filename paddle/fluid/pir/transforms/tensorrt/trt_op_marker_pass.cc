@@ -72,6 +72,7 @@ DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
 DEFINE_GENERAL_PATTERN(Shape, paddle::dialect::ShapeOp)
 DEFINE_GENERAL_PATTERN(Expand, paddle::dialect::ExpandOp)
 DEFINE_GENERAL_PATTERN(Sigmoid, paddle::dialect::SigmoidOp)
+DEFINE_GENERAL_PATTERN(Sqrt, paddle::dialect::SqrtOp)
 DEFINE_GENERAL_PATTERN(Hardsigmoid, paddle::dialect::HardsigmoidOp)
 DEFINE_GENERAL_PATTERN(Hardswish, paddle::dialect::HardswishOp)
 
@@ -1214,6 +1215,42 @@ class MaxOpPattern : public pir::OpRewritePattern<paddle::dialect::MaxOp> {
   }
 };
 
+class MeanOpPattern : public pir::OpRewritePattern<paddle::dialect::MeanOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MeanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MeanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+
+    if (!op->HasAttribute("axis")) {
+      VLOG(3) << "The axis attribute does not exist";
+      return false;
+    }
+
+    if (!op->HasAttribute("keepdim")) {
+      VLOG(3) << "The keepdim attribute does not exist";
+      return false;
+    }
+
+    pir::Value input = op.operand_source(0);
+    auto input_type = pir::GetDataTypeFromValue(input);
+    if (!input_type.isa<pir::Int32Type>() &&
+        !input_type.isa<pir::Int64Type>() &&
+        !input_type.isa<pir::Float32Type>() &&
+        !input_type.isa<pir::Float64Type>()) {
+      VLOG(3) << "The input type of pd_op.mean is not int32 or int64 or "
+                 "float32 or float64";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1245,6 +1282,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Shape)
     ADD_PATTERN(Expand)
     ADD_PATTERN(Sigmoid)
+    ADD_PATTERN(Sqrt)
     ADD_PATTERN(Hardsigmoid)
     ADD_PATTERN(Hardswish)
 #if IS_TRT_VERSION_GE(8600)
@@ -1280,6 +1318,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MinimumOpPattern>(context));
     ps.Add(std::make_unique<MaximumOpPattern>(context));
     ps.Add(std::make_unique<FloorDivideOpPattern>(context));
+    ps.Add(std::make_unique<MeanOpPattern>(context));
     ps.Add(std::make_unique<RemainderOpPattern>(context));
     ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
     ps.Add(std::make_unique<ArgmaxOpPattern>(context));
