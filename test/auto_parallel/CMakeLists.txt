@@ -13,10 +13,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_auto_parallel_relaunch)
   set_tests_properties(test_auto_parallel_relaunch
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_relaunch_with_gpt_planner MODULES
-                  test_relaunch_with_gpt_planner)
-  set_tests_properties(test_relaunch_with_gpt_planner
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 240)
   py_test_modules(test_engine_api MODULES test_engine_api)
   set_tests_properties(test_engine_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 80)
@@ -164,8 +160,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
   # End of unittests WITH multi cards and WITHOUT timeout
 
-  py_test_modules(test_rule_based_tuner_o2 MODULES test_rule_based_tuner_o2)
-  set_tests_properties(test_rule_based_tuner_o2 PROPERTIES TIMEOUT 50)
   py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
                   test_semi_auto_parallel_functional_in_single_card)
   # End of unittests WITH single card and timeout
