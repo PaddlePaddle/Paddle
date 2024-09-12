@@ -90,11 +90,6 @@ for stype in support_types:
     create_test_class(globals(), XPUTestExpOP, stype)
 
 
-support_types = get_xpu_op_support_types('exp')
-for stype in support_types:
-    create_test_class(globals(), XPUTestExpOP, stype)
-
-
 class XPUTestSiluOP(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'silu'
@@ -531,11 +526,6 @@ class XPUTestLogOP(XPUOpTestWrapper):
     class TestLogCase4(XPUTestLog):
         def set_shape(self):
             self.shape = [1, 2, 3, 4]
-
-
-support_types = get_xpu_op_support_types('log')
-for stype in support_types:
-    create_test_class(globals(), XPUTestLogOP, stype)
 
 
 support_types = get_xpu_op_support_types('log')
