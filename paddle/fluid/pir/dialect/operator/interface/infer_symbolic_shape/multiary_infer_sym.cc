@@ -1539,7 +1539,7 @@ static std::vector<symbol::DimExpr> sliceFlattenView(
       in_shape.size(),
       common::errors::InvalidArgument("sliceView receive axis out of bound"));
   std::vector<symbol::DimExpr> out_shape = {};
-  for (int i = 0; i < in_shape.size(); i++) {
+  for (size_t i = 0; i < in_shape.size(); i++) {
     if (i == axis) continue;
     if (i == axis + 1)
       out_shape.emplace_back(in_shape[i] * sliceLength);
