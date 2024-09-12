@@ -900,6 +900,47 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src) {
   return TensorFromDLPack(src, std::move(deleter));
 }
 
+// Keep the this overloaded version of the interface unchanged.
+void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
+  phi::CPUPlace dst_place = phi::CPUPlace();
+  phi::CPUPlace src_place = phi::CPUPlace();
+
+  std::vector<int64_t> vec;
+  std::copy(dl_tensor.shape,
+            dl_tensor.shape + dl_tensor.ndim,
+            std::back_inserter(vec));
+
+  phi::DDim vddim = common::make_ddim(vec);
+
+  dst->Resize(vddim);
+  ::DLDataType type = dl_tensor.dtype;
+  void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+
+  auto src_ptr = static_cast<const void*>(dl_tensor.data);
+  auto size = common::product(vddim) * type.bits / 8;
+
+  if (dl_tensor.device.device_type == kDLCPU) {
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (dl_tensor.device.device_type == kDLGPU) {
+    phi::GPUPlace dst_place = phi::GPUPlace(dl_tensor.device.device_id);
+    phi::GPUPlace src_place = phi::GPUPlace(dl_tensor.device.device_id);
+    dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    auto* ctx = phi::DeviceContextPool::Instance().GetByPlace(dst_place);
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  PADDLE_THROW(common::errors::Unimplemented("XPUPlace is not supported"));
+#endif
+}
+
 template <typename T>
 std::string format_tensor(const phi::DenseTensor& tensor) {
   // TODO(zhiqiu): use the print option to format tensor.

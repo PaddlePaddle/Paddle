@@ -106,13 +106,14 @@ template <typename T>
 void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 // convert dlpack's DLTensor to tensor
+TEST_API void TensorFromDLPack(const ::DLTensor& dl_tensor,
+                               phi::DenseTensor* dst);
 
-// TEST_API void TensorFromDLPack(const ::DLTensor& dl_tensor,
-//                                phi::DenseTensor* dst);
 TEST_API phi::DenseTensor TensorFromDLPack(DLManagedTensor* src);
-inline phi::DenseTensor fromDLPack(const DLManagedTensor* src) {
-  return fromDLPack(const_cast<DLManagedTensor*>(src));
+inline phi::DenseTensor TensorFromDLPack(const DLManagedTensor* src) {
+  return TensorFromDLPack(const_cast<DLManagedTensor*>(src));
 }
+
 phi::DenseTensor TensorFromDLPack(DLManagedTensor* src,
                                   std::function<void(void*)> deleter);
 //
