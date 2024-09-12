@@ -29,6 +29,12 @@ def add_net(x, y):
     return x + y
 
 
+def batch_norm_net1(x, y, z):
+    mean = paddle.ones([40], dtype="float32")
+    var = paddle.zeros([40], dtype='float32')
+    return paddle.nn.functional.batch_norm(x, mean, var, y, z)
+
+
 def reduce_as_net(x, y):
     return paddle.reduce_as(x, y)
 
@@ -183,6 +189,64 @@ class TestPrimBaseOneGradTwoInputs(unittest.TestCase):
         if flag == "prim":
             core._set_prim_all_enabled(False)
         return res, [grad]
+
+    def test_prim_all_dynamic(self):
+        res_ref, grad_ref = self.base_net()
+        res, grad = self.base_net("prim")
+
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(
+                ref, actual, rtol=self.tol, atol=self.tol
+            )
+
+        for dr, d in zip(grad_ref, grad):
+            np.testing.assert_allclose(dr, d, rtol=self.tol, atol=self.tol)
+
+
+class TestPrimThreeWithGrad(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50, 60]
+        self.init_x_shape = [None, None, None, 60]
+        self.y_shape = [40]
+        self.init_y_shape = [None]
+        self.z_shape = [40]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = batch_norm_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+    def base_net(self, flag=None):
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
+        x = paddle.to_tensor(self.x, stop_gradient=False)
+        y = paddle.to_tensor(self.y, stop_gradient=False)
+        z = paddle.to_tensor(self.z, stop_gradient=False)
+        if flag == "prim":
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=self.init_x_shape, dtype='float32'),
+                    InputSpec(shape=self.init_y_shape, dtype='float32'),
+                    InputSpec(shape=self.init_y_shape, dtype='float32'),
+                ],
+            )
+            fn.train()
+        else:
+            fn = self.net
+        res = fn(x, y, z)
+        res.backward()
+        x_grad = x.gradient()
+        y_grad = y.gradient()
+        z_grad = z.gradient()
+        if flag == "prim":
+            core._set_prim_all_enabled(False)
+        return res, [x_grad, y_grad, z_grad]
 
     def test_prim_all_dynamic(self):
         res_ref, grad_ref = self.base_net()

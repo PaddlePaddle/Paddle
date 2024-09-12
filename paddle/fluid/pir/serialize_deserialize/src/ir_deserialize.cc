@@ -159,6 +159,17 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
       }
     }
   }
+  if (op_json->contains(QUANT_ATTRS)) {
+    Json& quant_attrs_json = op_json->at(QUANT_ATTRS);
+    for (auto& attr_json : quant_attrs_json) {
+      auto attr_name = attr_json.at(NAME).template get<std::string>();
+      if (attr_json.contains(ATTR_TYPE)) {
+        attributes.insert({attr_name, ReadAttribute(&attr_json)});
+      } else {
+        VLOG(6) << "Attribute " << attr_name << " Deleted.";
+      }
+    }
+  }
 
   if (op_json->contains(OPRESULTS_ATTRS)) {
     Json& other_attrs_json = op_json->at(OPRESULTS_ATTRS);

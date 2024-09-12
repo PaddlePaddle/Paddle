@@ -46,7 +46,10 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr);
 pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
                                         ProcessMeshAttribute mesh);
 
-pir::Type CvtToPirDistType(pir::Type global_type, pir::Attribute dist_attr);
+pir::Type CvtToPirDistType(
+    pir::Type global_type,
+    pir::Attribute dist_attr,
+    const std::vector<int64_t>& local_ddim = std::vector<int64_t>());
 
 ///
 /// When the following conditions are met:

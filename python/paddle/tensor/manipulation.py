@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import functools
 import math
 from typing import TYPE_CHECKING, Any, Literal, overload
 
@@ -4459,8 +4460,9 @@ def tile(
         else:
             for elem in repeat_times:
                 if isinstance(elem, (Variable, paddle.pir.Value)):
+                    numel = functools.reduce(lambda x, y: x * y, elem.shape, 1)
                     assert (
-                        elem.numel() == 1
+                        numel == 1
                     ), 'Elements in repeat_times must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
@@ -4550,6 +4552,13 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
 
     Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greater than or equal to that of ``x``. The dimension to expand must have a value of 0.
+
+    The following diagram illustrates how a one-dimensional tensor is transformed into a tensor with a shape of [2,3] through the expand_as operation. The target tensor has a shape of [2,3], and through expand_as, the one-dimensional tensor is expanded into a tensor with a shape of [2,3].
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/expand_as.png
+        :width: 800
+        :alt: expand_as API
+        :align: center
 
     Args:
         x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.

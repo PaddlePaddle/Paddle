@@ -473,6 +473,47 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                &params.min_shape_tensor,
                                                &params.max_shape_tensor,
                                                &params.optim_shape_tensor);
+        } else {
+          if (HasAttr("dynamic_shape_names") &&
+              HasAttr("min_input_shape_vector") &&
+              HasAttr("max_input_shape_vector") &&
+              HasAttr("opt_input_shape_vector")) {
+            std::vector<std::string> dynamic_shape_names;
+            std::vector<std::vector<int>> min_input_shapes;
+            std::vector<std::vector<int>> max_input_shapes;
+            std::vector<std::vector<int>> opt_input_shapes;
+            std::vector<int> dynamic_shape_lens;
+            dynamic_shape_names =
+                Attr<std::vector<std::string>>("dynamic_shape_names");
+            std::vector<int> min_shapes =
+                Attr<std::vector<int>>("min_input_shape_vector");
+            std::vector<int> max_shapes =
+                Attr<std::vector<int>>("max_input_shape_vector");
+            std::vector<int> opt_shapes =
+                Attr<std::vector<int>>("opt_input_shape_vector");
+            dynamic_shape_lens = Attr<std::vector<int>>("dynamic_shape_lens");
+            int idx = 0;
+            for (size_t i = 0; i < dynamic_shape_lens.size(); ++i) {
+              std::vector<int> tmp1, tmp2, tmp3;
+              for (int j = 0; j < dynamic_shape_lens[i]; ++j) {
+                tmp1.push_back(min_shapes[idx]);
+                tmp2.push_back(max_shapes[idx]);
+                tmp3.push_back(opt_shapes[idx++]);
+              }
+              min_input_shapes.emplace_back(tmp1);
+              max_input_shapes.emplace_back(tmp2);
+              opt_input_shapes.emplace_back(tmp3);
+            }
+
+            for (size_t i = 0; i < dynamic_shape_names.size(); ++i) {
+              params.min_input_shape.insert(
+                  std::make_pair(dynamic_shape_names[i], min_input_shapes[i]));
+              params.max_input_shape.insert(
+                  std::make_pair(dynamic_shape_names[i], max_input_shapes[i]));
+              params.optim_input_shape.insert(
+                  std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
+            }
+          }
         }
         params.context_memory_sharing = Attr<bool>("context_memory_sharing");
         params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
@@ -783,7 +824,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #else
         auto dims = engine->engine()->getBindingDimensions(bind_index);
 #endif
-        ddim.push_back(runtime_batch);
         for (int i = 0; i < dims.nbDims; i++) {
           ddim.push_back(dims.d[i]);
         }

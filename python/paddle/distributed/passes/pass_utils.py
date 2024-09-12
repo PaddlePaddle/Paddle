@@ -20,7 +20,6 @@ from functools import reduce
 import paddle
 from paddle.base import core
 from paddle.base.framework import Parameter, Program
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
@@ -32,7 +31,8 @@ from paddle.distributed.auto_parallel.static.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     use_new_executor,
 )
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..auto_parallel.static.utils import OpRole
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -718,56 +718,32 @@ def forward_complete_op_role(main_program):
     first_left_op_role = None
     first_right_op_role = None
     while iop < ops_len:
-        if all_ops[iop].op_role is not None:
+        if all_ops[iop].op_role != -1:
             first_left_op_role = all_ops[iop].op_role
             iop += 1
             continue
         else:
             right_idx = iop + 1
-            while right_idx < ops_len and all_ops[right_idx].op_role is None:
+            while right_idx < ops_len and all_ops[right_idx].op_role == -1:
                 right_idx += 1
             if right_idx >= ops_len:  # [first_left_op_role, xx, xx, xx, xx]
                 assert (
-                    first_left_op_role is not None
-                ), "first_left_op_role can't be None."
+                    first_left_op_role == -1
+                ), "first_left_op_role can't be -1."
                 for idx in range(iop, right_idx):
                     all_ops[idx].op_role = first_left_op_role
                 break
             else:  # [first_left_op_role, xx, xx, xx, xx, first_right_op_role]
                 first_right_op_role = all_ops[right_idx].op_role
                 assert (
-                    first_left_op_role is None
+                    first_left_op_role == -1
                     or first_left_op_role == first_right_op_role
                 ), f"The left and right operators of (idx[{iop}]) have different op_role."
                 for idx in range(iop, right_idx):
                     all_ops[idx].op_role = first_right_op_role
                     iop = right_idx + 1
-    if first_left_op_role is None and first_right_op_role is None:
+    if first_left_op_role == -1 and first_right_op_role == -1:
         raise ValueError("all the ops don't have the op_role.")
-
-
-# complete the op_role of the new added ops
-@signature_safe_contextmanager
-def auto_complete_op_role(program, op_role, insert_point):
-    initial_num_ops = program.num_ops()
-    origin_insert_point = insert_point
-
-    try:
-        yield
-    finally:
-        current_num_ops = program.num_ops()
-
-        if op_role is not None and current_num_ops > initial_num_ops:
-            for _ in range(current_num_ops - initial_num_ops):
-                new_added_op = insert_point.prev()
-                if new_added_op.op_role is not None:
-                    break
-
-                new_added_op.op_role = op_role
-                paddle.pir.set_insertion_point(new_added_op)
-                insert_point = paddle.pir.get_current_insertion_point()
-
-            paddle.pir.set_insertion_point(origin_insert_point)
 
 
 def _split_program_into_forward_backward_optimize(
@@ -787,7 +763,7 @@ def _split_program_into_forward_backward_optimize(
 
     region = "opt"
     for op_idx in range(len(complete_ops) - 1, -1, -1):
-        if complete_ops[op_idx].op_role is not None:
+        if complete_ops[op_idx].op_role != -1:
             if complete_ops[op_idx].op_role == 1:
                 region = "bwd"
             elif complete_ops[op_idx].op_role == 0:
