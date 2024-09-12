@@ -452,9 +452,7 @@ def is_grad_enabled() -> bool:
 
 
 def _set_grad_enabled(mode: bool) -> None:
-    tracer = framework._dygraph_tracer()
-    if tracer:
-        tracer._has_grad = mode
+    core._set_has_grad(mode)
 
 
 class set_grad_enabled(_DecoratorContextManager):
