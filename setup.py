@@ -442,11 +442,10 @@ def get_cinn_version() -> str:
 
 
 def get_cuda_archs() -> list[int]:
-    compiled_cuda_archs = env_dict.get("COMPILED_CUDA_ARCHS")
-    if isinstance(compiled_cuda_archs, str):
-        return [int(arch) for arch in compiled_cuda_archs.split()]
-    else:
-        return []
+    compiled_cuda_archs = re.findall(
+        r'\d+', env_dict.get("COMPILED_CUDA_ARCHS")
+    )
+    return [int(arch) for arch in compiled_cuda_archs]
 
 
 def get_tensorrt_version() -> str:
