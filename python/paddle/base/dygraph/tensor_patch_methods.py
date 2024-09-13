@@ -124,6 +124,7 @@ def monkey_patch_tensor():
             'grad_',
             'strides',
             'offset',
+            '__cuda_array_interface__',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
