@@ -58,7 +58,7 @@ FusionItersSignature ItersFusionPolicy::MultiDownstreamItersFusion(
 std::optional<ItersTransformRoute>
 ItersFusionPolicy::GetItersTransformRouteImpl(
     const FusionItersSignature& source, const FusionItersSignature& target) {
-  const auto source_iters = source.loop_iters;
+  auto source_iters = source.loop_iters;
   const auto target_iters = target.loop_iters;
   VLOG(4) << "Search iters transform route from "
           << cinn::utils::Join(source_iters, ",") << " to "
@@ -84,9 +84,20 @@ ItersFusionPolicy::GetItersTransformRouteImpl(
   }
   // else: Trivial -> Trivial ItersTransform
 
+  // STEP1: Remove Ones from source
+  auto source_ones = MapVectorIfTrue<std::pair<std::string, int>, int>(
+      Enumerate(source_iters),
+      [this](std::pair<std::string, int> p) { return p.second; },
+      [this](std::pair<std::string, int> p) {
+        return this->iters_manager_->IterSymbolEqualOne(p.first);
+      });
+  iters_transforms.emplace_back(RemoveOnesTransform(source_ones));
+  source_iters = GatherVectorExcept(source_iters, source_ones);
+
+  // STEP2: Do transpose and axes reuse analysis.
   if (source_iters == target_iters) {
     // Can apply IdentityItersTransform
-    iters_transforms.push_back(IdentityItersTransform());
+    iters_transforms.emplace_back(IdentityItersTransform());
     return iters_transforms;
   }
 

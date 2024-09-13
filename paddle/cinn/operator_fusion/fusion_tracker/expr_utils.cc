@@ -28,6 +28,12 @@ ir::Expr ApplyItersTransform::operator()(const TransposeItersTransform& trans) {
   return result;
 }
 
+ir::Expr ApplyItersTransform::operator()(const RemoveOnesTransform& trans) {
+  auto result = RemoveOnesTransformer(trans.ones_)(expr_);
+  VLOG(4) << "[ItersTransform] After RemoveOnesTransform: " << result;
+  return result;
+}
+
 ir::Expr ApplyItersTransform::operator()(const AppendItersTransform& trans) {
   PADDLE_THROW(
       ::common::errors::Unimplemented("Unimplemented AppendItersTransform."));

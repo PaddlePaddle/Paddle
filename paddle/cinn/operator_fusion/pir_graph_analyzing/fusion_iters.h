@@ -50,6 +50,7 @@ struct FusionItersManager {
       const FusionItersSignature& downstream);
 
   bool IterSymbolEqual(const std::string& lhs, const std::string& rhs);
+  bool IterSymbolEqualOne(const std::string& sym);
 
  private:
   void StoreIter2DimExprForValue(const pir::Value& value);
@@ -66,6 +67,14 @@ struct FusionItersManager {
 struct IdentityItersTransform {
   IdentityItersTransform() = default;
   std::string DebugStr() const { return "Identity"; }
+};
+struct RemoveOnesTransform {
+  explicit RemoveOnesTransform(const std::vector<int32_t>& ones)
+      : ones_(ones) {}
+  std::string DebugStr() const {
+    return "RemoveOnesTransform(ones={" + cinn::utils::Join(ones_, ",") + "})";
+  }
+  std::vector<int32_t> ones_;
 };
 struct TransposeItersTransform {
   TransposeItersTransform() = default;
@@ -101,6 +110,7 @@ struct ReuseItersTransform {
 };
 using ItersTransform = std::variant<IdentityItersTransform,
                                     TransposeItersTransform,
+                                    RemoveOnesTransform,
                                     AppendItersTransform,
                                     ReuseItersTransform>;
 using ItersTransformRoute = std::vector<ItersTransform>;

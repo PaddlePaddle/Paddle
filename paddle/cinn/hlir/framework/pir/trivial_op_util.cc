@@ -576,6 +576,33 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
   return ExprTransformer(f);
 }
 
+ExprTransformer RemoveOneTransformer(int one) {
+  const auto& f = [=](const ir::Expr& root) -> ir::Expr {
+    ir::Expr copied = ir::ir_utils::IRCopy(root);
+    const auto& iters = GetLoopVars(copied);
+    // Find target expr and replace with for->body.
+    const ir::Expr& target_for = (ExprSetFinderUtils::ChildFors *
+                                  ExprSetFinderUtils::IsForIterVar(iters[one]))
+                                     .GetSingle(copied);
+    // Replace iters[one] -> 0
+    ir::Expr replaced_body = ReplaceVarTransformer(
+        {iters[one]}, {ir::Expr(0)})(target_for.As<ir::For>()->body);
+    // for -> replaced_body
+    ComposeUtils::MappingTargetExprToDestExprMutator(target_for,
+                                                     replaced_body)(&copied);
+    return copied;
+  };
+  return ExprTransformer(f);
+}
+
+ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones) {
+  ExprTransformer f = Identity;
+  for (const auto& one : ones) {
+    f = RemoveOneTransformer(one) * f;
+  }
+  return ExprTransformer(f);
+}
+
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
   const auto& f = [=](const ir::Expr& root) -> ir::Expr {
     const auto& iters = GetLoopVars(root);

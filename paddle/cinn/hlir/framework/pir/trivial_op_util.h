@@ -251,6 +251,8 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
                                      const std::string& tensor_name);
 
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm);
+ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones);
+
 }  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(

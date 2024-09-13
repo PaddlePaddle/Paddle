@@ -153,8 +153,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   result.inputs.emplace_back(input_axes);
   result.outputs.emplace_back(output_axes);
   result.loop = ShardableAxes(
-      ConcatVector(GatherVectorExcept(input_axes, reduce_axis_idx),
-                   GatherVector(input_axes, reduce_axis_idx)));
+      ConcatVector(output_axes, GatherVector(input_axes, reduce_axis_idx)));
   result.reduce_axis = reduce_axis_idx;
   return result;
 }

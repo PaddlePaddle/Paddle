@@ -56,16 +56,6 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
   VLOG(4) << "[Group Cluster] After ItersPermutationFusion: " << GraphInfo();
 
   // // All -> AnchorPattern
-  // VLOG(4) << "[Group Cluster] Start LiftToAnchorPattern";
-  // LiftToAnchorPattern();
-  // VLOG(4) << "[Group Cluster] After LiftToAnchorPattern: " << GraphInfo();
-
-  // // All -> AnchorPattern
-  // VLOG(4) << "[Group Cluster] Start AnchorPatternFusion";
-  // AnchorPatternFusion();
-  // VLOG(4) << "[Group Cluster] After AnchorPatternFusion: " << GraphInfo();
-
-  // // All -> AnchorPattern
   // VLOG(4) << "[Group Cluster] Start SplitRecomputePattern";
   // SplitRecomputePattern();
   // VLOG(4) << "[Group Cluster] After SplitRecomputePattern: " << GraphInfo();
