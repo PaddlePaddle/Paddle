@@ -71,7 +71,6 @@ FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
       op->num_results(),
       ::common::errors::InvalidArgument("The number of output_iters should be "
                                         "equal to the number of results."));
-
   if (axes.reduce_axis.size() > 0) {
     PADDLE_ENFORCE_LE(
         axes.reduce_axis.size(),
