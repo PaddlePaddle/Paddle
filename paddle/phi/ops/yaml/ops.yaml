@@ -1201,6 +1201,7 @@
   output : Tensor(out)
   infer_meta :
     func : CumScalarAxisInferMeta
+    spmd_rule : CumSumInferSpmdDynamic
   kernel :
     func : cumsum
     data_type : x
@@ -3148,6 +3149,7 @@
     param : [x, use_default_tol, hermitian]
   kernel :
     func : matrix_rank
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_rank_atol_rtol
   args : (Tensor x, Tensor atol, Tensor rtol, bool hermitian=false)
@@ -3511,6 +3513,7 @@
   output : Tensor(out)
   infer_meta :
     func : OneHotInferMeta
+    spmd_rule : OneHotInferSpmdDynamic
   kernel :
     func : one_hot
   traits : paddle::dialect::ForwardOnlyTrait

@@ -20,8 +20,8 @@
 
 namespace phi {
 namespace fusion {
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 11060
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
+    defined(PADDLE_WITH_HIP)
 template <typename T>
 phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
     const phi::GPUContext& ctx,
@@ -35,9 +35,15 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
       if (reserve_space == nullptr) {
         fused_type = FusedType::kMatmulBiasRelu;
       } else {
+#ifdef PADDLE_WITH_HIP
+        PADDLE_THROW(
+            common::errors::Unimplemented("kMatmulBiasReluWithReservedData is "
+                                          "not supported on HIP platform."));
+#else
         fused_type = FusedType::kMatmulBiasReluWithReservedData;
         reserve_space->Resize({phi::product(reserve_space->dims())});
         ctx.template Alloc<bool>(reserve_space);
+#endif
       }
     } else if (activation == "gelu") {
       if (reserve_space == nullptr) {
@@ -57,7 +63,6 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
   return fused_type;
 }
 #endif
-#endif
 
 template <typename T, typename Context>
 void FusedGemmEpilogueKernel(const Context& dev_ctx,
@@ -69,13 +74,13 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
                              const std::string& activation,
                              DenseTensor* out,
                              DenseTensor* reserve_space) {
-#if CUDA_VERSION < 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 11060
   PADDLE_THROW(common::errors::Unimplemented(
       "The fused_gemm_epilogue operator only support CUDA 11.6 "
       "or higher version."));
 #endif
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 11060
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
+    defined(PADDLE_WITH_HIP)
 
   dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   // (M * K) * (K * N)
@@ -108,7 +113,6 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
       trans_x,
       trans_y,
       fused_type);
-#endif
 #endif
 }
 

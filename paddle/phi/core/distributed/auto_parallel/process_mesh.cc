@@ -217,12 +217,17 @@ int SubMeshDim(const ProcessMesh &global_mesh, const ProcessMesh &sub_mesh) {
     return -1;
   }
 
-  auto it = std::find(sub_shape.begin(), sub_shape.end(), 1);
-  if (it == sub_shape.end()) {
+  // e.g.
+  //  global_mesh: shape = [1,2], process_ids = [0,1]; sub_mesh: shape = [1, 1],
+  //  process_ids = [0] global_mesh: shape = [2,2], process_ids = [0,1,2,3];
+  //  sub_mesh: shape = [2, 1], process_ids = [0, 2]
+  auto it =
+      std::mismatch(sub_shape.begin(), sub_shape.end(), global_shape.begin());
+  if (it.first == sub_shape.end()) {
     return -1;
   }
 
-  sub_dim = it - sub_shape.begin();
+  sub_dim = it.first - sub_shape.begin();
   std::vector<ProcessMesh> sub_meshes = SplitMesh(global_mesh, sub_dim);
   if (std::find(sub_meshes.begin(), sub_meshes.end(), sub_mesh) !=
       sub_meshes.end()) {
