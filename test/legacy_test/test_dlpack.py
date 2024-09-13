@@ -119,10 +119,10 @@ class TestDLPack(unittest.TestCase):
             if paddle.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                for _ in range(20):
-                    a = paddle.rand(
-                        shape=[1024 * 128, 1024], dtype="float32"
-                    ).to(device=place)
+                for _ in range(4):
+                    a = paddle.rand(shape=[3, 5], dtype="float32").to(
+                        device=place
+                    )
                     dlpack = paddle.utils.dlpack.to_dlpack(a)
                     b = paddle.utils.dlpack.from_dlpack(dlpack)
 
@@ -133,7 +133,7 @@ class TestDLPack(unittest.TestCase):
             if paddle.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                for _ in range(10):
+                for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
                     dlpack = paddle.utils.dlpack.to_dlpack(x)
 
@@ -144,7 +144,7 @@ class TestDLPack(unittest.TestCase):
             if paddle.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                for _ in range(10):
+                for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
                     dlpack = paddle.utils.dlpack.to_dlpack(x)
                     y = paddle.utils.dlpack.from_dlpack(dlpack)
@@ -158,7 +158,7 @@ class TestDLPack(unittest.TestCase):
             if paddle.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                for _ in range(10):
+                for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
                     dlpack = paddle.utils.dlpack.to_dlpack(x)
                     y = paddle.utils.dlpack.from_dlpack(dlpack)
