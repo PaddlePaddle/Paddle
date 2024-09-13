@@ -566,3 +566,128 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     )
     plan = pass_context.get_attr("plan")
     return plan
+
+
+# ffn pattern:
+# (o1) = "pd_op.matmul" (in, w1)
+# (o2) = "pd_op.matmul" (in, w2)
+# (o3) = "pd_op.swiglu" (o1, o2)
+def is_ffn_pattern(op_list):
+    if len(op_list) != 3:
+        return False
+    if op_list[0].name() != "pd_op.matmul":
+        return False
+    if op_list[1].name() != "pd_op.matmul":
+        return False
+    if op_list[2].name() != "pd_op.swiglu":
+        return False
+    return True
+
+
+# qkv pattern:
+# (o1) = "pd_op.matmul" (in, wq)
+# (o2) = "pd_op.full_int_array" ()
+# (o3) = "pd_op.reshape" (o1, o2)
+# (o4) = "pd_op.matmul" (in, wk)
+# (o5) = "pd_op.full_int_array" ()
+# (o6) = "pd_op.reshape" (o4, o5)
+# (o7) = "pd_op.matmul" (in, wv)
+# (o8) = "pd_op.full_int_array" ()
+# (o9) = "pd_op.reshape" (o7, o8)
+def is_qkv_pattern(op_list):
+    if len(op_list) != 9:
+        return False
+    if op_list[0].name() != "pd_op.matmul":
+        return False
+    if op_list[1].name() != "pd_op.full_int_array":
+        return False
+    if op_list[2].name() != "pd_op.reshape":
+        return False
+    if op_list[3].name() != "pd_op.matmul":
+        return False
+    if op_list[4].name() != "pd_op.full_int_array":
+        return False
+    if op_list[5].name() != "pd_op.reshape":
+        return False
+    if op_list[6].name() != "pd_op.matmul":
+        return False
+    if op_list[7].name() != "pd_op.full_int_array":
+        return False
+    if op_list[8].name() != "pd_op.reshape":
+        return False
+    return True
+
+
+def get_param_define_op(program, param_name):
+    all_ops = program.global_block().ops
+    for i in range(len(all_ops)):
+        if (
+            all_ops[i].name() == "builtin.set_parameter"
+            and all_ops[i].str_attr("parameter_name") == param_name
+        ):
+            return all_ops[i].operand_source(0).get_defining_op()
+
+
+def fuse_attention_ffn_qkv_pass(startup_program, main_program):
+    fused_w = {"ffn": [], "attention_qkv": []}
+    # Traverse main_program, extract all ffn and qkv patterns.
+    all_ops = main_program.global_block().ops
+    ffn_patterns = []
+    qkv_patterns = []
+    for i in range(len(all_ops)):
+        # check ffn pattern
+        pat = all_ops[i : i + 3] if i + 3 <= len(all_ops) else all_ops[i:]
+        if is_ffn_pattern(pat):
+            ffn_patterns.append(pat)
+            i = i + 3
+            continue
+        # check qkv pattern
+        pat = all_ops[i : i + 9] if i + 9 <= len(all_ops) else all_ops[i:]
+        if is_qkv_pattern(pat):
+            qkv_patterns.append(pat)
+            i = i + 9
+            continue
+
+    # Replace all ffn and qkv patterns with fusion patterns, and record the weights after replacement.
+    for pat in ffn_patterns:
+        fusion_w_name = f"fused_{pat[0].operand_source(1).name}_{pat[1].operand_source(1).name}"
+        fusion_w_dtype = pat[0].operand_source(1).dtype
+        fusion_w_shape = pat[0].operand_source(1).shape
+        fusion_w_shape[-1] *= 2
+        fusion_w_process_mesh = pat[0].operand_source(1).process_mesh
+
+        # insert fusion parameter
+        with paddle.static.program_guard(main_program, startup_program):
+            fused_w = paddle.pir.core.create_parameter(
+                dtype=fusion_w_dtype,
+                shape=fusion_w_shape,
+                name=fusion_w_name,
+                process_mesh=fusion_w_process_mesh,
+                placements=[
+                    paddle.distributed.Replicate(),
+                    paddle.distributed.Shard(1),
+                ],
+                initializer=paddle.nn.initializer.Constant(value=0),
+            )
+
+        # insert dst pattern
+        paddle.pir.set_insertion_point_after(pat[2])
+        fused_o = paddle.matmul(
+            pat[0].operand_source(0),
+            fused_w,
+            transpose_x=False,
+            transpose_y=False,
+        )
+        fused_o.get_defining_op().copy_attrs_from(pat[0])
+        out = paddle.incubate.nn.functional.swiglu(fused_o)
+        out.get_defining_op().copy_attrs_from(pat[2])
+        pat[2].result(0).replace_all_uses_with(out)
+
+    print("==startup_program===: ", startup_program, flush=1)
+    print("==main_program===: ", main_program, flush=1)
+
+    # Delete src pattern from origin program.
+
+    # Based on the recorded fusion weights, update the weights in the startup_program.
+
+    return {}
