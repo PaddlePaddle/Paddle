@@ -34,6 +34,9 @@ constexpr uint8_t GetDLDataTypeCode() {
   if (std::is_same<T, phi::dtype::bfloat16>::value) {
     return static_cast<uint8_t>(kDLBfloat);
   }
+  if (std::is_same<T, bool>::value) {
+    return static_cast<uint8_t>(kDLBool);
+  }
 
   return std::is_same<phi::dtype::float16, T>::value ||
                  std::is_floating_point<T>::value
