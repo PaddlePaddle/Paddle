@@ -52,4 +52,4 @@ PD_REGISTER_KERNEL(addmm,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
-                   
+
