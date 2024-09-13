@@ -1940,12 +1940,43 @@ bool MatrixPowerOpInferSymbolicShape(
   return true;
 }
 
-// bool MatrixRankOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MatrixRankOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // 获取输入x的符号形状
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  // 确保输入x的维度大于等于2
+  PADDLE_ENFORCE_GE(x_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dims of input must be greater than 2."));
+
+  // 获取Hermitian属性
+  bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").data();
+
+  // 如果hermitian为true，确保输入x是方阵
+  if (hermitian) {
+    infer_context->AddEqualCstr(x_shape[x_shape.size() - 2],
+                                x_shape[x_shape.size() - 1]);
+  }
+
+  std::vector<symbol::DimExpr> x_batch_dims = {};
+
+  if (x_shape.size() != 2) {
+    x_batch_dims = x_shape;
+    x_batch_dims.erase(x_batch_dims.end() - 2, x_batch_dims.end());
+  }
+
+  // 推断输出的形状，设置批次维度
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(x_batch_dims)});
+
+  return true;
+}
 
 // bool MaxPool2DWithIndexOpInferSymbolicShape(pir::Operation *op,
 //                                             pir::InferSymbolicShapeContext
