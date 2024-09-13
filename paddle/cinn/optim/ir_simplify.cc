@@ -403,7 +403,7 @@ struct SimplifyCastMutator : public ir::IRMutator<> {
   void Visit(const ir::Cast* op, Expr* expr) {
     auto* node = expr->As<ir::Cast>();
 
-    std::cerr << "cast !!! " << *expr << std::endl;
+    // std::cerr << "cast !!! " << *expr << std::endl;
     ir::IRMutator<ir::Expr*>::Visit(&node->v(), &node->v());
 
     if (op->type() == op->v().type()) {

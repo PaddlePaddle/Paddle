@@ -141,6 +141,7 @@ void SetValueImpl(const Context& dev_ctx,
   auto& eigen_place = *dev_ctx.eigen_device();
 
   Copy(dev_ctx, in, place, false, out);
+
   ExpandKernel<T, Context>(
       dev_ctx, value_tensor, IntArray{expand_shape}, &expand_tensor);
   expand_tensor.Resize(slice_dims);

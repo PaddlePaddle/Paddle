@@ -42,14 +42,14 @@ void GatherNdKernel(const Context &ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    std::cerr << "gather int32 \n";
+    // std::cerr << "gather int32 \n";
     phi::funcs::GPUGatherNd<T, int>(ctx, x, index, out);
-    std::cerr << "fin gather int32 \n";
+    // std::cerr << "fin gather int32 \n";
   } else if (index_type == phi::DataType::INT64) {
-    std::cerr << "gather int64 \n";
+    // std::cerr << "gather int64 \n";
     phi::funcs::GPUGatherNd<T, int64_t>(ctx, x, index, out);
 
-    std::cerr << "gather int64 fin \n";
+    // std::cerr << "gather int64 fin \n";
   }
 }
 

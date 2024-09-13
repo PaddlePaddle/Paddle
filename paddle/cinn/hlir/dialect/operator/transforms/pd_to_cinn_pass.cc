@@ -115,10 +115,9 @@ class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
                             .data();
 
     auto in = op->operand_source(0);
-    if (in.type()
-            .dyn_cast<pir::DenseTensorType>()
-            .dtype()
-            .isa<pir::Int32Type>()) {
+    auto in_data_type = in.type().dyn_cast<pir::DenseTensorType>().dtype();
+    if (in_data_type.isa<pir::Int32Type>() ||
+        in_data_type.isa<pir::BoolType>()) {
       in = rewriter.Build<paddle::dialect::CastOp>(in, phi::DataType::INT64)
                .result(0);
     }

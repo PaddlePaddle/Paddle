@@ -884,8 +884,8 @@ std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
   auto inspect = tensor.data<T>();
   auto element_num = tensor.numel();
 
-  if (element_num > 28) {
-    element_num = 28;
+  if (element_num > 80) {
+    element_num = 80;
   }
   os << "  - data: [";
   // Note: int8_t && uint8_t is typedef of char, ostream unable to print

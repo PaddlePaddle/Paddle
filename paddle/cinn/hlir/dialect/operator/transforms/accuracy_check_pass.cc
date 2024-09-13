@@ -111,13 +111,13 @@ class AddAccuracyCheckPattern
     double rtol, atol;
     const auto& InsertAccuaryCheckOp = [&](::pir::Operation* op) -> void {
       for (size_t i = 0; i < op->num_operands(); ++i) {
-        if (op->operand_source(i)
-                .type()
-                .dyn_cast<pir::DenseTensorType>()
-                .dtype()
-                .isa<pir::BoolType>()) {
-          continue;
-        }
+        // if (op->operand_source(i)
+        //         .type()
+        //         .dyn_cast<pir::DenseTensorType>()
+        //         .dtype()
+        //         .isa<pir::BoolType>()) {
+        //   continue;
+        // }
         GetTolerance(fusion_op.result(i), &rtol, &atol);
         rewriter.Build<paddle::dialect::AccuracyCheckOp>(
             fusion_op.result(i),
