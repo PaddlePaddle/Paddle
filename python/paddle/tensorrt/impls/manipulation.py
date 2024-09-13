@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import os
-import sys
-import numpy as np
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
 
+import numpy as np
 import tensorrt as trt
 
 from paddle.base.log_helper import get_logger
@@ -31,6 +25,7 @@ _logger = get_logger(
 from paddle.tensorrt.converter_utils import (
     get_axes_for_reduce_op,
     get_positive_dim,
+    get_shape_with_dynamic_shape,
     has_dynamic_shape,
 )
 
@@ -83,7 +78,6 @@ def flatten_converter(network, paddle_op, inputs):
     start_axis = paddle_op.attrs().get("start_axis")
     stop_axis = paddle_op.attrs().get("stop_axis")
 
-    print("start_axis: ", start_axis, "stop_axis: ", stop_axis)
     flatten_layer = network.add_shuffle(input_val)
 
     if not has_dynamic_shape(input_val_shape):
@@ -124,7 +118,6 @@ def flatten_converter(network, paddle_op, inputs):
             prefix_shape_layer.name = f"{input_val.name}_prefix_shape"
             final_shapes.append(prefix_shape_layer.get_output(0))
 
-        print("start_axis: ", start_axis, "stop_axis: ", stop_axis,)
         flatten_shape_layer = network.add_slice(
             input_shape_layer.get_output(0),
             start=(start_axis,),
@@ -221,69 +214,54 @@ def squeeze_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-<<<<<<< HEAD
 @converter_registry.register("pd_op.slice", trt_version="8.x")
 def slice_converter(network, paddle_op, inputs):
-    input_val=inputs[0]
+    input_val = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
-    print("input_shape",input_shape)
-    start=paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
-    ends=paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
-    print("start: ", start, "ends: ", ends)
+    start = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    ends = paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
     axes = paddle_op.attrs().get("axes")
-    decrease_axis=paddle_op.attrs().get("decrease_axis")
-    #获取输入的维度数量
-    input_dim=len(input_shape)
+    decrease_axis = paddle_op.attrs().get("decrease_axis")
 
-    shape_tensor=network.add_shape(input_val)
-    
-    trt_start_dims=[0]*input_dim # start 
-    trt_step_dims=[1]*input_dim #stride 
-    
-    start_tensor=None
-    end_tensor=None
-    
-    starts_tensor=[]
-    ends_tensor=[]
-    
+    input_dim = len(input_shape)
+
+    shape_tensor = network.add_shape(input_val)
+
+    trt_start_dims = [0] * input_dim  # start
+    trt_step_dims = [1] * input_dim  # stride
+
+    start_tensor = None
+    end_tensor = None
+
+    starts_tensor = []
+    ends_tensor = []
+
     for i in range(input_dim):
-        starts_tensor.append(network.add_constant([1],np.array([0],dtype=np.int32)).get_output(0))
+        starts_tensor.append(
+            network.add_constant([1], np.array([0], dtype=np.int32)).get_output(
+                0
+            )
+        )
         index_val = network.add_constant([1], np.array([i], dtype=np.int32))
-        end_val =network.add_gather(shape_tensor.get_output(0),index_val.get_output(0),0)
+        end_val = network.add_gather(
+            shape_tensor.get_output(0), index_val.get_output(0), 0
+        )
         ends_tensor.append(end_val.get_output(0))
     print("starts_tensor", starts_tensor)
     print("ends_tensor", ends_tensor)
-        
-    
-    
-    
-    
-    
-    
-    
-        
-    
-   
-       
-    
-       
-    
-       
-    
-=======
-@converter_registry.register("pd_op.split", trt_version="8.x")
+
+
+@converter_registry.register("pd_op.split_with_num", trt_version="8.x")
 def split_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
     intput_shape_size = len(input_shape)
     dynamic_shape = has_dynamic_shape(input_shape)
     axis = int(
-        paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
-    )
-    split_size = (
         paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
     )
-    split_size = split_size[axis]
+
+    split_size = paddle_op.attrs().get("num")
     start = [0] * intput_shape_size
     stride = [1] * len(start)
     offset = 0
@@ -293,25 +271,24 @@ def split_converter(network, paddle_op, inputs):
             f"Invalid split: {input_shape[axis]} with split_size={split_size}"
         )
     max_offset = input_shape[axis]
+    # add slice layers
     output = []
     for i in range(num_splits):
         shape = list(input_shape)
         shape[axis] = min(split_size, int(max_offset - offset))
         start[axis] = offset
-        # print(shape)
-        # if dynamic_shape:
-        #     shape = get_shape_with_dynamic_shape(
-        #         network, shape, input_val, target, f"{name}_shape_{i}"
-        #     )
-        # layer = network.add_slice(
-        #     input_val, start=start, shape=[] if dynamic_shape else shape, stride=stride
-        # )
+        if dynamic_shape:
+            shape = get_shape_with_dynamic_shape(network, shape, input_tensor)
         layer = network.add_slice(
-            input_tensor, start=start, shape=shape, stride=stride
+            input_tensor,
+            start=start,
+            shape=[] if dynamic_shape else shape,
+            stride=stride,
         )
+        if dynamic_shape:
+            layer.set_input(2, shape)
         offset += split_size
         output.append(
             layer.get_output(0),
         )
     return output
->>>>>>> f3f6bf3432d1e6a942226160fe7bf67c74eff94a

@@ -41,6 +41,7 @@ def map_dtype(pd_dtype):
 def run_pir_pass(program, partition_mode=False):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
+    pm.enable_ir_printing()
     paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     passes = [
         {'multihead_matmul_fuse_pass': {}},
@@ -91,7 +92,7 @@ def predict_program(program, feed_data, fetch_var_list):
             output = executor.run(
                 program, feed=feed_data, fetch_list=fetch_var_list
             )
-            return output
+            return outputgit 
 
 
 def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
@@ -121,3 +122,12 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
             )
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
     return exe_program
+
+def marker_buitlin_op(program):
+    for op in program.global_block().ops:
+        for result in op.results():
+            if result.is_combine():
+                used_ops=result.all_used_ops()
+                for used_op in used_ops:
+                    if used_op.name() =="builtin.split":
+                        enforce_op_lower_trt(program,used_op.name())

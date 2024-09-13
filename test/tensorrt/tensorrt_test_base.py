@@ -23,6 +23,8 @@ from paddle.tensorrt.converter import PaddleToTensorRTConverter
 from paddle.tensorrt.util import (
     run_pir_pass,
     warmup_shape_infer,
+    enforce_op_lower_trt,
+    marker_buitlin_op,
 )
 
 
@@ -89,6 +91,11 @@ class TensorRTBaseTest(unittest.TestCase):
             else:
                 fetch_list.append(output)
         return main_program, startup_program, fetch_list
+    
+    # Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
+  
+                            
+     
 
     def run_program(self, main_program, fetch_list):
         place = (
@@ -138,7 +145,7 @@ class TensorRTBaseTest(unittest.TestCase):
             # init all parameter
             exe.run(startup_program)
             fetch_num = len(fetch_list)
-            fetch_index = [v.index() for v in fetch_list]
+            fetch_index = [i for i, v in enumerate(fetch_list)]
             output_expected = self.run_program(main_program, fetch_list)
 
             min_shape_data = dict()  # noqa: C408
@@ -172,8 +179,11 @@ class TensorRTBaseTest(unittest.TestCase):
                 if op.name() == "pd_op.fetch":
                     main_program.global_block().remove_op(op)
 
+            
             # run pir pass(including some fusion pass and trt_op_marker_pass)
             main_program = run_pir_pass(main_program, partition_mode=False)
+            marker_buitlin_op(main_program)
+
 
             # run trt_sub_graph_extract_pass()
             program_with_trt = run_pir_pass(main_program, partition_mode=True)

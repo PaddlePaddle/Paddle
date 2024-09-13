@@ -166,6 +166,7 @@ class PaddleToTensorRTConverter:
                     min_shape = self.shape_map[value.id]["min_shape"]
                     opt_shape = self.shape_map[value.id]["opt_shape"]
                     max_shape = self.shape_map[value.id]["max_shape"]
+
                 else:
                     min_shape = get_value_shape_range_info(
                         value, False, paddle.base.core.ShapeMode.kMIN
@@ -195,6 +196,8 @@ class PaddleToTensorRTConverter:
                 value_to_trt_tensor[value.id] = input_tensor
 
         for op in operations:
+            if op.name() == "builtin.split":
+                continue
             operands = []
             for operand in op.operands():
                 source = operand.source()
@@ -202,7 +205,9 @@ class PaddleToTensorRTConverter:
                     _logger.warning(f"Skipping uninitialized source: {source}")
                     continue
                 define_op_name = source.get_defining_op().name()
-                if define_op_name == "builtin.combine":
+                if define_op_name == "builtin.split":
+                    continue
+                elif define_op_name == "builtin.combine":
                     for combined_operand in source.get_defining_op().operands():
                         combined_source = combined_operand.source()
                         combined_source_id = combined_source.id
@@ -223,13 +228,20 @@ class PaddleToTensorRTConverter:
                             f'{source_id} not found in value_to_trt_tensor'
                         )
 
-            print(f'op:{op}')
-            print(f'op.results():{op.results()}')
             trt_outs = self.convert(network, op, operands)
-            print(f'trt_outs:{trt_outs}')
+
+            results = []
             for idx, result in enumerate(op.results()):
-                print(f'idx:{idx}')
-                print(f'result:{result}')
+                if result.is_combine():
+                    used_ops = result.all_used_ops()
+                    for use_op in used_ops:
+                        if use_op.name() == "builtin.split":
+                            split_outputs = use_op.results()
+                            results.extend(split_outputs)
+                else:
+                    results.append(result)
+
+            for idx, result in enumerate(results):
                 if idx < len(trt_outs):
                     value_to_trt_tensor[result.id] = trt_outs[idx]
                 else:
@@ -239,15 +251,14 @@ class PaddleToTensorRTConverter:
         out_types = []
         for out_index in range(len(output_values)):
             result_value = output_values[out_index]
+
             output_tensor = value_to_trt_tensor[result_value.id]
             if output_tensor is None:
                 out_names.append("")
                 out_shapes.append([])
                 out_types.append(None)
                 continue
-            print(f'result_value:{type(result_value)}')
-            print(f'result_value:{result_value}')
-            print(f'result_value:{result_value.dtype}')
+
             network.mark_output(output_tensor)
             out_names.append(output_tensor.name)
             out_shapes.append(result_value.shape)
@@ -341,10 +352,7 @@ class PaddleToTensorRTConverter:
             return (outs,)
         else:
             return outs
-        # else:
-        #     raise TypeError(
-        #         f"Expected outputs to be a tuple or ITensor, but got {type(outs)}"
-        #     )
+       
 
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:

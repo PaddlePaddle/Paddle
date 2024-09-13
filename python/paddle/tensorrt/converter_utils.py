@@ -132,26 +132,45 @@ def get_positive_dim(dim, dim_size):
     return dim
 
 
-def add_elementwise_layer(network, paddle_op, inputs, op_type):
-    weight_shape = paddle_op.operands()[1].source().shape
-    input_shape = paddle_op.operands()[0].source().shape
-
-    weight_tensor = inputs[1]
-    input_tensor = inputs[0]
-    if type(inputs[1]) == trt.Weights:
-        weight_tensor = network.add_constant(
-            weight_shape, inputs[1]
-        ).get_output(0)
-    if type(inputs[0]) == trt.Weights:
-        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
-            0
-        )
+def add_elementwise_layer(network, lhs_val, rhs_val, op_type):
     lhs_val, rhs_val = broadcast(
         network,
-        input_tensor,
-        weight_tensor,
-        input_tensor.name,
-        weight_tensor.name,
+        lhs_val,
+        rhs_val,
+        lhs_val.name,
+        rhs_val.name,
     )
+    print(f"lhs_val type: {type(lhs_val)}")
+    print(f"rhs_val type: {type(rhs_val)}")
     layer = network.add_elementwise(lhs_val, rhs_val, op_type)
     return layer.get_output(0)
+
+def get_shape_with_dynamic_shape(network,shape,input_val):
+    input_shape=network.add_shape(input_val).get_output(0)
+    scale_layer=network.add_constant(input_shape.shape,np.ascontiguousarray(shape, dtype=np.int32))
+    scale_res=scale_layer.get_output(0)
+    
+    length=input_shape.shape[0]
+    zero_layer = network.add_constant(
+        input_shape.shape, trt.Weights(np.zeros(length, dtype=np.int32))
+    )
+    
+    condition_val=add_elementwise_layer(
+        network,
+        scale_res,
+        zero_layer.get_output(0),
+        trt.ElementWiseOperation.LESS,
+    )
+    select_layer=network.add_select(condition_val,input_shape,scale_res)
+    return select_layer.get_output(0)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
