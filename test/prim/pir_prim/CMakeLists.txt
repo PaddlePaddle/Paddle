@@ -18,12 +18,6 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_auto_recompute
     test_auto_recompute_dy2static
     test_prim_sub_graph_dynamic_shape
-    test_prim_sub_graph_backward_dynamic_shape
-    test_prim_sub_graph_abcde_backward_dynamic_shape
-    test_prim_sub_graph_fghij_backward_dynamic_shape
-    test_prim_sub_graph_klmno_backward_dynamic_shape
-    test_prim_sub_graph_pqrst_backward_dynamic_shape
-    test_prim_sub_graph_uvwxyz_backward_dynamic_shape
     test_decompose_control_flow
     test_decomp_whole_program
     test_dynamic_combine1
@@ -37,6 +31,26 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
     ${target}
     ENVS
     GLOG_v=1
+    FLAGS_enable_pir_api=true
+    FLAGS_prim_enable_dynamic=true)
+endforeach()
+
+set(TEST_PRIM_DYNAMIC_SHAPE_BACKWARD_PIR_CASES
+    test_prim_sub_graph_backward_dynamic_shape
+    test_prim_sub_graph_abcde_backward_dynamic_shape
+    test_prim_sub_graph_fghij_backward_dynamic_shape
+    test_prim_sub_graph_klmno_backward_dynamic_shape
+    test_prim_sub_graph_pqrst_backward_dynamic_shape
+    test_prim_sub_graph_uvwxyz_backward_dynamic_shape)
+
+foreach(target ${TEST_PRIM_DYNAMIC_SHAPE_BACKWARD_PIR_CASES})
+  py_test_modules(
+    ${target}
+    MODULES
+    ${target}
+    ENVS
+    GLOG_v=1
+    FLAGS_prim_vjp_skip_default_ops=0
     FLAGS_enable_pir_api=true
     FLAGS_prim_enable_dynamic=true)
 endforeach()
