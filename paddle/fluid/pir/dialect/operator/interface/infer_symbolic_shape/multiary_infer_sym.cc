@@ -1516,7 +1516,7 @@ bool FlashAttnOpInferSymbolicShape(
   return true;
 }
 
-bool FusedFeedForwardOpInferSymbolicShape(
+bool FusedFeedforwardOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
