@@ -618,14 +618,14 @@ def is_qkv_pattern(op_list):
     return True
 
 
-def get_param_define_op(program, param_name):
+def get_param_op(program, param_name):
     all_ops = program.global_block().ops
     for i in range(len(all_ops)):
         if (
             all_ops[i].name() == "builtin.set_parameter"
             and all_ops[i].str_attr("parameter_name") == param_name
         ):
-            return all_ops[i].operand_source(0).get_defining_op()
+            return [all_ops[i], all_ops[i].operand_source(0).get_defining_op()]
 
 
 def fuse_attention_ffn_qkv_pass(startup_program, main_program):
@@ -683,10 +683,21 @@ def fuse_attention_ffn_qkv_pass(startup_program, main_program):
         out.get_defining_op().copy_attrs_from(pat[2])
         pat[2].result(0).replace_all_uses_with(out)
 
+    # Delete src pattern from origin program.
+    for pat in ffn_patterns:
+        del_ops = []
+        for op in reversed(pat):
+            del_ops.append(op)
+            if op.name() == "pd_op.matmul":
+                del_ops.append(op.operand_source(1).get_defining_op())
+                del_ops.extend(
+                    get_param_op(startup_program, op.operand_source(1).name)
+                )
+        for op in del_ops:
+            op.erase()
+
     print("==startup_program===: ", startup_program, flush=1)
     print("==main_program===: ", main_program, flush=1)
-
-    # Delete src pattern from origin program.
 
     # Based on the recorded fusion weights, update the weights in the startup_program.
 
