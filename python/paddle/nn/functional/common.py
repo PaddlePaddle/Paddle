@@ -1690,7 +1690,7 @@ def pad(
     pad: ShapeLike,
     mode: _PaddingTensorMode = 'constant',
     value: float = 0.0,
-    data_format: DataLayoutND = None,
+    data_format: DataLayoutND | None = None,
     pad_from_left_axis: bool = True,
     name: str | None = None,
 ) -> Tensor:
