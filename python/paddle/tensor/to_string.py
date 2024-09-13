@@ -282,6 +282,16 @@ def to_string(var, prefix='Tensor'):
     )
 
 
+def convert_xpu_tensor_to_fp32(tensor):
+    dtype = tensor.dtype
+    tensor = tensor.astype("float32")
+    # For XPU, we mask out the 0x8000 added to the tail when converting bf16 to fp32.
+    if dtype == paddle.bfloat16 or dtype == core.VarDesc.VarType.BF16:
+        mask = paddle.to_tensor(0xFFFF0000, dtype="int32")
+        tensor = (tensor.view('int32') & mask).view('float32')
+    return tensor
+
+
 def _format_dense_tensor(tensor, indent):
     if (
         tensor.dtype == paddle.bfloat16
@@ -289,7 +299,10 @@ def _format_dense_tensor(tensor, indent):
         or tensor.dtype == core.VarDesc.VarType.FP8_E4M3FN
         or tensor.dtype == core.VarDesc.VarType.FP8_E5M2
     ):
-        tensor = tensor.astype('float32')
+        if paddle.is_compiled_with_xpu():
+            tensor = convert_xpu_tensor_to_fp32(tensor)
+        else:
+            tensor = tensor.astype('float32')
 
     # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
     np_tensor = tensor.numpy(False)
