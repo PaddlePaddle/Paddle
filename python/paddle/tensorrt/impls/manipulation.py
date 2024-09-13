@@ -205,3 +205,31 @@ def squeeze_converter(network, paddle_op, inputs):
     layer = network.add_shuffle(input_val)
     layer.reshape_dims = tuple(output_shape)
     return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.cast", trt_version="8.x")
+@converter_registry.register("pd_op.cast_", trt_version="8.x")
+def mean_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    out_dtype = int(paddle_op.attrs().get("dtype"))
+    # 参考 paddle/phi/common/data_type.h enum DataType
+    if out_dtype == 1:
+        out_dtype = trt.bool
+    elif out_dtype == 2:
+        out_dtype = trt.uint8
+    elif out_dtype == 3:
+        out_dtype = trt.int8
+    elif out_dtype == 7:
+        out_dtype = trt.int32
+    elif out_dtype == 10:
+        out_dtype = trt.float32
+    elif out_dtype == 11:
+        out_dtype = trt.float32
+    elif out_dtype == 15:
+        out_dtype = trt.float16
+    else:
+        raise RuntimeError(
+            "cast converter currently doesn't support dtype: %s" % out_dtype
+        )
+    cast_layer = network.add_cast(input_tensor, out_dtype)
+    return cast_layer.get_output(0)
