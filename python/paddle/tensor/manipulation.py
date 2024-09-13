@@ -6745,20 +6745,8 @@ def index_put_(
     name: str | None = None,
 ) -> Tensor:
     """
-    Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
-    The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
-    If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
-
-    Args:
-        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
-        indices (list[Tensor]|tuple[Tensor]): The tuple of Tensor containing the indices to index.
-            The data type of ``tensor in indices`` must be int32, int64 or bool.
-        value (Tensor): The tensor used to be assigned to x.
-        accumulate (bool, optional): Whether the elements in values are added to x. Default: False.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, same dimension and dtype with x.
+    Inplace version of ``index_put_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_put`.
 
     Examples:
         .. code-block:: python
@@ -6794,8 +6782,20 @@ def index_put(
     name: str | None = None,
 ) -> Tensor:
     """
-    Outplace version of ``index_put_`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_index_put`.
+    Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
+    The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
+    If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
+
+    Args:
+        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
+        indices (list[Tensor]|tuple[Tensor]): The tuple of Tensor containing the indices to index.
+            The data type of ``tensor in indices`` must be int32, int64 or bool.
+        value (Tensor): The tensor used to be assigned to x.
+        accumulate (bool, optional): Whether the elements in values are added to x. Default: False.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimension and dtype with x.
 
     Examples:
         .. code-block:: python
@@ -7162,8 +7162,19 @@ def index_fill(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
     """
-    Outplace version of ``index_fill_`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_index_fill_`.
+    Fill the elements of the input tensor with value by the specific axis and index.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        index (Tensor): The 1-D Tensor containing the indices to index.
+            The data type of ``index`` must be int32 or int64.
+        axis (int): The dimension along which to index.
+        value (int|float): The tensor used to fill with.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimension and dtype with x.
+
 
     Examples:
         .. code-block:: python
@@ -7193,18 +7204,8 @@ def index_fill_(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
     """
-    Fill the elements of the input tensor with value by the specific axis and index.
-
-    Args:
-        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
-        index (Tensor): The 1-D Tensor containing the indices to index.
-            The data type of ``index`` must be int32 or int64.
-        axis (int): The dimension along which to index.
-        value (int|float): The tensor used to fill with.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, same dimension and dtype with x.
+    Inplace version of ``index_fill_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_fill_`.
 
     Examples:
         .. code-block:: python
