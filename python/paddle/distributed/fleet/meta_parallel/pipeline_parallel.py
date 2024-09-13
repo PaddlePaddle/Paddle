@@ -1067,9 +1067,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._best_unbalanced_scheduler = strategy.pipeline_configs[
             "best_unbalanced_scheduler"
         ]
-        assert (
-            self._comm_overlap and self._best_unbalanced_scheduler
-        ), "pp best unbalaced scheduler can not run together with dp/sharding overlap"
+        if self._best_unbalanced_scheduler:
+            assert (
+                not self._comm_overlap
+            ), "pp best unbalaced scheduler can not run together with dp/sharding overlap"
 
     def _check_sanity(self):
         assert (
