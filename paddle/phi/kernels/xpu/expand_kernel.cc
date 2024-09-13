@@ -134,4 +134,5 @@ PD_REGISTER_KERNEL(expand,
                    phi::dtype::float16,
                    bool,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}
