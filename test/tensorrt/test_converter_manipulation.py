@@ -31,9 +31,6 @@ class TestCast0TRTPattern(TensorRTBaseTest):
         self.min_shape = {"x": [3, 3]}
         self.max_shape = {"x": [10, 3]}
 
-    def test_trt_result(self):
-        self.check_trt_result()
-
 
 class TestCast1TRTPattern(TensorRTBaseTest):
     def setUp(self):
@@ -45,6 +42,39 @@ class TestCast1TRTPattern(TensorRTBaseTest):
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [3, 3]}
         self.max_shape = {"x": [10, 3]}
+
+        
+class TestConcatTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.concat
+        self.api_args = {
+            "x": [
+                np.array([[1, 2, 3], [4, 5, 6]]).astype("float32"),
+                np.array([[11, 12, 13], [14, 15, 16]]).astype("float32"),
+                np.array([[21, 22], [23, 24]]).astype("float32"),
+            ],
+            "axis": -1,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [[1, 3], [1, 3], [1, 2]]}
+        self.max_shape = {"x": [[5, 3], [5, 3], [5, 2]]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+
+class TestFlattenTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.flatten
+        self.api_args = {
+            "x": np.random.random([2, 1, 1, 19]).astype("float32"),
+            "start_axis": 1,
+            "stop_axis": 2,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 1, 1, 19]}
+        self.max_shape = {"x": [10, 1, 1, 19]}
 
     def test_trt_result(self):
         self.check_trt_result()
