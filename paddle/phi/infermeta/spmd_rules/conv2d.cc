@@ -291,16 +291,17 @@ SpmdInfo Conv2dGradInferSpmdBase(const DistMetaTensor& input,
   if (check_channel_dist_attr(input_dist_attr_src,
                               filter_dist_attr_src,
                               output_grad_dist_attr_src)) {
+    int partial_mesh_dim = *output_grad_dist_attr_src.partial_dims().begin();
     std::vector<int64_t> input_grad_dims_mapping_dst =
         input_grad_dist_attr_dst.dims_mapping();
-    input_grad_dims_mapping_dst[channel_dim] =
-        *output_grad_dist_attr_src.partial_dims().begin();
+    input_grad_dims_mapping_dst[channel_dim] = partial_mesh_dim;
     input_grad_dist_attr_dst.set_dims_mapping(input_grad_dims_mapping_dst);
     std::vector<int64_t> filter_grad_dims_mapping_dst =
         filter_grad_dist_attr_dst.dims_mapping();
-    filter_grad_dims_mapping_dst[channel_dim] =
-        *output_grad_dist_attr_src.partial_dims().begin();
+    filter_grad_dims_mapping_dst[channel_dim] = partial_mesh_dim;
     filter_grad_dist_attr_dst.set_dims_mapping(filter_grad_dims_mapping_dst);
+    output_grad_dist_attr_dst.set_partial_status(
+        std::vector<int64_t>({partial_mesh_dim}));
   }
 
   return {
