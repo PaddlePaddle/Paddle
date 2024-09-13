@@ -25,7 +25,7 @@ def upsample_wrapper(x):
     return upsample(x)
 
 
-class TestFlattenTRTPattern(TensorRTBaseTest):
+class TestNearestInterpTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = upsample_wrapper
         self.api_args = {"x": np.random.random([2, 3, 6, 10]).astype("float32")}

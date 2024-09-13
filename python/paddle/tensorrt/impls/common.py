@@ -21,7 +21,7 @@ from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.nearest_interp", trt_version="8.x")
-def split_converter(network, paddle_op, inputs):
+def nearest_interp_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
     intput_shape_size = len(input_shape)
