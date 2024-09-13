@@ -15,6 +15,7 @@
 import ctypes
 import hashlib
 import logging
+import os
 
 import numpy as np
 import tensorrt as trt
@@ -39,6 +40,7 @@ from .impls.ops import *  # noqa: F403
 from .impls.others import *  # noqa: F403
 from .impls.pooling import *  # noqa: F403
 from .impls.search import *  # noqa: F403
+from .impls.stat import *  # noqa: F403
 from .register import converter_registry
 from .util import map_dtype
 
