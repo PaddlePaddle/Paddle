@@ -167,5 +167,40 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_mp_allreduce_matmul_grad_overlapping_deprecated)
   set_tests_properties(test_mp_allreduce_matmul_grad_overlapping_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+
+  py_test_modules(test_auto_parallel_amp_pass_deprecated MODULES
+                  test_auto_parallel_amp_pass_deprecated)
+  set_tests_properties(test_mp_allreduce_matmul_grad_overlapping_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(test_auto_parallel_recompute_pass_deprecated MODULES
+                  test_auto_parallel_recompute_pass_deprecated)
+  set_tests_properties(test_auto_parallel_recompute_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(test_auto_parallel_sharding_pass_deprecated MODULES
+                  test_auto_parallel_sharding_pass_deprecated)
+  set_tests_properties(test_auto_parallel_sharding_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(test_auto_parallel_fp16_pass_deprecated MODULES
+                  test_auto_parallel_fp16_pass_deprecated)
+  set_tests_properties(test_auto_parallel_fp16_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(test_auto_parallel_gradient_merge_pass_deprecated MODULES
+                  test_auto_parallel_gradient_merge_pass_deprecated)
+  set_tests_properties(test_auto_parallel_gradient_merge_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(
+    test_auto_parallel_data_parallel_optimization_pass_deprecated MODULES
+    test_auto_parallel_data_parallel_optimization_pass_deprecated)
+  set_tests_properties(
+    test_auto_parallel_data_parallel_optimization_pass_deprecated
+    PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  if(CUDA_VERSION GREATER_EQUAL 11.6)
+    py_test_modules(
+      test_auto_parallel_fused_linear_promotion_pass_deprecated MODULES
+      test_auto_parallel_fused_linear_promotion_pass_deprecated)
+    set_tests_properties(
+      test_auto_parallel_fused_linear_promotion_pass_deprecated
+      PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  endif()
 endif()
 set_pir_tests_properties()
