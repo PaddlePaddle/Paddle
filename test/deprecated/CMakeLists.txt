@@ -162,6 +162,9 @@ if(WITH_TESTING)
     add_subdirectory(collective)
     add_subdirectory(distributed_passes)
   endif()
+  if(WITH_ONEDNN)
+    add_subdirectory(mkldnn)
+  endif()
 
 endif()
 
