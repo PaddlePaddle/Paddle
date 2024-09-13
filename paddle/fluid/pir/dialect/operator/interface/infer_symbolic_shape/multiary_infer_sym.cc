@@ -1573,6 +1573,10 @@ bool FusedGemmEpilogueOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const auto &y_dims = y_shape_or_data.shape();
 
+  const auto &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &bias_dims = bias_shape_or_data.shape();
+
   size_t x_rank = x_dims.size();
   size_t y_rank = y_dims.size();
 
@@ -1598,10 +1602,19 @@ bool FusedGemmEpilogueOpInferSymbolicShape(
       transpose_x_attr ? x_dims[x_rank - 2] : x_dims[x_rank - 1];
   symbol::DimExpr y_K =
       transpose_y_attr ? y_dims[y_rank - 1] : y_dims[y_rank - 2];
+
   infer_context->AddEqualCstr(x_K, y_K);
+  // bias_dims[0] equal to out_N
+  infer_context->AddEqualCstr(out_N, bias_dims[0]);
 
   infer_context->SetShapeOrDataForValue(op->result(0),
                                         ShapeOrData{TensorExprs(out_shape)});
+
+  // process reserve space
+  if (paddle::dialect::details::IsFakeValue(op->result(1))) {
+    infer_context->SetShapeOrDataForValue(op->result(0),
+                                          ShapeOrData{TensorExprs(out_shape)});
+  }
   return true;
 }
 
