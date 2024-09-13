@@ -43,10 +43,6 @@ if(WITH_GPU
   # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
   set(OP_DEPS phi common cross_entropy)
   cc_test(standalone_executor_test SRCS standalone_executor_test.cc)
-  set_property(
-    TEST standalone_executor_test
-    APPEND
-    PROPERTY ENVIRONMENT "FLAGS_enable_pir_api=0")
   # add_dependencies(standalone_executor_test download_program)
   # if(WITH_PROFILER)
   #   target_link_libraries(standalone_executor_test profiler)
