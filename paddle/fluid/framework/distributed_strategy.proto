@@ -240,7 +240,6 @@ message PipelineConfig {
   optional string schedule_mode = 3 [ default = '1F1B' ];
   optional bool p2p_cache_shape = 4 [ default = true ];
   optional bool enable_partial_send_recv = 5 [ default = true ];
-  optional bool best_unbalanced_scheduler = 6 [ default = false ];
 }
 
 message TensorParallelConfig {
