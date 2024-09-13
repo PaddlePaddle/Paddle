@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/optim/merge_block_utils.h"
 
 namespace cinn {
@@ -23,51 +24,68 @@ namespace optim {
 
 namespace {
 
-void TestHelper(const std::vector<int>& extents1,
-                const std::vector<int>& extents2,
-                bool is_same) {
-  auto MakeForLoops =
-      [&](const std::vector<int> extents) -> std::vector<ir::Expr> {
+bool IsBlockForAllEqual(
+    const std::vector<std::vector<const ir::For*>>& first,
+    const std::vector<std::vector<const ir::For*>>& second) {
+  auto ForVarExtentEqual =
+      [&](const std::vector<const ir::For*>& first,
+          const std::vector<const ir::For*>& second) -> bool {
+    if (first.size() != second.size()) return false;
+    for (size_t i = 0; i < first.size(); ++i) {
+      const ir::Expr lhs = first[i]->extent;
+      const ir::Expr rhs = second[i]->extent;
+      if (cinn::common::AutoSimplify(ir::Sub::Make(lhs, rhs)) != ir::Expr(0)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (first.size() != second.size()) return false;
+  for (size_t i = 0; i < first.size(); ++i) {
+    if (!ForVarExtentEqual(first[i], second[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+ir::Expr MakeForLoops(const std::vector<int> extents, int index) {
+  if (index >= extents.size()) {
     ir::Expr sb = ir::ScheduleBlock::Make(std::vector<Var>(),
                                           std::vector<Expr>(),
                                           std::vector<Expr>(),
                                           "block",
                                           ir::Expr(0));
-    std::vector<ir::Expr> for_loops;
-    for (size_t i = 0; i < extents.size(); ++i) {
-      ir::Expr extent = ir::Expr(extents.at(i));
-      ir::Expr for_expr = ir::For::Make(ir::Var("i"),
-                                        ir::Expr(0),
-                                        extent,
-                                        ir::ForType::Serial,
-                                        ir::DeviceAPI::CUDA,
-                                        sb,
-                                        ir::VectorizeInfo(),
-                                        ir::BindInfo());
-      for_loops.push_back(for_expr);
-    }
+    return sb;
+  }
 
-    return for_loops;
-  };
+  ir::Expr extent = ir::Expr(extents.at(index));
+  ir::Expr for_expr = ir::For::Make(ir::Var("i"),
+                                    ir::Expr(0),
+                                    extent,
+                                    ir::ForType::Serial,
+                                    ir::DeviceAPI::CUDA,
+                                    MakeForLoops(extents, index + 1),
+                                    ir::VectorizeInfo(),
+                                    ir::BindInfo());
 
-  auto ConvertForLoops =
-      [&](std::vector<ir::Expr> loops) -> std::vector<ir::For*> {
-    std::vector<ir::For*> p_for_loops;
-    for (auto& loop : loops) {
-      p_for_loops.push_back(loop.As<ir::For>());
-    }
-    return p_for_loops;
-  };
+  return for_expr;
+}
 
-  auto for_loop1 = MakeForLoops(extents1);
-  auto for_loop2 = MakeForLoops(extents2);
-  auto f1 = ConvertForLoops(for_loop1);
-  auto f2 = ConvertForLoops(for_loop2);
+void TestHelper(const std::vector<int>& extents1,
+                const std::vector<int>& extents2,
+                bool is_same) {
+  auto for_loop1 = MakeForLoops(extents1, 0);
+  auto for_loop2 = MakeForLoops(extents2, 0);
+  auto f1 = for_loop1.As<ir::For>();
+  auto f2 = for_loop2.As<ir::For>();
 
   if (is_same) {
-    EXPECT_TRUE(CanMergeBlocks(f1, f2));
+    EXPECT_TRUE(CanMergeBlocks(f1, f2, IsBlockForAllEqual));
   } else {
-    EXPECT_FALSE(CanMergeBlocks(f1, f2));
+    EXPECT_FALSE(CanMergeBlocks(f1, f2, IsBlockForAllEqual));
   }
 }
 

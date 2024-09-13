@@ -15,38 +15,60 @@
 #include "paddle/cinn/optim/merge_block_utils.h"
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace optim {
 
-struct ForInfoAnalyzer {
- public:
-  bool IsBlockForAllEqual(const std::vector<ir::For*>& first,
-                          const std::vector<ir::For*>& second) {
-    auto ForVarExtentEqual = [&](const std::vector<ir::For*>& first,
-                                 const std::vector<ir::For*>& second) -> bool {
-      for (size_t i = 0; i < first.size(); ++i) {
-        const ir::Expr lhs = first[i]->extent;
-        const ir::Expr rhs = second[i]->extent;
-        if (cinn::common::AutoSimplify(ir::Sub::Make(lhs, rhs)) !=
-            ir::Expr(0)) {
-          return false;
-        }
-      }
-      return true;
-    };
+namespace {
 
-    if (first.size() != second.size()) return false;
-    return ForVarExtentEqual(first, second);
+struct ForInfoAnalyzer : public ir::IRMutator<Expr*> {
+ public:
+  void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+  std::vector<std::vector<const ir::For*>> GetInnerForList() {
+    std::vector<std::vector<const ir::For*>> inner_for_list;
+    for (const auto& [level, for_list] : level_to_for_list_) {
+      inner_for_list.push_back(for_list);
+    }
+    return inner_for_list;
   }
+
+ private:
+  void Visit(const ir::For* op, ir::Expr* expr) override {
+    auto* node = expr->As<ir::For>();
+    if (level_to_for_list_.count(current_for_level_) == 0) {
+      level_to_for_list_[current_for_level_] = {node};
+    } else {
+      level_to_for_list_[current_for_level_].push_back(node);
+    }
+
+    ++current_for_level_;
+    ir::IRMutator<>::Visit(op, expr);
+    --current_for_level_;
+  }
+
+  int current_for_level_ = 0;
+  std::unordered_map<int, std::vector<const ir::For*>> level_to_for_list_;
 };
 
-bool CanMergeBlocks(const std::vector<ir::For*>& first,
-                    const std::vector<ir::For*>& second) {
-  ForInfoAnalyzer for_info_analyzer;
-  return for_info_analyzer.IsBlockForAllEqual(first, second);
+}  // namespace
+
+bool CanMergeBlocks(const ir::For* first,
+                    const ir::For* second,
+                    const ForEqualFunc& IsEqual) {
+  auto Get = [&](ir::Expr* expr) -> std::vector<std::vector<const ir::For*>> {
+    ForInfoAnalyzer for_info_analyzer;
+    for_info_analyzer(expr);
+    return for_info_analyzer.GetInnerForList();
+  };
+  ir::Expr first_expr = Expr(const_cast<ir::For*>(first));
+  ir::Expr second_expr = Expr(const_cast<ir::For*>(second));
+  const auto first_inner_for_list = Get(&first_expr);
+  const auto second_inner_for_list = Get(&second_expr);
+  return IsEqual(first_inner_for_list, second_inner_for_list);
 }
 
 }  // namespace optim

@@ -19,6 +19,10 @@
 namespace cinn {
 namespace optim {
 
+using ForEqualFunc =
+    std::function<bool(const std::vector<std::vector<const ir::For*>>&,
+                       const std::vector<std::vector<const ir::For*>>&)>;
+
 /**
  * Check if blocks can merge.
  * @param first for_loops vector
@@ -54,8 +58,9 @@ namespace optim {
  * Return value:
  * false
  */
-bool CanMergeBlocks(const std::vector<ir::For*>& first,
-                    const std::vector<ir::For*>& second);
+bool CanMergeBlocks(const ir::For* first,
+                    const ir::For* second,
+                    const ForEqualFunc& IsEqual);
 
 }  // namespace optim
 }  // namespace cinn
