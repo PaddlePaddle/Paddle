@@ -845,7 +845,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       common
       paddle_inference_c_shared
       ARGS
-      --infer_model=${INT8_DATA_DIR}/resnet50/model)
+      --infer_model=${INT8_DATA_DIR}/resnet50_pir/model)
   endif()
 
   # chinese_ner
