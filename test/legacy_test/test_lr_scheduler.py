@@ -788,7 +788,7 @@ class TestLRScheduler(unittest.TestCase):
                 loss = paddle.mean(x)
                 adam.minimize(loss)
 
-            test_prog, _ = paddle.base.libpaddle.pir.clone_program(main_prog)
+            test_prog = main_prog.clone()
 
             num = 0
             exe = paddle.static.Executor(place)

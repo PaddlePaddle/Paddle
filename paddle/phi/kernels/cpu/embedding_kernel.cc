@@ -109,7 +109,7 @@ void EmbeddingKernel(const Context& ctx,
     functor.template apply<int64_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "emebdding input only support int32 and int64, but get %s",
+        "embedding input only support int32 and int64, but get %s",
         input.dtype()));
   }
 }
