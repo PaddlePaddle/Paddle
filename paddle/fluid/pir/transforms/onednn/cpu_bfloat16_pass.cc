@@ -28,19 +28,6 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
-template <class IrType1, class IrType2>
-static pir::Type create_type(pir::Type type,
-                             pir::Type out_dtype,
-                             pir::IrContext *ctx) {
-  auto input_type = type.dyn_cast<IrType1>();
-  return IrType2::get(ctx,
-                      out_dtype,
-                      input_type.dims(),
-                      input_type.data_layout(),
-                      input_type.lod(),
-                      input_type.offset());
-}
-
 class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
  private:
   std::string bfloat16_ops_;
@@ -2055,9 +2042,9 @@ class CastBf16Pattern : public pir::OpRewritePattern<OpType> {
       return false;
 
     auto attributes = op->attributes();
-    auto dtyp_attr = attributes["dtype"];
+    auto dtype_attr = attributes["dtype"];
     phi::DataType dtype =
-        dtyp_attr.template dyn_cast<paddle::dialect::DataTypeAttribute>()
+        dtype_attr.template dyn_cast<paddle::dialect::DataTypeAttribute>()
             .data();
     if (dtype == phi::DataType::FLOAT32) {
       pir::Attribute new_dtype = paddle::dialect::DataTypeAttribute::get(
