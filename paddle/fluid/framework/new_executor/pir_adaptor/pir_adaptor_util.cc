@@ -772,8 +772,6 @@ void BuildScope(const pir::Block& block,
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
 
   VLOG(6) << "Start handle keyword blockargument!";
-  
-
   for (auto& kwarg : block.kwargs()) {
     VLOG(6) << "link keyword blockargument in variable"
             << value_exe_info->GetScope();
@@ -800,6 +798,7 @@ void BuildScope(const pir::Block& block,
           &op, var_name_prefix, value_exe_info, execution_config);
       continue;
     }
+    
     CheckInputVars(&op, op_name, value_exe_info);
 
     if (op.num_results() < 1) continue;

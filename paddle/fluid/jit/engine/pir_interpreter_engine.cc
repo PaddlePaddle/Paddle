@@ -15,15 +15,11 @@
 #include "paddle/fluid/jit/engine/pir_interpreter_engine.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
 
-#include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
-// #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 namespace paddle {
 namespace jit {
@@ -43,17 +39,7 @@ PirInterpreterEngine::PirInterpreterEngine(
   CreateInterpreterCore();
 }
 
-// need modify
 void PirInterpreterEngine::CreateInterpreterCore() {
-
-// #ifdef PADDLE_WITH_DNNL
-//   auto onednn_pass =
-//       framework::ir::PassRegistry::Instance().Get("onednn_placement_pass");
-//   onednn_pass->Set("mkldnn_enabled_op_types",
-//                    new std::unordered_set<std::string>({}));
-//   onednn_pass->Apply(&graph);
-// #endif
-
   framework::interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
   execution_config.used_for_jit = true;
@@ -74,6 +60,7 @@ std::vector<Tensor> PirInterpreterEngine::operator()(
 
 std::vector<DenseTensor> PirInterpreterEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
+  prog_ = std::move(paddle::dialect::PdOpLowerToKernelPass(prog_.get(), place_));
   utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
 
   // the latter can be moved to python side.

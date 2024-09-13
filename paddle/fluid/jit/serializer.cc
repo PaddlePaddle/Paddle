@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/fluid/jit/engine/pir_interpreter_engine.h"
-#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
@@ -98,14 +97,10 @@ Layer Deserializer::operator()(const std::string& path,
             << " Function name: " << func_name;
     if(FLAGS_enable_pir_api){
       auto pir_info = std::dynamic_pointer_cast<PirFunctionInfo>(base_info);
-      if (FLAGS_jit_engine_type == "Predictor") {
-        layer.SetEngine(
-            func_name,
-            utils::MakePirEngine<PirInterpreterEngine>(
-              pir_info, params_dict, place, std::move(paddle::dialect::PdOpLowerToKernelPass(pir_info->Program().get(), place))));
-      } else {
-        PD_THROW("Invalid JitLayer engine type.");
-      }
+      layer.SetEngine(
+          func_name,
+          utils::MakePirEngine<PirInterpreterEngine>(
+            pir_info, params_dict, place, pir_info->Program()));
     }else{
       auto info = std::dynamic_pointer_cast<FunctionInfo>(base_info);
       if (FLAGS_jit_engine_type == "New") {
