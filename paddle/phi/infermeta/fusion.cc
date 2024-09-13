@@ -1829,11 +1829,7 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
   for (int i = 0; i + 2 < x_rank; ++i) {
     out_dims.push_back(x_dims[i]);
   }
-  if (trans_x) {
-    out_dims.push_back(x_dims[x_rank - 2]);
-  } else {
-    out_dims.push_back(x_dims[x_rank - 1]);
-  }
+  out_dims.push_back(trans_x ? x_dims[x_rank - 1] : x_dims[x_rank - 2]);
 
   if (trans_y) {
     out_dims.push_back(y_dims[0]);
