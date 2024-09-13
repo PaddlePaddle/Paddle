@@ -287,7 +287,8 @@ std::string PatternGraph::GraphInfo() const {
     ss << "\n##############################";
     ss << "\n" << v->DebugStr();
     ss << "    IsOutput: " << IsOutputNodeMatcher()(*this, v);
-    ss << "\n    Loop Framework is: " << GetLoopFramework(v->stmt_pattern());
+    ss << "\n    Loop Framework is: "
+       << GetLoopFramework(v->stmt_pattern()).loop;
     ss << std::endl;
   }
   ss << "\n===============================";
