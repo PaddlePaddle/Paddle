@@ -592,7 +592,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.shape = [1, 64]
         self.y_dist_tensor_spec.shape = [64]
 
-        # [-1, 0], [-1] --> [-1, 0], [-1], [-1, 0]
+        # [-1, 0], [-1] --> [-1, 0], [0], [-1, 0]
         self.x_dist_tensor_spec.set_dims_mapping([-1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1])
 
@@ -643,7 +643,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.shape = [1, 64]
         self.y_dist_tensor_spec.shape = [64]
 
-        # [-1, 0], [-1] --> [-1, 0], [-1], [-1, 0]
+        # [-1, 0], [-1] --> [-1, 0], [0], [-1, 0]
         self.x_dist_tensor_spec.set_dims_mapping([-1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1])
 
