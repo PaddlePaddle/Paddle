@@ -888,6 +888,12 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   return argument_outputs;
 }
 
+bool FusedGemmEpilogueOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  return FusedGemmEpilogueOpInferSymbolicShape(this->operation(),
+                                               infer_context);
+}
+
 const char *FusedGemmEpilogueGradOp::attributes_name[3] = {  // NOLINT
     "trans_x",
     "trans_y",
@@ -1176,6 +1182,11 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
       dense_bias_grad.offset());
   argument_outputs.push_back(bias_grad_dense_tensor_type);
   return argument_outputs;
+}
+
+bool FusedGemmEpilogueGradOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  return true;
 }
 
 const char *SplitGradOp::attributes_name[1] = {"axis"};  // NOLINT
