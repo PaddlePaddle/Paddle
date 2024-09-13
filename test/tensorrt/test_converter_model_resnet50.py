@@ -69,6 +69,8 @@ class TestConverterResNet50(unittest.TestCase):
             program_with_trt, {"input": input_optim_data}, [output_var]
         )
 
+        output_expected = standardize(output_expected[0])
+        output_trt = standardize(output_converted[0])
         # Check that the results are close to each other within a tolerance of 1e-3
         np.testing.assert_allclose(
             output_expected,
