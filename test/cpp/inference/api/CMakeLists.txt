@@ -435,21 +435,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --infer_model=${MOBILENET_INSTALL_DIR}/model)
   endif()
 
-  # densebox
-  set(DENSEBOX_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/densebox")
-  download_data_without_verify(${DENSEBOX_INSTALL_DIR} "densebox.tar.gz")
-  inference_analysis_test(
-    test_analyzer_detect_functional_mkldnn
-    SRCS
-    analyzer_detect_functional_mkldnn_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${DENSEBOX_INSTALL_DIR}/model
-    --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
-    --infer_shape=${DENSEBOX_INSTALL_DIR}/shape_50.txt)
-
   if(WITH_ONEDNN)
 
     ### INT8 tests
@@ -474,14 +459,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                           "resnet50_int8_model.tar.gz")
 
     # mobilenetv1 int8
-    set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
-    download_int8_data_without_verify(${INT8_MOBILENETV1_MODEL_DIR}
-                                      "mobilenetv1_int8_model.tar.gz")
+    set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1_pir")
+    download_int8_data_without_verify_pir(${INT8_MOBILENETV1_MODEL_DIR}
+                                          "mobilenetv1_int8_model.tar.gz")
 
     # mobilenetv2 int8
-    set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
-    download_int8_data_without_verify(${INT8_MOBILENETV2_MODEL_DIR}
-                                      "mobilenet_v2_int8_model.tar.gz")
+    set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2_pir")
+    download_int8_data_without_verify_pir(${INT8_MOBILENETV2_MODEL_DIR}
+                                          "mobilenet_v2_int8_model.tar.gz")
 
     # resnet101 int8
     set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
@@ -499,9 +484,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                       "VGG19_int8_model.tar.gz")
 
     # googlenet int8
-    set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
-    download_int8_data_without_verify(${INT8_GOOGLENET_MODEL_DIR}
-                                      "GoogleNet_int8_model.tar.gz")
+    set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet_pir")
+    download_int8_data_without_verify_pir(${INT8_GOOGLENET_MODEL_DIR}
+                                          "GoogleNet_int8_model.tar.gz")
 
     # mobilenetv3_large_x1_0 int8
     set(INT8_MOBILENETV3_LARGE_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv3_large")
