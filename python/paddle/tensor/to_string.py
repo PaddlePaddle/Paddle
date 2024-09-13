@@ -287,7 +287,7 @@ def convert_xpu_tensor_to_fp32(tensor):
     tensor = tensor.astype("float32")
     # For XPU, we mask out the 0x8000 added to the tail when converting bf16 to fp32.
     if dtype == paddle.bfloat16 or dtype == core.VarDesc.VarType.BF16:
-        mask = paddle.to_tensor(0xFFFF0000, dtype="int32")
+        mask = paddle.to_tensor(0xFFFF0000, dtype='int32')
         tensor = (tensor.view('int32') & mask).view('float32')
     return tensor
 
