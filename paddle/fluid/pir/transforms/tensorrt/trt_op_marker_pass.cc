@@ -1250,7 +1250,60 @@ class MeanOpPattern : public pir::OpRewritePattern<paddle::dialect::MeanOp> {
     return true;
   }
 };
-
+class NearestInterpOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::NearestInterpOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::NearestInterpOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::NearestInterpOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (op->HasAttribute("data_format")) {
+      auto data_format =
+          op->attribute<pir::StrAttribute>("data_format").AsString();
+      if (data_format == "kNCHW" || data_format == "kNHWC") {
+        VLOG(3) << "The nearest_interp "
+                << " is not NCHW or NHWC return false";
+        return false;
+      }
+    } else {
+      VLOG(3) << "The data_format attribute does not exist";
+      return false;
+    }
+    if (op->HasAttribute("interp_method")) {
+      auto interp_method =
+          op->attribute<pir::StrAttribute>("interp_method").AsString();
+      if (interp_method != "nearest") {
+        VLOG(3) << "The interp_method of nearest_interp "
+                << " is not nearest";
+        return false;
+      }
+    } else {
+      VLOG(3) << "The interp_method attribute does not exist";
+      return false;
+    }
+    auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
+    int out_h = op->attribute<pir::Int32Attribute>("out_h").data();
+    int out_w = op->attribute<pir::Int32Attribute>("out_w").data();
+    std::vector<int32_t> scale;
+    for (const auto &attr : scale_attr.AsVector()) {
+      scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+    }
+    if (!(out_h > 0 && out_w > 0)) {
+      if (scale.size() < 2) return false;
+      if (scale[0] <= 0.f || scale[1] <= 0.f) {
+        VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
+                   "not set.";
+        return false;
+      }
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
