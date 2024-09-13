@@ -62,7 +62,7 @@ class TestReshardSToRCrossMesh:
                 reshard_tensor = paddle._pir_ops.reshard(
                     input_tensor, self._out_mesh, [dist.Replicate()]
                 )
-            set_all_ops_op_role(main_program, OpRole.Forward)
+            set_all_ops_op_role(main_program.global_block(), OpRole.Forward)
             apply_reshard_pass(main_program)
 
         ops = [op.name() for op in main_program.global_block().ops]
