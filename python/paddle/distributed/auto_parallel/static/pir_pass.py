@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle import pir
 from paddle.autograd.backward_utils import ValueDict
 from paddle.base.framework import auto_complete_op_role
 from paddle.distributed.passes.pass_base import PassContext, new_pass
@@ -412,48 +413,24 @@ def _remove_no_need_in_main(dist_program):
             op.erase()
 
 
-def _remove_no_need_in_startup(startup_program, dist_program):
-    cur_rank = paddle.distributed.get_rank()
-    # 1. remove op of other rank
-    for op in startup_program.global_block().ops[::-1]:
-        if op.name() == 'pd_op.full':
-            if op.result(0).dist_attr():
-                if (
-                    cur_rank
-                    not in op.result(0).dist_attr().process_mesh.process_ids
-                ):
-                    op.erase()
-        elif op.name() == 'builtin.set_parameter':
-            if op.operand(0).source().process_mesh:
-                if (
-                    cur_rank
-                    not in op.operand(0).source().process_mesh.process_ids
-                ):
-                    op.erase()
-
-    # 2. var used in dist_program
-    dist_program_var_names = []
-    for op in dist_program.global_block().ops:
-        if op.name() == 'pd_op.data':
-            dist_program_var_names.append(op.attrs()['name'])
-        elif op.name() == 'builtin.parameter':
-            dist_program_var_names.append(op.attrs()['parameter_name'])
-
-    # 3 remove var op not used in dist_program
+def _remove_no_need_in_startup(startup_program, main_program):
+    # 1. vars used in main_program
+    main_program_var_names = []
+    for op in main_program.global_block().ops:
+        for var in op.operands_source():
+            if var.has_name:
+                main_program_var_names.append(var.name)
+        for var in op.results():
+            if var.has_name:
+                main_program_var_names.append(var.name)
+    # 2. remove var op not used in main_program
     for op in startup_program.global_block().ops:
-        if op.name() == 'builtin.shadow_output':
-            output_name = op.attrs()['output_name']
-            if output_name not in dist_program_var_names:
-                def_op = op.operand_source(0).get_defining_op()
+        for var in op.operands_source():
+            if var.has_name and var.name not in main_program_var_names:
                 op.erase()
-                def_op.erase()
-
-        elif op.name() == 'builtin.set_parameter':
-            parameter_name = op.attrs()['parameter_name']
-            if parameter_name not in dist_program_var_names:
-                def_op = op.operand_source(0).get_defining_op()
-                op.erase()
-                def_op.erase()
+    pm = pir.PassManager()
+    pm.add_pass('dead_code_elimination_pass', {})
+    pm.run(startup_program)
 
 
 # Pruning value not belong to cur rank
