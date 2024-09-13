@@ -1184,11 +1184,6 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
   return argument_outputs;
 }
 
-bool FusedGemmEpilogueGradOp::InferSymbolicShape(
-    pir::InferSymbolicShapeContext *infer_context) {
-  return true;
-}
-
 const char *SplitGradOp::attributes_name[1] = {"axis"};  // NOLINT
 
 OpInfoTuple SplitGradOp::GetOpInfo() {
