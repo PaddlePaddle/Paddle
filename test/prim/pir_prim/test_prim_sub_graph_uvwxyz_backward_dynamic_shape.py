@@ -34,6 +34,7 @@ def where_net(x, y):
 class TestPrimUnsqueezeWithGrad(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
+        self.op_name = "pd_op.unsqueeze_grad"
         self.dtype = "float32"
         self.x_shape = [20, 30, 40]
         self.init_x_shape = [None, None, 40]
@@ -46,6 +47,7 @@ class TestPrimUnsqueezeWithGrad(TestPrimBaseWithGrad):
 class TestPrimWhereWithGrad1(TestPrimTwoWithGrad):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.where_grad"
         self.dtype = "float32"
         self.x_shape = [30, 30, 40]
         self.init_x_shape = [None, None, 40]
@@ -61,6 +63,7 @@ class TestPrimWhereWithGrad1(TestPrimTwoWithGrad):
 class TestPrimWhereWithGrad2(TestPrimTwoWithGrad):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.where_grad"
         self.dtype = "float32"
         self.x_shape = [30, 30, 40]
         self.init_x_shape = [None, None, 40]
@@ -76,6 +79,7 @@ class TestPrimWhereWithGrad2(TestPrimTwoWithGrad):
 class TestPrimWhereWithGrad3(TestPrimTwoWithGrad):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.where_grad"
         self.dtype = "float32"
         self.x_shape = [30, 30, 40]
         self.init_x_shape = [30, 30, 40]
