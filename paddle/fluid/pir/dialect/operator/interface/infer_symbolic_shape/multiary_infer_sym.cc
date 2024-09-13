@@ -1530,10 +1530,6 @@ bool FusedAttentionOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
   const auto &cache_kv_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(5));
-  const auto &src_mask_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(6));
-  const auto &qkv_bias_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(4));
 
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
@@ -1547,10 +1543,6 @@ bool FusedAttentionOpInferSymbolicShape(
       qkv_weight_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &cache_kv_shape =
       cache_kv_shape_or_data.shape();
-  const std::vector<symbol::DimExpr> &src_mask_shape =
-      src_mask_shape_or_data.shape();
-  const std::vector<symbol::DimExpr> &qkv_bias_shape =
-      qkv_bias_shape_or_data.shape();
 
   int num_heads_ = op->attribute<pir::Int32Attribute>("num_heads").data();
   symbol::DimExpr num_heads = symbol::DimExpr(num_heads_);
