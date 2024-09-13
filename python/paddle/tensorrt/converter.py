@@ -32,6 +32,7 @@ from paddle.base.log_helper import get_logger
 from .impls.activation import *  # noqa: F403
 from .impls.conv import *  # noqa: F403
 from .impls.creation import *  # noqa: F403
+from .impls.interp import *  # noqa: F403
 from .impls.linalg import *  # noqa: F403
 from .impls.manipulation import *  # noqa: F403
 from .impls.math import *  # noqa: F403
