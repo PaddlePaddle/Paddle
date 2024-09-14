@@ -23,7 +23,7 @@ class TestGenerationPipeline(unittest.TestCase):
     def test_pp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(
-            file_dir, "generation_pipeline_pass_unittest_deprecated.py"
+            file_dir, "generation_pipeline_pass_unittest.py"
         )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
