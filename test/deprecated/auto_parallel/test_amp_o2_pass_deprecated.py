@@ -22,7 +22,7 @@ import unittest
 class TestAMPO2(unittest.TestCase):
     def test_bf16(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir, "amp_o2_pass_deprecated.py")
+        launch_model_path = os.path.join(file_dir, "amp_o2_pass.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
