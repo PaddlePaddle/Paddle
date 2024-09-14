@@ -266,7 +266,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool UniformRandomInferSymbolicShape(
+bool UniformRandomOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int64_t> shape =
       paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
