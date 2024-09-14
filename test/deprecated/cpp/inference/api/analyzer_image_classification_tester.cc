@@ -29,7 +29,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
-  cfg->DeletePass("constant_folding_pass");
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
