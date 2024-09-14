@@ -15,10 +15,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_auto_parallel_relaunch_deprecated)
   set_tests_properties(test_auto_parallel_relaunch_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_pass_grad_clip_deprecated MODULES
-                  test_pass_grad_clip_deprecated)
-  set_tests_properties(test_pass_grad_clip_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_engine_api_dp_deprecated MODULES
                   test_engine_api_dp_deprecated)
   set_tests_properties(test_engine_api_dp_deprecated
