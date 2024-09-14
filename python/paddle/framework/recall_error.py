@@ -18,9 +18,9 @@ import os
 def use_paddle_recall_error():
     val = os.getenv("FLAGS_use_paddle_recall_error", "1").strip().lower()
     if val in ('y', 'yes', 't', 'true', 'on', '1'):
-        return 1
+        return True
     elif val in ('n', 'no', 'f', 'false', 'off', '0'):
-        return 0
+        return False
     else:
         raise ValueError(f"invalid truth value {val}")
 
