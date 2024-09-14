@@ -24,7 +24,7 @@ class TestMPAllreduceMatmulGradOverlapping(unittest.TestCase):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(
             file_dir,
-            "mp_allreduce_matmul_grad_overlapping_unittest_deprecated.py",
+            "mp_allreduce_matmul_grad_overlapping_unittest.py",
         )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
