@@ -698,10 +698,8 @@ class Engine:
             pir_to_dy_param_name[pir_param[i].name] = dy_params[i].name
 
         self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
-            startup_program, mix_fw_program
+            startup_program, mix_fw_program, self.concrete_program
         )
-
-        # todo: delete param by fused_ffn_qkv from concrete_program
 
         forward_op_start_idx = 0
         backward_op_start_idx = -1

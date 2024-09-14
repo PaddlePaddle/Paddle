@@ -628,7 +628,9 @@ def get_param_op(program, param_name):
             return [all_ops[i], all_ops[i].operand_source(0).get_defining_op()]
 
 
-def fuse_attention_ffn_qkv_pass(startup_program, main_program):
+def fuse_attention_ffn_qkv_pass(
+    startup_program, main_program, concrete_program
+):
     fused_w_name_map = {"ffn": [], "qkv": []}
     # Traverse main_program, extract all ffn and qkv patterns.
     all_ops = main_program.global_block().ops
@@ -777,5 +779,9 @@ def fuse_attention_ffn_qkv_pass(startup_program, main_program):
                 )
         for op in del_ops:
             op.erase()
+
+    # Todo:
+    # pop fuse params from self.concrete_program.parameters
+    # fuse dy_param and get pir_fuse_value to push them to self.concrete_program.parameters
 
     return fused_w_name_map
