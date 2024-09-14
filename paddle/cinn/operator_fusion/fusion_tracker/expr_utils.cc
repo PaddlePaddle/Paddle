@@ -42,7 +42,7 @@ ir::Expr ApplyItersTransform::operator()(const AppendItersTransform& trans) {
   for (size_t i = 0; i < trans.symbols_.size(); ++i) {
     const auto upper_bound =
         cinn::common::DimExprConverter().ConvertToIrExpr(trans.symbols_[i]);
-    append_vars.push_back(ir::Var(upper_bound, trans.iter_var_names_[i]));
+    append_vars.push_back(ir::Var(upper_bound, trans.var_names_[i]));
   }
   auto result = InsertForsTransformer(trans.axis_, append_vars)(expr_);
   VLOG(4) << "[ItersTransform] After AppendItersTransform: " << result;
