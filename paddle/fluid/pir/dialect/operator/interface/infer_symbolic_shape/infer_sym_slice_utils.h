@@ -171,14 +171,14 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   ExprVec starts = starts_expr;
   ExprVec ends = ends_expr;
 
-  std::cerr << "start\n";
-  for (auto d : starts) {
-    std::cerr << "s " << d << std::endl;
-  }
+  // std::cerr << "start\n";
+  // for (auto d : starts) {
+  //   std::cerr << "s " << d << std::endl;
+  // }
 
-  for (auto d : ends) {
-    std::cerr << "e " << d << std::endl;
-  }
+  // for (auto d : ends) {
+  //   std::cerr << "e " << d << std::endl;
+  // }
 
   std::vector<int64_t> infer_flags = [&infer_flags_raw, &axes_raw] {
     return infer_flags_raw.empty() ? std::vector<int64_t>(axes_raw.size(), 1)
