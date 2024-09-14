@@ -340,6 +340,8 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
+        !op->isa<paddle::onednn::dialect::TransposeOp>() &&
+        !op->isa<paddle::onednn::dialect::Transpose_Op>() &&
         !op->isa<paddle::onednn::dialect::FusedConv2dOp>() &&
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
       return false;
@@ -407,58 +409,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
   }
 };
 
-class CpuBfloat16PlacementTranspose : public paddle::drr::DrrPatternBase {
- private:
-  std::string bfloat16_ops_;
-  uint32_t benefit_;
-
- public:
-  CpuBfloat16PlacementTranspose(const std::string& bfloat16_ops,
-                                uint32_t benefit)
-      : bfloat16_ops_(bfloat16_ops), benefit_(benefit) {}
-
-  std::string name() const override {
-    return "CpuBfloat16Placement" + bfloat16_ops_;
-  }
-
-  uint32_t benefit() const override { return benefit_; }
-
-  void operator()(paddle::drr::DrrPatternContext* ctx) const override {
-    paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
-    op_attrs.emplace("perm", pat.Attr("perm"));
-    op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-    op_attrs.emplace("data_format", pat.Attr("data_format"));
-    const auto& op = pat.Op(bfloat16_ops_, op_attrs);
-    op({&pat.Tensor("X")}, {&pat.Tensor("Out")});
-
-    pat.AddConstraint([this](const paddle::drr::MatchContext& match_ctx) {
-      auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type == "int8") {
-        return false;
-      }
-      auto perm = match_ctx.Attr<std::vector<int>>("perm");
-      // Add this constraint for transpose input size != axis size
-      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("X"));
-      if (perm.size() != x_shape.size()) {
-        LOG(WARNING) << "Transpose Op input tensor's dimension should be equal "
-                        "to or greater than the axis's size.";
-        return false;
-      }
-      return true;
-    });
-
-    paddle::drr::ResultPattern res = pat.ResultPattern();
-    std::unordered_map<std::string, paddle::drr::Attribute> res_op_attrs{};
-
-    res_op_attrs.emplace("mkldnn_data_type", res.StrAttr("bfloat16"));
-    res_op_attrs.emplace("perm", pat.Attr("perm"));
-    res_op_attrs.emplace("data_format", pat.Attr("data_format"));
-    const auto& res_op = res.Op(bfloat16_ops_, res_op_attrs);
-    res_op({&res.Tensor("X")}, {&res.Tensor("Out")});
-  }
-};
-
 class OneDNNPlacementBf16Pass : public pir::PatternRewritePass {
  public:
   OneDNNPlacementBf16Pass()
@@ -467,10 +417,6 @@ class OneDNNPlacementBf16Pass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<OneDNNBf16PlacementPattern>(context);
-    ps.Add(paddle::drr::Create<CpuBfloat16PlacementTranspose>(
-        context, paddle::onednn::dialect::TransposeOp::name(), 2));
-    ps.Add(paddle::drr::Create<CpuBfloat16PlacementTranspose>(
-        context, paddle::onednn::dialect::Transpose_Op::name(), 3));
     ps.Add<RemoveOrphanedPattern>(context);
     ps.Add<RemoveUnsupportedOpPattern>(context);
 
