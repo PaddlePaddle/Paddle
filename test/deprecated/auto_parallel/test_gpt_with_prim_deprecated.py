@@ -22,9 +22,7 @@ import unittest
 class TestGPTPrim(unittest.TestCase):
     def test_gpt_prim(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(
-            file_dir, "gpt_with_prim_deprecated.py"
-        )
+        launch_model_path = os.path.join(file_dir, "gpt_with_prim.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
