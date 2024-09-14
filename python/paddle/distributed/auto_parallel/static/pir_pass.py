@@ -629,7 +629,7 @@ def get_param_op(program, param_name):
 
 
 def fuse_attention_ffn_qkv_pass(startup_program, main_program):
-    fused_w = {"ffn": [], "attention_qkv": []}
+    fused_w_name_map = {"ffn": [], "qkv": []}
     # Traverse main_program, extract all ffn and qkv patterns.
     all_ops = main_program.global_block().ops
     ffn_patterns = []
@@ -651,6 +651,14 @@ def fuse_attention_ffn_qkv_pass(startup_program, main_program):
     # Replace all ffn and qkv patterns with fusion patterns, and record the weights after replacement.
     for pat in ffn_patterns:
         fusion_w_name = f"fused_{pat[0].operand_source(1).name}_{pat[1].operand_source(1).name}"
+        fused_w_name_map["ffn"].append(
+            {
+                fusion_w_name: [
+                    pat[0].operand_source(1).name,
+                    pat[1].operand_source(1).name,
+                ]
+            }
+        )
         fusion_w_dtype = pat[0].operand_source(1).dtype
         fusion_w_shape = pat[0].operand_source(1).shape
         fusion_w_shape[-1] *= 2
@@ -685,6 +693,15 @@ def fuse_attention_ffn_qkv_pass(startup_program, main_program):
 
     for pat in qkv_patterns:
         fusion_w_name = f"fused_{pat[0].operand_source(1).name}_{pat[3].operand_source(1).name}_{pat[6].operand_source(1).name}"
+        fused_w_name_map["qkv"].append(
+            {
+                fusion_w_name: [
+                    pat[0].operand_source(1).name,
+                    pat[3].operand_source(1).name,
+                    pat[6].operand_source(1).name,
+                ]
+            }
+        )
         fusion_w_dtype = pat[0].operand_source(1).dtype
         fusion_w_shape = pat[0].operand_source(1).shape
         fusion_w_shape[-1] *= 3
@@ -761,4 +778,4 @@ def fuse_attention_ffn_qkv_pass(startup_program, main_program):
         for op in del_ops:
             op.erase()
 
-    return {}
+    return fused_w_name_map
