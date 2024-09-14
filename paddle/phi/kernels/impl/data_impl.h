@@ -23,12 +23,12 @@ namespace phi {
 const char kForward[] = "FORWARD";
 const char kBackward[] = "BACKWARD";
 
-template <typename T, typename Context>
+template <typename Context>
 void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
   if (!x.initialized()) {
-    ctx.template Alloc<T>(out);
+    ctx.template Alloc(out, out->dtype());
     return;
   }
   if (x.place() == ctx.GetPlace()) {
@@ -39,16 +39,16 @@ void ShadowFeedKernel(const Context& ctx,
   }
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void ShadowFeedTensorsKernel(const Context& ctx,
                              const std::vector<const DenseTensor*>& xs,
                              std::vector<DenseTensor*> outs) {
   for (size_t i = 0; i < xs.size(); ++i) {
-    ShadowFeedKernel<T, Context>(ctx, *(xs[i]), outs[i]);
+    ShadowFeedKernel<Context>(ctx, *(xs[i]), outs[i]);
   }
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void PrintKernel(const Context& ctx,
                  const DenseTensor& x,
                  int first_n,
