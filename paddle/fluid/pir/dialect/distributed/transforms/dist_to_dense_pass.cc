@@ -103,6 +103,35 @@ void ProcessDistBlock(pir::Block* block) {
         new_dims.push_back(pir::Int64Attribute::get(ctx, local_dims[index]));
       }
       prev_op->set_attribute("value", pir::ArrayAttribute::get(ctx, new_dims));
+    } else if (op_item->isa<RandintOp>() || op_item->isa<GaussianOp>() ||
+               op_item->isa<UniformOp>()) {
+      auto local_dims =
+          op_item->result_type(0).dyn_cast<pir::DenseTensorType>().dims();
+      auto shape_value = op_item->operand_source(0);
+      auto prev_op = shape_value.defining_op();
+      PADDLE_ENFORCE((prev_op != nullptr),
+                     common::errors::PreconditionNotMet(
+                         "The shape of randint, gaussian and uniform mush be "
+                         "the result of "
+                         "FullIntArrayOp, not null"));
+      PADDLE_ENFORCE_EQ(
+          prev_op->isa<FullIntArrayOp>(),
+          true,
+          common::errors::PreconditionNotMet(
+              "The shape of randint, gaussian and uniform mush be the result "
+              "of FullIntArrayOp."));
+      auto array_attr = prev_op->attribute<pir::ArrayAttribute>("value");
+      PADDLE_ENFORCE_EQ(
+          array_attr.size(),
+          local_dims.size(),
+          common::errors::PreconditionNotMet(
+              "The shape of randint, gaussian and uniform element's size must "
+              "equal to result's dim size."));
+      std::vector<pir::Attribute> new_dims;
+      for (int index = 0; index < local_dims.size(); ++index) {
+        new_dims.push_back(pir::Int64Attribute::get(ctx, local_dims[index]));
+      }
+      prev_op->set_attribute("value", pir::ArrayAttribute::get(ctx, new_dims));
     }
     // TODO(2024-Q2) not all op are dist type
     // PADDLE_ENFORCE_EQ(
