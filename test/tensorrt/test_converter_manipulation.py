@@ -20,6 +20,25 @@ from tensorrt_test_base import TensorRTBaseTest
 import paddle
 
 
+class TestConcatTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.concat
+        self.api_args = {
+            "x": [
+                np.array([[1, 2, 3], [4, 5, 6]]).astype("float32"),
+                np.array([[11, 12, 13], [14, 15, 16]]).astype("float32"),
+                np.array([[21, 22], [23, 24]]).astype("float32"),
+            ],
+            "axis": -1,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [[1, 3], [1, 3], [1, 2]]}
+        self.max_shape = {"x": [[5, 3], [5, 3], [5, 2]]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 class TestFlattenTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.flatten
@@ -36,5 +55,5 @@ class TestFlattenTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
