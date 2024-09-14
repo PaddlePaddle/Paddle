@@ -18,16 +18,10 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/patch_util.h"
 namespace pir {
 
-void PatchBuilder::BuildPatch(const std::string& path) {
+void PatchBuilder::BuildPatch(const std::string& path,
+                              uint64_t pir_version,
+                              uint64_t max_version) {
   VLOG(6) << "Begin building patches... ";
-  // Set max_version to the max version number of release pir plus 1.
-  auto max_version = GetMaxReleasePirVersion() + 1;
-  // If pir_version_ is not 0, we will build patch from file_version_ to
-  // pir_version_; If pir_version_ is 0, we will first build patch from
-  // file_version_ to max_version, and then add 0.yaml to the end.
-  auto pir_version = pir_version_ == 0 ? max_version : pir_version_;
-  VLOG(6) << "file_version_: " << file_version_
-          << ", pir_version: " << pir_version;
   for (auto v = file_version_; v <= pir_version; v++) {
     std::filesystem::path p(path.c_str());
     std::filesystem::path patch_path = p / std::to_string(v % max_version);
@@ -35,6 +29,9 @@ void PatchBuilder::BuildPatch(const std::string& path) {
     VLOG(8) << "Patch file: " << patch_path;
     patch_json = YamlParser(patch_path.string());
     VLOG(8) << "Build version " << v << " patch: " << patch_json;
+    for (auto patch_info : patch_json["op_pair_patches"]) {
+      op_pair_patches_.insert(patch_info["patch"]);
+    }
     for (auto patch_info : patch_json["op_patches"]) {
       if (op_patches_.count(patch_info["op_name"])) {
         Json op_patch_orig = op_patches_[patch_info["op_name"]];
@@ -60,6 +57,7 @@ void PatchBuilder::BuildPatch(const std::string& path) {
       attr_patches_[patch_info["attr_name"]].update(patch_info["patch"], true);
     }
   }
+  VLOG(8) << "Finish build op_pair_patches_: " << op_pair_patches_;
   VLOG(8) << "Finish build op_patches_: " << op_patches_;
   VLOG(8) << "Finish build type_patches_: " << type_patches_;
   VLOG(8) << "Finish build attr_patches_: " << attr_patches_;
@@ -71,15 +69,50 @@ std::unordered_map<std::string, Json> PatchBuilder::GetOpAttrPatchMap(
   std::unordered_map<std::string, Json> op_attr_patch;
   if (op_patch.count(ATTRS)) {
     for (Json item : op_patch[ATTRS]) {
-      op_attr_patch[item[NAME]] = item;
+      if (item.count("ADD")) {
+        op_attr_patch["A_ADD"].push_back(item.at("ADD"));
+      } else {
+        op_attr_patch[item[NAME]].push_back(item);
+      }
     }
   }
   if (op_patch.count(OPRESULTS_ATTRS)) {
     for (Json item : op_patch[OPRESULTS_ATTRS]) {
-      op_attr_patch[item[NAME]] = item;
+      if (item.count("ADD")) {
+        op_attr_patch["OA_ADD"].push_back(item.at("ADD"));
+      } else {
+        op_attr_patch[item[NAME]].push_back(item);
+      }
     }
   }
   return op_attr_patch;
+}
+
+void PatchBuilder::ApplyOpPairPatches(int64_t* id) {
+  int max_id = *id;
+  VLOG(6) << "Start apply op_pair patches...";
+  VLOG(8) << "Max id before applying op pair patches: " << max_id;
+  for (auto item : op_pair_patches_) {
+    std::string op1 = item["op_pair"][0];
+    std::string op2 = item["op_pair"][1];
+    Json op1_patch = item[OPRESULTS];
+    Json op2_patch = item[OPOPERANDS];
+    for (uint64_t i = 0; i < op1_patch["ADD"].size(); ++i) {
+      max_id++;
+      op1_patch["ADD"][i][VALUE_ID] = max_id;
+      op2_patch["ADD"][i][VALUE_ID] = max_id;
+      op_patches_[op1][OPRESULTS]["ADD"].push_back(op1_patch["ADD"][i]);
+      op_patches_[op2][OPOPERANDS]["ADD"].push_back(op2_patch["ADD"][i]);
+    }
+    for (uint64_t i = 0; i < op1_patch["DELETE"].size(); ++i) {
+      op_patches_[op1][OPRESULTS]["DELETE"].push_back(op1_patch["DELETE"][i]);
+      op_patches_[op2][OPOPERANDS]["DELETE"].push_back(op2_patch["DELETE"][i]);
+    }
+  }
+  *id = max_id;
+  VLOG(8) << "Op patches after applying op pair patches: \n" << op_patches_;
+  VLOG(8) << "Max id after applying op pair patches: " << max_id;
+  VLOG(6) << "Finish apply op_pair patches... ";
 }
 
 void PatchBuilder::ApplyOpPatches(const std::string& op_name,
@@ -101,9 +134,14 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
                                                     {"parameter_name", 3}};
       std::string attr_name = item[NAME].get<std::string>();
       int index = attrs.count(attr_name) == 0 ? attrs.size() : attrs[attr_name];
-      if (item[ATTR_TYPE][ID] == "0.a_str") {
+      if (item[ATTR_TYPE][ID] == DialectIdMap::Instance()->GetCompressDialectId(
+                                     pir::BuiltinDialect::name()) +
+                                     "." + pir::StrAttribute::name()) {
         json->at(ATTRS)[index] = item[ATTR_TYPE][DATA];
-      } else if (item[ATTR_TYPE][ID] == "0.a_int") {
+      } else if (item[ATTR_TYPE][ID] ==
+                 DialectIdMap::Instance()->GetCompressDialectId(
+                     pir::BuiltinDialect::name()) +
+                     "." + pir::BoolAttribute::name()) {
         auto data = item[ATTR_TYPE][DATA];
         json->at(ATTRS)[index] = static_cast<int32_t>(data);
       }
@@ -113,9 +151,11 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
           {"persistable", 0}, {"stop_gradient", 1}, {"trainable", 2}};
       std::string attr_name = item[NAME].get<std::string>();
       int index = attrs.count(attr_name) == 0 ? attrs.size() : attrs[attr_name];
-      if (item[ATTR_TYPE][ID] == "a_int") {
+      if (item[ATTR_TYPE][ID] == DialectIdMap::Instance()->GetCompressDialectId(
+                                     pir::BuiltinDialect::name()) +
+                                     "." + pir::BoolAttribute::name()) {
         auto data = item[ATTR_TYPE][DATA];
-        json->at(ATTRS)[index] = static_cast<int32_t>(data);
+        json->at(OPRESULTS_ATTRS)[index] = static_cast<int32_t>(data);
       }
     }
     return;
@@ -124,8 +164,16 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
   if (patch.contains(OPOPERANDS)) {
     Json* json_in = &json->at(OPOPERANDS);
     Json in_patch = patch[OPOPERANDS];
+    for (auto item : in_patch["ADD"]) {
+      int id = item[ID].get<int>();
+      auto index = json_in->begin() + id;
+      VLOG(8) << "Add index: " << id;
+      item.erase(ID);
+      json_in->insert(index, item);
+      VLOG(8) << "ADD output: " << json_in;
+    }
     for (auto item : in_patch["DELETE"]) {
-      int id = item.get<int>();
+      int id = item[ID].get<int>();
       json_in->erase(id);
     }
   }
@@ -133,13 +181,22 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
     Json* json_out = &json->at(OPRESULTS);
     Json out_patch = patch[OPRESULTS];
     VLOG(8) << "out patch: " << out_patch;
+    for (auto item : out_patch["UPDATE"]) {
+      int id = item[ID].get<int>();
+      item.erase(ID);
+      json_out->at(id)[TYPE_TYPE] = item[TYPE_TYPE];
+    }
     for (auto item : out_patch["ADD"]) {
-      int id = item[VALUE_ID].get<int>();
+      int id = item[ID].get<int>();
       auto index = json_out->begin() + id;
       VLOG(8) << "Add index: " << id;
-      item.erase(VALUE_ID);
+      item.erase(ID);
       json_out->insert(index, item);
       VLOG(8) << "ADD output: " << json_out;
+    }
+    for (auto item : out_patch["DELETE"]) {
+      int id = item[ID].get<int>();
+      json_out->erase(id);
     }
   }
 }
@@ -160,12 +217,15 @@ void PatchBuilder::ApplyTypePatches(const std::string& type_name,
 void PatchBuilder::ApplyAttrPatches(const std::string& attr_name,
                                     Json* json,
                                     Json patch) {
-  if (patch.contains("NEW_NAME")) {
-    json->at(NAME) = patch["NEW_NAME"];
-  } else {
-    json->merge_patch(patch);
+  std::string name = attr_name;
+  for (auto item : patch) {
+    if (item.contains("NEW_NAME")) {
+      name = item["NEW_NAME"].get<std::string>();
+    } else {
+      json->merge_patch(item);
+    }
   }
-  VLOG(8) << attr_name << ": " << json;
+  json->at(NAME) = name;
 }
 
 void PatchBuilder::ApplyAttrTypePatches(const std::string& attr_name,
