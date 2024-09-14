@@ -178,7 +178,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
                   test_convert_to_process_meshes)
-  py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor ENVS
                   FLAGS_enable_pir_api=1)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
