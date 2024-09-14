@@ -23,7 +23,7 @@
 
 namespace pir {
 class Type;
-class UndefinedDataType;
+class UndefinedType;
 class UInt8Type;
 class Int8Type;
 class Int16Type;
@@ -137,7 +137,7 @@ class Builder {
   template <typename OpTy, typename... Args>
   OpTy Build(Args &&...args);
 
-  IR_API UndefinedDataType undefined_data_type();
+  IR_API UndefinedType undefined_type();
   IR_API BoolType bool_type();
   IR_API UInt8Type uint8_type();
   IR_API Int8Type int8_type();

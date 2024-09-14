@@ -31,7 +31,7 @@ using VariantType = phi::Attribute;
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
 static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
-  if (dtype.isa<pir::UndefinedDataType>()) {
+  if (dtype.isa<pir::UndefinedType>()) {
     return phi::DataType::UNDEFINED;
   } else if (dtype.isa<pir::BFloat16Type>()) {
     return phi::DataType::BFLOAT16;
@@ -79,7 +79,7 @@ static inline pir::Type TransToIrDataType(phi::DataType dtype,
   }
   switch (dtype) {
     case phi::DataType::UNDEFINED:
-      return pir::UndefinedDataType::get(ctx);
+      return pir::UndefinedType::get(ctx);
     case phi::DataType::BFLOAT16:
       return pir::BFloat16Type::get(ctx);
     case phi::DataType::FLOAT16:

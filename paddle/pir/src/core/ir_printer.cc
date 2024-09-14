@@ -44,7 +44,7 @@ void BasicIrPrinter::PrintType(Type type) {
     return;
   }
 
-  if (type.isa<UndefinedDataType>()) {
+  if (type.isa<UndefinedType>()) {
     os << "undefined_dtype";
   } else if (type.isa<BFloat16Type>()) {
     os << "bf16";
