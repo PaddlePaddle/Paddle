@@ -691,12 +691,6 @@ class Engine:
         startup_program = self._startup_progs[mode]
 
         # Add fused_ffn/fused_attention_qkv
-        pir_to_dy_param_name = {}
-        dy_params = self.concrete_program.parameters[0]
-        pir_param = self.concrete_program.parameters[1]
-        for i in range(len(pir_param)):
-            pir_to_dy_param_name[pir_param[i].name] = dy_params[i].name
-
         self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
             startup_program, mix_fw_program, self.concrete_program
         )

@@ -631,6 +631,12 @@ def get_param_op(program, param_name):
 def fuse_attention_ffn_qkv_pass(
     startup_program, main_program, concrete_program
 ):
+    pir_to_dy_param_name = {}
+    dy_params = concrete_program.parameters[0]
+    pir_param = concrete_program.parameters[1]
+    for i in range(len(pir_param)):
+        pir_to_dy_param_name[pir_param[i].name] = dy_params[i].name
+
     fused_w_name_map = {"ffn": [], "qkv": []}
     # Traverse main_program, extract all ffn and qkv patterns.
     all_ops = main_program.global_block().ops
