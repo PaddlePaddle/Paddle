@@ -1768,7 +1768,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                                 bool trans_y,
                                 const std::string& activation,
                                 MetaTensor* out,
-                                MetaTensor* reserve_space) {
+                                MetaTensor* reserve_space,
+                                MetaConfig config) {
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
   const auto& bias_dims = bias.dims();
@@ -1809,15 +1810,17 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
 
   int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
   int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
-
-  PADDLE_ENFORCE_EQ(
-      K_from_x,
-      K_from_y,
-      common::errors::InvalidArgument(
-          "The last dimension of X should be equal with Y's first dimension."
-          "But received X[-1] = [%d], Y[0] = [%d].",
-          K_from_x,
-          K_from_y));
+  bool check_dim = (!config.is_runtime && K_from_x != -1) || config.is_runtime;
+  if (check_dim) {
+    PADDLE_ENFORCE_EQ(
+        K_from_x,
+        K_from_y,
+        common::errors::InvalidArgument(
+            "The last dimension of X should be equal with Y's first dimension."
+            "But received X[-1] = [%d], Y[0] = [%d].",
+            K_from_x,
+            K_from_y));
+  }
 
   std::vector<int64_t> out_dims;
   out_dims.reserve(static_cast<size_t>(x_dims.size()));

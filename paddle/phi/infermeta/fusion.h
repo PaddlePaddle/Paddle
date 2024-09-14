@@ -516,7 +516,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                                 bool trans_y,
                                 const std::string& activation,
                                 MetaTensor* out,
-                                MetaTensor* reserve_space);
+                                MetaTensor* reserve_space,
+                                MetaConfig config = MetaConfig());
 
 void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,

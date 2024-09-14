@@ -42,7 +42,7 @@ class TestConverterResNet50(unittest.TestCase):
         )
 
         # Step2: run warmup for collecting shape
-        warmup_shape_infer(
+        program = warmup_shape_infer(
             program,
             min_shape_feed={"input": input_data_min_shape},
             max_shape_feed={"input": input_data_max_shape},

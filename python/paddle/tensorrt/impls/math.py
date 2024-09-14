@@ -31,6 +31,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 from paddle.tensorrt.converter_utils import (
+    add_elementwise_layer,
     broadcast,
     get_axes_for_reduce_op,
 )
@@ -110,3 +111,24 @@ def max_converter(network, paddle_op, inputs):
         keep_dims=keepdim,
     )
     return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.divide", trt_version="8.x")
+def divide_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.DIV
+    )
+
+
+@converter_registry.register("pd_op.subtract", trt_version="8.x")
+def substract_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.SUB
+    )
+
+
+@converter_registry.register("pd_op.multiply", trt_version="8.x")
+def multiply_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.PROD
+    )
