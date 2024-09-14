@@ -302,7 +302,7 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
             if p2p_op.op == _send_on_calc_stream:
                 if not paddle.isfinite(p2p_op.tensor).all().item():
                     raise ValueError(
-                        f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                        f"CUDA error(1002). Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
                     )
 
     group = _get_global_group() if group is None else group
@@ -483,7 +483,7 @@ def _p2p_ops_tuple_or_tensor(tensors, p2p_func, pp_rank, pp_group):
             for t in tensors:
                 if not paddle.isfinite(t).all().item():
                     raise ValueError(
-                        f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                        f"CUDA error(1002). Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
                     )
 
     reqs = []

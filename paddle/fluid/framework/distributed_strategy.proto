@@ -110,6 +110,7 @@ message HybridConfig {
   optional MpConfig mp_configs = 6;
   optional PpConfig pp_configs = 7;
   optional DygraphShardingConfig sharding_configs = 8;
+  optional bool enable_optimizer_timer = 9 [ default = false ];
 }
 
 message AMPConfig {
