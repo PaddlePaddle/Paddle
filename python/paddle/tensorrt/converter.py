@@ -238,10 +238,8 @@ class PaddleToTensorRTConverter:
                     for use_op in used_ops:
                         if use_op.name() == "builtin.split":
                             split_outputs = use_op.results()
-                            print("split_outputs", split_outputs)
                             results.extend(split_outputs)
                 else:
-                    print("result")
                     results.append(result)
             for idx, result in enumerate(results):
                 if idx < len(trt_outs):
