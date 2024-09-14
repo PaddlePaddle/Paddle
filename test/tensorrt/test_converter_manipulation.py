@@ -25,7 +25,7 @@ class TestCast0TRTPattern(TensorRTBaseTest):
         self.python_api = paddle.cast
         self.api_args = {
             "x": np.random.randn(7, 3).astype(np.float32),
-            "out_dtype": np.float16
+            "out_dtype": np.float16,
         }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [3, 3]}
@@ -37,13 +37,13 @@ class TestCast1TRTPattern(TensorRTBaseTest):
         self.python_api = paddle.cast
         self.api_args = {
             "x": np.random.randn(7, 3).astype(np.float16),
-            "out_dtype": np.float64
+            "out_dtype": np.float64,
         }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [3, 3]}
         self.max_shape = {"x": [10, 3]}
 
-        
+
 class TestConcatTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.concat
@@ -61,7 +61,6 @@ class TestConcatTRTPattern(TensorRTBaseTest):
 
     def test_trt_result(self):
         self.check_trt_result()
-
 
 
 class TestFlattenTRTPattern(TensorRTBaseTest):
