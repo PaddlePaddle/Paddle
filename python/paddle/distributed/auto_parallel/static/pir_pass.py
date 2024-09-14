@@ -631,33 +631,37 @@ def get_param_op(program, param_name):
 def fuse_attention_ffn_qkv_pass(
     startup_program, main_program, concrete_program
 ):
-    pir_to_dy_param_name = {}
-    dy_params = concrete_program.parameters[0]
-    pir_param = concrete_program.parameters[1]
-    for i in range(len(pir_param)):
-        pir_to_dy_param_name[pir_param[i].name] = dy_params[i].name
-
+    # 0. Prepare the data structure
+    pir_to_dy_param_name = []
+    for i in range(len(concrete_program.parameters[1])):
+        pir_to_dy_param_name.append(
+            {
+                concrete_program.parameters[1][i]
+                .name: concrete_program.parameters[0][i]
+                .name
+            }
+        )
+    fused_w_pattern_map = {"ffn": [], "qkv": []}
     fused_w_name_map = {"ffn": [], "qkv": []}
-    # Traverse main_program, extract all ffn and qkv patterns.
+
+    # 1. Traverse main_program, extract all ffn and qkv patterns.
     all_ops = main_program.global_block().ops
-    ffn_patterns = []
-    qkv_patterns = []
     for i in range(len(all_ops)):
         # check ffn pattern
         pat = all_ops[i : i + 3] if i + 3 <= len(all_ops) else all_ops[i:]
         if is_ffn_pattern(pat):
-            ffn_patterns.append(pat)
+            fused_w_pattern_map['ffn'].append(pat)
             i = i + 3
             continue
         # check qkv pattern
         pat = all_ops[i : i + 9] if i + 9 <= len(all_ops) else all_ops[i:]
         if is_qkv_pattern(pat):
-            qkv_patterns.append(pat)
+            fused_w_pattern_map['qkv'].append(pat)
             i = i + 9
             continue
 
-    # Replace all ffn and qkv patterns with fusion patterns, and record the weights after replacement.
-    for pat in ffn_patterns:
+    # 2. Replace all ffn and qkv patterns with fusion patterns, and record the weights after replacement.
+    for pat in fused_w_pattern_map['ffn']:
         fusion_w_name = f"fused_{pat[0].operand_source(1).name}_{pat[1].operand_source(1).name}"
         fused_w_name_map["ffn"].append(
             {
@@ -671,8 +675,7 @@ def fuse_attention_ffn_qkv_pass(
         fusion_w_shape = pat[0].operand_source(1).shape
         fusion_w_shape[-1] *= 2
         fusion_w_process_mesh = pat[0].operand_source(1).process_mesh
-
-        # insert fusion parameter
+        # Insert fusion parameter
         with paddle.static.program_guard(main_program, startup_program):
             fused_w = paddle.pir.core.create_parameter(
                 dtype=fusion_w_dtype,
@@ -685,8 +688,7 @@ def fuse_attention_ffn_qkv_pass(
                 ],
                 initializer=paddle.nn.initializer.Constant(value=0),
             )
-
-        # insert dst pattern
+        # Insert dst pattern
         paddle.pir.set_insertion_point_after(pat[2])
         fused_o = paddle.matmul(
             pat[0].operand_source(0),
@@ -699,7 +701,7 @@ def fuse_attention_ffn_qkv_pass(
         out.get_defining_op().copy_attrs_from(pat[2])
         pat[2].result(0).replace_all_uses_with(out)
 
-    for pat in qkv_patterns:
+    for pat in fused_w_pattern_map['qkv']:
         fusion_w_name = f"fused_{pat[0].operand_source(1).name}_{pat[3].operand_source(1).name}_{pat[6].operand_source(1).name}"
         fused_w_name_map["qkv"].append(
             {
@@ -714,7 +716,6 @@ def fuse_attention_ffn_qkv_pass(
         fusion_w_shape = pat[0].operand_source(1).shape
         fusion_w_shape[-1] *= 3
         fusion_w_process_mesh = pat[0].operand_source(1).process_mesh
-
         # insert fusion parameter
         with paddle.static.program_guard(main_program, startup_program):
             fused_w = paddle.pir.core.create_parameter(
@@ -728,7 +729,6 @@ def fuse_attention_ffn_qkv_pass(
                 ],
                 initializer=paddle.nn.initializer.Constant(value=0),
             )
-
         # insert dst pattern
         paddle.pir.set_insertion_point_after(pat[8])
         fused_o = paddle.matmul(
@@ -761,9 +761,9 @@ def fuse_attention_ffn_qkv_pass(
         pat[5].result(0).replace_all_uses_with(out_k)
         pat[8].result(0).replace_all_uses_with(out_v)
 
-    # Delete src pattern from origin program.
-    for pat in ffn_patterns:
-        del_ops = []
+    # 3. Delete src pattern from origin program.
+    del_ops = []
+    for pat in fused_w_pattern_map['ffn']:
         for op in reversed(pat):
             del_ops.append(op)
             if op.name() == "pd_op.matmul":
@@ -771,11 +771,7 @@ def fuse_attention_ffn_qkv_pass(
                 del_ops.extend(
                     get_param_op(startup_program, op.operand_source(1).name)
                 )
-        for op in del_ops:
-            op.erase()
-
-    for pat in qkv_patterns:
-        del_ops = []
+    for pat in fused_w_pattern_map['qkv']:
         for op in reversed(pat):
             del_ops.append(op)
             if op.name() == "pd_op.matmul":
@@ -783,10 +779,10 @@ def fuse_attention_ffn_qkv_pass(
                 del_ops.extend(
                     get_param_op(startup_program, op.operand_source(1).name)
                 )
-        for op in del_ops:
-            op.erase()
+    for op in del_ops:
+        op.erase()
 
-    # Todo:
+    # 4. Initialize fused parameters and delete orignal parameters.
     # pop fuse params from self.concrete_program.parameters
     # fuse dy_param and get pir_fuse_value to push them to self.concrete_program.parameters
 
