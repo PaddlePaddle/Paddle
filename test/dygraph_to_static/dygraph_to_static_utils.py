@@ -89,7 +89,7 @@ class IrMode(Flag):
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )
-DEFAULT_IR_MODE = IrMode.LEGACY_IR | IrMode.PT
+DEFAULT_IR_MODE = IrMode.PT | IrMode.PIR
 
 DISABLED_TO_STATIC_TEST_FILES = {
     ToStaticMode.AST: [],
@@ -303,9 +303,9 @@ class Dy2StTestMeta(type):
             for to_static_mode, ir_mode in to_static_with_ir_modes:
                 if (
                     to_static_mode == ToStaticMode.SOT_MGS10
-                    and ir_mode != IrMode.LEGACY_IR
+                    and ir_mode != IrMode.PIR
                 ):
-                    # SOT_MGS10 only test with LEGACY_IR
+                    # SOT_MGS10 only test with PIR
                     continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
