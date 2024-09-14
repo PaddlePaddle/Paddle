@@ -16,6 +16,7 @@ import copy
 import unittest
 
 import numpy as np
+from utils import dygraph_guard
 
 import paddle
 import paddle.nn.functional as F
@@ -1186,6 +1187,96 @@ class TestEagerTensor(unittest.TestCase):
         expected = "paddle.float32"
 
         self.assertEqual(a_str, expected)
+
+    def test___cuda_array_interface__(self):
+        """test Tensor.__cuda_array_interface__"""
+        with dygraph_guard():
+            # raise AttributeError for cpu tensor.
+            cpu_place = paddle.CPUPlace()
+            cpu_tensor = paddle.rand([3, 3]).to(device=cpu_place)
+            self.assertRaises(
+                AttributeError,
+                getattr,
+                cpu_tensor,
+                '__cuda_array_interface__',
+            )
+
+            if paddle.device.is_compiled_with_cuda():
+                gpu_place = paddle.CUDAPlace(0)
+                # raise AttributeError for sparse tensor.
+                sparse_tensor = (
+                    paddle.rand([3, 3]).to(device=gpu_place).to_sparse_coo(2)
+                )
+                self.assertRaises(
+                    AttributeError,
+                    getattr,
+                    sparse_tensor,
+                    '__cuda_array_interface__',
+                )
+
+                # strides should be None if contiguous
+                tensor = paddle.randn([3, 3]).to(device=gpu_place)
+                interface = tensor.__cuda_array_interface__
+                assert interface["strides"] is None
+
+                # strides should be tuple of int if not contiguous
+                tensor = paddle.randn([10, 10]).to(device=gpu_place)
+                tensor = tensor[::2]
+                interface = tensor.__cuda_array_interface__
+                assert interface["strides"] == (80, 4)
+
+                # data_ptr should be 0 if tensor is 0-size
+                tensor = paddle.randn([0, 10]).to(device=gpu_place)
+                interface = tensor.__cuda_array_interface__
+                assert interface["data"][0] == 0
+
+                # raise AttributeError for tensor that requires grad.
+                tensor = paddle.randn([3, 3]).to(device=gpu_place)
+                tensor.stop_gradient = False
+                self.assertRaises(
+                    RuntimeError,
+                    getattr,
+                    tensor,
+                    '__cuda_array_interface__',
+                )
+
+                # check supports of dtypes
+                for dtype in [
+                    paddle.complex64,
+                    paddle.complex128,
+                    paddle.bfloat16,
+                    paddle.float16,
+                    paddle.float32,
+                    paddle.float64,
+                    paddle.uint8,
+                    paddle.int8,
+                    paddle.int16,
+                    paddle.int32,
+                    paddle.int64,
+                    paddle.bool,
+                ]:
+                    tensor = (
+                        paddle.uniform([10, 10], min=-10.0, max=10.0)
+                        .to(device=gpu_place)
+                        .astype(dtype)
+                    )
+                    interface = tensor.__cuda_array_interface__
+                    assert "typestr" in interface and isinstance(
+                        interface["typestr"], str
+                    )
+                    assert "shape" in interface and isinstance(
+                        interface["shape"], tuple
+                    )
+                    assert "strides" in interface and (
+                        isinstance(interface["strides"], tuple)
+                        or interface["strides"] is None
+                    )
+                    assert (
+                        "data" in interface
+                        and isinstance(interface["data"], tuple)
+                        and len(interface["data"]) == 2
+                    )
+                    assert "version" in interface and interface["version"] == 2
 
 
 class TestEagerTensorSetitem(unittest.TestCase):
