@@ -91,6 +91,15 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::For* for_node,
   }
 }
 
+void MappingTargetExprToDestExprMutator::Visit(const ir::Block* block_node,
+                                               Expr* op) {
+  if (block_node == source_.ptr()) {
+    *op = dest_;
+  } else {
+    IRMutator::Visit(block_node, op);
+  }
+}
+
 void MappingTargetExprToDestExprMutator::Visit(const ir::Store* store,
                                                Expr* op) {
   if (store == source_.ptr()) {
@@ -369,7 +378,7 @@ ExprSetFinder ChildFors =
     Collector([](const ir::Expr* e) { return e->As<ir::For>(); }, "ChildFors");
 
 ExprSetFinder FindFather(const ir::Expr& root) {
-  const auto& f = [&](const auto& child) -> ExprSet {
+  const auto& f = [root](const auto& child) -> ExprSet {
     ExprSetFinder find_child =
         Collector([child](const ir::Expr* e) { return *e == child; });
     const auto& father_collector = Collector([&](const ir::Expr* current) {
@@ -380,6 +389,18 @@ ExprSetFinder FindFather(const ir::Expr& root) {
   };
   return ExprSetFinder(f, "FindFather");
 }
+
+ExprSetFinder DirectlyFather(const ir::Expr& root) {
+  const auto& f = [root](const auto& child) -> ExprSet {
+    ExprSet result = FindFather(root)(child);
+    // VLOG(4) << "Direcly Father of \n" << child << "\nIn root: \n" << root <<
+    // "\n is : "; for (const auto& r: result){ VLOG(4) << "\n  RESULT: " << r;
+    //}
+    return {result[result.size() - 1]};
+  };
+  return ExprSetFinder(f, "DirectlyFather");
+}
+
 }  // namespace ExprSetFinderUtils
 
 namespace ExprTransformerUtils {
@@ -576,6 +597,51 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
   return ExprTransformer(f);
 }
 
+ExprTransformer RemoveOneTransformer(int one) {
+  const auto& f = [=](const ir::Expr& root) -> ir::Expr {
+    ir::Expr copied = ir::ir_utils::IRCopy(root);
+    const auto& iters = GetAllLoopVars(copied);
+    // Find target expr and replace with for->body.
+    const ir::Expr& target_for = (ExprSetFinderUtils::ChildFors *
+                                  ExprSetFinderUtils::IsForIterVar(iters[one]))
+                                     .GetSingle(copied);
+    const ir::Expr& target_block =
+        ExprSetFinderUtils::DirectlyFather(copied).GetSingle(target_for);
+    VLOG(4) << "RemoveOneTransformer: directly target_block of for is "
+            << target_block;
+    // Replace iters[one] -> 0
+    ir::Expr replaced_body = ReplaceVarTransformer(
+        {iters[one]}, {ir::Expr(0)})(target_for.As<ir::For>()->body);
+    PADDLE_ENFORCE(
+        target_block.As<ir::Block>() != nullptr,
+        "RemoveOneTransformer: target for father is not a ir::Block.");
+    std::vector<ir::Expr> new_bodies;
+    for (const auto& expr : target_block.As<ir::Block>()->stmts) {
+      if (expr != target_for) {
+        new_bodies.push_back(expr);
+      } else {
+        for (const auto& origin_for : replaced_body.As<ir::Block>()->stmts) {
+          new_bodies.push_back(origin_for);
+        }
+      }
+    }
+    ir::Expr to_replace_block = ir::Block::Make(new_bodies);
+    // for -> replaced_body
+    ComposeUtils::MappingTargetExprToDestExprMutator(target_block,
+                                                     to_replace_block)(&copied);
+    return copied;
+  };
+  return ExprTransformer(f);
+}
+
+ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones) {
+  ExprTransformer f = Identity;
+  for (const auto& one : ones) {
+    f = RemoveOneTransformer(one) * f;
+  }
+  return ExprTransformer(f);
+}
+
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
   const auto& f = [=](const ir::Expr& root) -> ir::Expr {
     const auto& iters = GetNonReduceLoopVars(root);
@@ -701,6 +767,15 @@ std::vector<ir::Var> GetNonReduceLoopVars(const ir::Expr& root) {
   const auto non_reduce_loop_vars = cinn::fusion::FilterVector(
       loop_vars, [](const ir::Var& v) { return !v->is_reduce_axis; });
   return AppendBound(non_reduce_loop_vars, root);
+}
+
+std::vector<ir::Var> GetAllLoopVars(const ir::Expr& root) {
+  const auto& fors_expr = (ExprSetFinderUtils::ChildFors)(root);
+  std::vector<ir::Var> loop_vars;
+  for (const auto& for_expr : fors_expr) {
+    loop_vars.push_back(for_expr.As<ir::For>()->loop_var);
+  }
+  return AppendBound(loop_vars, root);
 }
 
 ir::Expr GetBodyBlock(const ir::Expr& root) {

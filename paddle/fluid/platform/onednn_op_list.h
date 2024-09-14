@@ -23,10 +23,10 @@ namespace platform {
 
 // NOTE(jiahongyu): Below ops have specific PADDLE_WITH_DNNL hard codes within
 // the function GetExpectedKernelType, so we need to handle them through
-// mkldnn_white_list and solve them one-by-one in the future.
-// TODO(jiahongyu): Delete mkldnn_white_list and fully support
+// onednn_white_list and solve them one-by-one in the future.
+// TODO(jiahongyu): Delete onednn_white_list and fully support
 // PADDLE_WITH_DNNL of GetExpectedKernelType.
-static const std::unordered_set<std::string> mkldnn_white_list = {
+static const std::unordered_set<std::string> onednn_white_list = {
     // NOTE(jiahongyu): Below ops use mem_desc function, which is encoded by
     // PADDLE_WITH_DNNL in DenseTensor. The hardcodes within
     // GetExpectedKernelType of these ops cannot be deleted now.
@@ -36,8 +36,8 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "slice_grad",
     "split"};
 
-inline bool in_mkldnn_white_list(const std::string& op_name) {
-  return mkldnn_white_list.find(op_name) != mkldnn_white_list.end();
+inline bool in_onednn_white_list(const std::string& op_name) {
+  return onednn_white_list.find(op_name) != onednn_white_list.end();
 }
 
 }  // namespace platform

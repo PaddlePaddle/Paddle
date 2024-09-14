@@ -113,6 +113,13 @@ std::vector<T> ConcatVector(const std::vector<T>& first,
 }
 
 template <typename T>
+std::vector<T> ReverseVector(const std::vector<T>& as) {
+  std::vector<T> result = as;
+  std::reverse(result.begin(), result.end());
+  return result;
+}
+
+template <typename T>
 std::vector<T> ConcatAll(const std::vector<std::vector<T>>& all) {
   std::vector<T> result;
   for (const auto& vec : all) {
@@ -138,6 +145,30 @@ std::vector<B> MapVector(const std::vector<A>& as,
   std::vector<B> res;
   for (const auto& a : as) {
     res.push_back(func(a));
+  }
+  return res;
+}
+
+template <class A, class B>
+std::vector<B> MapVectorIfTrue(const std::vector<A>& as,
+                               const std::function<B(A)>& func,
+                               const std::function<bool(A)>& pred) {
+  std::vector<B> res;
+  for (const auto& a : as) {
+    if (pred(a)) {
+      res.push_back(func(a));
+    }
+  }
+  return res;
+}
+
+template <class A>
+std::vector<std::pair<A, int>> Enumerate(const std::vector<A>& inputs) {
+  std::vector<std::pair<A, int>> res;
+  int idx = 0;
+  for (const auto& a : inputs) {
+    res.push_back(std::make_pair(a, idx));
+    idx++;
   }
   return res;
 }
@@ -365,11 +396,9 @@ struct ValueDimHash {
 static std::vector<symbol::DimExpr> GetDimExprsFromValue(pir::Value value) {
   const auto& value_dims = GetAllValueDimFromValue(value);
 
-  VLOG(4) << "Start Print:";
   std::function<symbol::DimExpr(ValueDim)> func =
       [](const ValueDim& value_dim) {
         const auto& symbolic_dim = value_dim.GetSymbolicDim();
-        VLOG(4) << symbolic_dim;
         return symbolic_dim;
       };
   return MapVector(value_dims, func);

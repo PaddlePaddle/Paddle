@@ -12,18 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ctypes
 import hashlib
 import logging
 
 import numpy as np
 import tensorrt as trt
 
+# init tensorrt plugin
+trt_plugin_lib = ctypes.CDLL('libnvinfer_plugin.so')
+trt_plugin_lib.initLibNvInferPlugins(None, "")
+
 import paddle
 from paddle import pir
 from paddle.base.core import get_value_shape_range_info
 from paddle.base.log_helper import get_logger
 
-from .impls.core import *  # noqa: F403
+from .impls.activation import *  # noqa: F403
+from .impls.conv import *  # noqa: F403
+from .impls.creation import *  # noqa: F403
+from .impls.linalg import *  # noqa: F403
+from .impls.manipulation import *  # noqa: F403
+from .impls.math import *  # noqa: F403
+from .impls.norm import *  # noqa: F403
+from .impls.ops import *  # noqa: F403
+from .impls.others import *  # noqa: F403
+from .impls.pooling import *  # noqa: F403
+from .impls.search import *  # noqa: F403
 from .register import converter_registry
 from .util import map_dtype
 
@@ -87,7 +102,11 @@ class PaddleToTensorRTConverter:
                     graph_output_values.append(result)
             for operand in op.operands():
                 source = operand.source()
-                all_values[source.id] = source
+                if not source.initialized():
+                    _logger.warning(f"Skipping uninitialized source: {source}")
+                    continue
+                else:
+                    all_values[source.id] = source
 
         # Input values are those that are in all_values but not in output_values
         input_values = [
@@ -178,6 +197,9 @@ class PaddleToTensorRTConverter:
             operands = []
             for operand in op.operands():
                 source = operand.source()
+                if not source.initialized():
+                    _logger.warning(f"Skipping uninitialized source: {source}")
+                    continue
                 define_op_name = source.get_defining_op().name()
                 if define_op_name == "builtin.combine":
                     for combined_operand in source.get_defining_op().operands():
@@ -200,12 +222,11 @@ class PaddleToTensorRTConverter:
                             f'{source_id} not found in value_to_trt_tensor'
                         )
 
-            layer = self.convert(network, op, operands)
+            trt_outs = self.convert(network, op, operands)
 
             for idx, result in enumerate(op.results()):
-                # TODO In some cases, the output index (idx) of a Paddle OP may not necessarily be the same as the output index of TensorRT
-                if idx < layer.num_outputs:
-                    value_to_trt_tensor[result.id] = layer.get_output(idx)
+                if idx < len(trt_outs):
+                    value_to_trt_tensor[result.id] = trt_outs[idx]
                 else:
                     value_to_trt_tensor[result.id] = None
         out_shapes = []
@@ -307,8 +328,15 @@ class PaddleToTensorRTConverter:
                 raise NotImplementedError(
                     f"Converter for {op_name} not implemented."
                 )
-            out = converter_func(network, paddle_op, inputs)
-        return out
+            outs = converter_func(network, paddle_op, inputs)
+        if isinstance(outs, tuple):
+            return outs
+        elif isinstance(outs, trt.ITensor):
+            return (outs,)
+        else:
+            raise TypeError(
+                f"Expected outputs to be a tuple or ITensor, but got {type(outs)}"
+            )
 
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:

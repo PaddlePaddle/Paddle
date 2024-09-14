@@ -71,11 +71,13 @@ FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
       op->num_results(),
       ::common::errors::InvalidArgument("The number of output_iters should be "
                                         "equal to the number of results."));
-  PADDLE_ENFORCE_LE(
-      axes.reduce_axis.size(),
-      axes.loop.axis_names.size(),
-      ::common::errors::InvalidArgument("The number of reduce_axis should be "
-                                        "no more than number of loop iters."));
+  if (axes.reduce_axis.size() > 0) {
+    PADDLE_ENFORCE_LE(
+        axes.reduce_axis.size(),
+        GetRank(op->operand(0).source()),
+        ::common::errors::InvalidArgument("The number of reduce_axis should be "
+                                          "no more than output value ranks."));
+  }
   FusionItersSignature result;
   result.loop_iters = axes.loop.axis_names;
   result.reduce_iter_nums = axes.reduce_axis.size();
@@ -211,6 +213,10 @@ bool FusionItersManager::IterSymbolEqual(const std::string& lhs,
                  ::common::errors::InvalidArgument(
                      "Cannot found symbol of input iter %s or %s", lhs, rhs));
   return shape_analysis_->IsEqual(iter2dimexpr_[lhs], iter2dimexpr_[rhs]);
+}
+
+bool FusionItersManager::IterSymbolEqualOne(const std::string& sym) {
+  return shape_analysis_->IsEqual(iter2dimexpr_[sym], 1);
 }
 
 std::pair<FusionIters, FusionIters> SplitReduceIters(
