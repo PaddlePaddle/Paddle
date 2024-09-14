@@ -389,6 +389,11 @@ def test_legacy_and_pt(fn):
     return fn
 
 
+def test_pt_and_pir(fn):
+    fn = set_ir_mode(IrMode.PT | IrMode.PIR)(fn)
+    return fn
+
+
 def test_legacy_and_pir(fn):
     fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR)(fn)
     return fn
