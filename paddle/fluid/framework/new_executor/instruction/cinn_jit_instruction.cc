@@ -150,6 +150,8 @@ class CinnJitInstruction::FnPtrImpl {
       }
     }
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
+
+    // std::cerr << "run func " << cinn_kernel_info_.fn_name << std::endl;
   }
 
   void InferShape(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
@@ -266,6 +268,21 @@ void CinnJitInstruction::Run() {
 
   // 2. exexute kernel
   fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
+
+  // std::cerr << "fin run cinn jit\n";
+  // dev_ctx_->Wait();
+
+  // for (int i = 0; i < input_tensor_size; ++i) {
+  //   std::cerr << "input i " << i << "\t" << *tensor_args_[i] << std::endl;
+  //   std::cerr << tensor_args_[i]->data() << std::endl;
+  // }
+  // std::cerr << "=============\n";
+  // for (int i = input_tensor_size; i < tensor_args_.size(); ++i) {
+  //   std::cerr << "out i " << i - input_tensor_size << "\t" <<
+  //   *tensor_args_[i]
+  //             << std::endl;
+  //   std::cerr << tensor_args_[i]->data() << std::endl;
+  // }
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";

@@ -770,8 +770,17 @@ void PirInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for pir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
+  // std::cerr << "ops size " << ir_block_->ops().size() << std::endl;
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
+    // if( op.attributes().count("op_name") )
+    // {
+    //    auto op_name = op.attributes()
+    //                      .at("op_name")
+    //                      .dyn_cast<::pir::StrAttribute>()
+    //                      .AsString();
+    //   std::cerr << "op_name " << op_name << std::endl;
+    // }
     if (op.dialect()->name() == "builtin") {
       if (op.isa<pir::CombineOp>()) {
         vec_instruction_base_.emplace_back(
@@ -1521,6 +1530,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool switch_stream) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
+  // std::cerr << "in fetch list\n";
   if (enable_op_profiling) {
     PADDLE_THROW(common::errors::Unimplemented(
         "Currently PIR does not support op runtime profiling feature."));
@@ -1529,17 +1539,20 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
+  // std::cerr << "pir inter 0\n";
+
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
   platform::RegisterModelLayout(ir_block_, place_);
 #endif
 
+  // std::cerr << "pir inter 1\n";
   if (!is_build_ || switch_stream) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
-    VLOG(4) << DebugValueInfo();
+    // VLOG(4) << DebugValueInfo();
 
     SolvePersistableVarNames();
-
+    // std::cerr << "pir inter 2\n";
     if (VLOG_IS_ON(6)) {
       std::stringstream ss;
       for (auto parameter : parameter_var_names_) {
@@ -1548,7 +1561,9 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
       VLOG(6) << "Parameter value include: " << ss.str();
     }
 
+    // std::cerr << "pir inter 3\n";
     BuildInstruction();
+    // std::cerr << "pir inter 5\n";
     VLOG(4) << "Done BuildInstruction";
 
     PreAnalysis();

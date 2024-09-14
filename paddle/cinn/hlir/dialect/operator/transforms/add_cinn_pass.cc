@@ -167,6 +167,11 @@ void ApplyBuildGroupOpPass(
 void ApplyGroupOpPass(::pir::Program* program,
                       const std::function<std::shared_ptr<pir::PassManager>()>&
                           CreatePassManager) {
+  // if (FLAGS_print_ir) {
+  //   std::cout << "IR Before ApplyGroupOpPass -------------------" <<
+  //   std::endl; std::cout << *program << std::endl;
+  // }
+
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(
       cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
@@ -184,12 +189,22 @@ void ApplyGroupOpPass(::pir::Program* program,
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   pass_manager->Run(program);
+
+  // if (FLAGS_print_ir) {
+  //   std::cout << "IR After ApplyGroupOpPass -------------------" <<
+  //   std::endl; std::cout << *program << std::endl;
+  // }
 }
 
 void ApplyDivideGroupOpToFusionOpPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
+  // if (FLAGS_print_ir) {
+  //   std::cout << "IR Before ApplyGroupOpPass -------------------" <<
+  //   std::endl; std::cout << *program << std::endl;
+  // }
+
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
@@ -198,6 +213,11 @@ void ApplyDivideGroupOpToFusionOpPass(
   pass_manager->AddPass(cinn::dialect::ir::CreateShapeOpsFallbackToPhiPass());
 
   pass_manager->Run(program);
+
+  // if (FLAGS_print_ir) {
+  //   std::cout << "IR After ApplyGroupOpPass -------------------" <<
+  //   std::endl; std::cout << *program << std::endl;
+  // }
 }
 
 void ApplyCinnLowerPass(
@@ -234,6 +254,7 @@ void ApplyCinnLowerPass(
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -265,7 +286,19 @@ void ApplyCinnPass(::pir::Program* program,
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
   ApplyShapeOptimizationPass(program, CreatePassManager);
+
+  if (FLAGS_print_ir) {
+    std::cout << "IR Before ApplyPdToCinnPass -------------------" << std::endl;
+    std::cout << *program << std::endl;
+  }
+
   ApplyPdToCinnPass(program, CreatePassManager);
+
+  if (FLAGS_print_ir) {
+    std::cout << "IR Before ApplyPdToCinnPass -------------------" << std::endl;
+    std::cout << *program << std::endl;
+  }
+
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
   PirToPyCodeConverter(program)

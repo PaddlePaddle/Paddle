@@ -148,6 +148,7 @@ class OpTransInfo {
                                                     "argsort",
                                                     "assign_value",
                                                     "one_hot",
+                                                    "argsort",
                                                     "softmax",
                                                     "randint"};
 };

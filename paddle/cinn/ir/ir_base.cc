@@ -320,6 +320,10 @@ void IrNode::replace(Expr old_op, Expr new_op) {
 }
 
 void IrNode::convert_int32_to_int64() {
+  if (type_.is_float(32)) {
+    return;
+  }
+
   if (type_ != Int(64))
     if (type_ != Int(32))
       PADDLE_ENFORCE_EQ(type_.is_unk(),
@@ -330,7 +334,18 @@ void IrNode::convert_int32_to_int64() {
                             type_));
   type_ = Int(64);
   for (Expr &operand : operands) {
+    VLOG(1) << "operand is: " << operand << "; type is: " << operand->type()
+            << "; operand.is_constant(): " << operand.is_constant();
     operand->convert_int32_to_int64();
+
+    // if (operand.is_constant() && operand.type().is_float(32)) {
+    //   continue;
+    // }
+    // operand->convert_int32_to_int64();
+
+    // if (!operand.is_constant()) {
+    //   operand->convert_int32_to_int64();
+    // }
   }
 }
 

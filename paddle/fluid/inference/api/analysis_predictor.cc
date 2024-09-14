@@ -836,6 +836,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
     if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
       VLOG(4) << "[Prim] Decomp program in predictor begin.";
+      std::cerr << "program base \n" << *pir_program_ << std::endl;
       DecompProgram decomp_object(pir_program_.get());
       decomp_object.decomp_program();
 
@@ -978,7 +979,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       config_.deleted_passes_.end()) {
     constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
     constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
-    basic_pass_pm.AddPass(std::move(constant_folding_pass));
+    // basic_pass_pm.AddPass(std::move(constant_folding_pass));
   }
   auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
   if (std::find(config_.deleted_passes_.begin(),
@@ -2684,6 +2685,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
+  // std::cerr << "zero copy run\n";
   inference::DisplayMemoryInfo(place_, "before run");
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {  // NOLINT
@@ -2697,18 +2699,19 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
   }
+  // std::cerr << "zero copy run 0\n";
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-#ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) {
-    std::vector<std::vector<int>> shape_vector;
-    auto names = GetInputNames();
-    for (auto &name : names) {
-      auto in_tensor = GetInputTensor(name);
-      shape_vector.emplace_back(in_tensor->shape());
-    }
-    MkldnnPreSet(shape_vector);
-  }
-#endif
+  // #ifdef PADDLE_WITH_DNNL
+  //   if (config_.use_mkldnn_) {
+  //     std::vector<std::vector<int>> shape_vector;
+  //     auto names = GetInputNames();
+  //     for (auto &name : names) {
+  //       auto in_tensor = GetInputTensor(name);
+  //       shape_vector.emplace_back(in_tensor->shape());
+  //     }
+  //     MkldnnPreSet(shape_vector);
+  //   }
+  // #endif
 
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
@@ -2718,13 +2721,15 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
             << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
   }
 #endif
-
+  // std::cerr << "zero copy run 10-0\n";
   if (config_.new_ir_enabled()) {
     auto *scope = sub_scope_ ? sub_scope_ : scope_.get();
     if (scope != nullptr) {
       ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
     }
   }
+
+  // std::cerr << "zero copy run 101\n";
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
@@ -2753,8 +2758,11 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #endif
 
+  // std::cerr << "zero copy run 22\n";
   if (config_.new_executor_enabled()) {  // NOLINT
+    // std::cerr << "zero copy run 33\n";
     executor_->RunInterpreterCore({}, false, switch_stream);
+    // std::cerr << "zero copy run 33 fin\n";
   } else {
     executor_->Run();
   }

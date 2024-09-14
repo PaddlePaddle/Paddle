@@ -36,7 +36,7 @@ using namespace ir;  // NOLINT
 Expr AutoSimplify(
     Expr u,
     const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
-  VLOG(7) << "Begin AutoSimplify: " << u;
+  VLOG(6) << "Begin AutoSimplify: " << u;
   if (u.type().is_float()) {
     return u;
   }
@@ -54,7 +54,7 @@ Expr AutoSimplify(
   }
   u = CasSimplify(u, s_var_intervals);
   u = detail::ConvertCasToCinn(u);
-  VLOG(7) << "End AutoSimplify " << u;
+  VLOG(6) << "finish AutoSimplify: " << u;
   return u;
 }
 
@@ -1665,6 +1665,8 @@ Expr ConvertCinnToCAS(Expr expr) {
         *expr = a;
         return;
       }
+      // std::cerr << "make sum here! " << a.type() << "\t" << b.type() <<
+      // std::endl; std::cerr << a << "\t" << b << std::endl;
       *expr = Sum::Make({a, b});
     }
     void Visit(const Mul* op, Expr* expr) override {
@@ -1673,6 +1675,17 @@ Expr ConvertCinnToCAS(Expr expr) {
 
       Visit(&a);
       Visit(&b);
+
+      VLOG(1) << "a.is_constant(): " << a.is_constant() << "; a: " << a;
+      VLOG(1) << "b.is_constant(): " << b.is_constant() << "; b: " << b;
+      if (a.is_constant()) {
+        VLOG(1) << "a.get_constant(): " << a.get_constant();
+      }
+      VLOG(1) << "1111111";
+      if (b.is_constant()) {
+        VLOG(1) << "b.get_constant(): " << b.get_constant();
+      }
+      VLOG(1) << "1111111";
 
       if (a.is_constant() && a.get_constant() == 0) {
         *expr = make_const(a->type(), 0);
@@ -1761,7 +1774,11 @@ Expr ConvertCinnToCAS(Expr expr) {
     }
   };
 
+  // std::cerr << "before mutator\n";
+
   Mutator()(&copied);
+
+  // std::cerr << "after mutator\n";
   return copied;
 }
 

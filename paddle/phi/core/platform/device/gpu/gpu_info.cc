@@ -53,18 +53,24 @@ COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
 COMMON_DECLARE_uint64(gpu_memory_limit_mb);
 
-PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
-                         false,
-                         "Whether to print the message of gpu memory usage "
-                         "at exit, mainly used for UT and CI.");
-PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
-                         true,
-                         "Whether to print the message of gpu memory usage "
-                         "MB as a unit of measurement.");
-PHI_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
-                           ULLONG_MAX,
-                           "Amount of reserved memory in bytes to hold onto "
-                           "before trying to release memory back to the OS");
+// PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
+//                          false,
+//                          "Whether to print the message of gpu memory usage "
+//                          "at exit, mainly used for UT and CI.");
+
+// PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
+//                             true,
+//                             "Whether to print the message of gpu memory usage
+//                             " "MB as a unit of measurement.");
+// PADDLE_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
+//                               ULLONG_MAX,
+//                               "Amount of reserved memory in bytes to hold
+//                               onto " "before trying to release memory back to
+//                               the OS");
+
+COMMON_DECLARE_bool(enable_gpu_memory_usage_log);
+COMMON_DECLARE_bool(enable_gpu_memory_usage_log_mb);
+COMMON_DECLARE_uint64(cuda_memory_async_pool_realease_threshold);
 
 namespace paddle::platform {
 

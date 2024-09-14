@@ -236,6 +236,11 @@ struct AccuracyCheckFunctor<phi::GPUContext, T> {
                   const double atol,
                   bool equal_nan,
                   DenseTensor* output) {
+    PADDLE_ENFORCE_EQ(
+        in.dims(),
+        other.dims(),
+        common::errors::PreconditionNotMet(
+            "Accuracy check failed, Dim not same; kernel name %s", fn_name));
     int num = in.numel();
     const T* in_data = in.data<T>();
     const T* other_data = other.data<T>();

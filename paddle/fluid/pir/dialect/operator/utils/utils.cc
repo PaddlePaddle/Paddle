@@ -555,5 +555,66 @@ StringToDataLayoutMap() {
   return data_layout_map;
 }
 
+bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
+                            const std::vector<::pir::Value>& vec_output) {
+  bool can_run_cpu = true;
+  for (size_t i = 0; i < vec_inputs.size(); ++i) {
+    auto tmp_in = vec_inputs[i];
+    if (!tmp_in || !tmp_in.type()) {
+      continue;
+    }
+
+    phi::DDim in_dims;
+
+    if (auto type_info =
+            tmp_in.type()
+                .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()) {
+      auto type = tmp_in.type().dyn_cast<AllocatedDenseTensorType>();
+      in_dims = type.dims();
+      if (type.place().GetType() != phi::AllocationType::CPU) {
+        return false;
+      }
+    } else if (auto type_info =
+                   tmp_in.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
+      in_dims = type_info.dims();
+    }
+
+    // 1. dynamic shape not need lower x86
+    if (::common::contain_unknown_dim(in_dims)) {
+      return false;
+    }
+    // 2. size < 4 not need lower x86
+    if (phi::product(in_dims) > 4) {
+      return false;
+    }
+  }
+
+  for (size_t i = 0; i < vec_output.size(); ++i) {
+    const auto& out = vec_output[i];
+
+    if (!out || !out.type()) {
+      continue;
+    }
+
+    if (out.type().isa<DenseTensorType>()) {
+      auto type = out.type().dyn_cast<DenseTensorType>();
+
+      if (type.dtype().isa<::pir::BFloat16Type>()) {
+        return false;
+      }
+
+      if (::common::contain_unknown_dim(type.dims())) {
+        return false;
+      }
+
+      if (phi::product(type.dims()) > 4) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 }  // namespace dialect
 }  // namespace paddle

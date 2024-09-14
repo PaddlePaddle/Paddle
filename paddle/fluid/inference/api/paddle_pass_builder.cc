@@ -112,7 +112,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
 #else
       "sparse_conv_optim_pass",                //
 #endif
-      "constant_folding_pass",  //
+  // "constant_folding_pass",  //
 #ifdef PADDLE_WITH_TENSORRT
 #if !IS_TRT_VERSION_GE(8610)
       "trt_flash_multihead_matmul_fuse_pass",  //
@@ -604,7 +604,7 @@ const std::vector<std::string> kPirGpuPasses{
     "transpose_flatten_concat_fuse_pass",
     "remove_redundant_transpose_pass",
     "transfer_layout_pass",
-    "horizontal_fuse_pass",
+    // "horizontal_fuse_pass",
 };
 
 const std::vector<std::string> kPirXpuPasses{
