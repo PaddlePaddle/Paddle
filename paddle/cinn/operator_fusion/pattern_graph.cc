@@ -191,7 +191,10 @@ void PatternGraph::ReduceTree_Trivial_Fusion() {
 
 void PatternGraph::LiftToItersPermutationPattern() {
   GraphTransformer<NodePattern,
-                   StmtPatternGraphMatcher<TrivialPattern>,
+                   Or<StmtPatternGraphMatcher<TrivialPattern>,
+                      StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>,
+                      StmtPatternGraphMatcher<ReducePattern>,
+                      StmtPatternGraphMatcher<ReduceTreePattern>>,
                    LiftToItersPermutationPatternOperation>(this);
 }
 

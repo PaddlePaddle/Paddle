@@ -101,13 +101,6 @@ FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
   return result;
 }
 
-std::pair<FusionIters, FusionIters> SplitReduceIters(
-    const FusionItersSignature& sig) {
-  const size_t rank = sig.loop_iters.size();
-  return {SliceVector(sig.loop_iters, 0, rank - sig.reduce_iter_nums),
-          SliceVector(sig.loop_iters, rank - sig.reduce_iter_nums, rank)};
-}
-
 FusionItersSignature FusionItersManager::SingleDownstreamItersFusion(
     const FusionItersSignature& upstream,
     const FusionItersSignature& downstream) {
@@ -127,7 +120,7 @@ FusionItersSignature FusionItersManager::SingleDownstreamItersFusion(
     fused_signature.reduce_iter_nums = downstream.reduce_iter_nums;
   } else if (downstream_reduce_iters.empty()) {
     // Reduce x Trivial Fusion
-    const auto [shared_iters, _UNUSED] = SplitFirstIfFoundInSecond(
+    const auto [shared_iters, _UNUSED] = SplitFirstWhetherInSecond(
         downstream_non_reduce_iters, upstream_non_reduce_iters);
     fused_signature.loop_iters =
         ConcatVector(shared_iters, upstream_reduce_iters);
@@ -218,6 +211,13 @@ bool FusionItersManager::IterSymbolEqual(const std::string& lhs,
                  ::common::errors::InvalidArgument(
                      "Cannot found symbol of input iter %s or %s", lhs, rhs));
   return shape_analysis_->IsEqual(iter2dimexpr_[lhs], iter2dimexpr_[rhs]);
+}
+
+std::pair<FusionIters, FusionIters> SplitReduceIters(
+    const FusionItersSignature& sig) {
+  const size_t rank = sig.loop_iters.size();
+  return {SliceVector(sig.loop_iters, 0, rank - sig.reduce_iter_nums),
+          SliceVector(sig.loop_iters, rank - sig.reduce_iter_nums, rank)};
 }
 
 }  // namespace cinn::fusion

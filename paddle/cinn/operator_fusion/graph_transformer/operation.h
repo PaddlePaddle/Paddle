@@ -196,10 +196,6 @@ struct FuseItersPermutatioOperation {
                                                                  downstream));
     const auto update_tracker_fn = [=](const PatternNodePtr& source,
                                        const PatternNodePtr& target) {
-      VLOG(4) << "Transform from " << source->fusion_iters().DebugStr()
-              << " to " << target->fusion_iters().DebugStr();
-      VLOG(4) << "TransformRoute: "
-              << DebugStrItersTransformRoute(transform_route);
       const std::string source_tmp_id = GetNewTmpId(source->id());
       merged_node->AppendInstr(std::make_shared<ItersTransformInstr>(
           source->id(), source_tmp_id, transform_route));

@@ -41,7 +41,11 @@ struct ItersFusionPolicy final : public PolicyBase {
       const PatternNodePtr& upstream, const PatternNodePtr& downstream);
 
  private:
-  std::optional<ItersTransformRoute> GetItersTransformRouteImpl(
+  std::optional<ItersTransform> GetReuseItersTransform(
+      FusionIters* source_iters, const FusionIters& target_iters);
+  std::optional<ItersTransformRoute> SearchTransformRouteFromReduce2Reduce(
+      const FusionItersSignature& source, const FusionItersSignature& target);
+  std::optional<ItersTransformRoute> SearchItersTransformRoute(
       const FusionItersSignature& source, const FusionItersSignature& target);
 
   using NodeRouteMap = std::unordered_map<PatternNodePtr, ItersTransformRoute>;

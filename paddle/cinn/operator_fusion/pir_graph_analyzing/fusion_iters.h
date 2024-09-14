@@ -66,6 +66,11 @@ struct FusionItersManager {
   ShardableAxesInfoManager* axes_info_;
 };
 
+std::string PrintFusionIters(const FusionIters& iters);
+
+std::pair<FusionIters, FusionIters> SplitReduceIters(
+    const FusionItersSignature& sig);
+
 // Fusion Iters Transform
 struct IdentityItersTransform {
   IdentityItersTransform() = default;
@@ -86,21 +91,21 @@ struct AppendItersTransform {
                                 const std::vector<symbol::DimExpr>& symbols)
       : axis_(axis), symbols_(symbols) {
     for (size_t i = 0; i < symbols.size(); ++i) {
-      iter_var_names_.push_back(UniqueIterVarName());
+      var_names_.push_back(UniqueVarName());
     }
   }
   std::string DebugStr() const {
     return "AppendIters(axis={" + cinn::utils::Join(axis_, ",") +
-           "}, symbols={" + cinn::utils::Join(symbols_, ",") + "}, symbols={" +
-           cinn::utils::Join(iter_var_names_, ",") + "})";
+           "}, symbols={" + cinn::utils::Join(symbols_, ",") +
+           "}, var_names={" + cinn::utils::Join(var_names_, ",") + "})";
   }
-  std::string UniqueIterVarName() {
+  std::string UniqueVarName() {
     static std::atomic<int32_t> var_idx = 0;
     return "append_var_" + std::to_string(var_idx++);
   }
   std::vector<int32_t> axis_;
   std::vector<symbol::DimExpr> symbols_;
-  std::vector<std::string> iter_var_names_;
+  std::vector<std::string> var_names_;
 };
 struct ReuseItersTransform {
   using IterMap = std::unordered_map<std::string, std::string>;

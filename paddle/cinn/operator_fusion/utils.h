@@ -198,19 +198,30 @@ bool IsAnyFirstInSecond(const std::vector<T>& first,
 }
 
 template <typename T>
-std::pair<std::vector<T>, std::vector<T>> SplitFirstIfFoundInSecond(
+std::pair<std::vector<T>, std::vector<T>> SplitFirstWhetherInSecond(
     const std::vector<T>& first, const std::vector<T>& second) {
   std::vector<T> used;
   std::vector<T> unused;
-  const auto& second_set = ToUnorderedSet(second);
   for (size_t i = 0; i < first.size(); ++i) {
-    if (second_set.count(first[i])) {
+    if (std::find(second.begin(), second.end(), first[i]) != second.end()) {
       used.emplace_back(first[i]);
     } else {
       unused.emplace_back(first[i]);
     }
   }
   return {used, unused};
+}
+
+template <typename T>
+std::vector<T> GatherFirstNotInSecond(const std::vector<T>& first,
+                                      const std::vector<T>& second) {
+  std::vector<T> result;
+  for (size_t i = 0; i < first.size(); ++i) {
+    if (std::find(second.begin(), second.end(), first[i]) == second.end()) {
+      result.emplace_back(first[i]);
+    }
+  }
+  return result;
 }
 
 template <typename T>
@@ -435,6 +446,18 @@ bool AnyTargetInCandidate(const std::vector<T>& targets,
   return false;
 }
 
+template <typename T>
+bool AllFirstInSecond(const std::vector<T>& first,
+                      const std::vector<T>& second) {
+  std::unordered_set<T> pool = ToUnorderedSet(second);
+  for (const auto& item : first) {
+    if (pool.find(item) == pool.end()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static std::vector<pir::Operation*> FindDownstreamOps(pir::Operation* op) {
   std::vector<pir::Operation*> result;
   for (int i = 0; i < op->num_results(); i++) {
@@ -549,6 +572,15 @@ inline bool Any(const std::vector<bool> a) {
   bool res = false;
   for (bool i : a) {
     res |= i;
+  }
+  return res;
+}
+
+template <typename Int>
+std::vector<Int> ArangeVector(Int start, Int end, Int step = 1) {
+  std::vector<Int> res;
+  for (Int i = start; i < end; i += step) {
+    res.push_back(i);
   }
   return res;
 }
