@@ -144,47 +144,6 @@ ProgramDesc GetLmMainProgram() {
   return main_prog;
 }
 
-TEST(StandaloneExecutor, run) {
-  auto place = phi::GPUPlace(0);
-  std::shared_ptr<ProgramDesc> p_startup_prog =
-      std::make_shared<ProgramDesc>(load_from_file("lm_startup_program"));
-  std::shared_ptr<ProgramDesc> p_main_prog =
-      std::make_shared<ProgramDesc>(GetLmMainProgram());
-
-  Scope scope;
-  std::shared_ptr<Job> startup_job = std::make_shared<Job>(Job("startup"));
-  StandaloneExecutor startup_exec(
-      place,
-      Plan(std::vector<std::shared_ptr<Job>>({startup_job}),
-           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>(
-               {{startup_job->Type(), p_startup_prog}})),
-      &scope);
-  startup_exec.Run({});
-
-  std::shared_ptr<Job> main_job = std::make_shared<Job>(Job("main"));
-  StandaloneExecutor exec(
-      place,
-      Plan(std::vector<std::shared_ptr<Job>>({main_job}),
-           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>(
-               {{main_job->Type(), p_main_prog}})),
-      &scope);
-  exec.Run({});
-  auto start = std::chrono::steady_clock::now();
-
-  for (size_t i = 0; i < 10; ++i) {
-    if (i % 200 == 0) {
-      std::cout << i << std::endl;
-    }
-
-    exec.Run({});
-  }
-
-  auto end = std::chrono::steady_clock::now();
-  std::chrono::duration<double> diff = end - start;
-
-  std::cout << "time cost " << diff.count() << std::endl;
-}
-
 TEST(InterpreterCore, skip_gc_vars) {
   auto place = phi::GPUPlace(0);
   ProgramDesc startup_prog = load_from_file("lm_startup_program");

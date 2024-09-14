@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle import pir
 from paddle.autograd.backward_utils import ValueDict
 from paddle.base.framework import auto_complete_op_role
 from paddle.distributed.passes.pass_base import PassContext, new_pass
@@ -367,10 +368,14 @@ def replace_moe_global_mesh_tensor(op):
 
 
 # pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(dist_program, dist_params_grads):
-    cur_rank = paddle.distributed.get_rank()
-
+def remove_other_rank_op_pass(dist_program, dist_params_grads, startup_program):
     _remove_other_rank_params_grads(dist_params_grads)
+    _remove_no_need_in_main(dist_program)
+    _remove_no_need_in_startup(startup_program, dist_program)
+
+
+def _remove_no_need_in_main(dist_program):
+    cur_rank = paddle.distributed.get_rank()
     for op in dist_program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
             can_delete = True
@@ -406,6 +411,26 @@ def remove_other_rank_op_pass(dist_program, dist_params_grads):
             lr = op.result(0)
             lr.replace_all_uses_with(lr_value)
             op.erase()
+
+
+def _remove_no_need_in_startup(startup_program, main_program):
+    # 1. vars used in main_program
+    main_program_var_names = []
+    for op in main_program.global_block().ops:
+        for var in op.operands_source():
+            if var.has_name:
+                main_program_var_names.append(var.name)
+        for var in op.results():
+            if var.has_name:
+                main_program_var_names.append(var.name)
+    # 2. remove var op not used in main_program
+    for op in startup_program.global_block().ops:
+        for var in op.operands_source():
+            if var.has_name and var.name not in main_program_var_names:
+                op.erase()
+    pm = pir.PassManager()
+    pm.add_pass('dead_code_elimination_pass', {})
+    pm.run(startup_program)
 
 
 # Pruning value not belong to cur rank

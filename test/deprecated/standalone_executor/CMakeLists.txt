@@ -14,8 +14,8 @@ set(STATIC_BUILD_TESTS test_standalone_cuda_graph_multi_stream_deprecated)
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
-    ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true)
+    ${STATIC_BUILD_TEST}_static_build_deprecated MODULES ${STATIC_BUILD_TEST}
+    ENVS FLAGS_new_executor_static_build=true)
 endforeach()
 
 set_tests_properties(test_standalone_executor_aot_choose_kernel_deprecated

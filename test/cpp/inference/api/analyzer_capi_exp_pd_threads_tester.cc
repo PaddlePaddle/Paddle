@@ -82,8 +82,8 @@ void threads_run(int thread_num) {
   std::vector<pthread_t> threads(thread_num);
   std::vector<RunParameter> params(thread_num);
 
-  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
-  std::vector<float> input(1 * 3 * 300 * 300, 0);
+  std::array<int32_t, 4> shapes = {1, 3, 224, 224};
+  std::vector<float> input(1 * 3 * 224 * 224, 0);
   for (int i = 0; i < thread_num; ++i) {
     params[i].predictor = PD_PredictorClone(predictor);
     params[i].shapes = shapes.data();
