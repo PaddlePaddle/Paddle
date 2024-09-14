@@ -117,7 +117,7 @@ class TestAutoParallelReLaunch(unittest.TestCase):
 
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(
-            file_dir, "auto_parallel_relaunch_model_deprecated.py"
+            file_dir, "auto_parallel_relaunch_model.py"
         )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":

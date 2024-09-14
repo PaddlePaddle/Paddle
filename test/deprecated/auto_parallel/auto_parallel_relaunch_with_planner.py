@@ -27,7 +27,7 @@ sys.path.append("../../auto_parallel")
 
 
 def train():
-    from auto_parallel_relaunch_model_deprecated import (
+    from auto_parallel_relaunch_model import (
         batch_generator_creator,
         mlp_pretrain_forward,
     )
