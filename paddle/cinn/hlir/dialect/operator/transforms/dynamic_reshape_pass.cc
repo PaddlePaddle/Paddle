@@ -80,9 +80,6 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
       op->operand_source(0), cinn_generate_shape.result(0));
 
   rewriter.ReplaceAllUsesWith(output, pd_reshape.result(0));
-  // if (with_xshape && op->num_results() == 2U) {
-  //   rewriter.ReplaceAllUsesWith(op->result(1), pd_reshape.result(1));
-  // }
   rewriter.EraseOp(op);
   return true;
 }
@@ -117,7 +114,7 @@ class DynamicSqueezeOpPattern
         shape_analysis.GetShapeOrDataForValue(op.axis());
     PADDLE_ENFORCE_EQ(axis_shape_expr.data().has_value(),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      ::common::errors::PreconditionNotMet(
                           "The axis_shape_expr data must have a value."));
 
     return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);
@@ -138,7 +135,7 @@ class DynamicUnsqueezeOpPattern
         shape_analysis.GetShapeOrDataForValue(op.axis());
     PADDLE_ENFORCE_EQ(axis_shape_expr.data().has_value(),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      ::common::errors::PreconditionNotMet(
                           "The axis_shape_expr data must have a value."));
 
     return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);

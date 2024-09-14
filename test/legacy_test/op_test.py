@@ -2064,8 +2064,13 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
-        if os.getenv("FLAGS_enable_pir_in_executor") or os.getenv(
-            "FLAGS_enable_pir_api"
+        if (
+            os.getenv("FLAGS_enable_pir_in_executor")
+            or os.getenv("FLAGS_enable_pir_api")
+            or get_flags("FLAGS_enable_pir_in_executor")[
+                "FLAGS_enable_pir_in_executor"
+            ]
+            or get_flags("FLAGS_enable_pir_api")["FLAGS_enable_pir_api"]
         ):
             return
 

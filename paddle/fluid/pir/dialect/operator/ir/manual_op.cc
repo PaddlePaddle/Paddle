@@ -861,7 +861,8 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
       trans_y,
       activation,
       &meta_out,
-      activation == "none" ? nullptr : &meta_reserve_space);
+      activation == "none" ? nullptr : &meta_reserve_space,
+      phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -3773,7 +3774,8 @@ bool IncrementOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(x());
-  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      out(), symbol::TensorShapeOrDataDimExprs{operand_shape_or_data.shape()});
   return true;
 }
 
@@ -3978,7 +3980,8 @@ bool Increment_Op::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(x());
-  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      out(), symbol::TensorShapeOrDataDimExprs{operand_shape_or_data.shape()});
   return true;
 }
 

@@ -62,6 +62,7 @@ BACKENDS_BLACK_LIST = [
     "full",
     "partial_send",
     "push_dense",
+    "comm_init_all",
 ]
 
 # prim op with one input and one output, with no attribute
@@ -92,7 +93,10 @@ BINARY_PRIM_VJP_OPS = [
 
 OTHER_PRIM_VJP_OPS = [
     'assign_grad',
+    'atan_grad',
+    'atan2_grad',
     'cumsum_grad',
+    'cumprod_grad',
     'sum_grad',
     'cast_grad',
     'reshape_grad',
@@ -101,10 +105,12 @@ OTHER_PRIM_VJP_OPS = [
     'transpose_grad',
     'concat_grad',
     'expand_grad',
+    'expm1_grad',
     'gather_grad',
     'gather_nd_grad',
     'pad_grad',
     'prod_grad',
+    'put_along_axis_grad',
     'max_grad',
     'masked_select_grad',
     'scale_grad',
@@ -115,6 +121,7 @@ OTHER_PRIM_VJP_OPS = [
     'tile_grad',
     'topk_grad',
     'unsqueeze_grad',
+    'where_grad',
 ]
 
 # whole vjp list of primitive op vjp
@@ -395,12 +402,12 @@ def process_backward_invoke_info(apis):
             api['invoke']['args'] = ', '.join(args)
 
 
-def process_optional_output_info(apis):
+def process_optional_inplace_output_info(apis):
     for api in apis:
         inputs_dict = to_named_dict(api['inputs'])
         for output in api['outputs']:
             if not api['is_fwd']:
-                output['optional'] = False
+                return
             else:
                 if (
                     api.get("inplace", None)
@@ -523,7 +530,7 @@ def gen(
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
-    process_optional_output_info(apis)
+    process_optional_inplace_output_info(apis)
 
     apis = [
         {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}

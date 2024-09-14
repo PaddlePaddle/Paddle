@@ -15,5 +15,3 @@ elseif(WITH_ROCM)
     SRCS cudnn_desc_test.cc
     DEPS phi common)
 endif()
-
-cc_library(gpu_resource_pool SRCS gpu_resource_pool.cc)

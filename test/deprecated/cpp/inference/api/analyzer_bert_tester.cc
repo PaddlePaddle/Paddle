@@ -62,19 +62,6 @@ TEST(Analyzer_bert, profile_mkldnn_bf16) {
 }
 #endif
 
-// Check the fuse status
-TEST(Analyzer_bert, fuse_statis) {
-#if !defined(_WIN32)
-  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
-#endif
-  auto cfg(SetConfig());
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  LOG(INFO) << "num_ops: " << num_ops;
-}
-
 TEST(Analyzer_bert, compare) {
 #if !defined(_WIN32)
   setenv("NVIDIA_TF32_OVERRIDE", "0", 1);

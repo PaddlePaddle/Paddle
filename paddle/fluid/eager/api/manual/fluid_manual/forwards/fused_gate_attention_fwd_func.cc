@@ -43,9 +43,7 @@ fused_gate_attention_dygraph_function(
     const paddle::Tensor& OutLinearBias,
     const paddle::framework::AttributeMap& attr_map) {
   phi::RecordEvent dygraph_entrance_record_event(
-      "fused_gate_attention dygraph",
-      paddle::platform::TracerEventType::Operator,
-      1);
+      "fused_gate_attention dygraph", phi::TracerEventType::Operator, 1);
   VLOG(3) << "Running Eager Forward Op: fused_gate_attention";
   // Dygraph Forward Pass
 
@@ -71,6 +69,14 @@ fused_gate_attention_dygraph_function(
 
     auto NEW_Query =
         egr::AmpAutoCast("Query", Query, amp_dst_dtype, "fused_gate_attention");
+    auto NEW_Key =
+        ((Key.initialized())
+             ? ((Query.data() == Key.data())
+                    ? NEW_Query
+                    : egr::AmpAutoCast(
+                          "Key", Key, amp_dst_dtype, "fused_gate_attention"))
+             : Key);
+
     auto NEW_SrcMask = egr::AmpAutoCast(
         "SrcMask", SrcMask, amp_dst_dtype, "fused_gate_attention");
     auto NEW_OutLinearWeight = egr::AmpAutoCast("OutLinearWeight",
@@ -79,10 +85,6 @@ fused_gate_attention_dygraph_function(
                                                 "fused_gate_attention");
     auto NEW_OutLinearBias = egr::AmpAutoCast(
         "OutLinearBias", OutLinearBias, amp_dst_dtype, "fused_gate_attention");
-    auto NEW_Key = ((Key.initialized())
-                        ? egr::AmpAutoCast(
-                              "Key", Key, amp_dst_dtype, "fused_gate_attention")
-                        : Key);
     auto NEW_QueryWeight =
         ((QueryWeight.initialized()) ? egr::AmpAutoCast("QueryWeight",
                                                         QueryWeight,
@@ -150,7 +152,14 @@ fused_gate_attention_dygraph_function(
        {"SrcMask", egr::EagerUtils::TrySyncToVars(SrcMask)},
        {"OutLinearWeight", egr::EagerUtils::TrySyncToVars(OutLinearWeight)},
        {"OutLinearBias", egr::EagerUtils::TrySyncToVars(OutLinearBias)}};
-  if (Key.initialized()) ins["Key"] = egr::EagerUtils::TrySyncToVars(Key);
+  if (Key.initialized()) {
+    if (Query.data() == Key.data()) {
+      ins["Key"] = ins["Query"];
+    } else {
+      ins["Key"] = egr::EagerUtils::TrySyncToVars(Key);
+    }
+  }
+
   if (QueryWeight.initialized())
     ins["QueryWeight"] = egr::EagerUtils::TrySyncToVars(QueryWeight);
   if (KeyWeight.initialized())
@@ -272,7 +281,7 @@ fused_gate_attention_dygraph_function(
   {
     phi::RecordEvent node_creation_record_event(
         "fused_gate_attention node_creation",
-        paddle::platform::TracerEventType::Operator,
+        phi::TracerEventType::Operator,
         1);
     egr::AutogradMeta* p_autograd_QueryTransposeOut =
         egr::EagerUtils::autograd_meta(&QueryTransposeOut);

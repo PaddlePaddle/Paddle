@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
+import functools
 import math
+import operator
 from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
@@ -22,7 +24,7 @@ from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
-from ...base.data_feeder import check_variable_and_dtype
+from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
     _current_expected_place,
     core,
@@ -110,7 +112,8 @@ def dice_loss(
         input.shape[:-1] == label.shape[:-1]
     ), "All dimensions should be equal except the last one."
     assert (
-        input.numel() > 0 and label.numel() > 0
+        functools.reduce(operator.mul, input.shape) != 0
+        and functools.reduce(operator.mul, label.shape) != 0
     ), "Any dimension of input and label cannot be equal to 0."
 
     label = paddle.squeeze(label, [-1])
@@ -842,6 +845,19 @@ def binary_cross_entropy_with_logits(
         )
 
     if in_dynamic_or_pir_mode():
+        if in_pir_mode():
+            check_type(
+                logit,
+                'logit',
+                paddle.pir.Value,
+                'binary_cross_entropy_with_logits',
+            )
+            check_type(
+                label,
+                'label',
+                paddle.pir.Value,
+                'binary_cross_entropy_with_logits',
+            )
         one = _C_ops.full(
             [1],
             1.0,
@@ -4546,7 +4562,7 @@ def adaptive_log_softmax_with_loss(
     output = paddle.zeros([batch_size], dtype=input.dtype)
     gather_inds = paddle.empty([batch_size], dtype=label.dtype)
 
-    cutoff_values = [0] + cutoffs
+    cutoff_values = [0, *cutoffs]
     for i in range(len(cutoff_values) - 1):
         low_idx = cutoff_values[i]
         high_idx = cutoff_values[i + 1]

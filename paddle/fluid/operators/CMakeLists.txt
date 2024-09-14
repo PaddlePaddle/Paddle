@@ -84,16 +84,10 @@ op_library(quantize_linear_op DEPS phi common)
 op_library(save_combine_op DEPS string_array phi common)
 op_library(load_combine_op DEPS string_array)
 
-if (WITH_GPU OR WITH_ROCM)
-    op_library(activation_op SRCS activation_op.cc activation_op.kps soft_relu_op.cu DEPS ${OP_HEADER_DEPS})
-elseif (WITH_XPU_KP)
-    op_library(activation_op SRCS activation_op.cc activation_op.kps DEPS ${OP_HEADER_DEPS})
-else()
-    op_library(activation_op SRCS activation_op.cc DEPS ${OP_HEADER_DEPS})
-endif()
+op_library(activation_op SRCS activation_op.cc DEPS ${OP_HEADER_DEPS})
 
 if (WITH_GPU OR WITH_ROCM)
-    op_library(sync_batch_norm_op DEPS processgroup_comm_utils)
+    op_library(sync_batch_norm_op DEPS processgroup_comm_utils phi common)
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})

@@ -34,6 +34,7 @@ from paddle.base.dygraph import no_grad
 from paddle.base.dygraph.base import (
     _convert_into_variable,
     in_declarative_mode,  # noqa: F401
+    in_sot_simulation_mode,
     in_to_static_mode,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
@@ -1525,7 +1526,7 @@ class Layer:
             and (not self._forward_post_hooks)
             and (not self._built)
             and in_dygraph_mode()
-            and (not in_profiler_mode())
+            and (not in_profiler_mode() or in_sot_simulation_mode())
         ):
             self._build_once(*inputs, **kwargs)
             return self.forward(*inputs, **kwargs)
@@ -2224,16 +2225,30 @@ class Layer:
                 t.set(ndarray, place)
 
             try:
-                executor = Executor(_get_device())._default_executor
                 # restore parameter states
-                core._create_loaded_parameter(
-                    [param for param, state in matched_param_state],
-                    global_scope(),
-                    executor,
-                )
+                if in_pir_mode():
+                    executor = Executor(
+                        paddle.base.framework._current_expected_place_()
+                    )._default_executor
+                    paddle.base.libpaddle.pir.create_loaded_parameter(
+                        [param for param, state in matched_param_state],
+                        global_scope(),
+                        executor,
+                    )
+                else:
+                    executor = Executor(_get_device())._default_executor
+                    core._create_loaded_parameter(
+                        [param for param, state in matched_param_state],
+                        global_scope(),
+                        executor,
+                    )
                 for param, state in matched_param_state:
                     _set_var(param, state)
             except ValueError as e:
+                raise ValueError(
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                )
+            except TypeError as e:
                 raise ValueError(
                     "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
@@ -2484,11 +2499,15 @@ class Layer:
 
         NOTE(dev): This is a very low level API and only for inner developer.
         """
-        startup_program = Program()
-        for param in self.parameters():
-            param._create_init_op(startup_program.global_block())
-
-        return startup_program
+        startup_program = paddle.base.Program()
+        main_program = paddle.base.Program()
+        with paddle.base.program_guard(main_program, startup_program):
+            for param in self.parameters():
+                param._create_init_op(startup_program.global_block())
+        if paddle.framework.use_pir_api():
+            return main_program
+        else:
+            return startup_program
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

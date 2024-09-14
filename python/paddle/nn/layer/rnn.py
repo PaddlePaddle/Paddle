@@ -169,7 +169,7 @@ def _maybe_copy(state: Tensor, new_state: Tensor, step_mask: Tensor) -> Tensor:
 
 
 def _transpose_batch_time(x: Tensor) -> Tensor:
-    perm = [1, 0] + list(range(2, len(x.shape)))
+    perm = [1, 0, *list(range(2, len(x.shape)))]
     return paddle.transpose(x, perm)
 
 
@@ -650,7 +650,7 @@ class RNNCellBase(Layer):
         class Shape:
             def __init__(self, shape):
                 self.shape = (
-                    list(shape) if shape[0] == -1 else ([-1] + list(shape))
+                    list(shape) if shape[0] == -1 else ([-1, *list(shape)])
                 )
 
         # nested structure of shapes

@@ -441,7 +441,7 @@
   attrs:
     data_format: data_layout
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : bincount
   inputs :
@@ -541,7 +541,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : ceil
   backward : ceil_grad
@@ -668,7 +668,7 @@
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
              bool force_fp32_output = false,
-             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false, str mkldnn_data_type = "float32"]
   get_expected_kernel_type :
     conv2d : GetConvExpectedKernelType
 
@@ -1639,6 +1639,13 @@
     dropout1_out: Dropout1Out
     dropout2_out: Dropout2Out
 
+- op : fused_gate_attention
+  backward: fused_gate_attention_grad
+  inputs:
+    {query : Query, key : Key, query_weight : QueryWeight, key_weight : KeyWeight, value_weight : ValueWeight, qkv_weight : QKVWeight, nonbatched_bias : NonbatchedBias, src_mask : SrcMask, gate_weight : GateWeight, gate_bias : GateBias, out_linear_weight : OutLinearWeight, out_linear_bias : OutLinearBias}
+  outputs:
+    {query_transpose_out : QueryTransposeOut, key_transpose_out : KeyTransposeOut, value_transpose_out : ValueTransposeOut, qkv_transpose_out : QKVTransposeOut, softmax_out : SoftmaxOut, softmax_lse : SoftmaxLse, fmha_out : FMHAOut, gate_out : GateOut, out : Out}
+
 - op : fused_gemm_epilogue
   inputs:
     {x : X, y : Y, bias : Bias}
@@ -1650,6 +1657,26 @@
     {x : X, y : Y, reserve_space: ReserveSpace, out_grad : DOut}
   outputs :
     {x_grad : DX, y_grad : DY, bias_grad : DBias}
+
+- op : fused_multi_transformer
+  inputs:
+    {x : X, ln_scales : LnScale, ln_biases : LnBias, qkv_weights : QKVW, qkv_biases : QKVBias, cache_kvs : CacheKV,
+    pre_caches : PreCaches, rotary_tensor : RotaryPosEmb, beam_offset : BeamCacheOffset, time_step : TimeStep,
+    seq_lengths : SeqLengths, src_mask : SrcMask, out_linear_weights : OutLinearW, out_linear_biases : OutLinearBias,
+    ffn_ln_scales : FFNLnScale, ffn_ln_biases : FFNLnBias, ffn1_weights : FFN1Weight, ffn1_biases : FFN1Bias,
+    ffn2_weights : FFN2Weight, ffn2_biases : FFN2Bias}
+  outputs:
+    {cache_kv_outs : CacheKVOut, out : Out}
+
+- op : fused_multi_transformer_int8
+  inputs:
+    {x : X, ln_scale : LnScale, ln_bias : LnBias, qkv_w : QKVW, qkv_bias : QKVBias, cache_kv : CacheKV,
+    time_step : TimeStep, src_mask : SrcMask, out_linear_w : OutLinearW, out_linear_bias : OutLinearBias,
+    ffn_ln_scale : FFNLnScale, ffn_ln_bias : FFNLnBias, ffn1_weight : FFN1Weight, ffn1_bias : FFN1Bias,
+    ffn2_weight : FFN2Weight, ffn2_bias : FFN2Bias, qkv_out_scale : QKVOutScale, out_linear_out_scale : OutLinearOutScale,
+    ffn1_out_scale : FFN1OutScale, ffn2_out_scale : FFN2OutScale}
+  outputs:
+    {cache_kv_out : CacheKVOut, out : Out}
 
 - op : fused_transpose
   inputs:
@@ -2147,6 +2174,20 @@
   outputs:
     {rpn_rois : RpnRois, rpn_roi_probs : RpnRoiProbs, rpn_rois_num : RpnRoisNum}
 
+- op : legacy_matmul (matmul)
+  backward : legacy_matmul_grad (matmul_grad), legacy_matmul_double_grad (matmul_grad_grad)
+  inputs :
+    {x : X, y : Y, out_grad : DOut, x_grad_grad : DDX, y_grad_grad : DDY}
+  attrs :
+    {transpose_x : transpose_X, transpose_y : transpose_Y}
+  outputs :
+    {out : Out, x_grad : DX, y_grad : DY}
+  extra :
+    attrs : [bool use_quantizer = false, str mkldnn_data_type = "float32",
+             float Scale_x = 1.0f, float Scale_y = 1.0f,
+             float Scale_out = 1.0f, bool force_fp32_output = false]
+  complex_promote : [X, Y]
+
 - op : legacy_nearest_interp (nearest_interp)
   backward : legacy_nearest_interp_grad (nearest_interp_grad)
   inputs :
@@ -2360,7 +2401,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool force_fp32_output = false]
   complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
@@ -3022,7 +3063,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str mkldnn_data_type = "float32"]
 
 - op : relu6
   backward : relu6_grad
@@ -3209,7 +3250,7 @@
       data_type : float
       support_tensor : false
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : scatter
   backward : scatter_grad
@@ -3378,7 +3419,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str mkldnn_data_type = "float32"]
 
 - op : sign
   backward : sign_grad
@@ -3655,7 +3696,7 @@
   attrs:
     { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   int_array:
       axis :
         data_type : int
@@ -4076,12 +4117,6 @@
   outputs :
     out: Out
 
-- op: c_reducescatter
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
 - op: c_scatter
   inputs :
     x : X
@@ -4105,6 +4140,8 @@
     {inference : Inference, label : Label, seq_length : SeqLength}
   outputs:
     {precision : Precision, recall : Recall, f1_score : F1-Score, num_infer_chunks : NumInferChunks, num_label_chunks : NumLabelChunks, num_correct_chunks : NumCorrectChunks}
+
+- op: comm_init_all(c_comm_init_all)
 
 - op: crf_decoding
   inputs:
@@ -4181,12 +4218,6 @@
     multi_fpn_rois : MultiFpnRois
     multi_level_rois_num: MultiLevelRoIsNum
     restore_index: RestoreIndex
-
-- op: distributed_fused_lamb
-  inputs:
-    {param: Param, grad: Grad, fp32_fused_param: FP32FusedParam, fp32_fused_grad: FP32FusedGrad, fp16_fused_param: FP16FusedParam, fp16_fused_grad: FP16FusedGrad, moment1: Moment1, moment2: Moment2, beta1pow: Beta1Pow, beta2pow: Beta2Pow, fused_param_offsets: FusedParamOffsets, fp32_shard_fused_param_offsets: FP32ShardFusedParamOffsets, fp16_shard_fused_param_offsets: FP16ShardFusedParamOffsets, param_info: ParamInfo, param_order: ParamOrder, learning_rate: LearningRate, global_scale: GlobalScale}
-  outputs:
-    {param_out : ParamOut, fp32_fused_param_out: FP32FusedParamOut, fp16_fused_param_out: FP16FusedParamOut, fp32_acc_fused_grad: FP32AccFusedGrad, fp16_acc_fused_grad: FP16AccFusedGrad, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1pow_out: Beta1PowOut, beta2pow_out: Beta2PowOut, found_inf: FoundInf, acc_step: AccStep, stop_update: StopUpdate, step: Step}
 
 - op: distributed_fused_lamb_init
   inputs:
@@ -4403,17 +4434,6 @@
     x : X
   outputs :
     out : Out
-
-- op: moe
-  inputs:
-    x: X
-    gate: Gate
-    bmm0: Bmm0
-    bias0: Bias0
-    bmm1: Bmm1
-    bias1: Bias1
-  outputs:
-    out: Out
 
 - op: nce
   backward: nce_grad

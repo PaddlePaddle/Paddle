@@ -35,10 +35,9 @@ void FullKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   out->Resize(common::make_ddim(shape.GetData()));
-  int numel = out->numel();
   dev_ctx.template Alloc<T>(out);
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
-  if (numel > 0) {
+  if (out->numel() > 0) {
     int r = xpu::constant(dev_ctx.x_context(),
                           out_data,
                           out->numel(),
@@ -154,7 +153,8 @@ PD_REGISTER_KERNEL(full_batch_size_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 

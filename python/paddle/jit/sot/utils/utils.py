@@ -23,7 +23,7 @@ import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
 from enum import Enum
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -44,9 +44,13 @@ from .paddle_api_config import (
 )
 
 if TYPE_CHECKING:
+    from paddle._typing import NestedStructure
     from paddle.framework import Program
 
 T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
 ConstTypes = (int, float, str, bool, type(None))
 
 
@@ -73,38 +77,46 @@ class NameGenerator:
         return name.startswith(self.prefix)
 
 
-class TmpNameRecords:
+class SymbolRegistry:
     def __init__(self):
-        self.name_generator = NameGenerator(prefix="_sot_tmp_")
+        self.symbol_generator = NameGenerator(prefix="___t_")
         self.tmp_names_record = OrderedDict()
+        self.declared_symbols: set[str] = set()
+        self.symbol_table = {}
 
-    def next_name(self):
-        return self.name_generator.next()
+    def next_symbol(self) -> str:
+        return self.symbol_generator.next()
 
-    def add_tmp_var(self, expr):
-        if expr in self.tmp_names_record:
-            return self.tmp_names_record[expr]
-        else:
-            tmp_name = self.next_name()
-            self.tmp_names_record[expr] = tmp_name
-            return tmp_name
+    def request_symbol(self, expr: str) -> str:
+        if expr in self.symbol_table:
+            return self.symbol_table[expr]
+        symbol = self.next_symbol()
+        self.symbol_table[expr] = symbol
+        return symbol
+
+    def gen_expr(self, expr: str, gen_expr_fn):
+        symbol = self.symbol_table[expr]
+        if symbol in self.declared_symbols:
+            return symbol
+        self.declared_symbols.add(symbol)
+        return f"({symbol} := ({gen_expr_fn()}))"
 
 
-_tmp_name_records = TmpNameRecords()
+_symbol_registry = SymbolRegistry()
 
 
 @contextmanager
-def tmp_name_guard():
-    global _tmp_name_records
-    old = _tmp_name_records
-    _tmp_name_records = TmpNameRecords()
+def switch_symbol_registry():
+    global _symbol_registry
+    original_registry = _symbol_registry
+    _symbol_registry = SymbolRegistry()
     yield
-    _tmp_name_records = old
+    _symbol_registry = original_registry
 
 
-def current_tmp_name_records():
-    global _tmp_name_records
-    return _tmp_name_records
+def current_symbol_registry():
+    global _symbol_registry
+    return _symbol_registry
 
 
 class ResumeFnNameFactory(metaclass=Singleton):
@@ -117,21 +129,25 @@ class ResumeFnNameFactory(metaclass=Singleton):
 
 
 def log(level, *args):
-    cur_level = ENV_SOT_LOG_LEVEL.get()
+    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
     if level <= cur_level:
-        print(*args, end="")
+        print(*args, end="", flush=True)
 
 
 def log_do(level, fn):
-    cur_level = ENV_SOT_LOG_LEVEL.get()
+    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
     if level <= cur_level:
         fn()
 
 
 def log_format(level, str, *args):
-    cur_level = ENV_SOT_LOG_LEVEL.get()
+    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
     if level <= cur_level:
-        print(str.format(*args), end="")
+        print(str.format(*args), end="", flush=True)
+
+
+def log_enabled(level):
+    return level <= ENV_SOT_LOG_LEVEL.get_with_cache()
 
 
 def no_eval_frame(func):
@@ -199,7 +215,12 @@ def is_break_graph_api(func):
     return func in break_graph_set
 
 
-def map_if(*structures, pred, true_fn, false_fn):
+def map_if(
+    *structures: NestedStructure[T1],
+    pred: Callable[[T1], bool],
+    true_fn: Callable[[T1], T2],
+    false_fn: Callable[[T1], T3],
+) -> NestedStructure[T2 | T3]:
     def replace(*args):
         if pred(*args):
             return true_fn(*args)

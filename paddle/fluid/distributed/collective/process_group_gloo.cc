@@ -26,10 +26,11 @@
 
 #include <gloo/reduce.h>
 
+#include "glog/logging.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/process_group_gloo.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle::distributed {
 
@@ -727,6 +728,36 @@ phi::distributed::GlooCommContext* ProcessGroupGloo::GetCommContext() {
                     nullptr,
                     common::errors::Unavailable("GlooCommContext is nullptr"));
   return comm_context;
+}
+
+std::vector<char> ProcessGroupGloo::GlooStore::get(const std::string& key) {
+  VLOG(3) << "GlooStore::get";
+  auto value = _store->get(key);
+  return std::vector<char>(value.begin(), value.end());
+}
+
+void ProcessGroupGloo::GlooStore::wait(const std::vector<std::string>& keys) {
+  VLOG(3) << "GlooStore::wait";
+  for (auto& key : keys) {
+    _store->wait(key);
+  }
+}
+
+void ProcessGroupGloo::GlooStore::set(const std::string& key,
+                                      const std::vector<char>& value) {
+  VLOG(3) << "GlooStore::set";
+  std::vector<uint8_t> tmp(value.begin(), value.end());
+  _store->set(key, tmp);
+}
+
+void ProcessGroupGloo::GlooStore::wait(
+    const std::vector<std::string>& keys,
+    const std::chrono::milliseconds& timeout) {
+  VLOG(3) << "GlooStore::wait";
+  for (auto& key : keys) {
+    _store->wait(key);
+  }
+  // wait(keys);
 }
 
 }  // namespace paddle::distributed

@@ -58,7 +58,7 @@ inline void WriteToFile(const std::string& filepath,
   VLOG(4) << "Write to " << filepath;
   std::ofstream of(filepath);
   PADDLE_ENFORCE(of.is_open(),
-                 phi::errors::Unavailable("Failed to open %s", filepath));
+                 ::common::errors::Unavailable("Failed to open %s", filepath));
   of << content;
   of.close();
 }
