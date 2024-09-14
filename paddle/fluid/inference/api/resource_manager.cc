@@ -222,7 +222,11 @@ void GPUContextResource::DestroyBlasHandle() {
 }
 
 void GPUContextResource::InitBlasLtHandle() {
+#ifdef PADDLE_WITH_HIP
+  phi::InitBlasLtHandle(reinterpret_cast<void**>(&blaslt_handle_));
+#else  // PADDLE_WITH_CUDA
   phi::InitBlasLtHandle(&blaslt_handle_);
+#endif
 }
 
 void GPUContextResource::DestroyBlasLtHandle() {

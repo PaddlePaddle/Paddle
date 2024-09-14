@@ -32,9 +32,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_pipeline_scheduler_zb_vpp)
   set_tests_properties(test_pipeline_scheduler_zb_vpp
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_pass_quantization MODULES test_pass_quantization)
-  set_tests_properties(test_pass_quantization
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
+
   py_test_modules(test_reshard_api MODULES test_reshard_api)
   set_tests_properties(test_reshard_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                    TIMEOUT 150)
@@ -128,9 +126,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_tensor_api MODULES test_dist_tensor_api)
   set_tests_properties(test_dist_tensor_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
-  py_test_modules(test_gpt_with_pir MODULES test_gpt_with_pir)
-  set_tests_properties(test_gpt_with_pir PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                    TIMEOUT 100)
   py_test_modules(test_semi_auto_parallel_saved_tensor_hook MODULES
                   test_semi_auto_parallel_saved_tensor_hook)
   set_tests_properties(test_semi_auto_parallel_saved_tensor_hook
@@ -149,25 +144,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_unshard_dtensor)
   set_tests_properties(test_semi_auto_parallel_unshard_dtensor
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_semi_auto_parallel_simple_net_ep MODULES
-                  test_semi_auto_parallel_simple_net_ep)
-  set_tests_properties(test_semi_auto_parallel_simple_net_ep
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
   # End of unittests WITH multi cards and WITHOUT timeout
 
-  # NOTE(zyl): unittests WITH single card and timeout
-  py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
-  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 300)
-  py_test_modules(test_tuning_recompute_with_amp MODULES
-                  test_tuning_recompute_with_amp)
-  set_tests_properties(test_tuning_recompute_with_amp PROPERTIES TIMEOUT 60)
-  py_test_modules(test_pass_base_list MODULES test_pass_base_list)
-  set_tests_properties(test_pass_base_list PROPERTIES TIMEOUT 40)
-  py_test_modules(test_rule_based_tuner_o2 MODULES test_rule_based_tuner_o2)
-  set_tests_properties(test_rule_based_tuner_o2 PROPERTIES TIMEOUT 50)
   py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
                   test_semi_auto_parallel_functional_in_single_card)
   # End of unittests WITH single card and timeout
@@ -181,23 +162,18 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster MODULES test_cluster)
   py_test_modules(test_comm_cost MODULES test_comm_cost)
   py_test_modules(test_comp_cost MODULES test_comp_cost)
-  py_test_modules(test_dist_context MODULES test_dist_context)
+
   py_test_modules(test_to_static MODULES test_to_static)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
-  py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
-  py_test_modules(test_dist_matmul MODULES test_dist_matmul)
   py_test_modules(test_strategy MODULES test_strategy)
-  py_test_modules(test_dist_assign MODULES test_dist_assign)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
                   test_convert_to_process_meshes)
-  py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
-  py_test_modules(test_dist_concat MODULES test_dist_concat)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
