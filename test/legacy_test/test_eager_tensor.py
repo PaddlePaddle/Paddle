@@ -1275,7 +1275,7 @@ class TestEagerTensor(unittest.TestCase):
 
                     self.assertIn("data", interface)
                     self.assertIsInstance(interface["data"], tuple)
-                    self.assertEqual(len(interface["data"][0]), 2)
+                    self.assertEqual(len(interface["data"]), 2)
 
                     self.assertIn("version", interface)
                     self.assertEqual(interface["version"], 2)
@@ -1625,6 +1625,19 @@ class TestEagerTensorGradNameValue(unittest.TestCase):
         b.backward()
         # Note, for new dygraph, there are no generated grad name, so we skip the name check.
         self.assertIsNotNone(a._grad_value())
+
+
+class TestDenseTensorToTensor(unittest.TestCase):
+    def test_same_place_data_ptr_consistency(self):
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            x = paddle.rand([3, 5]).to(device=place)
+            x_dense = x.get_tensor()
+            y = paddle.to_tensor(x_dense, place=place)
+
+            self.assertEqual(x.data_ptr(), y.data_ptr())
 
 
 if __name__ == "__main__":
