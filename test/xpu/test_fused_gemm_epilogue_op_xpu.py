@@ -201,7 +201,7 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
 
     class TestFuseGemmEpilogueOp5(TestFuseGemmBase):
         def init_datas_shape_and_attrs(self):
-            self.x_shape = [4, 2, 2, 8]
+            self.x_shape = [2, 2, 4, 8]
             self.y_shape = [4, 128]
             self.bias_shape = [
                 128,
