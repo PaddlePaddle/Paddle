@@ -77,6 +77,7 @@ def record_program_ops_post_hook(layer, inputs, outputs):
 
 # mesh, config: input_spec
 def to_distributed(model, mesh, config):
+
     # # # step1: register pre-hooks and post-hooks, thus recording corresponding static ops in following paddle.jit.to_static
     for layer in model.sublayers():
         pre_hook_helper = layer.register_forward_pre_hook(
