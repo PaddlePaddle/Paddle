@@ -1275,7 +1275,7 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
   if (a_mod && b_i) {
     VLOG(6) << "Simplify sequential mod";
     auto* a_b_i = a_mod->b().As<IntImm>();
-    if (a_b_i->value != 0 && a_b_i->value % b_i->value == 0) {
+    if (a_b_i && a_b_i->value != 0 && a_b_i->value % b_i->value == 0) {
       auto e = SimplifyMod(Mod::Make(a_mod->a(), b_i));
       VLOG(6) << "Reduce Mod from " << u << " to " << e;
       return e;

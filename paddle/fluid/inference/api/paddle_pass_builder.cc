@@ -319,10 +319,6 @@ void GpuPassStrategy::EnableMKLDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
 }
 
-void GpuPassStrategy::EnableMkldnnQuantizer() {
-  LOG(ERROR) << "GPU not support MKL-DNN quantization";
-}
-
 void GpuPassStrategy::EnableMkldnnBfloat16() {
   LOG(ERROR) << "GPU not support MKL-DNN bfloat16";
 }
@@ -394,17 +390,6 @@ void CpuPassStrategy::EnableMKLDNN() {
 void CpuPassStrategy::DisableMKLDNN() {
   ClearPasses();
   passes_.assign(CpuBasicPasses.begin(), CpuBasicPasses.end());
-}
-
-void CpuPassStrategy::EnableMkldnnQuantizer() {
-#ifdef PADDLE_WITH_DNNL
-  if (!use_mkldnn_quantizer_) {
-    passes_.emplace_back("cpu_quantize_placement_pass");
-  }
-  use_mkldnn_quantizer_ = true;
-#else
-  use_mkldnn_quantizer_ = false;
-#endif
 }
 
 void CpuPassStrategy::EnableMkldnnBfloat16() {

@@ -319,6 +319,71 @@ void _Var_::Verify() const {
                         "A valid name is required to identify the variable."));
 }
 
+Expr IterMark::Make(const Expr &source, const Expr &extent) {
+  auto *n = make_shared<IterMark>();
+  n->source = source;
+  n->extent = extent;
+  n->set_type(source.type());
+  return Expr(n);
+}
+
+IterMark &IterMark::operator=(const IterMark &other) {
+  this->set_type(other.type());
+  source = other.source;
+  extent = other.extent;
+  return *this;
+}
+Expr IterSplit::Make(const Expr &source,
+                     const Expr &lower_factor,
+                     const Expr &extent,
+                     const Expr &scale) {
+  auto *n = make_shared<IterSplit>();
+  n->set_type(source.type());
+  n->source = source;
+  n->lower_factor = lower_factor;
+  n->extent = extent;
+  n->scale = scale;
+  return Expr(n);
+}
+
+Expr IterSplit::Make(const Expr &source) {
+  auto *n = make_shared<IterSplit>();
+  auto source_mark = source.As<IterMark>();
+  n->set_type(source.type());
+  n->source = source;
+  n->extent = source_mark->extent;
+  n->lower_factor = One(source.type());
+  n->scale = One(source.type());
+  return Expr(n);
+}
+
+Expr IterSplit::Make(const Expr &source, const Expr &scale) {
+  auto *n = make_shared<IterSplit>();
+  auto source_mark = source.As<IterMark>();
+  n->set_type(source.type());
+  n->source = source;
+  n->extent = source_mark->extent;
+  n->lower_factor = One(source.type());
+  n->scale = scale;
+  return Expr(n);
+}
+IterSplit &IterSplit::operator=(const IterSplit &other) {
+  this->set_type(other.type());
+  source = other.source;
+  lower_factor = other.lower_factor;
+  extent = other.extent;
+  scale = other.scale;
+  return *this;
+}
+
+Expr IterSum::Make(const std::vector<Expr> &args, const Expr &base) {
+  auto *n = make_shared<IterSum>();
+  n->set_type(base.type());
+  n->args = std::move(args);
+  n->base = base;
+  return Expr(n);
+}
+
 void Mul::Verify() const { BinaryNodeVerify(a(), b(), "Mul"); }
 
 Expr For::Make(Var loop_var,

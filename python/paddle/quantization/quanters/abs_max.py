@@ -216,9 +216,44 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
 
         return quant_out
 
+    def pir_forward(self, input):
+
+        state = self._state if self.training else None
+        accum = self._accum if self.training else None
+
+        (
+            out1,
+            out2,
+            out3,
+            out4,
+        ) = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
+            input,
+            self._scale,
+            accum,
+            state,
+            self._moving_rate,
+            self._bit_length,
+            not self.training,
+            1,
+        )
+
+        # TODO, need to check this modify can work correctly in PIR mode
+        # there is no `name` attribute of Value in PIR mode
+        # so, directly return quant_out in pir mode
+        quant_out = out1
+        _C_ops.assign_out_(out2, self._scale)
+
+        if self.training:
+            _C_ops.assign_out_(out3, state)
+        if self.training:
+            _C_ops.assign_out_(out4, accum)
+        return quant_out
+
     def forward(self, input):
         if paddle.in_dynamic_mode():
             return self.dynamic_forward(input)
+        elif paddle.base.framework.in_pir_mode():
+            return self.pir_forward(input)
         else:
             return self.static_forward(input)
 

@@ -56,6 +56,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
 
 COMMON_DECLARE_bool(cinn_specify_input_dynamic_dim);
 COMMON_DECLARE_string(cinn_input_dynamic_dim_spec_file);
@@ -120,6 +121,7 @@ void ApplyPdToCinnPass(
     const std::function<std::shared_ptr<::pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
     pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   }
