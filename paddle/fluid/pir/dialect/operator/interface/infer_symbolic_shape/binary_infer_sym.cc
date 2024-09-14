@@ -423,13 +423,6 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool Conv2dTransposeOpInferSymbolicShape(pir::Operation *op,
-//                                          pir::InferSymbolicShapeContext
-//                                          *infer_context) {
-//   // pass
-//   return true;
-// }
-
 bool Conv3dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   return Conv2dOpInferSymbolicShape(op, infer_context);
@@ -644,6 +637,36 @@ bool Conv3dTransposeOpInferSymbolicShape(
   return convtransposefunction(op, infer_context, output_size);
 }
 
+bool Conv2dTransposeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  if (op->HasAttribute("output_size")) {
+    std::vector<int> out_size =
+        paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+    std::vector<symbol::DimExpr> output_size;
+    for (const auto &i : out_size) {
+      output_size.push_back(symbol::DimExpr{i});
+    }
+    return convtransposefunction(op, infer_context, output_size);
+  } else {
+    const auto &output_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    std::vector<symbol::DimExpr> output_size =
+        details::GetOrCreateExprVecFromData(output_shape_or_data,
+                                            infer_context);
+    return convtransposefunction(op, infer_context, output_size);
+  }
+}
+
+bool Conv2dTransposeBiasOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<int> out_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  std::vector<symbol::DimExpr> output_size;
+  for (const auto &i : out_size) {
+    output_size.push_back(symbol::DimExpr{i});
+  }
+  return convtransposefunction(op, infer_context, output_size);
+}
 // bool CorrelationOpInferSymbolicShape(pir::Operation *op,
 //                                      pir::InferSymbolicShapeContext
 //                                      *infer_context) {
