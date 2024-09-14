@@ -183,18 +183,6 @@ def apply_partition_pass(program):
 
 class ReshardPasses:
     @staticmethod
-    def apply_all(dist_main_program, dist_startup_program, params_grads=[]):
-        ReshardPasses.fold_reshard_pass(dist_main_program)
-        ReshardPasses.reshard_op_pass(dist_main_program, params_grads)
-
-        ReshardPasses.fold_reshard_pass(dist_startup_program)
-        ReshardPasses.reshard_op_pass(dist_startup_program)
-
-        RemovePasses.apply_all(
-            dist_main_program, dist_startup_program, params_grads
-        )
-
-    @staticmethod
     def fold_reshard_pass(dist_program):
         del_ops = []
         value_dict = ValueDict()
@@ -284,6 +272,18 @@ class ReshardPasses:
             if grad.id in sharded_grad:
                 params_grads[idx] = (param, sharded_grad[grad.id])
 
+    @staticmethod
+    def apply_all(dist_main_program, dist_startup_program, params_grads=[]):
+        ReshardPasses.fold_reshard_pass(dist_main_program)
+        ReshardPasses.reshard_op_pass(dist_main_program, params_grads)
+
+        ReshardPasses.fold_reshard_pass(dist_startup_program)
+        ReshardPasses.reshard_op_pass(dist_startup_program)
+
+        RemovePasses.apply_all(
+            dist_main_program, dist_startup_program, params_grads
+        )
+
 
 # Replace the specific MoE-related dist op with the
 # executable op in the dense program. In expert parallelism
@@ -330,17 +330,6 @@ def replace_moe_sub_mesh_tensors(op):
 
 
 class RemovePasses:
-    @staticmethod
-    def apply_all(
-        dist_main_program, dist_startup_program, dist_params_grads=[]
-    ):
-        RemovePasses.remove_other_rank_input_output_pass(dist_main_program)
-        RemovePasses.remove_other_rank_params_grads_pass(dist_params_grads)
-        RemovePasses.remove_other_rank_op_pass(dist_main_program)
-        RemovePasses.remove_no_need_in_startup(
-            dist_startup_program, dist_main_program
-        )
-
     @staticmethod
     def remove_other_rank_op_pass(dist_program):
         # pruning op and value not belong to cur rank
@@ -455,6 +444,17 @@ class RemovePasses:
                 need_remove_idx.append(idx)
         for idx in need_remove_idx[::-1]:
             dist_params_grads.pop(idx)
+
+    @staticmethod
+    def apply_all(
+        dist_main_program, dist_startup_program, dist_params_grads=[]
+    ):
+        RemovePasses.remove_other_rank_input_output_pass(dist_main_program)
+        RemovePasses.remove_other_rank_params_grads_pass(dist_params_grads)
+        RemovePasses.remove_other_rank_op_pass(dist_main_program)
+        RemovePasses.remove_no_need_in_startup(
+            dist_startup_program, dist_main_program
+        )
 
 
 def replace_moe_global_mesh_tensor(op):
