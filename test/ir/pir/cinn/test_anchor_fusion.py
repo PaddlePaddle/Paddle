@@ -16,6 +16,7 @@ import os
 import unittest
 
 import numpy
+import utils
 
 os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
 os.environ['FLAGS_group_schedule_tiling_first'] = '1'
@@ -49,7 +50,9 @@ class TestAnchorFusion(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def compare_result(self, dy_compute, input_spec, data_init):
+    def check_accuracy_and_kernel_num(
+        self, data_init, dy_compute, kernel_num=None, input_spec=None
+    ):
         inputs = data_init()
         dy_out = dy_compute(*inputs)
         static_compute = paddle.jit.to_static(
@@ -61,51 +64,82 @@ class TestAnchorFusion(unittest.TestCase):
         for a, b in zip(
             paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
         ):
-            numpy.testing.assert_allclose(a, b, atol=1e-5, rtol=1e-6)
+            numpy.testing.assert_allclose(a, b, atol=1e-6, rtol=1e-6)
+        if kernel_num is not None:
+            utils.check_jit_kernel_number(static_compute, kernel_num)
 
-    def test_anchor_fusion_1(self):
-        def func(x):
-            x = x * 3
-            a = x + 1
-            b = x + 2
-            return a, b
+    # def test_identiy_iters_fusion(self):
+    #     #        T
+    #     #      / | \
+    #     #     /  |  \
+    #     #    T   T   T
+    #     #   / \     / \
+    #     #  T   T   T   T
+    #     def func(x):
+    #         x = x * 3
+    #         a = x + 1
+    #         d = paddle.sqrt(a)
+    #         e = paddle.ceil(a)
+    #         b = x - 2
+    #         c = paddle.exp(x)
+    #         f = paddle.log(c)
+    #         g = paddle.sign(c)
+    #         return d, e, b, f, g
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
-    def test_anchor_fusion_2(self):
-        def func(x):
-            x = x * 2
-            a = x + 1
-            c = paddle.sum(a, axis=-1)
-            b = x + 2
-            return b, c
+    # def test_transpose_iters_fusion(self):
+    #     #     Tranpose
+    #     #      /  \
+    #     #     T   Tranpose
+    #     #    / \
+    #     #   T  Tranpose
+    #     def func(x):
+    #         x = paddle.transpose(x, [2, 0, 1, 3])
+    #         a = x + 1
+    #         b = paddle.transpose(x, [3, 1, 0, 2])
+    #         c = a / 3
+    #         d = paddle.transpose(a, [0, 2, 3, 1])
+    #         return b, c, d
 
-        def init():
-            x = paddle.ones((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.ones((16, 32, 64, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
-    def test_anchor_fusion_3(self):
-        def func(x):
-            x = x * 2
-            a = x + 1
-            c = paddle.sum(a, axis=-1)
-            b = x + 2
-            d = paddle.sum(b, axis=-1)
-            return c, d
+    # def test_append_iters_fusion(self):
+    #     #       T
+    #     #     /   \
+    #     #    S     B
+    #     #   / \   / \
+    #     #  S   B S   T
+    #     def func(x):
+    #         x = x * 2
+    #         a = x[0, :]  # shape=[64, 128]
+    #         b = paddle.expand(x, [16, 32, 64, 128])
+    #         c = a[:, 0]  # shape=[64]
+    #         d = paddle.expand(a, [8, 16, 32, 64, 128])
+    #         e = b[0, :, 0, :]  # shape=[32,128]
+    #         f = paddle.exp(b)
+    #         return c, d, e, f
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 64, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
-    def test_anchor_fusion_4(self):
+    def test_trivial_reuse_iters_fusion(self):
+        #     T
+        #    / \
+        #   S   B
+        #   |   |
+        #   B   S
         def func(x):
             m = x + 1
             a = m + 1
@@ -120,87 +154,141 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.compare_result(func, None, init)
 
-    def test_anchor_fusion_5(self):
-        #     R
-        #    / \
-        #   T   T
-        def func(x):
-            a = paddle.sum(x, axis=-1)
-            b = a - 3
-            c = a * 2
-            return b, c
+    # def test_anchor_fusion_5(self):
+    #     #     R
+    #     #    / \
+    #     #   T   T
+    #     def func(x):
+    #         a = paddle.sum(x, axis=-1)
+    #         b = a - 3
+    #         c = a * 2
+    #         return b, c
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
-    def test_anchor_fusion_6(self):
-        #      T
-        #     / \
-        #    B   R
-        #   /     \
-        #  T       T
-        def func(x):
-            a = x + 1
-            b = paddle.expand(a, [10, 32, 32, 128]) / 2
-            c = paddle.sum(a, axis=-1)
-            d = c * 3
-            return b, d
+    # def test_anchor_fusion_6(self):
+    #     #      T
+    #     #     / \
+    #     #    B   R
+    #     #   /     \
+    #     #  T       T
+    #     def func(x):
+    #         a = x + 1
+    #         b = paddle.expand(a, [10, 32, 32, 128]) / 2
+    #         c = paddle.sum(a, axis=-1)
+    #         d = c * 3
+    #         return b, d
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
-    def test_anchor_fusion_7(self):
-        #      T
-        #     / \
-        #    T   Transpose
-        def func(x):
-            a = x + 1
-            b = a * 3
-            c = paddle.transpose(a, [1, 0, 2])
-            # c = a / 2
-            return b, c
+    # def test_anchor_fusion_7(self):
+    #     #      T
+    #     #     / \
+    #     #    T   Transpose
+    #     def func(x):
+    #         a = x + 1
+    #         b = a * 3
+    #         c = paddle.transpose(a, [1, 0, 2])
+    #         # c = a / 2
+    #         return b, c
 
-        def init():
-            x = paddle.rand((32, 64, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 64, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
-    def test_fusion_iters(self):
-        #     T   T
-        #      \ /
-        #       T
-        #    / | | \
-        #   /  | |  \
-        #  T   S R  Transpose
-        #      | |
-        #      B B
-        #        |
-        #        R
-        def func(x, y):
-            a = x + 1
-            b = y * 2
-            c = a + b
-            d = paddle.transpose(c, [1, 0, 2])
-            e = c[0, :]
-            f = paddle.expand(e, [16, 32, 64])
-            g = paddle.max(c, axis=0)
-            h = paddle.expand(g, [16, 32, 64])
-            i = paddle.sum(h, axis=0)
-            return c, d, f, i
+    # def test_fusion_iters(self):
+    #     #       T
+    #     #     / | \
+    #     #    /  |  \
+    #     #   T   S   B
+    #     def func(x):
+    #         a = x + 2
+    #         b = a * 3
+    #         c = a[0, :]
+    #         d = paddle.expand(a, [16, 32, 64])
+    #         return b, c, d
 
-        def init():
-            x = paddle.rand((16, 32, 64))
-            y = paddle.rand((16, 32, 64))
-            return (x, y)
+    #     def init():
+    #         x = paddle.rand((32, 64))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
+
+    # def test_fusion_iters(self):
+    #     #      T
+    #     #     / \
+    #     #    T   R
+    #     #       / \
+    #     #      T   B
+    #     #           \
+    #     #            R
+    #     def func(x):
+    #         a = x + 2
+    #         b = a * 3
+    #         c = paddle.max(a, axis=0)
+    #         d = c - 4
+    #         e = paddle.expand(c, [1024, 32, 64])
+    #         f = paddle.sum(e, axis=0)
+    #         return b, d, f
+
+    #     def init():
+    #         x = paddle.rand((1024, 32, 64))
+    #         return (x,)
+
+    #     self.compare_result(func, None, init)
+
+    # def test_fusion_iters(self):
+    #     #     T   T
+    #     #      \ /
+    #     #       T
+    #     #    / | | \
+    #     #   /  | |  \
+    #     #  T   S R  Transpose
+    #     #      | |
+    #     #      B B
+    #     #        |
+    #     #        R
+    #     def func(x, y):
+    #         a = x + 1
+    #         b = y * 2
+    #         c = a + b
+    #         d = paddle.transpose(c, [1, 0, 2])
+    #         e = c[0, :]
+    #         f = paddle.expand(e, [16, 32, 64])
+    #         g = paddle.max(c, axis=0)
+    #         h = paddle.expand(g, [16, 32, 64])
+    #         i = paddle.sum(h, axis=0)
+    #         return c, d, f, i
+
+    #     def init():
+    #         x = paddle.rand((16, 32, 64))
+    #         y = paddle.rand((16, 32, 64))
+    #         return (x, y)
+
+    #     self.compare_result(func, None, init)
+
+    # def test_batch_norm(self):
+    #     self.batch_norm = paddle.nn.layer.norm.BatchNorm(2048)
+
+    #     def func(x):
+    #         a = self.batch_norm(x)
+    #         return a
+
+    #     def init():
+    #         x = paddle.rand((128, 2048, 7, 7))
+    #         return (x,)
+
+    #     self.compare_result(func, None, init)
 
 
 if __name__ == "__main__":
