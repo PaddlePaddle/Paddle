@@ -2614,7 +2614,7 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
 bool Pool3dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   std::vector<int> kernel_size_ =
-      op->attribute<pir::IntAttribute>("kernel_size").AsInt();
+      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
   std::vector<symbol::DimExpr> kernel_size;
   for (int i = 0; i < kernel_size_.size(); ++i) {
     kernel_size.push_back(symbol::DimExpr(kernel_size_[i]));
