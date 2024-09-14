@@ -52,7 +52,7 @@ class TestPlannerReLaunch(unittest.TestCase):
 
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(
-            file_dir, "auto_parallel_relaunch_with_planner.py"
+            file_dir, "auto_parallel_relaunch_with_planner_deprecated.py"
         )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":

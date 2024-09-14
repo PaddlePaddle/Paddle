@@ -9,10 +9,6 @@ add_subdirectory(pir)
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH multi cards and timeout
-  py_test_modules(test_relaunch_with_gpt_planner MODULES
-                  test_relaunch_with_gpt_planner)
-  set_tests_properties(test_relaunch_with_gpt_planner
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 240)
   py_test_modules(test_converter MODULES test_converter)
   set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                  TIMEOUT 50)
@@ -22,16 +18,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_iterable_dataset MODULES test_iterable_dataset)
   set_tests_properties(test_iterable_dataset
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
-  py_test_modules(test_pass_grad_clip MODULES test_pass_grad_clip)
-  set_tests_properties(test_pass_grad_clip
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pass_gradient_merge MODULES test_pass_gradient_merge)
-  set_tests_properties(test_pass_gradient_merge
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pipeline_scheduler_zb_vpp MODULES
-                  test_pipeline_scheduler_zb_vpp)
-  set_tests_properties(test_pipeline_scheduler_zb_vpp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
 
   py_test_modules(test_reshard_api MODULES test_reshard_api)
   set_tests_properties(test_reshard_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
