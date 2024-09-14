@@ -252,33 +252,33 @@ def slice_converter(network, paddle_op, inputs):
 
 
 @converter_registry.register("pd_op.split_with_num", trt_version="8.x")
-def split_converter(network, paddle_op, inputs):
+def split_with_num_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
-    intput_shape_size = len(input_shape)
+    input_shape_size = len(input_shape)
     dynamic_shape = has_dynamic_shape(input_shape)
     axis = int(
         paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
     )
 
-    split_size = paddle_op.attrs().get("num")
-    start = [0] * intput_shape_size
-    stride = [1] * len(start)
+    num_splits = paddle_op.attrs().get("num")
+    input_axis_size = input_shape[axis]
+    split_size = input_axis_size // num_splits
+    split_sizes = [split_size] * num_splits
+
+    start = [0] * input_shape_size
+    stride = [1] * input_shape_size
     offset = 0
-    num_splits = (input_shape[axis] + split_size - 1) // split_size
-    if num_splits < 1:
-        raise RuntimeError(
-            f"Invalid split: {input_shape[axis]} with split_size={split_size}"
-        )
-    max_offset = input_shape[axis]
-    # add slice layers
-    output = []
-    for i in range(num_splits):
+    outputs = []
+
+    for size in split_sizes:
         shape = list(input_shape)
-        shape[axis] = min(split_size, int(max_offset - offset))
+        shape[axis] = size
         start[axis] = offset
         if dynamic_shape:
-            shape = get_shape_with_dynamic_shape(network, shape, input_tensor)
+            shape_tensor = get_shape_with_dynamic_shape(
+                network, shape, input_tensor
+            )
         layer = network.add_slice(
             input_tensor,
             start=start,
@@ -286,9 +286,49 @@ def split_converter(network, paddle_op, inputs):
             stride=stride,
         )
         if dynamic_shape:
-            layer.set_input(2, shape)
-        offset += split_size
-        output.append(
-            layer.get_output(0),
+            layer.set_input(2, shape_tensor)
+        offset += size
+        outputs.append(layer.get_output(0))
+
+    return outputs
+
+
+@converter_registry.register("pd_op.split", trt_version="8.x")
+def split_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    input_shape = paddle_op.operands()[0].source().shape
+    input_shape_size = len(input_shape)
+    dynamic_shape = has_dynamic_shape(input_shape)
+    axis = int(
+        paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
+    )
+    num_or_section = (
+        paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    )
+
+    start = [0] * input_shape_size
+    stride = [1] * input_shape_size
+    offset = 0
+    outputs = []
+    split_sizes = num_or_section
+
+    for size in split_sizes:
+        shape = list(input_shape)
+        shape[axis] = size
+        start[axis] = offset
+        if dynamic_shape:
+            shape_tensor = get_shape_with_dynamic_shape(
+                network, shape, input_tensor
+            )
+        layer = network.add_slice(
+            input_tensor,
+            start=start,
+            shape=[] if dynamic_shape else shape,
+            stride=stride,
         )
-    return output
+        if dynamic_shape:
+            layer.set_input(2, shape_tensor)
+        offset += size
+        outputs.append(layer.get_output(0))
+
+    return outputs
