@@ -101,20 +101,59 @@ def max_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.divide", trt_version="8.x")
 def divide_converter(network, paddle_op, inputs):
+    weight_shape = paddle_op.operands()[1].source().shape
+    input_shape = paddle_op.operands()[0].source().shape
+
+    input_tensor = inputs[0]
+    weight_tensor = inputs[1]
+    if type(inputs[1]) == trt.Weights:
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    if type(inputs[0]) == trt.Weights:
+        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
+            0
+        )
     return add_elementwise_layer(
-        network, paddle_op, inputs, trt.ElementWiseOperation.DIV
+        network, input_tensor, weight_tensor, trt.ElementWiseOperation.DIV
     )
 
 
 @converter_registry.register("pd_op.subtract", trt_version="8.x")
 def substract_converter(network, paddle_op, inputs):
+    weight_shape = paddle_op.operands()[1].source().shape
+    input_shape = paddle_op.operands()[0].source().shape
+
+    input_tensor = inputs[0]
+    weight_tensor = inputs[1]
+    if type(inputs[1]) == trt.Weights:
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    if type(inputs[0]) == trt.Weights:
+        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
+            0
+        )
     return add_elementwise_layer(
-        network, paddle_op, inputs, trt.ElementWiseOperation.SUB
+        network, input_tensor, weight_tensor, trt.ElementWiseOperation.SUB
     )
 
 
 @converter_registry.register("pd_op.multiply", trt_version="8.x")
 def multiply_converter(network, paddle_op, inputs):
+    weight_shape = paddle_op.operands()[1].source().shape
+    input_shape = paddle_op.operands()[0].source().shape
+
+    input_tensor = inputs[0]
+    weight_tensor = inputs[1]
+    if type(inputs[1]) == trt.Weights:
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    if type(inputs[0]) == trt.Weights:
+        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
+            0
+        )
     return add_elementwise_layer(
-        network, paddle_op, inputs, trt.ElementWiseOperation.PROD
+        network, input_tensor, weight_tensor, trt.ElementWiseOperation.PROD
     )

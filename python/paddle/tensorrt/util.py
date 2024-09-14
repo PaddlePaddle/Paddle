@@ -110,3 +110,14 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed, scope=None):
             )
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
     return exe_program
+
+
+# Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
+def marker_buitlin_op(program):
+    for op in program.global_block().ops:
+        for result in op.results():
+            if result.is_combine():
+                used_ops = result.all_used_ops()
+                for used_op in used_ops:
+                    if used_op.name() == "builtin.split":
+                        enforce_op_lower_trt(program, used_op.name())
