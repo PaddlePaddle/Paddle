@@ -27,12 +27,23 @@ from paddle.tensorrt.util import (
 )
 
 
+def standardize(array):
+    mean_val = np.mean(array)
+    std_val = np.std(array)
+    standardized_array = (array - mean_val) / std_val
+    return standardized_array
+
+
 class TestConverterResNet50(unittest.TestCase):
     def test_paddle_to_tensorrt_conversion_r50(self):
         # Step1: get program and init fake inputs
         program, scope, param_dict = get_r50_program()
-        input_data_min_shape = np.ones((1, 3, 224, 224), dtype='float32')
-        input_data_max_shape = np.ones((1, 3, 224, 224), dtype='float32')
+        input_data_min_shape = np.random.randn(1, 3, 224, 224).astype(
+            np.float32
+        )
+        input_data_max_shape = np.random.randn(1, 3, 224, 224).astype(
+            np.float32
+        )
 
         # Step1.1: get original results(for tests only)
         output_var = program.list_vars()[-1]
@@ -65,13 +76,15 @@ class TestConverterResNet50(unittest.TestCase):
             program_with_pir, {"input": input_data_min_shape}, [output_var]
         )
 
+        output_expected = standardize(output_expected[0])
+        output_trt = standardize(output_converted[0])
         # Check that the results are close to each other within a tolerance of 1e-3
         np.testing.assert_allclose(
-            output_expected[0],
-            output_converted[0],
-            rtol=0.2,
-            atol=0.2,
-            err_msg="Outputs are not within the 0.2 tolerance",
+            output_expected,
+            output_trt,
+            rtol=1e-3,
+            atol=1e-3,
+            err_msg="Outputs are not within the 1e-3 tolerance",
         )
 
 

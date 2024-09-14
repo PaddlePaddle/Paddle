@@ -14,6 +14,7 @@
 
 
 import inspect
+import textwrap
 import warnings
 
 import numpy as np
@@ -490,11 +491,36 @@ def monkey_patch_value():
         )
 
     def _bool_(self):
-        raise TypeError(
-            "bool(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
-            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
-            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.bool), and do not use bool(Value)."
-        )
+        error_msg = """\
+            bool(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
+            If you haven't call bool(Tensor) explicitly, it's usually triggered by the control flow implicitly, for example:
+                >>> if x > 0:
+                       ^ `x` is Tensor, `x` > 0 is also a Tensor, `if x > 0` triggers bool(Tensor)
+                ...     y = y + 1
+
+            There are two common workarounds available:
+            If you are checking for Tensor values, then consider checking only at dynamic graphs, for example:
+
+                Modify the following code
+                >>> if x > 0:
+                ...     raise ValueError("x should be positive")
+                to
+                >>> if paddle.in_dynamic_mode() and x < 0:
+                >>>     raise ValueError("x should be positive")
+
+            If you need to control the flow of execution based on the value of the Tensor, then you need to rewrite the code as a control flow, for example:
+
+                Modify the following code
+                >>> if x < y:
+                ...     y = y + 1
+                ... else:
+                ...     y = y - 1
+                to
+                >>> pred = paddle.less_than(x=x, y=y, name=None)
+                >>> y = paddle.static.nn.cond(pred, lambda: y + 1, lambda: y - 1)
+                For more info, please refer to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/static/nn/cond_cn.html
+            """
+        raise TypeError(textwrap.dedent(error_msg))
 
     def clone(self):
         """
