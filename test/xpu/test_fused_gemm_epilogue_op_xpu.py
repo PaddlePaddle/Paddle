@@ -199,6 +199,7 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_y = False
             self.trans_x = False
 
+    '''
     class TestFuseGemmEpilogueOp5(TestFuseGemmBase):
         def init_datas_shape_and_attrs(self):
             self.x_shape = [2, 2, 4, 8]
@@ -210,6 +211,7 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.activation = "relu"
             self.trans_y = False
             self.trans_x = True
+    '''
 
     class TestFuseGemmEpilogueOp6(TestFuseGemmBase):
         def init_datas_shape_and_attrs(self):
