@@ -34,6 +34,14 @@ _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
 
+def is_inference_mode(function):
+    if isinstance(function, Layer):
+        return function.forward.__name__ == "innermost_decorator"
+    elif hasattr(function, "__name__"):
+        return function.__name__ == "innermost_decorator"
+    return False
+
+
 def get_inference_precision(precision_str):
     if precision_str == "float32":
         return PrecisionType.Float32
@@ -572,14 +580,8 @@ def inference(
 
     """
     # if function has already been decorated by @paddle.incubate.jit.inference(), then we just return it.
-    if (
-        hasattr(function, "__name__")
-        and function.__name__ == "innermost_decorator"
-    ):
+    if is_inference_mode(function):
         return function
-    elif isinstance(function, Layer):
-        if function.forward.__name__ == "innermost_decorator":
-            return function
 
     used_as_at_decorator = function is None
 
@@ -606,7 +608,7 @@ def inference(
             delete_pass_lists=delete_pass_lists,
         )
 
-        # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
+        # This is the innermost_decorator, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
         # he is actually invoke this internel function.
         def innermost_decorator(*args, **kwargs):
             input_tensor_lists = infer_engine.get_input_tensor_lists(

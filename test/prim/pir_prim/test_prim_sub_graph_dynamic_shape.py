@@ -276,6 +276,30 @@ def sigmoid_cross_entropy_with_logits_net2(x, y, z):
     return paddle._C_ops.sigmoid_cross_entropy_with_logits(x, y, z, True, -1)
 
 
+def unstack_net1(x):
+    return paddle.unstack(x, axis=0)
+
+
+def unstack_net2(x):
+    return paddle.unstack(x, axis=1)
+
+
+def unstack_net3(x):
+    return paddle.unstack(x, axis=2)
+
+
+def unstack_net4(x):
+    return paddle.unstack(x, axis=-3)
+
+
+def unstack_net5(x):
+    return paddle.unstack(x, axis=-2)
+
+
+def unstack_net6(x):
+    return paddle.unstack(x, axis=-1)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -1316,6 +1340,90 @@ class TestPrimSigmoidCrossEntropyWithLogitsOp2(TestPrimThree):
         self.z = np.random.random(self.shape_z).astype(self.dtype_z)
         self.net = sigmoid_cross_entropy_with_logits_net2
         self.necessary_ops = "pd_op.sigmoid_cross_entropy_with_logits"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimUnstack1(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [5, 10, 15]
+        self.dtype_x = "float32"
+        self.init_x_shape = [5, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = unstack_net1
+        self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimUnstack2(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [5, 10, 15]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 10, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = unstack_net2
+        self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimUnstack3(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [5, 10, 15]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, 15]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = unstack_net3
+        self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimUnstack4(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [5, 10, 15]
+        self.dtype_x = "float32"
+        self.init_x_shape = [5, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = unstack_net4
+        self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimUnstack5(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [5, 10, 15]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 10, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = unstack_net5
+        self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimUnstack6(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [5, 10, 15]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, 15]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = unstack_net6
+        self.necessary_ops = "pd_op.unstack"
         self.enable_cinn = False
         self.tol = 1e-6
 

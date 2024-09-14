@@ -43,6 +43,8 @@ from ...tensor.creation import zeros
 from ...tensor.manipulation import squeeze, unsqueeze
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import TypeAlias
 
     from paddle import Tensor
@@ -51,7 +53,6 @@ if TYPE_CHECKING:
         DataLayout2D,
         DataLayout3D,
         DataLayoutND,
-        IntSequence,
         ShapeLike,
         Size2,
         Size4,
@@ -1040,7 +1041,7 @@ def bilinear(
 def dropout(
     x: Tensor,
     p: float = 0.5,
-    axis: int | IntSequence | None = None,
+    axis: int | Sequence[int] | None = None,
     training: bool = True,
     mode: _DropoutMode = "upscale_in_train",
     name: str | None = None,

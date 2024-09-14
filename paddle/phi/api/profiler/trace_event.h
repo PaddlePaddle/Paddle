@@ -20,52 +20,64 @@ limitations under the License. */
 
 namespace phi {
 
+#define FOR_EACH_TRACER_EVENT_TYPES(_)                                      \
+  /* Used to mark operator record */                                        \
+  _(Operator)                                                               \
+  /* Used to mark dataloader record */                                      \
+  _(Dataloader)                                                             \
+  /* Used to mark profile step record */                                    \
+  _(ProfileStep)                                                            \
+  /* Used to mark cuda runtime record returned by cupti */                  \
+  _(CudaRuntime)                                                            \
+  /* Used to mark kernel computation record returned by cupti */            \
+  _(Kernel)                                                                 \
+  /* Used to mark memcpy record returned by cupti */                        \
+  _(Memcpy)                                                                 \
+  /* Used to mark memset record returned by cupti */                        \
+  _(Memset)                                                                 \
+  /* Used to mark record defined by user */                                 \
+  _(UserDefined)                                                            \
+  /* Used to mark operator detail, (such as infer shape, compute) */        \
+  _(OperatorInner)                                                          \
+  /* Used to mark model training or testing perspective, forward process */ \
+  _(Forward)                                                                \
+  /* Used to mark model training perspective, backward process */           \
+  _(Backward)                                                               \
+  /* Used to mark model training perspective, optimization process */       \
+  _(Optimization)                                                           \
+  /* Used to mark distributed training perspective */                       \
+  _(Communication)                                                          \
+  /* Used to mark python api */                                             \
+  _(PythonOp)                                                               \
+  /* Used to mark python level user-defined */                              \
+  _(PythonUserDefined)                                                      \
+  /* Used to mark kernel call in dynamic graph mode */                      \
+  _(DygraphKernelLaunch)                                                    \
+  /* Used to mark kernel call in static graph mode */                       \
+  _(StaticKernelLaunch)
+
 enum class TracerEventType {
-  // Used to mark operator record
-  Operator = 0,
-  // Used to mark dataloader record
-  Dataloader = 1,
-  // Used to mark profile step record
-  ProfileStep = 2,
-  // Used to mark cuda runtime record returned by cupti
-  CudaRuntime = 3,
-  // Used to mark kernel computation record returned by cupti
-  Kernel = 4,
-  // Used to mark memcpy record returned by cupti
-  Memcpy = 5,
-  // Used to mark memset record returned by cupti
-  Memset = 6,
-  // Used to mark record defined by user
-  UserDefined = 7,
-  // Used to mark operator detail, (such as infer shape, compute)
-  OperatorInner = 8,
-  // Used to mark model training or testing perspective, forward process
-  Forward = 9,
-  // Used to mark model training perspective, backward process
-  Backward = 10,
-  // Used to mark model training perspective, optimization process
-  Optimization = 11,
-  // Used to mark distributed training perspective
-  Communication = 12,
-  // Used to mark python api
-  PythonOp = 13,
-  // Used to mark python level user-defined
-  PythonUserDefined = 14,
-  // A flag to denote the number of current types
-  NumTypes
+#define DEFINE_ENUM_ITEM(name) name,
+  FOR_EACH_TRACER_EVENT_TYPES(DEFINE_ENUM_ITEM)
+#undef DEFINE_ENUM_ITEM
+      NumTypes
 };
 
+#define FOR_EACH_TRACER_MEM_EVENT_TYPES(_)                                    \
+  /* Used to mark memory allocation which is managed by paddle */             \
+  _(Allocate)                                                                 \
+  /* Used to mark memory free which is managed by paddle */                   \
+  _(Free)                                                                     \
+  /* Used to mark reserved memory allocation which is applied from device. */ \
+  _(ReservedAllocate)                                                         \
+  /* Used to mark reserved memory free which is released to device. */        \
+  _(ReservedFree)
+
 enum class TracerMemEventType {
-  // Used to mark memory allocation which is managed by paddle
-  Allocate = 0,
-  // Used to mark memory free which is managed by paddle
-  Free = 1,
-  // Used to mark reserved memory allocation which is applied from device.
-  ReservedAllocate = 2,
-  // Used to mark reserved memory free which is released to device.
-  ReservedFree = 3,
-  // A flag to denote the number of current types
-  NumTypes
+#define DEFINE_ENUM_ITEM(name) name,
+  FOR_EACH_TRACER_MEM_EVENT_TYPES(DEFINE_ENUM_ITEM)
+#undef DEFINE_ENUM_ITEM
+      NumTypes
 };
 
 struct KernelEventInfo {

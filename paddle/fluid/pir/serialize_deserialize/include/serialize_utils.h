@@ -104,6 +104,47 @@ Json serializeAttrToJson(const T& attr) {
   return json_obj;
 }
 
+template <>
+Json serializeAttrToJson<pir::FloatAttribute>(const pir::FloatAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  auto data = attr.data();
+
+  if (std::isnan(data)) {
+    json_obj[VOILD_DATA] = "NaN";
+  } else if (std::isinf(data)) {
+    if (static_cast<float>(data) > 0.0) {
+      json_obj[VOILD_DATA] = "INF";
+    } else {
+      json_obj[VOILD_DATA] = "-INF";
+    }
+  } else {
+    json_obj[DATA] = data;
+  }
+  return json_obj;
+}
+
+template <>
+Json serializeAttrToJson<pir::DoubleAttribute>(
+    const pir::DoubleAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  auto data = attr.data();
+
+  if (std::isnan(data)) {
+    json_obj[VOILD_DATA] = "NaN";
+  } else if (std::isinf(data)) {
+    if (static_cast<double>(data) > 0.0) {
+      json_obj[VOILD_DATA] = "INF";
+    } else if (static_cast<double>(data) < 0.0) {
+      json_obj[VOILD_DATA] = "-INF";
+    }
+  } else {
+    json_obj[DATA] = data;
+  }
+  return json_obj;
+}
+
 #define SERIALIZE_ATTR_TO_JSON(type, data)                          \
   template <>                                                       \
   Json serializeAttrToJson<type>(const type& attr) {                \
@@ -649,7 +690,7 @@ Json AttrTypeWriter::WritePaddleDistType(const pir::Type& type) {
         type.dyn_cast<paddle::dialect::DistDenseTensorType>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type when write paddle.dist_dialect type"));
     return Json::object();
   }
@@ -671,7 +712,7 @@ Json AttrTypeWriter::WritePaddleDistAttr(const pir::Attribute& attr) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s when write paddle.operatordialect attr"));
   }
   return Json::object();

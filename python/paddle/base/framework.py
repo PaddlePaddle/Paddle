@@ -103,6 +103,27 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "atan2_grad": ['X1', 'X2'],
 }
 
+stride_ops = [
+    "pd_op.slice",
+    "pd_op.strided_slice",
+    "pd_op.index_select",
+    "pd_op.split",
+    "pd_op.unsqueeze",
+    "pd_op.unsqueeze2",
+    "pd_op.squeeze",
+    "pd_op.squeeze2",
+    "pd_op.transpose",
+    "pd_op.transpose2",
+    "pd_op.unbind",
+    "pd_op.diagonal",
+    "pd_op.flatten",
+    "pd_op.imag",
+    "pd_op.real",
+    "pd_op.reshape",
+    "pd_op.reshape2",
+    "pd_op.as_real",
+]
+
 
 def _global_flags():
     return _global_flags_
@@ -188,6 +209,7 @@ class GlobalThreadLocal(threading.local):
         """
         global _dygraph_tracer_
         self._in_to_static_mode_ = False
+        self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
@@ -197,6 +219,9 @@ class GlobalThreadLocal(threading.local):
     def __str__(self):
         strings = []
         strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
+        strings.append(
+            "_in_sot_simulation_mode_:" + str(self._in_sot_simulation_mode_)
+        )
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
@@ -8385,3 +8410,47 @@ def process_type_promotion(program):
                         idx += 1
             idx += 1
     return program
+
+
+# complete the op_role of the new added ops
+@signature_safe_contextmanager
+def auto_complete_op_role(program, op_role):
+    def is_dist_block(block):
+        return any(op.dist_attr is not None for op in block.ops)
+
+    def validate_op_roles(block):
+        for op in block.ops:
+            if op.op_role == -1:
+                raise ValueError(
+                    f"All ops' op_role should be set before the completion. However, {op.name()}'s op_role is -1"
+                )
+
+    def set_op_roles(block, op_role, always_forward_ops):
+        for op in block.ops:
+            # TODO(luchang): Some ops are inserted during the optimization stage, and their op_role should be set to Forward.
+            # Ops like "pd_op.data" are inserted at the beginning of the block.
+            # Currently, we can't set the op_role of these ops during the optimization stage because the parallel graph cutting
+            # requires the op_role to be continuous. In the future, we should set the op_role of these ops during the
+            # optimization stage and eliminate the use of the whitelist.
+            set_op_role = (
+                op_role
+                if op.name() not in always_forward_ops
+                else int(core.op_proto_and_checker_maker.OpRole.Forward)
+            )
+            if op.op_role == -1:
+                op.op_role = set_op_role
+            for sub_block in op.blocks():
+                set_op_roles(sub_block, op_role, always_forward_ops)
+
+    block = program.global_block()
+
+    if paddle.framework.in_pir_mode() and is_dist_block(block):
+        assert op_role != -1, "Can't set op_role to -1 for new added ops"
+        validate_op_roles(block)
+
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode() and is_dist_block(block):
+            always_forward_ops = ["pd_op.data", "builtin.parameter"]
+            set_op_roles(block, op_role, always_forward_ops)

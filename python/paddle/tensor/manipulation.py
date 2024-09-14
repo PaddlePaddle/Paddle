@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import functools
 import math
 from typing import TYPE_CHECKING, Any, Literal, overload
 
@@ -204,6 +205,13 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
     Take in the Tensor :attr:`x` with :attr:`x.dtype` and cast it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
+
+    The following picture shows an example where a tensor of type float64 is cast to a tensor of type uint8.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/cast.png
+        :width: 800
+        :alt: legend of reshape API
+        :align: center
 
     Args:
         x (Tensor): An input N-D Tensor with data type bool, float16,
@@ -1374,6 +1382,17 @@ def concat(
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     elif in_pir_mode():
+
+        def is_in_amp_mode():
+            amp_attrs = core._get_amp_attrs()
+            amp_level = amp_attrs._amp_level
+            apply_amp_level_list = [
+                core.AmpLevel.O1,
+                core.AmpLevel.O2,
+            ]
+            return amp_level in apply_amp_level_list
+
+        is_in_amp = is_in_amp_mode()
         check_type(input, 'input', (list, tuple, paddle.pir.Value), 'concat')
         if not isinstance(input, paddle.pir.Value):
             for id, x in enumerate(input):
@@ -1397,7 +1416,7 @@ def concat(
                     ],
                     'concat',
                 )
-                if x.dtype != input[0].dtype:
+                if (not is_in_amp) and x.dtype != input[0].dtype:
                     raise TypeError(
                         "All the Tensors in the input must have the same data type."
                     )
@@ -4441,8 +4460,9 @@ def tile(
         else:
             for elem in repeat_times:
                 if isinstance(elem, (Variable, paddle.pir.Value)):
+                    numel = functools.reduce(lambda x, y: x * y, elem.shape, 1)
                     assert (
-                        elem.numel() == 1
+                        numel == 1
                     ), 'Elements in repeat_times must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
@@ -4532,6 +4552,13 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
 
     Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greater than or equal to that of ``x``. The dimension to expand must have a value of 0.
+
+    The following diagram illustrates how a one-dimensional tensor is transformed into a tensor with a shape of [2,3] through the expand_as operation. The target tensor has a shape of [2,3], and through expand_as, the one-dimensional tensor is expanded into a tensor with a shape of [2,3].
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/expand_as.png
+        :width: 800
+        :alt: expand_as API
+        :align: center
 
     Args:
         x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.

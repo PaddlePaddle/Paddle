@@ -159,7 +159,10 @@ std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
   }
   auto op_name = name.substr(pos + 1);
   VLOG(7) << "GetOpName: " << name << " -> " << op_name;
-  CHECK(op_name != "") << "Not Allow op name is empty";
+  PADDLE_ENFORCE_NE(
+      op_name,
+      "",
+      ::common::errors::InvalidArgument("Not Allow op name is empty"));
   return op_name;
 }
 
@@ -421,7 +424,7 @@ bool IsSupportInCinn(const ::pir::Operation& op) {
 }  // namespace
 
 bool CompatibleInfo::IsDeniedForCinn(const ::pir::Operation& op) {
-  bool flag = IsDeniedInCinn(op);
+  bool flag = IsDeniedInCinn(op) || CauseNewSymbolicShape(op);
   VLOG(4) << "CompatibleInfo::IsDeniedForCinn of " << op.name()
           << " is: " << flag;
   return flag;
@@ -626,7 +629,14 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
     return hlir::framework::kElementWise;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
-  CHECK(op_pattern_dict.Find(cinn_op));
+  PADDLE_ENFORCE_EQ(
+      op_pattern_dict.Find(cinn_op),
+      true,
+      ::common::errors::PreconditionNotMet(
+          "Failed to find the op pattern kind for the operator in "
+          "Operator::GetAttrs<OpPatternKind>. "
+          "Ensure that the operator is registered "
+          "and its pattern is available."));
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be

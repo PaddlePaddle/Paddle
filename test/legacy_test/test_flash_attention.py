@@ -26,10 +26,10 @@ from paddle.base import core
 from paddle.nn.functional.flash_attention import (
     calc_reduced_attention_scores,
     flash_attention,
-    flash_attention_with_sparse_mask,
     flash_attn_qkvpacked,
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
+    flashmask_attention,
     scaled_dot_product_attention,
 )
 from paddle.pir_utils import test_with_pir_api
@@ -75,6 +75,12 @@ def attention_naive_with_mask(q, k, v, attn_bias):
     o = paddle.matmul(p, vt)
     return paddle.transpose(o, [0, 2, 1, 3])
 
+
+is_sm80 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
 
 is_sm8x = (
     core.is_compiled_with_cuda()
@@ -431,7 +437,9 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
 class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 256)
+        self.shape = (
+            (8, 1024, 16, 256) if (is_sm80 or is_sm90) else (8, 1024, 16, 192)
+        )
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
@@ -469,7 +477,7 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
         self.enable_mem_efficient = False
 
 
-class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
+class TestFlashAttentionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
@@ -861,7 +869,6 @@ def generate_mask_matrix_from_mask_indices(start_rows):
             for j in range(seq_len):
                 start_row = start_rows[bz_idx, head_idx, j]
                 matrix[bz_idx, head_idx, start_row:, j] = -np.inf
-                matrix[bz_idx, head_idx, j, j] = 0.0
     return matrix
 
 
@@ -921,15 +928,15 @@ class TestFlashAttentionWithSparseMaskAPI(unittest.TestCase):
         attn_mask_start_row_indices = paddle.to_tensor(
             start_row_indices, dtype=paddle.int32
         )
+        startend_row_indices = paddle.unsqueeze(attn_mask_start_row_indices, -1)
 
-        out = flash_attention_with_sparse_mask(
+        out = flashmask_attention(
             q,
             k,
             v,
-            attn_mask_start_row_indices=attn_mask_start_row_indices,
-            attn_mask_start_row=attn_mask_start_row,
-            dropout_p=self.dropout,
-            is_causal=self.causal,
+            startend_row_indices=startend_row_indices,
+            dropout=self.dropout,
+            causal=self.causal,
         )
         out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()
@@ -937,7 +944,7 @@ class TestFlashAttentionWithSparseMaskAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
 
-class TestFlashAttenionWithSparseMaskAPITest(
+class TestFlashAttentionWithSparseMaskAPITest(
     TestFlashAttentionWithSparseMaskAPI
 ):
     def setUp(self):
@@ -948,7 +955,7 @@ class TestFlashAttenionWithSparseMaskAPITest(
         self.causal = True
 
 
-class TestFlashAttenionWithSparseMaskBF16APITest(
+class TestFlashAttentionWithSparseMaskBF16APITest(
     TestFlashAttentionWithSparseMaskAPI
 ):
     def setUp(self):
