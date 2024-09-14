@@ -567,8 +567,13 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         result_dist_attrs = binary_rule.infer_forward(
             self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
+        self.assertEqual(len(result_dist_attrs), 2)
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
 
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
@@ -580,8 +585,13 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         result_dist_attrs = binary_rule.infer_forward(
             self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
+        self.assertEqual(len(result_dist_attrs), 2)
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
 
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
@@ -599,10 +609,12 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         resulted_dist_attrs = binary_rule.infer_forward(
             self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
+
+        self.assertEqual(len(resulted_dist_attrs), 2)
+
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
 
-        self.assertEqual(len(resulted_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 2)
         self.assertEqual(len(infered_output_dist_attrs), 1)
 
@@ -618,8 +630,13 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         result_dist_attrs = binary_rule.infer_forward(
             self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
+        self.assertEqual(len(result_dist_attrs), 2)
+
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
 
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
@@ -650,10 +667,12 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         resulted_dist_attrs = binary_rule.infer_forward(
             self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
+
+        self.assertEqual(len(resulted_dist_attrs), 2)
+
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
 
-        self.assertEqual(len(resulted_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 2)
         self.assertEqual(len(infered_output_dist_attrs), 1)
 
