@@ -263,46 +263,6 @@ class TensorRTQuantizer(BaseQuantizer):
         ]
 
 
-class MKLDNNQuantizer(BaseQuantizer):
-    """
-    MKLDNN quantization configuration class.
-    Args:
-        quantizable_op_type(list[str], optional): List the type of ops
-            that will be quantized. Default is []. If quantizable_op_type is [],
-            it will use the default quantization op type of the qunat config in
-            the current Quantizer.
-        quant_bits(int, optional): Quantization bit number for weight and activation.
-            Default is 8.
-    """
-
-    def __init__(
-        self,
-        quantizable_op_type=[],
-        quant_bits=8,
-    ):
-        super().__init__()
-        self._quantizable_op_type = quantizable_op_type
-        self._quant_bits = quant_bits
-        self._quant_min = -128
-        self._quant_max = 127
-
-    @property
-    def activation_quant_operation_types(self):
-        """
-        Operation type list which should support activation quantization.
-        And before these ops, quant dequant nodes will be inserted.
-        """
-        return [
-            "pool2d",
-            "elementwise_add",
-            "elementwise_mul",
-            "concat",
-            "nearest_interp",
-            "nearest_interp_v2",
-            "split",
-        ]
-
-
 class ARMCPUQuantizer(BaseQuantizer):
     """
     ARM CPU with Paddle Lite quantization configuration class.

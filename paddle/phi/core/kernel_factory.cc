@@ -195,6 +195,46 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
   if (kernel_iter == iter->second.end()) {
     return false;
   }
+
+  if (kernel_key.backend() == Backend::XPU) {
+#if defined(PADDLE_WITH_XPU_KP)
+    auto fluid_op_name = TransToFluidOpName(kernel_name);
+    bool has_kp_kernel = false;
+    VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+    bool is_xpu_kp_supported = phi::backends::xpu::is_xpu_kp_support_op(
+        fluid_op_name, kernel_key.dtype());
+    // Check in xpu_kp
+    if (is_xpu_kp_supported && FLAGS_run_kp_kernel) {
+      auto kernel_key_kp =
+          KernelKey(Backend::KPS, kernel_key.layout(), kernel_key.dtype());
+      auto kernel_iter_kp = iter->second.find(kernel_key_kp);
+      has_kp_kernel = (kernel_iter_kp != iter->second.end());
+      if (has_kp_kernel) {
+        kernel_key = kernel_key_kp;
+        kernel_iter = kernel_iter_kp;
+      }
+    }
+    // check in xpu
+    bool xpu_unsupport = !phi::backends::xpu::is_xpu_support_op(
+        fluid_op_name, kernel_key.dtype());
+    VLOG(6) << "Current KernelKey is " << kernel_key;
+    // Fall back to CPU, when FLAGS_enable_api_kernel_fallback is true and op
+    // was unregistered in xpu and kp
+    if (FLAGS_enable_api_kernel_fallback &&
+        (kernel_iter == iter->second.end() ||
+         (xpu_unsupport && !has_kp_kernel))) {
+      return false;
+    }
+#elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+    VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+    if ((FLAGS_enable_api_kernel_fallback &&
+         kernel_iter == iter->second.end()) ||
+        !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
+                                               kernel_key.dtype())) {
+      return false;
+    }
+#endif
+  }
   return true;
 }
 

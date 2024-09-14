@@ -54,3 +54,19 @@ if((WITH_GPU) AND (LINUX))
   set_tests_properties(test_dygraph_save_for_auto_infer_deprecated
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
+
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_auto_parallel_parallelizer_deprecated
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "120"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21264;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_auto_parallel_parallelizer_deprecated
+                       PROPERTIES TIMEOUT "120")
+endif()

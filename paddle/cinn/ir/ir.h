@@ -250,11 +250,11 @@ struct And : public BinaryOpNode<And> {
     PADDLE_ENFORCE_EQ(
         a->type().is_bool(),
         true,
-        phi::errors::PreconditionNotMet("The type of 'a' must be bool."));
+        ::common::errors::PreconditionNotMet("The type of 'a' must be bool."));
     PADDLE_ENFORCE_EQ(
         b->type().is_bool(),
         true,
-        phi::errors::PreconditionNotMet("The type of 'b' must be bool."));
+        ::common::errors::PreconditionNotMet("The type of 'b' must be bool."));
   }
 
   Type type() const { return Bool(a()->type().lanes()); }
@@ -283,11 +283,11 @@ struct Or : public BinaryOpNode<Or> {
     PADDLE_ENFORCE_EQ(
         a->type().is_bool(),
         true,
-        phi::errors::PreconditionNotMet("The type of 'a' must be bool."));
+        ::common::errors::PreconditionNotMet("The type of 'a' must be bool."));
     PADDLE_ENFORCE_EQ(
         b->type().is_bool(),
         true,
-        phi::errors::PreconditionNotMet("The type of 'b' must be bool."));
+        ::common::errors::PreconditionNotMet("The type of 'b' must be bool."));
   }
 
   static Expr Make(Expr a, Expr b);
@@ -524,7 +524,7 @@ struct Select : public ExprNode<Select> {
             "The type of true_value and false_value should be the same."));
     PADDLE_ENFORCE_EQ(condition.type().is_bool(),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      ::common::errors::PreconditionNotMet(
                           "The condition must be of boolean type."));
     type_ = true_value.type();
   }
@@ -668,11 +668,11 @@ struct IfThenElse : public ExprNode<IfThenElse> {
     PADDLE_ENFORCE_EQ(
         condition.defined(),
         true,
-        phi::errors::PreconditionNotMet("The condition must be defined."));
+        ::common::errors::PreconditionNotMet("The condition must be defined."));
     PADDLE_ENFORCE_EQ(
         true_case.defined(),
         true,
-        phi::errors::PreconditionNotMet("The true_case must be defined."));
+        ::common::errors::PreconditionNotMet("The true_case must be defined."));
     PADDLE_ENFORCE_EQ(
         condition.type(),
         type_of<bool>(),
@@ -733,10 +733,10 @@ struct BindInfo {
   }
 
   friend std::ostream& operator<<(std::ostream& os, const BindInfo& bind_info) {
-    PADDLE_ENFORCE_EQ(
-        bind_info.valid(),
-        true,
-        phi::errors::PreconditionNotMet("Make invalid BindInfo to stream"));
+    PADDLE_ENFORCE_EQ(bind_info.valid(),
+                      true,
+                      ::common::errors::PreconditionNotMet(
+                          "Make invalid BindInfo to stream"));
     char axis_name = 'x' + bind_info.offset;
     std::string prefix =
         bind_info.for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
@@ -955,10 +955,10 @@ struct FracOp : public BinaryOpNode<FracOp> {
   bool is_constant() const { return a().is_constant() && b().is_constant(); }
 
   double get_constant() const {
-    PADDLE_ENFORCE_EQ(
-        is_constant(),
-        true,
-        phi::errors::PreconditionNotMet("The expression must be constant."));
+    PADDLE_ENFORCE_EQ(is_constant(),
+                      true,
+                      ::common::errors::PreconditionNotMet(
+                          "The expression must be constant."));
     PADDLE_ENFORCE_NE(b().get_constant(),
                       0.f,
                       ::common::errors::InvalidArgument(
@@ -1010,6 +1010,71 @@ struct Block : public ExprNode<Block> {
   std::vector<const Expr*> expr_fields() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
+};
+
+/**
+ * \brief IterMark is a special ExprNode, which can be used to mark ther entire
+ * ierator. source is a IterSum or iterator. extent is the extent of the
+ * iterator or IterSum.
+ */
+struct IterMark : public ExprNode<IterMark> {
+  IterMark() = default;
+  IterMark(const IterMark& other) : source(other.source), extent(other.extent) {
+    this->set_type(other.type());
+  }
+  IterMark& operator=(const IterMark& other);
+
+  static Expr Make(const Expr& source, const Expr& extent);
+  Type type() const { return source.type(); }
+  Expr source;
+  Expr extent;
+  static const IrNodeTy _node_type_ = IrNodeTy::IterMark;
+};
+
+/**
+ * \brief Split of an iterator.
+ * result = source / lower_factor % extent * scale
+ */
+struct IterSplit : public ExprNode<IterSplit> {
+ public:
+  IterSplit() = default;
+  IterSplit(const IterSplit& other)
+      : source(other.source),
+        lower_factor(other.lower_factor),
+        extent(other.extent),
+        scale(other.scale) {
+    this->set_type(other.type());
+  }
+
+  IterSplit& operator=(const IterSplit& other);
+
+  static Expr Make(const Expr& source,
+                   const Expr& lower_factor,
+                   const Expr& extent,
+                   const Expr& scale);
+  static Expr Make(const Expr& source, const Expr& scale);
+  static Expr Make(const Expr& source);
+
+  Type type() const { return source.type(); }
+  Expr source;
+  Expr lower_factor;
+  Expr extent;
+  Expr scale;
+  static const IrNodeTy _node_type_ = IrNodeTy::IterSplit;
+};
+
+/**
+ * \brief sum of IterSplit.
+ * result = sum(args) + base
+ */
+struct IterSum : public ExprNode<IterSum> {
+ public:
+  IterSum() = default;
+  static Expr Make(const std::vector<Expr>& args, const Expr& base);
+  Type type() const { return base.type(); }
+  std::vector<Expr> args;
+  Expr base;
+  static const IrNodeTy _node_type_ = IrNodeTy::IterSum;
 };
 
 struct NoneReduceMethod {};

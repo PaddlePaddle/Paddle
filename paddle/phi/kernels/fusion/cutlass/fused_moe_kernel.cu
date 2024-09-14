@@ -34,9 +34,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_cutlass_kernel.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_gemm_kernels.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe/default_moe_fc_traits.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe/fused_moe_helper.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe/linear_combination_ft_gelu.h"
 
 #pragma GCC diagnostic pop
 
@@ -79,11 +77,11 @@ void FusedMoeKernel(const Context& ctx,
   moe_compute.ComputeFFN(&X,
                          &gate_weight,
                          &ffn1_weight,
-                         ffn1_scale,
-                         ffn1_bias,
+                         ffn1_scale ? ffn1_scale.get_ptr() : nullptr,
+                         ffn1_bias ? ffn1_bias.get_ptr() : nullptr,
                          &ffn2_weight,
-                         ffn2_scale,
-                         ffn2_bias,
+                         ffn2_scale ? ffn2_scale.get_ptr() : nullptr,
+                         ffn2_bias ? ffn2_bias.get_ptr() : nullptr,
                          nullptr,
                          moe_topk,
                          norm_topk_prob,

@@ -99,6 +99,7 @@ class XPUTestDepthwiseConv2DOp_v2(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'depthwise_conv2d'
         self.use_dynamic_create_class = False
+        self.place = paddle.XPUPlace(0)
 
     class TestDepthwiseConv_AsyPadding(XPUTestConv2DOp_v2.TestConv2DOp_v2):
         def init_test_case(self):
@@ -129,6 +130,21 @@ class XPUTestDepthwiseConv2DOp_v2(XPUOpTestWrapper):
         def init_paddings(self):
             self.pad = [0, 1, 0, 2]
             self.padding_algorithm = "EXPLICIT"
+
+        def test_check_grad_no_input(self):
+            self.check_grad_with_place(
+                self.place, ['Filter'], 'Output', no_grad_set={'Input'}
+            )
+
+        def test_check_grad_no_filter(self):
+            self.check_grad_with_place(
+                self.place, ['Input'], 'Output', no_grad_set={'Filter'}
+            )
+
+        def test_check_grad(self):
+            self.check_grad_with_place(
+                self.place, {'Input', 'Filter'}, 'Output'
+            )
 
     class TestDepthwiseConv3_AsyPadding(XPUTestConv2DOp_v2.TestConv2DOp_v2):
         def init_test_case(self):
@@ -189,24 +205,6 @@ for stype in support_types:
     create_test_class(globals(), XPUTestDepthwiseConv2DOp, stype)
     create_test_class(globals(), XPUTestDepthwiseConv2DOp_v2, stype)
 
-# depthwise conv2d
-
-# create_test_padding_SAME_class(TestDepthwiseConv_AsyPadding)
-# create_test_padding_SAME_class(TestDepthwiseConvWithDilation_AsyPadding)
-# create_test_padding_SAME_class(TestDepthwiseConvandFuse_AsyPadding)
-# create_test_padding_SAME_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
-
-# create_test_padding_VALID_class(TestDepthwiseConv_AsyPadding)
-# create_test_padding_VALID_class(TestDepthwiseConvWithDilation_AsyPadding)
-# create_test_padding_VALID_class(TestDepthwiseConvandFuse_AsyPadding)
-# create_test_padding_VALID_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
-
-# channel last
-
-# create_test_channel_last_class(TestDepthwiseConv_AsyPadding)
-# create_test_channel_last_class(TestDepthwiseConvWithDilation2_AsyPadding)
-# create_test_channel_last_class(TestDepthwiseConvandFuse_AsyPadding)
-# create_test_channel_last_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
 
 if __name__ == '__main__':
     unittest.main()
