@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle import pir
 from paddle.autograd.backward_utils import ValueDict
 from paddle.base.framework import auto_complete_op_role
 from paddle.distributed.passes.pass_base import PassContext, new_pass
@@ -284,11 +285,97 @@ def _remove_other_rank_params_grads(dist_params_grads):
         dist_params_grads.pop(idx)
 
 
-# pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(dist_program, dist_params_grads):
+# Replace the specific MoE-related dist op with the
+# executable op in the dense program. In expert parallelism
+# of the MoE model, the process mesh of each expert is
+# different. Two specific apis are used to transform the
+# input tensor's global process mesh to the experts' local
+# process meshes, which will add two dist ops in the program.
+# The following two functions are used to replace the two
+# dist ops with the executable share_data_ ops.
+def replace_moe_sub_mesh_tensors(op):
     cur_rank = paddle.distributed.get_rank()
+    in_value = op.operand_source(0)
+    out_value = None
+    out_idx = -1
+    for idx, val in enumerate(op.results()):
+        val_mesh = val.dist_attr().process_mesh
+        if cur_rank in val_mesh.process_ids:
+            assert (
+                out_value is None
+            ), f'{op} has more than one results on rank {cur_rank}'
+            out_value = val
+            out_idx = idx
 
+    paddle.pir.set_insertion_point(op)
+    local_value = paddle._C_ops.share_data_(in_value)
+    local_value_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+        out_value.type(), out_value.dist_attr()
+    )
+    local_value.set_type(local_value_type)
+    out_value.replace_all_uses_with(local_value)
+
+    op_dist_attr = op.dist_attr
+    share_data_op = local_value.get_defining_op()
+    share_data_op.dist_attr = (
+        paddle.base.libpaddle.pir.create_op_dist_attribute(
+            op_dist_attr.process_mesh,
+            [op_dist_attr.operand(0).as_tensor_dist_attr()],
+            [op_dist_attr.result(out_idx).as_tensor_dist_attr()],
+        )
+    )
+
+    assert all(val.use_empty() for val in op.results())
+    op.erase()
+
+
+def replace_moe_global_mesh_tensor(op):
+    cur_rank = paddle.distributed.get_rank()
+    out_value = op.result(0)
+    in_value = None
+    in_idx = -1
+    for idx, val in enumerate(op.operands_source()):
+        val_mesh = val.dist_attr().process_mesh
+        if cur_rank not in val_mesh.process_ids:
+            continue
+        assert (
+            in_value is None
+        ), f'{op} has more than one inputs on rank {cur_rank}'
+        in_value = val
+        in_idx = idx
+
+    paddle.pir.set_insertion_point(op)
+    local_value = paddle._C_ops.share_data_(in_value)
+    # local_value = paddle.assign(in_value)
+    local_value_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+        out_value.type(), out_value.dist_attr()
+    )
+    local_value.set_type(local_value_type)
+    out_value.replace_all_uses_with(local_value)
+
+    op_dist_attr = op.dist_attr
+    share_data_op = local_value.get_defining_op()
+    share_data_op.dist_attr = (
+        paddle.base.libpaddle.pir.create_op_dist_attribute(
+            op_dist_attr.process_mesh,
+            [op_dist_attr.operand(in_idx).as_tensor_dist_attr()],
+            [op_dist_attr.result(0).as_tensor_dist_attr()],
+        )
+    )
+
+    assert all(val.use_empty() for val in op.results())
+    op.erase()
+
+
+# pruning op and value not belong to cur rank
+def remove_other_rank_op_pass(dist_program, dist_params_grads, startup_program):
     _remove_other_rank_params_grads(dist_params_grads)
+    _remove_no_need_in_main(dist_program)
+    _remove_no_need_in_startup(startup_program, dist_program)
+
+
+def _remove_no_need_in_main(dist_program):
+    cur_rank = paddle.distributed.get_rank()
     for op in dist_program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
             can_delete = True
@@ -297,6 +384,12 @@ def remove_other_rank_op_pass(dist_program, dist_params_grads):
                     can_delete = False
             if can_delete:
                 op.erase()
+            continue
+        if op.name() == "dist_op.moe_sub_mesh_tensors":
+            replace_moe_sub_mesh_tensors(op)
+            continue
+        if op.name() == "dist_op.moe_global_mesh_tensor":
+            replace_moe_global_mesh_tensor(op)
             continue
         if cur_rank not in op.dist_attr.process_mesh.process_ids:
             op.erase()
@@ -318,6 +411,26 @@ def remove_other_rank_op_pass(dist_program, dist_params_grads):
             lr = op.result(0)
             lr.replace_all_uses_with(lr_value)
             op.erase()
+
+
+def _remove_no_need_in_startup(startup_program, main_program):
+    # 1. vars used in main_program
+    main_program_var_names = []
+    for op in main_program.global_block().ops:
+        for var in op.operands_source():
+            if var.has_name:
+                main_program_var_names.append(var.name)
+        for var in op.results():
+            if var.has_name:
+                main_program_var_names.append(var.name)
+    # 2. remove var op not used in main_program
+    for op in startup_program.global_block().ops:
+        for var in op.operands_source():
+            if var.has_name and var.name not in main_program_var_names:
+                op.erase()
+    pm = pir.PassManager()
+    pm.add_pass('dead_code_elimination_pass', {})
+    pm.run(startup_program)
 
 
 # Pruning value not belong to cur rank
