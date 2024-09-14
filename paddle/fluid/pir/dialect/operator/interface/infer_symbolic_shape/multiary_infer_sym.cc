@@ -669,7 +669,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
   for (size_t i = 0; i < target_rank; i++) {
     auto tmp_dim = symbol::DimExpr{1};
     for (const auto &input_shape_or_data : input_shape_or_data_list) {
-      int axis = i - target_rank + input_shape_or_data.size();
+      int axis = i - target_rank + input_shape_or_data.shape().size();
       if (axis >= 0) {
         infer_context->AddBroadcastableCstr(input_shape_or_data.shape()[axis],
                                             tmp_dim);
