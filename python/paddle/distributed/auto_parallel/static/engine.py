@@ -823,11 +823,8 @@ class Engine:
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program, params_grads)
-
         remove_other_rank_input_output_pass(dist_program)
-
-        remove_other_rank_op_pass(dist_program, params_grads)
-
+        remove_other_rank_op_pass(dist_program, startup_program, params_grads)
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
 
