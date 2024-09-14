@@ -27,6 +27,7 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
+from paddle.framework.recall_error import LOSS_NAN_ERROR
 
 from ...utils import timer_helper as timer
 from .utils import number_2_dtype, paddle_2_number
@@ -302,7 +303,7 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
             if p2p_op.op == _send_on_calc_stream:
                 if not paddle.isfinite(p2p_op.tensor).all().item():
                     raise ValueError(
-                        f"CUDA error(1002). Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                        f"{LOSS_NAN_ERROR}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
                     )
 
     group = _get_global_group() if group is None else group
@@ -483,7 +484,7 @@ def _p2p_ops_tuple_or_tensor(tensors, p2p_func, pp_rank, pp_group):
             for t in tensors:
                 if not paddle.isfinite(t).all().item():
                     raise ValueError(
-                        f"CUDA error(1002). Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                        f"{LOSS_NAN_ERROR}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
                     )
 
     reqs = []
