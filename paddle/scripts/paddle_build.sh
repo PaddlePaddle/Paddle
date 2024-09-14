@@ -25,6 +25,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+echo "pr new here";
 
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
