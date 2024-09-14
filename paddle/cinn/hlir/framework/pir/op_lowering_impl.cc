@@ -103,7 +103,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
-  std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
   std::vector<ir::Expr> func_bodies =
       LowerOps(group, ops, &group_func_arg_tensors, &tensor_map);
 
@@ -406,8 +405,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     const std::vector<::pir::Operation*>& ops,
     std::vector<ir::Tensor>* group_func_arg_tensors,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
-  std::unordered_map<std::string, ir::Tensor> tensor_info;
-  auto tmp_tensor_info = &tensor_info;
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<Expr> func_bodies;
   std::unordered_set<::pir::Value> inner_used_value;
@@ -470,8 +467,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
         node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
 
     // 2.Perform the lower process of Op
-    std::vector<ir::LoweredFunc> funcs = DoOpLower(
-        op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
+    std::vector<ir::LoweredFunc> funcs =
+        DoOpLower(op_impl, op, tensor_map, &op_func_arg_tensors);
 
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body);
@@ -488,7 +485,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
     ::pir::Operation* op,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-    std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();
   std::vector<cinn::common::CINNValue> cinn_inputs;
@@ -521,7 +517,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       }
       std::string tensor_name = ValueName(op_results[0]) + post;
       VLOG(3) << "Add tmp tensor name for reducer op: " << tensor_name;
-      (*tmp_tensor_info)[tensor_name] = expr.as_tensor_ref();
       post = "_" + std::to_string(idx);
     } else {
       // If the number of output tensors defined by Compute is less equal than
@@ -779,7 +774,6 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
-  std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
 
   auto need_lower_x86 = [&]() -> bool {
     for (auto* op : ops) {

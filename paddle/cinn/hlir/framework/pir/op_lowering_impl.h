@@ -109,7 +109,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
       std::shared_ptr<hlir::framework::OpImpl> op_impl,
       ::pir::Operation* op,
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-      std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
       std::vector<ir::Tensor>* op_func_arg_tensors);
 
   /**
