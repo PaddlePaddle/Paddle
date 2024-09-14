@@ -26,7 +26,6 @@ os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_cinn_bucket_compile'] = '1'
 os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
-os.environ['FLAGS_deny_cinn_ops'] = 'slice;'
 
 import paddle
 
@@ -101,6 +100,82 @@ class TestReduceFusion(unittest.TestCase):
 
         def init():
             x = paddle.rand((32, 32, 128))
+            return (x,)
+
+        self.compare_result(func, None, init)
+
+    def test_reduce_fusion_without_axis_reuse(self):
+        #     R
+        #    / \
+        #   T   T
+        #    \ /
+        #     T
+        #     |
+        #     B
+        #     |
+        #     R
+        def func(x):
+            b = paddle.max(x, axis=-1)
+            c = b * 2
+            d = b / 2
+            e = c + d
+            f = paddle.expand(e, [96, 32, 32])
+            g = paddle.sum(f, axis=0)
+            return g
+
+        def init():
+            x = paddle.rand((32, 32, 128))
+            return (x,)
+
+        self.compare_result(func, None, init)
+
+    def test_reduce_all_reshape(self):
+        # R(reduce all) -> reshape
+        def func(x):
+            a = paddle.max(x, axis=[0, 1, 2, 3], keepdim=False)
+            b = paddle.reshape(a, [1])
+            return b
+
+        def init():
+            x = paddle.rand((1, 1, 128, 128))
+            return (x,)
+
+        self.compare_result(func, None, init)
+
+    def test_cast_int32_reduce(self):
+        def func(x):
+            a = paddle.cast(x, dtype='int32')
+            b = paddle.max(a, axis=[2], keepdim=False)
+            return b
+
+        def init():
+            x = paddle.rand((3, 128, 96), dtype='float32')
+            return (x,)
+
+        self.compare_result(func, None, init)
+
+    def test_reduce_horizontal_fusion_with_same_loop_but_different_reduce_dim(
+        self,
+    ):
+        def func(x):
+            a = paddle.max(x, axis=[2])
+            b = paddle.sum(x, axis=[1, 2])
+            return a, b
+
+        def init():
+            x = paddle.rand((64, 128, 96), dtype='float32')
+            return (x,)
+
+        self.compare_result(func, None, init)
+
+    def test_RT_fusion_with_different_fake_reduce_dim(self):
+        def func(x):
+            a = paddle.max(x, axis=[0, 1])
+            b = paddle.expand(a, shape=[128, 96])
+            return b
+
+        def init():
+            x = paddle.rand((64, 128, 96), dtype='float32')
             return (x,)
 
         self.compare_result(func, None, init)

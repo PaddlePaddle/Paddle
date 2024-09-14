@@ -463,6 +463,8 @@ function(cc_test_run TARGET_NAME)
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+
     if(cc_test_DIR STREQUAL "")
       set(cc_test_DIR ${CMAKE_CURRENT_BINARY_DIR})
     endif()
@@ -470,14 +472,26 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
-    set_property(
-      TEST ${TARGET_NAME}
-      PROPERTY
-        ENVIRONMENT
-        FLAGS_init_allocated_mem=true
-        FLAGS_cudnn_deterministic=true
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
-    )
+    if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
+      set_property(
+        TEST ${TARGET_NAME}
+        PROPERTY
+          ENVIRONMENT
+          FLAGS_init_allocated_mem=true
+          FLAGS_cudnn_deterministic=true
+          FLAGS_enable_pir_api=0
+          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+      )
+    else()
+      set_property(
+        TEST ${TARGET_NAME}
+        PROPERTY
+          ENVIRONMENT
+          FLAGS_init_allocated_mem=true
+          FLAGS_cudnn_deterministic=true
+          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+      )
+    endif()
     # No unit test should exceed 2 minutes.
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
@@ -1147,14 +1161,21 @@ function(py_test TARGET_NAME)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
+    string(REGEX MATCH "_deprecated\.py$" DEPRECATED_MODULES "${py_test_SRCS}")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+    set(FLAGS_PIR_MODE "")
+    if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
+       OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
+      set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+    endif()
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       add_test(
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_ENVS}
+          FLAGS_cudnn_deterministic=true ${FLAGS_PIR_MODE}
+          PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
           ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS}
           ${py_test_ARGS}
@@ -1164,8 +1185,8 @@ function(py_test TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true ${py_test_ENVS} ${PYTHON_EXECUTABLE} -u
-          ${py_test_SRCS} ${py_test_ARGS}
+          FLAGS_cudnn_deterministic=true ${FLAGS_PIR_MODE} ${py_test_ENVS}
+          ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 

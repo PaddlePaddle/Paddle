@@ -36,6 +36,23 @@ class TestAdamaxAPI(unittest.TestCase):
         adam.clear_gradients()
 
 
+class TestAdamaxAPIWeightDecay(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        adam = paddle.optimizer.Adamax(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+
 class TestAdamaxAPIGroup(TestAdamaxAPI):
     def test_adamax_api_dygraph(self):
         paddle.disable_static()

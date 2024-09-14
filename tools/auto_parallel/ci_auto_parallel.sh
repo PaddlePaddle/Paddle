@@ -24,7 +24,7 @@ export case_list=()
 install_paddle(){
     echo -e "\033[31m ---- Install paddlepaddle-gpu  \033"
     if [ -n "$paddle" ];then
-      python -m pip install --user ${paddle} --no-dependencies;
+      python -m pip install --user --no-cache-dir ${paddle} --no-dependencies;
     fi
     python -c "import paddle; print('paddle version:',paddle.__version__,'\npaddle commit:',paddle.version.commit)";
 }

@@ -87,24 +87,6 @@ std::optional<std::vector<ir::Expr>> GetTensorValueFromShapeOrData(
 
 }  // namespace details
 
-std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
-    const FusionGroupInfo& fusion_group_info,
-    const OpLoweringGroupPtr& group,
-    const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
-  std::shared_ptr<GroupInfo> group_info = std::make_shared<GroupInfo>();
-  group_info->data_space = fusion_group_info.loop_ranges;
-  group_info->loop_strides = fusion_group_info.loop_strides;
-  group_info->reduce_axis = fusion_group_info.reduce_axis;
-  group_info->reduce_var_names =
-      std::set<std::string>(fusion_group_info.reduce_var_name.begin(),
-                            fusion_group_info.reduce_var_name.end());
-
-  for (auto& val : group->output_values()) {
-    group_info->direct_output_var_names.insert(ValueName(val));
-  }
-  return group_info;
-}
-
 OpLowererImpl::OpLowererImpl(const Target& target) : target_(target) {
   name_gene_ = new PrettyNamer();
 }
@@ -146,7 +128,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
   func_bodies = OperationFusion(ops, func_bodies, group->fusion_tracker_ptr);
-  const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
+  std::shared_ptr<FusionGroupInfo> fusion_group_info =
+      GetFusionGroupInfo(func_bodies);
 
   if (FLAGS_cinn_check_tensor_buffer_map) {
     optim::CheckTensorBufferMap(func_bodies, "BucketLower OpFusion");
@@ -184,14 +167,12 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
       output_tensor_names.insert(ValueName(value));
     }
 
-    std::shared_ptr<GroupInfo> group_info =
-        GetGroupInfo(fusion_group_info, group, tensor_map);
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
         ir::GroupScheduler::Make(&ir_sch,
                                  output_tensor_names,
                                  target_,
                                  /* is_dy_shape = */ true,
-                                 group_info);
+                                 fusion_group_info);
 
     VLOG(4) << "Start apply group_scheduler->Schedule()";
     group_scheduler->Schedule();
@@ -582,7 +563,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       PADDLE_ENFORCE_EQ(
           static_cast<bool>(strategy),
           true,
-          phi::errors::PreconditionNotMet(
+          ::common::errors::PreconditionNotMet(
               "cinn_op_name: %s has no CINNStrategySymbolic registered.",
               cinn_op_name));
       op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
@@ -713,7 +694,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     PADDLE_ENFORCE_EQ(
         pack[idx].is_tensor(),
         true,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The element at index %d in pack must be a tensor.", idx));
     op_func_arg_tensors->push_back(
         pack[idx].operator ir::Expr().as_tensor_ref());
