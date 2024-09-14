@@ -22,6 +22,7 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+
 SpmdInfo Conv2dInferSpmdBase(const DistMetaTensor& input,
                              const DistMetaTensor& filter);
 

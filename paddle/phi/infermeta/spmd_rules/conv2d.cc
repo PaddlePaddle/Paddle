@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
@@ -28,7 +29,6 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo Conv2dInferSpmdBase(const DistMetaTensor& input,
                              const DistMetaTensor& filter) {
-  VLOG(4) << "Conv2d InferSpmd Called";
   // Step0: verify input args based on conv2d logic
   VLOG(4) << "step 0: verify input args based on conv2d logic";
   auto original_input_shape = common::vectorize(input.dims());
@@ -151,7 +151,6 @@ SpmdInfo Conv2dInferSpmdBase(const DistMetaTensor& input,
 SpmdInfo Conv2dInferSpmdReverseBase(const DistMetaTensor& input,
                                     const DistMetaTensor& filter,
                                     const DistMetaTensor& output) {
-  VLOG(4) << "Conv2d InferSpmd Reverse Called";
   // Step0: verify input args based on conv2d logic
   VLOG(4) << "step 0: verify args based on conv2d logic";
   auto original_output_shape = common::vectorize(output.dims());
@@ -205,39 +204,34 @@ SpmdInfo Conv2dInferSpmdReverseBase(const DistMetaTensor& input,
 SpmdInfo Conv2dGradInferSpmdBase(const DistMetaTensor& input,
                                  const DistMetaTensor& filter,
                                  const DistMetaTensor& output_grad) {
-  VLOG(4) << "Conv2dGrad InferSpmd Called";
-  auto check_channel_dist_attr = [&](const ArgDistAttr& input_attr,
-                                     const ArgDistAttr& filter_attr,
-                                     const ArgDistAttr& output_grad_attr) {
-    const auto& input_dist_attr = paddle::get<TensorDistAttr>(input_attr);
-    const auto& filter_dist_attr = paddle::get<TensorDistAttr>(filter_attr);
-    const auto& output_grad_dist_attr =
-        paddle::get<TensorDistAttr>(output_grad_attr);
+  auto check_channel_dist_attr =
+      [&](const phi::distributed::TensorDistAttr& input_dist_attr,
+          const phi::distributed::TensorDistAttr& filter_dist_attr,
+          const phi::distributed::TensorDistAttr& output_grad_dist_attr) {
+        int channel_dim = 1;  // NCHW support
+        if (output_grad_dist_attr.is_partial()) {
+          std::set<int64_t> partial_dims = output_grad_dist_attr.partial_dims();
+          PADDLE_ENFORCE_EQ(
+              partial_dims.size(),
+              1,
+              common::errors::InvalidArgument(
+                  "For conv2d output, only support partial on channel_dim for "
+                  "output, "
+                  "which means shard on channel_dim for input and filter."
+                  "But now the output is partial on [%d] dims.",
+                  partial_dims.size()));
 
-    int channel_dim = 1;  // NCHW support
-    if (output_grad_dist_attr.is_partial()) {
-      std::set<int64_t> partial_dims = output_grad_dist_attr.partial_dims();
-      PADDLE_ENFORCE_EQ(
-          partial_dims.size(),
-          1,
-          common::errors::InvalidArgument(
-              "For conv2d output, only support partial on channel_dim for "
-              "output, "
-              "which means shard on channel_dim for input and filter."
-              "But now the output is partial on [%d] dims.",
-              partial_dims.size()));
+          int64_t partial_dim = *partial_dims.begin();
+          auto input_dims_mapping = input_dist_attr.dims_mapping();
+          auto filter_dims_mapping = filter_dist_attr.dims_mapping();
+          if (input_dims_mapping[channel_dim] == partial_dim &&
+              filter_dims_mapping[channel_dim] == partial_dim) {
+            return true;
+          }
+        }
 
-      int64_t partial_dim = *partial_dims.begin();
-      auto input_dims_mapping = input_dist_attr.dims_mapping();
-      auto filter_dims_mapping = filter_dist_attr.dims_mapping();
-      if (input_dims_mapping[channel_dim] == partial_dim &&
-          filter_dims_mapping[channel_dim] == partial_dim) {
-        return true;
-      }
-    }
-
-    return false;
-  };
+        return false;
+      };
 
   auto input_dist_attr_src = input.dist_attr();
   auto filter_dist_attr_src = filter.dist_attr();

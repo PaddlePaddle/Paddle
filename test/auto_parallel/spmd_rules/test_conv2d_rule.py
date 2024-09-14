@@ -211,7 +211,7 @@ class TestConv2dSPMDRule(unittest.TestCase):
         self.output_dist_tensor_spec = DistTensorSpec(
             output_shape, output_tensor_dist_attr
         )
-
+        # case 1:
         # Output: NMHoutWout[0, 1, -1, -1] ---> input: NCHinWin[0, -1, -1, -1], filter: MCHkWk[1, -1, -1, -1]
         result_dist_attrs = self.rule.infer_backward(
             self.input_dist_tensor_spec,

@@ -1970,6 +1970,7 @@ TEST(Flatten, Ctor) {
   check_dim_mapping(spmd_grad.first[1], {0, -1, 1});
   check_dim_mapping(spmd_grad.second[0], {0, -1, 1, -1});
 }
+
 TEST(Conv2dGradSPMDRule, Ctor) {
   // build input data class
   std::vector<int64_t> input_shape = {2, 4, 8, 8};
