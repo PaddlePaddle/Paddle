@@ -61,11 +61,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
     }
   }
 
-  using XPUType = typename std::conditional<
-      std::is_same<T, phi::dtype::bfloat16>::value ||
-          std::is_same<T, phi::dtype::float16>::value,
-      typename XPUTypeTrait<phi::dtype::float16>::Type,
-      typename XPUTypeTrait<T>::Type>::type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   int r = XPU_SUCCESS;
 #ifndef PADDLE_WITH_XPU_PLUGIN
   if (index_dtype == DataType::INT32) {

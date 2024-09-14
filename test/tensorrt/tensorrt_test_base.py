@@ -27,12 +27,14 @@ from paddle.tensorrt.util import (
 
 
 class TensorRTBaseTest(unittest.TestCase):
-    def setUp(self):
+    def __init__(self, methodName='runTest'):
+        super().__init__(methodName)
         self.python_api = None
         self.api_args = None
         self.program_config = None
         self.min_shape = None
         self.max_shape = None
+        self.target_marker_op = ""
 
     def create_fake_program(self):
         if self.python_api is None:
@@ -83,7 +85,7 @@ class TensorRTBaseTest(unittest.TestCase):
             output = self.python_api(*actual_args)
             fetch_list = []
             if isinstance(output, tuple):
-                fetch_list = list(output)
+                fetch_list = [out for out in list(output) if out is not None]
             else:
                 fetch_list.append(output)
         return main_program, startup_program, fetch_list
@@ -120,7 +122,7 @@ class TensorRTBaseTest(unittest.TestCase):
                     new_list_args[sub_arg_name] = self.api_args[arg_name][i]
                 self.api_args[arg_name] = new_list_args
 
-    def check_trt_result(self):
+    def check_trt_result(self, rtol=1e-5, atol=1e-5):
         paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
         with paddle.pir_utils.IrGuard():
             self.prepare_feed()
@@ -159,7 +161,7 @@ class TensorRTBaseTest(unittest.TestCase):
                         *self.max_shape[feed_name]
                     ).astype(self.api_args[feed_name].dtype)
 
-            warmup_shape_infer(
+            main_program = warmup_shape_infer(
                 main_program,
                 min_shape_feed=min_shape_data,
                 max_shape_feed=max_shape_data,
@@ -206,6 +208,19 @@ class TensorRTBaseTest(unittest.TestCase):
             np.testing.assert_allclose(
                 output_expected[i],
                 output_trt[i],
-                rtol=1e-3,
-                atol=1e-3,
+                rtol=rtol,
+                atol=atol,
             )
+
+    def check_marker(self, expected_result):
+        paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
+        with paddle.pir_utils.IrGuard():
+            main_program, startup_program, fetch_list = (
+                self.create_fake_program()
+            )
+            main_program = run_pir_pass(main_program, partition_mode=False)
+            marker_result = False
+            for op in main_program.global_block().ops:
+                if op.name() == self.target_marker_op:
+                    marker_result = op.attrs().get("__l_trt__", False)
+            self.assertEqual(marker_result, expected_result)
