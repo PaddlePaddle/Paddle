@@ -423,6 +423,17 @@ bool RandintOpInferSymbolicShape(
 //   return true;
 // }
 
+bool SeedOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<symbol::DimExpr> dims = {symbol::DimExpr(1)};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(dims)});
+
+  return true;
+}
+
 bool TrilIndicesOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &attributes = op->attributes();

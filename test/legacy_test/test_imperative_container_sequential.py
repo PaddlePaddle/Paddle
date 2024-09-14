@@ -56,6 +56,58 @@ class TestImperativeContainerSequential(unittest.TestCase):
             loss2 = paddle.mean(res2)
             loss2.backward()
 
+    def test_append_insert_extend(self):
+        data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
+        with base.dygraph.guard():
+            data = paddle.to_tensor(data)
+
+            model1 = paddle.nn.Sequential()
+            # test append
+            model1.append(Linear(10, 1))
+            model1.append(Linear(1, 2))
+            res1 = model1(data)
+            self.assertListEqual(res1.shape, [5, 2])
+
+            # test insert
+            model1.insert(0, Linear(10, 10))
+            res1 = model1(data)
+
+            # test insert type error(non nn.Layer type)
+            model2 = paddle.nn.Sequential()
+            self.assertRaises(AssertionError, model2.insert, 0, 1)
+
+            # test insert index error(1)
+            model2 = paddle.nn.Sequential()
+            self.assertRaises(IndexError, model2.insert, 1, Linear(10, 10))
+
+            # test insert at negtive index -1
+            model2 = paddle.nn.Sequential()
+            model2.insert(0, Linear(10, 10))
+            self.assertEqual(len(model2), 1)
+
+            # res1 = model1(data)
+
+            # test extend
+            model1.extend([Linear(2, 3), Linear(3, 4)])
+            res1 = model1(data)
+            self.assertListEqual(res1.shape, [5, 4])
+
+            loss1 = paddle.mean(res1)
+            loss1.backward()
+
+            # test __iter__
+            model3 = paddle.nn.Sequential(
+                Linear(10, 1),
+                Linear(1, 2),
+            )
+            output1 = model3(data)
+            output2 = data
+            for layer in model3:
+                output2 = layer(output2)
+            np.testing.assert_allclose(
+                output1.numpy(), output2.numpy(), equal_nan=True
+            )
+
     def test_sequential_list_params(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with base.dygraph.guard():

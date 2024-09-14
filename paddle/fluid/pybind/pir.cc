@@ -760,6 +760,7 @@ void BindIrMapping(py::module *m) {
   ir_mapping.def(py::init<>())
       .def("look_up",
            [](IrMapping &self, Value from) { return self.Lookup(from); })
+      .def("has", [](IrMapping &self, Value from) { return self.Has(from); })
       .def("add",
            [](IrMapping &self, Value from, Value to) {
              self.Add<Value>(from, to);
