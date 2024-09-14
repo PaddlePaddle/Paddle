@@ -1530,6 +1530,10 @@ bool FusedAttentionOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
   const auto &cache_kv_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(5));
+  const auto &src_mask_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(6));
+  const auto &qkv_bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
 
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
