@@ -131,7 +131,7 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
                 "trans_x": self.trans_x,
             }
 
-        def cal_output(X, Y, bias, act):
+        def cal_output(self, X, Y, bias, act):
             return get_output(X, Y, bias, act)
 
         def init_dtype_type(self):
@@ -214,7 +214,7 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_y = False
             self.trans_x = True
 
-        def cal_output(X, Y, bias, act):
+        def cal_output(self, X, Y, bias, act):
             out = np.dot(np.transpose(X, axes=(0, 1, 3, 2)), Y) + bias
 
             return relu(out)
