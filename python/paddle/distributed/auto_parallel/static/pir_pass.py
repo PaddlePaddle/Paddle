@@ -761,7 +761,4 @@ def fuse_attention_ffn_qkv_pass(startup_program, main_program):
         for op in del_ops:
             op.erase()
 
-    print("==startup_program===: ", startup_program, flush=1)
-    print("==main_program===: ", main_program, flush=1)
-
     return {}

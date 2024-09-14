@@ -68,6 +68,7 @@ from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
+    fuse_attention_ffn_qkv_pass,
     pipeline_pass,
     remove_other_rank_input_output_pass,
     remove_other_rank_op_pass,
@@ -688,6 +689,19 @@ class Engine:
         """
         mix_fw_program = self._fwd_main_progs[mode]
         startup_program = self._startup_progs[mode]
+
+        # Add fused_ffn/fused_attention_qkv
+        pir_to_dy_param_name = {}
+        dy_params = self.concrete_program.parameters[0]
+        pir_param = self.concrete_program.parameters[1]
+        for i in range(len(pir_param)):
+            pir_to_dy_param_name[pir_param[i].name] = dy_params[i].name
+
+        self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
+            startup_program, mix_fw_program
+        )
+
+        # todo: delete param by fused_ffn_qkv from concrete_program
 
         forward_op_start_idx = 0
         backward_op_start_idx = -1
