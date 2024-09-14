@@ -60,7 +60,7 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
   // SplitRecomputePattern();
   // VLOG(4) << "[Group Cluster] After SplitRecomputePattern: " << GraphInfo();
 
-  // // Horizontal fusion.
+  // Horizontal fusion.
   // VLOG(4) << "[Group Cluster] Start HorizontalFusion";
   // HorizontalFusion();
   // VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
@@ -155,7 +155,7 @@ void PatternGraph::HorizontalFusion() {
                       StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>,
                       StmtPatternGraphMatcher<ReducePattern>,
                       StmtPatternGraphMatcher<ReduceTreePattern>,
-                      StmtPatternGraphMatcher<AnchorPattern>>,
+                      StmtPatternGraphMatcher<ItersPermutationPattern>>,
                    LiftToHorizontalFusionPatternOperation>(this);
 
   GraphTransformer<NodePairPattern,

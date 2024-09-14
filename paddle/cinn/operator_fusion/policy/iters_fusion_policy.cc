@@ -116,6 +116,7 @@ ItersFusionPolicy::SearchTransformRouteFromReduce2Reduce(
         GetReuseItersTransform(&source_reduce_iters, target_reduce_iters);
     if (flatten_reuse_iters_transform == std::nullopt ||
         reduce_reuse_iters_transform == std::nullopt) {
+      VLOG(4) << "Can't fuse reduce iter can't fused.";
       return std::nullopt;
     }
     route.push_back(flatten_reuse_iters_transform.value());
@@ -139,6 +140,8 @@ ItersFusionPolicy::SearchTransformRouteFromReduce2Reduce(
       return std::nullopt;
     }
   } else {
+    VLOG(4) << "Can't fuse because reduce iter number is not equal: "
+            << source.reduce_iter_nums << " vs " << target.reduce_iter_nums;
     return std::nullopt;
   }
 }
@@ -160,6 +163,7 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
 
   // ItesTransform can not support decreasing iters in multi downstream fusion
   if (source_iters.size() > target_iters.size()) {
+    VLOG(4) << "Can't fuse source_iters is larger.";
     return std::nullopt;
   }
 
@@ -169,6 +173,8 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
     return SearchTransformRouteFromReduce2Reduce(source, target);
   } else if (source.reduce_iter_nums && !target.reduce_iter_nums) {
     // Can not transform iters from Reduce to Trivial
+    VLOG(4) << "Can't fuse because source.reduce_iter_nums && "
+               "!target.reduce_iter_nums";
     return std::nullopt;
   }
   // else: Search Trivial -> Reduce ItersTransform
@@ -197,6 +203,7 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
   const auto reuse_iters_transform =
       GetReuseItersTransform(&reused_source_iters, target_iters);
   if (reuse_iters_transform == std::nullopt) {
+    VLOG(4) << "Can't fuse because can't reuse iters.";
     return std::nullopt;
   } else {
     iters_transforms.push_back(reuse_iters_transform.value());

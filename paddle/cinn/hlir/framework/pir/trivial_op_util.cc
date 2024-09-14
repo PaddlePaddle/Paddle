@@ -82,6 +82,15 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Load* load, Expr* op) {
   }
 }
 
+void MappingTargetExprToDestExprMutator::Visit(
+    const ir::ScheduleBlockRealize* r, Expr* op) {
+  if (r == source_.ptr()) {
+    *op = dest_;
+  } else {
+    IRMutator::Visit(r, op);
+  }
+}
+
 void MappingTargetExprToDestExprMutator::Visit(const ir::For* for_node,
                                                Expr* op) {
   if (for_node == source_.ptr()) {
@@ -528,6 +537,70 @@ ExprTransformer ReplaceVarTransformer(const std::vector<ir::Var>& target_vars,
   return ExprTransformer(f);
 }
 
+ExprTransformer RemoveVarInScheduleBlockRealize(const ir::Var& target_vars,
+                                                const ir::Expr& replaced_expr) {
+  /*
+   * remove var in schedule block realize, replace it with replaced_expr and
+   * remove it in axes.bind()
+   */
+  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+    VLOG(4) << "Start RemoveVarInScheduleBlockRealize(" << target_vars << ", "
+            << replaced_expr << ")";
+    VLOG(4) << "      Input is " << e;
+    PADDLE_ENFORCE(e.As<ir::ScheduleBlockRealize>() != nullptr,
+                   "RemoveVarInScheduleBlockRealize: input expr is not a "
+                   "ScheduleBlockRealize.");
+    auto copied_ir = ir::ir_utils::IRCopy(e);
+    auto schedule_block_iter_vars =
+        copied_ir.As<ir::ScheduleBlockRealize>()->iter_values;
+    auto block_bound_vars = copied_ir.As<ir::ScheduleBlockRealize>()
+                                ->schedule_block.As<ir::ScheduleBlock>()
+                                ->iter_vars;
+    for (const auto& i_var : schedule_block_iter_vars) {
+      PADDLE_ENFORCE(
+          i_var.is_var(),
+          "RemoveVarInScheduleBlockRealize: axes.bind rhs is is not a Var.");
+    }
+    // find replace idx
+    int target_idx = -1;
+    for (int i = 0; i < schedule_block_iter_vars.size(); ++i) {
+      VLOG(4) << "RemoveVarInScheduleBlockRealize: compare with "
+              << schedule_block_iter_vars[i] << " vs " << target_vars
+              << ", and equality is: "
+              << (schedule_block_iter_vars[i].as_var()->name ==
+                  target_vars->name);
+      if (schedule_block_iter_vars[i].as_var()->name == target_vars->name) {
+        target_idx = i;
+      }
+    }
+    if (target_idx == -1) {
+      return copied_ir;  // do nothing, can't find target vars;
+    }
+    return ir::ScheduleBlockRealize::Make(
+        fusion::GatherVectorExcept<ir::Expr, int>(schedule_block_iter_vars,
+                                                  {target_idx}),
+        ir::ScheduleBlock::Make(
+            fusion::GatherVectorExcept<ir::Var, int>(block_bound_vars,
+                                                     {target_idx}),
+            copied_ir.As<ir::ScheduleBlockRealize>()
+                ->schedule_block.As<ir::ScheduleBlock>()
+                ->read_buffers,
+            copied_ir.As<ir::ScheduleBlockRealize>()
+                ->schedule_block.As<ir::ScheduleBlock>()
+                ->write_buffers,
+            copied_ir.As<ir::ScheduleBlockRealize>()
+                ->schedule_block.As<ir::ScheduleBlock>()
+                ->name,
+            ComposeUtils::CopyedReplaceExpr(
+                copied_ir.As<ir::ScheduleBlockRealize>()
+                    ->schedule_block.As<ir::ScheduleBlock>()
+                    ->body,
+                {block_bound_vars[target_idx]},
+                {replaced_expr})));
+  };
+  return ExprTransformer(f);
+}
+
 bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs) {
   return lhs.type().is_bool() || rhs.type().is_bool();
 }
@@ -609,26 +682,31 @@ ExprTransformer RemoveOneTransformer(int one) {
         ExprSetFinderUtils::DirectlyFather(copied).GetSingle(target_for);
     VLOG(4) << "RemoveOneTransformer: directly target_block of for is "
             << target_block;
-    // Replace iters[one] -> 0
-    ir::Expr replaced_body = ReplaceVarTransformer(
-        {iters[one]}, {ir::Expr(0)})(target_for.As<ir::For>()->body);
     PADDLE_ENFORCE(
         target_block.As<ir::Block>() != nullptr,
         "RemoveOneTransformer: target for father is not a ir::Block.");
+    // for -> replaced_body
     std::vector<ir::Expr> new_bodies;
     for (const auto& expr : target_block.As<ir::Block>()->stmts) {
       if (expr != target_for) {
         new_bodies.push_back(expr);
       } else {
-        for (const auto& origin_for : replaced_body.As<ir::Block>()->stmts) {
+        for (const auto& origin_for :
+             target_for.As<ir::For>()->body.As<ir::Block>()->stmts) {
           new_bodies.push_back(origin_for);
         }
       }
     }
     ir::Expr to_replace_block = ir::Block::Make(new_bodies);
-    // for -> replaced_body
     ComposeUtils::MappingTargetExprToDestExprMutator(target_block,
                                                      to_replace_block)(&copied);
+    VLOG(4) << "Remove Var to 0 in ScheduleBlockRealizer" << copied;
+    // Remove var to 0 in ScheduleBlockRealizer
+    InplaceMutateSingleExpr(
+        &copied,
+        (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+         ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit),
+        RemoveVarInScheduleBlockRealize(iters[one], ir::Expr(0)));
     return copied;
   };
   return ExprTransformer(f);
@@ -691,6 +769,19 @@ ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
   };
   return ExprTransformer(f);
 }
+
+int InplaceMutateSingleExpr(ir::Expr* root,
+                            const ExprSetFinderUtils::ExprSetFinder& finder,
+                            const ExprTransformer& transformer) {
+  // NOTE!!!
+  // source ir::node type must be supported in
+  // MappingTargetExprToDestExprMutator.
+  const auto& source = finder.GetSingle(*root);
+  const auto& target = transformer(source);
+  ComposeUtils::MappingTargetExprToDestExprMutator(source, target)(root);
+  return 1;  // operation number.
+}
+
 }  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(

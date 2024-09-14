@@ -22,7 +22,8 @@ std::string PrintFusionIters(const FusionIters& iters) {
 }
 
 std::string FusionItersSignature::DebugStr() const {
-  return "LoopIters: " + PrintFusionIters(loop_iters);
+  return "LoopIters: " + PrintFusionIters(loop_iters) +
+         ", reduce_iter = " + std::to_string(reduce_iter_nums);
 }
 
 std::string FusionItersManager::PrintItersSignature(
