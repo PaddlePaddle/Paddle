@@ -113,11 +113,13 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed, scope=None):
 
 
 # Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
-def marker_buitlin_op(program):
+def mark_buitlin_op(program):
     for op in program.global_block().ops:
-        for result in op.results():
-            if result.is_combine():
-                used_ops = result.all_used_ops()
-                for used_op in used_ops:
-                    if used_op.name() == "builtin.split":
-                        enforce_op_lower_trt(program, used_op.name())
+        if op.name() == "builtin.split":
+            defining_op = op.operands()[0].source().get_defining_op()
+            if defining_op is not None:
+                if (
+                    defining_op.has_attr("__l_trt__")
+                    and defining_op.attrs()["__l_trt__"]
+                ):
+                    enforce_op_lower_trt(program, op.name())

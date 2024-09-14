@@ -197,6 +197,7 @@ class PaddleToTensorRTConverter:
                 value_to_trt_tensor[value.id] = input_tensor
 
         for op in operations:
+            # Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
             if op.name() == "builtin.split":
                 continue
             operands = []
@@ -206,6 +207,7 @@ class PaddleToTensorRTConverter:
                     _logger.warning(f"Skipping uninitialized source: {source}")
                     continue
                 define_op_name = source.get_defining_op().name()
+                # Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
                 if define_op_name == "builtin.split":
                     continue
                 elif define_op_name == "builtin.combine":

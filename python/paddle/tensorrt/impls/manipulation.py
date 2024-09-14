@@ -213,7 +213,6 @@ def split_with_num_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
     input_shape_size = len(input_shape)
-    dynamic_shape = has_dynamic_shape(input_shape)
     axis = int(
         paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
     )
@@ -232,18 +231,18 @@ def split_with_num_converter(network, paddle_op, inputs):
         shape = list(input_shape)
         shape[axis] = size
         start[axis] = offset
-        if dynamic_shape:
-            shape_tensor = get_shape_with_dynamic_shape(
-                network, shape, input_tensor
-            )
+
+        shape_tensor = get_shape_with_dynamic_shape(
+            network, shape, input_tensor
+        )
         layer = network.add_slice(
             input_tensor,
             start=start,
-            shape=[] if dynamic_shape else shape,
+            shape=[],
             stride=stride,
         )
-        if dynamic_shape:
-            layer.set_input(2, shape_tensor)
+
+        layer.set_input(2, shape_tensor)
         offset += size
         outputs.append(layer.get_output(0))
 
@@ -255,7 +254,7 @@ def split_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
     input_shape_size = len(input_shape)
-    dynamic_shape = has_dynamic_shape(input_shape)
+
     axis = int(
         paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
     )
@@ -273,18 +272,18 @@ def split_converter(network, paddle_op, inputs):
         shape = list(input_shape)
         shape[axis] = size
         start[axis] = offset
-        if dynamic_shape:
-            shape_tensor = get_shape_with_dynamic_shape(
-                network, shape, input_tensor
-            )
+
+        shape_tensor = get_shape_with_dynamic_shape(
+            network, shape, input_tensor
+        )
+
         layer = network.add_slice(
             input_tensor,
             start=start,
-            shape=[] if dynamic_shape else shape,
+            shape=[],
             stride=stride,
         )
-        if dynamic_shape:
-            layer.set_input(2, shape_tensor)
+        layer.set_input(2, shape_tensor)
         offset += size
         outputs.append(layer.get_output(0))
 
