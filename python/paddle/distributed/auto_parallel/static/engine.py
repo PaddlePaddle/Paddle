@@ -800,17 +800,8 @@ class Engine:
         global_params_grads = params_grads
 
         apply_reshard_pass(dist_program, params_grads)
-        # print('after reshard', dist_program, flush=1)
-
         remove_other_rank_input_output_pass(dist_program)
-        # print(
-        #     'after remove_other_rank_input_output_pass', dist_program, flush=1
-        # )
-
-        remove_other_rank_op_pass(dist_program, params_grads)
-
-        # print('after remove_other_rank_op_pass', dist_program, flush=1)
-
+        remove_other_rank_op_pass(dist_program, params_grads, startup_program)
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
 
