@@ -1201,6 +1201,7 @@
   output : Tensor(out)
   infer_meta :
     func : CumScalarAxisInferMeta
+    spmd_rule : CumSumInferSpmdDynamic
   kernel :
     func : cumsum
     data_type : x
@@ -3511,6 +3512,7 @@
   output : Tensor(out)
   infer_meta :
     func : OneHotInferMeta
+    spmd_rule : OneHotInferSpmdDynamic
   kernel :
     func : one_hot
   traits : paddle::dialect::ForwardOnlyTrait
@@ -4235,7 +4237,7 @@
     func: sequence_pool
   intermediate: max_index
   backward: sequence_pool_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : set_value_with_tensor
   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)

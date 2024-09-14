@@ -43,7 +43,7 @@ def _get_version_detail(idx):
     assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
 
-    if re.match('@TAG_VERSION_REGEX@', '@PADDLE_VERSION@'):
+    if re.match(r'@TAG_VERSION_REGEX@', '@PADDLE_VERSION@'):
         version_details = '@PADDLE_VERSION@'.split('.')
 
         if len(version_details) >= 3:
