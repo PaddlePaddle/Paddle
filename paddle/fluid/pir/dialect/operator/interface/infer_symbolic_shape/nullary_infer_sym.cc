@@ -309,6 +309,11 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool Full_OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return FullOpInferSymbolicShape(op, infer_context);
+}
+
 bool FullIntArrayOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &attributes = op->attributes();
