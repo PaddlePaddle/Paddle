@@ -3994,7 +3994,7 @@
     {warpctcgrad : WarpCTCGrad, loss : Loss}
 
 - op : where
-  backward : where_grad
+  backward : where_grad, where_double_grad
   inputs :
     {condition : Condition, x : X, y : Y}
   outputs :
