@@ -3580,6 +3580,7 @@
   kernel :
     func : where_grad
   no_need_buffer : x, y
+  backward : where_double_grad
 
 - backward_op : yolo_loss_grad
   forward : yolo_loss (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0) -> Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
@@ -3709,3 +3710,13 @@
   kernel:
     func: unpool_grad
     data_type: x
+
+- backward_op: where_double_grad
+  forward: where_grad (Tensor condition, Tensor x, Tensor y, Tensor grad_out) -> Tensor(grad_x), Tensor(grad_y)
+  args: (Tensor condition, Tensor grad_x_grad, Tensor grad_y_grad)
+  output: Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [condition]
+  composite: where_double_grad(condition, grad_x_grad, grad_y_grad, grad_out_grad)
+  optional: grad_x_grad, grad_y_grad

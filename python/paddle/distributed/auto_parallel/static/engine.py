@@ -697,7 +697,7 @@ class Engine:
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
-        set_all_ops_op_role(dist_program, OpRole.Forward)
+        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
 
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
@@ -769,7 +769,6 @@ class Engine:
 
         # re-run apply_mix2dist_pass to dist accumulator.
         apply_mix2dist_pass(dist_program)
-        # print('program', startup_program, dist_program, flush=1)
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
@@ -791,7 +790,7 @@ class Engine:
 
         # Part 3: Graph partition
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
-        #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
+        #   insert reshard op if operand tensor's placements is different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
         apply_partition_pass(dist_program)
 
@@ -801,17 +800,8 @@ class Engine:
         global_params_grads = params_grads
 
         apply_reshard_pass(dist_program, params_grads)
-        # print('after reshard', dist_program, flush=1)
-
         remove_other_rank_input_output_pass(dist_program)
-        # print(
-        #     'after remove_other_rank_input_output_pass', dist_program, flush=1
-        # )
-
-        remove_other_rank_op_pass(dist_program, params_grads)
-
-        # print('after remove_other_rank_op_pass', dist_program, flush=1)
-
+        remove_other_rank_op_pass(dist_program, params_grads, startup_program)
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
 
@@ -1320,7 +1310,7 @@ class Engine:
                 for del_op in del_ops:
                     del_op.erase()
 
-                set_all_ops_op_role(startup_prog, OpRole.Forward)
+                set_all_ops_op_role(startup_prog.global_block(), OpRole.Forward)
                 apply_reshard_pass(startup_prog)
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True

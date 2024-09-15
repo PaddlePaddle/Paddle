@@ -11,31 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-import os
-import sys
 
 import numpy as np
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
 import tensorrt as trt
 
-from paddle.base.log_helper import get_logger
-from paddle.tensorrt.register import converter_registry
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
-)
 from paddle.tensorrt.converter_utils import (
     append_ones,
     get_axes_for_reduce_op,
     get_dynamic_dims,
     has_dynamic_shape,
 )
+from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register(
@@ -84,9 +70,17 @@ def layernorm_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.batch_norm_", trt_version="8.x")
 def batch_norm_converter(network, paddle_op, inputs):
     input_tensor, mean, variance, scale, bias = inputs
-
     scale_shape = paddle_op.operands()[3].source().shape
+    eps = paddle_op.attrs().get("epsilon", 1e-8)
+    mean_np = mean.numpy()
+    variance_np = variance.numpy()
+    scale_np = scale.numpy()
+    bias_np = bias.numpy()
 
+    actual_scale_np = scale_np / np.sqrt(variance_np + eps)
+    actual_bias_np = bias_np - mean_np * actual_scale_np
+    bias = trt.Weights(actual_bias_np)
+    scale = trt.Weights(actual_scale_np)
     power = np.ones(scale_shape, dtype='float32')
     power = trt.Weights(power)
     input_tensor_shape = paddle_op.operands()[0].source().shape

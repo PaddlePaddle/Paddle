@@ -56,7 +56,7 @@ class TestReshardRToSCrossMesh:
 
             old_ops = [op.name() for op in main_program.global_block().ops]
             assert 'dist_op.reshard' in old_ops
-            set_all_ops_op_role(main_program, OpRole.Forward)
+            set_all_ops_op_role(main_program.global_block(), OpRole.Forward)
             apply_reshard_pass(main_program)
         # np.testing.assert_equal(dist_program.num_ops(), 6)
         new_ops = [op.name() for op in main_program.global_block().ops]
