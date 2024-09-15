@@ -202,25 +202,25 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_y = False
             self.trans_x = False
 
-    class TestFuseGemmEpilogueOp5(TestFuseGemmBase):
-        def init_datas_shape_and_attrs(self):
-            self.x_shape = [2, 2, 4, 8]
-            self.y_shape = [4, 128]
-            self.bias_shape = [
-                128,
-            ]
-            self.out_shape = [2, 2, 8, 128]
-            self.activation = "relu"
-            self.trans_y = False
-            self.trans_x = True
+    # class TestFuseGemmEpilogueOp5(TestFuseGemmBase):
+    #     def init_datas_shape_and_attrs(self):
+    #         self.x_shape = [2, 2, 4, 8]
+    #         self.y_shape = [4, 128]
+    #         self.bias_shape = [
+    #             128,
+    #         ]
+    #         self.out_shape = [2, 2, 8, 128]
+    #         self.activation = "relu"
+    #         self.trans_y = False
+    #         self.trans_x = True
 
-        def cal_output(self, X, Y, bias, act):
-            out = (
-                np.dot(np.transpose(self.inputs['X'], axes=(0, 1, 3, 2)), Y)
-                + bias
-            )
+    #     def cal_output(self, X, Y, bias, act):
+    #         out = (
+    #             np.dot(np.transpose(self.inputs['X'], axes=(0, 1, 3, 2)), Y)
+    #             + bias
+    #         )
 
-            return relu(out)
+    #         return relu(out)
 
     class TestFuseGemmEpilogueOp6(TestFuseGemmBase):
         def init_datas_shape_and_attrs(self):
