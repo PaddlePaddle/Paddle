@@ -20,8 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
-#include "paddle/fluid/pybind/eval_frame.h"
-#include "paddle/fluid/pybind/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/eval_frame.h"
+#include "paddle/fluid/pybind/sot/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/macros.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/utils/pybind.h"
 
@@ -58,7 +59,8 @@ void BindJit(pybind11::module *m) {
   });
 }
 
-void BindEvalFrame(pybind11::module *m) {
+void BindSot(pybind11::module *m) {
+#if SOT_IS_SUPPORTED
   PyInit__eval_frame();
   m->def(
       "set_eval_frame",
@@ -105,6 +107,7 @@ void BindEvalFrame(pybind11::module *m) {
         return obj;
       },
       py::arg("py_codes"));
+#endif
 }
 
 }  // namespace pybind
