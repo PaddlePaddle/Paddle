@@ -1808,7 +1808,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
   auto x_mat_dims =
       common::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
 
-  int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
+  auto x_rank = x_dims.size();
+  int K_from_x = static_cast<int>(trans_x ? x_dims[x_rank - 2] : x_mat_dims[1]);
   int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
   bool check_dim = (!config.is_runtime && K_from_x != -1) || config.is_runtime;
   if (check_dim) {
@@ -1823,7 +1824,6 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> out_dims;
-  auto x_rank = x_dims.size();
   out_dims.reserve(x_rank);
 
   for (int i = 0; i + 2 < x_rank; ++i) {
