@@ -24,14 +24,14 @@ namespace inference {
 
 TEST(test_zerocopy_tensor, zerocopy_tensor) {
   AnalysisConfig config;
-  config.SetModel(FLAGS_infer_model + "/__model__",
-                  FLAGS_infer_model + "/__params__");
+  config.SetModel(FLAGS_infer_model + "/inference.pdmodel",
+                  FLAGS_infer_model + "/inference.pdiparams");
 
   auto predictor = CreatePaddlePredictor(config);
   int batch_size = 1;
-  int channels = 1;
-  int height = 48;
-  int width = 512;
+  int channels = 3;
+  int height = 224;
+  int width = 224;
   int nums = batch_size * channels * height * width;
 
   float* input = new float[nums];
