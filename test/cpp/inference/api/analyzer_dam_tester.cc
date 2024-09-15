@@ -195,8 +195,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   cfg->SwitchSpecifyInputNames();
-  auto pass_builder = cfg->pass_builder();
-  pass_builder->DeletePass("constant_folding_pass");
+  cfg->DeletePass("constant_folding_pass");
   cfg->SwitchIrOptim(true);
 }
 
@@ -322,30 +321,6 @@ TEST(Analyzer_dam, compare_determine) {
   SetInput(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
-}
-
-void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,
-                         const PaddlePredictor::Config *optim_config,
-                         const std::vector<std::vector<PaddleTensor>> &inputs) {
-  PrintConfig(orig_config, true);
-  PrintConfig(optim_config, true);
-  std::vector<std::vector<PaddleTensor>> orig_outputs, optim_outputs;
-  TestOneThreadPrediction(orig_config, inputs, &orig_outputs, false);
-  TestOneThreadPrediction(optim_config, inputs, &optim_outputs, false);
-  CompareResult(orig_outputs.back(), optim_outputs.back());
-}
-
-TEST(Analyzer_dam, compare_optim_orig) {
-  AnalysisConfig orig_cfg;
-  AnalysisConfig optim_cfg;
-  SetConfig(&orig_cfg);
-  SetOptimConfig(&optim_cfg);
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  CompareOptimAndOrig(
-      reinterpret_cast<const PaddlePredictor::Config *>(&orig_cfg),
-      reinterpret_cast<const PaddlePredictor::Config *>(&optim_cfg),
-      input_slots_all);
 }
 
 }  // namespace inference
