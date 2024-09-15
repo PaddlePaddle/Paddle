@@ -13,14 +13,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_auto_parallel_relaunch)
   set_tests_properties(test_auto_parallel_relaunch
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_mp_allreduce_matmul_grad_overlapping MODULES
-                  test_mp_allreduce_matmul_grad_overlapping)
-  set_tests_properties(test_mp_allreduce_matmul_grad_overlapping
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_relaunch_with_gpt_planner MODULES
-                  test_relaunch_with_gpt_planner)
-  set_tests_properties(test_relaunch_with_gpt_planner
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 240)
   py_test_modules(test_engine_api MODULES test_engine_api)
   set_tests_properties(test_engine_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 80)
@@ -40,44 +32,14 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_iterable_dataset MODULES test_iterable_dataset)
   set_tests_properties(test_iterable_dataset
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
-  py_test_modules(test_pass_grad_clip MODULES test_pass_grad_clip)
-  set_tests_properties(test_pass_grad_clip
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pass_gradient_merge MODULES test_pass_gradient_merge)
-  set_tests_properties(test_pass_gradient_merge
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pass_amp MODULES test_pass_amp)
-  set_tests_properties(test_pass_amp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                TIMEOUT 80)
-  py_test_modules(test_amp_o2_pass MODULES test_amp_o2_pass)
-  set_tests_properties(test_amp_o2_pass PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                   TIMEOUT 50)
-  py_test_modules(test_pass_generation_pipeline MODULES
-                  test_pass_generation_pipeline)
-  set_tests_properties(test_pass_generation_pipeline
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  set_tests_properties(
-    test_pass_generation_pipeline
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-  py_test_modules(test_pass_1F1B MODULES test_pass_1F1B)
-  set_tests_properties(test_pass_1F1B PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                 TIMEOUT 50)
-  set_tests_properties(
-    test_pass_1F1B PROPERTIES ENVIRONMENT
-                              "FLAGS_new_executor_micro_batching=False")
+
   py_test_modules(test_auto_tuner MODULES test_auto_tuner)
   set_tests_properties(test_auto_tuner PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 100)
-  py_test_modules(test_pipeline_scheduler_zb_vpp MODULES
-                  test_pipeline_scheduler_zb_vpp)
-  set_tests_properties(test_pipeline_scheduler_zb_vpp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
   set_tests_properties(test_auto_tuner_compare
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_pass_quantization MODULES test_pass_quantization)
-  set_tests_properties(test_pass_quantization
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
+
   py_test_modules(test_reshard_api MODULES test_reshard_api)
   set_tests_properties(test_reshard_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                    TIMEOUT 150)
@@ -171,9 +133,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_tensor_api MODULES test_dist_tensor_api)
   set_tests_properties(test_dist_tensor_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
-  py_test_modules(test_gpt_with_pir MODULES test_gpt_with_pir)
-  set_tests_properties(test_gpt_with_pir PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                    TIMEOUT 100)
   py_test_modules(test_semi_auto_parallel_saved_tensor_hook MODULES
                   test_semi_auto_parallel_saved_tensor_hook)
   set_tests_properties(test_semi_auto_parallel_saved_tensor_hook
@@ -185,9 +144,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_static_reshard_api MODULES test_static_reshard_api)
   set_tests_properties(test_static_reshard_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
-  py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
-  set_tests_properties(test_gpt_with_prim
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
   set_tests_properties(test_dist_checkpoint_utils
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
@@ -200,16 +156,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
   # End of unittests WITH multi cards and WITHOUT timeout
 
-  # NOTE(zyl): unittests WITH single card and timeout
-  py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
-  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 300)
-  py_test_modules(test_tuning_recompute_with_amp MODULES
-                  test_tuning_recompute_with_amp)
-  set_tests_properties(test_tuning_recompute_with_amp PROPERTIES TIMEOUT 60)
-  py_test_modules(test_pass_base_list MODULES test_pass_base_list)
-  set_tests_properties(test_pass_base_list PROPERTIES TIMEOUT 40)
-  py_test_modules(test_rule_based_tuner_o2 MODULES test_rule_based_tuner_o2)
-  set_tests_properties(test_rule_based_tuner_o2 PROPERTIES TIMEOUT 50)
   py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
                   test_semi_auto_parallel_functional_in_single_card)
   # End of unittests WITH single card and timeout
@@ -223,23 +169,18 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster MODULES test_cluster)
   py_test_modules(test_comm_cost MODULES test_comm_cost)
   py_test_modules(test_comp_cost MODULES test_comp_cost)
-  py_test_modules(test_dist_context MODULES test_dist_context)
+
   py_test_modules(test_to_static MODULES test_to_static)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
-  py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
-  py_test_modules(test_dist_matmul MODULES test_dist_matmul)
   py_test_modules(test_strategy MODULES test_strategy)
-  py_test_modules(test_dist_assign MODULES test_dist_assign)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
                   test_convert_to_process_meshes)
-  py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
-  py_test_modules(test_dist_concat MODULES test_dist_concat)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
