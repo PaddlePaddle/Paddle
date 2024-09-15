@@ -167,18 +167,12 @@ class TestDLPack(unittest.TestCase):
 
     def test_to_dlpack_from_ext_tensor(self):
         with dygraph_guard():
-            places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for place in places:
-                for _ in range(4):
-                    x = np.random.randn(3, 5)
-                    y = paddle.utils.dlpack.from_dlpack(x)
+            for _ in range(4):
+                x = np.random.randn(3, 5)
+                y = paddle.utils.dlpack.from_dlpack(x)
 
-                    self.assertEqual(
-                        x.__array_interface__['data'][0], y.data_ptr()
-                    )
-                    np.testing.assert_allclose(x, y.numpy())
+                self.assertEqual(x.__array_interface__['data'][0], y.data_ptr())
+                np.testing.assert_allclose(x, y.numpy())
 
 
 class TestRaiseError(unittest.TestCase):

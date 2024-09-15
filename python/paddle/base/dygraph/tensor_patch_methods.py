@@ -124,6 +124,7 @@ def monkey_patch_tensor():
             'grad_',
             'strides',
             'offset',
+            '__cuda_array_interface__',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
@@ -1248,6 +1249,79 @@ def monkey_patch_tensor():
         """
         return _C_ops.sparse_coalesce(self)
 
+    @property
+    def __cuda_array_interface__(self):
+        """Array view description for cuda tensors.
+
+        See:
+        CUDA Array Interface (Version 2)
+        https://numba.pydata.org/numba-doc/dev/cuda/cuda_array_interface.html
+        """
+
+        # raise AttributeError for unsupported tensors, so that
+        # hasattr(cpu_tensor, "__cuda_array_interface__") is False.
+        if "gpu" not in str(self.place):
+            raise AttributeError(
+                "Can't get __cuda_array_interface__ on non-CUDA tensor. "
+                "If CUDA data is required use tensor.cuda() to copy tensor to device memory."
+            )
+
+        if self.is_sparse():
+            raise AttributeError(
+                "Can't get __cuda_array_interface__ on sparse tensor. "
+                "Use Tensor.to_dense() to convert to a dense tensor first."
+            )
+
+        # RuntimeError, matching tensor.__array__() behavior.
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Can't get __cuda_array_interface__ on Tensor that requires grad. "
+                "If gradients aren't required, use var.detach() to get Tensor that doesn't require grad."
+            )
+
+        # CUDA devices are little-endian and tensors are stored in native byte
+        # order. 1-byte entries are endian-agnostic.
+        typestr = {
+            paddle.complex64: "<c8",
+            paddle.complex128: "<c16",
+            paddle.bfloat16: "<f2",
+            paddle.float16: "<f2",
+            paddle.float32: "<f4",
+            paddle.float64: "<f8",
+            paddle.uint8: "|u1",
+            paddle.int8: "|i1",
+            paddle.int16: "<i2",
+            paddle.int32: "<i4",
+            paddle.int64: "<i8",
+            paddle.bool: "|b1",
+            # NOTE: Paddle not support uint32, uint64, uint16 yet.
+            # paddle.uint16: "<u2",
+            # paddle.uint32: "<u4",
+            # paddle.uint64: "<u8",
+        }[self.dtype]
+
+        itemsize = self.element_size()
+
+        shape = tuple(self.shape)
+        if self.is_contiguous():
+            # __cuda_array_interface__ v2 requires the strides to be omitted
+            # (either not set or set to None) for C-contiguous arrays.
+            strides = None
+        else:
+            # the number of bytes to skip to access the next element at each dimension.
+            strides = tuple(s * itemsize for s in self.strides)
+
+        data_ptr = self.data_ptr() if self.numel().item() > 0 else 0
+        data = (data_ptr, False)  # read-only is false
+
+        return {
+            "typestr": typestr,
+            "shape": shape,
+            "strides": strides,
+            "data": data,
+            "version": 2,
+        }
+
     if not hasattr(core, "eager"):
         return
 
@@ -1290,6 +1364,7 @@ def monkey_patch_tensor():
         ("__hash__", __hash__),
         ("_use_gpudnn", _use_gpudnn),
         ("_md5sum", _md5sum),
+        ("__cuda_array_interface__", __cuda_array_interface__),
     ):
         setattr(core.eager.Tensor, method_name, method)
 
