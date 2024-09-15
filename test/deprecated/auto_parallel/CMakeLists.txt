@@ -72,6 +72,43 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_shard_layer_api_deprecated)
   # End of unittests WITH single card WITHOUT timeout
 
+  py_test_modules(test_pass_grad_clip_deprecated MODULES
+                  test_pass_grad_clip_deprecated)
+  set_tests_properties(test_pass_grad_clip_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+
+  py_test_modules(test_pass_gradient_merge_deprecated MODULES
+                  test_pass_gradient_merge_deprecated)
+  set_tests_properties(test_pass_gradient_merge_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_amp_deprecated MODULES test_pass_amp_deprecated)
+  set_tests_properties(test_pass_amp_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+  py_test_modules(test_amp_o2_pass_deprecated MODULES
+                  test_amp_o2_pass_deprecated)
+  set_tests_properties(test_amp_o2_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_generation_pipeline_deprecated MODULES
+                  test_pass_generation_pipeline_deprecated)
+  set_tests_properties(test_pass_generation_pipeline_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  set_tests_properties(
+    test_pass_generation_pipeline_deprecated
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  py_test_modules(test_pass_1F1B_deprecated MODULES test_pass_1F1B_deprecated)
+  set_tests_properties(test_pass_1F1B_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  set_tests_properties(
+    test_pass_1F1B_deprecated
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  py_test_modules(test_pass_quantization_deprecated MODULES
+                  test_pass_quantization_deprecated)
+  set_tests_properties(test_pass_quantization_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
+  py_test_modules(test_pass_bf16_deprecated MODULES test_pass_bf16_deprecated)
+  py_test_modules(test_pass_base_list_deprecated MODULES
+                  test_pass_base_list_deprecated)
+  set_tests_properties(test_pass_base_list_deprecated PROPERTIES TIMEOUT 40)
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
   py_test_modules(test_serialization_deprecated MODULES
                   test_serialization_deprecated)
@@ -108,7 +145,62 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_base_cost_deprecated MODULES test_base_cost_deprecated)
   py_test_modules(test_auto_conditional_block_deprecated MODULES
                   test_auto_conditional_block_deprecated)
+  py_test_modules(test_dist_attr_v2_deprecated MODULES
+                  test_dist_attr_v2_deprecated)
+  py_test_modules(test_dist_matmul_deprecated MODULES
+                  test_dist_matmul_deprecated)
+  py_test_modules(test_dist_assign_deprecated MODULES
+                  test_dist_assign_deprecated)
+  py_test_modules(test_dist_concat_deprecated MODULES
+                  test_dist_concat_deprecated)
+  py_test_modules(test_dist_context_deprecated MODULES
+                  test_dist_context_deprecated)
+  py_test_modules(test_pipeline_scheduler_zb_vpp_deprecated MODULES
+                  test_pipeline_scheduler_zb_vpp_deprecated)
+  set_tests_properties(test_pipeline_scheduler_zb_vpp_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_gpt_with_prim_deprecated MODULES
+                  test_gpt_with_prim_deprecated)
+  set_tests_properties(test_gpt_with_prim_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
+  py_test_modules(test_mp_allreduce_matmul_grad_overlapping_deprecated MODULES
+                  test_mp_allreduce_matmul_grad_overlapping_deprecated)
+  set_tests_properties(test_mp_allreduce_matmul_grad_overlapping_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
 
+  py_test_modules(test_auto_parallel_amp_pass_deprecated MODULES
+                  test_auto_parallel_amp_pass_deprecated)
+  set_tests_properties(test_mp_allreduce_matmul_grad_overlapping_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(test_auto_parallel_recompute_pass_deprecated MODULES
+                  test_auto_parallel_recompute_pass_deprecated)
+  set_tests_properties(test_auto_parallel_recompute_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(test_auto_parallel_sharding_pass_deprecated MODULES
+                  test_auto_parallel_sharding_pass_deprecated)
+  set_tests_properties(test_auto_parallel_sharding_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(test_auto_parallel_fp16_pass_deprecated MODULES
+                  test_auto_parallel_fp16_pass_deprecated)
+  set_tests_properties(test_auto_parallel_fp16_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(test_auto_parallel_gradient_merge_pass_deprecated MODULES
+                  test_auto_parallel_gradient_merge_pass_deprecated)
+  set_tests_properties(test_auto_parallel_gradient_merge_pass_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  py_test_modules(
+    test_auto_parallel_data_parallel_optimization_pass_deprecated MODULES
+    test_auto_parallel_data_parallel_optimization_pass_deprecated)
+  set_tests_properties(
+    test_auto_parallel_data_parallel_optimization_pass_deprecated
+    PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  if(CUDA_VERSION GREATER_EQUAL 11.6)
+    py_test_modules(
+      test_auto_parallel_fused_linear_promotion_pass_deprecated MODULES
+      test_auto_parallel_fused_linear_promotion_pass_deprecated)
+    set_tests_properties(
+      test_auto_parallel_fused_linear_promotion_pass_deprecated
+      PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
+  endif()
 endif()
-
 set_pir_tests_properties()
