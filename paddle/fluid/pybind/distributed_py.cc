@@ -21,6 +21,7 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -29,28 +30,27 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/process_group_utils.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/types.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/phi/core/distributed/collective/async_load.h"
-#include "paddle/phi/core/distributed/collective/process_group_nccl.h"
+#include "paddle/fluid/distributed/collective/async_load.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 
 #if defined(PADDLE_WITH_MPI)
-#include "paddle/phi/core/distributed/collective/process_group_mpi.h"
+#include "paddle/fluid/distributed/collective/process_group_mpi.h"
 #endif
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-#include "paddle/phi/core/distributed/collective/process_group_custom.h"
+#include "paddle/fluid/distributed/collective/process_group_custom.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
-#include "paddle/phi/core/distributed/collective/process_group_gloo.h"
+#include "paddle/fluid/distributed/collective/process_group_gloo.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/phi/core/distributed/collective/process_group_bkcl.h"
+#include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 #endif
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"

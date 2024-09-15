@@ -43,11 +43,8 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
 
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
-        !op->isa<paddle::onednn::dialect::CastOp>() &&
-        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -73,7 +70,6 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::SliceOp>() &&
         !op->isa<paddle::onednn::dialect::SoftmaxOp>() &&
         !op->isa<paddle::onednn::dialect::Softmax_Op>() &&
-        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
@@ -97,6 +93,21 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
 
     if (op_attr.find("use_quantizer") != op_attr.end()) {
       if (op_attr.at("use_quantizer").dyn_cast<pir::BoolAttribute>().data()) {
+        return false;
+      }
+    }
+
+    int i = 0;
+    for (auto& value : op->operands_source()) {
+      pir::Type type = op->operand_type(i++);
+      if (!type.isa<paddle::dialect::DenseTensorType>()) {
+        // We skip pir::VectorType
+        // TODO(Lirong, Xinyi): Support pir::VectorType in bf16
+        return false;
+      }
+      pir::Type op_dtype = pir::GetDataTypeFromValue(value);
+      // Only float input can be converted to bfloat16
+      if (!op_dtype.isa<pir::Float32Type>()) {
         return false;
       }
     }
@@ -144,11 +155,8 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
   // revert mkldnn_data_type attr to float32
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
-        !op->isa<paddle::onednn::dialect::CastOp>() &&
-        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -174,7 +182,6 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::SliceOp>() &&
         !op->isa<paddle::onednn::dialect::SoftmaxOp>() &&
         !op->isa<paddle::onednn::dialect::Softmax_Op>() &&
-        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
@@ -183,6 +190,15 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::FusedConv2dOp>() &&
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
       return false;
+    }
+    auto op_attr = op->attributes();
+    if (op_attr.find("mkldnn_data_type") != op_attr.end()) {
+      auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
+      if (mkldnn_data_type != "bfloat16") {
+        return false;
+      }
     }
 
     bool prev_fp32 = false;
@@ -294,11 +310,8 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
 
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
-        !op->isa<paddle::onednn::dialect::CastOp>() &&
-        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -324,7 +337,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::SliceOp>() &&
         !op->isa<paddle::onednn::dialect::SoftmaxOp>() &&
         !op->isa<paddle::onednn::dialect::Softmax_Op>() &&
-        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
@@ -333,6 +345,15 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::FusedConv2dOp>() &&
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
       return false;
+    }
+    auto op_attr = op->attributes();
+    if (op_attr.find("mkldnn_data_type") != op_attr.end()) {
+      auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
+      if (mkldnn_data_type != "bfloat16") {
+        return false;
+      }
     }
 
     uint32_t num_operands = op->num_operands();
@@ -344,7 +365,12 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
     }
 
     bool unsupported_op = false;
+    int i = 0;
     for (auto& value : op->operands_source()) {
+      pir::Type type = op->operand_type(i++);
+      if (!type.isa<paddle::dialect::DenseTensorType>()) {
+        return false;
+      }
       pir::Type op_dtype = pir::GetDataTypeFromValue(value);
       // Only float input can be converted to bfloat16
       if (!op_dtype.isa<pir::Float32Type>()) {
@@ -352,6 +378,7 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         break;
       }
     }
+
     if (!unsupported_op) {
       return false;
     }

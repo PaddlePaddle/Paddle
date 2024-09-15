@@ -192,17 +192,6 @@ std::unordered_set<pir::Operation*> GetConsumerOps(
   return consumers;
 }
 
-std::unordered_set<pir::Operation*> GetConsumerOpsSimple(pir::Operation* op) {
-  std::unordered_set<pir::Operation*> consumers;
-  for (auto& result : op->results()) {
-    for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-      auto parent_op = it->owner();
-      consumers.insert(parent_op);
-    }
-  }
-  return consumers;
-}
-
 std::vector<pir::Operation*> GetConsumerOpsRecursive(
     pir::Operation* root,
     const std::unordered_map<pir::Operation*, size_t>& op2id) {
@@ -215,7 +204,7 @@ std::vector<pir::Operation*> GetConsumerOpsRecursive(
     pir::Operation* cur = queue.front();
     queue.pop_front();
     result.push_back(cur);
-    for (const auto& new_op : GetConsumerOpsSimple(cur)) {
+    for (const auto& new_op : GetConsumerOps(cur, op2id)) {
       if (visited.count(new_op)) continue;
       visited.insert(new_op);
       queue.push_back(new_op);
@@ -361,34 +350,6 @@ struct UnionFindSet {
     }
     return root2subgraph[root];
   }
-
-  std::unordered_set<SubGraphPtr> GetUpstream(const SubGraphPtr& graph) {
-    std::unordered_set<SubGraphPtr> results;
-    for (auto op : graph->op_set) {
-      auto producers = GetProducerOps(op);
-      for (auto producer : producers) {
-        results.insert(GetSetFromOp(producer));
-      }
-    }
-    if (results.count(graph)) {
-      results.erase(graph);
-    }
-    return results;
-  }
-
-  std::unordered_set<SubGraphPtr> GetDownstream(const SubGraphPtr& graph) {
-    std::unordered_set<SubGraphPtr> results;
-    for (auto op : graph->op_set) {
-      auto consumers = GetConsumerOpsSimple(op);
-      for (auto consumer : consumers) {
-        results.insert(GetSetFromOp(consumer));
-      }
-    }
-    if (results.count(graph)) {
-      results.erase(graph);
-    }
-    return results;
-  }
 };
 
 static GraphSet Intersect(const GraphSet& upstream,
@@ -483,62 +444,8 @@ struct LoopDetectionMapping {
   }
 };
 
-static GraphSet SetDifference(const GraphSet& upstream,
-                              const GraphSet& downstream) {
-  GraphSet diff_set;
-  for (auto& item : upstream) {
-    if (!downstream.count(item)) {
-      diff_set.insert(item);
-    }
-  }
-  return diff_set;
-}
-
-struct RecursiveOpGetter {
-  std::unordered_map<SubGraphPtr, GraphSet> memory{};
-  std::function<GraphSet(const SubGraphPtr&)> func;
-  explicit RecursiveOpGetter(std::function<GraphSet(const SubGraphPtr&)> f) {
-    func = f;
-  }
-  GraphSet operator()(const SubGraphPtr& graph) {
-    if (memory.count(graph)) {
-      return memory[graph];
-    }
-    memory[graph] = GraphSet();  // set empty set avoid loop.
-    GraphSet set = func(graph);
-    GraphSet copied_set = set;
-    for (const auto& g : copied_set) {
-      auto recur_set = this->operator()(g);
-      set.insert(recur_set.begin(), recur_set.end());
-    }
-    memory[graph] = set;
-    return set;
-  }
-};
-
-static GraphSet UpstreamSet(UnionFindSet& union_set,  // NOLINT
-                            const SubGraphPtr& graph) {
-  // memory search:
-  std::function<GraphSet(const SubGraphPtr&)> GetProducerGraphs =
-      [&union_set](const SubGraphPtr& graph) {
-        return union_set.GetUpstream(graph);
-      };
-  auto GetProducerOpsRecursive = RecursiveOpGetter(GetProducerGraphs);
-  return GetProducerOpsRecursive(graph);
-}
-
-static GraphSet DownstreamSet(UnionFindSet& union_set,  // NOLINT
-                              const SubGraphPtr& graph) {
-  // memory search:
-  std::function<GraphSet(const SubGraphPtr&)> GetConsumerGraphs =
-      [&union_set](const SubGraphPtr& graph) {
-        return union_set.GetDownstream(graph);
-      };
-  auto GetConsumerOpsRecursive = RecursiveOpGetter(GetConsumerGraphs);
-  return GetConsumerOpsRecursive(graph);
-}
-
 static void VLOG_LINES(const std::string& str) {
+  if (!VLOG_IS_ON(4)) return;
 #ifdef PADDLE_WITH_CINN
   const auto& lines = cinn::utils::Split(str, "\n");
   for (const auto& line : lines) {
@@ -546,27 +453,6 @@ static void VLOG_LINES(const std::string& str) {
   }
 #endif
   return;
-}
-
-void SubgraphDetector::SetCanApplyFusionMap() {
-  for (auto* op1 : sort_ops_) {
-    for (auto* op2 : sort_ops_) {
-      can_apply_fusion_map_[op1][op2] = false;
-      can_apply_fusion_map_[op2][op1] = false;
-    }
-  }
-  for (auto* op : sort_ops_) {
-    if (op_classifier_(*op)) continue;
-    const auto& upstream_ops = GetProducerOpsRecursive(op, op2id_);
-    const auto& downstream_ops = GetConsumerOpsSimple(op);
-
-    for (auto& upstream_op : upstream_ops) {
-      for (auto& downstream_op : downstream_ops) {
-        can_apply_fusion_map_[upstream_op][downstream_op] = true;
-        can_apply_fusion_map_[downstream_op][upstream_op] = true;
-      }
-    }
-  }
 }
 
 void MergeSubGraphs(Operation* op,
@@ -613,16 +499,18 @@ void SubgraphDetector::DoOpFusion() {
     auto producers = GetProducerOpsReverseSort(op, op2id_);
     for (auto* producer : producers) {
       if (op_classifier_(*op) && !op_classifier_(*producer)) {
-        for (auto* consumer : GetConsumerOpsSimple(producer)) {
+        for (auto* consumer : GetConsumerOps(producer, op2id_)) {
           if (op_classifier_(*consumer) &&
               consumer->GetParent() == op->GetParent()) {
+            VLOG(4) << "Start Judge sibling nodes: " << op->id() << " vs "
+                    << consumer->id();
             MergeSubGraphs(op, consumer, union_find, loop_detector);
           }
         }
-        continue;
       }
     }
   }
+
   for (const auto& op : sort_ops_) {
     subgraph_map_[op] = union_find.GetSetFromOp(op);
   }
@@ -681,162 +569,6 @@ void SubgraphDetector::BuildSubGraph() {
   // reverse to keep fusion group in order.
   std::reverse(subgraph_list_.begin(), subgraph_list_.end());
 }
-
-// SubGraph Fusion
-void SubgraphDetector::DoSubGraphFusion() {
-  while (true) {
-    bool update = false;
-    for (auto& subgraph : subgraph_list_) {
-      // sub graph is not substitute
-      if (!subgraph->substitute) {
-        continue;
-      }
-      // do fusion
-      update |= FuseSubGraph(subgraph);
-    }
-    if (!update) {
-      break;
-    }
-  }
-}
-
-bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
-  auto producer = subgraph_ptr;
-  auto& consumers = producer->consumers;
-  std::vector<SubGraphPtr> candidates;
-  for (auto& consumer : consumers) {
-    if (!consumer->substitute) {
-      continue;
-    }
-    // fast dependency check.
-    if (IsDependencySimplify(producer, consumer, consumers)) {
-      continue;
-    }
-    // global dependency check.
-    if (IsDependency(producer, consumer, consumers)) {
-      continue;
-    }
-
-    candidates.push_back(consumer);
-  }
-
-  if (!candidates.size()) {
-    return false;
-  }
-
-  // fuse candidate to producer
-  for (auto& candidate : candidates) {
-    candidate->substitute = false;
-
-    // merge nodes
-    producer->ops.insert(
-        producer->ops.end(), candidate->ops.begin(), candidate->ops.end());
-    producer->op_set.insert(candidate->op_set.begin(), candidate->op_set.end());
-
-    // update bound for check dependency
-    producer->max_depth = std::max(producer->max_depth, candidate->max_depth);
-    producer->min_depth = std::min(producer->min_depth, candidate->min_depth);
-
-    // merge producer/consumer
-    producer->producers.insert(candidate->producers.begin(),
-                               candidate->producers.end());
-    producer->consumers.insert(candidate->consumers.begin(),
-                               candidate->consumers.end());
-    // update producers's consumer
-    for (auto& tmp : candidate->producers) {
-      if (tmp.get() == producer.get()) {
-        continue;
-      }
-      tmp->consumers.insert(producer);
-      tmp->consumers.erase(candidate);
-    }
-    // update consumers's producer
-    for (auto& tmp : candidate->consumers) {
-      tmp->producers.insert(producer);
-      tmp->producers.erase(candidate);
-    }
-
-    // remove candidate in producer/consumer
-    producer->producers.erase(candidate);
-    producer->consumers.erase(candidate);
-
-    // merge input nodes
-    producer->input_ops.insert(candidate->input_ops.begin(),
-                               candidate->input_ops.end());
-  }
-
-  // remove input nodes that is in node set
-  auto input_ops = producer->input_ops;
-  for (auto input_op : input_ops) {
-    if (producer->op_set.count(input_op)) {
-      producer->input_ops.erase(input_op);
-    }
-  }
-
-  // remove producer from set.
-  producer->producers.erase(producer);
-  producer->consumers.erase(producer);
-
-  return true;
-}
-// check exist dependency.
-bool SubgraphDetector::IsDependency(
-    const SubGraphPtr& producer_g,
-    const SubGraphPtr& consumer,
-    const std::unordered_set<SubGraphPtr>& consumers) {
-  std::queue<SubGraphPtr> candidates;
-  candidates.push(consumer);
-
-  std::unordered_set<SubGraphPtr> visited_set;
-  while (!candidates.empty()) {
-    auto& candidate = candidates.front();
-    candidates.pop();
-    for (auto& producer : candidate->producers) {
-      if (producer.get() == producer_g.get()) {
-        continue;
-      }
-      if (consumers.count(producer)) {
-        return true;
-      }
-      if (!visited_set.count(producer)) {
-        visited_set.insert(producer);
-        candidates.push(producer);
-      }
-    }
-  }
-  return false;
-}
-bool SubgraphDetector::IsDependencySimplify(
-    const SubGraphPtr& producer_g,
-    const SubGraphPtr& consumer,
-    const std::unordered_set<SubGraphPtr>& consumers) {
-  std::queue<SubGraphPtr> candidates;
-  candidates.push(consumer);
-  // check upper bound.
-  int check_upper_depth = producer_g->max_depth;
-  std::unordered_set<SubGraphPtr> visited_set;
-  while (!candidates.empty()) {
-    auto& candidate = candidates.front();
-    candidates.pop();
-    for (auto& producer : candidate->producers) {
-      if (producer.get() == producer_g.get()) {
-        continue;
-      }
-      if (producer->min_depth > check_upper_depth) {
-        continue;
-      }
-      if (consumers.count(producer)) {
-        return true;
-      }
-      if (!visited_set.count(producer)) {
-        visited_set.insert(producer);
-        candidates.push(producer);
-      }
-    }
-  }
-  return false;
-}
-
 std::vector<pir::Value> AnalysisOutputs(
     const GroupOpsVec& group_ops) {  // NOLINT
   // Get output by ud chain
