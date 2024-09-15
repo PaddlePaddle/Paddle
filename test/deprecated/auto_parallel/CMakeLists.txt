@@ -140,18 +140,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_dist_op_cost_deprecated)
   py_test_modules(test_cost_interface_deprecated MODULES
                   test_cost_interface_deprecated)
-  py_test_modules(test_dist_assign_deprecated MODULES
-                  test_dist_assign_deprecated)
-  py_test_modules(test_dist_attr_v2_deprecated MODULES
-                  test_dist_attr_v2_deprecated)
-  py_test_modules(test_dist_concat_deprecated MODULES
-                  test_dist_concat_deprecated)
-  py_test_modules(test_dist_context_deprecated MODULES
-                  test_dist_context_deprecated)
   py_test_modules(test_conditional_block_reshard_deprecated MODULES
                   test_conditional_block_reshard_deprecated)
-  py_test_modules(test_dist_matmul_deprecated MODULES
-                  test_dist_matmul_deprecated)
   py_test_modules(test_base_cost_deprecated MODULES test_base_cost_deprecated)
   py_test_modules(test_auto_conditional_block_deprecated MODULES
                   test_auto_conditional_block_deprecated)
