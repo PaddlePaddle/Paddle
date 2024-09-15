@@ -888,6 +888,12 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   return argument_outputs;
 }
 
+bool FusedGemmEpilogueOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  return FusedGemmEpilogueOpInferSymbolicShape(this->operation(),
+                                               infer_context);
+}
+
 const char *FusedGemmEpilogueGradOp::attributes_name[3] = {  // NOLINT
     "trans_x",
     "trans_y",

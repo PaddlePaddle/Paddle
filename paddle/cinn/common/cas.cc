@@ -299,10 +299,13 @@ bool ExprPosCmp::operator()(const Expr& a, const Expr& b) {
   // O-1, 1 <| 2
   VLOG(7) << "Begin ExprPosCmp, a: " << a << ", b: " << b;
   if (a.is_constant() && b.is_constant()) {
+    // std::cerr << "is constant\n";
     return a.get_constant() < b.get_constant();
   }
 
   // O-2, both are symbols, compare by the lexicographical order.
+
+  // std::cerr << "11 2\n";
   if (a.As<_Var_>() && b.As<_Var_>()) {
     return a.As<_Var_>()->name < b.As<_Var_>()->name;
   }
@@ -338,10 +341,21 @@ bool ExprPosCmp::operator()(const Expr& a, const Expr& b) {
 
   // O-7, if a is an integer or fraction and v is any other type, 1 < x
   if (a.As<IntImm>() || a.As<FloatImm>() || a.As<FracOp>()) {
-    if (!(b.As<IntImm>() || b.As<FloatImm>() || b.As<FracOp>())) return true;
+    // std::cerr << "11 1\n";
+    if (!(b.As<IntImm>() || b.As<FloatImm>() ||
+          b.As<FracOp>())) {  // std::cerr << "11 3\n";
+      return true;
+    }
   }
+
+  // std::cerr << "btype " << b.type() << std::endl;
+
   if (b.As<IntImm>() || b.As<FloatImm>() || b.As<FracOp>()) {
-    if (!(a.As<IntImm>() || a.As<FloatImm>() || a.As<FracOp>())) return false;
+    // std::cerr << "11 1111\n";
+    if (!(a.As<IntImm>() || a.As<FloatImm>() || a.As<FracOp>())) {
+      // std::cerr << "11 2222\n";
+      return false;
+    }
   }
 
   // O-8, if a is a product, v is a sum, fractional, or symbol
@@ -349,6 +363,7 @@ bool ExprPosCmp::operator()(const Expr& a, const Expr& b) {
     auto* ap = a.As<Product>();
 
     if (ap && (b.As<Sum>() || b.As<Call>() || b.As<_Var_>() || b.As<Mod>())) {
+      // std::cerr << "~~\n";
       return operator()(a, Product::Make({b}));
     }
   }
@@ -356,6 +371,7 @@ bool ExprPosCmp::operator()(const Expr& a, const Expr& b) {
   {
     if (a.As<Mod>()) {
       if (!b.As<Mod>()) {
+        // std::cerr << "11111111\n";
         // Todo: may be wrong especially for negative value
         return operator()(a, Mod::Make(b, Sum::Make({b, Expr(1)})));
       }
@@ -366,6 +382,7 @@ bool ExprPosCmp::operator()(const Expr& a, const Expr& b) {
   {
     if (a.As<Sum>()) {
       if (b.As<_Var_>()) {
+        // std::cerr << "2222\n";
         return operator()(a.As<Sum>()->operand(0), {b});
       }
     }
@@ -386,6 +403,7 @@ std::vector<Expr> CasSimplifyMutator::MergeProduct(const std::vector<Expr>& p,
 
 std::vector<Expr> CasSimplifyMutator::SimplifyBinaryProduct(Expr left,
                                                             Expr right) {
+  // std::cerr << "product " << std::endl;
   // SPRDREC-1
   if (!left.As<Product>() && !right.As<Product>()) {
     auto a = left;
@@ -536,6 +554,7 @@ std::vector<Expr> CasSimplifyMutator::SimplifyBinaryProduct(Expr left,
 
   // SPRDREC-2, Page 101
   if (left.As<Product>() || right.As<Product>()) {
+    // std::cerr << "product 1\n";
     auto a = left;
     auto b = right;
 
@@ -543,16 +562,19 @@ std::vector<Expr> CasSimplifyMutator::SimplifyBinaryProduct(Expr left,
     auto* b_product = b.As<Product>();
     // case 1
     if (a_product && b_product) {
+      // std::cerr << "product 1-1\n";
       return MergeProduct(a_product->operands(), b_product->operands());
     }
 
     // case 2
     if (a_product) {
+      // std::cerr << "product 2\n";
       return MergeProduct(a_product->operands(), {b});
     }
 
     // case 3
     if (b_product) {
+      // std::cerr << "product 3\n";
       return MergeProduct({a}, b_product->operands());
     }
   }
@@ -640,7 +662,9 @@ std::vector<Expr> CasSimplifyMutator::MergeExprs(
   while (li < p.size() && lj < q.size()) {
     auto&& p1 = p[li];
     auto&& q1 = q[lj];
+    // std::cerr << "before binnay merge\n";
     auto&& h = binary_merge(p1, q1);
+    // std::cerr << "finish binnay merge\n";
     if (h.size() == 2 && h[0] == p1 && h[1] == q1) {
       ++li;
       res.emplace_back(std::move(h.front()));
@@ -656,6 +680,8 @@ std::vector<Expr> CasSimplifyMutator::MergeExprs(
 
   if (li < p.size()) res.insert(res.end(), p.begin() + li, p.end());
   if (lj < q.size()) res.insert(res.end(), q.begin() + lj, q.end());
+
+  // std::cerr << "merge expr fin\n";
   return std::move(res);
 }
 
@@ -1096,7 +1122,7 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
         std::swap(sum_a_prod->operand(0), sum_a_prod->operand(1));
       auto sum_a_prod_a_int = sum_a_prod->operand(0).As<IntImm>();
       auto& interval = var_intervals.at(sum_b_var->name);
-      int b_abs = std::abs(b_i->value);
+      int b_abs = std::abs(b_i->value);  // is safe here?
       int sum_prod_a_abs = std::abs(sum_a_prod_a_int->value);
       if (sum_a_prod_a_int && (b_abs % sum_prod_a_abs == 0)) {
         if (std::abs(interval.l) < sum_prod_a_abs &&
@@ -1230,7 +1256,7 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
 
   auto a = CasSimplify(node->a(), var_intervals);
   auto b = CasSimplify(node->b(), var_intervals);
-
+  // std::cerr << "simplify mod 0\n";
   auto* a_i = a.As<IntImm>();
   auto* a_product = a.As<Product>();
   auto* a_sum = a.As<Sum>();
@@ -1245,6 +1271,8 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
     return make_const(a_i->type(), a_i->value % b_i->value);
   }
 
+  // std::cerr << "simplify mod 1\n";
+
   // x % 1 = 0
   if (b_i && b_i->value == 1) return make_const(b_i->type(), 0);
 
@@ -1252,6 +1280,7 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
   // (x * 6) % 2 = 0
   // (x * 2) % 6 = (x % 3) * 2
   if (b_i && a_product && b_i->value > 0) {
+    // std::cerr << "simplify mod 2\n";
     for (int i = 0; i < a_product->operands().size(); i++) {
       auto a_op_i = a_product->operand(i);
       if (a_op_i.As<IntImm>() && a_op_i.As<IntImm>()->value > 0) {
@@ -1282,6 +1311,7 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
     }
   }
 
+  // std::cerr << "simplify mod 5\n";
   // 0 % x = 0, 1 % x = 1
   if (a_i && (a_i->value == 0 || a_i->value == 1)) return a;
 
@@ -1295,7 +1325,9 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
       return make_const(b_i->type(), 0);
   }
 
+  // std::cerr << "simplify mod 6\n";
   if (a_product && b_i) {
+    // std::cerr << "simplify mod 7\n";
     if (IsDivisible(a_product, b_i->value)) {
       return make_const(Int(32), 0);
     }
@@ -2071,6 +2103,7 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
   auto a = CasSimplify(node->a(), var_intervals);
   auto b = CasSimplify(node->b(), var_intervals);
 
+  //// std::cerr << "factor auto simpl\n";
   // update frac op node
   expr = ir::FracOp::Make(a, b);
   node = expr.As<FracOp>();
@@ -2095,9 +2128,12 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
     }
   }
 
+  // std::cerr << "factor auto simpl 22\n";
+
   // case 2
   // sum/x or product/x is divisible
   if (bi) {
+    // std::cerr << "factor auto simp l 33\n";
     auto* a_sum = a.As<Sum>();
     auto* a_product = a.As<Product>();
     // divisible
@@ -2113,13 +2149,18 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
 
     // if 0 < b < 3, (3a+b) / 6 = (3a / 6) + (b / 6)
     if (a_sum && a_sum->operands().size() == 2) {
+      // std::cerr << "sum process !!!!!\n";
       a_sum->operands()[0] = CasSimplify(a_sum->operands()[0], var_intervals);
+      // std::cerr << "sum process ========\n";
       auto sum_a_prod = a_sum->operands()[0].As<Product>();
       auto sum_b_var = a_sum->operands()[1].As<_Var_>();
+      // std::cerr << "~~~~!!!!\n";
       if (sum_a_prod && sum_b_var && var_intervals.count(sum_b_var->name)) {
+        // std::cerr << "~~~~????\n";
         auto sum_a_prod_b_int = sum_a_prod->operand(1).As<IntImm>();
         if (sum_a_prod_b_int)
           std::swap(sum_a_prod->operand(0), sum_a_prod->operand(1));
+        // std::cerr << "~~~~11\n";
         auto sum_a_prod_a_int = sum_a_prod->operand(0).As<IntImm>();
         auto& interval = var_intervals.at(sum_b_var->name);
         int b_abs = std::abs(bi->value);
@@ -2128,12 +2169,15 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
           if (b_abs % sum_prod_a_abs == 0 &&
               std::abs(interval.l) < sum_prod_a_abs &&
               std::abs(interval.r) < sum_prod_a_abs) {
-            return CasSimplify(
+            // std::cerr << "before cas simply !!!\n";
+            auto out = CasSimplify(
                 Sum::Make({CasSimplify(FracOp::Make(a_sum->operands()[0], b),
                                        var_intervals),
                            CasSimplify(FracOp::Make(a_sum->operands()[1], b),
                                        var_intervals)}),
                 var_intervals);
+            // std::cerr << "before cas simply ~~\n";
+            return out;
           }
         }
       }
@@ -2150,6 +2194,7 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
 
   // cinn_min/cinn_max(a, b)/2 = cinn_min/cinn_max(a/2, b/2)
   if ((bi && bi->value > 0) || (bf && bf->value > 0)) {
+    // std::cerr << "factor auto simpl 2-1\n";
     auto cmp_min = a.As<Min>();
     auto cmp_max = a.As<Max>();
     if (cmp_min) {
@@ -2167,6 +2212,7 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
   }
 
   if (av && bi) {
+    // std::cerr << "factor auto simpl 2-2\n";
     if (var_intervals.count(av->name)) {
       auto& interval = var_intervals.at(av->name);
       int b_abs = std::abs(bi->value);
@@ -2178,6 +2224,7 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
 
   // (32x+y)/32 = x + y/32
   if (as && bi) {
+    // std::cerr << "factor auto simpl 2-3\n";
     std::vector<Expr> external_sum_args;
     std::vector<Expr> internal_sum_args;
     for (auto& e : as->operands()) {
@@ -2224,6 +2271,7 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
 
     ExprPosCmp cmp;
 
+    // std::cerr << "cmp 111\n";
     while (i < avs.size() && j < bvs.size()) {
       auto& a = avs[i];
       auto& b = bvs[j];
@@ -2265,12 +2313,18 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
         }
       }
     }
+
+    // std::cerr << "cmp 22\n";
     while (i < avs.size()) {
       avs1.push_back(avs[i++]);
     }
+
+    // std::cerr << "cmp 33\n";
     while (j < bvs.size()) {
       bvs1.push_back(bvs[j++]);
     }
+
+    // std::cerr << "cmp 44\n";
     if (avs1.empty()) return make_const(avs[0].type(), 1);
     if (bvs1.empty()) return Product::Make(avs1);
 
@@ -2292,11 +2346,16 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
   }
 
   // x / x
+
+  // std::cerr << "factor auto simpl 55\n";
   if (a.type().is_int() && b.type().is_int() && av && bv) {
+    // std::cerr << "factor auto simpl 66\n";
     if (a == b) return make_const(a.type(), 1);
   }
 
+  // std::cerr << "factor auto simpl 77\n";
   if (node->a().same_as(a) && node->b().same_as(b)) return expr;
+  // std::cerr << "factor auto simpl 88\n";
   return FracOp::Make(a, b);
 }
 

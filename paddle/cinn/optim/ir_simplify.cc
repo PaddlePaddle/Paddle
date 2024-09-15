@@ -405,10 +405,18 @@ struct SimplifyCastMutator : public ir::IRMutator<> {
 
     ir::IRMutator<ir::Expr*>::Visit(&node->v(), &node->v());
 
-    if (op->type() == op->v().type()) {
-      *expr = op->v();
-      return;
-    }
+    // if (op->type() == op->v().type()) {
+    //   *expr = op->v();
+    //   return;
+    // }
+
+#define __CAST_TO_INT_TYPE(type__)                             \
+  if (auto* i = op->v().As<ir::IntImm>()) {                    \
+    if ((i->value != std::numeric_limits<type__>::lowest()) && \
+        (i->value != std::numeric_limits<type__>::max())) {    \
+      *expr = Expr(static_cast<type__>(i->value));             \
+    }                                                          \
+  }
 
 #define __CAST_TO_TYPE(type__)                                          \
   if (auto* i = op->v().As<ir::IntImm>()) {                             \
@@ -423,13 +431,13 @@ struct SimplifyCastMutator : public ir::IRMutator<> {
 
     if (op->v().is_constant()) {
       if (op->type() == type_of<int8_t>()) {
-        __CAST_TO_TYPE(int8_t)
+        __CAST_TO_INT_TYPE(int8_t)
       } else if (op->type() == type_of<int16_t>()) {
-        __CAST_TO_TYPE(int16_t)
+        __CAST_TO_INT_TYPE(int16_t)
       } else if (op->type() == type_of<int32_t>()) {
-        __CAST_TO_TYPE(int32_t)
+        __CAST_TO_INT_TYPE(int32_t)
       } else if (op->type() == type_of<int64_t>()) {
-        __CAST_TO_TYPE(int64_t)
+        __CAST_TO_INT_TYPE(int64_t)
       } else if (op->type() == type_of<uint8_t>()) {
         __CAST_TO_TYPE(uint8_t)
       } else if (op->type() == type_of<uint16_t>()) {

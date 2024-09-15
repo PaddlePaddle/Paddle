@@ -54,11 +54,16 @@ Expr Optimize(Expr e,
   auto copied = ir::ir_utils::IRCopy(e);
 
   FoldCINNCallArguments(&copied);
+  VLOG(4) << "fold cinn call:" << copied;
   TransformPolyForToFor(&copied);
+  VLOG(4) << "transform poly for:" << copied;
   ReplaceConstParamToInteger(&copied);
+  VLOG(4) << "relace const param:" << copied;
   // Simplify already contains CastSimplify
   Simplify(&copied);
+  VLOG(4) << "simplify:" << copied;
   ReplaceCrossThreadReduction(&copied);
+  VLOG(4) << "replace cross thread reduction:" << copied;
   UnrollLoop(&copied);
   VLOG(4) << "After Optimize UnrollLoop:" << copied;
 
