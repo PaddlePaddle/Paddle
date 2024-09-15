@@ -2510,8 +2510,8 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
             grad_var_to_var[scale_loss_grad_var_name] = scale_loss_var_name
 
 
-def set_all_ops_op_role(main_program, op_role):
-    all_ops = main_program.global_block().ops
+def set_all_ops_op_role(block, op_role):
+    all_ops = block.ops
     for op in all_ops:
         if op.op_role == -1:
             op.op_role = op_role
