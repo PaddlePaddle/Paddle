@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_pt_and_pir,
-    test_pt_only,
+    test_legacy_and_pt,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -27,7 +27,7 @@ from paddle.jit import to_static
 
 
 class TestTensorHook(Dy2StTestBase):
-    @test_pt_only
+    @test_legacy_and_pt
     def test_hook_for_different_parameter(self):
         def f(x):
             def h(g):
@@ -53,7 +53,7 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
-    @test_pt_only
+    @test_legacy_and_pt
     def test_hook_in_sub_block(self):
         def f(x):
             def hook1(grad):
@@ -84,7 +84,7 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
-    @test_pt_only
+    @test_legacy_and_pt
     def test_hook_sub_attr(self):
         IMAGE_SIZE = 784
         CLASS_NUM = 10
@@ -122,7 +122,7 @@ class TestTensorHook(Dy2StTestBase):
             jit_layer._linear.weight.grad.numpy(),
         )
 
-    @test_pt_only
+    @test_legacy_and_pt
     def test_hook_for_reassignment_parameter(self):
         def f(x):
             def h(g):
@@ -146,7 +146,7 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
-    @test_pt_only
+    @test_legacy_and_pt
     def test_hook_for_repeat_register(self):
         def f(x):
             def h(g):
@@ -170,7 +170,7 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
-    @test_pt_and_pir
+    @test_legacy_and_pt_and_pir
     def test_hook_in_init_for_layer(self):
         def hook(grad):
             return grad * 2
