@@ -21,6 +21,8 @@
 # nothing to modify
 set -ex
 
+echo "new2 pr here"
+
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
