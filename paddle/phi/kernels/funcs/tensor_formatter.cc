@@ -118,6 +118,7 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
   } else {
     log_stream << "  - data: unprintable type: " << dtype << std::endl;
   }
+  log_stream << "  - hash: " << std::hash(print_tensor) << std::endl;
   return log_stream.str();
 }
 
