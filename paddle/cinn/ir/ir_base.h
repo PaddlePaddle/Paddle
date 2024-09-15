@@ -133,14 +133,21 @@ class Dim;
 //! Define IrNodeTy
 // @{
 #define __m(x__) x__,
-enum class IrNodeTy { kUnk = -1, NODETY_FORALL(__m) };
+enum class IrNodeTy {
+  kUnk = -1,
+  IterMark,
+  IterSum,
+  IterSplit,
+  NODETY_FORALL(__m)
+};
 #undef __m
 // @}
 
 //! String representations for IrNodeTy.
 // @{
 #define __m(x__) #x__,
-const std::vector<std::string> kIrNodeTyReprs({NODETY_FORALL(__m) "None"});
+const std::vector<std::string> kIrNodeTyReprs(
+    {NODETY_FORALL(__m) "IterSplit", "IterSum", "IterMark", "None"});
 #undef __m
 // @}
 
@@ -200,7 +207,7 @@ class IrNodeRef : public cinn::common::Shared<IrNode> {
     static_assert(std::is_base_of<IrNode, T>());
     PADDLE_ENFORCE_NOT_NULL(
         get(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "IrNodeRef holds null. "
             "The get() method should return a non-null value."));
     if (node_type() == T::_node_type_) return static_cast<const T*>(get());
@@ -262,11 +269,11 @@ struct IntImm : public ExprNode<IntImm> {
     PADDLE_ENFORCE_EQ(
         type().is_int(),
         true,
-        phi::errors::InvalidArgument("The type must be an integer type."));
+        ::common::errors::InvalidArgument("The type must be an integer type."));
     PADDLE_ENFORCE_EQ(
         type().is_scalar(),
         true,
-        phi::errors::InvalidArgument("The type must be scalar type."));
+        ::common::errors::InvalidArgument("The type must be scalar type."));
     if (type().bits() != 8)
       if (type().bits() != 16)
         if (type().bits() != 32)
@@ -289,12 +296,12 @@ struct UIntImm : public ExprNode<UIntImm> {
   void Verify() const override {
     PADDLE_ENFORCE_EQ(type().is_uint(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The type must be an unsigned integer type."));
     PADDLE_ENFORCE_EQ(
         type().is_scalar(),
         true,
-        phi::errors::InvalidArgument("The type must be scalar type."));
+        ::common::errors::InvalidArgument("The type must be scalar type."));
     if (type().bits() != 1)
       if (type().bits() != 8)
         if (type().bits() != 16)
@@ -319,11 +326,11 @@ struct FloatImm : public ExprNode<FloatImm> {
     PADDLE_ENFORCE_EQ(
         type().is_float(),
         true,
-        phi::errors::InvalidArgument("The type must be float type."));
+        ::common::errors::InvalidArgument("The type must be float type."));
     PADDLE_ENFORCE_EQ(
         type().is_scalar(),
         true,
-        phi::errors::InvalidArgument("The type must be scalar type."));
+        ::common::errors::InvalidArgument("The type must be scalar type."));
   }
 
   static const IrNodeTy _node_type_ = IrNodeTy::FloatImm;
@@ -438,7 +445,7 @@ struct UnaryOpNode : public ExprNode<T> {
     PADDLE_ENFORCE_EQ(
         v.defined(),
         true,
-        phi::errors::InvalidArgument("The variable must be defined."));
+        ::common::errors::InvalidArgument("The variable must be defined."));
     operands().resize(1);
     this->v() = v;
   }
@@ -447,7 +454,7 @@ struct UnaryOpNode : public ExprNode<T> {
     PADDLE_ENFORCE_EQ(
         v().defined(),
         true,
-        phi::errors::InvalidArgument("The variable must be defined."));
+        ::common::errors::InvalidArgument("The variable must be defined."));
     return v().type();
   }
 
@@ -469,17 +476,18 @@ template <typename T>
 struct BinaryOpNode : public ExprNode<T> {
   BinaryOpNode() { operands().resize(2); }
   BinaryOpNode(Type type, Expr a, Expr b) : ExprNode<T>(type) {
-    PADDLE_ENFORCE_EQ(type.valid(),
-                      true,
-                      phi::errors::InvalidArgument("The type must be valid."));
+    PADDLE_ENFORCE_EQ(
+        type.valid(),
+        true,
+        ::common::errors::InvalidArgument("The type must be valid."));
     PADDLE_ENFORCE_EQ(
         a.defined(),
         true,
-        phi::errors::InvalidArgument("The object 'a' must be defined."));
+        ::common::errors::InvalidArgument("The object 'a' must be defined."));
     PADDLE_ENFORCE_EQ(
         b.defined(),
         true,
-        phi::errors::InvalidArgument("The object 'b' must be defined."));
+        ::common::errors::InvalidArgument("The object 'b' must be defined."));
     operands().resize(2);
     this->a() = a;
     this->b() = b;

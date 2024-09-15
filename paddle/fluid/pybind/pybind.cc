@@ -129,6 +129,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
@@ -1098,7 +1099,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
-  BindEvalFrame(&m);
+  BindSot(&m);
   BindCustomDevicePy(&m);
   BindEagerUtils(m.ptr());
 
@@ -1656,6 +1657,15 @@ All parameter, weight, gradient are variables in Paddle.
            )DOC",
            py::return_value_policy::reference)
       .def("size", &Scope::Size)
+      .def("local_var_names",
+           &Scope::LocalVarNames,
+           R"DOC(
+          Get all variable names in the current scope.
+
+          Returns:
+              List[str]: The list of variable names.
+          )DOC",
+           py::return_value_policy::reference)
       .def("erase",
            &Scope::EraseVars,
            py::arg("names"),
@@ -2794,6 +2804,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
+  m.def("size_of_dtype", phi::SizeOf);
   py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")
       .def(py::init<>())
       .def("get_data",

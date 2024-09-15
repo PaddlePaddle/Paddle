@@ -1054,7 +1054,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
 
     // Get Value from args
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
-    auto x = CastPyArg2VectorOfValue(x_obj, "tensorrt_engine", 0);
+    auto x = CastPyArg2VectorOfValue(x_obj, "tensorrt_engine", 0, true);
 
     PyObject *param_obj = PyTuple_GET_ITEM(args, 1);
     if (!PyObject_TypeCheck(param_obj, g_tensorrt_engine_params_pytype)) {

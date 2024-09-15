@@ -73,7 +73,7 @@ void CudaModuleTester::Compile(const ir::Module& m,
   jit_ = backends::SimpleJIT::Create();
 
   // compile host module
-  jit_->Link<backends::CodeGenCudaHost>(host_module, false);
+  jit_->Link<backends::CodeGenGpuHost>(host_module, false);
 }
 
 void* CudaModuleTester::CreateDeviceBuffer(const cinn_buffer_t* host_buffer) {
