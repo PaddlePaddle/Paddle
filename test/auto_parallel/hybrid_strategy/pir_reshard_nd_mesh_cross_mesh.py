@@ -82,7 +82,7 @@ class TestReshardNdMeshCrossMesh:
                     dist_input, self._mesh1, output_placements
                 )
             dist_program = main_program.clone()
-            set_all_ops_op_role(dist_program, OpRole.Forward)
+            set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
             apply_reshard_pass(dist_program)
 
         return main_program, dist_program
