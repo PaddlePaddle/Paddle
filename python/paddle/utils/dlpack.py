@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import enum
+import warnings
 from typing import TYPE_CHECKING
 
 import paddle
@@ -26,7 +27,7 @@ from ..base.framework import in_dygraph_mode
 if TYPE_CHECKING:
     from typing_extensions import CapsuleType
 
-    from paddle import Tensor
+    from paddle import Any, Tensor
 
 __all__ = [
     'to_dlpack',
@@ -88,17 +89,25 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
         return x.value().get_tensor()._to_dlpack()
 
-    check_type(x, 'x', (LoDTensor), 'to_dlpack')
+    check_type(x, "x", (LoDTensor), "to_dlpack")
     return x._to_dlpack()
 
 
-def from_dlpack(dlpack) -> Tensor:
+def from_dlpack(dlpack: Any) -> Tensor:
     """
     Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
     the tensor from given dlpack.
 
     Args:
-        dlpack (PyCapsule): a PyCapsule object with the dltensor.
+        dlpack (object with `__dlpack__` attribute, or a PyCapsule):
+            The tensor or DLPack capsule to convert.
+
+            If `dlpack` is a tensor (or ndarray) object, it must support
+            the `__dlpack__` protocol (i.e., have a `dlpack.__dlpack__`
+            method). Otherwise `dlpack` may be a DLPack capsule, which is
+            an opaque `PyCapsule` instance, typically produced by a
+            `to_dlpack` function or method.
+
 
     Returns:
         out (Tensor), a tensor decoded from DLPack. One thing to be noted, if we get
@@ -109,7 +118,7 @@ def from_dlpack(dlpack) -> Tensor:
         .. code-block:: python
 
             >>> import paddle
-            >>> # x is a tensor with shape [2, 4]
+            >>> # From DLPack capsule
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
             ...                       [0.1, 0.2, 0.6, 0.7]])
             >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
@@ -124,23 +133,28 @@ def from_dlpack(dlpack) -> Tensor:
             Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [[10.       , 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
+
+            >>> # Directly from external tensor that has '__dlpack__' attribute
+            >>> import numpy as np
+            >>> x = np.array([[0.2, 0.3, 0.5, 0.9],
+            ...              [0.1, 0.2, 0.6, 0.7]])
+            >>> y = paddle.utils.dlpack.from_dlpack(x)
+            >>> y[0, 0] = 10.0
+            >>> # data of tensor x is shared with tensor y
+            >>> print(x)
+            [[10.   0.3  0.5  0.9]
+            [ 0.1  0.2  0.6  0.7]]
     """
 
-    # Check the type of dlpack
-    t = type(dlpack)
-    dlpack_flag = t.__module__ == 'builtins' and t.__name__ == 'PyCapsule'
-    if not dlpack_flag:
-        raise TypeError(
-            "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
-            f" but received {type(dlpack)}."
-        )
-
-    if hasattr(dlpack, '__dlpack__'):
+    if hasattr(dlpack, "__dlpack__"):
         device = dlpack.__dlpack_device__()
         # device is CUDA, we need to pass the current
         # stream
         if device[0] in (DLDeviceType.kDLCUDA,):
-            stream = paddle.device.cuda.current_stream(device[1])
+            with warnings.catch_warnings():
+                # ignore deprecation warning
+                warnings.filterwarnings("ignore", category=UserWarning)
+                stream = paddle.device.cuda.current_stream(device[1])
             # cuda_stream is the pointer to the stream and it is a public
             # attribute, but it is not documented
             # The array API specify that the default legacy stream must be passed
