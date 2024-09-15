@@ -428,10 +428,8 @@ def main():
             t.start()
 
         # Fill the queue with files.
-        with open('./tools/codestyle/diff_files.txt', 'r') as f:
-            files = f.read().splitlines()
-
-            for name in files:
+        for name in files:
+            if file_name_re.search(name):
                 task_queue.put(name)
 
         # Wait for all threads to be done.
