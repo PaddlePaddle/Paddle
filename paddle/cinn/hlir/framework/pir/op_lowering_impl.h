@@ -47,16 +47,6 @@ class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);
 
-struct GroupInfo {
-  std::vector<int64_t> data_space;
-  std::vector<int64_t> reduce_axis;
-  std::vector<int64_t> loop_strides;
-  std::set<std::string> reduce_var_names;
-  std::set<std::string> shared_var_names;
-  std::set<std::string> direct_output_var_names;
-  std::vector<std::string> broadcast_output_names;
-};
-
 class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
  public:
   explicit OpLowererImpl(const Target&);
@@ -160,11 +150,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
                        const ::pir::Value& value);
   ir::Tensor GetTensorSymbolic(const OpLoweringGroupPtr& group,
                                const ::pir::Value& value);
-
-  std::shared_ptr<GroupInfo> GetGroupInfo(
-      const FusionGroupInfo& fusion_group_info,
-      const OpLoweringGroupPtr& group,
-      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
 
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,

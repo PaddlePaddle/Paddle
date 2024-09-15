@@ -62,28 +62,36 @@ class TestHapiWithAmp(unittest.TestCase):
                 amp_level['use_fp16_guard'] = False
             print('dynamic' if dynamic else 'static', amp_level)
 
-            paddle.seed(2021)
-            paddle.enable_static() if not dynamic else paddle.disable_static()
-            paddle.set_device('gpu')
-            model = self.get_model(amp_level)
-            self.run_model(model)
+            with paddle.pir_utils.OldIrGuard():
+                paddle.seed(2021)
+                (
+                    paddle.enable_static()
+                    if not dynamic
+                    else paddle.disable_static()
+                )
+                paddle.set_device('gpu')
+                model = self.get_model(amp_level)
+                self.run_model(model)
 
     def test_pure_fp16(self):
         amp_config = {
             "level": "O2",
             "init_loss_scaling": 128,
         }
-        self.run_amp(amp_config)
+        with paddle.pir_utils.OldIrGuard():
+            self.run_amp(amp_config)
 
     def test_amp(self):
         amp_config = {"level": "O1", "init_loss_scaling": 128}
-        self.run_amp(amp_config)
+        with paddle.pir_utils.OldIrGuard():
+            self.run_amp(amp_config)
 
     def test_fp32(self):
         amp_config = {
             "level": "O0",
         }
-        self.run_amp(amp_config)
+        with paddle.pir_utils.OldIrGuard():
+            self.run_amp(amp_config)
 
     def test_save_load(self):
         paddle.disable_static()

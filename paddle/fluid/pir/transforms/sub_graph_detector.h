@@ -49,20 +49,6 @@ class SubgraphDetector {
 
   void BuildSubGraph();
 
-  // SubGraph Fusion
-  void DoSubGraphFusion();
-
-  bool FuseSubGraph(SubGraphPtr subgraph_ptr);
-  // check exist dependency.
-  bool IsDependency(const SubGraphPtr& producer_g,
-                    const SubGraphPtr& consumer,
-                    const std::unordered_set<SubGraphPtr>& consumers);
-
-  bool IsDependencySimplify(const SubGraphPtr& producer_g,
-                            const SubGraphPtr& consumer,
-                            const std::unordered_set<SubGraphPtr>& consumers);
-  void SetCanApplyFusionMap();
-
  private:
   pir::Block* block_;
   OpClassifier op_classifier_;

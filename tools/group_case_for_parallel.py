@@ -121,15 +121,27 @@ def group_case_for_parallel(rootPath):
         new_f.close()
 
     # no parallel cases
+    max_case_num_per_line = 100
+    no_parallel_case_line_list = []
     cases = '^job'
     if len(all_need_run_cases) != 0:
+        cnt = 0
         for case in all_need_run_cases:
             if case not in nightly_tests:
                 cases = cases + f'$|^{case}'
+                cnt += 1
+                if cnt == max_case_num_per_line:
+                    cases = f'{cases}$'
+                    no_parallel_case_line_list.append(cases)
+                    cnt = 0
+                    cases = '^job'
+
         cases = f'{cases}$'
+        no_parallel_case_line_list.append(cases)
 
     new_f = open(f'{rootPath}/tools/no_parallel_case_file', 'w')
-    new_f.write(cases + '\n')
+    for case_line in no_parallel_case_line_list:
+        new_f.write(case_line + '\n')
     new_f.close()
     f.close()
 

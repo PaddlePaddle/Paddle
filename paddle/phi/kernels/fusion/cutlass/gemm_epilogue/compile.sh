@@ -50,11 +50,11 @@ if [ ! -d "$cutlass_repo_directory" ]; then
         rm -rf .git
         cp -r "$SOURCE_CUTLASS_GIT_DIR" .git
         sed -i '6c\ \ worktree = ../' .git/config
-        git checkout v2.11.0
+        git checkout v3.3.0
         cd ..
     else
         echo "Cutlass folder does not exist in the submodule and is being downloaded..."
-        git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
+        git clone --branch v3.3.0  https://github.com/NVIDIA/cutlass
     fi
 fi
 

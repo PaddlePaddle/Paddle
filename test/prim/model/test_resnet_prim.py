@@ -46,30 +46,30 @@ epoch_num = 1
 # note: Version 2.0 momentum is fused to OP when L2Decay is available, and the results are different from the base version.
 # The results in ci as as follows:
 DY2ST_PRIM_GT = [
-    5.847333908081055,
-    8.368712425231934,
-    4.989010334014893,
-    8.523179054260254,
-    7.997398376464844,
-    7.601831436157227,
-    9.777579307556152,
-    8.428393363952637,
-    8.581992149353027,
-    10.313587188720703,
+    8.852442741394043,
+    8.403523445129395,
+    7.158264636993408,
+    8.538503646850586,
+    7.026732921600342,
+    7.603669166564941,
+    7.809482097625732,
+    8.743914604187012,
+    8.434671401977539,
+    8.021540641784668,
 ]
 
 # IN V100, 16G, CUDA 12.0, the results are as follows:
 DY2ST_PRIM_GT_CUDA12 = [
-    5.847333908081055,
-    8.368700981140137,
-    4.989815711975098,
-    8.65414810180664,
-    7.947117805480957,
-    7.329026222229004,
-    9.768604278564453,
-    8.573783874511719,
-    8.44187068939209,
-    10.309272766113281,
+    8.852442741394043,
+    8.403524398803711,
+    7.158257484436035,
+    8.538562774658203,
+    7.0259857177734375,
+    7.612443923950195,
+    7.8350419998168945,
+    8.743268013000488,
+    8.371030807495117,
+    8.006532669067383,
 ]
 
 if core.is_compiled_with_cuda():
@@ -135,7 +135,6 @@ def run(model, data_loader, optimizer, mode):
         for batch_id, data in enumerate(data_loader()):
             start_time = time.time()
             img, label = data
-
             pred = model(img)
             avg_loss = paddle.nn.functional.cross_entropy(
                 input=pred,
@@ -144,7 +143,6 @@ def run(model, data_loader, optimizer, mode):
                 reduction='mean',
                 use_softmax=True,
             )
-
             acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
             acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
 
@@ -173,7 +171,6 @@ def run(model, data_loader, optimizer, mode):
             )
             if batch_id >= end_step:
                 break
-    print(losses)
     return losses
 
 
@@ -194,8 +191,7 @@ def train(to_static, enable_prim, enable_cinn):
     data_loader = paddle.io.DataLoader(
         dataset, batch_size=batch_size, drop_last=True
     )
-
-    resnet = resnet50(False)
+    resnet = resnet50(True)
     if to_static:
         build_strategy = paddle.static.BuildStrategy()
         if enable_cinn:
