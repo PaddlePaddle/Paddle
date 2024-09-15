@@ -1749,7 +1749,7 @@ void HogwildWorker::PrintFetchVars() {
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
     time_t curtime = 0;
     time(&curtime);
-    std::array<char, 80> mbstr = {};
+    std::array<char, 80> mbstr;
     std::strftime(mbstr.data(),
                   sizeof(mbstr),
                   "%Y-%m-%d %H:%M:%S",
