@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import importlib
 import inspect
 import logging
@@ -347,7 +349,7 @@ def set_ir_mode(mode: IrMode):
     return decorator
 
 
-def disable_test_case(flags):
+def disable_test_case(flags: tuple[ToStaticMode, IrMode]):
     def decorator(fn):
         disabled_test_cases = getattr(fn, "disabled_test_cases", [])
         disabled_test_cases.append(flags)
