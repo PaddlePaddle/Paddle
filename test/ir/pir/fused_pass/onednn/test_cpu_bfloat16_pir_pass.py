@@ -1007,5 +1007,46 @@ class TestConvTransposeOpBf16Pass(PassTest):
         self.check_pass_correct()
 
 
+class TestCastBf16Pass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x1 = paddle.static.data(
+                    name='x1', shape=[1, 30], dtype='float32'
+                )
+
+                out = paddle.cast(x1, 'float32')
+                out = paddle.assign(out)
+                self.pass_attr_list = [
+                    {'onednn_placement_pass': {}},
+                    {'cpu_bfloat16_placement_pass': {}},
+                    {'cpu_bfloat16_pass': {}},
+                ]
+                self.feeds = {
+                    "x1": np.random.random((1, 30)).astype("float32"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "onednn_op.cast": 1,
+                    "onednn_op.dequantize": 1,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -96,6 +96,7 @@ OTHER_PRIM_VJP_OPS = [
     'atan_grad',
     'atan2_grad',
     'cumsum_grad',
+    'cumprod_grad',
     'sum_grad',
     'cast_grad',
     'reshape_grad',
