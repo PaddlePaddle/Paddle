@@ -190,7 +190,6 @@ class TestLogicalNot(TestLogicalBase):
     def _set_test_func(self):
         self.dygraph_func = test_logical_not
 
-    @test_legacy_and_pt_and_pir
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
@@ -206,7 +205,6 @@ class TestLogicalNot2(TestLogicalBase):
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_2
 
-    @test_legacy_and_pt_and_pir
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
