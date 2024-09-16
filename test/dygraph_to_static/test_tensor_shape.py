@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
     test_pir_only,
     test_pt_only,
 )
@@ -290,7 +289,6 @@ class TestTensorShapeBasic(Dy2StTestBase):
     def get_static_output(self):
         return self._run(to_static=True)
 
-    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
@@ -795,7 +793,6 @@ def dyfunc_with_static_convert_var_shape(x):
 
 class TestFindStatiConvertVarShapeSuffixVar(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
         func = paddle.jit.to_static(
