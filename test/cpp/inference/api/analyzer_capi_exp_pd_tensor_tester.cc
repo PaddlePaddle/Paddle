@@ -45,8 +45,8 @@ void PD_run() {
   PD_Tensor* tensor =
       PD_PredictorGetInputHandle(predictor, input_names->data[0]);
 
-  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
-  std::vector<float> input(1 * 3 * 300 * 300, 0);
+  std::array<int32_t, 4> shapes = {1, 3, 224, 224};
+  std::vector<float> input(1 * 3 * 224 * 224, 0);
   int32_t size;
   PD_PlaceType place;
   PD_TensorReshape(tensor, 4, shapes.data());
@@ -98,15 +98,15 @@ TEST(PD_Tensor, int32) {
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
       PD_PredictorGetInputHandle(predictor, input_names->data[0]);
-  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
-  std::vector<int32_t> input(1 * 3 * 300 * 300, 0);
+  std::array<int32_t, 4> shapes = {1, 3, 224, 224};
+  std::vector<int32_t> input(1 * 3 * 224 * 224, 0);
   int32_t size;
   PD_PlaceType place;
   PD_TensorReshape(tensor, 4, shapes.data());
   PD_TensorCopyFromCpuInt32(tensor, input.data());
   int32_t* data_ptr = PD_TensorDataInt32(tensor, &place, &size);
   EXPECT_EQ(place, PD_PLACE_CPU);
-  EXPECT_EQ(size, 1 * 3 * 300 * 300);
+  EXPECT_EQ(size, 1 * 3 * 224 * 224);
   int32_t* mutable_data_ptr = PD_TensorMutableDataInt32(tensor, place);
   EXPECT_EQ(data_ptr, mutable_data_ptr);
 
@@ -129,15 +129,15 @@ TEST(PD_Tensor, int64) {
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
       PD_PredictorGetInputHandle(predictor, input_names->data[0]);
-  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
-  std::vector<int64_t> input(1 * 3 * 300 * 300, 0);
+  std::array<int32_t, 4> shapes = {1, 3, 224, 224};
+  std::vector<int64_t> input(1 * 3 * 224 * 224, 0);
   int32_t size;
   PD_PlaceType place;
   PD_TensorReshape(tensor, 4, shapes.data());
   PD_TensorCopyFromCpuInt64(tensor, input.data());
   int64_t* data_ptr = PD_TensorDataInt64(tensor, &place, &size);
   EXPECT_EQ(place, PD_PLACE_CPU);
-  EXPECT_EQ(size, 1 * 3 * 300 * 300);
+  EXPECT_EQ(size, 1 * 3 * 224 * 224);
   int64_t* mutable_data_ptr = PD_TensorMutableDataInt64(tensor, place);
   EXPECT_EQ(data_ptr, mutable_data_ptr);
 
@@ -160,15 +160,15 @@ TEST(PD_Tensor, uint8) {
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
       PD_PredictorGetInputHandle(predictor, input_names->data[0]);
-  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
-  std::array<uint8_t, 1 * 3 * 300 * 300> input = {0};
+  std::array<int32_t, 4> shapes = {1, 3, 224, 224};
+  std::array<uint8_t, 1 * 3 * 224 * 224> input = {0};
   int32_t size;
   PD_PlaceType place;
   PD_TensorReshape(tensor, 4, shapes.data());
   PD_TensorCopyFromCpuUint8(tensor, input.data());
   uint8_t* data_ptr = PD_TensorDataUint8(tensor, &place, &size);
   EXPECT_EQ(place, PD_PLACE_CPU);
-  EXPECT_EQ(size, 1 * 3 * 300 * 300);
+  EXPECT_EQ(size, 1 * 3 * 224 * 224);
   uint8_t* mutable_data_ptr = PD_TensorMutableDataUint8(tensor, place);
   EXPECT_EQ(data_ptr, mutable_data_ptr);
 

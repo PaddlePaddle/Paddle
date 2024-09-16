@@ -398,11 +398,6 @@ class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("perm", pat.Attr("perm"));
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-    } else if (bfloat16_ops_ == "onednn_op.cast" ||
-               bfloat16_ops_ == "onednn_op.cast_") {
-      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-      op_attrs.emplace("dtype", pat.Attr("dtype"));
-
     } else if (bfloat16_ops_ == "onednn_op.relu" ||
                bfloat16_ops_ == "onednn_op.relu_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
@@ -518,11 +513,6 @@ class CpuBfloat16DequantPatternOne_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("perm", pat.Attr("perm"));
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-    } else if (bfloat16_ops_ == "onednn_op.cast" ||
-               bfloat16_ops_ == "onednn_op.cast_") {
-      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-      op_attrs.emplace("dtype", pat.Attr("dtype"));
-
     } else if (bfloat16_ops_ == "onednn_op.relu" ||
                bfloat16_ops_ == "onednn_op.relu_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
@@ -2038,6 +2028,47 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
   }
 };
 
+template <typename OpType>
+class CastBf16Pattern : public pir::OpRewritePattern<OpType> {
+ public:
+  using pir::OpRewritePattern<OpType>::OpRewritePattern;
+
+  bool MatchAndRewrite(
+      OpType op,
+      pir::PatternRewriter &rewriter) const override {  // NOLINT
+    std::string target_op_name = op->name();
+    if (!(target_op_name == "onednn_op.cast" ||
+          target_op_name == "onednn_op.cast_"))
+      return false;
+
+    auto attributes = op->attributes();
+    auto dtype_attr = attributes["dtype"];
+    phi::DataType dtype =
+        dtype_attr.template dyn_cast<paddle::dialect::DataTypeAttribute>()
+            .data();
+    if (dtype == phi::DataType::FLOAT32) {
+      pir::Attribute new_dtype = paddle::dialect::DataTypeAttribute::get(
+          rewriter.ir_context(), phi::DataType::BFLOAT16);
+      attributes["dtype"] = new_dtype;
+    } else {
+      return false;
+    }
+
+    OpType new_cast = rewriter.Build<OpType>(op->operand_source(0), attributes);
+
+    std::unordered_map<std::string, pir::Attribute> dq_attributes;
+    dq_attributes["scale"] = rewriter.float_attr(1.0f);
+    dq_attributes["shift"] = rewriter.float_attr(0.0f);
+    paddle::onednn::dialect::DequantizeOp dq_op =
+        rewriter.Build<paddle::onednn::dialect::DequantizeOp>(new_cast.out(),
+                                                              dq_attributes);
+
+    rewriter.ReplaceAllUsesWith(op->result(0), dq_op.output());
+    rewriter.EraseOp(op);
+    return true;
+  }
+};
+
 class CpuBfloat16Pass : public pir::PatternRewritePass {
  public:
   CpuBfloat16Pass() : pir::PatternRewritePass("cpu_bfloat16_pass", 3) {}
@@ -2071,8 +2102,6 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
         paddle::onednn::dialect::Softmax_Op::name(),
         paddle::onednn::dialect::TransposeOp::name(),
         paddle::onednn::dialect::Transpose_Op::name(),
-        paddle::onednn::dialect::CastOp::name(),
-        paddle::onednn::dialect::Cast_Op::name(),
         paddle::onednn::dialect::ReluOp::name(),
         paddle::onednn::dialect::Relu_Op::name(),
         paddle::onednn::dialect::SigmoidOp::name(),
@@ -2192,6 +2221,24 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
 
     ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternFour_one>(
         context, paddle::onednn::dialect::FusedConv2dOp::name(), 3));
+
+    auto cast_bf16_pattern =
+        std::make_unique<CastBf16Pattern<paddle::onednn::dialect::CastOp>>(
+            context,
+            benefit_idx++,
+            std::vector<std::string>{
+                paddle::onednn::dialect::DequantizeOp::name(),
+            });
+    ps.Add(std::move(cast_bf16_pattern));
+
+    auto cast_bf16_pattern_2 =
+        std::make_unique<CastBf16Pattern<paddle::onednn::dialect::Cast_Op>>(
+            context,
+            benefit_idx++,
+            std::vector<std::string>{
+                paddle::onednn::dialect::DequantizeOp::name(),
+            });
+    ps.Add(std::move(cast_bf16_pattern_2));
 
     return ps;
   }

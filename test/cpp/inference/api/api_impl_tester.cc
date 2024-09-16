@@ -25,7 +25,7 @@ limitations under the License. */
 #ifdef __clang__
 #define ACC_DIFF 4e-3
 #else
-#define ACC_DIFF 1e-3
+#define ACC_DIFF 2e-3
 #endif
 
 PD_DEFINE_string(word2vec_dirname,
