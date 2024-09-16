@@ -18,9 +18,6 @@ import numpy
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
     test_legacy_and_pt_and_pir,
 )
 
@@ -167,9 +164,7 @@ class TestToTensorReturnVal(Dy2StTestBase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
-    # MIN_GRAPH_SIZE=10 will cause fallback and raise error in dygraph
     @test_legacy_and_pt_and_pir
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.LEGACY_IR))
     def test_to_tensor_err_log(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
