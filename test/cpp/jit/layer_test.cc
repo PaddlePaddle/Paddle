@@ -36,7 +36,6 @@ USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(reduce_mean);
-USE_OP_ITSELF(feed);
 USE_OP_ITSELF(fetch);
 USE_OP_ITSELF(scale);
 USE_OP_ITSELF(transfer_layout);
