@@ -19,6 +19,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
+    test_pir_only,
 )
 
 import paddle
@@ -36,7 +37,6 @@ class TestTensorClone(Dy2StTestBase):
         return paddle.jit.to_static(tensor_clone)(x).numpy()
 
     def test_tensor_clone(self):
-        paddle.disable_static()
         with enable_to_static_guard(False):
             dygraph_res = self._run()
 
@@ -58,7 +58,6 @@ class TestTensorDygraphOnlyMethodError(Dy2StTestBase):
 
     @test_ast_only
     def test_to_static_numpy_report_error(self):
-        paddle.disable_static()
         with enable_to_static_guard(False):
             dygraph_res = self._run()
 
@@ -78,7 +77,6 @@ class TestTensorItem(Dy2StTestBase):
         return paddle.jit.to_static(tensor_item)(x)
 
     def test_tensor_clone(self):
-        paddle.disable_static()
         with enable_to_static_guard(False):
             dygraph_res = self._run()
 
@@ -103,11 +101,9 @@ class TestTensorSize(Dy2StTestBase):
             ret = ret.numpy()
         return ret
 
-    def test_tensor_clone(self):
-        paddle.disable_static()
-        with enable_to_static_guard(False):
-            dygraph_res = self._run(to_static=False)
-
+    @test_pir_only
+    def test_tensor_size(self):
+        dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
 
@@ -124,7 +120,6 @@ class TestTrueDiv(Dy2StTestBase):
         return paddle.jit.to_static(true_div)(x, y).numpy()
 
     def test_true_div(self):
-        paddle.disable_static()
         with enable_to_static_guard(False):
             dygraph_res = self._run()
         static_res = self._run()
