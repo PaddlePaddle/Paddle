@@ -17,4 +17,4 @@ import os
 
 AADIFF_ERROR = "PaddleRecall error(101): AAdiff"
 LOSS_NAN_ERROR = "PaddleRecall error(102): LossNan"
-SHARDING_PAD_ZERO_ERROR = "PaddleRecall error(103): ShardingPadZero"
+SHARDING_PAD_NON_ZERO_ERROR = "PaddleRecall error(103): ShardingPadNonZero"
