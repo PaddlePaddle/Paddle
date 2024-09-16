@@ -78,6 +78,7 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
   void Visit(const ir::Reduce* reduce, Expr* op) override;
   void Visit(const ir::For* for_node, Expr* op) override;
   void Visit(const ir::Block* block_node, Expr* op) override;
+  void Visit(const ir::ScheduleBlockRealize* realize, Expr* op) override;
 
  private:
   ir::Expr source_;
@@ -255,6 +256,9 @@ ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm);
 ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones);
 ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
                                       const std::vector<ir::Var>& vars);
+int InplaceMutateSingleExpr(ir::Expr* root,
+                            const ExprSetFinderUtils::ExprSetFinder& finder,
+                            const ExprTransformer& transformer);
 }  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(
