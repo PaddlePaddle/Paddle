@@ -29,7 +29,7 @@ from paddle.distributed.communication.reduce import (
 )
 from paddle.framework.recall_error import (
     LOSS_NAN_ERROR,
-    SHARDING_PAD_ZERO_ERROR,
+    SHARDING_PAD_NON_ZERO_ERROR,
 )
 
 from ...utils import timer_helper as timer
@@ -836,7 +836,7 @@ class DygraphShardingOptimizerV2:
                 if pad_tensor is not None:
                     assert paddle.all(
                         pad_tensor == 0
-                    ).item(), f"{SHARDING_PAD_ZERO_ERROR}. The padding of Tensor {k} is not zero"
+                    ).item(), f"{SHARDING_PAD_NON_ZERO_ERROR}. The padding of Tensor {k} is not zero"
         if self._enable_timer:
             self.timers("check-padding-zero").stop()
 
