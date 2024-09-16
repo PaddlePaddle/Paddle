@@ -18,8 +18,8 @@
 
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/fluid/jit/engine/pir_interpreter_engine.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
@@ -45,23 +45,27 @@ Layer Deserializer::operator()(const std::string& path,
   for (auto& it : pdmodel_paths) {
     auto& func_name = it.first;
     std::vector<std::string> persist_var_names;
-    if(FLAGS_enable_pir_api){
+    if (FLAGS_enable_pir_api) {
       auto pir_program = LoadPirProgram(it.second);
       auto module_op = pir_program->module_op();
       auto& block = module_op.block();
       const auto& ops = block.ops();
-      for(auto *op : ops){
+      for (auto* op : ops) {
         auto values = op->results();
-        for(auto& value : values){
-          if(utils::IsPersistable(&value) && value.defining_op()->attributes().count("parameter_name")){
-            const auto& value_name = value.defining_op()->attributes().at("parameter_name").dyn_cast<pir::StrAttribute>();
+        for (auto& value : values) {
+          if (utils::IsPersistable(&value) &&
+              value.defining_op()->attributes().count("parameter_name")) {
+            const auto& value_name = value.defining_op()
+                                         ->attributes()
+                                         .at("parameter_name")
+                                         .dyn_cast<pir::StrAttribute>();
             persist_var_names.emplace_back(value_name.AsString());
           }
         }
       }
       info_map[func_name] = std::make_shared<PirFunctionInfo>(
-        func_name, persist_var_names, pir_program);
-    }else{
+          func_name, persist_var_names, pir_program);
+    } else {
       auto program_desc = LoadProgram(it.second);
 
       auto all_var_desc = program_desc.Block(0).AllVars();
@@ -71,11 +75,11 @@ Layer Deserializer::operator()(const std::string& path,
         }
       }
       info_map[func_name] = std::make_shared<FunctionInfo>(
-        func_name, persist_var_names, program_desc);
+          func_name, persist_var_names, program_desc);
     }
 
     param_names_set.insert(persist_var_names.begin(), persist_var_names.end());
-    
+
     info_map[func_name]->SetProgramFilePath(it.second);
   }
 
@@ -95,13 +99,12 @@ Layer Deserializer::operator()(const std::string& path,
     auto& base_info = map_item.second;
     VLOG(3) << "Add function type: " << FLAGS_jit_engine_type
             << " Function name: " << func_name;
-    if(FLAGS_enable_pir_api){
+    if (FLAGS_enable_pir_api) {
       auto pir_info = std::dynamic_pointer_cast<PirFunctionInfo>(base_info);
-      layer.SetEngine(
-          func_name,
-          utils::MakePirEngine<PirInterpreterEngine>(
-            pir_info, params_dict, place, pir_info->Program()));
-    }else{
+      layer.SetEngine(func_name,
+                      utils::MakePirEngine<PirInterpreterEngine>(
+                          pir_info, params_dict, place, pir_info->Program()));
+    } else {
       auto info = std::dynamic_pointer_cast<FunctionInfo>(base_info);
       if (FLAGS_jit_engine_type == "New") {
         layer.SetEngine(
@@ -116,7 +119,6 @@ Layer Deserializer::operator()(const std::string& path,
       }
     }
   }
-
   return layer;
 }
 
@@ -162,10 +164,12 @@ framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   return framework::ProgramDesc(buffer);
 }
 
-std::shared_ptr<pir::Program> Deserializer::LoadPirProgram(const std::string& file_name) {
+std::shared_ptr<pir::Program> Deserializer::LoadPirProgram(
+    const std::string& file_name) {
   VLOG(3) << "LoadPirProgram from: " << file_name;
-  auto pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-  pir::ReadModule(file_name, pir_program_.get(), 1 /*pir_version*/);
+  auto pir_program_ =
+      std::make_shared<pir::Program>(pir::IrContext::Instance());
+  pir::ReadModule(file_name, pir_program_.get(), 1);
   return pir_program_;
 }
 

@@ -102,12 +102,11 @@ void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
       } else if (op->Type() == "fetch") {
         VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
                 << ", var name: " << op->Output("Out")[0];
-        block->RemoveVar(op->Output("Out")[0]); 
+        block->RemoveVar(op->Output("Out")[0]);
         block->RemoveOp(i, i + 1);
       }
     }
   }
 }
-
 
 }  // namespace paddle::jit::utils

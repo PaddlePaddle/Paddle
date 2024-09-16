@@ -18,11 +18,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/jit/function_schema.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/program.h"
-
-#include "paddle/fluid/jit/function_schema.h"
 
 namespace paddle {
 
@@ -65,10 +64,11 @@ std::shared_ptr<T> MakeEngine(const std::shared_ptr<FunctionInfo> &info,
 }
 
 template <typename T>
-std::shared_ptr<T> MakePirEngine(const std::shared_ptr<PirFunctionInfo> &info,
-                              const std::shared_ptr<VariableMap> &params_dict,
-                              const phi::Place &place,
-                              const std::shared_ptr<pir::Program> &prog) {
+std::shared_ptr<T> MakePirEngine(
+    const std::shared_ptr<PirFunctionInfo> &info,
+    const std::shared_ptr<VariableMap> &params_dict,
+    const phi::Place &place,
+    const std::shared_ptr<pir::Program> &prog) {
   return std::make_shared<T>(info, params_dict, place, prog);
 }
 

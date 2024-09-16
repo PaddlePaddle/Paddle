@@ -798,7 +798,7 @@ void BuildScope(const pir::Block& block,
           &op, var_name_prefix, value_exe_info, execution_config);
       continue;
     }
-    
+
     CheckInputVars(&op, op_name, value_exe_info);
 
     if (op.num_results() < 1) continue;

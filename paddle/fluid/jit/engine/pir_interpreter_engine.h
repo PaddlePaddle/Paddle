@@ -16,14 +16,13 @@
 
 #include <vector>
 
-// #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/pir/include/core/program.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/pir/include/core/program.h"
 
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/jit/engine/base_engine.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/function_utils.h"
-#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 
 namespace paddle {
 
@@ -39,9 +38,9 @@ using PirInterpreter = framework::PirInterpreter;
 class PirInterpreterEngine : public BaseEngine {
  public:
   PirInterpreterEngine(const std::shared_ptr<PirFunctionInfo> &info,
-                    const std::shared_ptr<VariableMap> &params_dict,
-                    const phi::Place &place,
-                    const std::shared_ptr<pir::Program> &prog);
+                       const std::shared_ptr<VariableMap> &params_dict,
+                       const phi::Place &place,
+                       const std::shared_ptr<pir::Program> &prog);
 
   ~PirInterpreterEngine() noexcept {}
 

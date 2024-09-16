@@ -16,10 +16,10 @@
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
-#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 namespace paddle {
 namespace jit {
@@ -30,11 +30,10 @@ PirInterpreterEngine::PirInterpreterEngine(
     const phi::Place &place,
     const std::shared_ptr<pir::Program> &prog)
     : info_(info), params_dict_(params_dict), place_(place), prog_(prog) {
-  PADDLE_ENFORCE_GT(
-      static_cast<int64_t>(info_->Program()->block()->size()),
-      0,
-      common::errors::PreconditionNotMet(
-          "There is no operator in ProgramDesc."));
+  PADDLE_ENFORCE_GT(static_cast<int64_t>(info_->Program()->block()->size()),
+                    0,
+                    common::errors::PreconditionNotMet(
+                        "There is no operator in ProgramDesc."));
   utils::ShareParamsIntoScope(info_->ParamNames(), params_dict_, &scope_);
   CreateInterpreterCore();
 }
@@ -46,6 +45,7 @@ void PirInterpreterEngine::CreateInterpreterCore() {
 
   auto in_names = info_->InputArgNames();
   auto out_names = info_->OutputArgNames();
+
   execution_config.skip_gc_vars.insert(in_names.begin(), in_names.end());
   execution_config.skip_gc_vars.insert(out_names.begin(), out_names.end());
   inner_interpreter_ = std::make_shared<PirInterpreter>(
@@ -60,7 +60,8 @@ std::vector<Tensor> PirInterpreterEngine::operator()(
 
 std::vector<DenseTensor> PirInterpreterEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
-  prog_ = std::move(paddle::dialect::PdOpLowerToKernelPass(prog_.get(), place_));
+  prog_ =
+      std::move(paddle::dialect::PdOpLowerToKernelPass(prog_.get(), place_));
   utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
 
   // the latter can be moved to python side.

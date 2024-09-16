@@ -51,6 +51,7 @@ class Layer {
   jit::Function Function(const std::string& name) const;
 
   template <typename T>
+
   T Attribute(const std::string& name) const;
 
   std::vector<Tensor> forward(const std::vector<Tensor>& inputs);

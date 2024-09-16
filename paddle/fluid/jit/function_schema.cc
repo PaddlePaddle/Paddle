@@ -15,11 +15,11 @@
 #include "paddle/fluid/jit/function_schema.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/jit/function_utils.h"
 #include "paddle/fluid/pybind/pir_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/program.h"
 
-#include "paddle/fluid/jit/function_utils.h"
 namespace paddle::jit {
 
 Argument::Argument(const std::string& name, bool is_out)
@@ -40,7 +40,7 @@ const std::vector<std::string> FunctionSchema::OutputArgNames() const {
   std::vector<std::string> output_arg_names;
   output_arg_names.reserve(output_args.size());
   for (auto& arg : output_args) {
-    output_arg_names.emplace_back(arg.Name()+"@fetch");
+    output_arg_names.emplace_back(arg.Name() + "@fetch");
   }
   return output_arg_names;
 }
