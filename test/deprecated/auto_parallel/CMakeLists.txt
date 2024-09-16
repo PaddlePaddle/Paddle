@@ -7,7 +7,28 @@
 # add_subdirectory(pir)
 
 if(WITH_DISTRIBUTE AND WITH_GPU)
-
+  py_test_modules(test_auto_parallel_relaunch_deprecated MODULES
+                  test_auto_parallel_relaunch_deprecated)
+  set_tests_properties(test_auto_parallel_relaunch_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+  py_test_modules(test_engine_api_dp_deprecated MODULES
+                  test_engine_api_dp_deprecated)
+  set_tests_properties(test_engine_api_dp_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+  py_test_modules(test_engine_api_deprecated MODULES test_engine_api_deprecated)
+  set_tests_properties(test_engine_api_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+  py_test_modules(test_auto_tuner_compare_deprecated MODULES
+                  test_auto_tuner_compare_deprecated)
+  set_tests_properties(test_auto_tuner_compare_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_auto_tuner_deprecated MODULES test_auto_tuner_deprecated)
+  set_tests_properties(test_auto_tuner_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_optimization_tuner_api_deprecated MODULES
+                  test_optimization_tuner_api_deprecated)
+  set_tests_properties(test_optimization_tuner_api_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_relaunch_with_planner_deprecated MODULES
                   test_relaunch_with_planner_deprecated)
   set_tests_properties(test_relaunch_with_planner_deprecated
