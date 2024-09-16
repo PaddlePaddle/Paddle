@@ -140,14 +140,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     VLOG(3) << "MergeExprs tensor-buffer map check succeed";
   }
 
-  std::unordered_set<::pir::Value> inner_genevalue;
-  std::unordered_set<::pir::Operation*> ops_set(ops.begin(), ops.end());
-  for (auto* op : ops) {
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      inner_genevalue.insert(op->result(i));
-    }
-  }
-
   std::unordered_set<std::string> output_tensor_names;
   for (auto value : group->GetGroupOutputValues()) {
     output_tensor_names.insert(ValueName(value));
@@ -407,27 +399,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<Expr> func_bodies;
-  std::unordered_set<::pir::Value> inner_used_value;
-  for (auto* op : ops) {
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      inner_used_value.insert(op->operand_source(i));
-    }
-  }
-
-  std::unordered_set<::pir::Operation*> not_used_op;
-  for (auto* op : ops) {
-    bool used = false;
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      if (inner_used_value.count(op->result(i))) {
-        used = true;
-        break;
-      }
-    }
-
-    if (!used) {
-      not_used_op.insert(op);
-    }
-  }
 
   for (auto* op : ops) {
     VLOG(4) << "start lowering op:" << op->name() << " id: " << op->id();
@@ -570,16 +541,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     }
   }
 
-  op_func_arg_tensors->clear();
-  for (int idx = 0; idx < pack.size() - 1; ++idx) {
-    PADDLE_ENFORCE_EQ(
-        pack[idx].is_tensor(),
-        true,
-        ::common::errors::PreconditionNotMet(
-            "The element at index %d in pack must be a tensor.", idx));
-    op_func_arg_tensors->push_back(
-        pack[idx].operator ir::Expr().as_tensor_ref());
-  }
+  // op_func_arg_tensors->clear();
+  // for (int idx = 0; idx < pack.size() - 1; ++idx) {
+  //   PADDLE_ENFORCE_EQ(
+  //       pack[idx].is_tensor(),
+  //       true,
+  //       ::common::errors::PreconditionNotMet(
+  //           "The element at index %d in pack must be a tensor.", idx));
+  //   op_func_arg_tensors->push_back(
+  //       pack[idx].operator ir::Expr().as_tensor_ref());
+  // }
 
   return funcs;
 }
