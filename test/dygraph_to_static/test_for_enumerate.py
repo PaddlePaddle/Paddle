@@ -173,7 +173,7 @@ def for_iter_var_list(x):
     # 1. prepare data, ref test_list.py
     x = paddle.to_tensor(x)
     iter_num = paddle.tensor.fill_constant(shape=[1], value=5, dtype="int32")
-    a = paddle.tensor.create_array("int32")
+    a = []
     for i in range(iter_num):
         a.append(x + i)
     # 2. iter list[var]
@@ -188,7 +188,7 @@ def for_enumerate_var_list(x):
     # 1. prepare data, ref test_list.py
     x = paddle.to_tensor(x)
     iter_num = paddle.tensor.fill_constant(shape=[1], value=5, dtype="int32")
-    a = paddle.tensor.create_array("int32")
+    a = []
     for i in range(iter_num):
         a.append(x + i)
     # 2. iter list[var]

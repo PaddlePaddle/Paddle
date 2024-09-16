@@ -613,6 +613,10 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     VLOG(8) << "Write DenseTensorType ... ";
     return pir::serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
         type.dyn_cast<pir::DenseTensorType>());
+  } else if (type.isa<pir::UndefinedType>()) {
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Unexpected type pir::UndefinedType, "
+        "it should be replace with a concrete type when ArrayWrite."));
   } else {
     PADDLE_ENFORCE(false,
                    common::errors::InvalidArgument(
