@@ -541,17 +541,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     }
   }
 
-  // op_func_arg_tensors->clear();
-  // for (int idx = 0; idx < pack.size() - 1; ++idx) {
-  //   PADDLE_ENFORCE_EQ(
-  //       pack[idx].is_tensor(),
-  //       true,
-  //       ::common::errors::PreconditionNotMet(
-  //           "The element at index %d in pack must be a tensor.", idx));
-  //   op_func_arg_tensors->push_back(
-  //       pack[idx].operator ir::Expr().as_tensor_ref());
-  // }
-
   return funcs;
 }
 
