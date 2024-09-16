@@ -16,8 +16,13 @@ import os
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
+    apply_mix2dist_pass,
+)
 from paddle.distributed.auto_parallel.static.pir_pass import (
+    apply_partition_pass,
     apply_reshard_pass,
+    remove_other_rank_op_pass,
 )
 from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -56,8 +61,13 @@ class TestReshardRToSCrossMesh:
 
             old_ops = [op.name() for op in main_program.global_block().ops]
             assert 'dist_op.reshard' in old_ops
+
+            apply_mix2dist_pass(main_program)
             set_all_ops_op_role(main_program.global_block(), OpRole.Forward)
+            apply_partition_pass(main_program)
             apply_reshard_pass(main_program)
+            remove_other_rank_op_pass(main_program)
+
         # np.testing.assert_equal(dist_program.num_ops(), 6)
         new_ops = [op.name() for op in main_program.global_block().ops]
         assert 'dist_op.reshard' not in new_ops

@@ -145,6 +145,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_base_cost_deprecated MODULES test_base_cost_deprecated)
   py_test_modules(test_auto_conditional_block_deprecated MODULES
                   test_auto_conditional_block_deprecated)
+  py_test_modules(test_to_static_deprecated MODULES test_to_static_deprecated)
   py_test_modules(test_dist_attr_v2_deprecated MODULES
                   test_dist_attr_v2_deprecated)
   py_test_modules(test_dist_matmul_deprecated MODULES
