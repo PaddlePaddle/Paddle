@@ -182,7 +182,11 @@ class TestSparseUnary(unittest.TestCase):
         self.compare_with_dense(paddle.tanh, paddle.sparse.tanh)
 
     def test_sparse_asinh(self):
-        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh)
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float16')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float32')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float64')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'complex64')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'complex128')
 
     def test_sparse_atanh(self):
         self.compare_with_dense(paddle.atanh, paddle.sparse.atanh)
@@ -424,7 +428,11 @@ class TestSparseUnaryStatic(unittest.TestCase):
         self.compare_with_dense(paddle.tanh, paddle.sparse.tanh)
 
     def test_sparse_asinh(self):
-        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh)
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float16')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float32')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float64')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'complex64')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'complex128')
 
     def test_sparse_atanh(self):
         self.compare_with_dense(paddle.atanh, paddle.sparse.atanh)
