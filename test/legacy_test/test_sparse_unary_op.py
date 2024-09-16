@@ -191,7 +191,15 @@ class TestSparseUnary(unittest.TestCase):
         self.compare_with_dense(paddle.sqrt, paddle.sparse.sqrt)
 
     def test_sparse_square(self):
-        self.compare_with_dense(paddle.square, paddle.sparse.square)
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float16')
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float32')
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float64')
+        self.compare_with_dense(
+            paddle.square, paddle.sparse.square, 'complex64'
+        )
+        self.compare_with_dense(
+            paddle.square, paddle.sparse.square, 'complex128'
+        )
 
     def test_sparse_log1p(self):
         self.compare_with_dense(paddle.log1p, paddle.sparse.log1p)
@@ -433,7 +441,15 @@ class TestSparseUnaryStatic(unittest.TestCase):
         self.compare_with_dense(paddle.sqrt, paddle.sparse.sqrt)
 
     def test_sparse_square(self):
-        self.compare_with_dense(paddle.square, paddle.sparse.square)
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float16')
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float32')
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float64')
+        self.compare_with_dense(
+            paddle.square, paddle.sparse.square, 'complex64'
+        )
+        self.compare_with_dense(
+            paddle.square, paddle.sparse.square, 'complex128'
+        )
 
     def test_sparse_log1p(self):
         self.compare_with_dense(paddle.log1p, paddle.sparse.log1p)
