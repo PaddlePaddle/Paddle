@@ -215,7 +215,11 @@ class TestSparseUnary(unittest.TestCase):
         self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'complex128')
 
     def test_sparse_expm1(self):
-        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1)
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float16')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float32')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float64')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'complex64')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'complex128')
 
     def test_sparse_deg2rad(self):
         self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad)
@@ -457,7 +461,11 @@ class TestSparseUnaryStatic(unittest.TestCase):
         self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'complex128')
 
     def test_sparse_expm1(self):
-        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1)
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float16')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float32')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float64')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'complex64')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'complex128')
 
     def test_sparse_deg2rad(self):
         self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad)
