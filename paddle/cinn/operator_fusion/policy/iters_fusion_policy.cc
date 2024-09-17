@@ -60,6 +60,18 @@ FusionItersSignature ItersFusionPolicy::MultiDownstreamItersFusion(
                                                     downstream->fusion_iters());
 }
 
+std::pair<std::vector<symbol::DimExpr>, std::vector<bool>>
+ItersFusionPolicy::GetLoopDims(const FusionItersSignature& sig) {
+  std::vector<symbol::DimExpr> dims;
+  for (const auto& iter : sig.loop_iters) {
+    dims.push_back(iters_manager_->GetIterSymbol(iter));
+  }
+  const auto is_reduce =
+      ConcatVector(std::vector<bool>(dims.size() - sig.reduce_iter_nums, false),
+                   std::vector<bool>(sig.reduce_iter_nums, true));
+  return {dims, is_reduce};
+}
+
 std::optional<ItersTransform> ItersFusionPolicy::GetReuseItersTransform(
     FusionIters* source_iters, const FusionIters& target_iters) {
   const auto [shared_iters, source_unique_iters] =

@@ -178,10 +178,8 @@ static StmtPattern MergePatternImpl(const ReduceTreePattern& first,
 
 static StmtPattern MergePatternImpl(const ItersPermutationPattern& source,
                                     const ItersPermutationPattern& target) {
-  const auto& ops =
-      UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(target));
-  return ItersPermutationPattern(
-      ops, std::make_shared<FusionTracker>(source.tracker_, target.tracker_));
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "ItersPermutationPattern should not be merged here."));
 }
 
 // Anchor Fusion
@@ -294,7 +292,7 @@ static std::vector<pir::Operation*> GetOutputOpsInPattern(
     std::vector<pir::Operation*> operator()(
         const ItersPermutationPattern& pattern) {
       PADDLE_THROW(::common::errors::Unimplemented(
-          "Can't get output ops in ItersPermutationPattern Currently."));
+          "Can't get output ops for ItersPermutationPattern Currently."));
     }
   };
   return std::visit(Visitor(), pattern);
@@ -396,7 +394,8 @@ struct LoopValueDimsVisitor {
 
   std::vector<LoopValueDims> operator()(
       const ItersPermutationPattern& pattern) {
-    return {};
+    PADDLE_THROW(::common::errors::Unimplemented(
+        "Can't get loop value dims for ItersPermutationPattern Currently."));
   }
 };
 
@@ -558,7 +557,8 @@ struct LoopFrameworkVisitor {
   }
 
   MaybeLoopFramework operator()(const ItersPermutationPattern& pattern) {
-    return {};
+    const auto loop_dims = pattern.loop_dims();
+    return {loop_dims.first, loop_dims.second};
   }
 };
 

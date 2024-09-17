@@ -158,10 +158,10 @@ struct LiftToItersPermutationPatternOperation {
                           "Op with multi output value can not lift to "
                           "ItersPermutationPattern"));
     std::string origin_name = node->id();
-    node->set_stmt_pattern(
-        ItersPermutationPattern(GetOpsInPattern(node->stmt_pattern()),
-                                std::make_shared<FusionTracker>(
-                                    GetFusionTracker(node->stmt_pattern()))));
+    node->set_stmt_pattern(ItersPermutationPattern(
+        GetOpsInPattern(node->stmt_pattern()),
+        std::make_shared<FusionTracker>(GetFusionTracker(node->stmt_pattern())),
+        graph->iters_fusion_policy()->GetLoopDims(node->fusion_iters())));
     node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
     VLOG(4) << "Make CopyInstr: " << origin_name << " -> " << node->id();
     return node;
@@ -190,7 +190,21 @@ struct FuseItersPermutatioOperation {
     const auto transform_route =
         is_rise ? rise_transform_route.value() : sink_transform_route.value();
 
-    auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
+    const auto merge_pattern_fn =
+        [=](const StmtPattern& upstream,
+            const StmtPattern& downstream) -> StmtPattern {
+      const auto upstream_pattern = std::get<ItersPermutationPattern>(upstream);
+      const auto downstream_pattern =
+          std::get<ItersPermutationPattern>(downstream);
+      return ItersPermutationPattern(
+          UniqueConcatVector(GetOpsInPattern(upstream),
+                             GetOpsInPattern(downstream)),
+          std::make_shared<FusionTracker>(upstream_pattern.tracker_,
+                                          downstream_pattern.tracker_),
+          is_rise ? upstream_pattern.loop_dims_
+                  : downstream_pattern.loop_dims_);
+    };
+    auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     merged_node->set_fusion_iters(
         graph->iters_fusion_policy()->MultiDownstreamItersFusion(upstream,
                                                                  downstream));

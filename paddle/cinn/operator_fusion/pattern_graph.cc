@@ -61,9 +61,9 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
   // VLOG(4) << "[Group Cluster] After SplitRecomputePattern: " << GraphInfo();
 
   // Horizontal fusion.
-  // VLOG(4) << "[Group Cluster] Start HorizontalFusion";
-  // HorizontalFusion();
-  // VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
+  VLOG(4) << "[Group Cluster] Start HorizontalFusion";
+  HorizontalFusion();
+  VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
 
   return ReturnFusionResults();
 }

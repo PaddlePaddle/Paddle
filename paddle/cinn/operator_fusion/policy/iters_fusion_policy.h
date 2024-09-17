@@ -40,6 +40,9 @@ struct ItersFusionPolicy final : public PolicyBase {
   FusionItersSignature MultiDownstreamItersFusion(
       const PatternNodePtr& upstream, const PatternNodePtr& downstream);
 
+  std::pair<std::vector<symbol::DimExpr>, std::vector<bool>> GetLoopDims(
+      const FusionItersSignature& sig);
+
  private:
   std::optional<ItersTransform> GetReuseItersTransform(
       FusionIters* source_iters, const FusionIters& target_iters);

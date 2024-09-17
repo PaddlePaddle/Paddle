@@ -210,9 +210,12 @@ struct ReduceTreePlusTrivialPattern {
 };
 
 struct ItersPermutationPattern {
+  using LoopFramework =
+      std::pair<std::vector<symbol::DimExpr>, std::vector<bool>>;
   explicit ItersPermutationPattern(const std::vector<pir::Operation*>& ops,
-                                   const FusionTrackerPtr& tracker)
-      : ops_(ops), id_(UniqueId()), tracker_(tracker) {}
+                                   const FusionTrackerPtr& tracker,
+                                   const LoopFramework& loop_dims)
+      : ops_(ops), id_(UniqueId()), tracker_(tracker), loop_dims_(loop_dims) {}
 
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
@@ -228,6 +231,9 @@ struct ItersPermutationPattern {
 
   FusionTrackerPtr tracker_;
   void update_tracker() const {}
+
+  LoopFramework loop_dims_;
+  LoopFramework loop_dims() const { return loop_dims_; }
 };
 
 struct AnchorPattern {

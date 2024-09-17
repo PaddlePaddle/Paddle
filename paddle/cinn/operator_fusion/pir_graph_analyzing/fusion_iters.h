@@ -53,6 +53,9 @@ struct FusionItersManager {
   bool IterSymbolEqualOne(const std::string& sym);
 
   symbol::DimExpr GetIterSymbol(const std::string& iter) {
+    PADDLE_ENFORCE(iter2dimexpr_.count(iter),
+                   ::common::errors::InvalidArgument(
+                       "Can not find iter %s in iter2dimexpr_.", iter));
     return iter2dimexpr_[iter];
   }
 

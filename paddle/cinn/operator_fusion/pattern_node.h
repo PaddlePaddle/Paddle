@@ -60,13 +60,7 @@ struct PatternNode {
       ss << GetPatternId(d->stmt_pattern()) << "(" << d << "), ";
     }
     ss << "\n" << fusion_iters_.DebugStr();
-    pir::IrPrinter printer(ss);
-    if (GetPatternName(stmt_pattern_) == AnchorPattern::name()) {
-      ss << "\n anchor: ";
-      auto anchor_op =
-          std::get<AnchorPattern>(stmt_pattern_).anchor().defining_op();
-      printer.PrintOperation(const_cast<pir::Operation*>(anchor_op));
-    }
+    ss << "\n" << GetLoopFramework(this->stmt_pattern()).DebugStr();
     ss << "\nOps in pattern:" << std::endl;
     ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));
     return ss.str();
