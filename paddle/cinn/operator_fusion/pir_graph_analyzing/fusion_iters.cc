@@ -72,16 +72,16 @@ FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
       op->num_results(),
       ::common::errors::InvalidArgument("The number of output_iters should be "
                                         "equal to the number of results."));
-  if (axes.reduce_axis.size() > 0) {
+  if (axes.reduce_size > 0) {
     PADDLE_ENFORCE_LE(
-        axes.reduce_axis.size(),
+        axes.reduce_size,
         GetRank(op->operand(0).source()),
         ::common::errors::InvalidArgument("The number of reduce_axis should be "
                                           "no more than output value ranks."));
   }
   FusionItersSignature result;
   result.loop_iters = axes.loop.axis_names;
-  result.reduce_iter_nums = axes.reduce_axis.size();
+  result.reduce_iter_nums = axes.reduce_size;
   result.input_values = ToSet(op->operands_source());
   result.output_values = ToSet(op->results());
 
@@ -144,10 +144,11 @@ FusionItersSignature FusionItersManager::SingleDownstreamItersFusion(
       1,
       ::common::errors::InvalidArgument(
           "Node in single downstream fusion should have only one output."));
-  PADDLE_ENFORCE_EQ(--value_remain_usage_[*upstream.output_values.begin()],
-                    0,
-                    ::common::errors::InvalidArgument(
-                        "Upstream should have one downstream."));
+  // TODO(huangjiyi): fix upstream output have multi usage in one downstream
+  // PADDLE_ENFORCE_EQ(--value_remain_usage_[*upstream.output_values.begin()],
+  //                   0,
+  //                   ::common::errors::InvalidArgument(
+  //                       "Upstream should have one downstream."));
   fused_signature.input_values =
       SetUnion(upstream.input_values,
                SetDifference(downstream.input_values, upstream.output_values));

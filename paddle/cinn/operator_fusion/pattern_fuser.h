@@ -130,6 +130,14 @@ static StmtPattern MergePatternImpl(const TrivialPattern& first,
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
+static StmtPattern MergePatternImpl(const TrivialPattern& first,
+                                    const ItersPermutationPattern& second) {
+  return ItersPermutationPattern(
+      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_),
+      second.loop_dims());
+}
+
 // RR & RT
 
 static int InsertUpstreamIntoTree(const ReduceTreePattern& upstream,
@@ -174,12 +182,6 @@ static StmtPattern MergePatternImpl(const ReduceTreePattern& first,
       first,
       second,
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
-}
-
-static StmtPattern MergePatternImpl(const ItersPermutationPattern& source,
-                                    const ItersPermutationPattern& target) {
-  PADDLE_THROW(::common::errors::Unimplemented(
-      "ItersPermutationPattern should not be merged here."));
 }
 
 // Anchor Fusion
@@ -644,11 +646,10 @@ static StmtPattern MergePattern(const StmtPattern& first,
       [&](const TrivialPattern& lhs, const AnchorPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const AnchorPattern& lhs, const AnchorPattern& rhs) {
+      [&](const TrivialPattern& lhs, const ItersPermutationPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const ItersPermutationPattern& lhs,
-          const ItersPermutationPattern& rhs) {
+      [&](const AnchorPattern& lhs, const AnchorPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
       [&](const HorizontalFusionPattern& lhs,

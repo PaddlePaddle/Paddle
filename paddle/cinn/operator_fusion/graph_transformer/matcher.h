@@ -106,9 +106,27 @@ struct LiftToAnchorPatternMatcher {
 
 struct RecomputeNodeMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
-    return StmtPatternGraphMatcher<AnchorPattern>()(graph, node) &&
-           node->downstream().size() >= 1 &&
-           (std::get<AnchorPattern>(node->stmt_pattern()).can_recompute());
+    const auto can_recompute_fn = [](const PatternNodePtr& node) -> bool {
+      // Current Algorithm:
+      // An node can be recomputed if:
+      // 1. It didn't go through any pattern merging during prior fusions, which
+      // means it only has one output value.
+      // 2. It only contains trivial ops.
+      if (node->fusion_iters().output_values.size() > 1) {
+        return false;
+      }
+
+      for (const auto& op : GetOpsInPattern(node->stmt_pattern())) {
+        const auto& op_kind = GetOpPatternKind(op);
+        if (op_kind >= hlir::framework::kReduction) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    return StmtPatternGraphMatcher<ItersPermutationPattern>()(graph, node) &&
+           node->downstream().size() >= 1 && can_recompute_fn(node);
   }
 };
 

@@ -51,7 +51,7 @@ ShardableAxesSignature ShardableAxesInfoManager::GetModifiedSignature(
     result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes, true));
   }
   result.loop = ReplaceShardableAxesWithRootName(origin_sig.loop, true);
-  result.reduce_axis = origin_sig.reduce_axis;
+  result.reduce_size = origin_sig.reduce_size;
   return result;
 }
 
@@ -154,7 +154,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   result.outputs.emplace_back(output_axes);
   result.loop = ShardableAxes(
       ConcatVector(output_axes, GatherVector(input_axes, reduce_axis_idx)));
-  result.reduce_axis = reduce_axis_idx;
+  result.reduce_size = reduce_axis_idx.size();
   return result;
 }
 
@@ -471,7 +471,7 @@ std::string ShardableAxes::DebugStr() const {
 std::string ShardableAxesSignature::DebugStr() const {
   std::stringstream ss;
   ss << "ShardableAxes Signature:";
-  ss << "\n    loop: " << loop.DebugStr();
+  ss << "\n    loop: " << loop.DebugStr() << ", reduce_size: " << reduce_size;
   for (int i = 0; i < inputs.size(); i++) {
     ss << "\n    input " << i << ": " << inputs[i].DebugStr();
   }

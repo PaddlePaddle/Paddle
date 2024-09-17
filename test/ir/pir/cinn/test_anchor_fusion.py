@@ -207,6 +207,26 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
+    def test_recompute_multidownstrema_trivial(self):
+        #     T
+        #    / \
+        #   S   S
+        #   |   |
+        #   R   R
+        def func(x):
+            a = x + 1
+            b = a[0, :]
+            c = paddle.sum(b, axis=0)
+            d = a[0, 0, :]
+            e = paddle.max(d, axis=-1)
+            return c, e
+
+        def init():
+            x = paddle.rand((8, 16, 32, 128))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
+
     def test_batch_norm(self):
         self.batch_norm = paddle.nn.layer.norm.BatchNorm(2048)
 

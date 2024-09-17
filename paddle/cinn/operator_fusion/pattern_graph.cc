@@ -55,10 +55,10 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
   ItersPermutationFusion();
   VLOG(4) << "[Group Cluster] After ItersPermutationFusion: " << GraphInfo();
 
-  // // All -> AnchorPattern
-  // VLOG(4) << "[Group Cluster] Start SplitRecomputePattern";
-  // SplitRecomputePattern();
-  // VLOG(4) << "[Group Cluster] After SplitRecomputePattern: " << GraphInfo();
+  // Sink single trivial op pattern
+  VLOG(4) << "[Group Cluster] Start SplitRecomputePattern";
+  SplitRecomputePattern();
+  VLOG(4) << "[Group Cluster] After SplitRecomputePattern: " << GraphInfo();
 
   // Horizontal fusion.
   VLOG(4) << "[Group Cluster] Start HorizontalFusion";

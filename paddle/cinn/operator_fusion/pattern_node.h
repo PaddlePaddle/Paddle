@@ -60,7 +60,6 @@ struct PatternNode {
       ss << GetPatternId(d->stmt_pattern()) << "(" << d << "), ";
     }
     ss << "\n" << fusion_iters_.DebugStr();
-    ss << "\n" << GetLoopFramework(this->stmt_pattern()).DebugStr();
     ss << "\nOps in pattern:" << std::endl;
     ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));
     return ss.str();

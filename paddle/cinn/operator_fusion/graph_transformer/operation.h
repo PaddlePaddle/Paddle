@@ -40,7 +40,9 @@ struct MergeTrivialPatternOperation {
               downstream->stmt_pattern()) ||
           std::holds_alternative<ReduceTreePlusTrivialPattern>(
               downstream->stmt_pattern()) ||
-          std::holds_alternative<AnchorPattern>(downstream->stmt_pattern());
+          std::holds_alternative<AnchorPattern>(downstream->stmt_pattern()) ||
+          std::holds_alternative<ItersPermutationPattern>(
+              downstream->stmt_pattern());
 
       if (can_fuse) {
         auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
@@ -336,8 +338,14 @@ struct SplitRecomputeOperation {
     auto origin_name = upstream->id();
     VLOG(4) << "SplitRecomputeOperation: upstream tracker is: "
             << GetFusionTracker(upstream->stmt_pattern())->DebugStr();
-    upstream->set_stmt_pattern(RecoverAnchorPatternToTrivial(
-        std::get<AnchorPattern>(upstream->stmt_pattern())));
+
+    const auto trivial_pattern = TrivialPattern(
+        GetOpsInPattern(upstream->stmt_pattern()),
+        upstream->sink_op(),
+        std::make_shared<FusionTracker>(
+            std::get<ItersPermutationPattern>(upstream->stmt_pattern())
+                .tracker_));
+    upstream->set_stmt_pattern(trivial_pattern);
     VLOG(4) << "Make CopyInstr: " << origin_name << " -> " << upstream->id();
     upstream->AppendInstr(
         std::make_shared<CopyInstr>(origin_name, upstream->id()));
