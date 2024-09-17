@@ -31,6 +31,8 @@ _WindowLiteral: TypeAlias = Literal[
     'hamming',
     'hann',
     'kaiser',
+    'bartlett',
+    'nuttall',
     'gaussian',
     'exponential',
     'triang',
