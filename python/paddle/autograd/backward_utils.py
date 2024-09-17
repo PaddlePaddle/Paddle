@@ -48,6 +48,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.gather",
     "pd_op.gather_nd",
     "pd_op.gelu",
+    "pd_op.group_norm",
     "pd_op.hardswish",
     "pd_op.leaky_relu",
     "pd_op.log",
