@@ -480,10 +480,10 @@ def __sync_stat_with_flag(flag):
             __set_all_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
-        print(
-            "all prim enabled: ",
-            bool(_is_fwd_prim_enabled() and _is_bwd_prim_enabled()),
-        )
+        # print(
+        #     "all prim enabled: ",
+        #     bool(_is_fwd_prim_enabled() and _is_bwd_prim_enabled()),
+        # )
     else:
         raise TypeError(
             f"We only support FLAGS_prim_forward/FLAGS_prim_backward/FLAGS_prim_all but we got {flag}."
