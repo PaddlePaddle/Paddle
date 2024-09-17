@@ -1201,6 +1201,7 @@
   output : Tensor(out)
   infer_meta :
     func : CumScalarAxisInferMeta
+    spmd_rule : CumSumInferSpmdDynamic
   kernel :
     func : cumsum
     data_type : x
@@ -2026,7 +2027,7 @@
   kernel :
     func : frobenius_norm
   backward : frobenius_norm_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : ftrl
   args: (Tensor param, Tensor squared_accumulator, Tensor linear_accumulator, Tensor grad, Tensor learning_rate, float l1=0.0f, float l2=0.0f, float lr_power=-0.5f)
@@ -3149,6 +3150,7 @@
     param : [x, use_default_tol, hermitian]
   kernel :
     func : matrix_rank
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_rank_atol_rtol
   args : (Tensor x, Tensor atol, Tensor rtol, bool hermitian=false)
@@ -3512,6 +3514,7 @@
   output : Tensor(out)
   infer_meta :
     func : OneHotInferMeta
+    spmd_rule : OneHotInferSpmdDynamic
   kernel :
     func : one_hot
   traits : paddle::dialect::ForwardOnlyTrait

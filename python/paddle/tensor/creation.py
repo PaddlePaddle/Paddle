@@ -726,16 +726,11 @@ def _to_tensor_non_static(
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
-        elif isinstance(data, (core.LoDTensor, core.Tensor)):
+        elif isinstance(data, core.Tensor):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
             # Currently, there is no copy when places are same
-            if in_dynamic_mode():
-                data = core.eager.Tensor(data)
-            else:
-                data = paddle.Tensor(data)
-            if not data.place._equals(place):
-                data = data._copy_to(place, False)
+            data = paddle.Tensor(data, place=place)
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
@@ -2453,6 +2448,7 @@ def empty(
                 'float16',
                 'float32',
                 'float64',
+                'uint16',
                 'int8',
                 'int16',
                 'int32',

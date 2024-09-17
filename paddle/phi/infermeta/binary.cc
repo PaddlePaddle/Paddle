@@ -150,17 +150,21 @@ void ArrayWriteInferMeta(const MetaTensor& array,
                          const MetaTensor& x,
                          MetaTensor* out,
                          MetaConfig config) {
-  if (array.dtype() != phi::DataType::UNDEFINED &&
-      x.dtype() != phi::DataType::UNDEFINED) {
-    PADDLE_ENFORCE_EQ(array.dtype(),
-                      x.dtype(),
-                      common::errors::InvalidArgument(
-                          "The dtype (%s) of input x shall be same as "
-                          "dtype (%d) of array.",
-                          x.dtype(),
-                          array.dtype()));
+  phi::DataType out_dtype = array.dtype();
+  if (x.dtype() != phi::DataType::UNDEFINED) {
+    if (array.dtype() == phi::DataType::UNDEFINED) {
+      out_dtype = x.dtype();
+    } else {
+      PADDLE_ENFORCE_EQ(array.dtype(),
+                        x.dtype(),
+                        common::errors::InvalidArgument(
+                            "The dtype (%s) of input x shall be same as "
+                            "dtype (%d) of array.",
+                            x.dtype(),
+                            array.dtype()));
+    }
   }
-  out->set_dtype(array.dtype());
+  out->set_dtype(out_dtype);
   out->set_layout(array.layout());
 }
 
