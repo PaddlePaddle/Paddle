@@ -64,6 +64,10 @@ def reshape_net(x):
     return paddle.reshape(x, [30, 200 * 40])
 
 
+def roll_net(x):
+    return paddle.roll(x, shifts=[101, -1], axis=[0, -2])
+
+
 def scale_net(x):
     return paddle.scale(x, scale=-2.3)
 
@@ -326,6 +330,32 @@ class TestPrimReshapeWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = reshape_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimRollWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.roll_grad"
+        self.dtype = "float32"
+        self.x_shape = [100, 4, 5]
+        self.init_x_shape = [None, None, 5]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = roll_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimRollWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.roll_grad"
+        self.dtype = "float32"
+        self.x_shape = [100, 4, 5]
+        self.init_x_shape = [100, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = roll_net
         self.enable_cinn = False
         self.tol = 1e-6
 
