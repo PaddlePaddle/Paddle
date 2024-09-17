@@ -1970,7 +1970,8 @@ bool LogLossOpInferSymbolicShape(
           "ShapeError: label_shape_or_data should have 2 dimensions."));
 
   for (int i = 0; i < 2; i++) {
-    infer_context->AddEqualCstr(input_shape.shape()[i], label_shape.shape()[i]);
+    infer_context->AddEqualCstr(input_shape_or_data.shape()[i],
+                                label_shape_or_data.shape()[i]);
   }
 
   std::vector<symbol::DimExpr> output_shape = {symbol::DimExpr{1}};
