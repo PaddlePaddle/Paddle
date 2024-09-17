@@ -277,15 +277,6 @@ class ReshardPasses:
         ReshardPasses.fold_reshard_pass(dist_program)
         ReshardPasses.reshard_op_pass(dist_program, params_grads)
 
-    @staticmethod
-    def apply_all(dist_main_program, dist_startup_program, params_grads=[]):
-        ReshardPasses.apply_reshard_pass(dist_main_program, params_grads)
-        ReshardPasses.apply_reshard_pass(dist_startup_program)
-
-        RemovePasses.apply_all(
-            dist_main_program, dist_startup_program, params_grads
-        )
-
 
 # Replace the specific MoE-related dist op with the
 # executable op in the dense program. In expert parallelism

@@ -66,6 +66,7 @@ from .helper import ProgramHelper
 from .mix_to_dist_pass import apply_mix2dist_pass
 from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
+    RemovePasses,
     ReshardPasses,
     apply_partition_pass,
     pipeline_pass,
@@ -820,8 +821,9 @@ class Engine:
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        ReshardPasses.apply_all(dist_program, startup_program, params_grads)
-        
+        ReshardPasses.apply_reshard_pass(dist_program, params_grads)
+        RemovePasses.apply_all(dist_program, startup_program, params_grads)
+
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
 
@@ -1335,6 +1337,7 @@ class Engine:
                     del_op.erase()
 
                 set_all_ops_op_role(startup_prog.global_block(), OpRole.Forward)
+                ReshardPasses.apply_reshard_pass(startup_prog)
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
                 self._executor.run(startup_prog)
