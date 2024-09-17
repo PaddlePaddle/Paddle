@@ -221,7 +221,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
-        shared_mem_bytes = hip::CalculateSharedMemory(func);
+        shared_mem_bytes = CalculateSharedMemory(func);
 #endif
       });
 

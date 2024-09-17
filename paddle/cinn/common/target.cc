@@ -242,6 +242,7 @@ std::string Target::arch_str() const {
 }
 
 std::string Target::device_name_str() const {
+#ifdef CINN_WITH_CUDA
   int device_idx = 0;
   cudaError_t result = cudaGetDevice(&device_idx);
   if (result != cudaSuccess) {
@@ -265,6 +266,10 @@ std::string Target::device_name_str() const {
   std::string device_name = properties.name;
   device_name = std::regex_replace(device_name, std::regex(" "), "_");
   return std::regex_replace(device_name, std::regex("-"), "_");
+#else
+  PADDLE_THROW(::common::errors::InvalidArgument(
+      "device_name_str currently only support cuda target."));
+#endif
 }
 
 std::ostream &operator<<(std::ostream &os, const Target &target) {

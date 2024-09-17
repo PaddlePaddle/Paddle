@@ -945,7 +945,7 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
                                                &group_func_arg_tensors,
                                                &tensor_map,
                                                &tmp_tensor_info);
-  this->target_ = common::DefaultNVGPUTarget();
+  this->target_ = common::DefaultDeviceTarget();
   cinn::runtime::CurrentTarget::SetCurrentTarget(this->target_);
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(
