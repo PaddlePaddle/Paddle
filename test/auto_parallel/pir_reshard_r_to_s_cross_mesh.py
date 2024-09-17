@@ -20,9 +20,9 @@ from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
     apply_mix2dist_pass,
 )
 from paddle.distributed.auto_parallel.static.pir_pass import (
-    apply_partition_pass,
-    ReshardPasses,
     RemovePasses,
+    ReshardPasses,
+    apply_partition_pass,
 )
 from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
