@@ -493,8 +493,14 @@ void scatter_grad(const Tensor& index,
                   Tensor* x_grad,
                   Tensor* updates_grad) {
   if (x_grad) {
-    auto zero_tensor =
-        full<T>(common::vectorize(updates.dims()), 0.0, updates.dtype());
+    Tensor zero_tensor;
+    if (has_dynamic_shape(updates.shape())) {
+      zero_tensor =
+          backend::full_with_tensor<T>(shape<T>(updates), 0.0, updates.dtype());
+    } else {
+      zero_tensor =
+          full<T>(common::vectorize(updates.dims()), 0.0, updates.dtype());
+    }
     auto tmp_grad = scatter<T>(out_grad, index, zero_tensor, false);
     set_output<T>(tmp_grad, x_grad);
   }
@@ -1422,7 +1428,12 @@ void gather_grad(const Tensor& x,
                  const Tensor& out_grad,
                  const Scalar& axis,
                  Tensor* grad_x) {
-  auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+  Tensor zero_tensor;
+  if (has_dynamic_shape(x.shape())) {
+    zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0.0, x.dtype());
+  } else {
+    zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+  }
   std::vector<int> tmp_perm;
 
   // change axis to rank 0
@@ -1468,7 +1479,12 @@ void gather_nd_grad(const Tensor& x,
                     const Tensor& out_grad,
                     Tensor* x_grad) {
   if (x_grad) {
-    auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+    Tensor zero_tensor;
+    if (has_dynamic_shape(x.shape())) {
+      zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0.0, x.dtype());
+    } else {
+      zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+    }
     auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
     set_output<T>(x_grad_tmp, x_grad);
   }

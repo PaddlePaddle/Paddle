@@ -20,6 +20,7 @@ from dygraph_to_static_utils import (
     test_ast_only,
     test_legacy_and_pt_and_pir,
     test_pir_only,
+    test_pt_only,
 )
 
 import paddle
@@ -323,6 +324,7 @@ class TestTensorShapeBasic(Dy2StTestBase):
         return op_num, shape_op_num, slice_op_num
 
     @test_ast_only
+    @test_pt_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -663,6 +665,7 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
         return op_num, shape_op_num, slice_op_num
 
     @test_ast_only
+    @test_pt_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program

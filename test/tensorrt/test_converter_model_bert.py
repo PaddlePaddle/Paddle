@@ -19,11 +19,13 @@ from get_program import (
     get_bert_program,
 )
 
-from paddle.tensorrt.converter import PaddleToTensorRTConverter
+from paddle.tensorrt.export import (
+    Input,
+    TensorRTConfig,
+    convert_to_trt,
+)
 from paddle.tensorrt.util import (
     predict_program,
-    run_pir_pass,
-    warmup_shape_infer,
 )
 
 
@@ -32,39 +34,37 @@ class TestConverterBert(unittest.TestCase):
         # Step1: get program and init fake inputs
         program, scope, param_dict = get_bert_program()
 
-        input_data_min_shape = np.ones([1, 100]).astype('int64')
-        input_data_max_shape = np.ones([8, 1000]).astype('int64')
+        # Set input
+        input_config = Input(
+            min_input_shape=(1, 100),
+            optim_input_shape=(4, 1000),
+            max_input_shape=(8, 1000),
+        )
+        input_config.input_data_type = 'int64'
+        input_min_data, _, input_max_data = input_config.generate_input_data()
+
+        # Create a TensorRTConfig with inputs as a required field.
+        trt_config = TensorRTConfig(inputs=[input_config])
+        trt_config.disable_ops = "pd_op.dropout"
 
         # Step1.1: get original results(for tests only)
         output_var = program.global_block().ops[-1].result(0)
 
         output_expected = predict_program(
-            program, {"input_ids": input_data_min_shape}, [output_var]
+            program, {"input_ids": input_min_data}, [output_var]
         )
-        # Step2: run warmup for collecting shape
-        program = warmup_shape_infer(
-            program,
-            min_shape_feed={"input_ids": input_data_min_shape},
-            max_shape_feed={"input_ids": input_data_max_shape},
-        )
+        # get tensorrt_engine_op(converted_program)
+        program_with_trt = convert_to_trt(program, trt_config, scope)
+        output_var = program_with_trt.global_block().ops[-1].result(0)
 
-        # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
-        program = run_pir_pass(program, partition_mode=False)
-
-        # Step4: run trt_sub_graph_extract_pass()
-        program_with_pir = run_pir_pass(program, partition_mode=True)
-
-        # Step5: run TRTConverter(would lower group_op into tensorrt_engine_op)
-        converter = PaddleToTensorRTConverter(program_with_pir, scope)
-        converter.convert_program_to_trt()
-        output_var = program.global_block().ops[-1].result(0)
-
-        # Step6: run inference(converted_program)
+        # run inference(converted_program)
         output_converted = predict_program(
-            program_with_pir, {"input_ids": input_data_min_shape}, [output_var]
+            program_with_trt,
+            {"input_ids": input_min_data},
+            [output_var],
         )
 
-        # Check that the results are close to each other within a tolerance of 1e-3
+        # # Check that the results are close to each other within a tolerance of 1e-2
         np.testing.assert_allclose(
             output_expected[0],
             output_converted[0],

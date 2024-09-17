@@ -11,29 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-import os
-import sys
 
 import numpy as np
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
 import tensorrt as trt
 
-from paddle.base.log_helper import get_logger
-from paddle.tensorrt.register import converter_registry
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
-)
 from paddle.tensorrt.converter_utils import (
+    add_elementwise_layer,
     broadcast,
     get_axes_for_reduce_op,
 )
+from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.add", trt_version="8.x")
@@ -110,3 +97,24 @@ def max_converter(network, paddle_op, inputs):
         keep_dims=keepdim,
     )
     return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.divide", trt_version="8.x")
+def divide_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.DIV
+    )
+
+
+@converter_registry.register("pd_op.subtract", trt_version="8.x")
+def substract_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.SUB
+    )
+
+
+@converter_registry.register("pd_op.multiply", trt_version="8.x")
+def multiply_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.PROD
+    )

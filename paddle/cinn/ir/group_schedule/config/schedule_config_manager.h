@@ -28,7 +28,7 @@ class ScheduleConfigManager {
 
   ScheduleConfigMap ExtractConfigs(
       const common::Target& target,
-      const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info) const;
+      const std::shared_ptr<FusionGroupInfo>& group_info) const;
 
   void SetPolicy(const std::string& policy);
 

@@ -70,10 +70,14 @@ class XPUTestExpOP(XPUOpTestWrapper):
             self.op_type = 'exp'
             self.dtype = self.in_type
 
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            x = np.random.uniform(-1, 1, [11, 17])
+            if self.dtype == np.uint16:
+                new_x = convert_float_to_uint16(x)
+            else:
+                new_x = x.astype(self.dtype)
             out = np.exp(x)
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+            self.inputs = {'X': new_x}
             self.outputs = {'Out': out}
 
     class XPUTestExp_ZeroDIm(TestActivationOPBase):
@@ -492,11 +496,15 @@ class XPUTestLogOP(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = "log"
             self.dtype = self.in_type
-            x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+            x = np.random.uniform(0.1, 1, self.shape)
+            if self.dtype == np.int16:
+                new_x = convert_float_to_uint16(x)
+            else:
+                new_x = x.astype(self.dtype)
             out = np.log(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+            self.inputs = {'X': new_x}
             self.outputs = {'Out': out}
 
     class TestLogCase_ZeroDim(XPUTestLog):
