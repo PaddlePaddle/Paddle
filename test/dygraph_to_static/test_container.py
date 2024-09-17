@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -108,7 +107,6 @@ class TestSequential(Dy2StTestBase):
 
         return out
 
-    @test_legacy_and_pt_and_pir
     def test_train(self):
         dy_out = self._run(to_static=False)
         st_out = self._run(to_static=True)
