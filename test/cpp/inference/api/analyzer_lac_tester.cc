@@ -164,7 +164,6 @@ TEST(Analyzer_LAC, profile) {
     }
   }
 }
-
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_LAC, compare) {
   AnalysisConfig cfg;

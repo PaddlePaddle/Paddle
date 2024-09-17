@@ -12,15 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
+import sys
 import unittest
 
 import numpy as np
-from get_gpt_model import FakeDataset, generate_model
-from test_sparse_addmm_op import get_cuda_version
 
 import paddle
 from paddle.distributed.fleet import auto
+
+sys.path.append(os.path.dirname(__file__) + "/../../auto_parallel")
+print(sys.path)
+from get_gpt_model import FakeDataset, generate_model
+from test_sparse_addmm_op import get_cuda_version
 
 
 def apply_pass(use_fused_passes=False, fused_passes_list=[]):
