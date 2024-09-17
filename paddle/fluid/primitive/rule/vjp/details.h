@@ -890,98 +890,202 @@ void layer_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
-  auto x_dims = x.dims();
-  auto shape_1 = 1;  // front part
-  auto shape_2 = 1;  // back part
-  for (int i = 0; i < begin_norm_axis; ++i) {
-    shape_1 *= x_dims[i];
-  }
-  for (int i = begin_norm_axis; i < x.dims().size(); ++i) {
-    shape_2 *= x_dims[i];
-  }
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
 
-  auto x_cast = reshape<T>(x, std::vector<int64_t>({shape_1, shape_2}));
-  auto out_grad_cast =
-      reshape<T>(out_grad, std::vector<int64_t>({shape_1, shape_2}));
-  auto mean_ = reshape<T>(mean, std::vector<int64_t>({shape_1, 1}));
-  auto variance_ = reshape<T>(variance, std::vector<int64_t>({shape_1, 1}));
-
-  Tensor scale_cast;
-  if (scale_ptr) {
-    scale_cast = reshape<T>(*scale_ptr, std::vector<int64_t>({1, shape_2}));
-  }
-
-  // cast dtype to float32 if dtype =float16 or bfloat16
-  if (x.dtype() == phi::DataType::FLOAT16 ||
-      x.dtype() == phi::DataType::BFLOAT16) {
-    x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
-    out_grad_cast = cast<T>(out_grad_cast, phi::DataType::FLOAT32);
-    if (scale_ptr) {
-      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
+  if (has_dynamic_shape(x.shape())) {
+    auto x_dims = shape<T>(x);
+    Tensor one_tensor = full<T>({1}, 1, x_dims.dtype());
+    Tensor shape_1 = one_tensor, shape_2 = one_tensor;
+    for (int i = 0; i < begin_norm_axis; ++i) {
+      shape_1 = shape_1 * get_slice<T>(x_dims, i);
     }
-  }
-
-  auto x_sub_mean = x_cast - mean_;          // M,N
-  auto tmp = (1.0 / (variance_ + epsilon));  // M,1
-  auto sqrt_var_1 = sqrt<T>(tmp);            // M,1
-  auto x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
-
-  if (x_grad) {
-    auto out_grad_scale = out_grad_cast;  // M,N
-    if (scale_ptr) {
-      out_grad_scale = out_grad_cast * scale_cast;  // M,N * 1,N = M,N
+    for (int i = begin_norm_axis; i < x.dims().size(); ++i) {
+      shape_2 = shape_2 * get_slice<T>(x_dims, i);
     }
 
-    auto dx_end = sqrt_var_1 * out_grad_scale;
-    auto d_mean =
-        dx_end.sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
+    auto x_cast = backend::reshape<T>(x, concat<T>({shape_1, shape_2}));
+    auto out_grad_cast =
+        backend::reshape<T>(out_grad, concat<T>({shape_1, shape_2}));
+    auto mean_ = backend::reshape<T>(mean, concat<T>({shape_1, one_tensor}));
+    auto variance_ =
+        backend::reshape<T>(variance, concat<T>({shape_1, one_tensor}));
 
-    auto d_std_1 =
-        (tmp * x_sub_mean * out_grad_scale)
-            .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
-    auto d_std = d_std_1 * x_sub_mean_mul_sqrt_var_1;  // M,1 * M,N = M,N
+    Tensor scale_cast;
+    if (scale_ptr) {
+      scale_cast =
+          backend::reshape<T>(*scale_ptr, concat<T>({one_tensor, shape_2}));
+    }
 
-    auto d_mean_d_std = (1.0 / shape_2) * (d_mean + d_std);
-    auto x_grad_tmp = dx_end - d_mean_d_std;
-    x_grad_tmp = reshape<T>(x_grad_tmp, common::vectorize(x.dims()));
-
+    // cast dtype to float32 if dtype =float16 or bfloat16
     if (x.dtype() == phi::DataType::FLOAT16 ||
         x.dtype() == phi::DataType::BFLOAT16) {
-      x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
+      x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
+      out_grad_cast = cast<T>(out_grad_cast, phi::DataType::FLOAT32);
+      if (scale_ptr) {
+        scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
+      }
     }
-    set_output<T>(x_grad_tmp, x_grad);
-  }
 
-  if (scale_grad) {
+    auto x_sub_mean = x_cast - mean_;  // M,N
+    auto tmp =
+        (full_scalar<T>(1.0, variance_.dtype()) /
+         (variance_ + full_scalar<T>(epsilon, variance_.dtype())));  // M,1
+    auto sqrt_var_1 = sqrt<T>(tmp);                                  // M,1
+    auto x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
+
+    if (x_grad) {
+      auto out_grad_scale = out_grad_cast;  // M,N
+      if (scale_ptr) {
+        out_grad_scale = out_grad_cast * scale_cast;  // M,N * 1,N = M,N
+      }
+
+      auto dx_end = sqrt_var_1 * out_grad_scale;
+      auto d_mean =
+          dx_end.sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
+
+      auto d_std_1 =
+          (tmp * x_sub_mean * out_grad_scale)
+              .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
+      auto d_std = d_std_1 * x_sub_mean_mul_sqrt_var_1;  // M,1 * M,N = M,N
+
+      auto d_mean_d_std = (full_scalar<T>(1.0, d_mean.dtype()) /
+                           cast<T>(shape_2, d_mean.dtype())) *
+                          (d_mean + d_std);
+      auto x_grad_tmp = dx_end - d_mean_d_std;
+      x_grad_tmp = backend::reshape<T>(x_grad_tmp, shape<T>(x));
+
+      if (x.dtype() == phi::DataType::FLOAT16 ||
+          x.dtype() == phi::DataType::BFLOAT16) {
+        x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
+      }
+      set_output<T>(x_grad_tmp, x_grad);
+    }
+
+    if (scale_grad) {
+      if (scale_ptr) {
+        auto scale_grad_tmp =
+            (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
+                .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+        scale_grad_tmp =
+            backend::reshape<T>(scale_grad_tmp, shape<T>(*scale_ptr));
+        if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
+            scale_ptr->dtype() == phi::DataType::BFLOAT16) {
+          scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
+        }
+        set_output<T>(scale_grad_tmp, scale_grad);
+      } else {
+        scale_grad = nullptr;
+      }
+    }
+
+    if (bias_grad) {
+      if (bias_ptr) {
+        auto bias_grad_tmp =
+            out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+        bias_grad_tmp = backend::reshape<T>(bias_grad_tmp, shape<T>(*bias_ptr));
+        if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
+            bias_ptr->dtype() == phi::DataType::BFLOAT16) {
+          bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
+        }
+        set_output<T>(bias_grad_tmp, bias_grad);
+      } else {
+        bias_grad = nullptr;
+      }
+    }
+
+  } else {
+    auto x_dims = x.dims();
+    auto shape_1 = 1;  // front part
+    auto shape_2 = 1;  // back part
+    for (int i = 0; i < begin_norm_axis; ++i) {
+      shape_1 *= x_dims[i];
+    }
+    for (int i = begin_norm_axis; i < x.dims().size(); ++i) {
+      shape_2 *= x_dims[i];
+    }
+
+    auto x_cast = reshape<T>(x, std::vector<int64_t>({shape_1, shape_2}));
+    auto out_grad_cast =
+        reshape<T>(out_grad, std::vector<int64_t>({shape_1, shape_2}));
+    auto mean_ = reshape<T>(mean, std::vector<int64_t>({shape_1, 1}));
+    auto variance_ = reshape<T>(variance, std::vector<int64_t>({shape_1, 1}));
+
+    Tensor scale_cast;
     if (scale_ptr) {
-      auto scale_grad_tmp =
-          (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
-              .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-      scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
-      if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
-          scale_ptr->dtype() == phi::DataType::BFLOAT16) {
-        scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
-      }
-      set_output<T>(scale_grad_tmp, scale_grad);
-    } else {
-      scale_grad = nullptr;
+      scale_cast = reshape<T>(*scale_ptr, std::vector<int64_t>({1, shape_2}));
     }
-  }
 
-  if (bias_grad) {
-    if (bias_ptr) {
-      auto bias_grad_tmp =
-          out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-      bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
-      if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
-          bias_ptr->dtype() == phi::DataType::BFLOAT16) {
-        bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
+    // cast dtype to float32 if dtype =float16 or bfloat16
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
+      x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
+      out_grad_cast = cast<T>(out_grad_cast, phi::DataType::FLOAT32);
+      if (scale_ptr) {
+        scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
       }
-      set_output<T>(bias_grad_tmp, bias_grad);
-    } else {
-      bias_grad = nullptr;
+    }
+
+    auto x_sub_mean = x_cast - mean_;          // M,N
+    auto tmp = (1.0 / (variance_ + epsilon));  // M,1
+    auto sqrt_var_1 = sqrt<T>(tmp);            // M,1
+    auto x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
+
+    if (x_grad) {
+      auto out_grad_scale = out_grad_cast;  // M,N
+      if (scale_ptr) {
+        out_grad_scale = out_grad_cast * scale_cast;  // M,N * 1,N = M,N
+      }
+
+      auto dx_end = sqrt_var_1 * out_grad_scale;
+      auto d_mean =
+          dx_end.sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
+
+      auto d_std_1 =
+          (tmp * x_sub_mean * out_grad_scale)
+              .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
+      auto d_std = d_std_1 * x_sub_mean_mul_sqrt_var_1;  // M,1 * M,N = M,N
+
+      auto d_mean_d_std = (1.0 / shape_2) * (d_mean + d_std);
+      auto x_grad_tmp = dx_end - d_mean_d_std;
+      x_grad_tmp = reshape<T>(x_grad_tmp, common::vectorize(x.dims()));
+
+      if (x.dtype() == phi::DataType::FLOAT16 ||
+          x.dtype() == phi::DataType::BFLOAT16) {
+        x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
+      }
+      set_output<T>(x_grad_tmp, x_grad);
+    }
+
+    if (scale_grad) {
+      if (scale_ptr) {
+        auto scale_grad_tmp =
+            (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
+                .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+        scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
+        if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
+            scale_ptr->dtype() == phi::DataType::BFLOAT16) {
+          scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
+        }
+        set_output<T>(scale_grad_tmp, scale_grad);
+      } else {
+        scale_grad = nullptr;
+      }
+    }
+
+    if (bias_grad) {
+      if (bias_ptr) {
+        auto bias_grad_tmp =
+            out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+        bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
+        if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
+            bias_ptr->dtype() == phi::DataType::BFLOAT16) {
+          bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
+        }
+        set_output<T>(bias_grad_tmp, bias_grad);
+      } else {
+        bias_grad = nullptr;
+      }
     }
   }
 }

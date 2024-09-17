@@ -17,10 +17,27 @@ import unittest
 import numpy as np
 from test_prim_sub_graph_backward_dynamic_shape import (
     TestPrimBaseWithGrad,
+    TestPrimThreeWithGrad,
     TestPrimTwoWithGrad,
 )
 
 import paddle
+
+
+def layer_norm_net1(x, scale=None, bias=None, epsilon=1e-05):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[1:]
+    return paddle.nn.functional.layer_norm(
+        x, normalized_shape, weight=scale, bias=bias, epsilon=epsilon
+    )
+
+
+def layer_norm_net2(x, scale=None, bias=None, epsilon=1e-05):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[2:]
+    return paddle.nn.functional.layer_norm(
+        x, normalized_shape, weight=scale, bias=bias, epsilon=epsilon
+    )
 
 
 def leaky_relu_net(x):
@@ -77,6 +94,70 @@ def minimum_net(x, y):
 
 def multiply_net(x, y):
     return x * y
+
+
+class TestPrimLayerNormWithGrad1(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.layer_norm_grad"
+        self.dtype = "float32"
+        self.x_shape = [20, 10, 60, 30]
+        self.init_x_shape = [None, 10, None, None]
+        self.y_shape = [10 * 60 * 30]
+        self.init_y_shape = [None]
+        self.z_shape = [10 * 60 * 30]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = layer_norm_net1
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.layer_norm_grad"
+        self.dtype = "float32"
+        self.x_shape = [20, 10, 60, 30]
+        self.init_x_shape = [None, 10, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = layer_norm_net1
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.layer_norm_grad"
+        self.dtype = "float32"
+        self.x_shape = [20, 10, 60, 70]
+        self.init_x_shape = [None, 10, None, None]
+        self.y_shape = [60 * 70]
+        self.init_y_shape = [None]
+        self.z_shape = [60 * 70]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.z = np.random.random(self.z_shape).astype(self.dtype)
+        self.net = layer_norm_net2
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimLayerNormWithGrad4(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.layer_norm_grad"
+        self.dtype = "float32"
+        self.x_shape = [20, 10, 60, 70]
+        self.init_x_shape = [None, 10, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = layer_norm_net1
+        self.enable_cinn = False
+        self.tol = 1e-5
 
 
 class TestPrimLeakyReluWithGrad(TestPrimBaseWithGrad):
