@@ -22,7 +22,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     static_guard,
-    test_legacy_and_pt_and_pir,
 )
 from predictor_utils import PredictorTools
 
@@ -730,7 +729,6 @@ class TestTrain(Dy2StTestBase):
                         break
             return np.array(loss_data)
 
-    @test_legacy_and_pt_and_pir
     def test_train(self):
         with enable_to_static_guard(True):
             static_res = self.train_bmn(self.args, to_static=True)

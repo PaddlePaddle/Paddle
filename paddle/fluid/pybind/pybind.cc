@@ -1657,6 +1657,15 @@ All parameter, weight, gradient are variables in Paddle.
            )DOC",
            py::return_value_policy::reference)
       .def("size", &Scope::Size)
+      .def("local_var_names",
+           &Scope::LocalVarNames,
+           R"DOC(
+          Get all variable names in the current scope.
+
+          Returns:
+              List[str]: The list of variable names.
+          )DOC",
+           py::return_value_policy::reference)
       .def("erase",
            &Scope::EraseVars,
            py::arg("names"),
