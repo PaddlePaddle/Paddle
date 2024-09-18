@@ -3764,14 +3764,14 @@ bool WeightQuantizeOpInferSymbolicShape(
     scale_shape = std::vector<symbol::DimExpr>{x_shape[1]};
   }
 
-  if (algo == "weight_only_int8") {
+  if (algo == "weight_only_int8" || algo == "llm.int8") {
     out_shape = std::vector<symbol::DimExpr>{x_shape[1], x_shape[0]};
   } else if (algo == "weight_only_int4") {
     out_shape = std::vector<symbol::DimExpr>{x_shape[1] / 2, x_shape[0]};
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Currently, we only support weight_only_int8"
-        " and weight_only_int4 algo."));
+        "Currently, we only support weight_only_int8,"
+        " llm.int8 and weight_only_int4 algo."));
   }
 
   infer_context->SetShapeOrDataForValue(
