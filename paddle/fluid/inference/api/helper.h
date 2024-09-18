@@ -32,10 +32,10 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/port.h"
+#include "paddle/phi/core/memory/stats.h"
 #include "paddle/utils/string/printf.h"
 
 extern std::string paddle::framework::DataTypeToString(

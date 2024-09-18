@@ -26,7 +26,7 @@ BKCLOp ToBKCLRedType(ReduceOp reduction) {
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Invalid bkcl reduction. Must be BKCL_MIN | BKCL_MAX | "
                         "BKCL_ADD"));
   return it->second;
@@ -53,7 +53,7 @@ std::string BKCLDTypeToString(BKCLDataType dtype) {
   PD_BKCL_DTYPE_TO_STR(BKCL_INT64, "int64");
 
 #undef PD_BKCL_DTYPE_TO_STR
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "This datatype %d in bkcl is not supported.", static_cast<int>(dtype)));
 }
 

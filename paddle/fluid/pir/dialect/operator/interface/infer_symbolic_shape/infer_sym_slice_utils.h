@@ -24,14 +24,20 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
-      CHECK(list.at(i).data().has_value());
+      PADDLE_ENFORCE_EQ(list.at(i).data().has_value(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "i-th element of list has no value, please check"));
       for (auto expr : list.at(i).data().value()) {
         result.emplace_back(expr);
       }
     }
     return result;
   } else {
-    CHECK(shapeordata.data().has_value());
+    PADDLE_ENFORCE_EQ(shapeordata.data().has_value(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input `shapeordata.data` is empty, please check"));
     return shapeordata.data().value();
   }
 }
@@ -79,6 +85,13 @@ inline void CheckAndUpdateSliceAttrs(
     // following different arrangements.
     ends.at(i) = IsMaxInt(ends.at(i)) ? in_dims.at(axis) : ends.at(i);
 
+    // If in_dims[axis] or ends[i] have symbol, nedd get Min(in_dims[axis],
+    // ends[i])
+    if (!in_dims[axis].isa<int64_t>() || !ends[i].isa<int64_t>()) {
+      symbol::List<symbol::DimExpr> min_lists{in_dims[axis], ends[i]};
+      ends.at(i) = symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+    }
+
     bool both_negative_or_positive =
         (start_i >= 0 && end_i >= 0) || (start_i <= 0 && end_i <= 0);
     bool start_negative_end_positive = start_i <= 0 && end_i >= 0;
@@ -91,7 +104,7 @@ inline void CheckAndUpdateSliceAttrs(
     } else if (start_positive_end_negative) {
       starts.at(i) = starts.at(i) - in_dims.at(axis);
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Dead code"));
+      PADDLE_THROW(common::errors::Fatal("Dead code"));
     }
   }
 }
@@ -105,11 +118,11 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
   PADDLE_ENFORCE_EQ(
       (axes.size() == starts.size() && axes.size() == ends.size()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of axes must equal size of starts and ends."));
   for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes.at(i);
-    slice_dims.at(axis) = ends.at(i) - starts.at(i);
+    int64_t axis = axes[i];
+    slice_dims[axis] = ends[i] - starts[i];
   }
 
   return slice_dims;
@@ -199,7 +212,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         vec_int64.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "for slice op, all the elements in `starts` must be int64_t"));
     std::vector<int64_t> starts_int = vec_int64.value();
 
@@ -207,7 +220,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         vec_int64.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "for slice op, all the elements in `ends` must be int64_t"));
     std::vector<int64_t> ends_int = vec_int64.value();
 

@@ -239,9 +239,9 @@ bool IsTensorOfVarInitialized(Variable* var) {
   if (var->IsInitialized()) {
     if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
       return GetLoDTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
-    } else if (var->IsType<LoDTensorArray>()) {
+    } else if (var->IsType<phi::TensorArray>()) {
       return static_cast<const phi::DenseTensor*>(
-                 &(var->Get<LoDTensorArray>()[0]))
+                 &(var->Get<phi::TensorArray>()[0]))
           ->IsInitialized();
     }
   }
@@ -510,12 +510,12 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           if (var->IsType<phi::DenseTensor>() ||
               var->IsType<phi::SelectedRows>()) {
             tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-          } else if (var->IsType<LoDTensorArray>()) {
-            if (var->Get<LoDTensorArray>().empty()) {
+          } else if (var->IsType<phi::TensorArray>()) {
+            if (var->Get<phi::TensorArray>().empty()) {
               continue;
             }
             tensor_in = static_cast<const phi::DenseTensor*>(
-                &(var->Get<LoDTensorArray>()[0]));
+                &(var->Get<phi::TensorArray>()[0]));
           } else {
             continue;
           }
@@ -768,10 +768,10 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         VLOG(3) << "skip grad_var with nullptr";
         continue;
       }
-      // don't process LoDTensorArray temporarily,
+      // don't process phi::TensorArray temporarily,
       // add support if necessary for complex number calculations in the future
       if (!framework::VarIsTensor(*grad_var)) {
-        VLOG(3) << "skip grad_var with LoDTensorArray type";
+        VLOG(3) << "skip grad_var with phi::TensorArray type";
         continue;
       }
       auto* grad_tensor =
@@ -796,7 +796,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         continue;
       }
       if (!framework::VarIsTensor(*var)) {
-        VLOG(3) << "skip " << orig_var_name << " with LoDTensorArray.";
+        VLOG(3) << "skip " << orig_var_name << " with phi::TensorArray.";
         continue;
       }
       const auto* tensor =

@@ -30,26 +30,26 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/pybind/complex.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/common/pstring.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/unicode.h"
 #include "pybind11/numpy.h"
@@ -985,7 +985,7 @@ inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
 }
 
 inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
-                                 bool need_deep_copy = false) {
+                                  py::object copy = py::none()) {
   if (!tensor.IsInitialized()) {
     return py::array();
   }
@@ -1013,7 +1013,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
       framework::TransToProtoVarType(tensor.dtype()));
 
   if (!is_gpu_tensor && !is_xpu_tensor && !is_custom_device_tensor) {
-    if (!need_deep_copy) {
+    if (!copy.is_none()&& !copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()),
                        py_dims,

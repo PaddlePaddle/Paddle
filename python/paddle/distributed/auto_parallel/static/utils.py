@@ -23,7 +23,9 @@ import numpy as np
 
 import paddle
 from paddle.base.framework import use_pir_api
-from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.base.wrapped_decorator import (
+    wrap_decorator,
+)
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
@@ -1308,10 +1310,10 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
         raise ValueError(
             f"{process_mesh} must be a instance of ProcessMesh or list, but receive {type(process_mesh)}"
         )
-    if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
+    if kwargs.get("mark_annotated"):
         tensor_dist_attr.mark_annotated("dims_mapping")
         tensor_dist_attr.mark_annotated("process_mesh")
-    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+    if kwargs.get("chunk_id"):
         tensor_dist_attr.chunk_id = kwargs["chunk_id"]
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
     return tensor_dist_attr
@@ -1331,7 +1333,7 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op_dist_attr.set_output_dims_mapping(output_varname, ref_mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
-    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+    if kwargs.get("chunk_id"):
         new_op_dist_attr.chunk_id = kwargs["chunk_id"]
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
@@ -2341,6 +2343,14 @@ def get_pp_stage(dist_context, rank):
     return pp_idx
 
 
+def get_pp_stage_by_pp_degree(pp_degree):
+    cur_rank = paddle.distributed.get_rank()
+    word_size = paddle.distributed.get_world_size()
+    pp_group_size = word_size // pp_degree
+    pp_stage = cur_rank // pp_group_size
+    return pp_stage
+
+
 def wrap_data_for_completion(
     dist_op, input_names: list, output_names: list, attr_names: list
 ):
@@ -2498,3 +2508,12 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
         scale_loss_grad_var_name = first_backward_op.desc.output("Out")[0]
         if scale_loss_grad_var_name not in grad_var_to_var.keys():
             grad_var_to_var[scale_loss_grad_var_name] = scale_loss_var_name
+
+
+def set_all_ops_op_role(block, op_role):
+    all_ops = block.ops
+    for op in all_ops:
+        if op.op_role == -1:
+            op.op_role = op_role
+        for sub_block in op.blocks():
+            set_all_ops_op_role(sub_block, op_role)

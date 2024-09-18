@@ -15,17 +15,19 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from typing_extensions import NotRequired
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ..base import framework
 from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -111,8 +113,8 @@ class RMSProp(Optimizer):
           then the parameters are list of dict. Note that the learning_rate in parameter groups
           represents the scale of base learning_rate.
           The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization.
-          It can be a float value as coeff of L2 regularization or \
+        weight_decay (int|float|WeightDecayRegularizer|None, optional): The strategy of regularization.
+          It can be a int or float value as coeff of L2 regularization or \
           :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
           If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
           the regularization setting here in optimizer will be ignored for this parameter.
@@ -224,8 +226,8 @@ class RMSProp(Optimizer):
         }
 
     def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
@@ -255,8 +257,8 @@ class RMSProp(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)

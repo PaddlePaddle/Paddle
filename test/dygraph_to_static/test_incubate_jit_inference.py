@@ -18,6 +18,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
+    test_legacy_and_pt,
     test_legacy_and_pt_and_pir,
 )
 
@@ -46,13 +47,17 @@ class TestLayer2(paddle.nn.Layer):
         super().__init__()
         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=True)
 
-    def forward(self, x_list):
+    def forward(self, x_list, bool_value):
         x = x_list[0]
         for i in range(5):
             x = paddle.nn.functional.softmax(x, -1)
         x = x.cast("float32")
         x = self.fn(x)
         x = x + x_list[1]
+        if bool_value:
+            x = x * 3
+        else:
+            x = 2 * x
         return x
 
 
@@ -73,6 +78,7 @@ class TestToStaticInfenrenceModel(Dy2StTestBase):
 
 class TestToStaticInfenrenceTensorRTModel(Dy2StTestBase):
     @test_ast_only
+    @test_legacy_and_pt
     def test_dygraph_static_same_result(self):
         if paddle_infer.get_trt_compile_version()[0] == 0:
             return
@@ -112,17 +118,18 @@ class TestToStaticInfenrenceFunc(Dy2StTestBase):
 
 class TestToStaticInputListModel(Dy2StTestBase):
     @test_ast_only
+    @test_legacy_and_pt
     def test_dygraph_static_same_result(self):
         hidd = 1024
         batch = 4096
         dtype = "float32"
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer2(hidd)
-        result0 = my_layer([x, x]).numpy()
+        result0 = my_layer([x, x], bool_value=True).numpy()
         my_static_layer = paddle.incubate.jit.inference(my_layer)
         my_static_layer = paddle.incubate.jit.inference(my_layer)
 
-        result1 = my_layer([x, x]).numpy()
+        result1 = my_layer([x, x], bool_value=True).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
 
 

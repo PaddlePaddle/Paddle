@@ -77,7 +77,7 @@ static std::vector<hipGraphNode_t> ToposortCUDAGraph(hipGraph_t graph) {
   PADDLE_ENFORCE_EQ(
       nodes.size(),
       num_nodes,
-      phi::errors::InvalidArgument("Toposort error, this may be a bug."));
+      common::errors::InvalidArgument("Toposort error, this may be a bug."));
   return nodes;
 }
 
@@ -118,7 +118,7 @@ void CUDAGraph::Replay() {
 #if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(is_reset_,
                     false,
-                    phi::errors::PermissionDenied(
+                    common::errors::PermissionDenied(
                         "Cannot replay the CUDA Graph after reset is called."));
   size_t n = exec_graphs_.size();
   for (size_t i = 0; i < n; ++i) {
@@ -138,23 +138,23 @@ void CUDAGraph::BeginSegmentCapture() {
 #if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     true,
-                    phi::errors::PermissionDenied(
+                    common::errors::PermissionDenied(
                         "BeginSegmentCapture should be called when CUDA "
                         "Graph is capturing."));
   if (IsThreadLocalCapturing()) {
     PADDLE_ENFORCE_EQ(IsThisThreadCapturing(),
                       true,
-                      phi::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "When capturing CUDA Graph in the thread local mode, "
                           "you cannot begin segmented capturing in the thread "
                           "which is not the one that starts the capturing."));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamBeginCapture(
       capturing_graph_->stream_, capturing_graph_->capture_mode_));
-  PADDLE_ENFORCE_EQ(
-      IsValidCapturing(),
-      true,
-      phi::errors::PermissionDenied("CUDA Graph should not be invalidated."));
+  PADDLE_ENFORCE_EQ(IsValidCapturing(),
+                    true,
+                    common::errors::PermissionDenied(
+                        "CUDA Graph should not be invalidated."));
   VLOG(10) << "Begin to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;
@@ -168,11 +168,11 @@ void CUDAGraph::BeginCapture(phi::GPUPlace place,
 #if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     false,
-                    phi::errors::PermissionDenied(
+                    common::errors::PermissionDenied(
                         "CUDA Graph can only captured one by one."));
   PADDLE_ENFORCE_NOT_NULL(
       stream,
-      phi::errors::PermissionDenied(
+      common::errors::PermissionDenied(
           "CUDA Graph cannot be captured in default CUDA stream 0."));
   capturing_graph_.reset(new CUDAGraph());
   capturing_graph_->place_ = place;
@@ -193,7 +193,7 @@ void CUDAGraph::EndSegmentCapture() {
   PADDLE_ENFORCE_EQ(
       IsCapturing(),
       true,
-      phi::errors::PermissionDenied("No CUDA Graph is capturing."));
+      common::errors::PermissionDenied("No CUDA Graph is capturing."));
   hipGraph_t graph;
   PADDLE_ENFORCE_GPU_SUCCESS(
       hipStreamEndCapture(capturing_graph_->stream_, &graph));
@@ -226,7 +226,7 @@ void CUDAGraph::EndSegmentCapture() {
     PADDLE_ENFORCE_GPU_SUCCESS(hipGraphInstantiateWithFlags(
         &exec_graph, graph, hipGraphInstantiateFlagAutoFreeOnLaunch));
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The cudaGraphInstantiateFlagAutoFreeOnLaunch is only supported when "
         "CUDA version >= 11.4.0"));
 #endif
@@ -280,7 +280,7 @@ static std::string ConcatPath(const std::string &dirname,
 void CUDAGraph::PrintToDotFiles(const std::string &dirname,
                                 unsigned int flags) {
   ThrowErrorIfNotSupportCUDAGraph();
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "The print_to_dot_files() method is not supported on ROCm/HIP"));
 }
 
@@ -338,8 +338,8 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(hipGraph_t graph) {
                     exec_graph, gpuNode, &gpuParams));
               });
         } else {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("Error: does not find launch id"));
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Error: does not find launch id"));
         }
       }
     }
@@ -357,7 +357,7 @@ void CUDAGraphNodeLauncher::KernelNodeLaunch(
 
 std::vector<cudaGraphExecuterSetter_t>
 CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(hipGraph_t graph) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "CUDAGraphNodeLauncher is only supported when CUDA version >= 11.0"));
 }
 #endif

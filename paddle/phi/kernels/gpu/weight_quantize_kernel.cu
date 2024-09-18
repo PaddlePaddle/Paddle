@@ -33,7 +33,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       ((group_size == -1) || (group_size == 64) || (group_size == 128)),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently, group_size only support -1(per-channel), 64 or 128."));
 
   DenseTensor quanted_x;
@@ -49,7 +49,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
        (arch == 89) || (arch == 90)),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86, 89, 90."));
 #endif
   if (algo == "llm.int8") {

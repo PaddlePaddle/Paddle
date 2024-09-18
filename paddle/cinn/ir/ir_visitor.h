@@ -22,6 +22,7 @@
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -39,13 +40,23 @@ class IRVisitorRequireReImpl {
   //! Visit a expression.
   // @{
   virtual RetTy Visit(const ir::Expr* expr, Args... args) {
-    CHECK(expr->defined());
+    PADDLE_ENFORCE_EQ(
+        expr->defined(),
+        true,
+        ::common::errors::Unavailable("The expression is not defined. Please "
+                                      "provide a valid expression."));
     switch (expr->node_type()) {
+      case IrNodeTy::IterMark:
+        return Visit(expr->As<IterMark>(), args...);
+      case IrNodeTy::IterSum:
+        return Visit(expr->As<IterSum>(), args...);
+      case IrNodeTy::IterSplit:
+        return Visit(expr->As<IterSplit>(), args...);
 #define __(op__)           \
   case ir::IrNodeTy::op__: \
     return Visit(expr->As<ir::op__>(), args...);
 
-      NODETY_FORALL(__)
+        NODETY_FORALL(__)
 
       default:
         std::stringstream ss;
@@ -58,6 +69,9 @@ class IRVisitorRequireReImpl {
   }
   // @}
  protected:
+  virtual RetTy Visit(const IterMark* op, Args... args) {}
+  virtual RetTy Visit(const IterSum* op, Args... args) {}
+  virtual RetTy Visit(const IterSplit* op, Args... args) {}
 #define __(op__) virtual RetTy Visit(const ir::op__* op, Args... args) = 0;
   NODETY_FORALL(__)
 #undef __
@@ -70,6 +84,9 @@ struct IRVisitor : public IRVisitorRequireReImpl<void> {
   IRVisitor() = default;
 
   void Visit(const Expr* x) { IRVisitorRequireReImpl::Visit(x); }
+  void Visit(const IterMark* x) { IRVisitorRequireReImpl::Visit(x); }
+  void Visit(const IterSum* x) { IRVisitorRequireReImpl::Visit(x); }
+  void Visit(const IterSplit* x) { IRVisitorRequireReImpl::Visit(x); }
 #define __m(t__) \
   virtual void Visit(const t__* x) { return VisitDefault(x); }
   NODETY_FORALL(__m)

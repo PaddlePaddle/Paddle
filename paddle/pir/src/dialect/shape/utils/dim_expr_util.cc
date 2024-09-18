@@ -289,7 +289,10 @@ struct SortOperands {
   }
 
   bool IsSorted(const List<DimExpr>& operands) {
-    CHECK(!operands->empty());
+    PADDLE_ENFORCE_EQ(
+        !operands->empty(),
+        true,
+        common::errors::InvalidArgument("input op is empty, pleace check!"));
     for (std::size_t i = 0; i < operands->size() - 1; ++i) {
       if (IsLhsBeforeRhs(operands->at(i + 1), operands->at(i))) {
         return false;
@@ -302,10 +305,18 @@ struct SortOperands {
 std::int64_t GetInteger(const DimExpr& expr) {
   if (expr.Has<Negative<DimExpr>>()) {
     const auto& integer = expr.Get<Negative<DimExpr>>()->data;
-    CHECK(integer.Has<std::int64_t>());
+    PADDLE_ENFORCE_EQ(integer.Has<std::int64_t>(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "input expression's member `data` has no attribution "
+                          "`int64_t`, maybe input dim is empty"));
     return -integer.Get<std::int64_t>();
   }
-  CHECK(expr.Has<std::int64_t>());
+  PADDLE_ENFORCE_EQ(
+      expr.Has<std::int64_t>(),
+      true,
+      common::errors::InvalidArgument(
+          "input has no attribution `int64_t`, maybe input dim is empty"));
   return expr.Get<std::int64_t>();
 }
 
@@ -658,7 +669,10 @@ ConstRational GetConstRational(const DimExpr& expr) {
   return std::visit(
       [&](const auto& impl) {
         std::optional<ConstRational> opt_ret = GetConstRationalImpl(impl);
-        CHECK(opt_ret.has_value());
+        PADDLE_ENFORCE_EQ(
+            opt_ret.has_value(),
+            true,
+            common::errors::InvalidArgument("Input is empty, please check"));
         return opt_ret.value();
       },
       expr.variant());
@@ -743,7 +757,11 @@ struct FoldOperandTrait<Broadcast> {
 
   static const_value_type MakeUnit() { return 1; }
   static void Accumulate(const_value_type* value, const DimExpr& expr) {
-    CHECK(expr.Has<std::int64_t>());
+    PADDLE_ENFORCE_EQ(expr.Has<std::int64_t>(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input constant `expr`(second argument) has no "
+                          "attribution `int64_T`, please check"));
     std::int64_t expr_value = expr.Get<std::int64_t>();
     if (*value == 1) {
       *value = expr_value;

@@ -32,11 +32,11 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/stream.h"
 
 COMMON_DECLARE_bool(trt_ibuilder_cache);
@@ -513,6 +513,7 @@ class TensorRTEngine {
   }
   bool disable_trt_plugin_fp16() { return params_.disable_trt_plugin_fp16; }
   bool with_dynamic_shape() { return params_.with_dynamic_shape; }
+  int32_t get_max_batch_size() { return params_.max_batch_size; }
   phi::DataType precision() { return params_.precision; }
 
 #if IS_TRT_VERSION_GE(6000)

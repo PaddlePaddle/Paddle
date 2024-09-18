@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 from typing_extensions import TypeAlias
@@ -42,6 +42,8 @@ from .manipulation import cast
 from .math import _get_reduce_axis
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
     _POrder: TypeAlias = Literal['fro', 'nuc']
@@ -2229,23 +2231,38 @@ def matrix_rank(
     x: Tensor,
     tol: float | Tensor | None = None,
     hermitian: bool = False,
+    atol: float | Tensor | None = None,
+    rtol: float | Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
     Computes the rank of a matrix.
 
-    The rank of a matrix is the number of singular values that are greater than the specified `tol` threshold when hermitian=False,
-    or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold when hermitian=True.
+    Notes:
+        1. Support the use of attribute `tol` alone or the use of attributes `atol` and `rtol` together without `tol`.
+
+        2. When `tol` is used alone, it will return the rank of a matrix is the number of singular values that are greater than the specified `tol`
+        threshold when hermitian=False, or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold
+        when hermitian=True. It is compatible with numpy API.
+
+        3. When `atol` and `rtol` are used, the tolerance value is computed as `max(atol, sigma_1 * rtol)`, where sigma_1 is largest
+        singular value (or eigenvalues in absolute value).
+
+        4. When `atol` and `rtol` are used: If `rtol` is not specified, then it is set to be `max(m,n) * eps`, where `x` has dimension(m, n) and
+        `eps` is the epsilon value for the dtype of `x`; If `rtol` is not specified and `atol` is specified to be greater than 0, then it
+        is set to be 0.
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch
             of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64.
-        tol (float|Tensor, optional): the tolerance value. If `tol` is not specified, and `sigma` is the largest singular value
+        tol (float|Tensor, optional): The tolerance value. If `tol` is not specified, and `sigma` is the largest singular value
             (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed with formula
             `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch. Default: None.
-        hermitian (bool, optional): indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian,
+        hermitian (bool, optional): Indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian,
             enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use
             the lower triangular of the matrix to compute. Default: False.
+        atol (float|Tensor, optional): The absolute tolerance value. When None it is considered to be 0. Default: None.
+        rtol (float|Tensor, optional): The relative tolerance value. See above Notes for the value it takes when None. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2271,50 +2288,103 @@ def matrix_rank(
              [1, 1, 1, 1]])
 
     """
-    if in_dynamic_or_pir_mode():
-        if isinstance(tol, (Variable, paddle.pir.Value)):
-            if tol.dtype != x.dtype:
-                tol_tensor = cast(tol, x.dtype)
-            else:
-                tol_tensor = tol
-            use_default_tol = False
-            return _C_ops.matrix_rank_tol(
-                x, tol_tensor, use_default_tol, hermitian
+    use_atol_rtol = False
+    if (atol is not None) or (rtol is not None):
+        if tol is not None:
+            raise ValueError(
+                "Only support to use tol alone or use atol and rtol without tol."
             )
+        use_atol_rtol = True
 
-        if tol is None:
-            tol_attr = 0.0
-            use_default_tol = True
+    if use_atol_rtol:
+        if atol is None:
+            atol = full([], 0.0, x.dtype)
+        if isinstance(atol, (float, int)):
+            atol = full([], atol, x.dtype)
+        if atol.dtype != x.dtype:
+            atol = cast(atol, x.dtype)
+
+        if rtol is not None:
+            if isinstance(rtol, (float, int)):
+                rtol = full([], rtol, x.dtype)
+            if rtol.dtype != x.dtype:
+                rtol = cast(rtol, x.dtype)
+
+            atol, rtol = paddle.broadcast_tensors([atol, rtol])
+
+        if in_dynamic_or_pir_mode():
+            return _C_ops.matrix_rank_atol_rtol(x, atol, rtol, hermitian)
         else:
-            tol_attr = float(tol)
-            use_default_tol = False
-        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
+            inputs = {}
+            attrs = {}
+            check_variable_and_dtype(
+                x, 'x', ['float32', 'float64'], 'matrix_rank_atol_rtol'
+            )
+            inputs['x'] = x
+            inputs['atol'] = atol
+            inputs['rtol'] = rtol
+            check_type(hermitian, 'hermitian', bool, 'matrix_rank_atol_rtol')
+            attrs['hermitian'] = hermitian
+
+            helper = LayerHelper('matrix_rank_atol_rtol', **locals())
+            out = helper.create_variable_for_type_inference(dtype='int32')
+            helper.append_op(
+                type='matrix_rank_atol_rtol',
+                inputs=inputs,
+                outputs={'out': out},
+                attrs=attrs,
+            )
+            return out
     else:
-        inputs = {}
-        attrs = {}
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'matrix_rank')
-        inputs['X'] = x
-        if tol is None:
-            attrs['use_default_tol'] = True
-        elif isinstance(tol, Variable):
-            attrs['use_default_tol'] = False
-            if tol.dtype != x.dtype:
-                inputs['TolTensor'] = cast(tol, x.dtype)
-            else:
-                inputs['TolTensor'] = tol
-        else:
-            check_type(tol, 'tol', float, 'matrix_rank')
-            attrs['use_default_tol'] = False
-            attrs['tol'] = tol
-        check_type(hermitian, 'hermitian', bool, 'matrix_rank')
-        attrs['hermitian'] = hermitian
+        if in_dynamic_or_pir_mode():
+            if isinstance(tol, (Variable, paddle.pir.Value)):
+                if tol.dtype != x.dtype:
+                    tol_tensor = cast(tol, x.dtype)
+                else:
+                    tol_tensor = tol
+                use_default_tol = False
+                return _C_ops.matrix_rank_tol(
+                    x, tol_tensor, use_default_tol, hermitian
+                )
 
-        helper = LayerHelper('matrix_rank', **locals())
-        out = helper.create_variable_for_type_inference(dtype='int32')
-        helper.append_op(
-            type='matrix_rank', inputs=inputs, outputs={'Out': out}, attrs=attrs
-        )
-        return out
+            if tol is None:
+                tol_attr = 0.0
+                use_default_tol = True
+            else:
+                tol_attr = float(tol)
+                use_default_tol = False
+            return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
+        else:
+            inputs = {}
+            attrs = {}
+            check_variable_and_dtype(
+                x, 'x', ['float32', 'float64'], 'matrix_rank'
+            )
+            inputs['X'] = x
+            if tol is None:
+                attrs['use_default_tol'] = True
+            elif isinstance(tol, Variable):
+                attrs['use_default_tol'] = False
+                if tol.dtype != x.dtype:
+                    inputs['TolTensor'] = cast(tol, x.dtype)
+                else:
+                    inputs['TolTensor'] = tol
+            else:
+                check_type(tol, 'tol', float, 'matrix_rank')
+                attrs['use_default_tol'] = False
+                attrs['tol'] = tol
+            check_type(hermitian, 'hermitian', bool, 'matrix_rank')
+            attrs['hermitian'] = hermitian
+
+            helper = LayerHelper('matrix_rank', **locals())
+            out = helper.create_variable_for_type_inference(dtype='int32')
+            helper.append_op(
+                type='matrix_rank',
+                inputs=inputs,
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            return out
 
 
 def bmm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
@@ -2477,7 +2547,7 @@ def histogram_bin_edges(
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor, the values of the histogram and the bin edges. The output data type will be float32.
+        Tensor, the values of the bin edges. The output data type will be float32.
 
     Examples:
         .. code-block:: python
@@ -3160,8 +3230,7 @@ def qr(
     x: Tensor,
     mode: Literal['reduced', 'complete'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3169,8 +3238,7 @@ def qr(
     x: Tensor,
     mode: Literal['r'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def qr(
@@ -3248,8 +3316,7 @@ def lu(
     pivot: bool = ...,
     get_infos: Literal[False] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3258,15 +3325,13 @@ def lu(
     pivot: bool = ...,
     get_infos: Literal[True] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
 def lu(
     x: Tensor, pivot: bool = ..., get_infos: bool = ..., name: str | None = ...
-) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]: ...
 
 
 def lu(
@@ -3328,8 +3393,8 @@ def lu(
             Tensor(shape=[2], dtype=int32, place=Place(cpu), stop_gradient=True,
             [3, 3])
             >>> print(info)
-            Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [0])
+            Tensor(shape=[], dtype=int32, place=Place(cpu), stop_gradient=True,
+            0)
 
             >>> P,L,U = paddle.linalg.lu_unpack(lu,p)
 
@@ -4022,15 +4087,49 @@ def pinv(
             return out_2
 
 
-def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def _check_right_solve_shape(x, y):
+    """check the input shape of x and y for solve when left is False"""
+    x_shape = x.shape[-2:]
+    if len(y.shape) == 1:
+        raise ValueError(
+            "Incompatible shapes of X and Y for the equation Out * X = Y, "
+            f"where input X's matrix shape is {x_shape} and"
+            f"input Y's matrix shape is {list(y.shape).append(1)}"
+        )
+    else:
+        y_shape = y.shape[-2:]
+        if x_shape[0] != y_shape[1]:
+            raise ValueError(
+                "Incompatible shapes of X and Y for the equation Out * X = Y, "
+                f"where input X's matrix shape is {x_shape} and"
+                f"input Y's matrix shape is {y_shape}"
+            )
+
+
+def _transpose_last_2dim(x):
+    """transpose the last 2 dimension of a tensor"""
+    x_new_dims = list(range(len(x.shape)))
+    x_new_dims[-1], x_new_dims[-2] = x_new_dims[-2], x_new_dims[-1]
+    x = transpose(x, x_new_dims)
+    return x
+
+
+def solve(
+    x: Tensor, y: Tensor, left: bool = True, name: str | None = None
+) -> Tensor:
     r"""
 
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
     Let :math:`X` be a square matrix or a batch of square matrices, :math:`Y` be
-    a vector/matrix or a batch of vectors/matrices, the equation should be:
+    a vector/matrix or a batch of vectors/matrices. When `left` is True, the equation should be:
 
     .. math::
         Out = X^-1 * Y
+
+    When `left` is False, the equation should be:
+
+    .. math::
+        Out = Y * X^-1
 
     Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
 
@@ -4039,6 +4138,7 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             more batch dimensions. Its data type should be float32 or float64.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
+        left (bool, optional): Whether to solve the system :math:`X * Out = Y` or :math:`Out * X = Y`. Default: True.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -4051,7 +4151,7 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         .. code-block:: python
 
             >>> # a square system of linear equations:
-            >>> # 2*X0 + X1 = 9
+            >>> # 3*X0 + X1 = 9
             >>> # X0 + 2*X1 = 8
 
             >>> import paddle
@@ -4064,8 +4164,13 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [2., 3.])
     """
+    if not left:
+        _check_right_solve_shape(x, y)
+        x = _transpose_last_2dim(x)
+        y = _transpose_last_2dim(y)
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.solve(x, y)
+        out = _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("solve", **locals())
@@ -4076,7 +4181,10 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         helper.append_op(
             type="solve", inputs={"X": x, "Y": y}, outputs={"Out": out}
         )
-        return out
+
+    if not left:
+        out = _transpose_last_2dim(out)
+    return out
 
 
 def triangular_solve(

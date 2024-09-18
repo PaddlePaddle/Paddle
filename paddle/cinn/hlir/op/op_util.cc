@@ -29,15 +29,18 @@ CINNSchedule GetElementwiseScheduleFunc(
     const Target& target,
     bool vectorizable) {
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
-    CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of ElementwiseSchedule is "
+                          "invalid! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
-    PADDLE_ENFORCE_GT(
-        arg_pack.size(),
-        0U,
-        phi::errors::InvalidArgument("arg_pack.size() must contain at least "
-                                     "one element. Current size: %d",
-                                     arg_pack.size()));
+    PADDLE_ENFORCE_GT(arg_pack.size(),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "arg_pack.size() must contain at least "
+                          "one element. Current size: %d",
+                          arg_pack.size()));
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
@@ -45,7 +48,12 @@ CINNSchedule GetElementwiseScheduleFunc(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(vec_ast.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The vector of AbstractSyntaxTree is empty!"
+                          "Please ensure that the argument pack "
+                          "contains at least one valid expression."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -61,8 +69,11 @@ CINNSchedule GetInjectiveScheduleFunc(
     const Target& target,
     bool vectorizable) {
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
-    CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of InjectiveSchedule is "
+                          "invalid! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -71,7 +82,12 @@ CINNSchedule GetInjectiveScheduleFunc(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(vec_ast.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The vector of AbstractSyntaxTree is empty!"
+                          "Please ensure that the argument pack "
+                          "contains at least one valid expression."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -108,7 +124,7 @@ std::string GetExternFuncNameArchPrefixImpl(common::NVGPUArch,
 
 std::string GetExternFuncNameArchPrefixImpl(common::HygonDCUArchHIP,
                                             const std::string& func_name) {
-  return "hygonDcuHip_";
+  return "hip_";
 }
 
 std::string GetExternFuncNameArchPrefix(common::Arch arch,

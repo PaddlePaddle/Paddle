@@ -52,9 +52,7 @@ def nadam_step(inputs, attributes, dtype='float32'):
     mu_t = beta1 * (1.0 - 0.5 * (momentum_decay_pow**momentum_decay))
     mu_t_1 = beta1 * (
         1.0
-        - 0.5
-        * (momentum_decay_pow**momentum_decay)
-        * (0.96**momentum_decay)
+        - 0.5 * (momentum_decay_pow**momentum_decay) * (0.96**momentum_decay)
     )
 
     mu_product *= mu_t
@@ -137,9 +135,7 @@ class TestNAdamOp(OpTest):
         self._init_param()
 
         # accumulators
-        momentum_decay_pow = (np.ones((102, 105)) * (0.96**3)).astype(
-            "float32"
-        )
+        momentum_decay_pow = (np.ones((102, 105)) * (0.96**3)).astype("float32")
         # use beta1 to fake mu_product
         mu_product = (np.ones((102, 105)) * (self.beta1**3)).astype("float32")
         beta2_pow = (np.ones((102, 105)) * (self.beta2**3)).astype("float32")
@@ -375,6 +371,25 @@ class TestNAdamAPI(unittest.TestCase):
             _ = paddle.optimizer.NAdam(
                 0.1, momentum_decay=-1, parameters=linear.parameters()
             )
+
+
+class TestNAdamAPIWeightDecay(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        nadam = paddle.optimizer.NAdam(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+
+        for _ in range(2):
+            out = linear(a)
+            out.backward()
+            nadam.step()
+            nadam.clear_gradients()
 
 
 class TestNAdamAPIGroup(TestNAdamAPI):

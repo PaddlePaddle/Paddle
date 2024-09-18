@@ -337,7 +337,7 @@ static inline void* GetDsoHandleFromSearchPath(
     if (throw_on_error) {
       // NOTE: Special error report case, no need to change its format
       PADDLE_THROW(
-          phi::errors::PreconditionNotMet(error_msg, dso_name, errorno));
+          common::errors::PreconditionNotMet(error_msg, dso_name, errorno));
     } else {
       LOG(WARNING) << paddle::string::Sprintf(error_msg, dso_name, errorno);
     }
@@ -419,6 +419,8 @@ void* GetCublasLtDsoHandle() {
   }
 #elif !defined(__linux__) && defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10010
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipblaslt.so");
 #else
   std::string warning_msg(
       "Your CUDA_VERSION less 10.1, not support CublasLt. "
@@ -696,6 +698,18 @@ void* GetFlashAttnDsoHandle() {
 #endif
 }
 
+void* GetAfsApiDsoHandle() {
+  std::string afsapi_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    afsapi_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__) || defined(_WIN32)
+  return NULL;
+#else
+  return GetDsoHandleFromSearchPath(afsapi_dir, "libafs-api-so.so");
+#endif
+}
+
 void* GetNCCLDsoHandle() {
 #ifdef PADDLE_WITH_HIP
   std::string warning_msg(
@@ -767,11 +781,12 @@ void* GetOpDsoHandle(const std::string& dso_name) {
 
 void* GetNvtxDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support Apple."));
+  PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Apple."));
 #elif defined(_WIN32)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support Windows."));
+  PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Windows."));
 #elif !defined(PADDLE_WITH_CUDA)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support without CUDA."));
+  PADDLE_THROW(
+      common::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif

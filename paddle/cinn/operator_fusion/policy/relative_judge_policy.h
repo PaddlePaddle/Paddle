@@ -14,17 +14,18 @@
 
 #pragma once
 #include <functional>
-#include "paddle/cinn/operator_fusion/policy/dim_relation.h"
-#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
-#include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
+#include "paddle/cinn/operator_fusion/pattern_node.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/dim_relation.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/shardable_axes_base.h"
+#include "paddle/cinn/operator_fusion/policy/policy_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
 
-template <typename T>
-class RelativeJudgePolicy final : public Policy<T> {
+class RelativeJudgePolicy final : public PolicyBase {
  public:
+  static constexpr PolicyKind Kind = PolicyKind::RelativeJudge;
   RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
                       pir::ShapeConstraintIRAnalysis* shape_analysis)
       : axes_info_(ops, shape_analysis) {
@@ -32,17 +33,15 @@ class RelativeJudgePolicy final : public Policy<T> {
     index_expr_map_ = AnalysisIndexExprRelation(ops);
     VLOG(4) << "[relative_judge_policy] End AnalysisIndexExprRelation.";
   }
+  bool CanFuse(const PatternNodePtr& upstream,
+               const PatternNodePtr& downstream);
 
   ShardableAxesInfoManager& GetAxesInfoManager() { return axes_info_; }
 
-  bool CanFuse(const PatternNodePtr<T>& upstream,
-               const PatternNodePtr<T>& downstream) override;
-
   std::string Name() { return "RelativeJudgePolicy"; }
 
-  std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr<T>& upstream,
-      const PatternNodePtr<T>& downstream) override;
+  std::vector<size_t> GetFakeReduceIterIdx(const PatternNodePtr& upstream,
+                                           const PatternNodePtr& downstream);
 
   bool IsRelated(DimUsage in, DimUsage out) {
     return index_expr_map_[in].count(out) == 1;
@@ -51,18 +50,16 @@ class RelativeJudgePolicy final : public Policy<T> {
  private:
   DimUsageRelation index_expr_map_;
   ShardableAxesInfoManager axes_info_;
-  bool ReduceTreeGrownCanMerge(const PatternNodePtr<T>&,
-                               const PatternNodePtr<T>&);
-  bool ReducePlusTrivialCanMerge(const PatternNodePtr<T>&,
-                                 const PatternNodePtr<T>&);
+  bool ReduceTreeGrownCanMerge(const PatternNodePtr&, const PatternNodePtr&);
+  bool ReducePlusTrivialCanMerge(const PatternNodePtr&, const PatternNodePtr&);
   std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
   SplitFirstIfRelatedBySecond(const std::vector<DimUsage>& targets,
                               const std::vector<DimUsage>& related_with);
-  std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
-      const ReducePattern<T>& upstream,
-      const std::vector<ReducePattern<T>>& candidates);
+  std::optional<ReducePattern> GetDownstreamFromCandidate(
+      const ReducePattern& upstream,
+      const std::vector<ReducePattern>& candidates);
   bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
-                                      const StmtPattern<T>& downstream);
+                                      const StmtPattern& downstream);
 };
 
 }  // namespace cinn::fusion

@@ -26,7 +26,6 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
-#include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/feed_hook.h"
@@ -53,11 +52,7 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
@@ -66,6 +61,11 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
@@ -79,10 +79,6 @@
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/phi/backends/dynload/mklml.h"
-#endif
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/inference/api/onednn_quantizer.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -362,7 +358,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
         "now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
-  framework::LoD lod;
+  phi::LoD lod;
   for (auto &level : pt.lod) {
     lod.emplace_back(level);
   }
@@ -899,6 +895,15 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
           }
         }
+        if (config_.mkldnn_bfloat16_enabled()) {
+          for (const auto &mkldnn_pass : kPirMkldnnBf16Passes) {
+            if (std::find(config_.deleted_passes_.begin(),
+                          config_.deleted_passes_.end(),
+                          mkldnn_pass) == config_.deleted_passes_.end()) {
+              pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+            }
+          }
+        }
       }
 #endif
     } else {
@@ -1082,7 +1087,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
         phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
         const phi::DeviceContext *dev_ctx = nullptr;
-        dev_ctx = pool.Get(place_);
+        dev_ctx = pool.Get(phi::CPUPlace());
         pir::Type type_ = pir::GetDataTypeFromValue(value);
         phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
         dev_ctx->Alloc(tensor_temp, type_data);
@@ -1638,7 +1643,7 @@ void AnalysisPredictor::MkldnnPostReset() {
               ->GetShapeBlobSize();
       PADDLE_ENFORCE_LE(shape_blob_size,
                         static_cast<size_t>(config_.mkldnn_cache_capacity_),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required shape_blob_size should be less than or "
                             "equal to config_.mkldnn_cache_capacity_. "));
     }
@@ -1735,7 +1740,16 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
 #endif
   VLOG(3) << "predict start";
   // set feed variable
-  framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  framework::Scope *scope{nullptr};
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
+    scope = scope_.get();
+  } else {
+    scope = executor_->GetScope();
+  }
+#else
+  scope = executor_->GetScope();
+#endif
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       common::errors::PreconditionNotMet("The scope should not be nullptr."));
@@ -1783,6 +1797,18 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 #endif
 
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
+    VLOG(3) << "ZeroCopyRun will use the fleet executor.";
+    fleet_exe_->Run(config_.dist_config().carrier_id());
+  } else if (config_.new_executor_enabled()) {  // NOLINT
+    executor_->RunInterpreterCore();
+  } else {
+    // Run the inference program
+    // if share variables, we need not create variables
+    executor_->Run();
+  }
+#else
   if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
   } else {
@@ -1790,6 +1816,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     // if share variables, we need not create variables
     executor_->Run();
   }
+#endif
 
   inference::DisplayMemoryInfo(place_, "after run");
 #ifdef PADDLE_WITH_XPU
@@ -2103,13 +2130,6 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (config_.mkldnn_quantizer_enabled()) {
-    LOG(INFO) << "Quantization is enabled";
-    argument_->SetQuantizeEnabledOpTypes(
-        config_.mkldnn_quantizer_config()->enabled_op_types());
-    argument_->SetQuantizeExcludedOpIds(
-        config_.mkldnn_quantizer_config()->excluded_op_ids());
-  }
   if (config_.mkldnn_bfloat16_enabled()) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
@@ -2424,23 +2444,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     return nullptr;
   }
 
-  if (config.mkldnn_quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
-    return nullptr;
-  }
-
   return predictor;
-}
-
-bool AnalysisPredictor::MkldnnQuantize() {
-#if PADDLE_WITH_DNNL
-  if (!mkldnn_quantizer_)
-    mkldnn_quantizer_ = new AnalysisPredictor::MkldnnQuantizer(
-        *this, config_.mkldnn_quantizer_config());
-  return mkldnn_quantizer_->Quantize();
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
-  return false;
-#endif
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
@@ -3239,13 +3243,6 @@ AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
     scope_->DeleteScope(sub_scope_);
   }
 
-#if PADDLE_WITH_DNNL
-  if (mkldnn_quantizer_) {
-    delete mkldnn_quantizer_;
-    mkldnn_quantizer_ = nullptr;
-  }
-#endif
-
   if (config_.shape_range_info_collected()) {
     StatisticShapeRangeInfo();
   }
@@ -3294,45 +3291,6 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
 
 std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
-}
-
-// Add SaveOptimModel
-void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
-  // save model
-  std::string model_name = dir + "/model";
-  std::ofstream outfile;
-  outfile.open(model_name, std::ios::out | std::ios::binary);
-  std::string inference_prog_desc = GetSerializedProgram();
-  outfile << inference_prog_desc;
-  // save params
-  framework::ProgramDesc save_program;
-  auto *save_block = save_program.MutableBlock(0);
-
-  const framework::ProgramDesc &main_program = program();
-  const framework::BlockDesc &global_block = main_program.Block(0);
-  std::vector<std::string> save_var_list;
-  for (framework::VarDesc *var : global_block.AllVars()) {
-    if (IsPersistable(var)) {
-      framework::VarDesc *new_var = save_block->Var(var->Name());
-      new_var->SetShape(var->GetShape());
-      new_var->SetDataType(var->GetDataType());
-      new_var->SetType(var->GetType());
-      new_var->SetLoDLevel(var->GetLoDLevel());
-      new_var->SetPersistable(true);
-
-      save_var_list.push_back(new_var->Name());
-    }
-  }
-  std::sort(save_var_list.begin(), save_var_list.end());
-  auto *op = save_block->AppendOp();
-  op->SetType("save_combine");
-  op->SetInput("X", save_var_list);
-  op->SetAttr("file_path", dir + "/params");
-  op->CheckAttrs();
-
-  phi::CPUPlace place;
-  framework::Executor exe(place);
-  exe.Run(save_program, scope(), 0, true, true);
 }
 
 void AnalysisPredictor::RegisterOutputHook(
@@ -3610,6 +3568,7 @@ USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(lookup_table_v2)
 USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(expand_as_v2)
+USE_TRT_CONVERTER(argsort)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
@@ -3617,7 +3576,9 @@ USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(p_norm)
 USE_TRT_CONVERTER(unbind)
+USE_TRT_CONVERTER(index_put)
 USE_TRT_CONVERTER(flip)
+USE_TRT_CONVERTER(isnan_v2)
 USE_TRT_CONVERTER(share_data)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)

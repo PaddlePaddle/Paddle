@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -99,9 +98,11 @@ def convert_corpus_to_id(corpus, word2id_dict):
     new_corpus = []
     for line in corpus:
         new_line = [
-            word2id_dict[word]
-            if word in word2id_dict
-            else word2id_dict['[oov]']
+            (
+                word2id_dict[word]
+                if word in word2id_dict
+                else word2id_dict['[oov]']
+            )
             for word in line
         ]
         new_corpus.append(new_line)
@@ -318,7 +319,6 @@ def train():
 
 
 class TestWord2Vec(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
         with enable_to_static_guard(False):
             dygraph_loss = train()

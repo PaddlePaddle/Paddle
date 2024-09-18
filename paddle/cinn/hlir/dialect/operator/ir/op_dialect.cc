@@ -58,9 +58,9 @@ void OperatorDialect::initialize() {
   RegisterOp<SplitOp>();
   RegisterOp<YieldStoreOp>();
   RegisterOp<GenerateShapeOp>();
-  RegisterOp<GenerateXShapeOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CINNKernelInfoAttribute>();
+  RegisterAttribute<FusionTrackerPtrAttribute>();
 }
 
 void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {}
@@ -80,6 +80,10 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
     auto cinn_kernel_info = attr.dyn_cast<CINNKernelInfoAttribute>();
 
     os << "(" << cinn_kernel_info.data().fn_ptr;
+    os << ')';
+  } else if (attr.isa<FusionTrackerPtrAttribute>()) {
+    auto tracker = attr.dyn_cast<FusionTrackerPtrAttribute>();
+    os << "(" << tracker;
     os << ')';
   } else {
     PADDLE_THROW(::common::errors::Unimplemented(

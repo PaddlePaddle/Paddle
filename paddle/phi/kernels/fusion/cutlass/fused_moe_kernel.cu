@@ -34,9 +34,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_cutlass_kernel.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_gemm_kernels.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe/default_moe_fc_traits.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe/fused_moe_helper.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe/linear_combination_ft_gelu.h"
 
 #pragma GCC diagnostic pop
 
@@ -50,12 +48,13 @@ void FusedMoeKernel(const Context& ctx,
                     const DenseTensor& gate_weight,
                     const DenseTensor& ffn1_weight,
                     const paddle::optional<DenseTensor>& ffn1_scale,
-                    const DenseTensor& ffn1_bias,
+                    const paddle::optional<DenseTensor>& ffn1_bias,
                     const DenseTensor& ffn2_weight,
                     const paddle::optional<DenseTensor>& ffn2_scale,
-                    const DenseTensor& ffn2_bias,
+                    const paddle::optional<DenseTensor>& ffn2_bias,
                     const std::string& quant_method,
                     const int moe_topk,
+                    const bool norm_topk_prob,
                     DenseTensor* out) {
   out->Resize(X.dims());
   auto* output_data = ctx.template Alloc<T>(out);
@@ -78,13 +77,14 @@ void FusedMoeKernel(const Context& ctx,
   moe_compute.ComputeFFN(&X,
                          &gate_weight,
                          &ffn1_weight,
-                         ffn1_scale,
-                         &ffn1_bias,
+                         ffn1_scale ? ffn1_scale.get_ptr() : nullptr,
+                         ffn1_bias ? ffn1_bias.get_ptr() : nullptr,
                          &ffn2_weight,
-                         ffn2_scale,
-                         &ffn2_bias,
+                         ffn2_scale ? ffn2_scale.get_ptr() : nullptr,
+                         ffn2_bias ? ffn2_bias.get_ptr() : nullptr,
                          nullptr,
                          moe_topk,
+                         norm_topk_prob,
                          "ffn",
                          out);
 }

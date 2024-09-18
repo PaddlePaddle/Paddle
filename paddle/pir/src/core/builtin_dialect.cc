@@ -29,7 +29,8 @@ BuiltinDialect::BuiltinDialect(IrContext* context)
 
 void BuiltinDialect::initialize() {
   // Register all built-in types defined in builtin_type.h.
-  RegisterTypes<BFloat16Type,
+  RegisterTypes<UndefinedType,
+                BFloat16Type,
                 Float16Type,
                 Float32Type,
                 Float64Type,
@@ -68,7 +69,8 @@ void BuiltinDialect::initialize() {
               CombineOp,
               SliceOp,
               SplitOp,
-              ConstantOp>();
+              ConstantOp,
+              GroupOp>();
 }
 
 pir::Type BuiltinDialect::ParseType(pir::IrParser& parser) {  // NOLINT

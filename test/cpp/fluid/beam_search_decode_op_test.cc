@@ -18,7 +18,7 @@ limitations under the License. */
 
 using CPUPlace = phi::CPUPlace;
 using LoD = paddle::framework::LoD;
-using LoDTensorArray = paddle::framework::LoDTensorArray;
+using LoDTensorArray = phi::TensorArray;
 
 template <typename T>
 using BeamSearchDecoder = paddle::operators::BeamSearchDecoder<T>;

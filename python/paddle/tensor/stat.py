@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 from typing_extensions import TypeAlias
 
@@ -32,6 +32,8 @@ from .math import _get_reduce_axis_with_tensor
 from .search import where
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 _Interpolation: TypeAlias = Literal[
@@ -264,7 +266,7 @@ def numel(x: Tensor, name: str | None = None) -> Tensor:
     Returns the number of elements for a tensor, which is a 0-D int64 Tensor with shape [].
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64, complex64, complex128.
+        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, uint8, int8, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -303,8 +305,7 @@ def nanmedian(
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -314,8 +315,7 @@ def nanmedian(
     keepdim: bool = ...,
     mode: Literal['avg', 'min'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def nanmedian(
@@ -448,8 +448,7 @@ def median(
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -459,8 +458,7 @@ def median(
     keepdim: bool = ...,
     mode: Literal['avg', 'min'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def median(

@@ -221,7 +221,7 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
     PADDLE_ENFORCE_GT(
         op.attributes().count("op_name"),
         0UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "kernel_dialect op should own an 'op_name' attribute."));
     auto upper_op_name =
         op.attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -253,7 +253,7 @@ void GetEagerDelValueOfOp(
       PADDLE_ENFORCE_GT(
           op.attributes().count("op_name"),
           0UL,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "kernel_dialect op should own an 'op_name' attribute."));
       upper_op_name = op.attributes()
                           .at("op_name")
@@ -418,7 +418,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
             .GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
     PADDLE_ENFORCE_NOT_NULL(
         upper_inplace_op_interface,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "can not find OpYamlInfoInterface from [%s]", upper_op_name + "_"));
     paddle::dialect::OpYamlInfoParser upper_inplace_op_info_parser(
         upper_inplace_op_interface->get_op_info_(upper_op_name + "_"));
@@ -513,8 +513,8 @@ class InplacePass : public pir::Pass {
           PADDLE_ENFORCE_NE(
               insert_pos,
               block.end(),
-              phi::errors::InvalidArgument("Operator %s not found in block.",
-                                           kv.first->name()));
+              common::errors::InvalidArgument("Operator %s not found in block.",
+                                              kv.first->name()));
 
           kv.first->set_attribute(
               "op_name",

@@ -1219,9 +1219,9 @@ class CompileTimeStrategy:
 
         for merged in self.merged_variables_pairs:
             m_param, m_grad = merged
-            self.merged_variable_map[
-                m_param.merged_var.name
-            ] = m_param.merged_var
+            self.merged_variable_map[m_param.merged_var.name] = (
+                m_param.merged_var
+            )
             self.merged_variable_map[m_grad.merged_var.name] = m_grad.merged_var
 
         param_merges = []

@@ -451,18 +451,15 @@ def index_select(
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: Literal[False] = ...) -> Tensor:
-    ...
+def nonzero(x: Tensor, as_tuple: Literal[False] = ...) -> Tensor: ...
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]:
-    ...
+def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]: ...
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]:
-    ...
+def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
 
 
 def nonzero(x: Tensor, as_tuple=False):
@@ -980,6 +977,11 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
     """
     Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
+
+    Note:
+        ``paddle.masked_select`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.

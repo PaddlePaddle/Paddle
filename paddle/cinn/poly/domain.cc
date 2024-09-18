@@ -25,12 +25,17 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace poly {
 
 std::string Domain::__str__() const {
-  CHECK(!id.empty()) << "domain's id is empty";
+  PADDLE_ENFORCE_EQ(
+      !id.empty(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The domain's ID is empty. Please provide a valid ID."));
   std::vector<std::string> range_fields;
   std::transform(dims.begin(),
                  dims.end(),

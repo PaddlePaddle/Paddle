@@ -31,7 +31,9 @@ using VariantType = phi::Attribute;
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
 static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
-  if (dtype.isa<pir::BFloat16Type>()) {
+  if (dtype.isa<pir::UndefinedType>()) {
+    return phi::DataType::UNDEFINED;
+  } else if (dtype.isa<pir::BFloat16Type>()) {
     return phi::DataType::BFLOAT16;
   } else if (dtype.isa<pir::Float16Type>()) {
     return phi::DataType::FLOAT16;
@@ -62,7 +64,7 @@ static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
   } else if (dtype.isa<pir::Float8E5M2Type>()) {
     return phi::DataType::FLOAT8_E5M2;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported ir data type when casting it into "
         "phi data type."));
   }
@@ -76,6 +78,8 @@ static inline pir::Type TransToIrDataType(phi::DataType dtype,
     ctx = pir::IrContext::Instance();
   }
   switch (dtype) {
+    case phi::DataType::UNDEFINED:
+      return pir::UndefinedType::get(ctx);
     case phi::DataType::BFLOAT16:
       return pir::BFloat16Type::get(ctx);
     case phi::DataType::FLOAT16:
@@ -105,7 +109,7 @@ static inline pir::Type TransToIrDataType(phi::DataType dtype,
     case phi::DataType::FLOAT8_E5M2:
       return pir::Float8E5M2Type::get(ctx);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
           "ir data type.",
           dtype));
@@ -135,7 +139,7 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
       return pir::Complex128Attribute::get(
           ctx, scalar.to<phi::dtype::complex<double>>());
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
           "ir attribute.",
           scalar.dtype()));

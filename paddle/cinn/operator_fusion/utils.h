@@ -27,11 +27,15 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn::fusion {
 
@@ -40,7 +44,20 @@ static OpPatternKind GetOpPatternKind(const ::pir::Operation* op) {
   return hlir::framework::pir::CompatibleInfo::OpKind(*op);
 }
 
+static std::string GetNewTmpId(std::string origin_id) {
+  if (origin_id.find('_tmp') == std::string::npos) {
+    return origin_id + "_tmp_0";
+  } else {
+    int ith = std::stoi(origin_id.substr(origin_id.size() - 1));
+    return origin_id.substr(0, origin_id.size() - 1) + std::to_string(ith + 1);
+  }
+}
+
 static size_t GetRank(pir::Value value) {
+  PADDLE_ENFORCE_EQ(value.type().isa<pir::DenseTensorType>(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The type of value should be a DenseTensorType."));
   return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
 }
 
@@ -51,75 +68,32 @@ static size_t GetCompitableRank(pir::Value value) {
   return rank == 0 ? 1 : rank;
 }
 
-static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
-  const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
-  const auto& attr_val = reduce_op->attributes().at("axis");
-  CHECK(attr_val.isa<::pir::ArrayAttribute>());
-  const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
-  if (axis_attr.empty()) {
-    // dim: [] means reduce_all.
-    std::vector<int64_t> all_axis;
-    for (int i = 0; i < input_rank; ++i) {
-      all_axis.push_back(i);
-    }
-    return all_axis;
-  }
-  std::vector<int64_t> reduce_axis_idx;
-  for (int i = 0; i < axis_attr.size(); ++i) {
-    int64_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
-    if (axis < 0) {
-      axis += input_rank;
-    }
-    PADDLE_ENFORCE_GE(
-        axis,
-        0,
-        phi::errors::InvalidArgument(
-            "The 'axis' must be greater than or equal to 0, but received %d.",
-            axis));
+std::vector<int64_t> GetInt64ArrayAttributeData(
+    const ::pir::Attribute& attr_val);
 
-    PADDLE_ENFORCE_LT(axis,
-                      input_rank,
-                      phi::errors::InvalidArgument(
-                          "The 'axis' must be less than 'input_rank', but "
-                          "received axis = %d and input_rank = %d.",
-                          axis,
-                          input_rank));
+std::vector<int32_t> GetInt32ArrayAttributeData(
+    const ::pir::Attribute& attr_val);
 
-    reduce_axis_idx.push_back(axis);
-  }
-  VLOG(4) << "GetReduceAxisIdx: " << utils::Join(reduce_axis_idx, ",");
-  return reduce_axis_idx;
-}
+std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op);
 
-static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
-  const auto& attr_val = reduce_op->attributes().at("keepdim");
-  CHECK(attr_val.isa<::pir::BoolAttribute>());
-  return attr_val.dyn_cast<::pir::BoolAttribute>().data();
-}
+std::pair<std::vector<int64_t>, bool> GetSliceAxis(pir::Operation* slice_op);
+
+bool GetReduceOpKeepDims(pir::Operation* reduce_op);
+
+std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
+    pir::Operation* op);
+
+std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(pir::Operation* op);
 
 static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   std::stringstream ss;
   pir::IrPrinter printer(ss);
   for (const auto* op : ops) {
     printer.PrintOperation(const_cast<pir::Operation*>(op));
-    ss << "\n";
+    ss << "(" << op << ")"
+       << "\n";
   }
   return ss.str();
-}
-
-static std::optional<std::pair<pir::Value, pir::Value>>
-GetBroadcastOpInputOuputValue(pir::Operation* op) {
-  auto* mut_op = const_cast<pir::Operation*>(op);
-  if (op->isa<paddle::dialect::ExpandOp>()) {
-    auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
-    return std::make_pair(expand_op.x(), expand_op.out());
-  } else if (op->isa<cinn::dialect::BroadcastOp>()) {
-    auto broadcast_op = mut_op->dyn_cast<cinn::dialect::BroadcastOp>();
-    return std::make_pair(broadcast_op.x(), broadcast_op.out());
-  } else {
-    CHECK(false) << "Unsupported broadcast op: " << op->name();
-  }
-  return std::nullopt;
 }
 
 template <typename T>
@@ -171,6 +145,12 @@ std::vector<B> MapVector(const std::vector<A>& as,
 template <typename T>
 std::set<T> ToSet(const std::vector<T>& input) {
   std::set<T> result(input.begin(), input.end());
+  return result;
+}
+
+template <typename T>
+std::unordered_set<T> ToUnorderedSet(const std::vector<T>& input) {
+  std::unordered_set<T> result(input.begin(), input.end());
   return result;
 }
 
@@ -292,11 +272,10 @@ struct ValueDimHash {
 
 static std::vector<symbol::DimExpr> GetDimExprsFromValue(pir::Value value) {
   const auto& value_dims = GetAllValueDimFromValue(value);
-  VLOG(4) << "Start Print:";
+
   std::function<symbol::DimExpr(ValueDim)> func =
       [](const ValueDim& value_dim) {
         const auto& symbolic_dim = value_dim.GetSymbolicDim();
-        VLOG(4) << symbolic_dim;
         return symbolic_dim;
       };
   return MapVector(value_dims, func);
@@ -359,6 +338,89 @@ std::vector<U> VectorFlatMap(
     result = ConcatVector(result, func(i));
   }
   return result;
+}
+
+template <typename T>
+bool AnyTargetInCandidate(const std::vector<T>& targets,
+                          const std::vector<T>& candidate) {
+  std::unordered_set<T> pool = ToUnorderedSet(candidate);
+  for (const auto& item : targets) {
+    if (pool.find(item) != pool.end()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::vector<pir::Operation*> FindDownstreamOps(pir::Operation* op) {
+  std::vector<pir::Operation*> result;
+  for (int i = 0; i < op->num_results(); i++) {
+    auto v = op->result(i);
+    for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
+         ++consumer_it) {
+      result.emplace_back(consumer_it->owner());
+    }
+  }
+  return result;
+}
+
+static const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
+  size_t i = 0;
+  for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
+       ++consumer_it, ++i) {
+    if (consumer_it->owner() == op) {
+      return i;
+    }
+  }
+  PADDLE_THROW(::common::errors::NotFound(
+      "Can not find the usage of value %s in op %s", v.impl(), op->name()));
+}
+
+static const size_t GetOperandIdx(const pir::Value& v, pir::Operation* op) {
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    if (op->operand(i).source() == v) {
+      return i;
+    }
+  }
+  PADDLE_THROW(::common::errors::NotFound(
+      "Can not find the value %s as operand of op %s", v.impl(), op->name()));
+}
+
+static const size_t GetResultIdx(const pir::Value& v, pir::Operation* op) {
+  size_t i = 0;
+  for (size_t i = 0; i < op->num_results(); i++) {
+    if (op->result(i) == v) {
+      return i;
+    }
+  }
+  PADDLE_THROW(::common::errors::NotFound(
+      "Can not find the value %s as result of op %s", v.impl(), op->name()));
+}
+
+static std::vector<pir::Operation*> FindUserOp(
+    const std::vector<pir::Operation*>& candidates, const pir::Value& value) {
+  std::vector<pir::Operation*> results;
+  for (auto consumer_it = value.use_begin(); consumer_it != value.use_end();
+       ++consumer_it) {
+    pir::Operation* user_op = consumer_it.owner();
+    auto iter = std::find(candidates.begin(), candidates.end(), user_op);
+    if (iter != candidates.end()) {
+      results.emplace_back(*iter);
+    }
+  }
+  return results;
+}
+
+static bool IsDirectUpstream(const pir::Operation* upstream,
+                             const pir::Operation* downstream) {
+  for (const auto& value : upstream->results()) {
+    for (const auto& operand : downstream->operands()) {
+      if (value == operand.source()) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 inline std::vector<pir::Value> GetInputsValue(

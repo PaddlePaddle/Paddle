@@ -21,8 +21,6 @@
 #include <utility>
 
 #include "paddle/common/errors.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -30,6 +28,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "paddle/fluid/platform/enforce.h"
@@ -222,7 +222,11 @@ void GPUContextResource::DestroyBlasHandle() {
 }
 
 void GPUContextResource::InitBlasLtHandle() {
+#ifdef PADDLE_WITH_HIP
+  phi::InitBlasLtHandle(reinterpret_cast<void**>(&blaslt_handle_));
+#else  // PADDLE_WITH_CUDA
   phi::InitBlasLtHandle(&blaslt_handle_);
+#endif
 }
 
 void GPUContextResource::DestroyBlasLtHandle() {

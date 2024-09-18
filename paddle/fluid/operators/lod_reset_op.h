@@ -29,7 +29,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #endif
 
 namespace paddle {
@@ -116,7 +116,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
       auto* out_lod = out->mutable_lod();
       out_lod->push_back(ulevel0);
     } else {
-      framework::LoD target_lod;
+      phi::LoD target_lod;
       target_lod.push_back(ulevel0);
       out->set_lod(target_lod);
     }

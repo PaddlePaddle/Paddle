@@ -103,7 +103,7 @@ parallel_list="^init_phi_test$|\
 ^test_fused_gemm_epilogue_op_with_es$|\
 ^test_fused_layernorm_residual_dropout_bias$|\
 ^test_fused_linear_param_grad_add$|\
-^test_fused_linear_pass$|\
+^test_fused_linear_pass_deprecated$|\
 ^test_fused_matmul_bias$|\
 ^test_fused_multi_transformer_decoder_pass$|\
 ^test_fused_multi_transformer_encoder_pass$|\
@@ -125,7 +125,8 @@ parallel_list="^init_phi_test$|\
 ^test_roll_op$|\
 ^test_switch_autotune$|\
 ^test_to_tensor$|\
-^test_top_k_v2_op$"
+^test_top_k_v2_op$|\
+^test_pir_amp$"
 
 cd ${work_dir}/build
 tmp_dir=`mktemp -d`

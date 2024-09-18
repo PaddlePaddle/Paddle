@@ -183,11 +183,11 @@ class FusedEmbeddingFCLSTMKernel {
       PADDLE_ENFORCE_LT(
           ids_data[i],
           row_number,
-          phi::errors::OutOfRange(
+          common::errors::OutOfRange(
               "Value of Ids %d should less than dict size %d.", i, row_number));
       PADDLE_ENFORCE_GE(ids_data[i],
                         0,
-                        phi::errors::OutOfRange(
+                        common::errors::OutOfRange(
                             "Value of Ids %d should greater than ZERO.", i));
       memcpy(xx_data + i * row_width,
              embeddings_data + ids_data[i] * row_width,
@@ -295,11 +295,11 @@ class FusedEmbeddingFCLSTMKernel {
       PADDLE_ENFORCE_LT(
           ids_data[i],
           row_number,
-          phi::errors::OutOfRange(
+          common::errors::OutOfRange(
               "Value of Ids %d should less than dict size %d.", i, row_number));
       PADDLE_ENFORCE_GE(ids_data[i],
                         0,
-                        phi::errors::OutOfRange(
+                        common::errors::OutOfRange(
                             "Value of Ids %d should greater than ZERO.", i));
       memcpy(xx_data + i * row_width,
              embeddings_data + ids_data[i] * row_width,

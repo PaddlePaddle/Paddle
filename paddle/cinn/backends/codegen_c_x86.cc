@@ -33,7 +33,13 @@ void CodeGenCX86::Visit(const ir::Div *op) {
 void CodeGenCX86::Visit(const ir::Load *op) {
   Expr dense_strided_ramp = detail::StridedRampBase(op->index(), 1);
   if (dense_strided_ramp.defined()) {  // Loading a continuous Ramp address.
-    CHECK(op->type().is_vector());
+    PADDLE_ENFORCE_EQ(
+        op->type().is_vector(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The operation type is expected to be a vector, but it is not. "
+            "Please check the operation type and ensure it is correctly set to "
+            "a vector."));
 
     int bits = op->type().bits() * op->type().lanes();
     if (SupportsAVX512() && bits == 512) {

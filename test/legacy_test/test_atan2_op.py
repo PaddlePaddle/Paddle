@@ -35,7 +35,9 @@ def atan2_grad(x1, x2, dout):
 class TestAtan2(OpTest):
     def setUp(self):
         self.op_type = "atan2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.atan2
+        self.public_python_api = paddle.atan2
         self.check_cinn = True
         self.init_dtype()
 
@@ -48,7 +50,11 @@ class TestAtan2(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X1', 'X2'], 'Out', check_cinn=self.check_cinn, check_pir=True
+            ['X1', 'X2'],
+            'Out',
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):
@@ -74,6 +80,7 @@ class TestAtan2_float(TestAtan2):
                 ),
                 check_cinn=self.check_cinn,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -151,7 +158,9 @@ class TestAtan2API(unittest.TestCase):
 class TestAtan2BF16OP(OpTest):
     def setUp(self):
         self.op_type = 'atan2'
+        self.prim_op_type = 'prim'
         self.python_api = paddle.atan2
+        self.public_python_api = paddle.atan2
         self.dtype = np.uint16
         self.check_cinn = True
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
@@ -178,6 +187,7 @@ class TestAtan2BF16OP(OpTest):
             'Out',
             check_cinn=self.check_cinn,
             check_pir=True,
+            check_prim_pir=True,
         )
 
 

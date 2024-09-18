@@ -84,11 +84,11 @@ void isl_set_dim_names(isl::set *set, const std::vector<std::string> &names) {
 }
 
 isl::union_map isl_maps_to_union_map(const std::vector<isl::map> &maps) {
-  PADDLE_ENFORCE_EQ(
-      !maps.empty(),
-      true,
-      phi::errors::InvalidArgument("The input vector of isl::map is empty. "
-                                   "Please ensure the vector is not empty."));
+  PADDLE_ENFORCE_EQ(!maps.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input vector of isl::map is empty. "
+                        "Please ensure the vector is not empty."));
   isl::union_map umap =
       isl::manage(isl_union_map_from_map(maps.front().copy()));
   for (int i = 1; i < maps.size(); i++) {
@@ -98,11 +98,11 @@ isl::union_map isl_maps_to_union_map(const std::vector<isl::map> &maps) {
 }
 
 isl::union_set isl_sets_to_union_set(const std::vector<isl::set> &sets) {
-  PADDLE_ENFORCE_EQ(
-      !sets.empty(),
-      true,
-      phi::errors::InvalidArgument("The input vector of isl::set is empty. "
-                                   "Please ensure the vector is not empty."));
+  PADDLE_ENFORCE_EQ(!sets.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input vector of isl::set is empty. "
+                        "Please ensure the vector is not empty."));
   isl::union_set uset =
       isl::manage(isl_union_set_from_set(sets.front().copy()));
   for (int i = 1; i < sets.size(); i++) {
@@ -115,7 +115,7 @@ std::string isl_map_get_statement_repr(__isl_keep isl_map *map,
                                        isl_dim_type type) {
   PADDLE_ENFORCE_NOT_NULL(
       map,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The input isl_map is null. "
           "Please ensure the map is properly initialized."));
   auto tuple_name = isl_map_get_tuple_name(map, type);
@@ -316,11 +316,11 @@ isl_set *isl_simplify(isl_set __isl_take *set) {
 }
 
 isl::union_set isl_union_set_from_sets(llvm::ArrayRef<isl::set> sets) {
-  PADDLE_ENFORCE_EQ(
-      !sets.empty(),
-      true,
-      phi::errors::InvalidArgument("The input ArrayRef of isl::set is empty. "
-                                   "Please ensure the ArrayRef is not empty."));
+  PADDLE_ENFORCE_EQ(!sets.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input ArrayRef of isl::set is empty. "
+                        "Please ensure the ArrayRef is not empty."));
   isl::union_set res = isl::manage(isl_union_set_from_set(sets.front().copy()));
   for (int i = 1; i < sets.size(); i++) {
     res = isl::manage(isl_union_set_add_set(res.release(), sets[i].copy()));
@@ -356,7 +356,7 @@ std::tuple<isl::val, isl::val> isl_set_get_axis_range(isl_set *set, int pos) {
   PADDLE_ENFORCE_EQ(
       isl_set_dim_is_bounded(set, isl_dim_set, pos),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The dimension at position %d of the isl_set is not bounded. "
           "An unbounded dimension cannot get range. Please check the set: %s",
           pos,
@@ -417,7 +417,7 @@ bool isl_set_axis_has_noparam_constant_bound(isl_set __isl_keep *set, int pos) {
 
           PADDLE_ENFORCE_NOT_NULL(
               aff,
-              phi::errors::InvalidArgument(
+              ::common::errors::InvalidArgument(
                   "The isl_aff is null. "
                   "Please ensure the isl_aff is properly initialized."));
           auto &is_param_involved = *reinterpret_cast<bool *>(user);

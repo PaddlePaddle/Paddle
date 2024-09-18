@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -43,7 +44,9 @@ void BasicIrPrinter::PrintType(Type type) {
     return;
   }
 
-  if (type.isa<BFloat16Type>()) {
+  if (type.isa<UndefinedType>()) {
+    os << "undefined";
+  } else if (type.isa<BFloat16Type>()) {
     os << "bf16";
   } else if (type.isa<Float16Type>()) {
     os << "f16";
@@ -189,7 +192,7 @@ void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
 
   os << " \"" << op->name() << "\"";
 
-  if (FLAGS_pir_debug) {
+  if (VLOG_IS_ON(1) || FLAGS_pir_debug) {
     os << " [id:" << op->id() << "]";
   }
 

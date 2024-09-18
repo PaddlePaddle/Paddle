@@ -31,7 +31,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
@@ -45,11 +45,11 @@ static const phi::Place &GetVarPlace(const framework::Variable &src) {
     return src.Get<phi::SelectedRows>().value().place();
 #endif
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Cannot get unsupported variable type %s for imperative allreduce, "
         "only "
         "LoDTensor and SelectedRows are supported.",
-        platform::demangle(framework::ToTypeName(src.Type()))));
+        common::demangle(framework::ToTypeName(src.Type()))));
   }
 }
 
@@ -61,14 +61,13 @@ static void AllReduce(const phi::DenseTensor &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place),
       true,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
   const void *src_ptr = src.data();
   dst->Resize(src.dims());
   auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
-  auto nccl_dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(src.dtype()));
+  auto nccl_dtype = phi::ToNCCLDataType(src.dtype());
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(src_ptr,
                                                          dst_ptr,
                                                          src.numel(),
@@ -90,11 +89,11 @@ static void AllReduce(const phi::SelectedRows &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place),
       true,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
   auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
-  auto nccl_dtype = platform::ToNCCLDataType(dtype);
+  auto nccl_dtype = phi::ToNCCLDataType(src_tensor.dtype());
   auto *dev_ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
 
@@ -259,10 +258,10 @@ void AllReduce(const framework::Variable &src,
     }
 #endif
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
         "LoDTensor and SelectedRows are supported.",
-        platform::demangle(framework::ToTypeName(src.Type()))));
+        common::demangle(framework::ToTypeName(src.Type()))));
   }
 }
 

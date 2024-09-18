@@ -220,6 +220,25 @@ class TestASGDV2(unittest.TestCase):
         asgd.clear_gradients()
 
 
+class TestASGDV2WeightDecay(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+
+        asgd = paddle.optimizer.ASGD(
+            learning_rate=0.001,
+            batch_num=2,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+        out = linear(a)
+        out.backward()
+        asgd.step()
+        asgd.clear_gradients()
+
+
 class TestASGDMultiPrecision(unittest.TestCase):
     def dygraph_asgd_mp(self, mp):
         paddle.disable_static()
@@ -495,7 +514,7 @@ class TestASGDValidation:
             for param in model.parameters():
                 d_validation[param.name] = np.zeros(param.shape)
                 ys_validation[param.name] = np.zeros(
-                    [self.batch_num] + param.shape
+                    [self.batch_num, *param.shape]
                 )
 
             for i in range(5):
@@ -523,9 +542,9 @@ class TestASGDValidation:
                         - y_validation[param.name]
                         + grad_validation[param.name]
                     )
-                    ys_validation[param.name][
-                        i % self.batch_num
-                    ] = grad_validation[param.name]
+                    ys_validation[param.name][i % self.batch_num] = (
+                        grad_validation[param.name]
+                    )
                     n_validation[param.name] = min(i + 1, self.batch_num)
                     param_validation[param.name] = (
                         param_validation[param.name]

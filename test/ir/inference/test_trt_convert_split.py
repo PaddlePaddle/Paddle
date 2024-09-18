@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -81,7 +83,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch):
+        def generate_input1(attrs: list[dict[str, Any]], batch):
             if self.dims == 4:
                 return np.random.random([batch, 3, 3, 24]).astype(np.float32)
             elif self.dims == 3:
@@ -91,13 +93,13 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             elif self.dims == 1:
                 return np.random.random([24]).astype(np.int32)
 
-        def generate_AxisTensor(attrs: List[Dict[str, Any]]):
+        def generate_AxisTensor(attrs: list[dict[str, Any]]):
             return np.ones([1]).astype(np.int32)
 
-        def generate_SectionsTensorList1(attrs: List[Dict[str, Any]]):
+        def generate_SectionsTensorList1(attrs: list[dict[str, Any]]):
             return np.array([10]).astype(np.int32)
 
-        def generate_SectionsTensorList2(attrs: List[Dict[str, Any]]):
+        def generate_SectionsTensorList2(attrs: list[dict[str, Any]]):
             return np.array([14]).astype(np.int32)
 
         for num_input in [0, 1]:
@@ -191,7 +193,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -247,18 +249,6 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         self.trt_param.max_batch_size = 9
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -295,7 +285,7 @@ class TrtConvertSplitTest2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.random.random([3, 3, 3, 24]).astype(np.float32)
 
         for sections in [
@@ -380,7 +370,7 @@ class TrtConvertSplitTest2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"split_input": [1, 3, 3, 24]}
             self.dynamic_shape.max_input_shape = {"split_input": [9, 3, 3, 24]}

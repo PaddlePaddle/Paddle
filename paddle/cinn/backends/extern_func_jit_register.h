@@ -32,7 +32,7 @@
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/macros.h"
-
+#include "paddle/common/enforce.h"
 /**
  * Helper to register an external function into CINN, including the prototype,
  * the function address.

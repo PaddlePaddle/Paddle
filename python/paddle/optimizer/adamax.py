@@ -14,9 +14,9 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ..base import core, framework
 from ..base.dygraph import no_grad
@@ -24,6 +24,8 @@ from ..base.framework import name_scope
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -85,8 +87,8 @@ class Adamax(Optimizer):
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization.
-            It can be a float value as coeff of L2 regularization or
+        weight_decay (int|float|WeightDecayRegularizer|None, optional): The strategy of regularization.
+            It can be a int or float value as coeff of L2 regularization or
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
@@ -241,7 +243,7 @@ class Adamax(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
@@ -315,7 +317,7 @@ class Adamax(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         """Update Beta1 Power accumulator"""
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(parameters_and_grads, list):
             for param, grad in parameters_and_grads:
                 if grad is None or param.stop_gradient is True:

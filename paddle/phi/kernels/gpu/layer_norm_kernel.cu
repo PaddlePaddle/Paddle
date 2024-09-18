@@ -473,7 +473,7 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
         <<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Product from begin_norm_axis to end in layer_norm must be larger "
           "than 1"));
       break;
@@ -516,11 +516,11 @@ void LayerNormKernel(const Context &dev_ctx,
   if (valid_scale) {
     scale_bias_dtype = scale->dtype();
     if (valid_bias) {
-      PADDLE_ENFORCE_EQ(
-          scale->dtype(),
-          bias->dtype(),
-          phi::errors::InvalidArgument("This Scale and Bias of layer_norm op "
-                                       "should have the same data type."));
+      PADDLE_ENFORCE_EQ(scale->dtype(),
+                        bias->dtype(),
+                        common::errors::InvalidArgument(
+                            "This Scale and Bias of layer_norm op "
+                            "should have the same data type."));
     }
   } else {
     scale_bias_dtype = valid_bias ? bias->dtype() : x_dtype;
@@ -530,7 +530,7 @@ void LayerNormKernel(const Context &dev_ctx,
   if (!is_scale_bias_same_dtype_with_x) {
     PADDLE_ENFORCE_EQ(scale_bias_dtype,
                       phi::CppTypeToDataType<U>::Type(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Unsupported data type of Scale and Bias"));
   }
 
@@ -555,7 +555,7 @@ void LayerNormKernel(const Context &dev_ctx,
               epsilon,                                                     \
               feature_size));                                              \
       default:                                                             \
-        PADDLE_THROW(phi::errors::InvalidArgument(                         \
+        PADDLE_THROW(common::errors::InvalidArgument(                      \
             "Product from begin_norm_axis to end must be larger than 1")); \
         break;                                                             \
     }                                                                      \
@@ -614,7 +614,7 @@ void LayerNormKernel(const Context &dev_ctx,
       switch (feature_size) {
         PADDLE_LAUNCH_FAST_LAYERNORM_FWD(T);
         default:
-          PADDLE_THROW(phi::errors::InvalidArgument(
+          PADDLE_THROW(common::errors::InvalidArgument(
               "Only when feature_size is from 256 to 4096 and is diviaible by "
               "256 is supported "
               "now"));
@@ -624,7 +624,7 @@ void LayerNormKernel(const Context &dev_ctx,
       switch (feature_size) {
         PADDLE_LAUNCH_FAST_LAYERNORM_FWD(U);
         default:
-          PADDLE_THROW(phi::errors::InvalidArgument(
+          PADDLE_THROW(common::errors::InvalidArgument(
               "Only when feature_size is from 256 to 4096 and is diviaible by "
               "is supported "
               "now"));

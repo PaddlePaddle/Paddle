@@ -25,6 +25,7 @@ from .p_to_r_reshard_func import (
 from .p_to_s_reshard_func import (
     PToSReshardFunction,
 )
+from .r_to_p_reshard_func import RToPReshardFunction
 from .r_to_s_reshard_func import (
     RToSReshardFunction,
     RToSReshardFunctionCrossMesh,
@@ -34,6 +35,7 @@ from .s_to_r_reshard_func import (
     SToRReshardFunctionCrossMesh,
 )
 from .same_status_reshard_func import SameStatusReshardFunction
+from .sub_to_global_mesh_func import SubToGlobalMeshFunction
 
 
 def register_reshard_funcs():
@@ -42,12 +44,14 @@ def register_reshard_funcs():
     register_reshard_func(PToSReshardFunction())
     register_reshard_func(RToSReshardFunction())
     register_reshard_func(RToSReshardFunctionCrossMesh())
+    register_reshard_func(RToPReshardFunction())
     register_reshard_func(SameStatusReshardFunction())
     register_reshard_func(SToRReshardFunction())
     register_reshard_func(SToRReshardFunctionCrossMesh())
     register_reshard_func(NdMeshReshardFunction())
     register_reshard_func(NdMeshReshardFunctionCrossMesh())
     register_reshard_func(GlobaleToSubMeshFunction())
+    register_reshard_func(SubToGlobalMeshFunction())
 
 
 register_reshard_funcs()

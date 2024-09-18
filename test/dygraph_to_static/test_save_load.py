@@ -21,6 +21,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
+    test_pir_only,
 )
 from test_fetch_feed import Linear
 
@@ -124,6 +125,7 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
         return comp_op_type_list
 
     @test_ast_only
+    @test_pir_only
     def test_save_load_prim(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
@@ -137,32 +139,34 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
                 1
             ].train_program
             comp_op_type_list = self._compute_op_num(composite_program)
-            self.assertNotIn("batch_norm", comp_op_type_list)
-            self.assertNotIn("relu", comp_op_type_list)
-            self.assertNotIn("pow", comp_op_type_list)
-            self.assertNotIn("expand_v2", comp_op_type_list)
-            self.assertNotIn("unsqueeze2", comp_op_type_list)
-            self.assertNotIn("reduce_mean", comp_op_type_list)
-            self.assertNotIn("batch_norm_grad", comp_op_type_list)
-            self.assertNotIn("relu_grad", comp_op_type_list)
-            self.assertNotIn("pow_grad", comp_op_type_list)
-            self.assertNotIn("expand_v2_grad", comp_op_type_list)
-            self.assertNotIn("unsqueeze2_grad", comp_op_type_list)
-            self.assertNotIn("reduce_mean_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.batch_norm_", comp_op_type_list)
+            self.assertNotIn("pd_op.relu", comp_op_type_list)
+            self.assertNotIn("pd_op.pow", comp_op_type_list)
+            self.assertNotIn("pd_op.expand_v2", comp_op_type_list)
+            self.assertNotIn("pd_op.unsqueeze2", comp_op_type_list)
+            self.assertNotIn("pd_op.reduce_mean", comp_op_type_list)
+            self.assertNotIn("pd_op.batch_norm_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.relu_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.pow_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.expand_v2_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.unsqueeze2_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.reduce_mean_grad", comp_op_type_list)
 
             paddle.jit.save(static_net, self.model_path)
             load_func = paddle.jit.load(self.model_path)
             load_program = load_func.program()
-            print("load_program:", load_program)
-            load_op_type_list = [op.type for op in load_program.block(0).ops]
+            load_op_type_list = [
+                op.name() for op in load_program.global_block().ops
+            ]
             new_res = load_func(self.x)
-            self.assertIn("conv2d", load_op_type_list)
-            self.assertIn("batch_norm", load_op_type_list)
-            self.assertIn("relu", load_op_type_list)
-            self.assertIn("pool2d", load_op_type_list)
+            self.assertIn("pd_op.conv2d", load_op_type_list)
+            self.assertIn("pd_op.batch_norm_", load_op_type_list)
+            self.assertIn("pd_op.relu", load_op_type_list)
+            self.assertIn("pd_op.pool2d", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
     @test_ast_only
+    @test_pir_only
     def test_save_load_prim_with_hook(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
@@ -177,29 +181,30 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
                 1
             ].train_program
             comp_op_type_list = self._compute_op_num(composite_program)
-            self.assertNotIn("batch_norm", comp_op_type_list)
-            self.assertNotIn("relu", comp_op_type_list)
-            self.assertNotIn("pow", comp_op_type_list)
-            self.assertNotIn("expand_v2", comp_op_type_list)
-            self.assertNotIn("unsqueeze2", comp_op_type_list)
-            self.assertNotIn("reduce_mean", comp_op_type_list)
-            self.assertNotIn("batch_norm_grad", comp_op_type_list)
-            self.assertNotIn("relu_grad", comp_op_type_list)
-            self.assertNotIn("pow_grad", comp_op_type_list)
-            self.assertNotIn("expand_v2_grad", comp_op_type_list)
-            self.assertNotIn("unsqueeze2_grad", comp_op_type_list)
-            self.assertNotIn("reduce_mean_grad", comp_op_type_list)
-            self.assertNotIn("multiply_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.batch_norm_", comp_op_type_list)
+            self.assertNotIn("pd_op.relu", comp_op_type_list)
+            self.assertNotIn("pd_op.pow", comp_op_type_list)
+            self.assertNotIn("pd_op.expand_v2", comp_op_type_list)
+            self.assertNotIn("pd_op.unsqueeze2", comp_op_type_list)
+            self.assertNotIn("pd_op.reduce_mean", comp_op_type_list)
+            self.assertNotIn("pd_op.batch_norm_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.relu_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.pow_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.expand_v2_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.unsqueeze2_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.reduce_mean_grad", comp_op_type_list)
+            self.assertNotIn("pd_op.multiply_grad", comp_op_type_list)
             paddle.jit.save(static_net, self.model_path)
             load_func = paddle.jit.load(self.model_path)
             load_program = load_func.program()
-            print("load_program:", load_program)
-            load_op_type_list = [op.type for op in load_program.block(0).ops]
+            load_op_type_list = [
+                op.name() for op in load_program.global_block().ops
+            ]
             new_res = load_func(self.x)
-            self.assertIn("conv2d", load_op_type_list)
-            self.assertIn("batch_norm", load_op_type_list)
-            self.assertIn("relu", load_op_type_list)
-            self.assertIn("pool2d", load_op_type_list)
+            self.assertIn("pd_op.conv2d", load_op_type_list)
+            self.assertIn("pd_op.batch_norm_", load_op_type_list)
+            self.assertIn("pd_op.relu", load_op_type_list)
+            self.assertIn("pd_op.pool2d", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
 

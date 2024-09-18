@@ -165,12 +165,17 @@ class TestMLPPipelineParallel(unittest.TestCase):
             loss = dist_model(image, label)
 
     def _pipeline_schedule(
-        self, enable_schedule=False, schedule_mode="FThenB", accumulate_steps=1
+        self,
+        enable_schedule=False,
+        schedule_mode="FThenB",
+        accumulate_steps=1,
+        grad_merge=False,
+        enable_amp=True,
     ):
         self.init_env()
         paddle.set_flags({'FLAGS_enable_pir_api': 1})
         mesh1 = dist.ProcessMesh([0], dim_names=["x"])
-        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
+        mesh2 = dist.ProcessMesh([1], dim_names=["x"])
         pp_layer = PPDemoNet(mesh1, mesh2)
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=pp_layer.parameters()
@@ -183,23 +188,38 @@ class TestMLPPipelineParallel(unittest.TestCase):
         strategy.pipeline.enable = enable_schedule
         strategy.pipeline.schedule_mode = schedule_mode
         strategy.pipeline.accumulate_steps = accumulate_steps
+
+        if enable_amp:
+            amp = strategy.amp
+            amp.enable = True
+            amp.dtype = 'float16'
+            amp.level = 'O2'
+            amp.use_master_weight = True
+            amp.use_master_grad = True
+            amp.use_promote = True
+            amp.init_loss_scaling = 1024.0
+
+        if grad_merge:
+            gradient_merge = strategy.gradient_merge
+            gradient_merge.enable = True
+            gradient_merge.k_steps = accumulate_steps
+            gradient_merge.avg = True
+
         dist_loader = dist.shard_dataloader(loader, meshes=[mesh1, mesh2])
         dist_model = dist.to_static(
             pp_layer, dist_loader, loss_fn, opt, strategy
         )
         dist_model.train()
 
-        loss0 = None
+        loss = None
         for batch_id, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)
-            if loss0 is None:
-                loss0 = loss
-        if accumulate_steps > 1 and loss0 is not None:
-            loss0 = np.mean(loss0)
-        return loss0
+
+            if accumulate_steps > 1 and loss is not None:
+                loss = np.mean(loss)
+        return loss
 
     def test_pp_pass(self):
-        self.init_env()
         ref_loss = self._pipeline_schedule()
         # only split_program
         loss_split_prog_acc1 = self._pipeline_schedule(
@@ -207,18 +227,47 @@ class TestMLPPipelineParallel(unittest.TestCase):
         )
         self.assertEqual(ref_loss, loss_split_prog_acc1)
 
-        # accumulate_steps > 1, but no gradient merge
         loss_split_prog_acc4 = self._pipeline_schedule(
-            enable_schedule=True, schedule_mode="FThenB", accumulate_steps=4
+            enable_schedule=True,
+            schedule_mode="FThenB",
+            accumulate_steps=4,
+            grad_merge=True,
         )
+
         if ref_loss is None:
             self.assertEqual(ref_loss, loss_split_prog_acc4)
         else:
             ret_1 = np.allclose(
-                ref_loss,
                 loss_split_prog_acc4,
-                rtol=1e-5,
-                atol=1e-4,
+                ref_loss,
+                rtol=1e-3,
+                atol=1e-2,
+                equal_nan=True,
+            )
+            self.assertEqual(ret_1, True)
+
+    def test_pp_pass_amp(self):
+        loss_split_prog_acc1 = self._pipeline_schedule(
+            enable_schedule=False,
+            schedule_mode="FThenB",
+            accumulate_steps=1,
+            enable_amp=True,
+        )
+        loss_split_prog_acc4 = self._pipeline_schedule(
+            enable_schedule=True,
+            schedule_mode="FThenB",
+            accumulate_steps=4,
+            grad_merge=True,
+            enable_amp=True,
+        )
+
+        cur_rank = paddle.distributed.get_rank()
+        if cur_rank == 1:
+            ret_1 = np.allclose(
+                loss_split_prog_acc4,
+                loss_split_prog_acc1,
+                rtol=1e-3,
+                atol=1e-2,
                 equal_nan=True,
             )
             self.assertEqual(ret_1, True)

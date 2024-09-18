@@ -34,8 +34,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/string_array.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -47,6 +45,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/detail/internals.h"
@@ -59,12 +59,12 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/imperative/amp_utils.h"
-#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
@@ -141,11 +141,11 @@ Examples:
     .. code-block:: python
 
         >>> import paddle
-
-        >>> data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
-        >>> linear = paddle.nn.Linear(32, 64)
-        >>> data = paddle.to_tensor(data)
-        >>> x = linear(data)
+        >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
+        ...                       [4.0, 5.0, 6.0]])
+        >>> x.numpy()
+        array([[1., 2., 3.],
+               [4., 5., 6.]], dtype=float32)
 )DOC");
 
 static PyObject* tensor_method_numpy(TensorObject* self,

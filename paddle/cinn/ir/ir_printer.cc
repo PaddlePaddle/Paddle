@@ -53,6 +53,11 @@ void IrPrinter::Visit(const IntImm *x) {
     str_ += std::to_string(x->value);
     str_ += "ll";
   } else if (x->type().is_int(32)) {
+    // The min int32_t constant(-2147483648) will be recognized as long
+    // and max(long, int32_t) is illegal, so we need to add cast here.
+    if (x->value == std::numeric_limits<std::int32_t>::min()) {
+      str_ += "(int32_t)";
+    }
     str_ += std::to_string(x->value);
   } else if (x->type().is_int(16)) {
     str_ += "(int16_t)";
@@ -138,18 +143,34 @@ void IrPrinter::Visit(const FloatImm *x) {
       ss << static_cast<bfloat16>(x->value) << "f";
     }
   } else if (x->type().is_float(32)) {
-    float v = TruncateInfinity<float>(x->value);
-    if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
-    ss << std::setprecision(std::numeric_limits<float>::max_digits10);
-    ss << std::showpoint;
-    ss << v;
-    if (std::isfinite(v)) {
-      ss << "f";
+    if (std::isinf(x->value)) {
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "__int_as_float(0x7f800000)";
+      } else {
+        ss << "__int_as_float(0xff800000)";
+      }
+    } else {
+      float v = TruncateInfinity<float>(x->value);
+      if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
+      ss << std::setprecision(std::numeric_limits<float>::max_digits10);
+      ss << std::showpoint;
+      ss << v;
+      if (std::isfinite(v)) {
+        ss << "f";
+      }
     }
   } else if (x->type().is_float(64)) {
-    ss << std::setprecision(std::numeric_limits<double>::max_digits10);
-    ss << std::showpoint;
-    ss << x->value;
+    if (std::isinf(x->value)) {
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "__int_as_float(0x7f800000)";
+      } else {
+        ss << "__int_as_float(0xff800000)";
+      }
+    } else {
+      ss << std::setprecision(std::numeric_limits<double>::max_digits10);
+      ss << std::showpoint;
+      ss << x->value;
+    }
   } else {
     std::stringstream ss;
     ss << "Not support float type: " << x->type();
@@ -161,6 +182,34 @@ void IrPrinter::Visit(const StringImm *x) {
   str_ += "\"";
   str_ += x->value;
   str_ += "\"";
+}
+
+void IrPrinter::Visit(const IterMark *x) {
+  str_ += "IterMark(";
+  Visit(x->source);
+  str_ += ",";
+  Visit(x->extent);
+  str_ += ")";
+}
+void IrPrinter::Visit(const IterSum *x) {
+  str_ += "IterSum(";
+  for (const auto &arg : x->args) {
+    Visit(arg);
+    str_ += "+";
+  }
+  Visit(x->base);
+  str_ += ")";
+}
+void IrPrinter::Visit(const IterSplit *x) {
+  str_ += "IterSplit(";
+  Visit(x->source);
+  str_ += "/";
+  Visit(x->lower_factor);
+  str_ += "%";
+  Visit(x->extent);
+  str_ += "*";
+  Visit(x->scale);
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const Add *x) { PrintBinaryOp("+", x); }
@@ -321,11 +370,11 @@ void IrPrinter::Visit(const _Module_ *x) {}
 void IrPrinter::Visit(const _Var_ *x) { str_ += x->name; }
 void IrPrinter::Visit(const Alloc *x) {
   auto *buffer = x->destination.As<ir::_Buffer_>();
-  PADDLE_ENFORCE_NOT_NULL(
-      buffer,
-      phi::errors::InvalidArgument("The destination is not a valid buffer. "
-                                   "Please ensure that `x->destination` is "
-                                   "properly assigned to a buffer."));
+  PADDLE_ENFORCE_NOT_NULL(buffer,
+                          ::common::errors::InvalidArgument(
+                              "The destination is not a valid buffer. "
+                              "Please ensure that `x->destination` is "
+                              "properly assigned to a buffer."));
   str_ += "alloc(";
   str_ += buffer->name;
   str_ += ", ";
@@ -346,9 +395,9 @@ void IrPrinter::Visit(const Load *x) {
     auto *tensor = x->tensor.As<ir::_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument("The tensor is not valid. "
-                                     "Please ensure that `x->tensor` is "
-                                     "properly assigned to a tensor."));
+        ::common::errors::InvalidArgument("The tensor is not valid. "
+                                          "Please ensure that `x->tensor` is "
+                                          "properly assigned to a tensor."));
     str_ += tensor->name;
   } else if (x->is_addr_scalar()) {
     Visit(x->tensor);
@@ -367,11 +416,11 @@ void IrPrinter::Visit(const Load *x) {
 void IrPrinter::Visit(const Store *x) {
   if (x->is_addr_tensor()) {
     auto *tensor_node = x->tensor.As<ir::_Tensor_>();
-    PADDLE_ENFORCE_NOT_NULL(
-        tensor_node,
-        phi::errors::InvalidArgument("The tensor node is not valid. "
-                                     "Please ensure that `x->tensor` is "
-                                     "properly assigned to a tensor node."));
+    PADDLE_ENFORCE_NOT_NULL(tensor_node,
+                            ::common::errors::InvalidArgument(
+                                "The tensor node is not valid. "
+                                "Please ensure that `x->tensor` is "
+                                "properly assigned to a tensor node."));
 
     str_ += tensor_node->name;
   } else if (x->is_addr_scalar()) {
@@ -391,11 +440,11 @@ void IrPrinter::Visit(const Store *x) {
 }
 void IrPrinter::Visit(const Free *x) {
   auto *buffer = x->destination.As<ir::_Buffer_>();
-  PADDLE_ENFORCE_NOT_NULL(
-      buffer,
-      phi::errors::InvalidArgument("The destination is not a valid buffer. "
-                                   "Please ensure that `x->destination` is "
-                                   "properly assigned to a buffer."));
+  PADDLE_ENFORCE_NOT_NULL(buffer,
+                          ::common::errors::InvalidArgument(
+                              "The destination is not a valid buffer. "
+                              "Please ensure that `x->destination` is "
+                              "properly assigned to a buffer."));
 
   str_ += "free(";
   str_ += buffer->name;
@@ -455,7 +504,7 @@ void IrPrinter::Visit(const Let *f) {
   PADDLE_ENFORCE_EQ(
       f->type().valid(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of `f` is not valid. "
           "Please ensure that `f->type()` returns a valid type."));
 
@@ -569,7 +618,7 @@ void IrPrinter::Visit(const _BufferRange_ *x) {
   auto *buffer = x->buffer.As<ir::_Buffer_>();
   PADDLE_ENFORCE_NOT_NULL(
       buffer,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The buffer is not valid. "
           "Please ensure that `x->buffer` is properly assigned to a buffer."));
   str_ += buffer->name;
