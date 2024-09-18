@@ -4625,7 +4625,7 @@
   kernel :
     func : svd
   backward : svd_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swiglu
   args : (Tensor x, Tensor y)
