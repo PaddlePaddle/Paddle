@@ -13,16 +13,19 @@
 # limitations under the License.
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 
 
-class TestEngineAPI(unittest.TestCase):
+class TestOptimizationTunerAPI(unittest.TestCase):
     def test_engine_api(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir, "engine_api.py")
+        launch_model_path = os.path.join(
+            file_dir, "optimization_tuner_api_deprecated.py"
+        )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
@@ -35,8 +38,8 @@ class TestEngineAPI(unittest.TestCase):
             "-u",
             *coverage_args,
             "-m",
-            "paddle.distributed.launch",
-            "--devices",
+            "launch",
+            "--gpus",
             "0,1",
             "--log_dir",
             tmp_dir.name,
@@ -48,6 +51,7 @@ class TestEngineAPI(unittest.TestCase):
         self.assertEqual(process.returncode, 0)
 
         tmp_dir.cleanup()
+        shutil.rmtree('./OptimizationTuning', ignore_errors=True)
 
 
 if __name__ == "__main__":

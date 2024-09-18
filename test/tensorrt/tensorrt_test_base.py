@@ -161,10 +161,12 @@ class TensorRTBaseTest(unittest.TestCase):
                         *self.max_shape[feed_name]
                     ).astype(self.api_args[feed_name].dtype)
 
+            scope = paddle.static.global_scope()
             main_program = warmup_shape_infer(
                 main_program,
                 min_shape_feed=min_shape_data,
                 max_shape_feed=max_shape_data,
+                scope=scope,
             )
 
             for op in main_program.global_block().ops[::-1]:
@@ -179,7 +181,7 @@ class TensorRTBaseTest(unittest.TestCase):
             program_with_trt = run_pir_pass(main_program, partition_mode=True)
 
             # run TRTConverter(would lower group_op into tensorrt_engine_op)
-            scope = paddle.static.global_scope()
+
             converter = PaddleToTensorRTConverter(program_with_trt, scope)
             converter.convert_program_to_trt()
 

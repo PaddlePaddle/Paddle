@@ -50,14 +50,3 @@ if(WITH_XPU)
 endif()
 
 collect_srcs(core_srcs SRCS ${ALLOCATOR_SRCS})
-
-if(WITH_TESTING)
-  # TODO(zhiqiu): why not win32? because wget is not found on windows
-  if(NOT WIN32)
-    add_custom_target(
-      download_data
-      COMMAND wget -nc --no-check-certificate
-              https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
-      COMMAND tar -xf buddy_allocator_test_data.tar)
-  endif()
-endif()
