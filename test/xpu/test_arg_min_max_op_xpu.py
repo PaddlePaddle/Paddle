@@ -31,11 +31,8 @@ paddle.enable_static()
 
 
 class XPUTestArgMinMax(XPUOpTestWrapper):
-    op_name = None
-
-    @classmethod
-    def set_op_name(cls, name):
-        cls.op_name = name
+    def __init__(self, op_name):
+        self.op_name = op_name
 
     class XPUBaseTestCase(XPUOpTest):
         def initTestCase(self):
@@ -114,19 +111,17 @@ class XPUTestArgMinMax(XPUOpTestWrapper):
 # Create arg_max and arg_min tests
 
 support_types = get_xpu_op_support_types('arg_max')
-XPUTestArgMinMax.set_op_name('arg_max')
 for stype in support_types:
-    create_test_class(globals(), XPUTestArgMinMax, stype)
+    test_class = XPUTestArgMinMax('arg_max')
+    create_test_class(globals(), test_class, stype)
 
 support_types = get_xpu_op_support_types('arg_min')
-XPUTestArgMinMax.set_op_name('arg_min')
 for stype in support_types:
-    create_test_class(globals(), XPUTestArgMinMax, stype)
+    test_class = XPUTestArgMinMax('arg_min')
+    create_test_class(globals(), test_class, stype)
 
 
 # API Tests for arg_max and arg_min
-
-
 class TestArgMinMaxAPI(unittest.TestCase):
     def initTestCase(self):
         self.dims = (3, 4, 5)
