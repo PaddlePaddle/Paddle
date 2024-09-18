@@ -265,7 +265,8 @@ void MergedAdamKernel(
     const std::vector<const DenseTensor*>& learning_rate,
     const std::vector<const DenseTensor*>& moment1,
     const std::vector<const DenseTensor*>& moment2,
-    const std::vector<const DenseTensor*>& moment2_max,  // UNUSED
+    const paddle::optional<std::vector<const DenseTensor*>>&
+        moment2_max,  // UNUSED
     const std::vector<const DenseTensor*>& beta1_pow,
     const std::vector<const DenseTensor*>& beta2_pow,
     const paddle::optional<std::vector<const DenseTensor*>>& master_param,
