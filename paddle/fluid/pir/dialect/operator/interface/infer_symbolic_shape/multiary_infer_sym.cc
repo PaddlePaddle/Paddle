@@ -1563,6 +1563,61 @@ bool FusedBnAddActivation_OpInferSymbolicShape(
   return BatchNormOpInferSymbolicShape(op, infer_context);
 }
 
+bool FusedGemmEpilogueOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dims = x_shape_or_data.shape();
+
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &y_dims = y_shape_or_data.shape();
+
+  const auto &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &bias_dims = bias_shape_or_data.shape();
+
+  size_t x_rank = x_dims.size();
+  size_t y_rank = y_dims.size();
+
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.reserve(x_rank);
+
+  for (size_t i = 0; i + 2 < x_rank; ++i) {
+    out_shape.emplace_back(x_dims[i]);
+  }
+
+  bool transpose_x_attr = GetBoolAttr(op, "trans_x");
+  bool transpose_y_attr = GetBoolAttr(op, "trans_y");
+
+  symbol::DimExpr out_M =
+      transpose_x_attr ? x_dims[x_rank - 1] : x_dims[x_rank - 2];
+  symbol::DimExpr out_N =
+      transpose_y_attr ? y_dims[y_rank - 2] : y_dims[y_rank - 1];
+
+  out_shape.emplace_back(out_M);
+  out_shape.emplace_back(out_N);
+
+  symbol::DimExpr x_K =
+      transpose_x_attr ? x_dims[x_rank - 2] : x_dims[x_rank - 1];
+  symbol::DimExpr y_K =
+      transpose_y_attr ? y_dims[y_rank - 1] : y_dims[y_rank - 2];
+
+  infer_context->AddEqualCstr(x_K, y_K);
+  // bias_dims[0] equal to out_N
+  infer_context->AddEqualCstr(out_N, bias_dims[0]);
+
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        ShapeOrData{TensorExprs(out_shape)});
+
+  // process reserve space
+  if (paddle::dialect::details::IsFakeValue(op->result(1))) {
+    infer_context->SetShapeOrDataForValue(op->result(0),
+                                          ShapeOrData{TensorExprs(out_shape)});
+  }
+  return true;
+}
+
 bool FusedMultiTransformerOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -3333,12 +3388,74 @@ bool WarprnntOpInferSymbolicShape(
   return true;
 }
 
-// bool WeightOnlyLinearOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool WeightOnlyLinearOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &weight_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const auto &weight_scale_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const std::string &weight_dtype =
+      op->attribute<pir::StrAttribute>("weight_dtype").AsString();
+  const int group_size =
+      op->attribute<pir::Int32Attribute>("group_size").data();
+
+  PADDLE_ENFORCE(
+      (group_size == -1 || group_size == 64 || group_size == 128),
+      common::errors::InvalidArgument("group_size must be -1, 64 or 128."));
+
+  ExprVec weight_scale_shape = weight_scale_shape_or_data.shape();
+  ExprVec x_shape = x_shape_or_data.shape();
+  ExprVec weight_shape = weight_shape_or_data.shape();
+  symbol::DimExpr n =
+      group_size == -1 ? weight_scale_shape[0] : weight_scale_shape[1];
+  PADDLE_ENFORCE(weight_dtype == "int8" || weight_dtype == "int4",
+                 common::errors::InvalidArgument(
+                     "quant_method must be 'int8' or 'int4'."));
+  PADDLE_ENFORCE_EQ(weight_shape.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "The input(weight) must be a 2D Tensor."));
+  // TODO(Jeff114514): can not use % between symbol::DimExpr and int, need to
+  // make sure weight_shape[0] and weight_shape[1] is divisible by 16
+  infer_context->AddEqualCstr(x_shape[x_shape.size() - 1], weight_shape[1]);
+  if (!bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    ExprVec bias_shape = bias_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        bias_shape.size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            bias_shape.size()));
+  }
+
+  if (group_size == -1) {
+    PADDLE_ENFORCE_EQ(weight_scale_shape.size(),
+                      1UL,
+                      common::errors::InvalidArgument(
+                          "The input(weight_scale) must be a 1D Tensor."
+                          "in per-channel mode."));
+  } else {
+    PADDLE_ENFORCE_EQ(weight_scale_shape.size(),
+                      2UL,
+                      common::errors::InvalidArgument(
+                          "The input(weight_scale) must be a 2D Tensor"
+                          " in groupwise mode."));
+    infer_context->AddEqualCstr(
+        weight_scale_shape[0],
+        (weight_shape[1] + (group_size - 1)) / group_size);
+  }
+  ExprVec out_shape = x_shape;
+  out_shape[out_shape.size() - 1] = n;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
 
 bool WeightedSampleNeighborsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

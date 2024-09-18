@@ -195,6 +195,17 @@ class Engine:
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
             )
+        # NOTE(ljz) Not support parameter groups
+        param_list = []
+        if optimizer is not None and (
+            optimizer._parameter_list is not None
+            and len(optimizer._parameter_list) > 0
+            and not isinstance(optimizer._parameter_list[0], dict)
+        ):
+            for p in optimizer._parameter_list:
+                if not p.stop_gradient:
+                    param_list.append(p)
+        self._parameter_name_list = [p.name for p in param_list]
         self._optimizer = auto_utils.validate_opt(optimizer)
 
         metrics = metrics or []
@@ -255,6 +266,7 @@ class Engine:
         self._fwd_main_progs = {}
         self._startup_progs = {}
         self._pir_dist_main_progs = {}
+        self._pir_dist_startup_progs = {}
         self._pir_dense_main_progs = {}
         self._pir_fetch_values = []
         self._pir_user_defined_fetch_names = []
@@ -697,7 +709,7 @@ class Engine:
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
-        set_all_ops_op_role(dist_program, OpRole.Forward)
+        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
 
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
@@ -714,6 +726,11 @@ class Engine:
                             dtype=self._strategy.amp.dtype,
                         )
                         self._optimizer._sorted = False
+                        parameter_value_list = [
+                            dist_program.get_parameter_value_by_name(pname)
+                            for pname in self._parameter_name_list
+                        ]
+
                         self._optimizer = paddle.static.amp.decorator.OptimizerWithMixedPrecision(
                             optimizer=self._optimizer,
                             amp_lists=amp_lists,
@@ -729,20 +746,25 @@ class Engine:
                             use_master_grad=self._strategy.amp.use_master_grad,
                             use_promote=self._strategy.amp.use_promote,
                         )
-                        # bfloat16 needs no scaler
-                        scaler = paddle.amp.GradScaler(
-                            init_loss_scaling=self._strategy.amp.init_loss_scaling,
-                            incr_ratio=self._strategy.amp.incr_ratio,
-                            decr_ratio=self._strategy.amp.decr_ratio,
-                            incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
-                            decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
-                            use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
-                            enable=self._strategy.amp.enable
-                            and self._strategy.amp.dtype != 'bfloat16',
-                        )
-                        scaled = scaler.scale(loss)
+                        with auto_complete_op_role(
+                            dist_program, OpRole.Forward
+                        ):
+                            # bfloat16 needs no scaler
+                            scaler = paddle.amp.GradScaler(
+                                init_loss_scaling=self._strategy.amp.init_loss_scaling,
+                                incr_ratio=self._strategy.amp.incr_ratio,
+                                decr_ratio=self._strategy.amp.decr_ratio,
+                                incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
+                                decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
+                                use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
+                                enable=self._strategy.amp.enable
+                                and self._strategy.amp.dtype != 'bfloat16',
+                            )
+                            scaled = scaler.scale(loss)
                         optimizer_ops, params_grads = scaler.minimize(
-                            self._optimizer, scaled
+                            self._optimizer,
+                            scaled,
+                            parameter_list=parameter_value_list,
                         )
                     else:
                         with auto_complete_op_role(
@@ -766,7 +788,6 @@ class Engine:
 
         # re-run apply_mix2dist_pass to dist accumulator.
         apply_mix2dist_pass(dist_program)
-        # print('program', startup_program, dist_program, flush=1)
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
@@ -788,27 +809,22 @@ class Engine:
 
         # Part 3: Graph partition
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
-        #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
+        #   insert reshard op if operand tensor's placements is different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
         apply_partition_pass(dist_program)
+
+        if mode == "train" and self._loss and self._optimizer:
+            global_params_grads = params_grads
+        else:
+            global_params_grads = []
+            params_grads = []
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        global_params_grads = params_grads
-
         apply_reshard_pass(dist_program, params_grads)
-        # print('after reshard', dist_program, flush=1)
-
         remove_other_rank_input_output_pass(dist_program)
-        # print(
-        #     'after remove_other_rank_input_output_pass', dist_program, flush=1
-        # )
-
-        remove_other_rank_op_pass(dist_program, params_grads)
-
-        # print('after remove_other_rank_op_pass', dist_program, flush=1)
-
+        remove_other_rank_op_pass(dist_program, startup_program, params_grads)
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
 
@@ -888,6 +904,7 @@ class Engine:
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
+        self._pir_dist_startup_progs[mode] = startup_program
 
     def _prepare_program(self, mode, init_parameters=True):
         if self._in_pir_mode:
@@ -1243,6 +1260,9 @@ class Engine:
             )
 
         if self._in_pir_mode:
+            # FIXME(ljz) avoid shared same tensro more than once in different mode
+            if mode != "train":
+                return
             # TODO(2024-Q2)
             # 1. unify random control
             # 2. initilization of non-parameter buffer
@@ -1316,6 +1336,8 @@ class Engine:
                             op.operand(0).set_source(reshard_var)
                 for del_op in del_ops:
                     del_op.erase()
+
+                set_all_ops_op_role(startup_prog.global_block(), OpRole.Forward)
                 apply_reshard_pass(startup_prog)
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
@@ -2601,12 +2623,18 @@ class Engine:
         return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
 
     def get_dist_startup_program(self, mode: _Mode) -> Program:
+        if self._in_pir_mode:
+            return self._pir_dist_startup_progs[self._mode]
         return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
 
     def get_serial_main_program(self, mode: _Mode) -> Program:
+        if self._in_pir_mode:
+            return self._fwd_main_progs[mode]
         return self._dist_contexts[mode].serial_main_program
 
     def get_serial_startup_program(self, mode: _Mode) -> Program:
+        if self._in_pir_mode:
+            return self._startup_progs[mode]
         return self._dist_contexts[mode].serial_startup_program
 
     @property

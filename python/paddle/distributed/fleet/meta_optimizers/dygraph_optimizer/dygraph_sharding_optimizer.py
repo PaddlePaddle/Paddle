@@ -628,6 +628,7 @@ class DygraphShardingOptimizerV2:
         self.comm_overlap = sharding_config.comm_overlap
 
         comm_buffer_size_MB = sharding_config.comm_buffer_size_MB
+        free_grads_in_comm = sharding_config.free_grads_in_comm
 
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
@@ -643,7 +644,9 @@ class DygraphShardingOptimizerV2:
                 "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
             )
 
-        self._build_comm_buffers(acc_steps, comm_buffer_size_MB * 1024 * 1024)
+        self._build_comm_buffers(
+            acc_steps, comm_buffer_size_MB * 1024 * 1024, free_grads_in_comm
+        )
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
         # g_shard_sort_reduce_root is True.
@@ -714,7 +717,9 @@ class DygraphShardingOptimizerV2:
 
         return fused_allreduce
 
-    def _build_comm_buffers(self, acc_steps, group_size=256 * 1024 * 1024):
+    def _build_comm_buffers(
+        self, acc_steps, group_size=256 * 1024 * 1024, free_grads_in_comm=False
+    ):
         if self.pp_overlap:
             return
         # NOTE(lijin23): for XPU, we fuse all params to a single comm buffer to
@@ -742,6 +747,7 @@ class DygraphShardingOptimizerV2:
                 act=HOOK_ACTION.REDUCE_SCATTER,
                 release_grads=self.sd_release_grads,
                 use_reduce_avg=self.use_reduce_avg,
+                free_grads_in_comm=free_grads_in_comm,
             )
             self._comm_buffer_list.append(buffer)
 

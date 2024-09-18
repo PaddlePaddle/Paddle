@@ -40,6 +40,7 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
         envs_list = test_base.gen_product_envs_list(
             {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
         )
+        # self._log_dir.name = "./log1"
         for envs in envs_list:
             self.run_test_case(
                 "static_reshard_api_cross_mesh.py",

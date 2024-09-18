@@ -33,7 +33,7 @@ void ScheduleConfigManager::AddConfigDatabase(
 
 ScheduleConfigMap ScheduleConfigManager::ExtractConfigs(
     const common::Target& target,
-    const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info) const {
+    const std::shared_ptr<FusionGroupInfo>& group_info) const {
   auto ReadConfigs = [&](std::string policy) -> ScheduleConfigMap {
     std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
         InitBasicInfo(group_info);
