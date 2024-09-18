@@ -17,7 +17,6 @@ import unittest
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -25,7 +24,6 @@ import paddle
 
 class TestSetDynamicShape(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_start(self):
         def dygraph_func(loop_number):
             mask = paddle.randn([2, 2])
@@ -43,7 +41,6 @@ class TestSetDynamicShape(Dy2StTestBase):
         self.assertEqual(expected_shape, actual_shape)
 
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_pir_ast(self):
         def dygraph_func():
             mask = paddle.randn([2, 2])

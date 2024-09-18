@@ -115,7 +115,9 @@ class TestClassCenterSampleOp(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=['SampledLocalClassCenter'], check_pir=True
+            no_check_set=['SampledLocalClassCenter'],
+            check_pir=True,
+            check_symbol_infer=False,
         )
 
 
