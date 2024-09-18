@@ -458,7 +458,7 @@ class RemovePasses:
             op.result(0).set_type(res.type())
 
     @staticmethod
-    def remove_other_rank_params_grads(dist_program, dist_params_grads):
+    def remove_other_rank_params_grads_pass(dist_program, dist_params_grads):
         cur_rank_param = []
         cur_rank = paddle.distributed.get_rank()
 
