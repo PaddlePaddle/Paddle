@@ -336,6 +336,30 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --batch_size=8
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
 
+  if(WITH_GPU
+     AND TENSORRT_FOUND
+     AND NOT WIN32)
+    set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_models")
+    set(TEST_TRT_TRANSFORMER_PRUNE_MODEL
+        "${TRT_MODEL_INSTALL_DIR}/transformer_prune")
+    if(NOT EXISTS ${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune.tar.gz)
+      inference_download_and_uncompress(
+        ${TEST_TRT_TRANSFORMER_PRUNE_MODEL} ${INFERENCE_URL}/tensorrt_test
+        "transformer_prune.tar.gz" 77b56dc73ff0cf44ddb1ce9ca0b0f471)
+    endif()
+    inference_analysis_test(
+      test_trt_dynamic_shape_transformer_prune_deprecated
+      SRCS
+      trt_dynamic_shape_transformer_prune_test.cc
+      EXTRA_DEPS
+      paddle_inference_shared
+      common
+      ARGS
+      --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
+    set_tests_properties(test_trt_dynamic_shape_transformer_prune_deprecated
+                         PROPERTIES TIMEOUT 300)
+  endif()
+
   # Image classification tests with fake data
   set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
   set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
