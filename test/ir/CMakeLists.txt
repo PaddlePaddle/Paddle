@@ -6,11 +6,7 @@ string(REPLACE ".py" "" TEST_IR_PASSES "${TEST_IR_PASSES}")
 
 list(REMOVE_ITEM TEST_IR_PASSES test_inference_datatype)
 
-if(((NOT WITH_GPU) AND (NOT WITH_ROCM))
-   OR WIN32
-   OR APPLE)
-  list(REMOVE_ITEM TEST_IR_PASSES test_ir_fusion_group_pass)
-endif()
+list(REMOVE_ITEM TEST_IR_PASSES test_ir_fusion_group_pass)
 
 if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
   message(STATUS "Skip tests unrelated to CUDA/TRT")

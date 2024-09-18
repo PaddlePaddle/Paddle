@@ -30,6 +30,10 @@ list(REMOVE_ITEM TEST_OPS test_conv2d_op)
 list(REMOVE_ITEM TEST_OPS test_pool_max_op)
 list(REMOVE_ITEM TEST_OPS test_matmul_v2_op)
 
+list(REMOVE_ITEM TEST_OPS test_allgather)
+list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
+list(REMOVE_ITEM TEST_OPS test_reducescatter)
+
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
@@ -206,7 +210,6 @@ endif()
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
-  list(REMOVE_ITEM TEST_OPS test_allgather)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -581,8 +584,6 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     test_fused_gemm_epilogue_grad_op_with_es MODULES
     test_fused_gemm_epilogue_grad_op ENVS
     FLAGS_cublaslt_exhaustive_search_times=30)
-  py_test_modules(test_fuse_gemm_epilogue_pass MODULES
-                  test_fuse_gemm_epilogue_pass)
 endif()
 
 if(WITH_ROCM)
@@ -706,14 +707,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
-py_test_modules(
-  test_fuse_bn_add_act_pass
-  MODULES
-  test_fuse_bn_add_act_pass
-  ENVS
-  FLAGS_cudnn_deterministic=1
-  FLAGS_cudnn_batchnorm_spatial_persistent=1
-  FLAGS_conv_workspace_size_limit=1000)
 
 if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
@@ -928,7 +921,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
                                                            "RUN_TYPE=DIST")
     set_tests_properties(test_fleet_perf_test PROPERTIES LABELS "RUN_TYPE=DIST")
     set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
   endif()
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)

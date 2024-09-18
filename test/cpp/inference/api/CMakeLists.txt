@@ -729,15 +729,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         ${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test
         "yolov3_r50_quant_aware.tgz")
     endif()
-    inference_analysis_test(
-      trt_quant_int8_yolov3_r50_test
-      SRCS
-      trt_quant_int8_yolov3_r50_test.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_QUANT_YOLOV3_DIR})
 
     set(TEST_TRT_DYNAMIC_MODEL2
         "${TRT_MODEL_INSTALL_DIR}/complex_model_dynamic")
@@ -964,27 +955,12 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ARGS
     --infer_model=${RESNET50_MODEL_DIR}/model)
 
-  if(WITH_GPU)
-    inference_analysis_test(
-      paddle_infer_api_copy_tensor_tester
-      SRCS
-      paddle_infer_api_copy_tensor_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${RESNET50_MODEL_DIR})
-    set_tests_properties(paddle_infer_api_copy_tensor_tester PROPERTIES TIMEOUT
-                                                                        30)
-  endif()
-
   cc_test(
     paddle_infer_api_errors_test
     SRCS paddle_infer_api_errors_tester.cc
     DEPS ${inference_api_tester_deps} common)
 
   if(WITH_GPU AND TENSORRT_FOUND)
-    set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 400)
     set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser

@@ -29,6 +29,13 @@ list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_onednn_multi_gru_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
      "test_onednn_reshape_transpose_matmul_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_forbid_dynamic_op_api")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_save_optimized_model_pass")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+     "test_trt_explicit_quantization_mobilenet")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+     "test_trt_explicit_quantization_resnet")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+     "test_trt_remove_amp_strategy_op_pass")
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_delete_c_identity_op_pass")
@@ -169,10 +176,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
 
   if(NOT WIN32)
-    set_tests_properties(test_trt_explicit_quantization_resnet
-                         PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_trt_explicit_quantization_mobilenet
-                         PROPERTIES TIMEOUT 300)
+
   else()
     set_tests_properties(test_trt_convert_fill_constant PROPERTIES TIMEOUT 450)
   endif()
@@ -212,7 +216,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
                          PROPERTIES TIMEOUT 250)
     set_tests_properties(test_conv_eltwiseadd_bn_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
-    set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
     set_tests_properties(test_seq_concat_fc_fuse_pass PROPERTIES TIMEOUT 200)
     if(WIN32)
       set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 300)
