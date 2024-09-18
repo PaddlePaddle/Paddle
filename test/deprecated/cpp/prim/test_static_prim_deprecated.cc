@@ -22,11 +22,11 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
-#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/static_tensor_operants.h"
 
 PD_DECLARE_bool(prim_enabled);
 COMMON_DECLARE_string(tensor_operants_mode);
