@@ -394,7 +394,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   if(NOT APPLE)
     inference_base_test(
-      test_analysis_predictor
+      test_analysis_predictor_deprecated
       SRCS
       analysis_predictor_tester.cc
       DEPS

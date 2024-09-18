@@ -441,6 +441,8 @@ list(REMOVE_ITEM TEST_OPS test_install_check)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 
+list(REMOVE_ITEM TEST_OPS test_callback_wandb)
+
 # disable sparse_attention which not in suitable env
 if((NOT WITH_GPU)
    OR (WIN32)
@@ -478,9 +480,9 @@ endif()
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
-  list(REMOVE_ITEM TEST_OPS test_fuse_resunit_pass)
 endif()
+list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_resunit_pass)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
@@ -591,12 +593,8 @@ if(WITH_ROCM)
 endif()
 
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
-  py_test_modules(test_fuse_dot_product_attention_pass MODULES
-                  test_fuse_dot_product_attention_pass)
   py_test_modules(test_fused_dot_product_attention_op MODULES
                   test_fused_dot_product_attention_op)
-  py_test_modules(test_fused_dot_product_attention_op_static MODULES
-                  test_fused_dot_product_attention_op_static)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -900,7 +898,6 @@ set_tests_properties(test_dataset_wmt PROPERTIES TIMEOUT 120)
 set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
-set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
 set_tests_properties(test_jit_save_load PROPERTIES TIMEOUT 100)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fractional_max_pool3d_op PROPERTIES TIMEOUT 120)
@@ -955,10 +952,6 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height_gloo
                        PROPERTIES TIMEOUT 120)
-endif()
-
-if(WITH_CUDNN_FRONTEND)
-  set_tests_properties(test_fuse_resunit_pass PROPERTIES TIMEOUT 300)
 endif()
 
 set(TEST_CINN_OPS

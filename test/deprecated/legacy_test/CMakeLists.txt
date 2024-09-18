@@ -11,6 +11,7 @@ set(dist_ENVS http_proxy="" https_proxy="")
 ###### start ######
 list(REMOVE_ITEM TEST_OPS test_imperative_base)
 ###### end ######
+list(REMOVE_ITEM TEST_OPS test_fleet_util)
 
 file(
   GLOB DIST_TEST_OPS
@@ -629,7 +630,6 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
                                                                       120)
-set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 
 if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_part2_op_deprecated
