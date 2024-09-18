@@ -362,7 +362,7 @@ ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
   cinn::common::DimExprConverterWithSymbolBindings converter(inputs,
                                                              symbol_bindings);
   auto res = Compute(
-      {Expr(1)},
+      ToCinnExprs(out_shape),
       [=, &converter](const std::vector<Expr>& indice) {
         return converter.ConvertToIrExpr(output_dim_exprs[0]);
       },
