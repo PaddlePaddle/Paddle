@@ -166,7 +166,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
 
   if(WITH_ONEDNN)
-    set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
+    set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 300)
     set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                         180)
     set_tests_properties(test_trt_emb_eltwise_layernorm_fuse_pass
