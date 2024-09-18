@@ -1217,18 +1217,18 @@ class TestEagerTensor(unittest.TestCase):
                 # strides should be None if contiguous
                 tensor = paddle.randn([3, 3]).to(device=gpu_place)
                 interface = tensor.__cuda_array_interface__
-                assert interface["strides"] is None
+                self.assertIsNone(interface["strides"])
 
                 # strides should be tuple of int if not contiguous
                 tensor = paddle.randn([10, 10]).to(device=gpu_place)
                 tensor = tensor[::2]
                 interface = tensor.__cuda_array_interface__
-                assert interface["strides"] == (80, 4)
+                self.assertEqual(interface["strides"], (80, 4))
 
                 # data_ptr should be 0 if tensor is 0-size
                 tensor = paddle.randn([0, 10]).to(device=gpu_place)
                 interface = tensor.__cuda_array_interface__
-                assert interface["data"][0] == 0
+                self.assertEqual(interface["data"][0], 0)
 
                 # raise AttributeError for tensor that requires grad.
                 tensor = paddle.randn([3, 3]).to(device=gpu_place)
@@ -1261,22 +1261,24 @@ class TestEagerTensor(unittest.TestCase):
                         .astype(dtype)
                     )
                     interface = tensor.__cuda_array_interface__
-                    assert "typestr" in interface and isinstance(
-                        interface["typestr"], str
-                    )
-                    assert "shape" in interface and isinstance(
-                        interface["shape"], tuple
-                    )
-                    assert "strides" in interface and (
+                    self.assertIn("typestr", interface)
+                    self.assertIsInstance(interface["typestr"], str)
+
+                    self.assertIn("shape", interface)
+                    self.assertIsInstance(interface["shape"], tuple)
+
+                    self.assertIn("strides", interface)
+                    self.assertTrue(
                         isinstance(interface["strides"], tuple)
                         or interface["strides"] is None
                     )
-                    assert (
-                        "data" in interface
-                        and isinstance(interface["data"], tuple)
-                        and len(interface["data"]) == 2
-                    )
-                    assert "version" in interface and interface["version"] == 2
+
+                    self.assertIn("data", interface)
+                    self.assertIsInstance(interface["data"], tuple)
+                    self.assertEqual(len(interface["data"]), 2)
+
+                    self.assertIn("version", interface)
+                    self.assertEqual(interface["version"], 2)
 
 
 class TestEagerTensorSetitem(unittest.TestCase):

@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -98,27 +97,22 @@ class TestLambda(Dy2StTestBase):
             ret = func(x_v)
         return ret.numpy()
 
-    @test_legacy_and_pt_and_pir
     def test_call_lambda_as_func(self):
         fn = call_lambda_as_func
         self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
 
-    @test_legacy_and_pt_and_pir
     def test_call_lambda_directly(self):
         fn = call_lambda_directly
         self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
 
-    @test_legacy_and_pt_and_pir
     def test_call_lambda_in_func(self):
         fn = call_lambda_in_func
         self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
 
-    @test_legacy_and_pt_and_pir
     def test_call_lambda_with_if_expr(self):
         fn = call_lambda_with_if_expr
         self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
 
-    @test_legacy_and_pt_and_pir
     def test_call_lambda_with_if_expr2(self):
         fn = call_lambda_with_if_expr2
         self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())

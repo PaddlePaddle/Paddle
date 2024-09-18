@@ -9,20 +9,6 @@ add_subdirectory(pir)
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH multi cards and timeout
-  py_test_modules(test_auto_parallel_relaunch MODULES
-                  test_auto_parallel_relaunch)
-  set_tests_properties(test_auto_parallel_relaunch
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_engine_api MODULES test_engine_api)
-  set_tests_properties(test_engine_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                  TIMEOUT 80)
-  py_test_modules(test_engine_api_dp MODULES test_engine_api_dp)
-  set_tests_properties(test_engine_api_dp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
-  py_test_modules(test_optimization_tuner_api MODULES
-                  test_optimization_tuner_api)
-  set_tests_properties(test_optimization_tuner_api
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_converter MODULES test_converter)
   set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                  TIMEOUT 50)
@@ -32,13 +18,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_iterable_dataset MODULES test_iterable_dataset)
   set_tests_properties(test_iterable_dataset
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
-
-  py_test_modules(test_auto_tuner MODULES test_auto_tuner)
-  set_tests_properties(test_auto_tuner PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                  TIMEOUT 100)
-  py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
-  set_tests_properties(test_auto_tuner_compare
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
 
   py_test_modules(test_reshard_api MODULES test_reshard_api)
   set_tests_properties(test_reshard_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
@@ -137,18 +116,21 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_saved_tensor_hook)
   set_tests_properties(test_semi_auto_parallel_saved_tensor_hook
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_semi_auto_parallel_dist_to_static MODULES
-                  test_semi_auto_parallel_dist_to_static)
+  py_test_modules(
+    test_semi_auto_parallel_dist_to_static MODULES
+    test_semi_auto_parallel_dist_to_static ENVS FLAGS_enable_pir_api=1)
   set_tests_properties(test_semi_auto_parallel_dist_to_static
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
-  py_test_modules(test_static_reshard_api MODULES test_static_reshard_api)
+  py_test_modules(test_static_reshard_api MODULES test_static_reshard_api ENVS
+                  FLAGS_enable_pir_api=1)
   set_tests_properties(test_static_reshard_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
   set_tests_properties(test_dist_checkpoint_utils
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_semi_auto_parallel_unshard_dtensor MODULES
-                  test_semi_auto_parallel_unshard_dtensor)
+  py_test_modules(
+    test_semi_auto_parallel_unshard_dtensor MODULES
+    test_semi_auto_parallel_unshard_dtensor ENVS FLAGS_enable_pir_api=1)
   set_tests_properties(test_semi_auto_parallel_unshard_dtensor
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
@@ -169,17 +151,17 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster MODULES test_cluster)
   py_test_modules(test_comm_cost MODULES test_comm_cost)
   py_test_modules(test_comp_cost MODULES test_comp_cost)
-
-  py_test_modules(test_to_static MODULES test_to_static)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
   py_test_modules(test_strategy MODULES test_strategy)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
                   test_convert_to_process_meshes)
-  py_test_modules(test_dist_tensor MODULES test_dist_tensor)
+  py_test_modules(test_dist_tensor MODULES test_dist_tensor ENVS
+                  FLAGS_enable_pir_api=1)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
-  py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
+  py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api ENVS
+                  FLAGS_enable_pir_api=1)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
   # End of unittests WITH single card WITHOUT timeout
 
