@@ -22,7 +22,7 @@ from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
 from .reshard_funcs.reshard_func_register import register_reshard_funcs
-from .utils import dygraph_guard, get_pp_stage_by_pp_degree
+from .utils import get_pp_stage_by_pp_degree
 
 register_reshard_funcs()
 
@@ -793,7 +793,7 @@ def fuse_attention_ffn_qkv_pass(
                     )
                     concated_dy_param_index.append(param_index)
                 # Fuse params and init pir program fusion params.
-                with dygraph_guard():
+                with paddle.base.dygraph.guard():
                     concated_param = paddle.concat(
                         x=[
                             obj._local_value() for obj in concated_dy_param_list
