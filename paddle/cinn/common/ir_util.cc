@@ -184,6 +184,25 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
                         "equal to the size of indices."));
   Expr res;
   ir::TryElevateInt32ToInt64(shape);
+
+  // Author(liuruyan): Narrow the integer range to int32 if possible.
+  int64_t shape_prod = 1;
+  bool is_const = true;
+  for (const auto &sp : shape) {
+    if (!sp.is_constant()) {
+      is_const = false;
+      break;
+    }
+    shape_prod *= sp.as_int64();
+  }
+
+  if (is_const && shape_prod < INT_MAX) {
+    for (size_t i = 0; i < shape.size(); ++i) {
+      shape[i]->set_type(Int(32));
+      indices[i]->set_type(Int(32));
+    }
+  }
+
   for (int i = 0; i < shape.size(); i++) {
     PADDLE_ENFORCE_EQ(
         shape[i].type() == Int(64) || shape[i].type() == Int(32),

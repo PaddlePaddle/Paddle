@@ -413,6 +413,12 @@ Expr For::Make(Var loop_var,
       ::common::errors::InvalidArgument("The extent is not defined. "
                                         "A valid extent is required."));
 
+  // Author(liuruyan): Narrow the integer range to int32 if possible.
+  if (extent.type().is_int(64) && extent.as_int64() < INT_MAX) {
+    loop_var->set_type(Int(32));
+    min->set_type(Int(32));
+    extent->set_type(Int(32));
+  }
   node->loop_var = loop_var;
   node->min = min;
   node->extent = extent;
