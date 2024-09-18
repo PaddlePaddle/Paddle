@@ -2187,6 +2187,58 @@ bool NearestInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
+bool MatchMatrixTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &w_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  const auto &x_shape = x_shape_or_data.shape();
+  const auto &y_shape = y_shape_or_data.shape();
+  const auto &w_shape = w_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(X) should be equal to 2, "
+                        "but received %d.",
+                        x_shape.size()));
+  PADDLE_ENFORCE_EQ(y_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(Y) should be equal to 2, "
+                        "but received %d.",
+                        y_shape.size()));
+  PADDLE_ENFORCE_EQ(w_shape.size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(W) should be equal to 3, "
+                        "but received %d.",
+                        w_shape.size()));
+
+  infer_context->AddEqualCstr(w_shape[0], x_shape[1]);
+  int dim_t = op->attribute<pir::Int32Attribute>("dim_t").data();
+  infer_context->AddEqualCstr(w_shape[1], symbol::DimExpr(dim_t));
+  infer_context->AddEqualCstr(w_shape[2], y_shape[1]);
+
+  std::vector<symbol::DimExpr> out_dims = {infer_context->GetNextSymName(),
+                                           symbol::DimExpr(1)};
+  std::vector<symbol::DimExpr> tmp_dims = {infer_context->GetNextSymName(),
+                                           symbol::DimExpr(1)};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(tmp_dims)});
+
+  return true;
+}
+
 bool MaskedMultiheadAttention_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
