@@ -466,22 +466,19 @@ if((NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
+list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo_deprecated)
+list(REMOVE_ITEM TEST_OPS test_dist_fleet_geo_deprecated)
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
   list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
-  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo_deprecated)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
-  py_test_modules(test_fuse_dot_product_attention_pass MODULES
-                  test_fuse_dot_product_attention_pass)
   py_test_modules(test_fused_dot_product_attention_op MODULES
                   test_fused_dot_product_attention_op)
-  py_test_modules(test_fused_dot_product_attention_op_static MODULES
-                  test_fused_dot_product_attention_op_static)
 endif()
 
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS

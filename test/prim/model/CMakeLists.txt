@@ -6,7 +6,7 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 list(REMOVE_ITEM TEST_OP test_resnet_cinn test_resnet_prim_cinn)
 
-list(REMOVE_ITEM TEST_OP test_prim_simplenet_cinn)
+list(REMOVE_ITEM TEST_OP "test_prim_simplenet_cinn")
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})

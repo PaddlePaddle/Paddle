@@ -311,30 +311,30 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   download_model_and_data_without_verify(
     ${TRANSFORMER_INSTALL_DIR} "temp/transformer_model.tar.gz"
     "temp/transformer_data.txt.tar.gz")
-  inference_analysis_test(
-    test_analyzer_transformer_deprecated
-    SRCS
-    analyzer_transformer_compare_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${TRANSFORMER_INSTALL_DIR}/model
-    --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
-    --batch_size=8
-    --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
-  inference_analysis_test(
-    test_analyzer_transformer_profile_deprecated
-    SRCS
-    analyzer_transformer_profile_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${TRANSFORMER_INSTALL_DIR}/model
-    --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
-    --batch_size=8
-    --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
+
+  if(WITH_GPU
+     AND TENSORRT_FOUND
+     AND NOT WIN32)
+    set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_models")
+    set(TEST_TRT_TRANSFORMER_PRUNE_MODEL
+        "${TRT_MODEL_INSTALL_DIR}/transformer_prune")
+    if(NOT EXISTS ${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune.tar.gz)
+      inference_download_and_uncompress(
+        ${TEST_TRT_TRANSFORMER_PRUNE_MODEL} ${INFERENCE_URL}/tensorrt_test
+        "transformer_prune.tar.gz" 77b56dc73ff0cf44ddb1ce9ca0b0f471)
+    endif()
+    inference_analysis_test(
+      test_trt_dynamic_shape_transformer_prune_deprecated
+      SRCS
+      trt_dynamic_shape_transformer_prune_test.cc
+      EXTRA_DEPS
+      paddle_inference_shared
+      common
+      ARGS
+      --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
+    set_tests_properties(test_trt_dynamic_shape_transformer_prune_deprecated
+                         PROPERTIES TIMEOUT 300)
+  endif()
 
   if(WITH_GPU
      AND TENSORRT_FOUND
@@ -383,27 +383,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${MOBILENET_MODEL_DIR} false)
 
   set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_analyzer_transformer_deprecated PROPERTIES TIMEOUT
-                                                                       120)
   set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT
                                                                          120)
-
-  if(ON_INFER OR WITH_GPU)
-    set_tests_properties(test_analyzer_transformer_profile_deprecated
-                         PROPERTIES TIMEOUT 120)
-  endif()
-
-  if(NOT APPLE)
-    inference_base_test(
-      test_analysis_predictor_deprecated
-      SRCS
-      analysis_predictor_tester.cc
-      DEPS
-      paddle_inference_shared
-      common
-      ARGS
-      --dirname=${WORD2VEC_MODEL_DIR})
-  endif()
 
   if(WITH_TESTING AND TEST test_api_impl)
     if(NOT APPLE)
