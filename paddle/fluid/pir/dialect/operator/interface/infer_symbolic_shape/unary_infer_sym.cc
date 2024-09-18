@@ -594,6 +594,32 @@ bool CholeskyOpInferSymbolicShape(
   return true;
 }
 
+bool ClassCenterSampleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  PADDLE_ENFORCE_EQ(label_shape_or_data.shape().size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "Rank of Input(Label) should be equal to 1, "
+                        "but the value given is %d.",
+                        label_shape_or_data.shape().size()));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::TensorShapeOrDataDimExprs(label_shape_or_data.shape()));
+
+  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+  const std::vector<symbol::DimExpr> out_dims = {out_unknown};
+  const symbol::ShapeOrDataDimExprs sampled_local_class_center_dims{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  infer_context->SetShapeOrDataForValue(op->result(1),
+                                        sampled_local_class_center_dims);
+
+  return true;
+}
+
 bool ClipByNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
