@@ -1264,21 +1264,29 @@ class NearestInterpOpPattern
     if (op->HasAttribute("data_format")) {
       auto data_format =
           op->attribute<pir::StrAttribute>("data_format").AsString();
-      if (data_format == "kNCHW" || data_format == "kNHWC") {
-        VLOG(3) << "The nearest_interp "
-                << " is not NCHW or NHWC return false";
+      std::cout << "data_format" << data_format << std::endl;
+      if (!(data_format == "NCHW" || data_format == "NHWC")) {
+        VLOG(3) << "The nearest_interp is only support NCHW or NHWC ";
         return false;
       }
     } else {
       VLOG(3) << "The data_format attribute does not exist";
       return false;
     }
+#if IS_TRT_VERSION_GE(8200)
+    pir::Value size_tensor = op.operand_source(2);
+    if (size_tensor != nullptr) {
+      auto size_tensor_type =
+          size_tensor.type().dyn_cast<paddle::dialect::DenseTensorType>();
+      auto size_tensor_size = size_tensor_type.dims().size();
+      if (size_tensor_size == 2) return true;
+    }
+#endif
     if (op->HasAttribute("interp_method")) {
       auto interp_method =
           op->attribute<pir::StrAttribute>("interp_method").AsString();
       if (interp_method != "nearest") {
-        VLOG(3) << "The interp_method of nearest_interp "
-                << " is not nearest";
+        VLOG(3) << "The interp_method of nearest_interp is not nearest";
         return false;
       }
     } else {

@@ -21,7 +21,7 @@ import paddle
 
 
 def upsample_wrapper(x):
-    upsample = paddle.nn.Upsample(size=[12, 12])
+    upsample = paddle.nn.Upsample(size=[12, 12], mode="nearest")
     return upsample(x)
 
 
