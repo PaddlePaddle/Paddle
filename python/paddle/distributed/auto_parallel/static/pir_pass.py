@@ -22,7 +22,7 @@ from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
 from .reshard_funcs.reshard_func_register import register_reshard_funcs
-from .utils import get_pp_stage_by_pp_degree
+from .utils import dygraph_guard, get_pp_stage_by_pp_degree
 
 register_reshard_funcs()
 
@@ -632,15 +632,12 @@ def fuse_attention_ffn_qkv_pass(
     startup_program, main_program, concrete_program
 ):
     # 0. Prepare the data structure
-    pir_to_dy_param_name = []
+    pir_param_names = []
+    dy_param_names = []
     for i in range(len(concrete_program.parameters[1])):
-        pir_to_dy_param_name.append(
-            {
-                concrete_program.parameters[1][i]
-                .name: concrete_program.parameters[0][i]
-                .name
-            }
-        )
+        dy_param_names.append(concrete_program.parameters[0][i].name)
+        pir_param_names.append(concrete_program.parameters[1][i].name)
+
     fused_w_pattern_map = {"ffn": [], "qkv": []}
     fused_w_name_map = {"ffn": [], "qkv": []}
 
@@ -783,7 +780,35 @@ def fuse_attention_ffn_qkv_pass(
         op.erase()
 
     # 4. Initialize fused parameters and delete orignal parameters.
-    # pop fuse params from self.concrete_program.parameters
-    # fuse dy_param and get pir_fuse_value to push them to self.concrete_program.parameters
+    for key, pat_list in fused_w_name_map.items():
+        for pat in pat_list:
+            for pir_param, dy_param_list in pat.items():
+                # Retrieve the params of ffn and qkv patterns from concrete_program for fusion.
+                concated_dy_param_list = []
+                concated_dy_param_index = []
+                for dy_param in dy_param_list:
+                    param_index = dy_param_names.index(dy_param)
+                    concated_dy_param_list.append(
+                        concrete_program.parameters[0][param_index]
+                    )
+                    concated_dy_param_index.append(param_index)
+                # Fuse params and init pir program fusion params.
+                with dygraph_guard():
+                    concated_param = paddle.concat(
+                        x=[
+                            obj._local_value() for obj in concated_dy_param_list
+                        ],
+                        axis=-1,
+                    )
+                pir_scope_param = (
+                    paddle.static.global_scope().var(pir_param).get_tensor()
+                )
+                pir_scope_param._share_data_with(concated_param.get_tensor())
+                # Pop and relase original params from concrete_program
+                for index in concated_dy_param_index:
+                    concrete_program.parameters[0].pop(index)
+                    concrete_program.parameters[1].pop(index)
+                for param in concated_dy_param_list:
+                    param.get_tensor()._clear()
 
     return fused_w_name_map
