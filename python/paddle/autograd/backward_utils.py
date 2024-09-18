@@ -81,6 +81,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.sum",
     "pd_op.swiglu",
     "pd_op.tanh",
+    "pd_op.topk",
     "pd_op.unsqueeze",
     "pd_op.transpose",
     "pd_op.where",

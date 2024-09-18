@@ -162,6 +162,10 @@ def tanh_net(x):
     return paddle.tanh(x)
 
 
+def topk_net(x):
+    return paddle.topk(x, k=3, axis=1)[0]
+
+
 def transpose_net(x):
     return paddle.transpose(x, perm=[0, 3, 1, 2])
 
@@ -997,6 +1001,32 @@ class TestPrimTanhWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = tanh_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimTopkWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.topk_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = topk_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimTopkWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.topk_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, 200, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = topk_net
         self.enable_cinn = False
         self.tol = 1e-6
 
