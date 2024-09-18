@@ -629,7 +629,7 @@ def get_param_op(program, param_name):
 
 
 def fuse_attention_ffn_qkv_pass(
-    startup_program, main_program, concrete_program
+    startup_program, main_program, concrete_program, mode="all"
 ):
     # 0. Prepare the data structure
     pir_param_names = []
@@ -645,17 +645,19 @@ def fuse_attention_ffn_qkv_pass(
     all_ops = main_program.global_block().ops
     for i in range(len(all_ops)):
         # check ffn pattern
-        pat = all_ops[i : i + 3] if i + 3 <= len(all_ops) else all_ops[i:]
-        if is_ffn_pattern(pat):
-            fused_w_pattern_map['ffn'].append(pat)
-            i = i + 3
-            continue
+        if mode == "all" or mode == "ffn":
+            pat = all_ops[i : i + 3] if i + 3 <= len(all_ops) else all_ops[i:]
+            if is_ffn_pattern(pat):
+                fused_w_pattern_map['ffn'].append(pat)
+                i = i + 3
+                continue
         # check qkv pattern
-        pat = all_ops[i : i + 9] if i + 9 <= len(all_ops) else all_ops[i:]
-        if is_qkv_pattern(pat):
-            fused_w_pattern_map['qkv'].append(pat)
-            i = i + 9
-            continue
+        if mode == "all" or mode == "qkv":
+            pat = all_ops[i : i + 9] if i + 9 <= len(all_ops) else all_ops[i:]
+            if is_qkv_pattern(pat):
+                fused_w_pattern_map['qkv'].append(pat)
+                i = i + 9
+                continue
 
     # 2. Replace all ffn and qkv patterns with fusion patterns, and record the weights after replacement.
     for pat in fused_w_pattern_map['ffn']:
