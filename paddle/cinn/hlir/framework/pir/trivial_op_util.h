@@ -226,6 +226,8 @@ ExprTransformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
 
 void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst);
 
+bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs);
+
 ExprTransformer WrapStoreTransformer(const ir::Tensor& tensor,
                                      const std::vector<ir::Expr>& indices);
 

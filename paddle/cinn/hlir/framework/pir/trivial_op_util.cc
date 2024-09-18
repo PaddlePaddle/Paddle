@@ -707,6 +707,11 @@ ExprTransformer RemoveOneTransformer(int one) {
         (ExprSetFinderUtils::ChildScheduleBlockRealizes *
          ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit),
         RemoveVarInScheduleBlockRealize(iters[one], ir::Expr(0)));
+    InplaceMutateSingleExpr(
+        &copied,
+        (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+         ExprSetFinderUtils::ScheduleBlockRealizeIsInit),
+        RemoveVarInScheduleBlockRealize(iters[one], ir::Expr(0)));
     return copied;
   };
   return ExprTransformer(f);
@@ -776,9 +781,16 @@ int InplaceMutateSingleExpr(ir::Expr* root,
   // NOTE!!!
   // source ir::node type must be supported in
   // MappingTargetExprToDestExprMutator.
-  const auto& source = finder.GetSingle(*root);
-  const auto& target = transformer(source);
-  ComposeUtils::MappingTargetExprToDestExprMutator(source, target)(root);
+  const auto& source = finder(*root);
+  if (source.empty()) {
+    return 0;
+  }
+  PADDLE_ENFORCE_EQ(
+      source.size(),
+      1,
+      ::common::errors::InvalidArgument("Only one expr should be found"));
+  const auto& target = transformer(source[0]);
+  ComposeUtils::MappingTargetExprToDestExprMutator(source[0], target)(root);
   return 1;  // operation number.
 }
 

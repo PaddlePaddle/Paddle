@@ -180,6 +180,7 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
     return std::nullopt;
   }
 
+  // STEP2: Do reuse, append, transpose iters analysis.
   // Search ItersTransform including reduce iters
   if (squeezed_source.reduce_iter_nums && target.reduce_iter_nums) {
     // Reduce -> Reduce ItersTransform
@@ -210,7 +211,6 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
       ::common::errors::InvalidArgument(
           "The target iters should not contain duplicate elements."));
 
-  // STEP2: Do transpose and axes reuse analysis.
   // 1. Apply IdentityItersTransform if source iters are equal to target
   if (source_iters == target_iters) {
     iters_transforms.push_back(IdentityItersTransform());
