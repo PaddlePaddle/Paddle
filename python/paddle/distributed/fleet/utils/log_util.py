@@ -14,6 +14,7 @@
 
 import logging
 import os
+import subprocess
 from distutils.util import strtobool
 from logging.handlers import RotatingFileHandler
 
@@ -115,3 +116,74 @@ def sync_rotate_logger():
     if g_sync_rotate_logger is None:
         g_sync_rotate_logger = get_rotate_file_logger("INFO", __name__)
     return g_sync_rotate_logger
+
+
+def check_memory_usage(msg=""):
+    GB = 1024.0 * 1024.0 * 1024.0
+    mem_dict = {}
+    mem_dict['max_memory_allocated_size'] = (
+        paddle.device.cuda.max_memory_allocated() / GB
+    )
+    mem_dict['max_memory_reserved_size'] = (
+        paddle.device.cuda.max_memory_reserved() / GB
+    )
+    mem_dict['memory_allocated_size'] = (
+        paddle.device.cuda.memory_allocated() / GB
+    )
+    mem_dict['memory_reserved_size'] = paddle.device.cuda.memory_reserved() / GB
+    mem_msg = f"checking gpu memory usage {msg}:"
+    for key in mem_dict:
+        mem_msg += f"\n{key}: {mem_dict[key]}GB"
+    logger.info(mem_msg)
+
+    if hasattr(paddle.device.cuda, 'max_pinned_memory_allocated'):
+        mem_dict = {}
+        mem_dict['max_memory_allocated_size'] = (
+            paddle.device.cuda.max_pinned_memory_allocated() / GB
+        )
+        mem_dict['max_memory_reserved_size'] = (
+            paddle.device.cuda.max_pinned_memory_reserved() / GB
+        )
+        mem_dict['memory_allocated_size'] = (
+            paddle.device.cuda.pinned_memory_allocated() / GB
+        )
+        mem_dict['memory_reserved_size'] = (
+            paddle.device.cuda.pinned_memory_reserved() / GB
+        )
+        mem_msg = f"checking pinned memory usage {msg}:"
+        for key in mem_dict:
+            mem_msg += f"\n{key}: {mem_dict[key]}GB"
+        logger.infor(mem_msg)
+
+    if hasattr(paddle.device, 'cpu') and hasattr(
+        paddle.device.cpu, 'max_memory_allocated'
+    ):
+        mem_dict = {}
+        mem_dict['max_memory_allocated_size'] = (
+            paddle.device.cpu.max_memory_allocated() / GB
+        )
+        mem_dict['max_memory_reserved_size'] = (
+            paddle.device.cpu.max_memory_reserved() / GB
+        )
+        mem_dict['memory_allocated_size'] = (
+            paddle.device.cpu.memory_allocated() / GB
+        )
+        mem_dict['memory_reserved_size'] = (
+            paddle.device.cpu.memory_reserved() / GB
+        )
+        mem_msg = f"checking cpu memory usage {msg}:"
+        for key in mem_dict:
+            mem_msg += f"\n{key}: {mem_dict[key]}GB"
+        logger.info(mem_msg)
+
+    # Execute the command and get the output
+    result = subprocess.run(["free", "-h"], capture_output=True, text=True)
+    lines = result.stdout.strip().split('\n')
+
+    # Extract data
+    mem_data = lines[1].split()
+    swap_data = lines[2].split()
+
+    # Format and print
+    formatted_output = f"checking CPU memory usage: {msg} Memory - Total: {mem_data[1]}, Used: {mem_data[2]}, Free: {mem_data[3]} Available:{mem_data[-1]}"
+    logger.info(formatted_output)

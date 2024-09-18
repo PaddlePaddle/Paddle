@@ -207,6 +207,7 @@ class ShardingGradView:
         param_end = min(self._index + self._padded_size, rank_end)
         self._param_begin = param_begin
         self._param_end = param_end
+        self._rank_begin = rank_begin
 
         self._slice_grad = None
 
@@ -302,7 +303,7 @@ class ShardingGradView:
             else:
                 assert slice_param.grad._is_shared_buffer_with(slice_grad)
 
-    def _reset_grad_buffer(self):
+    def _clear_grad_buffer(self):
         if self._slice_grad is not None:
             self._slice_grad._clear_dataptr()
             self._slice_grad = None
@@ -310,6 +311,15 @@ class ShardingGradView:
         if self._grad_buffer is not None:
             self._grad_buffer._clear_dataptr()
             self._grad_buffer = None
+
+    def _reset_grad_buffer(self, slice_grad_buffer):
+        self._clear_grad_buffer()
+        self._grad_buffer = slice_grad_buffer
+        if self._param_begin < self._param_end:
+            self._slice_grad = self._grad_buffer._slice(
+                self._param_begin - self._rank_begin,
+                self._param_end - self._rank_begin,
+            )
 
 
 def build_reduce_scatter_buffer(
@@ -384,6 +394,7 @@ class FusedCommBuffer:
         scale_after_comm=True,
         release_grads=False,
         use_reduce_avg=False,
+        free_grads_in_comm=False,
     ):
         self._id = id
         self._params = params
@@ -393,6 +404,16 @@ class FusedCommBuffer:
         self._fuse_param = fuse_param
         self._release_grads = release_grads
         self._use_reduce_avg = use_reduce_avg
+        self._free_grads_in_comm = free_grads_in_comm
+
+        if self._free_grads_in_comm:
+            assert (
+                acc_steps == 1
+            ), f"No need to use free_grads_in_comm when acc_steps `{acc_steps}` != 1"
+            assert (
+                act == HOOK_ACTION.REDUCE_SCATTER
+            ), "Currently, only support reduce_scatter"
+            assert release_grads, "Currently, only support release_grads"
 
         assert not (
             self._fuse_param and self._release_grads
@@ -490,7 +511,15 @@ class FusedCommBuffer:
         self.grad_storage = None
         if self._act == HOOK_ACTION.REDUCE_SCATTER:
             for param in self._params:
-                self._sharding_param_grad_view[param.name]._reset_grad_buffer()
+                self._sharding_param_grad_view[param.name]._clear_grad_buffer()
+
+    def _reset_grad_storage(self, slice_grad_buffer):
+        self._clear_grad_storage()
+        for param in self._params:
+            self._sharding_param_grad_view[param.name]._reset_grad_buffer(
+                slice_grad_buffer
+            )
+        self.grad_storage = slice_grad_buffer
 
     def _init_step_dict(self):
         for p in self._params:
@@ -530,10 +559,13 @@ class FusedCommBuffer:
 
         if self.use_main_grad:
             param.main_grad._clear()
-            param.main_grad = tmp_var
-            param.main_grad.name = "main_grad@" + param.name
+            if not self._free_grads_in_comm:
+                param.main_grad = tmp_var
+                param.main_grad.name = "main_grad@" + param.name
         else:
-            param._copy_gradient_from(tmp_var)
+            param.grad._clear()
+            if not self._free_grads_in_comm:
+                param._copy_gradient_from(tmp_var)
 
         # record address for the following `acc_steps - 1` steps.
         self._grads_to_addr[param.name] = get_grad_address(
@@ -658,7 +690,11 @@ class FusedCommBuffer:
             shard_size = self.grad_storage._numel() // self._comm_group.nranks
             begin = shard_size * self._comm_group.rank
             end = begin + shard_size
-            reduce_scattered = self.grad_storage._slice(begin, end)
+            reduce_scattered = (
+                paddle.empty_like(self.grad_storage._slice(begin, end))
+                if self._free_grads_in_comm
+                else self.grad_storage._slice(begin, end)
+            )
             task = paddle.distributed.reduce_scatter(
                 reduce_scattered,
                 self.grad_storage,
@@ -666,6 +702,9 @@ class FusedCommBuffer:
                 group=self._comm_group,
                 sync_op=False,
             )
+            if self._free_grads_in_comm:
+                self._reset_grad_storage(reduce_scattered)
+
         self._task = task
 
     @imperative_base.no_grad

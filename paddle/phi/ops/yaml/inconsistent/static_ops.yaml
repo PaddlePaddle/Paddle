@@ -183,6 +183,7 @@
     func : coalesce_tensor
     data_type : dtype
   inplace: (input -> output)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : comm_init_all
   args : (int[] devices={}, int ring_id=0)

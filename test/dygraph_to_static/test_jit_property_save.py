@@ -16,7 +16,6 @@ import unittest
 
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -36,22 +35,18 @@ class TestPropertySave(Dy2StTestBase):
         self.a = a
         self.b = b
 
-    @test_legacy_and_pt_and_pir
     def test_property_save(self):
         self.assertEqual(self.a.get_float('a'), self.b.get_float('a'))
         self.assertEqual(self.a.get_float(0), 1.0)
 
-    @test_legacy_and_pt_and_pir
     def test_size(self):
         self.assertEqual(self.b.size(), 2)
         self.assertEqual(self.a.size(), 2)
 
-    @test_legacy_and_pt_and_pir
     def test_load_float(self):
         with self.assertRaises(ValueError):
             self.a.get_float(1)
 
-    @test_legacy_and_pt_and_pir
     def test_set(self):
         """test property set."""
         try:
