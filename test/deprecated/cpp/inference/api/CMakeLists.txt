@@ -312,7 +312,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${TRANSFORMER_INSTALL_DIR} "temp/transformer_model.tar.gz"
     "temp/transformer_data.txt.tar.gz")
   inference_analysis_test(
-    test_analyzer_transformer
+    test_analyzer_transformer_deprecated
     SRCS
     analyzer_transformer_compare_tester.cc
     EXTRA_DEPS
@@ -324,7 +324,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --batch_size=8
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
   inference_analysis_test(
-    test_analyzer_transformer_profile
+    test_analyzer_transformer_profile_deprecated
     SRCS
     analyzer_transformer_profile_tester.cc
     EXTRA_DEPS
@@ -383,13 +383,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${MOBILENET_MODEL_DIR} false)
 
   set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_analyzer_transformer_deprecated PROPERTIES TIMEOUT
+                                                                       120)
   set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT
                                                                          120)
 
   if(ON_INFER OR WITH_GPU)
-    set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT
-                                                                      120)
+    set_tests_properties(test_analyzer_transformer_profile_deprecated
+                         PROPERTIES TIMEOUT 120)
   endif()
 
   if(NOT APPLE)

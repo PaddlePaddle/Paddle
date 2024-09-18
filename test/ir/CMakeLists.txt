@@ -4,6 +4,8 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_IR_PASSES "${TEST_IR_PASSES}")
 
+list(REMOVE_ITEM TEST_IR_PASSES test_inference_datatype)
+
 if(((NOT WITH_GPU) AND (NOT WITH_ROCM))
    OR WIN32
    OR APPLE)
