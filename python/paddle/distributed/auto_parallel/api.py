@@ -117,6 +117,19 @@ if TYPE_CHECKING:
 # Part1: Shard attributes related APIs
 
 
+def _to_lodtensor(tensor: paddle.Tensor):
+    lodtensor = core.LoDTensor()
+    if tensor.is_dist():
+        if tensor._is_initialized():
+            lodtensor._share_data_with(tensor._local_value().get_tensor())
+        else:
+            lodtensor = None
+    else:
+        lodtensor._share_data_with(tensor.get_tensor())
+
+    return lodtensor
+
+
 class DistAttr(core.TensorDistAttr):
     """
     DistAttr specifies how tensors are distributed or sliced on ProcessMesh.
@@ -2263,20 +2276,6 @@ class DistModel:
                 f"The model takes {feed_name_list} as input"
             )
 
-        def _to_lodtensor(tensor: paddle.Tensor):
-            lodtensor = core.LoDTensor()
-            if tensor.is_dist():
-                if tensor._is_initialized():
-                    lodtensor._share_data_with(
-                        tensor._local_value().get_tensor()
-                    )
-                else:
-                    lodtensor = None
-            else:
-                lodtensor._share_data_with(tensor.get_tensor())
-
-            return lodtensor
-
         feed_list = []
         no_data_ids = []
         # If the feed_var is None, its feed_name should be deleted.
@@ -2503,8 +2502,10 @@ class DistModel:
                 if k in self._structured_to_parameter_name
                 else k
             )
-            local_state_dict[param_name] = v._local_value()
-        dist_main_program.set_state_dict(local_state_dict)
+            local_state_dict[param_name] = _to_lodtensor(v._local_value())
+        dist_main_program.set_state_dict(
+            local_state_dict, paddle.static.global_scope()
+        )
 
 
 def to_static(
@@ -2714,6 +2715,15 @@ def unshard_dtensor(dist_tensor: Tensor) -> Tensor:
             )
         else:
             return paddle.Tensor(r_dist_tensor._local_value())
+
+    elif paddle.framework.in_pir_mode():
+        # in pir mode, we define the logic of unshard_tensor as dist_tensor_type --> dense_tensor_type with global shape.
+        dense_tensor_type = paddle.pir.create_shaped_type(
+            dist_tensor.type(), dist_tensor.shape
+        )
+        dist_tensor.set_type(dense_tensor_type)
+
+        return dist_tensor
 
     else:
         assert isinstance(

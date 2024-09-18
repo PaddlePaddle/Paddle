@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
@@ -986,9 +985,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
     // TODO(xiongkun03) Does operator base support inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
-      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
-      auto* out =
-          paddle::framework::details::GetMutableTensorFromVar(pair.second);
+      const auto& in = GetTensorFromVar(pair.first);
+      auto* out = GetMutableTensorFromVar(pair.second);
       if (in.dims() == out->dims()) {
         out->ShareBufferWith(in);
       }
