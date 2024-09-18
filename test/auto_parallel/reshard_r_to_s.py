@@ -96,7 +96,7 @@ class TestReshardRToS:
                     input_tensor, self._mesh, [dist.Shard(self._shard)]
                 )
             dist_program = main_program.clone()
-            set_all_ops_op_role(dist_program, OpRole.Forward)
+            set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
             apply_reshard_pass(dist_program)
             np.testing.assert_equal(dist_program.num_ops(), 6)
             old_ops = [op.name() for op in main_program.global_block().ops]
