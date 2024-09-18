@@ -14,7 +14,6 @@
 
 import re
 import unittest
-from typing import List
 
 import paddle
 import paddle.version as base_version
@@ -52,7 +51,7 @@ class VersionTest(unittest.TestCase):
 
         if paddle.is_compiled_with_cuda():
             self.assertTrue(isinstance(base_version.cuda(), str))
-            self.assertTrue(isinstance(base_version.cuda_archs(), List))
+            self.assertTrue(isinstance(base_version.cuda_archs(), list))
         else:
             self.assertEqual(base_version.cuda(), "False")
 
