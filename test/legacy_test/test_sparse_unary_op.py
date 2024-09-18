@@ -113,16 +113,18 @@ class TestSparseUnary(unittest.TestCase):
                 self.check_result(dense_func, sparse_func, 'coo', device, dtype)
                 self.check_result(dense_func, sparse_func, 'csr', device, dtype)
 
-    def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
+    def compare_with_dense_one_attr(
+        self, dense_func, sparse_func, attr1, dtype='float32'
+    ):
         for device in devices:
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
                 self.check_result(
-                    dense_func, sparse_func, 'coo', device, 'float32', attr1
+                    dense_func, sparse_func, 'coo', device, dtype, attr1
                 )
                 self.check_result(
-                    dense_func, sparse_func, 'csr', device, 'float32', attr1
+                    dense_func, sparse_func, 'csr', device, dtype, attr1
                 )
 
     def compare_with_dense_two_attr(
@@ -227,7 +229,15 @@ class TestSparseUnary(unittest.TestCase):
         self.compare_with_dense(paddle.neg, paddle.sparse.neg)
 
     def test_sparse_pow(self):
-        self.compare_with_dense_one_attr(paddle.pow, paddle.sparse.pow, 3)
+        self.compare_with_dense_one_attr(
+            paddle.pow, paddle.sparse.pow, 3, 'float32'
+        )
+        self.compare_with_dense_one_attr(
+            paddle.pow, paddle.sparse.pow, 3, 'complex64'
+        )
+        self.compare_with_dense_one_attr(
+            paddle.pow, paddle.sparse.pow, 3, 'complex128'
+        )
 
     def test_sparse_mul_scalar(self):
         self.compare_with_dense_one_attr(
@@ -366,14 +376,16 @@ class TestSparseUnaryStatic(unittest.TestCase):
                         dense_func, sparse_func, device, dtype
                     )
 
-    def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
+    def compare_with_dense_one_attr(
+        self, dense_func, sparse_func, attr1, dtype='float32'
+    ):
         if in_pir_mode():
             for device in devices:
                 if device == 'cpu' or (
                     device == 'gpu' and paddle.is_compiled_with_cuda()
                 ):
                     self.check_result_coo(
-                        dense_func, sparse_func, device, 'float32', attr1
+                        dense_func, sparse_func, device, dtype, attr1
                     )
 
     def compare_with_dense_two_attr(
@@ -469,7 +481,15 @@ class TestSparseUnaryStatic(unittest.TestCase):
         self.compare_with_dense(paddle.neg, paddle.sparse.neg)
 
     def test_sparse_pow(self):
-        self.compare_with_dense_one_attr(paddle.pow, paddle.sparse.pow, 3)
+        self.compare_with_dense_one_attr(
+            paddle.pow, paddle.sparse.pow, 3, 'float32'
+        )
+        self.compare_with_dense_one_attr(
+            paddle.pow, paddle.sparse.pow, 3, 'complex64'
+        )
+        self.compare_with_dense_one_attr(
+            paddle.pow, paddle.sparse.pow, 3, 'complex128'
+        )
 
     def test_sparse_mul_scalar(self):
         self.compare_with_dense_one_attr(
