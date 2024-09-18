@@ -236,7 +236,7 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        num_examples = 10 if sys.system == "win32" else 50
+        num_examples = 10 if sys.platform == "win32" else 50
         self.run_and_statis(
             quant=False,
             max_examples=num_examples,
