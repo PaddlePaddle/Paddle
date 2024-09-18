@@ -480,8 +480,6 @@ if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
                   test_fuse_dot_product_attention_pass)
   py_test_modules(test_fused_dot_product_attention_op MODULES
                   test_fused_dot_product_attention_op)
-  py_test_modules(test_fused_dot_product_attention_op_static MODULES
-                  test_fused_dot_product_attention_op_static)
 endif()
 
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
