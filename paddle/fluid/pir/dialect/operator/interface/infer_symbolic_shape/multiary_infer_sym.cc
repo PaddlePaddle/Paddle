@@ -658,15 +658,15 @@ bool BroadcastTensorsOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0))
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
   // 1. Find Output rank = max(Inputs rank)
-  size_t target_rank = 0;
+  int target_rank = 0;
   for (const auto &input_shape_or_data : input_shape_or_data_list) {
-    size_t tmp_rank = input_shape_or_data.shape().size();
-    target_rank = std::max(int64_t(target_rank), int64_t(tmp_rank));
+    int tmp_rank = input_shape_or_data.shape().size();
+    target_rank = std::max(target_rank, tmp_rank);
   }
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
   std::vector<symbol::DimExpr> out_shape;
   symbol::DimExprBuilder builder;
-  for (size_t i = 0; i < target_rank; i++) {
+  for (int i = 0; i < target_rank; i++) {
     auto tmp_dim = symbol::DimExpr{1};
     for (const auto &input_shape_or_data : input_shape_or_data_list) {
       int axis = i - target_rank + input_shape_or_data.shape().size();
