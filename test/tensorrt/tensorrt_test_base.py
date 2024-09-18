@@ -122,7 +122,7 @@ class TensorRTBaseTest(unittest.TestCase):
                     new_list_args[sub_arg_name] = self.api_args[arg_name][i]
                 self.api_args[arg_name] = new_list_args
 
-    def check_trt_result(self):
+    def check_trt_result(self, rtol=1e-5, atol=1e-5):
         paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
         with paddle.pir_utils.IrGuard():
             self.prepare_feed()
@@ -161,10 +161,12 @@ class TensorRTBaseTest(unittest.TestCase):
                         *self.max_shape[feed_name]
                     ).astype(self.api_args[feed_name].dtype)
 
+            scope = paddle.static.global_scope()
             main_program = warmup_shape_infer(
                 main_program,
                 min_shape_feed=min_shape_data,
                 max_shape_feed=max_shape_data,
+                scope=scope,
             )
 
             for op in main_program.global_block().ops[::-1]:
@@ -179,7 +181,7 @@ class TensorRTBaseTest(unittest.TestCase):
             program_with_trt = run_pir_pass(main_program, partition_mode=True)
 
             # run TRTConverter(would lower group_op into tensorrt_engine_op)
-            scope = paddle.static.global_scope()
+
             converter = PaddleToTensorRTConverter(program_with_trt, scope)
             converter.convert_program_to_trt()
 
@@ -208,8 +210,8 @@ class TensorRTBaseTest(unittest.TestCase):
             np.testing.assert_allclose(
                 output_expected[i],
                 output_trt[i],
-                rtol=1e-3,
-                atol=1e-3,
+                rtol=rtol,
+                atol=atol,
             )
 
     def check_marker(self, expected_result):

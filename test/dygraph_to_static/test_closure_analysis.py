@@ -15,9 +15,9 @@
 import inspect
 import unittest
 
+import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 from numpy import append
 
@@ -193,7 +193,6 @@ class TestClosureAnalysis(Dy2StTestBase):
             {'func': set('i'), 'test_normal_argument': set('x')},
         ]
 
-    @test_legacy_and_pt_and_pir
     def test_main(self):
         if self.judge_type == 'push_pop_vars':
             for push_pop_vars, func in zip(
@@ -260,7 +259,6 @@ class TestClosureAnalysis_PushPop(TestClosureAnalysis):
 
 
 class TestPushPopTrans(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test(self):
         def vlist_of_dict(x):
             ma = {'a': []}
@@ -271,10 +269,7 @@ class TestPushPopTrans(Dy2StTestBase):
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-    @test_legacy_and_pt_and_pir
     def test2(self):
-        import numpy as np
-
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
             for i in range(3):
@@ -284,10 +279,7 @@ class TestPushPopTrans(Dy2StTestBase):
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-    @test_legacy_and_pt_and_pir
     def test3(self):
-        import numpy as np
-
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
             if True:
@@ -297,10 +289,7 @@ class TestPushPopTrans(Dy2StTestBase):
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-    @test_legacy_and_pt_and_pir
     def test4(self):
-        import numpy as np
-
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
             for i in range(3):
@@ -310,10 +299,7 @@ class TestPushPopTrans(Dy2StTestBase):
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-    @test_legacy_and_pt_and_pir
     def test5(self):
-        import numpy as np
-
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
             for i in range(3):

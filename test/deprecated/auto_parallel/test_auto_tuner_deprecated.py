@@ -23,7 +23,9 @@ import unittest
 class TestEngineAPI(unittest.TestCase):
     def test_auto_tuner(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir, "engine_api_dp.py")
+        launch_model_path = os.path.join(
+            file_dir, "engine_api_dp_deprecated.py"
+        )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
