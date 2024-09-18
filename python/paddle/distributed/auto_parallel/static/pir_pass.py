@@ -181,108 +181,101 @@ def apply_partition_pass(program):
                     )
 
 
-def fold_reshard_pass(dist_program):
-    del_ops = []
-    value_dict = ValueDict()
-    for op in dist_program.global_block().ops:
-        if op.name() != 'dist_op.reshard':
-            continue
-        input = op.operand_source(0)
-        result = op.result(0)
-        if input.type() == result.type():
-            result.replace_all_uses_with(input)
-            del_ops.append(op)
-            continue
-        if input not in value_dict:
-            value_dict[input] = [(result.type(), result)]
-            continue
-        no_find = True
-        for type, val in value_dict[input]:
-            if type == result.type():
-                result.replace_all_uses_with(val)
-                del_ops.append(op)
-                no_find = False
-                break
-        if no_find:
-            value_dict[input].append((result.type(), result))
-    for op in del_ops:
-        op.erase()
-
-
-def apply_reshard_pass(dist_program, params_grads=[]):
-    fold_reshard_pass(dist_program)
-
-    # {grad.id: grad}
-    sharded_grad = {}
-    grad_ids = [grad.id for _, grad in params_grads if grad is not None]
-
-    for op in dist_program.global_block().ops:
-        if op.name() == 'dist_op.reshard':
-            var = op.operand_source(0)
-
-            op_dist_attr = op.dist_attr
-            src_dist_attr = op_dist_attr.operand(0).as_tensor_dist_attr()
-            dst_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
-
-            assert (
-                not var.initialized() or var.dist_attr() == src_dist_attr
-            ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
-
-            if src_dist_attr == dst_dist_attr:
-                op.result(0).replace_all_uses_with(var)
-                op.erase()
+class ReshardPasses:
+    @staticmethod
+    def fold_reshard_pass(dist_program):
+        del_ops = []
+        value_dict = ValueDict()
+        for op in dist_program.global_block().ops:
+            if op.name() != 'dist_op.reshard':
                 continue
+            input = op.operand_source(0)
+            result = op.result(0)
+            if input.type() == result.type():
+                result.replace_all_uses_with(input)
+                del_ops.append(op)
+                continue
+            if input not in value_dict:
+                value_dict[input] = [(result.type(), result)]
+                continue
+            no_find = True
+            for type, val in value_dict[input]:
+                if type == result.type():
+                    result.replace_all_uses_with(val)
+                    del_ops.append(op)
+                    no_find = False
+                    break
+            if no_find:
+                value_dict[input].append((result.type(), result))
+        for op in del_ops:
+            op.erase()
 
-            reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
-            assert (
-                reshard_func is not None
-            ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
+    @staticmethod
+    def reshard_op_pass(dist_program, params_grads=[]):
+        # {grad.id: grad}
+        sharded_grad = {}
+        grad_ids = [grad.id for _, grad in params_grads if grad is not None]
 
-            paddle.pir.set_insertion_point(op)
-            ref_op_role = op.op_role
+        for op in dist_program.global_block().ops:
+            if op.name() == 'dist_op.reshard':
+                var = op.operand_source(0)
 
-            with auto_complete_op_role(dist_program, ref_op_role):
-                out_value = reshard_func.reshard(
-                    src_dist_attr,
-                    dst_dist_attr,
-                    op.operand_source(0),
-                    op.result(0).type(),
-                )
+                op_dist_attr = op.dist_attr
+                src_dist_attr = op_dist_attr.operand(0).as_tensor_dist_attr()
+                dst_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
 
-            if out_value is not None:
-                op.result(0).replace_all_uses_with(out_value)
-                if var.id in grad_ids:
-                    if var.get_defining_op().has_attr(
-                        "replace_all_uses_with_reshard_var"
-                    ):
+                assert (
+                    not var.initialized() or var.dist_attr() == src_dist_attr
+                ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
+
+                if src_dist_attr == dst_dist_attr:
+                    op.result(0).replace_all_uses_with(var)
+                    op.erase()
+                    continue
+
+                reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
+                assert (
+                    reshard_func is not None
+                ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
+
+                paddle.pir.set_insertion_point(op)
+                ref_op_role = op.op_role
+
+                with auto_complete_op_role(dist_program, ref_op_role):
+                    out_value = reshard_func.reshard(
+                        src_dist_attr,
+                        dst_dist_attr,
+                        op.operand_source(0),
+                        op.result(0).type(),
+                    )
+
+                if out_value is not None:
+                    op.result(0).replace_all_uses_with(out_value)
+                    if var.id in grad_ids:
+                        if var.get_defining_op().has_attr(
+                            "replace_all_uses_with_reshard_var"
+                        ):
+                            sharded_grad[var.id] = out_value
+
+                if op.result(0).use_empty():
+                    op.erase()
+
+                if out_value is not None and var.use_empty():
+                    if var.id in grad_ids:
                         sharded_grad[var.id] = out_value
 
-            if op.result(0).use_empty():
-                op.erase()
+        # update params_grads with sharded grad
+        for idx, (param, grad) in enumerate(params_grads):
+            if grad is None:
+                continue
 
-            if out_value is not None and var.use_empty():
-                if var.id in grad_ids:
-                    sharded_grad[var.id] = out_value
+            if grad.id in sharded_grad:
+                params_grads[idx] = (param, sharded_grad[grad.id])
 
-    # update params_grads with sharded grad
-    for idx, (param, grad) in enumerate(params_grads):
-        if grad is None:
-            continue
-
-        if grad.id in sharded_grad:
-            params_grads[idx] = (param, sharded_grad[grad.id])
-
-
-def _remove_other_rank_params_grads(dist_params_grads):
-    cur_rank = paddle.distributed.get_rank()
-    need_remove_idx = []
-    for idx, (_, grad) in enumerate(dist_params_grads):
-        if grad is None:
-            continue
-        if cur_rank not in grad.dist_attr().process_mesh.process_ids:
-            need_remove_idx.append(idx)
-    for idx in need_remove_idx[::-1]:
-        dist_params_grads.pop(idx)
+    @staticmethod
+    def apply_reshard_pass(dist_program, params_grads=[]):
+        ReshardPasses.fold_reshard_pass(dist_program)
+        ReshardPasses.reshard_op_pass(dist_program, params_grads)
 
 
 # Replace the specific MoE-related dist op with the
@@ -329,6 +322,134 @@ def replace_moe_sub_mesh_tensors(op):
     op.erase()
 
 
+class RemovePasses:
+    @staticmethod
+    def remove_other_rank_op_pass(dist_program):
+        # pruning op and value not belong to cur rank
+        cur_rank = paddle.distributed.get_rank()
+        for op in dist_program.global_block().ops[::-1]:
+            if op.name() in partition_skip_op_list:
+                can_delete = True
+                for val in op.results():
+                    if not val.use_empty():
+                        can_delete = False
+                if can_delete:
+                    op.erase()
+                continue
+            if op.name() == "dist_op.moe_sub_mesh_tensors":
+                replace_moe_sub_mesh_tensors(op)
+                continue
+            if op.name() == "dist_op.moe_global_mesh_tensor":
+                replace_moe_global_mesh_tensor(op)
+                continue
+            if cur_rank not in op.dist_attr.process_mesh.process_ids:
+                op.erase()
+            elif op.name() == "dist_op.reshard":
+                assert op.result(
+                    0
+                ).use_empty(), f'There should not have useful dist.reshard op in remove_other_rank_op_pass. but find : {op}'
+                op.erase()
+
+        # merge pd.data ops for
+        lr_ops = []
+        for op in dist_program.global_block().ops[::-1]:
+            if (
+                op.name() == 'pd_op.data'
+                and "learning_rate" in op.attrs()["name"]
+            ):
+                lr_ops.append(op)
+
+        if len(lr_ops) > 1:
+            lr_value = lr_ops[0].result(0)
+            for op in lr_ops[1:]:
+                lr = op.result(0)
+                lr.replace_all_uses_with(lr_value)
+                op.erase()
+
+    @staticmethod
+    def remove_no_need_in_startup(startup_program, main_program):
+        # 1. vars used in main_program
+        main_program_var_names = []
+        for op in main_program.global_block().ops:
+            for var in op.operands_source():
+                if var.has_name:
+                    main_program_var_names.append(var.name)
+            for var in op.results():
+                if var.has_name:
+                    main_program_var_names.append(var.name)
+        # 2. remove var op not used in main_program
+        for op in startup_program.global_block().ops:
+            for var in op.operands_source():
+                if var.has_name and var.name not in main_program_var_names:
+                    op.erase()
+        # 3. dead code elimination
+        pm = pir.PassManager()
+        pm.add_pass('dead_code_elimination_pass', {})
+        pm.run(startup_program)
+
+    @staticmethod
+    def remove_other_rank_input_output_pass(dist_program):
+        '''
+        Pruning value not belong to cur rank especially used for check_finite_and_unscale
+        and update_loss_scaling op in amp.
+
+        For example, w0 on mesh0, w1 on mesh1, before pass, the ops is:
+            [w0_g, w1_g], is_finite = check_finite_and_scale([w0_g, w1_g], loss_scaling)
+        after pass, on mesh0, the op is:
+            [w0_g], is_finite = check_finite_and_scale([w0_g], loss_scaling)
+
+        Note that here we do not set the op_dist_attr, since it is not used afterwards.
+        '''
+        cur_rank = paddle.distributed.get_rank()
+        for op in dist_program.global_block().ops[::-1]:
+            if op.name() not in amp_ops:
+                continue
+            new_vars = []
+            combine_op = op.operand_source(0).get_defining_op()
+            for inner_operand in (
+                op.operand_source(0).get_defining_op().operands()
+            ):
+                if (
+                    cur_rank
+                    in inner_operand.source()
+                    .dist_attr()
+                    .process_mesh.process_ids
+                ):
+                    new_vars.append(inner_operand.source())
+                    continue
+            result = op.operand_source(0).get_defining_op().result(0)
+            paddle.pir.set_insertion_point_after(combine_op)
+            res = paddle._C_ops.builtin_combine(new_vars)
+            res.get_defining_op().op_role = op.op_role
+            result.replace_all_uses_with(res)
+            combine_op.erase()
+            # since it is inplace op, set type of output as the same as input
+            op.result(0).set_type(res.type())
+
+    @staticmethod
+    def remove_other_rank_params_grads_pass(dist_params_grads):
+        cur_rank = paddle.distributed.get_rank()
+        need_remove_idx = []
+        for idx, (_, grad) in enumerate(dist_params_grads):
+            if grad is None:
+                continue
+            if cur_rank not in grad.dist_attr().process_mesh.process_ids:
+                need_remove_idx.append(idx)
+        for idx in need_remove_idx[::-1]:
+            dist_params_grads.pop(idx)
+
+    @staticmethod
+    def apply_all(
+        dist_main_program, dist_startup_program, dist_params_grads=[]
+    ):
+        RemovePasses.remove_other_rank_input_output_pass(dist_main_program)
+        RemovePasses.remove_other_rank_params_grads_pass(dist_params_grads)
+        RemovePasses.remove_other_rank_op_pass(dist_main_program)
+        RemovePasses.remove_no_need_in_startup(
+            dist_startup_program, dist_main_program
+        )
+
+
 def replace_moe_global_mesh_tensor(op):
     cur_rank = paddle.distributed.get_rank()
     out_value = op.result(0)
@@ -365,107 +486,6 @@ def replace_moe_global_mesh_tensor(op):
 
     assert all(val.use_empty() for val in op.results())
     op.erase()
-
-
-# pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(
-    dist_program, startup_program, dist_params_grads=[]
-):
-    _remove_other_rank_params_grads(dist_params_grads)
-    _remove_no_need_in_main(dist_program)
-    _remove_no_need_in_startup(startup_program, dist_program)
-
-
-def _remove_no_need_in_main(dist_program):
-    cur_rank = paddle.distributed.get_rank()
-    for op in dist_program.global_block().ops[::-1]:
-        if op.name() in partition_skip_op_list:
-            can_delete = True
-            for val in op.results():
-                if not val.use_empty():
-                    can_delete = False
-            if can_delete:
-                op.erase()
-            continue
-        if op.name() == "dist_op.moe_sub_mesh_tensors":
-            replace_moe_sub_mesh_tensors(op)
-            continue
-        if op.name() == "dist_op.moe_global_mesh_tensor":
-            replace_moe_global_mesh_tensor(op)
-            continue
-        if cur_rank not in op.dist_attr.process_mesh.process_ids:
-            op.erase()
-        elif op.name() == "dist_op.reshard":
-            assert op.result(
-                0
-            ).use_empty(), f'There should not have useful dist.reshard op in remove_other_rank_op_pass. but find : {op}'
-            op.erase()
-
-    # merge pd.data ops for
-    lr_ops = []
-    for op in dist_program.global_block().ops[::-1]:
-        if op.name() == 'pd_op.data' and "learning_rate" in op.attrs()["name"]:
-            lr_ops.append(op)
-
-    if len(lr_ops) > 1:
-        lr_value = lr_ops[0].result(0)
-        for op in lr_ops[1:]:
-            lr = op.result(0)
-            lr.replace_all_uses_with(lr_value)
-            op.erase()
-
-
-def _remove_no_need_in_startup(startup_program, main_program):
-    # 1. vars used in main_program
-    main_program_var_names = []
-    for op in main_program.global_block().ops:
-        for var in op.operands_source():
-            if var.has_name:
-                main_program_var_names.append(var.name)
-        for var in op.results():
-            if var.has_name:
-                main_program_var_names.append(var.name)
-    # 2. remove var op not used in main_program
-    for op in startup_program.global_block().ops:
-        for var in op.operands_source():
-            if var.has_name and var.name not in main_program_var_names:
-                op.erase()
-    pm = pir.PassManager()
-    pm.add_pass('dead_code_elimination_pass', {})
-    pm.run(startup_program)
-
-
-# Pruning value not belong to cur rank
-# especially used for check_finite_and_unscale
-# and update_loss_scaling op in amp
-# For example, w0 on mesh0, w1 on mesh1, before pass, the ops is:
-#  [w0_g, w1_g], is_finite = check_finite_and_scale([w0_g, w1_g], loss_scaling)
-# after pass, on mesh0, the op is:
-#  [w0_g], is_finite = check_finite_and_scale([w0_g], loss_scaling)
-# Note that here we do not set the op_dist_attr, since it is not used
-# afterwards.
-def remove_other_rank_input_output_pass(dist_program):
-    cur_rank = paddle.distributed.get_rank()
-    for op in dist_program.global_block().ops[::-1]:
-        if op.name() not in amp_ops:
-            continue
-        new_vars = []
-        combine_op = op.operand_source(0).get_defining_op()
-        for inner_operand in op.operand_source(0).get_defining_op().operands():
-            if (
-                cur_rank
-                in inner_operand.source().dist_attr().process_mesh.process_ids
-            ):
-                new_vars.append(inner_operand.source())
-                continue
-        result = op.operand_source(0).get_defining_op().result(0)
-        paddle.pir.set_insertion_point_after(combine_op)
-        res = paddle._C_ops.builtin_combine(new_vars)
-        res.get_defining_op().op_role = op.op_role
-        result.replace_all_uses_with(res)
-        combine_op.erase()
-        # since it is inplace op, set type of output as the same as input
-        op.result(0).set_type(res.type())
 
 
 # Note: this is the pass in the dense program
