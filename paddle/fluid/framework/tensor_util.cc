@@ -846,31 +846,6 @@ phi::DataType GetDstPtrByDLDataType(DLDataType type) {
   }
 }
 
-phi::Place GetPlaceFromPtr(void* data) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10000
-  cudaPointerAttributes attr = {};
-  cudaError_t status = cudaPointerGetAttributes(&attr, data);
-  if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
-    return phi::GPUPlace(attr.device);
-  }
-#else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
-                                 "supported when CUDA version >= 10.0."));
-#endif
-#else
-  hipPointerAttribute_t attr = {};
-  hipError_t status = hipPointerGetAttributes(&attr, data);
-  if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
-    return phi::GPUPlace(attr.device);
-  }
-#endif
-#endif
-  return phi::CPUPlace();
-}
-
 /*
 dlpack related code ref:
 https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
@@ -934,6 +909,8 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
     place = phi::CPUPlace();
   } else if (src->dl_tensor.device.device_type == kDLCUDA) {
     place = phi::GPUPlace();
+  } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
+    place = phi::GPUPinnedPlace();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("Given Place is not supported"));
   }

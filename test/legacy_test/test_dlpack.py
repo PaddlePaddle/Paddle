@@ -73,7 +73,7 @@ class TestDLPack(unittest.TestCase):
                     np.array([[1], [2], [3], [4]]).astype("int"),
                 )
 
-    def test_dlpack_dtype_conversion(self):
+    def test_dlpack_dtype_and_place_consistency(self):
         with dygraph_guard():
             dtypes = [
                 "float16",
@@ -89,6 +89,8 @@ class TestDLPack(unittest.TestCase):
             places = [base.CPUPlace()]
             if paddle.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
+                places.append(base.CUDAPinnedPlace())
+                dtypes.append("bfloat16")
 
             data = np.ones((2, 3, 4))
             for place in places:
@@ -98,6 +100,7 @@ class TestDLPack(unittest.TestCase):
                     o = paddle.utils.dlpack.from_dlpack(dlpack)
                     self.assertEqual(x.dtype, o.dtype)
                     np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
+                    self.assertEqual(type(x.place), type(o.place))
 
             complex_dtypes = ["complex64", "complex128"]
             for place in places:
@@ -111,6 +114,7 @@ class TestDLPack(unittest.TestCase):
                     o = paddle.utils.dlpack.from_dlpack(dlpack)
                     self.assertEqual(x.dtype, o.dtype)
                     np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
+                    self.assertEqual(type(x.place), type(o.place))
 
     def test_dlpack_deletion(self):
         # See Paddle issue 47171
