@@ -573,14 +573,27 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
 # (o2) = "pd_op.matmul" (in, w2)
 # (o3) = "pd_op.swiglu" (o1, o2)
 def is_ffn_pattern(op_list):
-    if len(op_list) != 3:
+    if len(op_list) != 3 and len(op_list) != 5:
         return False
-    if op_list[0].name() != "pd_op.matmul":
-        return False
-    if op_list[1].name() != "pd_op.matmul":
-        return False
-    if op_list[2].name() != "pd_op.swiglu":
-        return False
+    order = [
+        "pd_op.matmul",
+        "pd_op.add",
+        "pd_op.matmul",
+        "pd_op.add",
+        "pd_op.swiglu",
+    ]
+    pointer = 0
+    for item in order:
+        if item == "pd_op.add":
+            while (
+                pointer < len(op_list)
+                and op_list[pointer].name() == "pd_op.add"
+            ):
+                pointer += 1
+        else:
+            if pointer >= len(op_list) or op_list[pointer].name() != item:
+                return False
+            pointer += 1
     return True
 
 
@@ -595,26 +608,34 @@ def is_ffn_pattern(op_list):
 # (o8) = "pd_op.full_int_array" ()
 # (o9) = "pd_op.reshape" (o7, o8)
 def is_qkv_pattern(op_list):
-    if len(op_list) != 9:
+    if len(op_list) != 9 and len(op_list) != 12:
         return False
-    if op_list[0].name() != "pd_op.matmul":
-        return False
-    if op_list[1].name() != "pd_op.full_int_array":
-        return False
-    if op_list[2].name() != "pd_op.reshape":
-        return False
-    if op_list[3].name() != "pd_op.matmul":
-        return False
-    if op_list[4].name() != "pd_op.full_int_array":
-        return False
-    if op_list[5].name() != "pd_op.reshape":
-        return False
-    if op_list[6].name() != "pd_op.matmul":
-        return False
-    if op_list[7].name() != "pd_op.full_int_array":
-        return False
-    if op_list[8].name() != "pd_op.reshape":
-        return False
+    order = [
+        "pd_op.matmul",
+        "pd_op.add",
+        "pd_op.full_int_array",
+        "pd_op.reshape",
+        "pd_op.matmul",
+        "pd_op.add",
+        "pd_op.full_int_array",
+        "pd_op.reshape",
+        "pd_op.matmul",
+        "pd_op.add",
+        "pd_op.full_int_array",
+        "pd_op.reshape",
+    ]
+    pointer = 0
+    for item in order:
+        if item == "pd_op.add":
+            while (
+                pointer < len(op_list)
+                and op_list[pointer].name() == "pd_op.add"
+            ):
+                pointer += 1
+        else:
+            if pointer >= len(op_list) or op_list[pointer].name() != item:
+                return False
+            pointer += 1
     return True
 
 
