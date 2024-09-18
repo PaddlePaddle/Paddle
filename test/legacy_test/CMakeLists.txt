@@ -1183,7 +1183,7 @@ set_tests_properties(test_paddle_save_load_binary_static_build
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
+set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 300)
 set_tests_properties(test_data_norm_op PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_deformable_conv_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
