@@ -276,7 +276,8 @@ def array_write(
         if array is None:
             array = paddle._pir_ops.create_array(x.dtype)
 
-        x = paddle.cast(x, array.dtype)
+        if array.dtype != paddle.base.libpaddle.DataType.UNDEFINED:
+            x = paddle.cast(x, array.dtype)
         paddle._pir_ops.array_write_(array, x, i)
         return array
     else:
@@ -360,7 +361,8 @@ def create_array(
             dtype = paddle.base.framework.convert_np_dtype_to_dtype_(dtype)
         out = paddle._pir_ops.create_array(dtype)
         for val in array:
-            val = paddle.cast(val, dtype)
+            if dtype != paddle.base.libpaddle.DataType.UNDEFINED:
+                val = paddle.cast(val, dtype)
             paddle._pir_ops.array_write_(out, val, array_length(out))
         return out
     else:

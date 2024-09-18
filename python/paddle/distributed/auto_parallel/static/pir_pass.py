@@ -393,8 +393,10 @@ def replace_moe_global_mesh_tensor(op):
 
 
 # pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(dist_program, dist_params_grads, startup_program):
-    _remove_other_rank_params_grads(dist_program, dist_params_grads)
+def remove_other_rank_op_pass(
+    dist_program, startup_program, dist_params_grads=[]
+):
+    _remove_other_rank_params_grads(dist_params_grads)
     _remove_no_need_in_main(dist_program)
     _remove_no_need_in_startup(startup_program, dist_program)
 
