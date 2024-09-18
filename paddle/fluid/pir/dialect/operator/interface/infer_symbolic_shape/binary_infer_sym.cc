@@ -1789,6 +1789,12 @@ bool WeightDequantizeOpInferSymbolicShape(
   int group_size = op->attribute<pir::Int32Attribute>("group_size").data();
   std::string algo = op->attribute<pir::StrAttribute>("algo").AsString();
 
+  PADDLE_ENFORCE_EQ(
+      ((group_size == -1) || (group_size == 64) || (group_size == 128)),
+      true,
+      common::errors::InvalidArgument(
+          "Currently, group_size only support -1, 64 or 128."));
+
   symbol::DimExpr real_channel_shape;
   if (algo == "weight_only_int8") {
     real_channel_shape = x_shape[0];
