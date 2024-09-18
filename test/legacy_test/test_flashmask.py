@@ -112,7 +112,7 @@ def gen_random_flashmask(bz, num_head, seqlen, has_end, causal):
     m[:, :, :, 0] = np.maximum(diag + 1, m[:, :, :, 0])
     if not causal:
         if has_end:
-            raise NotImplementedError()
+            raise NotImplementedError
         else:
             m[:, :, :, 1] = np.minimum(diag, m[:, :, :, 1])
     else:

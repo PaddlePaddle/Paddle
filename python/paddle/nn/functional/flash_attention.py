@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import math
+
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
@@ -845,7 +849,7 @@ def flashmask_attention(
     query,
     key,
     value,
-    startend_row_indices,
+    startend_row_indices=None,
     *,
     dropout=0.0,
     causal=False,
@@ -1073,7 +1077,7 @@ def flashmask_attention(
             - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 2],
                 indicating bidirectional attention. The values represent the starting row index of the left
                 lower triangular mask and the ending row index of the right upper triangular mask in the dense mask. The values r1, r2 in startend_row_indices indicate that elements in the lower left triangle of the Score matrix starting from the r1-th row downwards (inclusive) will be masked, and elements in the upper right triangle starting from the r2-th row upwards (exclusive) will be masked.
-            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4] (not implemented),
+            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4] ,
                 indicating bidirectional attention. The values represent the start and end row indices of the
                 left lower triangular mask and the start and end row indices of the right upper triangular mask in the dense mask. The values r1, r2, r3, r4 in startend_row_indices indicate that elements in the lower left triangle of the Score matrix starting from the r1-th row downwards (inclusive) but above the r2-th row (exclusive) will be masked, and elements in the upper right triangle starting from the r3-th row downwards (inclusive) but above the r4-th row (exclusive) will be masked.
         - **dropout** (float) - The dropout ratio. Default is 0.0.
@@ -1137,7 +1141,32 @@ def flashmask_attention(
             >>> # doctest: -SKIP
 
     """
-    assert window_size is None, "window is not implemented now."
+
+    if window_size is not None:
+        sq = query.shape[1]
+        bsz = query.shape[0]
+        assert (
+            startend_row_indices is None
+        ), "can't use window_size with startend_row_indices"
+        if causal:
+            startend_row_indices = paddle.arange(
+                window_size + 1, sq + window_size + 1, dtype="int32"
+            ).reshape((1, 1, sq, 1))
+            startend_row_indices = paddle.clip(
+                startend_row_indices, max=sq
+            ).repeat_interleave(bsz, 0)
+
+        else:
+            startend_row_indices = paddle.empty((1, 1, sq, 2), dtype="int32")
+            startend_row_indices[0, 0, :, 0] = paddle.arange(
+                window_size[0] + 1, sq + window_size[0] + 1, dtype="int32"
+            )
+            startend_row_indices[0, 0, :, 1] = paddle.arange(
+                -window_size[1], sq - window_size[1], dtype="int32"
+            )
+            startend_row_indices = paddle.clip(
+                startend_row_indices, min=0, max=sq
+            ).repeat_interleave(bsz, 0)
 
     assert (
         startend_row_indices is not None
@@ -1162,21 +1191,59 @@ def flashmask_attention(
     ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
 
     if causal:
-        if startend_row_indices.shape[-1] not in [1, 2]:
+        if startend_row_indices.shape[-1] == 1:
+            has_end = False
+        elif startend_row_indices.shape[-1] == 2:
+            has_end = True
+        else:
             raise ValueError(
                 f"Invalid shape of startend_row_indices, when causal is True, the last dimension should be either 1 or 2 but got {startend_row_indices.shape[-1]}"
             )
     else:
         if startend_row_indices.shape[-1] == 2:
-            pass
+            has_end = False
         elif startend_row_indices.shape[-1] == 4:
-            raise NotImplementedError(
-                "ending row index is not implemented yet."
-            )
+            has_end = True
         else:
             raise ValueError(
                 f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
             )
+    if (
+        has_end
+        or not causal
+        or startend_row_indices.shape[1] != 1
+        or startend_row_indices.shape[0] != 1
+        or return_seed_offset
+        or return_softmax_lse
+    ):
+        is_unpad = False
+
+    else:
+        is_unpad = bool(
+            (paddle.diff(startend_row_indices[0, 0, :, 0]) >= 0).all()
+        )
+    if is_unpad:
+        cu_seqlens = paddle.concat(
+            [
+                paddle.zeros([1], dtype="int32"),
+                paddle.unique(startend_row_indices[0, 0, :, 0]),
+            ]
+        )
+        max_seqlen = paddle.max(paddle.diff(cu_seqlens))
+        scale = 1 / math.sqrt(query.shape[-1])
+        out, _ = flash_attn_unpadded(
+            query.flatten(0, 1),
+            key.flatten(0, 1),
+            value.flatten(0, 1),
+            cu_seqlens,
+            cu_seqlens,
+            max_seqlen,
+            max_seqlen,
+            scale,
+            causal=causal,
+            dropout=dropout,
+        )
+        return out.unsqueeze(0)
 
     return_softmax = False
 
