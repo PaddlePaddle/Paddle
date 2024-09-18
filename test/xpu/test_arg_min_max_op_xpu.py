@@ -29,6 +29,7 @@ paddle.enable_static()
 
 # Combine arg_max and arg_min tests
 
+
 class XPUTestArgMinMax(XPUOpTestWrapper):
     op_name = None
 
@@ -124,6 +125,7 @@ for stype in support_types:
 
 
 # API Tests for arg_max and arg_min
+
 
 class TestArgMinMaxAPI(unittest.TestCase):
     def initTestCase(self):
