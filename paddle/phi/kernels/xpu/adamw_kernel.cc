@@ -435,11 +435,11 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     moment1_out->set_storage_properties(std::move(moment1_out_sp));
 
     // for moment2
-    float moment2_max = GetAbsMax<Context>(dev_ctx,
-                                           moment2_output_for_xdnn,
-                                           buffer_for_findmax,
-                                           moment2_out->numel());
-    float moment2_scale_value = 65504.0f / moment2_max / 2.0f;
+    float moment2_max_ = GetAbsMax<Context>(dev_ctx,
+                                            moment2_output_for_xdnn,
+                                            buffer_for_findmax,
+                                            moment2_out->numel());
+    float moment2_scale_value = 65504.0f / moment2_max_ / 2.0f;
     // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
@@ -483,7 +483,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       const DenseTensor& learning_rate,
                       const DenseTensor& moment1,
                       const DenseTensor& moment2,
-                      const paddle::optional<DenseTensor>& moment2_max_ UNUSED,
+                      const paddle::optional<DenseTensor>& moment2_max UNUSED,
                       const DenseTensor& beta1_pow,
                       const DenseTensor& beta2_pow,
                       const paddle::optional<DenseTensor>& master_param,
@@ -502,7 +502,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       DenseTensor* param_out,
                       DenseTensor* moment1_out,
                       DenseTensor* moment2_out,
-                      DenseTensor* moment2_max_out_ UNUSED,
+                      DenseTensor* moment2_max_out UNUSED,
                       DenseTensor* beta1_pow_out,
                       DenseTensor* beta2_pow_out,
                       DenseTensor* master_param_outs) {
@@ -806,11 +806,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
     moment1_out->set_storage_properties(std::move(moment1_out_sp));
 
     // for moment2
-    float moment2_max = GetAbsMax<Context>(dev_ctx,
-                                           moment2_output_for_xdnn,
-                                           buffer_for_findmax,
-                                           moment2_out->numel());
-    float moment2_scale_value = 65504.0f / moment2_max / 2.0f;
+    float moment2_max_ = GetAbsMax<Context>(dev_ctx,
+                                            moment2_output_for_xdnn,
+                                            buffer_for_findmax,
+                                            moment2_out->numel());
+    float moment2_scale_value = 65504.0f / moment2_max_ / 2.0f;
     // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
