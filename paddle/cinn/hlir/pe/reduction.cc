@@ -1144,26 +1144,26 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
       ::common::errors::InvalidArgument("Tensor is not a tensor!"));
   if (op.As<ir::Add>()) {
     if (tensor.as_tensor()->type().is_bool()) {
-      return "cinn_block_reduce_any_internal_shm";
+      return "cinn_partial_block_reduce_any_internal_shm";
     }
-    return "cinn_block_reduce_sum" +
+    return "cinn_partial_block_reduce_sum" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Mul>()) {
     if (tensor.as_tensor()->type().is_bool()) {
-      return "cinn_block_reduce_all_internal_shm";
+      return "cinn_partial_block_reduce_all_internal_shm";
     }
-    return "cinn_block_reduce_prod" +
+    return "cinn_partial_block_reduce_prod" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Max>()) {
-    return "cinn_block_reduce_max" +
+    return "cinn_partial_block_reduce_max" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Min>()) {
-    return "cinn_block_reduce_min" +
+    return "cinn_partial_block_reduce_min" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::And>()) {
-    return "cinn_block_reduce_all_internal_shm";
+    return "cinn_partial_block_reduce_all_internal_shm";
   } else if (op.As<ir::Or>()) {
-    return "cinn_block_reduce_any_internal_shm";
+    return "cinn_partial_block_reduce_any_internal_shm";
   } else {
     std::stringstream ss;
     ss << "Reduce type: " << op << " Not supported yet!";

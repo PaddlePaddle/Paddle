@@ -32,7 +32,6 @@ from .envs import (  # noqa: F401
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,
-    DynamicShapeFallbackError,
     ExportError,
     FallbackError,
     InnerError,
@@ -74,6 +73,7 @@ from .utils import (  # noqa: F401
     list_find_index_by_id,
     log,
     log_do,
+    log_enabled,
     log_format,
     map_if,
     map_if_extend,

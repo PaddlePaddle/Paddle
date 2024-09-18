@@ -82,6 +82,13 @@ class IrMapping {
   }
 
   template <typename T>
+  bool Has(T from) const {
+    if (!from) return false;
+    bool has_value = GetMap<IrType<T>>().count(from) > 0UL;
+    return has_value;
+  }
+
+  template <typename T>
   IrType<T> Lookup(T from) const {
     if (!from) return static_cast<IrType<T>>(nullptr);
     PADDLE_ENFORCE_GT(

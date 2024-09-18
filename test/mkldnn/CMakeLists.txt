@@ -25,7 +25,6 @@ if(WITH_ONEDNN AND NOT WIN32)
     FLAGS_new_executor_static_build=true)
 endif()
 
-set_tests_properties(test_concat_mkldnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv3d_mkldnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_mul_onednn_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_elementwise_add_mkldnn_op PROPERTIES TIMEOUT 60)

@@ -1475,9 +1475,6 @@ def flashmask_attention(
                 has_end = False
             elif startend_row_indices.shape[-1] == 4:
                 has_end = True
-                raise NotImplementedError(
-                    "ending row index is not implemented yet."
-                )
             else:
                 raise ValueError(
                     f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
