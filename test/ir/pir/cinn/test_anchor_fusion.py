@@ -177,6 +177,21 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
+    def test_reduce_all_fusion(self):
+        #      T
+        #     / \
+        #    T  ReduceAll
+        def func(x):
+            a = x + 1
+            b = paddle.max(a, axis=[0], keepdim=False)
+            return a, b
+
+        def init():
+            x = paddle.rand((32,))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
     def test_complex_fusion(self):
         #     T   T
         #      \ /

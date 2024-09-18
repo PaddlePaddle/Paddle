@@ -169,11 +169,12 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
       [this](std::pair<std::string, int> p) {
         return this->iters_manager_->IterSymbolEqualOne(p.first);
       });
-  iters_transforms.emplace_back(RemoveOnesTransform(source_ones));
-
   auto squeezed_source = source;
-  squeezed_source.loop_iters =
-      GatherVectorExcept(source.loop_iters, source_ones);
+  if (!source_ones.empty() && source_ones.size() != source.loop_iters.size()) {
+    iters_transforms.emplace_back(RemoveOnesTransform(source_ones));
+    squeezed_source.loop_iters =
+        GatherVectorExcept(source.loop_iters, source_ones);
+  }
 
   if (squeezed_source.loop_iters.size() > target.loop_iters.size()) {
     VLOG(4) << "Can not decrease iters in multi downstream fusion.";
@@ -228,7 +229,7 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
   } else {
     iters_transforms.push_back(reuse_iters_transform.value());
   }
-  VLOG(4) << "source iters after reuse: "
+  VLOG(4) << "Source iters after reuse: "
           << PrintFusionIters(reused_source_iters);
 
   PADDLE_ENFORCE_EQ(

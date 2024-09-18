@@ -54,8 +54,12 @@ void FusionItersManager::StoreIter2DimExprForValue(const pir::Value& value) {
   const auto& value_iters = value2iters_[value];
   for (size_t i = 0; i < value_iters.size(); ++i) {
     if (iter2dimexpr_.count(value_iters[i]) == 0) {
-      iter2dimexpr_[value_iters[i]] =
+      symbol::DimExpr dim_expr =
           shape_analysis_->GetProductDimExpr(value, {static_cast<int>(i)});
+      if (shape_analysis_->IsEqual(dim_expr, symbol::DimExpr(0))) {
+        dim_expr = symbol::DimExpr(1);
+      }
+      iter2dimexpr_[value_iters[i]] = dim_expr;
     }
   }
 }
