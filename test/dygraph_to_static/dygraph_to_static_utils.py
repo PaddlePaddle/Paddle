@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import importlib
 import inspect
 import logging
@@ -89,7 +91,7 @@ class IrMode(Flag):
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )
-DEFAULT_IR_MODE = IrMode.LEGACY_IR | IrMode.PT
+DEFAULT_IR_MODE = IrMode.PT | IrMode.PIR
 
 DISABLED_TO_STATIC_TEST_FILES = {
     ToStaticMode.AST: [],
@@ -303,9 +305,9 @@ class Dy2StTestMeta(type):
             for to_static_mode, ir_mode in to_static_with_ir_modes:
                 if (
                     to_static_mode == ToStaticMode.SOT_MGS10
-                    and ir_mode != IrMode.LEGACY_IR
+                    and ir_mode != IrMode.PIR
                 ):
-                    # SOT_MGS10 only test with LEGACY_IR
+                    # SOT_MGS10 only test with PIR
                     continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
@@ -347,7 +349,7 @@ def set_ir_mode(mode: IrMode):
     return decorator
 
 
-def disable_test_case(flags):
+def disable_test_case(flags: tuple[ToStaticMode, IrMode]):
     def decorator(fn):
         disabled_test_cases = getattr(fn, "disabled_test_cases", [])
         disabled_test_cases.append(flags)
@@ -386,6 +388,11 @@ def test_pir_only(fn):
 
 def test_legacy_and_pt(fn):
     fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PT)(fn)
+    return fn
+
+
+def test_pt_and_pir(fn):
+    fn = set_ir_mode(IrMode.PT | IrMode.PIR)(fn)
     return fn
 
 

@@ -576,6 +576,20 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
                   test_fuse_gemm_epilogue_pass)
 endif()
 
+if(WITH_ROCM)
+  py_test_modules(test_fused_gemm_epilogue_op MODULES
+                  test_fused_gemm_epilogue_op)
+  py_test_modules(test_fused_gemm_epilogue_grad_op MODULES
+                  test_fused_gemm_epilogue_grad_op)
+  py_test_modules(
+    test_fused_gemm_epilogue_op_with_es MODULES test_fused_gemm_epilogue_op
+    ENVS FLAGS_cublaslt_exhaustive_search_times=30)
+  py_test_modules(
+    test_fused_gemm_epilogue_grad_op_with_es MODULES
+    test_fused_gemm_epilogue_grad_op ENVS
+    FLAGS_cublaslt_exhaustive_search_times=30)
+endif()
+
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
   py_test_modules(test_fuse_dot_product_attention_pass MODULES
                   test_fuse_dot_product_attention_pass)
@@ -1147,7 +1161,7 @@ set_tests_properties(test_elementwise_mul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
-set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_gru_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_star_gan_with_gradient_penalty
                      PROPERTIES TIMEOUT 120)
