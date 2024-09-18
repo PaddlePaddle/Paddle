@@ -1563,6 +1563,61 @@ bool FusedBnAddActivation_OpInferSymbolicShape(
   return BatchNormOpInferSymbolicShape(op, infer_context);
 }
 
+bool FusedGemmEpilogueOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dims = x_shape_or_data.shape();
+
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &y_dims = y_shape_or_data.shape();
+
+  const auto &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &bias_dims = bias_shape_or_data.shape();
+
+  size_t x_rank = x_dims.size();
+  size_t y_rank = y_dims.size();
+
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.reserve(x_rank);
+
+  for (size_t i = 0; i + 2 < x_rank; ++i) {
+    out_shape.emplace_back(x_dims[i]);
+  }
+
+  bool transpose_x_attr = GetBoolAttr(op, "trans_x");
+  bool transpose_y_attr = GetBoolAttr(op, "trans_y");
+
+  symbol::DimExpr out_M =
+      transpose_x_attr ? x_dims[x_rank - 1] : x_dims[x_rank - 2];
+  symbol::DimExpr out_N =
+      transpose_y_attr ? y_dims[y_rank - 2] : y_dims[y_rank - 1];
+
+  out_shape.emplace_back(out_M);
+  out_shape.emplace_back(out_N);
+
+  symbol::DimExpr x_K =
+      transpose_x_attr ? x_dims[x_rank - 2] : x_dims[x_rank - 1];
+  symbol::DimExpr y_K =
+      transpose_y_attr ? y_dims[y_rank - 1] : y_dims[y_rank - 2];
+
+  infer_context->AddEqualCstr(x_K, y_K);
+  // bias_dims[0] equal to out_N
+  infer_context->AddEqualCstr(out_N, bias_dims[0]);
+
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        ShapeOrData{TensorExprs(out_shape)});
+
+  // process reserve space
+  if (paddle::dialect::details::IsFakeValue(op->result(1))) {
+    infer_context->SetShapeOrDataForValue(op->result(0),
+                                          ShapeOrData{TensorExprs(out_shape)});
+  }
+  return true;
+}
+
 bool FusedMultiTransformerOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -2130,6 +2185,58 @@ bool LogspaceOpInferSymbolicShape(
 bool NearestInterpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
+}
+
+bool MatchMatrixTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &w_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  const auto &x_shape = x_shape_or_data.shape();
+  const auto &y_shape = y_shape_or_data.shape();
+  const auto &w_shape = w_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(X) should be equal to 2, "
+                        "but received %d.",
+                        x_shape.size()));
+  PADDLE_ENFORCE_EQ(y_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(Y) should be equal to 2, "
+                        "but received %d.",
+                        y_shape.size()));
+  PADDLE_ENFORCE_EQ(w_shape.size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(W) should be equal to 3, "
+                        "but received %d.",
+                        w_shape.size()));
+
+  infer_context->AddEqualCstr(w_shape[0], x_shape[1]);
+  int dim_t = op->attribute<pir::Int32Attribute>("dim_t").data();
+  infer_context->AddEqualCstr(w_shape[1], symbol::DimExpr(dim_t));
+  infer_context->AddEqualCstr(w_shape[2], y_shape[1]);
+
+  std::vector<symbol::DimExpr> out_dims = {infer_context->GetNextSymName(),
+                                           symbol::DimExpr(1)};
+  std::vector<symbol::DimExpr> tmp_dims = {infer_context->GetNextSymName(),
+                                           symbol::DimExpr(1)};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(tmp_dims)});
+
+  return true;
 }
 
 bool MaskedMultiheadAttention_OpInferSymbolicShape(
