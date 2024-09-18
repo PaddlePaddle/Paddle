@@ -1029,6 +1029,8 @@ class TestAdamOpV2(unittest.TestCase):
 class TestAdamOpV2AMSGrad(TestAdamOpV2):
     def setUp(self):
         self.amsgrad = True
+
+
 class TestAdamOpV2WeightDecay(unittest.TestCase):
     def test_weight_decay_int(self):
         paddle.disable_static()

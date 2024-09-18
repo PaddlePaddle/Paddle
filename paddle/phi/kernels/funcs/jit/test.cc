@@ -40,6 +40,13 @@ void RandomVec(const int n,
 }
 
 template <typename T>
+void ZeroVec(const int n, T* a) {
+  for (int i = 0; i < n; ++i) {
+    a[i] = static_cast<T>(0);
+  }
+}
+
+template <typename T>
 void ExpectEQ(const T* target, const T* refer, size_t n) {
   if (std::is_floating_point<T>::value) {
     for (size_t i = 0; i < n; ++i) {
@@ -708,20 +715,24 @@ void TestKernelAdam() {
 
   T learning_rate = lr * (sqrt(1 - beta2_pow) / (1 - beta1_pow));
   T eps = epsilon * sqrt(1 - beta2_pow);
+  bool amsgrad = false;
 
   std::vector<T> param(numel);
   std::vector<T> grad(numel);
   std::vector<T> mom1(numel);
   std::vector<T> mom2(numel);
+  std::vector<T> mom2_max(numel);
 
   std::vector<T> param_out(param.size());
   std::vector<T> mom1_out(mom1.size());
   std::vector<T> mom2_out(mom2.size());
+  std::vector<T> mom2_max_out(mom2_max.size());
 
   RandomVec<T>(numel, param.data(), 0.5f);
   RandomVec<T>(numel, grad.data(), 0.5f);
   RandomVec<T>(numel, mom1.data(), 0.5f);
   RandomVec<T>(numel, mom2.data(), 0.5f);
+  ZeroVec<T>(numel, mom2_max.data());
 
   auto ref = jit::GetReferFunc<KernelTuple>();
   EXPECT_TRUE(ref != nullptr);
@@ -734,10 +745,13 @@ void TestKernelAdam() {
       grad.data(),
       mom1.data(),
       mom2.data(),
+      mom2_max.data(),
       param.data(),
       mom1_out.data(),
       mom2_out.data(),
-      param_out.data());
+      mom2_max_out.data(),
+      param_out.data(),
+      amsgrad);
 
   auto verifier = [](const typename KernelTuple::func_type tgt,
                      T beta1,
@@ -748,10 +762,13 @@ void TestKernelAdam() {
                      const std::vector<T>& grad,
                      const std::vector<T>& mom1,
                      const std::vector<T>& mom2,
+                     const std::vector<T>& mom2_max,
                      const std::vector<T>& param,
                      const std::vector<T>& ref_mom1_out,
                      const std::vector<T>& ref_mom2_out,
-                     const std::vector<T>& ref_param_out) {
+                     const std::vector<T>& ref_mom2_max_out,
+                     const std::vector<T>& ref_param_out,
+                     bool amsgrad) {
     EXPECT_TRUE(tgt != nullptr);
     EXPECT_EQ(param.size(), static_cast<size_t>(numel));
     EXPECT_EQ(grad.size(), static_cast<size_t>(numel));
@@ -760,6 +777,7 @@ void TestKernelAdam() {
 
     std::vector<T> jit_mom1_out(ref_mom1_out.size());
     std::vector<T> jit_mom2_out(ref_mom2_out.size());
+    std::vector<T> jit_mom2_max_out(ref_mom2_max_out.size());
     std::vector<T> jit_param_out(ref_param_out.size());
 
     tgt(beta1,
@@ -770,10 +788,13 @@ void TestKernelAdam() {
         grad.data(),
         mom1.data(),
         mom2.data(),
+        mom2_max.data(),
         param.data(),
         jit_mom1_out.data(),
         jit_mom2_out.data(),
-        jit_param_out.data());
+        jit_mom2_max_out.data(),
+        jit_param_out.data(),
+        amsgrad);
 
     ExpectEQ<T>(ref_mom1_out.data(), jit_mom1_out.data(), numel);
     ExpectEQ<T>(ref_mom2_out.data(), jit_mom2_out.data(), numel);
@@ -789,10 +810,13 @@ void TestKernelAdam() {
                                        grad,
                                        mom1,
                                        mom2,
+                                       mom2_max,
                                        param,
                                        mom1_out,
                                        mom2_out,
-                                       param_out);
+                                       mom2_max_out,
+                                       param_out,
+                                       amsgrad);
 }
 
 template <typename KernelTuple, typename PlaceType>
@@ -812,20 +836,25 @@ void TestKernelAdamW() {
 
   T learning_rate = old_lr * (sqrt(1 - beta2_pow) / (1 - beta1_pow));
   T eps = epsilon * sqrt(1 - beta2_pow);
+  bool amsgrad = false;
 
   std::vector<T> param(numel);
   std::vector<T> grad(numel);
   std::vector<T> mom1(numel);
   std::vector<T> mom2(numel);
+  std::vector<T> mom2_max(numel);
 
   std::vector<T> param_out(param.size());
   std::vector<T> mom1_out(mom1.size());
   std::vector<T> mom2_out(mom2.size());
+  std::vector<T> mom2_max_out(mom2_max.size());
 
   RandomVec<T>(numel, param.data(), 0.5f);
   RandomVec<T>(numel, grad.data(), 0.5f);
   RandomVec<T>(numel, mom1.data(), 0.5f);
   RandomVec<T>(numel, mom2.data(), 0.5f);
+  ZeroVec<T>(numel, mom2_max.data());
+
   auto ref = jit::GetReferFunc<KernelTuple>();
   EXPECT_TRUE(ref != nullptr);
   ref(beta1,
@@ -839,10 +868,13 @@ void TestKernelAdamW() {
       grad.data(),
       mom1.data(),
       mom2.data(),
+      mom2_max.data(),
       param.data(),
       mom1_out.data(),
       mom2_out.data(),
-      param_out.data());
+      mom2_max_out.data(),
+      param_out.data(),
+      amsgrad);
 
   auto verifier = [](const typename KernelTuple::func_type tgt,
                      T beta1,
@@ -856,10 +888,13 @@ void TestKernelAdamW() {
                      const std::vector<T>& grad,
                      const std::vector<T>& mom1,
                      const std::vector<T>& mom2,
+                     const std::vector<T>& mom2_max,
                      const std::vector<T>& param,
                      const std::vector<T>& ref_mom1_out,
                      const std::vector<T>& ref_mom2_out,
-                     const std::vector<T>& ref_param_out) {
+                     const std::vector<T>& ref_mom2_max_out,
+                     const std::vector<T>& ref_param_out,
+                     bool amsgrad) {
     EXPECT_TRUE(tgt != nullptr);
     EXPECT_EQ(param.size(), static_cast<size_t>(numel));
     EXPECT_EQ(grad.size(), static_cast<size_t>(numel));
@@ -868,6 +903,7 @@ void TestKernelAdamW() {
 
     std::vector<T> jit_mom1_out(ref_mom1_out.size());
     std::vector<T> jit_mom2_out(ref_mom2_out.size());
+    std::vector<T> jit_mom2_max_out(ref_mom2_max_out.size());
     std::vector<T> jit_param_out(ref_param_out.size());
 
     tgt(beta1,
@@ -881,10 +917,13 @@ void TestKernelAdamW() {
         grad.data(),
         mom1.data(),
         mom2.data(),
+        mom2_max.data(),
         param.data(),
         jit_mom1_out.data(),
         jit_mom2_out.data(),
-        jit_param_out.data());
+        jit_mom2_max_out.data(),
+        jit_param_out.data(),
+        amsgrad);
 
     ExpectEQ<T>(ref_mom1_out.data(), jit_mom1_out.data(), numel);
     ExpectEQ<T>(ref_mom2_out.data(), jit_mom2_out.data(), numel);
@@ -904,10 +943,13 @@ void TestKernelAdamW() {
                                        grad,
                                        mom1,
                                        mom2,
+                                       mom2_max,
                                        param,
                                        mom1_out,
                                        mom2_out,
-                                       param_out);
+                                       mom2_max_out,
+                                       param_out,
+                                       amsgrad);
 }
 
 template <typename KernelTuple, typename PlaceType>
