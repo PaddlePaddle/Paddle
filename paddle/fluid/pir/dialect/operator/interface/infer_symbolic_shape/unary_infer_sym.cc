@@ -1615,6 +1615,38 @@ bool LogsumexpOpInferSymbolicShape(
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
+bool LrnOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  int x_size = x_shape.size();
+  PADDLE_ENFORCE_EQ(
+      x_size,
+      4,
+      common::errors::InvalidArgument("Input(input) rank should be 4, "
+                                      "but received input rank (%d) != 4",
+                                      x_size));
+  int n_value = op->attribute<pir::Int32Attribute>("n").data();
+  PADDLE_ENFORCE_GT(
+      n_value,
+      0UL,
+      common::errors::InvalidArgument("Argument(n) should be positive, "
+                                      "but received n(%d) not greater than 0",
+                                      n_value));
+  PADDLE_ENFORCE_EQ(
+      n_value % 2,
+      1UL,
+      common::errors::InvalidArgument("Argument(n) should be odd value, "
+                                      "but received n(%d) is not an odd value",
+                                      n_value));
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(x_shape));
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::TensorShapeOrDataDimExprs(x_shape));
+  return true;
+}
+
 bool LuOpInferSymbolicShape(pir::Operation *op,
                             pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
