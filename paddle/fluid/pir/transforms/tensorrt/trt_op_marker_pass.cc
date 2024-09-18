@@ -1301,7 +1301,11 @@ class NearestInterpOpPattern
       scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
     }
     if (!(out_h > 0 && out_w > 0)) {
-      if (scale.size() < 2) return false;
+      if (scale.size() < 2) {
+        VLOG(3) << "scale size must be greater than 2 if out_h or out_w is "
+                   "not set.";
+        return false;
+      }
       if (scale[0] <= 0.f || scale[1] <= 0.f) {
         VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
                    "not set.";
