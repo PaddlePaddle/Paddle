@@ -29,7 +29,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         self.env["DNNL_VERBOSE"] = "1"
         self.env["FLAGS_use_mkldnn"] = "1"
 
-        self.relu_regex = b"^onednn_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
+        self.relu_regex = b"^onednn_verbose,primitive,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
 
     def _print_when_false(self, cond, out, err):
         if not cond:

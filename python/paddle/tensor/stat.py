@@ -266,7 +266,7 @@ def numel(x: Tensor, name: str | None = None) -> Tensor:
     Returns the number of elements for a tensor, which is a 0-D int64 Tensor with shape [].
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64, complex64, complex128.
+        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, uint8, int8, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
