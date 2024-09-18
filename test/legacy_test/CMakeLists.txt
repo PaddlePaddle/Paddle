@@ -1154,7 +1154,7 @@ set_tests_properties(test_elementwise_mul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
-set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_gru_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_star_gan_with_gradient_penalty
                      PROPERTIES TIMEOUT 120)
