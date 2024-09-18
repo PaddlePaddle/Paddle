@@ -710,6 +710,7 @@ def amp_guard(
             # If lookup_table_v2 appears in both the white_list and black_list, AMP will select it in BF16/BF16.
             # Therefore, in auto parallel align mode, add lookup_table_v2 to the black_list and ensure it is not in the white_list.
             from paddle.distributed import in_auto_parallel_align_mode
+
             if in_auto_parallel_align_mode():
                 _black_list.add("lookup_table_v2")
                 if "lookup_table_v2" in _white_list:
