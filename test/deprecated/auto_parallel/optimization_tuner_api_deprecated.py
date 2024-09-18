@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from engine_api_dp import MyDataset
+from engine_api_dp_deprecated import MyDataset
 
 import paddle
 import paddle.nn.functional as F

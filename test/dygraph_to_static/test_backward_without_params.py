@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -33,7 +32,6 @@ class Net(paddle.nn.Layer):
 
 
 class TestBackwardWithoutParams(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_run(self):
         net = paddle.jit.to_static(Net())
 
@@ -57,7 +55,6 @@ class ZeroSizeNet(paddle.nn.Layer):
 
 
 class TestZeroSizeNet(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_run(self):
         net = paddle.jit.to_static(ZeroSizeNet())
         x = paddle.ones([2, 2])
