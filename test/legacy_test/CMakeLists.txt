@@ -452,8 +452,6 @@ list(REMOVE_ITEM TEST_OPS test_install_check)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 
-list(REMOVE_ITEM TEST_OPS test_callback_wandb)
-
 # disable sparse_attention which not in suitable env
 if((NOT WITH_GPU)
    OR (WIN32)
@@ -894,6 +892,7 @@ set_tests_properties(test_dataset_wmt PROPERTIES TIMEOUT 120)
 set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
+set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
 set_tests_properties(test_jit_save_load PROPERTIES TIMEOUT 100)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 
