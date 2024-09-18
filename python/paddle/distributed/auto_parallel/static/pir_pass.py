@@ -805,6 +805,7 @@ def fuse_attention_ffn_qkv_pass(
                 )
                 pir_scope_param._share_data_with(concated_param.get_tensor())
                 # Pop and relase original params from concrete_program
+                concated_dy_param_index.sort(reverse=True)
                 for index in concated_dy_param_index:
                     concrete_program.parameters[0].pop(index)
                     concrete_program.parameters[1].pop(index)
