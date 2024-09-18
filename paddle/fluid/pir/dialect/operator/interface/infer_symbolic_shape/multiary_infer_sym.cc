@@ -2894,12 +2894,100 @@ bool PsroiPoolOpInferSymbolicShape(
   return true;
 }
 
-// bool PyramidHashOpInferSymbolicShape(pir::Operation *op,
-//                                      pir::InferSymbolicShapeContext
-//                                      *infer_context) {
-//   // pass
-//   return true;
-// }
+bool PyramidHashOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &w_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &w_shape = w_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ((x_shape.size() == 2) && (w_shape.size() == 2),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(X) and Input(W) of PyramidHashOP "
+                        "is invalid. It should be 2, but got %d",
+                        x_shape.size()));
+
+  int num_emb = op->attribute<pir::Int32Attribute>("num_emb").data();
+  int space_len = op->attribute<pir::Int32Attribute>("space_len").data();
+  int rand_len = op->attribute<pir::Int32Attribute>("rand_len").data();
+  int white_list_len =
+      op->attribute<pir::Int32Attribute>("white_list_len").data();
+  int black_list_len =
+      op->attribute<pir::Int32Attribute>("black_list_len").data();
+
+  infer_context->AddEqualCstr(w_shape[0],
+                              symbol::DimExpr(space_len + rand_len));
+  infer_context->AddEqualCstr(w_shape[1], symbol::DimExpr(1));
+
+  PADDLE_ENFORCE_EQ(num_emb % rand_len,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The PyramidHashOP’s Attr(num_emb) should mod "
+                        "Attr(rand_len), but num_emb is %d, rand_len is %d",
+                        num_emb,
+                        rand_len));
+
+  // Handle white_list constraints if present
+  if (white_list_len > 0) {
+    const auto &white_list_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    if (white_list_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+      PADDLE_THROW(
+          "Input(WhiteList) of PyramidHashOP is not "
+          "found but white_list_len > 0.");
+    } else {
+      std::vector<symbol::DimExpr> wl_shape = white_list_shape_or_data.shape();
+      PADDLE_ENFORCE_EQ(wl_shape.size(),
+                        2,
+                        common::errors::InvalidArgument(
+                            "The rank of Input(WhiteList) of PyramidHashOP is "
+                            "invalid. It should be 2, but got %d",
+                            wl_shape.size()));
+
+      infer_context->AddEqualCstr(wl_shape[0], symbol::DimExpr(white_list_len));
+      infer_context->AddEqualCstr(wl_shape[1], symbol::DimExpr(1));
+    }
+  }
+
+  // Handle black_list constraints if present
+  if (black_list_len > 0) {
+    const auto &black_list_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(3));
+    std::vector<symbol::DimExpr> bl_dims = black_list_shape_or_data.shape();
+
+    PADDLE_ENFORCE_EQ(bl_dims.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "The rank of Input(BlackList) of PyramidHashOP is "
+                          "invalid. It should be 2, but got %d",
+                          bl_dims.size()));
+
+    infer_context->AddEqualCstr(bl_dims[0], symbol::DimExpr(black_list_len));
+    infer_context->AddEqualCstr(bl_dims[1], symbol::DimExpr(1));
+  }
+
+  // Set the output shapes
+  std::vector<symbol::DimExpr> out_shape = {infer_context->GetNextSymName(),
+                                            symbol::DimExpr(num_emb)};
+  std::vector<symbol::DimExpr> drop_pos = {infer_context->GetNextSymName(), 1};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(drop_pos)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  return true;
+}
 
 // bool QuantizeLinearOpInferSymbolicShape(pir::Operation *op,
 //                                         pir::InferSymbolicShapeContext
