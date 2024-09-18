@@ -44,12 +44,8 @@ class OpLowerer {
         group, apply_op_schedule, apply_group_schedule, apply_pass);
   }
 
-  BucketLoweredFuncsWrapper BucketLower(const T& group,
-                                        bool apply_op_schedule = false,
-                                        bool apply_group_schedule = true,
-                                        bool apply_pass = true) {
-    return impl_->BucketLower(
-        group, apply_op_schedule, apply_group_schedule, apply_pass);
+  BucketLoweredFuncsWrapper BucketLower(const T& group) {
+    return impl_->BucketLower(group);
   }
 
  private:

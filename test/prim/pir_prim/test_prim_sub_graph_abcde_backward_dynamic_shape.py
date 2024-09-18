@@ -276,7 +276,7 @@ class TestPrimAddWithGrad10(TestPrimTwoWithGrad):
 class TestPrimBatchNormWithGrad1(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
-        self.op_name = "pd_op.batch_norm_grad_"
+        self.op_name = "pd_op.batch_norm_grad"
         self.dtype = "float32"
         self.x_shape = [30, 40, 50, 60]
         self.init_x_shape = [None, 40, None, None]
@@ -295,7 +295,7 @@ class TestPrimBatchNormWithGrad1(TestPrimThreeWithGrad):
 class TestPrimBatchNormWithGrad2(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
-        self.op_name = "pd_op.batch_norm_grad_"
+        self.op_name = "pd_op.batch_norm_grad"
         self.dtype = "float32"
         self.x_shape = [30, 40, 50, 60]
         self.init_x_shape = [None, 40, None, None]
@@ -314,7 +314,7 @@ class TestPrimBatchNormWithGrad2(TestPrimThreeWithGrad):
 class TestPrimBatchNormWithGrad3(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
-        self.op_name = "pd_op.batch_norm_grad_"
+        self.op_name = "pd_op.batch_norm_grad"
         self.dtype = "float32"
         self.x_shape = [30, 40, 50, 60]
         self.init_x_shape = [None, None, None, 60]
@@ -333,7 +333,7 @@ class TestPrimBatchNormWithGrad3(TestPrimThreeWithGrad):
 class TestPrimBatchNormWithGrad4(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
-        self.op_name = "pd_op.batch_norm_grad_"
+        self.op_name = "pd_op.batch_norm_grad"
         self.dtype = "float32"
         self.x_shape = [30, 40, 50, 60]
         self.init_x_shape = [None, 40, None, None]
@@ -352,7 +352,7 @@ class TestPrimBatchNormWithGrad4(TestPrimThreeWithGrad):
 class TestPrimBatchNormWithGrad5(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
-        self.op_name = "pd_op.batch_norm_grad_"
+        self.op_name = "pd_op.batch_norm_grad"
         self.dtype = "float32"
         self.x_shape = [30, 40, 50, 60]
         self.init_x_shape = [None, None, None, 60]
@@ -371,7 +371,7 @@ class TestPrimBatchNormWithGrad5(TestPrimThreeWithGrad):
 class TestPrimBatchNormWithGrad6(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
-        self.op_name = "pd_op.batch_norm_grad_"
+        self.op_name = "pd_op.batch_norm_grad"
         self.dtype = "float32"
         self.x_shape = [30, 40, 50, 60]
         self.init_x_shape = [None, 40, None, None]
@@ -390,7 +390,7 @@ class TestPrimBatchNormWithGrad6(TestPrimThreeWithGrad):
 class TestPrimBatchNormWithGrad7(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
-        self.op_name = "pd_op.batch_norm_grad_"
+        self.op_name = "pd_op.batch_norm_grad"
         self.dtype = "float32"
         self.x_shape = [30, 40, 50, 60]
         self.init_x_shape = [None, None, None, 60]

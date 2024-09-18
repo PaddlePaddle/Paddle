@@ -1880,7 +1880,12 @@ void topk_grad(const Tensor& x,
       by_pass<T>(out_grad, x_grad);
       return;
     }
-    auto zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+    Tensor zero_tensor;
+    if (has_dynamic_shape(x.shape())) {
+      zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
+    } else {
+      zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+    }
     auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
     set_output<T>(x_grad_tmp, x_grad);
   }

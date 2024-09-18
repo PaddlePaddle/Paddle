@@ -358,8 +358,8 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
 
   for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
        ++operand_index) {
+    operand_source(operand_index).set_type(body_block.arg(arg_index).type());
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
-      operand_source(operand_index).set_type(body_block.arg(arg_index).type());
       body_block.arg(arg_index).ReplaceAllUsesWith(
           operand_source(operand_index));
       body_block.EraseArg(arg_index);
