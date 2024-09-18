@@ -121,12 +121,5 @@ def apply_build_strategy(
     if build_strategy.cache_runtime_context:
         apply_pass("runtime_context_cache_pass")
         build_strategy.cache_runtime_context = False
-    if build_strategy.enable_addto and use_cuda:
-        # NOTE: how to get fetch vars to skip memory optimization?
-        apply_pass("inplace_addto_op_pass")
-        build_strategy.enable_addto = False
-    if build_strategy.enable_inplace:
-        apply_pass("buffer_shared_inplace_pass")
-        build_strategy.enable_inplace = False
     build_strategy._clear_finalized()
     return build_strategy
