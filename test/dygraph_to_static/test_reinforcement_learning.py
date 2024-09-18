@@ -21,7 +21,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -203,7 +202,6 @@ class TestDeclarative(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
 
-    @test_legacy_and_pt_and_pir
     def test_train(self):
         st_out = train(self.args, to_static=True)
         dy_out = train(self.args, to_static=False)

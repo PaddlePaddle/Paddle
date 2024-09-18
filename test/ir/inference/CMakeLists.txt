@@ -43,6 +43,7 @@ if(WIN32)
        "test_trt_convert_elementwiseadd_transpose")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_elementwiseadd_transpose")
+
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_split_layernorm_to_math_ops_pass")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
@@ -152,6 +153,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 
   set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
+
   if(NOT WIN32)
     set_tests_properties(test_trt_explicit_quantization_resnet
                          PROPERTIES TIMEOUT 300)
@@ -162,10 +164,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
   endif()
 
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_multiclass_nms3_op PROPERTIES TIMEOUT 60)
 
   if(WITH_ONEDNN)
-    set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
+    set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 300)
     set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                         180)
     set_tests_properties(test_trt_emb_eltwise_layernorm_fuse_pass

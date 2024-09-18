@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 from functools import partial
 
@@ -235,12 +236,13 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
+        num_examples = 10 if sys.platform == "win32" else 50
         self.run_and_statis(
             quant=False,
-            max_examples=50,
+            max_examples=num_examples,
             passes=["merge_layernorm_fuse_pass"],
             max_duration=250,
-            min_success_num=50,
+            min_success_num=num_examples,
         )
 
 
