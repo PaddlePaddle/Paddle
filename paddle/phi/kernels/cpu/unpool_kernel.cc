@@ -63,7 +63,9 @@ void UnpoolKernel(const Context& dev_ctx,
                 output_feasize,
                 index,
                 output_feasize));
-        output_data[index] = input_data[i];
+        if (output_data != nullptr) {
+          output_data[index] = input_data[i];
+        }
       }
       input_data += input_feasize;
       indices_data += input_feasize;
@@ -115,7 +117,9 @@ void Unpool3dKernel(const Context& dev_ctx,
                 output_feasize,
                 index,
                 output_feasize));
-        output_data[index] = input_data[i];
+        if (output_data != nullptr) {
+          output_data[index] = input_data[i];
+        }
       }
       input_data += input_feasize;
       indices_data += input_feasize;

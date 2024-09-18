@@ -63,15 +63,15 @@ class ContainerOpInterface : public OpInterfaceBase<ContainerOpInterface> {
     }
   };
 
-  Value container() { return impl_->container_(operation()); }
-  Value inlet() { return impl_->inlet_(operation()); }
-  Value outlet() { return impl_->outlet_(operation()); }
-  size_t tuple_size() { return impl_->tuple_size_(operation()); }
+  Value container() { return impl_->container_(operation()); }     // NOLINT
+  Value inlet() { return impl_->inlet_(operation()); }             // NOLINT
+  Value outlet() { return impl_->outlet_(operation()); }           // NOLINT
+  size_t tuple_size() { return impl_->tuple_size_(operation()); }  // NOLINT
   Value inlet_element(size_t index) {
-    return impl_->inlet_element_(operation(), index);
+    return impl_->inlet_element_(operation(), index);  // NOLINT
   }
   Value outlet_element(size_t index) {
-    return impl_->outlet_element_(operation(), index);
+    return impl_->outlet_element_(operation(), index);  // NOLINT
   }
 
   TuplePushOp tuple_push_op();

@@ -246,6 +246,10 @@ static edge_node *build_lmt(lmt_node **lmt,
   edge_node *e = nullptr;
   edge_node *edge_table = nullptr;
 
+  if (p == nullptr) {
+    return nullptr;
+  }
+
   for (c = 0; c < p->num_contours; c++) {
     total_vertices += count_optimal_vertices(p->contour[c]);
   }
@@ -563,6 +567,10 @@ static void add_left(polygon_node *p, double x, double y) {
 
 static void merge_left(polygon_node *p, polygon_node *q, polygon_node *list) {
   polygon_node *target = nullptr;
+
+  if (q == nullptr || p == nullptr) {
+    return;
+  }
 
   /* Label contour as a hole */
   q->proxy->hole = 1;
@@ -885,6 +893,10 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   int c = 0;
   int v = 0;
   gpc_vertex_list *extended_contour = nullptr;
+
+  if (p == nullptr || new_contour == nullptr) {
+    return;
+  }
 
   /* Create an extended hole array */
   gpc_malloc<int>(extended_hole,
@@ -1816,7 +1828,7 @@ void gpc_tristrip_clip(gpc_op op,
               cf = edge;
               break;
             case ERI:
-              edge->outp[ABOVE] = cf->outp[ABOVE];
+              if (cf) edge->outp[ABOVE] = cf->outp[ABOVE];
               if (xb != cf->xb) {
                 gpc_vertex_create(edge, ABOVE, RIGHT, xb, yb);
               }
@@ -1828,7 +1840,7 @@ void gpc_tristrip_clip(gpc_op op,
               cf = edge;
               break;
             case EMX:
-              if (xb != cf->xb) {
+              if (cf && xb != cf->xb) {
                 gpc_vertex_create(edge, BELOW, RIGHT, xb, yb);
               }
               edge->outp[ABOVE] = nullptr;
@@ -1866,7 +1878,7 @@ void gpc_tristrip_clip(gpc_op op,
               break;
             case IMM:
               gpc_vertex_create(edge, BELOW, LEFT, xb, yb);
-              edge->outp[ABOVE] = cf->outp[ABOVE];
+              if (cf) edge->outp[ABOVE] = cf->outp[ABOVE];
               if (xb != cf->xb) {
                 gpc_vertex_create(cf, ABOVE, RIGHT, xb, yb);
               }
