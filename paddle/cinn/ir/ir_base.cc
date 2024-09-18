@@ -332,11 +332,11 @@ void IrNode::convert_int32_to_int64() {
                             "to int64_t, but get type is: %s",
                             type_));
   type_ = Int(64);
-  // for (Expr &operand : operands) {
-  //   VLOG(1) << "operand is: " << operand << "; type is: " << operand->type()
-  //           << "; operand.is_constant(): " << operand.is_constant();
-  //   operand->convert_int32_to_int64();
-  // }
+  for (Expr &operand : operands) {
+    VLOG(1) << "operand is: " << operand << "; type is: " << operand->type()
+            << "; operand.is_constant(): " << operand.is_constant();
+    operand->convert_int32_to_int64();
+  }
 }
 
 void TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
