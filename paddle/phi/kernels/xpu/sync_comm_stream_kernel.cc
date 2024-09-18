@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/sync_comm_stream_kernel.h"
+#include "paddle/phi/kernels/impl/sync_comm_stream_kernel_impl.h"
 
 PD_REGISTER_KERNEL(sync_comm_stream,
                    XPU,
