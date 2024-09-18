@@ -806,7 +806,7 @@ class PIRCoreAttnPattern(PIRBasePattern):
         return out
 
 
-# GPT
+# # GPT
 @register_pir_pattern
 class PIRAttentio2nPattern(PIRBasePattern):
     """Attention2 pattern"""
@@ -1010,12 +1010,14 @@ def match_pattern(pattern, pir_program):
             # compare op
             if not _compare_op_node(src, tgt):
                 # print(f"op not match")
+                # print(f"because src name is {src.name()}, tgt name is {tgt.name()}")
                 not_matched = True
                 return
 
             src_id = src.get_parent_block().ops.index(src)
             tgt_id = tgt.get_parent_block().ops.index(tgt)
             # print(f"adding op {src.name()}")
+            # print(f"comparing op: {src_id}, with {tgt_id}")
             result[src_id] = tgt_id
 
             # compare input operands num
@@ -1054,21 +1056,22 @@ def match_pattern(pattern, pir_program):
             #     print(f"src_as_input_ops not match")
             #     not_matched = True
             #     return
+            # todo: process src_as_input_ops < tgt_as_input_ops
             if len(src_as_input_ops) > len(tgt_as_input_ops):
                 not_matched = True
                 return
-
-            for idx, src_as_input_op in enumerate(src_as_input_ops):
-                src_as_input_op_id = (
-                    src_as_input_op.get_parent_block().ops.index(
-                        src_as_input_op
+            if len(src_as_input_ops) == len(tgt_as_input_ops):
+                for idx, src_as_input_op in enumerate(src_as_input_ops):
+                    src_as_input_op_id = (
+                        src_as_input_op.get_parent_block().ops.index(
+                            src_as_input_op
+                        )
                     )
-                )
-                if src_as_input_op_id in result.keys():
-                    continue
+                    if src_as_input_op_id in result.keys():
+                        continue
 
-                tgt_as_input_op = tgt_as_input_ops[idx]
-                _match_core(src_as_input_op, tgt_as_input_op, is_op=True)
+                    tgt_as_input_op = tgt_as_input_ops[idx]
+                    _match_core(src_as_input_op, tgt_as_input_op, is_op=True)
 
             # as output for op node
             src_as_output_op = src.get_defining_op()
@@ -1095,7 +1098,7 @@ def match_pattern(pattern, pir_program):
             break
     # src_start_op = src_ops[0] # to be done, need to check pattern start op
     assert src_start_op is not None, "src_start_op is none"
-    print(f"start op of this pattern is: {src_start_op}")
+    # print(f"start op of this pattern is: {src_start_op}")
 
     tgt_ops = pir_program.global_block().ops
     for idx, tgt_op in enumerate(tgt_ops):
@@ -1103,9 +1106,10 @@ def match_pattern(pattern, pir_program):
             # print(f"program op index is {idx}")
             # print(f"start match core")
             not_matched = False
+            result = {}
             _match_core(src_start_op, tgt_op, is_op=True)
             if not not_matched:
-                # print(f"matched, check whether to append")
+                # print(f"matched one, check whether to append")
                 need_to_append = True
                 for value in result.values():
                     if value in matched_op_node_ids:
