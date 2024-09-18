@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import warnings
 
 import paddle
@@ -22,6 +23,7 @@ from paddle.base import (
 from paddle.base.framework import (
     in_dygraph_mode,
 )
+from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.tuner.pir_rule_based_tuner import (
     _PIR_PATTERNS,
     match_all_patterns,
@@ -31,6 +33,7 @@ from paddle.distributed.auto_parallel.static.tuner.pir_rule_based_tuner import (
 class ToDistributedConfig:
     def __init__(self):
         self.input_spec = None
+        self.num_hidden_layers = None
 
 
 def record_program_ops_pre_hook(layer, inputs):
@@ -73,6 +76,17 @@ def record_program_ops_post_hook(layer, inputs, outputs):
             )
         layer._op_recorder.ops = ops
         # print(f"layer: {layer._full_name}, start: {layer._op_recorder.start}, end: {end}, corresponding ops: {ops}")
+
+
+def get_layer_pp_info(num_hidden_layers, layer_index):
+    mesh = fleet.auto.get_mesh()
+    if "pp" in mesh.dim_names:
+        pp_degree = mesh.get_dim_size("pp")
+        layer_per_stage = math.ceil(num_hidden_layers / pp_degree)
+        input_need_reshard = layer_index % layer_per_stage == 0
+        return layer_index // layer_per_stage, input_need_reshard
+    else:
+        return None, False
 
 
 # mesh, config: input_spec
@@ -124,6 +138,9 @@ def to_distributed(model, mesh, config):
     for pattern_name, matched_patterns in results.items():
         # process one pattern
         pattern_ops_dist_infos = _PIR_PATTERNS[pattern_name].ops_dist_infos
+        assert (
+            pattern_ops_dist_infos is not None
+        ), f"{pattern_name} does not contain ops_dist_infos, cannot reshard, please check"
         print(f"{pattern_name} op dist infos are {pattern_ops_dist_infos}")
         print(
             f"matched patterns are {matched_patterns}"
@@ -143,7 +160,11 @@ def to_distributed(model, mesh, config):
             matched_programs.append(program_ops_dist_infos)
         print(f"matched program and ops dist infos are {matched_programs}")
 
-    # # # # step6: get dynamic layer dist infos, and then SHARD
+    print(f"num_hidden_layers is: {config.num_hidden_layers}")
+
+    # # # # step6-0: SHARD INPUTS
+
+    # # # # step6-1: SHARD PATRAMETERS, get dynamic layer dist infos
     for matched_program in matched_programs:
         for program_ops_id, dist_infos in matched_program.items():
             if program_ops_id not in ops_id_to_layer.keys():
