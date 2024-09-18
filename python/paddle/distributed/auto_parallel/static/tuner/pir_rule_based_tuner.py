@@ -127,9 +127,11 @@ class PIRRotateHalfPattern(PIRBasePattern):
         )
         # data init
         x_shape = [4, 1024, 32, 64]  # [batch, sequence, num_heads, head_size]
-        x = paddle.randn(x_shape)
+        tmp_x = paddle.randn(x_shape)
+        tmp = paddle.static.data('tmp_x', x_shape, tmp_x.dtype)
         # program construction
         with paddle.static.program_guard(main_program, start_program):
+            x = paddle.reshape(tmp, x_shape)
             x1 = x[..., : x.shape[-1] // 2]
             x2 = x[..., x.shape[-1] // 2 :]
             out = paddle.concat([-x2, x1], axis=-1)
@@ -1000,6 +1002,7 @@ def match_pattern(pattern, pir_program):
             return
 
         if is_op:
+            # print(f"comparing op: {src.name()}, with {tgt.name()}")
             # print(f"comparing op {src.name()}")
             # skip comparing data_op
             if src.name() == "pd_op.data":
@@ -1029,16 +1032,19 @@ def match_pattern(pattern, pir_program):
             # compare input operands
             src_operands = src.operands_source()
             for idx, src_operand in enumerate(src_operands):
+                # print(f"compare op {src_id} src operand: {idx}")
                 tgt_operand = tgt.operand_source(idx)
                 _match_core(src_operand, tgt_operand, is_op=False)
 
             # compare output results
             src_results = src.results()
             for idx, src_result in enumerate(src_results):
+                # print(f"compare op {src_id} tgt result: {idx}")
                 tgt_result = tgt.result(idx)
                 _match_core(src_result, tgt_result, is_op=False)
 
         else:
+            # print(f"compare operand, not op")
             # compare tensor, from tensor to op
 
             # as input for op node
@@ -1065,7 +1071,16 @@ def match_pattern(pattern, pir_program):
                 _match_core(src_as_input_op, tgt_as_input_op, is_op=True)
 
             # as output for op node
-            # to be done
+            src_as_output_op = src.get_defining_op()
+            tgt_as_output_op = tgt.get_defining_op()
+            if src_as_output_op is not None and tgt_as_output_op is not None:
+                src_as_output_op_id = (
+                    src_as_output_op.get_parent_block().ops.index(
+                        src_as_output_op
+                    )
+                )
+                if src_as_output_op_id not in result.keys():
+                    _match_core(src_as_output_op, tgt_as_output_op, is_op=True)
 
     results = []
     result = {}
@@ -1084,8 +1099,8 @@ def match_pattern(pattern, pir_program):
 
     tgt_ops = pir_program.global_block().ops
     for idx, tgt_op in enumerate(tgt_ops):
-        # print(f"compare {idx} th tgt op")
         if tgt_op.name() == src_start_op.name():
+            # print(f"program op index is {idx}")
             # print(f"start match core")
             not_matched = False
             _match_core(src_start_op, tgt_op, is_op=True)
