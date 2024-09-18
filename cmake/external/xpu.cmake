@@ -25,6 +25,7 @@ set(XPU_XFT_LIB_NAME "libxft.so")
 set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
+set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
 
 if(NOT DEFINED XPU_XRE_BASE_VERSION)
   set(XPU_XRE_BASE_VERSION "4.32.0.1")
@@ -139,6 +140,7 @@ set(XPU_XBLAS_LIB "${XPU_LIB_DIR}/${XPU_XBLAS_LIB_NAME}")
 set(XPU_RT_LIB "${XPU_LIB_DIR}/${XPU_RT_LIB_NAME}")
 set(XPU_CUDA_LIB "${XPU_LIB_DIR}/${XPU_CUDA_LIB_NAME}")
 set(XPU_XFA_LIB "${XPU_LIB_DIR}/${XPU_XFA_LIB_NAME}")
+set(XPU_XPUDNN_LIB "${XPU_LIB_DIR}/${XPU_XPUDNN_LIB_NAME}")
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XPU_INSTALL_DIR}/lib")
 
@@ -175,7 +177,9 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${XPU_INSTALL_ROOT}
-  BUILD_BYPRODUCTS ${XPU_API_LIB} BUILD_BYPORDUCTS ${XPU_XBLAS_LIB}
+  BUILD_BYPRODUCTS ${XPU_API_LIB}
+  BUILD_BYPRODUCTS ${XPU_XBLAS_LIB}
+  BUILD_BYPRODUCTS ${XPU_XPUDNN_LIB}
   BUILD_BYPRODUCTS ${XPU_XFA_LIB}
   BUILD_BYPRODUCTS ${XPU_RT_LIB}
   BUILD_BYPRODUCTS ${XPU_BKCL_LIB})
@@ -203,6 +207,8 @@ set(XPU_XHPC_INC_DIR "${XPU_INC_DIR}/xhpc")
 include_directories(${XPU_XHPC_INC_DIR})
 set(XPU_XBLAS_INC_DIR "${XPU_INC_DIR}/xhpc/xblas")
 include_directories(${XPU_XBLAS_INC_DIR})
+set(XPU_XPUDNN_INC_DIR "${XPU_INC_DIR}/xhpc/xpudnn")
+include_directories(${XPU_XPUDNN_INC_DIR})
 
 if(WITH_XPU_XRE5)
   add_definitions(-DPADDLE_WITH_XPU_XRE5)
@@ -227,8 +233,14 @@ if(WITH_XPTI)
 endif()
 
 if(WITH_XPU_XRE5)
-  target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
-                        ${XPU_API_LIB} ${XPU_XFA_LIB})
+  target_link_libraries(
+    xpulib
+    ${XPU_RT_LIB}
+    ${XPU_BKCL_LIB}
+    ${XPU_XBLAS_LIB}
+    ${XPU_API_LIB}
+    ${XPU_XFA_LIB}
+    ${XPU_XPUDNN_LIB})
 else()
   target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
                         ${XPU_API_LIB})
