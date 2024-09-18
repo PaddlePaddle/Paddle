@@ -482,7 +482,9 @@ class RemovePasses:
         dist_main_program, dist_startup_program, dist_params_grads=[]
     ):
         RemovePasses.remove_other_rank_input_output_pass(dist_main_program)
-        RemovePasses.remove_other_rank_params_grads_pass(dist_params_grads)
+        RemovePasses.remove_other_rank_params_grads_pass(
+            dist_main_program, dist_params_grads
+        )
         RemovePasses.remove_other_rank_op_pass(dist_main_program)
         RemovePasses.remove_no_need_in_startup(
             dist_startup_program, dist_main_program
