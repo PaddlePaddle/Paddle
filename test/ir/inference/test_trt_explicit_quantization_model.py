@@ -157,14 +157,15 @@ class TestExplicitQuantizationModel:
         return output_data
 
     def test_model(self):
-        self.build_program()
-        baseline_output = self.infer_program(trt_int8=False)
-        trt_output = self.infer_program(trt_int8=True)
-        trt_predict = np.argmax(trt_output, axis=1)
-        baseline_predict = np.argmax(baseline_output, axis=1)
-        same = (trt_predict == baseline_predict).sum() / len(trt_predict)
-        self.assertGreaterEqual(
-            same,
-            0.9,
-            "There are more then 10% output difference between int8 and float32 inference.",
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self.build_program()
+            baseline_output = self.infer_program(trt_int8=False)
+            trt_output = self.infer_program(trt_int8=True)
+            trt_predict = np.argmax(trt_output, axis=1)
+            baseline_predict = np.argmax(baseline_output, axis=1)
+            same = (trt_predict == baseline_predict).sum() / len(trt_predict)
+            self.assertGreaterEqual(
+                same,
+                0.9,
+                "There are more then 10% output difference between int8 and float32 inference.",
+            )

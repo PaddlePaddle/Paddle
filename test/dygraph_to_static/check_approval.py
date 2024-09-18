@@ -105,21 +105,12 @@ class TestClassInheritFromTestCaseDiagnostic(Diagnostic):
         )
 
 
-class TestCaseWithoutDecoratorDiagnostic(Diagnostic):
-    def __init__(self, start: Location, end: Location):
-        super().__init__(
-            start,
-            end,
-            'Test case should use @test_legacy_and_pt_and_pir instead of no decorator',
-        )
-
-
 class TestCaseWithPirApiDecoratorDiagnostic(Diagnostic):
     def __init__(self, start: Location, end: Location):
         super().__init__(
             start,
             end,
-            'Test case should use @test_legacy_and_pt_and_pir instead of @test_with_pir_api',
+            'Test case should use @test_pt_and_pir instead of @test_with_pir_api',
         )
 
 
@@ -150,19 +141,6 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_move_cuda_pinned_tensor.py",
         "test_pylayer.py",
         "test_tensor_attr_consistency.py",
-    ],
-    TestCaseWithoutDecoratorDiagnostic: [
-        "test_logical.py",
-        "test_inplace_assign.py",
-        # TODO: Remove these files from the allow list after it's support PIR mode
-        "test_tensor_hook.py",
-        "test_to_tensor.py",
-        "test_warning.py",
-        "test_typing.py",
-        "test_gradname_parse.py",
-        "test_for_enumerate.py",
-        "test_save_load.py",
-        "test_declarative.py",
     ],
     TestCaseWithPirApiDecoratorDiagnostic: [],
 }
@@ -222,13 +200,6 @@ class TestBaseChecker(Checker):
         self.generic_visit(node)
 
     def check_test_case(self, node: ast.FunctionDef):
-        # Check if the test case has not any decorator
-        if not node.decorator_list:
-            start = Location(node.lineno, node.col_offset)
-            end = Location(node.end_lineno, node.end_col_offset)  # type: ignore
-            self.diagnostics.append(
-                TestCaseWithoutDecoratorDiagnostic(start, end)
-            )
         # Check if the test case use @test_with_pir_api
         for decorator in node.decorator_list:
             decorator_str = ast_to_source_code(decorator).strip()
@@ -347,7 +318,6 @@ def main():
         (
             UseToStaticAsDecoratorDiagnostic,
             TestClassInheritFromTestCaseDiagnostic,
-            TestCaseWithoutDecoratorDiagnostic,
             TestCaseWithPirApiDecoratorDiagnostic,
         ),
     )

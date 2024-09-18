@@ -2716,6 +2716,15 @@ def unshard_dtensor(dist_tensor: Tensor) -> Tensor:
         else:
             return paddle.Tensor(r_dist_tensor._local_value())
 
+    elif paddle.framework.in_pir_mode():
+        # in pir mode, we define the logic of unshard_tensor as dist_tensor_type --> dense_tensor_type with global shape.
+        dense_tensor_type = paddle.pir.create_shaped_type(
+            dist_tensor.type(), dist_tensor.shape
+        )
+        dist_tensor.set_type(dense_tensor_type)
+
+        return dist_tensor
+
     else:
         assert isinstance(
             dist_tensor, Variable

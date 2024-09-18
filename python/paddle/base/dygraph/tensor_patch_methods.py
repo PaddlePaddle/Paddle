@@ -1260,7 +1260,7 @@ def monkey_patch_tensor():
 
         # raise AttributeError for unsupported tensors, so that
         # hasattr(cpu_tensor, "__cuda_array_interface__") is False.
-        if "gpu" not in str(self.place):
+        if not self.place.is_gpu_place():
             raise AttributeError(
                 "Can't get __cuda_array_interface__ on non-CUDA tensor. "
                 "If CUDA data is required use tensor.cuda() to copy tensor to device memory."
