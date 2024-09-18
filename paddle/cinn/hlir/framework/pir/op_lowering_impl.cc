@@ -92,32 +92,19 @@ OpLowererImpl::OpLowererImpl(const Target& target) : target_(target) {
 }
 
 BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
-    const OpLoweringGroupPtr& group,
-    bool apply_op_schedule,
-    bool apply_group_schedule,
-    bool apply_pass) {
+    const OpLoweringGroupPtr& group) {
   VLOG(4) << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
   const auto& ops = group->ops();
-  if (ops.size() == 1 && ops[0]->name() == "custom_call") {
-    return {{std::make_tuple(
-                ir::Expr(1), LowerCustomCall(group)[0], default_priority)},
-            ir::LoweredFunc()};
-  }
-  auto X86Expr = LowerX86(group, ops, apply_op_schedule);
+  auto X86Expr = LowerX86(group, ops, false);
   VLOG(3) << "After x86 lower, ir is: \n" << X86Expr;
 
   std::vector<ir::Tensor> group_func_arg_tensors;
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
-  std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
-  std::vector<ir::Expr> func_bodies = LowerOps(group,
-                                               ops,
-                                               apply_op_schedule,
-                                               &group_func_arg_tensors,
-                                               &tensor_map,
-                                               &tmp_tensor_info);
+  std::vector<ir::Expr> func_bodies =
+      LowerOps(group, ops, &group_func_arg_tensors, &tensor_map);
 
   if (FLAGS_cinn_check_tensor_buffer_map) {
     optim::CheckTensorBufferMap(func_bodies, "BucketLower LowerOps");
@@ -153,42 +140,27 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     VLOG(3) << "MergeExprs tensor-buffer map check succeed";
   }
 
-  std::unordered_set<::pir::Value> inner_genevalue;
-  std::unordered_set<::pir::Operation*> ops_set(ops.begin(), ops.end());
-  for (auto* op : ops) {
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      inner_genevalue.insert(op->result(i));
-    }
+  std::unordered_set<std::string> output_tensor_names;
+  for (auto value : group->GetGroupOutputValues()) {
+    output_tensor_names.insert(ValueName(value));
   }
 
-  if (apply_group_schedule) {
-    std::unordered_set<std::string> output_tensor_names;
-    for (auto value : group->GetGroupOutputValues()) {
-      output_tensor_names.insert(ValueName(value));
-    }
+  std::unique_ptr<ir::GroupScheduler> group_scheduler =
+      ir::GroupScheduler::Make(&ir_sch,
+                               output_tensor_names,
+                               target_,
+                               /* is_dy_shape = */ true,
+                               fusion_group_info);
 
-    std::unique_ptr<ir::GroupScheduler> group_scheduler =
-        ir::GroupScheduler::Make(&ir_sch,
-                                 output_tensor_names,
-                                 target_,
-                                 /* is_dy_shape = */ true,
-                                 fusion_group_info);
+  VLOG(4) << "Start apply group_scheduler->Schedule()";
+  group_scheduler->Schedule();
+  VLOG(4) << "End   apply group_scheduler->Schedule()";
 
-    VLOG(4) << "Start apply group_scheduler->Schedule()";
-    group_scheduler->Schedule();
-    VLOG(4) << "End   apply group_scheduler->Schedule()";
+  cond2func_bodies = group_scheduler->GetIRs();
+  VLOG(4) << "End   group_scheduler->GetIRs";
 
-    cond2func_bodies = group_scheduler->GetIRs();
-    VLOG(4) << "End   group_scheduler->GetIRs";
-
-    priorities = group_scheduler->GetPriorities();
-    VLOG(4) << "End group_scheduler->GetPriorities";
-
-  } else {
-    cond2func_bodies.emplace_back(ir::Expr(true),
-                                  ir_sch.GetModule().GetExprs()[0]);
-    priorities.emplace_back(default_priority);
-  }
+  priorities = group_scheduler->GetPriorities();
+  VLOG(4) << "End group_scheduler->GetPriorities";
 
   // The last func is stored as a kernel on x86
   cond2func_bodies.emplace_back(ir::Expr(true), X86Expr);
@@ -214,7 +186,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   std::vector<ir::Tensor> infer_shape_tensor_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
-                                                   apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args,
@@ -253,59 +224,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   return funcs_wrapper;
 }
 
-std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
-    const OpLoweringGroupPtr& group) {
-  const auto& ops = group->ops();
-  PADDLE_ENFORCE_EQ(
-      ops.size(),
-      1,
-      ::common::errors::InvalidArgument("Custom call group should have only "
-                                        "one op"));
-  ::pir::Operation* op = ops[0];
-  std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
-  std::vector<ir::Tensor> op_func_arg_tensors =
-      CollectInputTensor(group, op, nullptr, &tensor_map);
-  VLOG(4) << "inputs.size(): " << op_func_arg_tensors.size();
-
-  std::vector<Type> out_types;
-  std::vector<std::vector<int>> out_shapes;
-  CollectOutputInfo(op, &out_types, &out_shapes, group);
-  VLOG(4) << "out_types.size(): " << out_types.size();
-
-  NodeAttr node_attrs = details::CollectAttrs(*op);
-
-  auto& cinn_strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
-  const hlir::framework::Operator* cinn_op =
-      Operator::Get(node_attrs.node_name);
-  auto impl = OpStrategy::SelectImpl(cinn_strategy[cinn_op](
-      node_attrs, op_func_arg_tensors, out_types, out_shapes, target_));
-
-  // TODO(Arelius84): Support extern API
-  std::string external_api;
-  // if (node_attrs.attr_store.count("custom_call")) {
-  //   external_api =
-  //       absl::get<std::string>(node_attrs.attr_store.at("custom_call"));
-  // } else {
-  //   external_api = ExternalApiRegistry::Global()->GetExternalApi(node,
-  //   target_);
-  // }
-  std::vector<cinn::common::CINNValue> compute_args = {
-      cinn::common::CINNValue(group->FuncName()),
-      cinn::common::CINNValue(external_api)};
-  cinn::common::CINNValuePack pack =
-      impl->fcompute(cinn::common::CINNValuePack{compute_args});
-  PADDLE_ENFORCE_EQ(
-      pack.size(),
-      1UL,
-      ::common::errors::InvalidArgument("The size of pack should be 1."));
-  // reset input names as extern api input args can't be remove duplicate.
-  // group->input_names.clear();
-  // for (auto& inode : node->inlinks_in_order()) {
-  //   group->input_names.push_back(inode->source()->as<NodeData>()->id());
-  // }
-  return {pack[0].operator ir::Expr().as_lowered_func_ref()};
-}
-
 std::unordered_set<std::string> CollectStoreBufferNames(
     const std::vector<ir::Expr>& func_bodies) {
   std::unordered_set<std::string> buffer_names;
@@ -322,7 +240,6 @@ std::unordered_set<std::string> CollectStoreBufferNames(
 std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const OpLoweringGroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    bool done_op_schedule,
     std::vector<ir::Expr> func_bodies,
     std::vector<ir::Tensor>* group_func_arg_tensors,
     std::vector<ir::Argument>* group_func_args,
@@ -375,30 +292,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     group->mut_output_names().push_back(tensor->name);
     (*group_func_args).emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
     arg_name_set.insert(tensor->buffer->name);
-  }
-
-  if (!done_op_schedule) {
-    std::unordered_set<std::string> args_set;
-    for (auto arg : (*group_func_args)) {
-      args_set.insert(arg.name());
-    }
-    for (const auto& op : group->ops()) {
-      // collect all output tensor.
-      for (auto opresult : op->results()) {
-        if (tensor_map.count(opresult) == 0) {
-          continue;
-        }
-        auto tensor = tensor_map.at(opresult);
-        if (args_set.count("_" + tensor->name) != 0) {
-          continue;
-        }
-        group->mut_output_values().push_back(opresult);
-        group_func_arg_tensors->push_back(tensor);
-        group->mut_output_names().push_back(tensor->name);
-        group_func_args->emplace_back(tensor->buffer,
-                                      ir::Argument::IO::kOutput);
-      }
-    }
   }
 
   std::map<int, CINNKernelInfo::SymbolArgBindInfo> mps;
@@ -484,9 +377,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     // 3.Building LoweredFunc
     auto func = ir::_LoweredFunc_::Make(
         group->FuncName(), *group_func_args, func_body, temp_buffers);
-    if (!done_op_schedule) {
-      func->PrepareBufferCastExprs();
-    }
+
     // 4.Apply low level pass
     if (i != func_bodies.size() - 1) {
       func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
@@ -504,33 +395,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 std::vector<ir::Expr> OpLowererImpl::LowerOps(
     const OpLoweringGroupPtr& group,
     const std::vector<::pir::Operation*>& ops,
-    bool apply_op_schedule,
     std::vector<ir::Tensor>* group_func_arg_tensors,
-    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-    std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info) {
+    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<Expr> func_bodies;
-  std::unordered_set<::pir::Value> inner_used_value;
-  for (auto* op : ops) {
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      inner_used_value.insert(op->operand_source(i));
-    }
-  }
-
-  std::unordered_set<::pir::Operation*> not_used_op;
-  for (auto* op : ops) {
-    bool used = false;
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      if (inner_used_value.count(op->result(i))) {
-        used = true;
-        break;
-      }
-    }
-
-    if (!used) {
-      not_used_op.insert(op);
-    }
-  }
 
   for (auto* op : ops) {
     VLOG(4) << "start lowering op:" << op->name() << " id: " << op->id();
@@ -545,47 +413,33 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
     std::shared_ptr<OpImpl> op_impl = nullptr;
-    if (FLAGS_cinn_bucket_compile) {
-      std::vector<Type> out_types;
-      std::vector<std::vector<ir::Dim>> out_shapes;
-      CollectOutputInfo(op, &out_types, &out_shapes, group);
 
-      PADDLE_ENFORCE_EQ(out_types.size(),
-                        out_shapes.size(),
-                        ::common::errors::InvalidArgument(
-                            "The size of out_types and out_shapes should be "
-                            "the same."));
-      VLOG(4) << "out_types.size(): " << out_types.size();
-      NodeAttr node_attrs = details::CollectAttrs(*op);
-      auto& strategy_map =
-          Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
-      StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
-      PADDLE_ENFORCE_EQ(
-          static_cast<bool>(strategy),
-          true,
-          ::common::errors::PreconditionNotMet(
-              "cinn_op_name: %s has no CINNStrategySymbolic registered.",
-              cinn_op_name));
-      op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
-                                                op_func_arg_tensors,
-                                                out_types,
-                                                out_shapes,
-                                                this->target_));
-    } else {
-      std::vector<Type> out_types;
-      std::vector<std::vector<int>> out_shapes;
-      CollectOutputInfo(op, &out_types, &out_shapes, group);
-      VLOG(4) << "out_types.size(): " << out_types.size();
-      NodeAttr node_attrs = details::CollectAttrs(*op);
-      op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
-                                                         op_func_arg_tensors,
-                                                         out_types,
-                                                         out_shapes,
-                                                         this->target_));
-    }
+    std::vector<Type> out_types;
+    std::vector<std::vector<ir::Dim>> out_shapes;
+    CollectOutputInfo(op, &out_types, &out_shapes, group);
+
+    PADDLE_ENFORCE_EQ(out_types.size(),
+                      out_shapes.size(),
+                      ::common::errors::InvalidArgument(
+                          "The size of out_types and out_shapes should be "
+                          "the same."));
+    VLOG(4) << "out_types.size(): " << out_types.size();
+    NodeAttr node_attrs = details::CollectAttrs(*op);
+    auto& strategy_map =
+        Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
+    StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(strategy),
+        true,
+        ::common::errors::PreconditionNotMet(
+            "cinn_op_name: %s has no CINNStrategySymbolic registered.",
+            cinn_op_name));
+    op_impl = OpStrategy::SelectImpl(strategy(
+        node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
+
     // 2.Perform the lower process of Op
-    std::vector<ir::LoweredFunc> funcs = DoOpLower(
-        op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
+    std::vector<ir::LoweredFunc> funcs =
+        DoOpLower(op_impl, op, tensor_map, &op_func_arg_tensors);
 
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body);
@@ -602,7 +456,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
     ::pir::Operation* op,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-    std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();
   std::vector<cinn::common::CINNValue> cinn_inputs;
@@ -635,7 +488,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       }
       std::string tensor_name = ValueName(op_results[0]) + post;
       VLOG(3) << "Add tmp tensor name for reducer op: " << tensor_name;
-      (*tmp_tensor_info)[tensor_name] = expr.as_tensor_ref();
       post = "_" + std::to_string(idx);
     } else {
       // If the number of output tensors defined by Compute is less equal than
@@ -687,17 +539,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     for (auto fun : funcs) {
       VLOG(4) << fun;
     }
-  }
-
-  op_func_arg_tensors->clear();
-  for (int idx = 0; idx < pack.size() - 1; ++idx) {
-    PADDLE_ENFORCE_EQ(
-        pack[idx].is_tensor(),
-        true,
-        ::common::errors::PreconditionNotMet(
-            "The element at index %d in pack must be a tensor.", idx));
-    op_func_arg_tensors->push_back(
-        pack[idx].operator ir::Expr().as_tensor_ref());
   }
 
   return funcs;
@@ -893,7 +734,6 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
-  std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
 
   auto need_lower_x86 = [&]() -> bool {
     for (auto* op : ops) {
@@ -939,12 +779,8 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
   this->target_ = common::DefaultHostTarget();
   cinn::runtime::CurrentTarget::SetCurrentTarget(this->target_);
 
-  std::vector<ir::Expr> func_bodies = LowerOps(group,
-                                               ops,
-                                               apply_op_schedule,
-                                               &group_func_arg_tensors,
-                                               &tensor_map,
-                                               &tmp_tensor_info);
+  std::vector<ir::Expr> func_bodies =
+      LowerOps(group, ops, &group_func_arg_tensors, &tensor_map);
   this->target_ = common::DefaultNVGPUTarget();
   cinn::runtime::CurrentTarget::SetCurrentTarget(this->target_);
   ir::ModuleExpr mod_expr(func_bodies);
