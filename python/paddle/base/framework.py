@@ -212,6 +212,16 @@ class GlobalThreadLocal(threading.local):
         self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
+        tmp_flags = os.environ.get("FLAGS_enable_pir_api")
+        if tmp_flags is not None:
+            if (
+                tmp_flags == "0"
+                or tmp_flags == 0
+                or tmp_flags == "False"
+                or not tmp_flags
+            ):
+                tmp_flags = False
+            set_flags({"FLAGS_enable_pir_api": bool(tmp_flags)})
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]
