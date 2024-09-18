@@ -45,7 +45,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.set_shape()
             self.set_inputs()
             self.set_steps()
-            param_out, moment1_out, moment2_out = adam_step(
+            param_out, moment1_out, moment2_out, moment2_out_max = adam_step(
                 self.inputs, self.attrs
             )
 
@@ -109,7 +109,11 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             }
 
         def test_check_output(self):
-            self.check_output_with_place(place=paddle.XPUPlace(0), atol=1e-2)
+            self.check_output_with_place(
+                no_check_set=['Moment2MaxOut'],
+                place=paddle.XPUPlace(0),
+                atol=1e-2,
+            )
 
     class TestAdamOp2(TestAdamOp):
         '''Test Adam Op with supplied attributes'''
@@ -163,7 +167,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.set_shape()
             self.set_inputs()
             self.set_steps()
-            param_out, moment1_out, moment2_out = adam_step(
+            param_out, moment1_out, moment2_out, moment2_out_max = adam_step(
                 self.inputs, self.attrs
             )
 
@@ -207,8 +211,8 @@ class XPUTestAdamOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             for _ in range(self.num_steps):
-                param_out, moment1_out, moment2_out = adam_step(
-                    self.inputs, self.attrs
+                param_out, moment1_out, moment2_out, moment2_out_max = (
+                    adam_step(self.inputs, self.attrs)
                 )
 
                 beta1_pow_out = self.inputs['Beta1Pow'] * self.beta1
@@ -223,7 +227,9 @@ class XPUTestAdamOp(XPUOpTestWrapper):
 
                 # Verify output for this step
                 self.check_output_with_place(
-                    place=paddle.XPUPlace(0), atol=1e-2
+                    no_check_set=['Moment2MaxOut'],
+                    place=paddle.XPUPlace(0),
+                    atol=1e-2,
                 )
 
                 # Output of this step becomes input for next step
@@ -374,7 +380,6 @@ class TestSparseAdamOp(unittest.TestCase):
             "Param": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment1": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
-            "Moment2Max": np.zeros((height, row_numel)).astype("float32"),
             'Beta1Pow': beta1_pow,
             'Beta2Pow': beta2_pow,
             "LearningRate": np.full((1), 2.0).astype("float32"),
@@ -413,10 +418,11 @@ class TestSparseAdamOp(unittest.TestCase):
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2,
-            "Moment2MaxOut": mom2_max,
             'Beta1PowOut': beta1_pow * beta1,
             'Beta2PowOut': beta2_pow * beta2,
         }
+
+        self.no_check_set = ['Moment2MaxOut']
 
     def check_with_place(self, place, lazy_mode):
         scope = core.Scope()
@@ -442,6 +448,9 @@ class TestSparseAdamOp(unittest.TestCase):
         adam_op.run(scope, place)
 
         for key, np_array in self.outputs.items():
+            if key in self.no_check_set:  # Currently, xpu NOT support amsgrad.
+                continue
+
             out_var = scope.var(key).get_tensor()
             actual = np.array(out_var)
             actual = actual.reshape([actual.size])
@@ -474,7 +483,6 @@ class TestSparseAdamOp1(TestSparseAdamOp):
             "Param": np.full((height, row_numel), 5.0).astype("float16"),
             "Moment1": np.full((height, row_numel), 5.0).astype("float16"),
             "Moment2": np.full((height, row_numel), 5.0).astype("float16"),
-            "Moment2Max": np.zeros((height, row_numel)).astype("float16"),
             'Beta1Pow': beta1_pow,
             'Beta2Pow': beta2_pow,
             "LearningRate": np.full((1), 2.0).astype("float16"),
@@ -513,7 +521,6 @@ class TestSparseAdamOp1(TestSparseAdamOp):
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2,
-            "Moment2MaxOut": mom2_max,
             'Beta1PowOut': beta1_pow * beta1,
             'Beta2PowOut': beta2_pow * beta2,
         }

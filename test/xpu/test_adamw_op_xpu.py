@@ -74,6 +74,7 @@ def adamw_step(inputs, attributes):
         denom = (np.sqrt(moment2_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
 
     param_out = param + ((moment1_out / denom) * (-(lr / (1.0 - beta1_pow))))
+
     return param_out, moment1_out, moment2_out, moment2_max_out
 
 
@@ -104,7 +105,6 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")
             # The second moment is positive
             moment2 = np.random.random(self.shape).astype("float32")
-            moment2_max = np.zeros(self.shape).astype("float32")
 
             learning_rate = 0.004
             beta1 = 0.78
@@ -120,7 +120,6 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'Grad': grad,
                 'Moment1': moment1,
                 'Moment2': moment2,
-                'Moment2Max': moment2_max,
                 'LearningRate': np.array([learning_rate]).astype("float32"),
                 'Beta1Pow': np.array([beta1_pow]).astype("float32"),
                 'Beta2Pow': np.array([beta2_pow]).astype("float32"),
@@ -142,7 +141,6 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
-                'Moment2MaxOut': moment2_max_out,
                 'ParamOut': param_out,
                 'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
                 'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
@@ -162,7 +160,9 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
 
         def test_check_output(self):
             paddle.enable_static()
-            self.check_output_with_place(place=paddle.XPUPlace(0))
+            self.check_output_with_place(
+                no_check_set=['Moment2MaxOut'], place=paddle.XPUPlace(0)
+            )  # Currently, xpu NOT support amsgrad.
 
         def infer_dtype_from_inputs_outputs(self, inputs, outputs):
             self.__class__.dtype = self.dtype
@@ -415,7 +415,6 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     'Grad': grad,
                     'Moment1': moment1,
                     'Moment2': moment2,
-                    'Moment2Max': moment2_max,
                     'LearningRate': np.array([learning_rate]).astype("float32"),
                     'Beta1Pow': np.array([beta1**t]).astype("float32"),
                     'Beta2Pow': np.array([beta2**t]).astype("float32"),
@@ -607,7 +606,6 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     'Grad': grad,
                     'Moment1': moment1,
                     'Moment2': moment2,
-                    'Moment2Max': moment2_max,
                     'LearningRate': np.array([learning_rate]).astype("float32"),
                     'Beta1Pow': np.array([beta1**t]).astype("float32"),
                     'Beta2Pow': np.array([beta2**t]).astype("float32"),
