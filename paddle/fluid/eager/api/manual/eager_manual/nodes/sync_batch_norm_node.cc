@@ -47,9 +47,7 @@ SyncBatchNormGradNode::operator()(
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
   phi::RecordEvent node_execution_inner(
-      "Local_SyncBatchNormGradNode",
-      paddle::platform::TracerEventType::OperatorInner,
-      1);
+      "Local_SyncBatchNormGradNode", phi::TracerEventType::OperatorInner, 1);
 
   // Fill Zero For GradIn Tensors
 
@@ -279,9 +277,7 @@ SyncBatchNormGradNode::operator()(
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
   phi::RecordEvent node_execution_inner(
-      "Local_SyncBatchNormGradNode",
-      paddle::platform::TracerEventType::OperatorInner,
-      1);
+      "Local_SyncBatchNormGradNode", phi::TracerEventType::OperatorInner, 1);
 
   // Fill Zero For GradIn Tensors
 

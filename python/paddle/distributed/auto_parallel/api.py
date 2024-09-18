@@ -37,9 +37,6 @@ from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
-from paddle.distributed.auto_parallel.placement_type import (
-    to_placements,
-)
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
@@ -60,7 +57,12 @@ from paddle.io.dataloader.batch_sampler import (
 )
 from paddle.optimizer import Optimizer
 
-from .placement_type import check_placements_equal, get_shard_spec
+from .placement_type import (
+    check_placements_equal,
+    get_shard_spec,
+    to_dim_map,
+    to_placements,
+)
 from .random import determinate_rng, rng_state
 
 if TYPE_CHECKING:
@@ -113,6 +115,19 @@ if TYPE_CHECKING:
 # a temporary state, and the APIs here will eventually be used.
 
 # Part1: Shard attributes related APIs
+
+
+def _to_lodtensor(tensor: paddle.Tensor):
+    lodtensor = core.LoDTensor()
+    if tensor.is_dist():
+        if tensor._is_initialized():
+            lodtensor._share_data_with(tensor._local_value().get_tensor())
+        else:
+            lodtensor = None
+    else:
+        lodtensor._share_data_with(tensor.get_tensor())
+
+    return lodtensor
 
 
 class DistAttr(core.TensorDistAttr):
@@ -327,6 +342,7 @@ class _moe_global_mesh_tensor(PyLayer):
         ctx,
         local_tensor_list,
         local_mesh_list,
+        local_placements,
         idx,
         global_dims,
         mesh,
@@ -336,17 +352,15 @@ class _moe_global_mesh_tensor(PyLayer):
         if local_tensor.is_dist():
             local_mesh = local_tensor.process_mesh
             local_val = local_tensor._local_value()
-            local_placement = local_tensor.placements[0]
         else:
             local_val = local_tensor
             local_mesh = None
-            local_placement = dist.Replicate()
 
         ctx.global_mesh = copy.deepcopy(mesh)
         ctx.placements = placements
         ctx.local_dims = local_tensor.shape
         ctx.local_mesh_list = copy.deepcopy(local_mesh_list)
-        ctx.local_placement = local_placement
+        ctx.local_placements = local_placements
 
         place = paddle.framework._current_expected_place()
         place = paddle.framework._get_paddle_place(place)
@@ -358,7 +372,7 @@ class _moe_global_mesh_tensor(PyLayer):
             placements=placements,
             place=place,
         )
-        global_tensor.stop_gradient = False
+        global_tensor.stop_gradient = local_tensor.stop_gradient
         return global_tensor
 
     @staticmethod
@@ -375,7 +389,7 @@ class _moe_global_mesh_tensor(PyLayer):
                         grad_tensor._local_value(),
                         dims=ctx.local_dims,
                         process_mesh=local_mesh,
-                        placements=[ctx.local_placement],
+                        placements=ctx.local_placements,
                         place=place,
                     )
                 )
@@ -383,83 +397,103 @@ class _moe_global_mesh_tensor(PyLayer):
             return out
 
 
-def get_sub_meshes_from_global_mesh(
-    global_mesh, global_placements, local_mesh_dim
-):
-    if (
-        global_mesh is not None
-        and local_mesh_dim is not None
-        and global_placements is not None
+def split_mesh(global_mesh: dist.ProcessMesh, sub_mesh_dim: int):
+    mesh_shape = global_mesh.shape
+    mesh_ndim = len(mesh_shape)
+    if sub_mesh_dim >= mesh_ndim or (
+        sub_mesh_dim < 0 and -sub_mesh_dim > mesh_ndim
     ):
-        mesh_shape = global_mesh.shape
-        mesh_ndim = len(mesh_shape)
-        if local_mesh_dim >= mesh_ndim or (
-            local_mesh_dim < 0 and -local_mesh_dim > mesh_ndim
-        ):
-            raise ValueError(
-                f"The local_mesh_dim should between (-{mesh_ndim}, {mesh_ndim}]"
-            )
-        if local_mesh_dim < 0:
-            local_mesh_dim += mesh_ndim
-    else:
+        raise ValueError(
+            f"The sub_mesh_dim should between (-{mesh_ndim}, {mesh_ndim}]"
+        )
+    if sub_mesh_dim < 0:
+        sub_mesh_dim += mesh_ndim
+
+    process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
+    splitted_process_ids = np.split(
+        process_ids, mesh_shape[sub_mesh_dim], axis=sub_mesh_dim
+    )
+    sub_mesh_list = []
+    for sub_process_ids in splitted_process_ids:
+        sub_mesh_list.append(dist.ProcessMesh(sub_process_ids))
+
+    return sub_mesh_list
+
+
+def _get_sub_meshes_and_local_placements(
+    global_mesh, global_placements, sub_mesh_dim
+):
+    if global_mesh is None or sub_mesh_dim is None or global_placements is None:
         raise ValueError(
             "the args global_mesh, global_placements and local_mesh_dim should all be set."
         )
 
-    process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
-    splitted_process_ids = np.split(
-        process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
-    )
-    local_mesh_list = []
-    for process_ids in splitted_process_ids:
-        local_mesh_list.append(dist.ProcessMesh(process_ids))
+    sub_mesh_list = split_mesh(global_mesh, sub_mesh_dim)
+
     local_placements = list(global_placements)
-    local_placements.pop(local_mesh_dim)
-    if local_placements == []:
-        local_placements.append(dist.Replicate())
-    return local_mesh_list, local_placements
+    if sub_mesh_dim < len(local_placements):
+        local_placements[sub_mesh_dim] = dist.Replicate()
+
+    return sub_mesh_list, local_placements
+
+
+def cal_global_shape(local_shape, mesh, placements):
+    # assume the each rank has the same tensor shape for now,
+    # just use the local shape to calculate the global shape
+    global_shape = list(local_shape)
+    for idx, placement in enumerate(placements):
+        if placement.is_shard():
+            shard_dim = placement.get_dim()
+            local_dim_size = global_shape[shard_dim]
+            global_shape[shard_dim] = local_dim_size * mesh.shape[idx]
+    return global_shape
 
 
 def moe_global_mesh_tensor(
     local_tensor_list, mesh, placements, local_mesh_dim=-1
 ):
-    # assume the each rank has the same tensor shape for now, just use the local shape to calculate the global shape
-    local_mesh_list, local_placements = get_sub_meshes_from_global_mesh(
+    local_mesh_list, local_placements = _get_sub_meshes_and_local_placements(
         mesh, placements, local_mesh_dim
     )
-
-    local_tensor_idx = mesh.process_ids.index(dist.get_rank())
+    process_ids = np.array(mesh.process_ids).reshape(mesh.shape)
+    local_coord = np.where(process_ids == dist.get_rank())
+    local_tensor_idx = local_coord[local_mesh_dim][0]
+    # local_tensor_idx = mesh.process_ids.index(dist.get_rank())
     local_tensor = local_tensor_list[local_tensor_idx]
-    global_dims = list(local_tensor.shape)
-    for idx, placement in enumerate(placements):
-        if placement.is_shard():
-            shard_dim = placement.get_dim()
-            local_dim_size = global_dims[shard_dim]
-            global_dims[shard_dim] = local_dim_size * mesh.shape[idx]
 
     if paddle.in_dynamic_mode():
+        global_dims = cal_global_shape(
+            local_tensor._local_value().shape, mesh, placements
+        )
         resharded_local_tensor_list = []
         for i, tensor in enumerate(local_tensor_list):
             tensor.get_tensor()._unsafe_set_skip_check_mesh(True)
             if (
-                tensor.placements != local_placements
+                not check_placements_equal(tensor.placements, local_placements)
                 or tensor.process_mesh != local_mesh_list[i]
             ):
                 resharded_local_tensor_list.append(
                     reshard(tensor, local_mesh_list[i], local_placements)
                 )
+                resharded_local_tensor_list[
+                    -1
+                ].get_tensor()._unsafe_set_skip_check_mesh(True)
             else:
                 resharded_local_tensor_list.append(tensor)
 
         return _moe_global_mesh_tensor.apply(
             resharded_local_tensor_list,
             local_mesh_list,
+            local_placements,
             local_tensor_idx,
             global_dims,
             mesh,
             placements,
         )
     elif paddle.framework.in_pir_mode():
+        global_dims = cal_global_shape(
+            local_tensor._local_shape, mesh, placements
+        )
         dist_tensor = paddle._C_ops.moe_global_mesh_tensor(
             local_tensor_list,
             local_mesh_list,
@@ -485,11 +519,13 @@ class _moe_sub_mesh_tensors(PyLayer):
         dist_tensor,
         local_mesh_list=None,
         local_placements=None,
+        local_mesh_dim=None,
         global_mesh=None,
         global_placements=None,
     ):
         ctx.local_mesh_list = copy.deepcopy(local_mesh_list)
         ctx.local_placements = local_placements
+        ctx.local_mesh_dim = local_mesh_dim
         ctx.global_mesh = copy.deepcopy(global_mesh)
         ctx.global_placements = global_placements
         ctx.global_shape = dist_tensor.shape
@@ -530,7 +566,7 @@ class _moe_sub_mesh_tensors(PyLayer):
                     place=place,
                 )
                 local_tensor.get_tensor()._unsafe_set_skip_check_mesh(True)
-                local_tensor.stop_gradient = False
+                local_tensor.stop_gradient = dist_tensor.stop_gradient
                 local_tensor_list.append(local_tensor)
             return local_tensor_list
 
@@ -538,12 +574,16 @@ class _moe_sub_mesh_tensors(PyLayer):
     def backward(ctx, *grad_tensor):
         place = paddle.framework._current_expected_place()
         place = paddle.framework._get_paddle_place(place)
-        idx = ctx.global_mesh.process_ids.index(dist.get_rank())
-        local_grad = grad_tensor[idx]
+        # idx = ctx.global_mesh.process_ids.index(dist.get_rank())
+        mesh = ctx.global_mesh
+        process_ids = np.array(mesh.process_ids).reshape(mesh.shape)
+        local_coord = np.where(process_ids == dist.get_rank())
+        local_tensor_idx = local_coord[ctx.local_mesh_dim][0]
+        local_grad = grad_tensor[local_tensor_idx]
         global_tensor = paddle.Tensor(
             local_grad._local_value(),
             dims=ctx.global_shape,
-            process_mesh=ctx.global_mesh,
+            process_mesh=mesh,
             placements=ctx.global_placements,
             place=place,
         )
@@ -556,7 +596,7 @@ def moe_sub_mesh_tensors(
     """
     Get the local part of the ``dist_tensor`` on the specific ``local_mesh_dim``.
     """
-    local_mesh_list, local_placements = get_sub_meshes_from_global_mesh(
+    local_mesh_list, local_placements = _get_sub_meshes_and_local_placements(
         global_mesh, global_placements, local_mesh_dim
     )
 
@@ -565,6 +605,7 @@ def moe_sub_mesh_tensors(
             dist_tensor,
             local_mesh_list,
             local_placements,
+            local_mesh_dim,
             global_mesh,
             global_placements,
         )
@@ -1035,8 +1076,13 @@ class _ShardOptimizer(Optimizer):
     def _shard_accumulator(self, param):
         target_name = param.name
         if param.name in self._inner_opt._master_weights.keys():
-            target_name = self._inner_opt._master_weights[param.name].name
-
+            master_weight = self._inner_opt._master_weights[param.name]
+            target_name = master_weight.name
+            # shard the master weight
+            if self._shard_fn is not None:
+                self._inner_opt._master_weights[param.name] = (
+                    self._shard_fn.shard_master_weight(param, master_weight)
+                )
         # shard the accumulators
         for key in self._inner_opt._accumulators.keys():
             accumulator = self._inner_opt._accumulators[key][target_name]
@@ -1204,6 +1250,37 @@ class _ShardingStageBase:
 
     def _set_sharding_mesh_axis(self, sharding_mesh_axis):
         self._sharding_mesh_axis = sharding_mesh_axis
+
+    def shard_master_weight(
+        self, param: Tensor, master_weight: Tensor
+    ) -> Tensor:
+        if param.is_dist():
+            if isinstance(master_weight, pir.Value):
+                data_op = master_weight.get_defining_op()
+                assert (
+                    data_op.name() == "pd_op.data"
+                ), "The master weight must be a result of data op."
+                placements = get_placement_with_sharding(
+                    param, self._sharding_mesh_axis
+                )
+                dim_map, partial_status = to_dim_map(
+                    placements, len(master_weight.shape)
+                )
+                dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        param.process_mesh, dim_map, partial_status
+                    )
+                )
+                dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    master_weight.type(), dist_attr
+                )
+                master_weight.set_type(dist_type)
+                data_op.dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        param.process_mesh, [], [dist_attr]
+                    )
+                )
+        return master_weight
 
 
 class ShardingStage1(_ShardingStageBase):
@@ -1447,7 +1524,7 @@ class ShardingStage3(_ShardingStageBase):
 
 def shard_optimizer(
     optimizer: Optimizer,
-    shard_fn: Callable[[str, Layer, ProcessMesh], None] | None = None,
+    shard_fn: Callable[[str, Tensor, Tensor], Tensor] | None = None,
 ) -> _ShardOptimizer:
     """
 
@@ -2199,20 +2276,6 @@ class DistModel:
                 f"The model takes {feed_name_list} as input"
             )
 
-        def _to_lodtensor(tensor: paddle.Tensor):
-            lodtensor = core.LoDTensor()
-            if tensor.is_dist():
-                if tensor._is_initialized():
-                    lodtensor._share_data_with(
-                        tensor._local_value().get_tensor()
-                    )
-                else:
-                    lodtensor = None
-            else:
-                lodtensor._share_data_with(tensor.get_tensor())
-
-            return lodtensor
-
         feed_list = []
         no_data_ids = []
         # If the feed_var is None, its feed_name should be deleted.
@@ -2439,8 +2502,10 @@ class DistModel:
                 if k in self._structured_to_parameter_name
                 else k
             )
-            local_state_dict[param_name] = v._local_value()
-        dist_main_program.set_state_dict(local_state_dict)
+            local_state_dict[param_name] = _to_lodtensor(v._local_value())
+        dist_main_program.set_state_dict(
+            local_state_dict, paddle.static.global_scope()
+        )
 
 
 def to_static(
@@ -2650,6 +2715,15 @@ def unshard_dtensor(dist_tensor: Tensor) -> Tensor:
             )
         else:
             return paddle.Tensor(r_dist_tensor._local_value())
+
+    elif paddle.framework.in_pir_mode():
+        # in pir mode, we define the logic of unshard_tensor as dist_tensor_type --> dense_tensor_type with global shape.
+        dense_tensor_type = paddle.pir.create_shaped_type(
+            dist_tensor.type(), dist_tensor.shape
+        )
+        dist_tensor.set_type(dense_tensor_type)
+
+        return dist_tensor
 
     else:
         assert isinstance(
@@ -3140,3 +3214,9 @@ def shard_dataloader(
     return ShardDataloader(
         dataloader, meshes, input_keys, shard_dims, is_dataset_splitted
     )
+
+
+def in_auto_parallel_align_mode():
+    return paddle.base.framework.get_flags(
+        "FLAGS_enable_auto_parallel_align_mode"
+    )["FLAGS_enable_auto_parallel_align_mode"]

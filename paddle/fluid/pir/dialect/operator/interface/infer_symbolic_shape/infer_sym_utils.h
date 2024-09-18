@@ -171,4 +171,10 @@ void BuildCstrEqForTensorListAlongAxis(
     const std::vector<pir::Value> &values,
     int axis);
 
+std::vector<symbol::DimExpr> GetSymShapeForInputValue(
+    const std::string &input_name,
+    const pir::Value &value,
+    pir::InferSymbolicShapeContext *infer_context);
+
+bool IsFakeValue(const pir::Value &value);
 }  // namespace paddle::dialect::details

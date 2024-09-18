@@ -41,25 +41,8 @@ def map_dtype(pd_dtype):
 def run_pir_pass(program, partition_mode=False):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
-    pm.enable_ir_printing()
     paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     passes = [
-        {'multihead_matmul_fuse_pass': {}},
-        {'transpose_flatten_concat_fuse_pass': {}},
-        {'fused_dropout_add_pass': {}},
-        {'fused_linear_param_grad_add_pass': {}},
-        {'fuse_allreduce_split_to_reducescatter_pass': {}},
-        {'inplace_pass': {}},
-        {'identity_op_clean_pass': {}},
-        {'map_op_to_another_pass': {}},
-        {'matmul_scale_fuse_pass': {}},
-        {'matmul_transpose_fuse_pass': {}},
-        {'silu_fuse_pass': {}},
-        {'group_norm_silu_fuse_pass': {}},
-        {'fused_dot_product_attention_pass': {}},
-        {'fused_flash_attn_pass': {}},
-        {'remove_redundant_transpose_pass': {}},
-        {'fused_rotary_position_embedding_pass': {}},
         {'trt_op_marker_pass': {}},
     ]
     if partition_mode:
@@ -72,9 +55,11 @@ def run_pir_pass(program, partition_mode=False):
     return program
 
 
-def forbid_op_lower_trt(program, op_name):
+def forbid_op_lower_trt(program, disabled_ops):
+    if isinstance(disabled_ops, str):
+        disabled_ops = [disabled_ops]
     for op in program.global_block().ops:
-        if op.name() == op_name:
+        if op.name() in disabled_ops:
             op.set_bool_attr("__l_trt__", False)
 
 
@@ -84,30 +69,44 @@ def enforce_op_lower_trt(program, op_name):
             op.set_bool_attr("__l_trt__", True)
 
 
-def predict_program(program, feed_data, fetch_var_list):
+def predict_program(program, feed_data, fetch_var_list, scope=None):
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             place = paddle.CUDAPlace(0)
             executor = paddle.static.Executor(place)
             output = executor.run(
-                program, feed=feed_data, fetch_list=fetch_var_list
+                program,
+                feed=feed_data,
+                fetch_list=fetch_var_list,
+                scope=scope,
             )
             return output
 
 
-def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
+def warmup_shape_infer(program, min_shape_feed, max_shape_feed, scope=None):
+    paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
-            output_var = program.list_vars()[-1]
             # Run the program with input_data
             for _ in range(1):
-                output_original = executor.run(
-                    program, feed=min_shape_feed, fetch_list=[output_var]
-                )
+                executor.run(program, feed=min_shape_feed, scope=scope)
 
             # Run the program with input_data_max_shape (fake max_shape input)
             for _ in range(1):
-                executor.run(
-                    program, feed=max_shape_feed, fetch_list=[output_var]
+                executor.run(program, feed=max_shape_feed, scope=scope)
+
+            exe_program, _, _ = (
+                executor._executor_cache.get_pir_program_and_executor(
+                    program,
+                    feed=max_shape_feed,
+                    fetch_list=None,
+                    feed_var_name='feed',
+                    fetch_var_name='fetch',
+                    place=paddle.framework._current_expected_place_(),
+                    scope=scope,
+                    plan=None,
                 )
+            )
+    paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
+    return exe_program

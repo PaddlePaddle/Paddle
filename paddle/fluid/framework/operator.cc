@@ -821,11 +821,11 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
       phi::RecordEvent op_type_record_event(
-          Type(), platform::TracerEventType::Operator, 1);
+          Type(), phi::TracerEventType::Operator, 1);
       auto op_name = platform::OpName(outputs_, Type());
       phi::RecordEvent op_name_record_event(
           op_name,
-          platform::TracerEventType::Operator,
+          phi::TracerEventType::Operator,
           FLAGS_enable_host_event_recorder_hook ? 20 : 1,
           phi::EventRole::kUniqueOp);
       RunImpl(scope, place);
@@ -1579,7 +1579,7 @@ bool OperatorWithKernel::SupportsKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+  if (!this->DnnFallback() && !paddle::platform::in_onednn_white_list(type_) &&
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
@@ -1855,7 +1855,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
       if (!this->DnnFallback() &&
-          !paddle::platform::in_mkldnn_white_list(type_) &&
+          !paddle::platform::in_onednn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
@@ -2008,7 +2008,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   Scope* transfer_scope = nullptr;
   {
     phi::RecordEvent record_event("prepare_data",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
     if (need_prepare_data_) {
@@ -2034,7 +2034,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!all_kernels_must_compute_runtime_shape_) {
     phi::RecordEvent record_event("infer_shape",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
@@ -2052,7 +2052,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
     phi::RecordEvent record_event("compute",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
     if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
@@ -2187,7 +2187,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+  if (!this->DnnFallback() && !paddle::platform::in_onednn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;

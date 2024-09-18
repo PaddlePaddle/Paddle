@@ -69,9 +69,9 @@ def _complex_to_real_dtype(dtype: DTypeLike) -> DTypeLike:
     elif dtype == core.VarDesc.VarType.COMPLEX128:
         return core.VarDesc.VarType.FP64
     elif dtype == paddle.pir.core.DataType.COMPLEX64:
-        return paddle.pir.core.DataType.FP32
+        return paddle.pir.core.DataType.FLOAT32
     elif dtype == paddle.pir.core.DataType.COMPLEX128:
-        return paddle.pir.core.DataType.FP64
+        return paddle.pir.core.DataType.FLOAT64
     else:
         return dtype
 
@@ -81,9 +81,9 @@ def _real_to_complex_dtype(dtype: DTypeLike) -> DTypeLike:
         return core.VarDesc.VarType.COMPLEX64
     elif dtype == core.VarDesc.VarType.FP64:
         return core.VarDesc.VarType.COMPLEX128
-    elif dtype == paddle.pir.core.DataType.FP32:
+    elif dtype == paddle.pir.core.DataType.FLOAT32:
         return paddle.pir.core.DataType.COMPLEX64
-    elif dtype == paddle.pir.core.DataType.FP64:
+    elif dtype == paddle.pir.core.DataType.FLOAT64:
         return paddle.pir.core.DataType.COMPLEX128
     else:
         return dtype
@@ -726,16 +726,11 @@ def _to_tensor_non_static(
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
-        elif isinstance(data, (core.LoDTensor, core.Tensor)):
+        elif isinstance(data, core.Tensor):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
             # Currently, there is no copy when places are same
-            if in_dynamic_mode():
-                data = core.eager.Tensor(data)
-            else:
-                data = paddle.Tensor(data)
-            if not data.place._equals(place):
-                data = data._copy_to(place, False)
+            data = paddle.Tensor(data, place=place)
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
@@ -1042,6 +1037,7 @@ def fill_constant(
     out: paddle.Tensor | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
+    shape = [shape] if isinstance(shape, int) else shape
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
@@ -2452,6 +2448,7 @@ def empty(
                 'float16',
                 'float32',
                 'float64',
+                'uint16',
                 'int8',
                 'int16',
                 'int32',

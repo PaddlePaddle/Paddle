@@ -114,8 +114,16 @@ class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
                             .dyn_cast<paddle::dialect::DataTypeAttribute>()
                             .data();
 
-    auto cinn_reduce = rewriter.Build<cinn::dialect::ReduceSumOp>(
-        op->operand_source(0), axis, keepdim, dtype);
+    auto in = op->operand_source(0);
+    auto in_data_type = in.type().dyn_cast<pir::DenseTensorType>().dtype();
+    if (in_data_type.isa<pir::Int32Type>() ||
+        in_data_type.isa<pir::BoolType>()) {
+      in = rewriter.Build<paddle::dialect::CastOp>(in, phi::DataType::INT64)
+               .result(0);
+    }
+    auto cinn_reduce =
+        rewriter.Build<cinn::dialect::ReduceSumOp>(in, axis, keepdim, dtype);
+
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
     if (axes_full_op->use_empty()) {
@@ -541,7 +549,7 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
       } else {
         PADDLE_ENFORCE(
             false,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "Currently only support pir::slice/split as downstream "
                 "op, but got: %s",
                 downstream_op->name()));
@@ -930,24 +938,36 @@ class UnsqueezeOpPattern
                           .dyn_cast<pir::ShapedTypeInterface>()
                           .IsDynamicShape();
     if (IsDefinedBy<FullIntArrayOp>(op, 1) && !is_dyshape) {
-      const FullIntArrayOp axis_full_op = CastDefinedTo<FullIntArrayOp>(op, 1);
-      auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
-      std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
-
       auto in_shape =
           phi::vectorize(op.operand_source(0)
                              .type()
                              .dyn_cast<paddle::dialect::DenseTensorType>()
                              .dims());
 
-      std::vector<int> output_shape;
-
-      for (size_t i = 0; i < in_shape.size(); ++i) {
-        output_shape.push_back(in_shape[i]);
-        if (axis_set.count(i)) {
-          output_shape.push_back(1);
+      const std::set<int64_t> axis_set = [&] {
+        const FullIntArrayOp axis_full_op =
+            CastDefinedTo<FullIntArrayOp>(op, 1);
+        auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
+        std::set<int64_t> axis_set;
+        for (int64_t axis : axis_vec) {
+          int64_t axis_val = axis < 0 ? axis += in_shape.size() + 1 : axis;
+          axis_set.insert(axis_val);
         }
-      }
+        return axis_set;
+      }();
+
+      const std::vector<int> output_shape = [&] {
+        const size_t output_rank = in_shape.size() + axis_set.size();
+        std::vector<int> output_shape;
+        for (size_t i = 0, input_index = 0; i < output_rank; ++i) {
+          if (axis_set.count(i)) {
+            output_shape.push_back(1);
+            continue;
+          }
+          output_shape.push_back(in_shape[input_index++]);
+        }
+        return output_shape;
+      }();
       ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
 

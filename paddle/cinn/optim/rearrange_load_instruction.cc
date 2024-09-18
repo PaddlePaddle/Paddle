@@ -15,6 +15,7 @@
 #include "paddle/cinn/optim/rearrange_load_instruction.h"
 
 #include <stack>
+#include <vector>
 #include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
@@ -45,12 +46,32 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   void operator()(Expr *expr) { Visit(expr, expr); }
 
  private:
+  std::vector<ir::Store *> local_stores;
+  bool is_local_store(ir::Load *op) {
+    for (int i = 0; i < local_stores.size(); i++) {
+      if (ir::ir_utils::IRCompare(local_stores[i]->tensor, op->tensor)) {
+        if (local_stores[i]->indices.size() != op->indices.size()) continue;
+        bool all_same = true;
+        for (int j = 0; j < op->indices.size(); j++) {
+          if (!ir::ir_utils::IRCompare(local_stores[i]->indices[j],
+                                       op->indices[j])) {
+            all_same = false;
+          }
+        }
+        if (all_same) return true;
+      }
+    }
+    return false;
+  }
   void Visit(const ir::Load *op, Expr *expr) override {
+    auto load_op = expr->As<ir::Load>();
     if (is_inner_store) {
-      if (op->tensor.as_tensor_ref()->buffer->memory_type ==
-              ir::MemoryType::GPULocal ||
-          op->tensor.as_tensor_ref()->buffer->memory_type ==
-              ir::MemoryType::GPUShared)
+      if (op->tensor.as_tensor_ref()->buffer.operator->() != nullptr &&
+              (op->tensor.as_tensor_ref()->buffer->memory_type ==
+                   ir::MemoryType::GPULocal ||
+               op->tensor.as_tensor_ref()->buffer->memory_type ==
+                   ir::MemoryType::GPUShared) ||
+          is_local_store(load_op))
         return;
 
       auto local_var =
@@ -62,8 +83,10 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   }
 
   void Visit(const ir::Store *op, Expr *expr) override {
+    auto store_op = expr->As<ir::Store>();
     auto old_last_op = last_op;
-    last_op = Expr(const_cast<ir::Store *>(op));
+    local_stores.push_back(store_op);
+    last_op = Expr(store_op);
     is_inner_store = true;
     ir::IRMutator<>::Visit(op, expr);
     is_inner_store = false;

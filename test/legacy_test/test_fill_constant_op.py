@@ -479,12 +479,6 @@ class TestFillConstantOpError(unittest.TestCase):
                 out=x2,
             )
 
-            # The argument shape's type of fill_constant_op must be list, tuple or Variable.
-            def test_shape_type():
-                paddle.tensor.fill_constant(shape=1, dtype="float32", value=1)
-
-            self.assertRaises(TypeError, test_shape_type)
-
             # The shape dtype of fill_constant_op must be int32 or int64.
             def test_shape_tensor_dtype():
                 shape = paddle.static.data(

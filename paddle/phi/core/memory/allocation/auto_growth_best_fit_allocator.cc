@@ -19,7 +19,7 @@
 #include <utility>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 
@@ -88,7 +88,7 @@ void AutoGrowthBestFitAllocator::DumpInfo() const {
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
   phi::RecordEvent record("AutoGrowthBestFitAllocator::Allocate",
-                          platform::TracerEventType::UserDefined,
+                          phi::TracerEventType::UserDefined,
                           9 /*level*/);
 
   size_t size = AlignedSize(unaligned_size + extra_padding_size_, alignment_);
@@ -172,7 +172,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
 
 void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   phi::RecordEvent record("AutoGrowthBestFitAllocator::Free",
-                          platform::TracerEventType::UserDefined,
+                          phi::TracerEventType::UserDefined,
                           9 /*level*/);
   VLOG(10) << "Free " << allocation->size()
            << " bytes, ptr = " << allocation->ptr();

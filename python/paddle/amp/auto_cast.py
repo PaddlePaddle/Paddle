@@ -23,6 +23,8 @@ from typing import (
     List,
     Literal,
     Protocol,
+    Set,
+    Tuple,
     TypeVar,
     Union,
     overload,
@@ -54,7 +56,7 @@ if TYPE_CHECKING:
     from paddle.static import Operator, Program
 
     _AmpLevelLiteral = Literal["O0", "OD", "O1", "O2"]
-    _CustomList: TypeAlias = Union[list[str], tuple[str, ...], set[str]]
+    _CustomList: TypeAlias = Union[List[str], Tuple[str, ...], Set[str]]
 
     class _OptimizerLike(Protocol):
         def minimize(
@@ -1210,6 +1212,7 @@ def decorate(
     if paddle.framework.in_pir_mode():
         assert not isinstance(models, (list, tuple))
         assert not isinstance(optimizers, (list, tuple))
+        amp_global_state().use_master_grad = master_grad
         if level in ['O0', 'OD', 'O1']:
             if optimizers is None:
                 return models

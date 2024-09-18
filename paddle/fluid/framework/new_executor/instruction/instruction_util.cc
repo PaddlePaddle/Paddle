@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -151,10 +152,20 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
             op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
           if (phi::is_gpu_place(place) && execution_stream == kDefaultStream) {
             if (origin_dev_ctx != nullptr) {
+              // set stream
               auto default_stream =
                   static_cast<phi::GPUContext*>(origin_dev_ctx)->cuda_stream();
               static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
                   default_stream, false);
+              // set allocator
+              auto& instance =
+                  paddle::memory::allocation::AllocatorFacade::Instance();
+              dev_ctx->SetAllocator(
+                  instance
+                      .GetAllocator(
+                          place,
+                          static_cast<phi::GPUContext*>(dev_ctx)->stream())
+                      .get());
             } else {
               VLOG(3) << "op " << op_name << " ring_id " << ring_id
                       << " origin_dev_ctx is nullptr";
@@ -222,6 +233,19 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
 
     if (op_name.compare(paddle::dialect::ShapeOp::name()) == 0) {
       return OpFuncType::kGpuSync;
+    }
+  }
+
+  if (auto combine_op = op->dyn_cast<pir::CombineOp>()) {
+    for (size_t i = 0; i < combine_op.num_operands(); ++i) {
+      if (auto combine_operand_type =
+              combine_op.operand_source(i)
+                  .type()
+                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()) {
+        if (phi::is_cpu_place(combine_operand_type.place())) {
+          return OpFuncType::kCpuSync;
+        }
+      }
     }
   }
 

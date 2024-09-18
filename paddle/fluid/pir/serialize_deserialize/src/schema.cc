@@ -14,8 +14,10 @@
 
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include <cstdlib>
-#include <filesystem>
+#include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/phi/core/enforce.h"
+#include "test/cpp/pir/tools/test1_dialect.h"
+#include "test/cpp/pir/tools/test_dialect.h"
 namespace pir {
 
 std::pair<std::string, std::string> GetContentSplitByDot(
@@ -28,7 +30,7 @@ std::pair<std::string, std::string> GetContentSplitByDot(
 }
 
 std::vector<std::string> GetOpDistAttr() { return {"op_dist_attr", "op_role"}; }
-
+std::vector<std::string> GetOpQuantAttr() { return {"struct_name"}; }
 void GetCompressOpName(std::string* op_name) {
   std::pair<std::string, std::string> name = GetContentSplitByDot(*op_name);
   *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +
@@ -53,6 +55,9 @@ DialectIdMap::DialectIdMap() {
   insert(pir::ControlFlowDialect::name(), "2");
   insert(paddle::dialect::CustomOpDialect::name(), "3");
   insert(paddle::dialect::DistDialect::name(), "4");
+  // TestDialect for test use
+  insert(test::TestDialect::name(), "5");
+  insert(test1::Test1Dialect::name(), "6");
 }
 void DialectIdMap::insert(const std::string& key, const std::string& value) {
   CompressDialect[key] = value;
@@ -86,11 +91,7 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
 
 uint64_t GetPirVersion() {
   VLOG(8) << "Get PIR Version: ";
-  const char* paddle_root = PADDLE_ROOT;
-  VLOG(8) << "Paddle path: " << paddle_root;
-  std::filesystem::path patch_path = std::filesystem::path(paddle_root) /
-                                     "paddle" / "fluid" / "pir" /
-                                     "serialize_deserialize" / "patch";
+  std::filesystem::path patch_path = std::filesystem::path(PATCH_PATH);
   VLOG(8) << "Patch path: " << patch_path;
   int version = 0;
   for (auto& v : std::filesystem::directory_iterator(patch_path)) {
@@ -108,11 +109,7 @@ uint64_t GetPirVersion() {
   return version;
 }
 uint64_t GetMaxReleasePirVersion() {
-  const char* paddle_root = PADDLE_ROOT;
-  VLOG(8) << "Paddle path: " << paddle_root;
-  std::filesystem::path patch_path = std::filesystem::path(paddle_root) /
-                                     "paddle" / "fluid" / "pir" /
-                                     "serialize_deserialize" / "patch";
+  std::filesystem::path patch_path = std::filesystem::path(PATCH_PATH);
   VLOG(8) << "Patch path: " << patch_path;
   int version = 0;
   for (auto& v : std::filesystem::directory_iterator(patch_path)) {

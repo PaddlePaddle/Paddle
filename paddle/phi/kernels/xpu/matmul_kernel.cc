@@ -74,6 +74,16 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
       xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
 }
 
+template <typename T, typename Context>
+void LegacyMatmulKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        bool transpose_x,
+                        bool transpose_y,
+                        float alpha UNUSED,
+                        DenseTensor* out) {
+  MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, out);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(matmul,
@@ -88,6 +98,14 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
                    XPU,
                    ALL_LAYOUT,
                    phi::MatmulWithFlattenKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(legacy_matmul,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulKernel,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
