@@ -904,13 +904,6 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
             src->dl_tensor.shape + src->dl_tensor.ndim,
             std::back_inserter(shape_vec));
 
-  std::vector<int64_t> strides_vec;
-  if (src->dl_tensor.strides) {
-    std::copy(src->dl_tensor.strides,
-              src->dl_tensor.strides + src->dl_tensor.ndim,
-              std::back_inserter(strides_vec));
-  }
-
   phi::Place place;
   if (src->dl_tensor.device.device_type == kDLCPU) {
     place = phi::CPUPlace();
@@ -934,6 +927,10 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
         place,
         std::move(deleter));
   } else {
+    std::vector<int64_t> strides_vec;
+    std::copy(src->dl_tensor.strides,
+              src->dl_tensor.strides + src->dl_tensor.ndim,
+              std::back_inserter(strides_vec));
     return from_blob(src->dl_tensor.data,
                      src,
                      common::make_ddim(shape_vec),

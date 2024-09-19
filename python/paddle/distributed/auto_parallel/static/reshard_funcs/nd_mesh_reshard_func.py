@@ -88,6 +88,7 @@ class NdMeshReshardFunction(ReshardFunction):
             return False
         if out_mesh.ndim <= 1:
             return False
+
         # check dims_mapping and partial_status
         if src_dist_attr == dst_dist_attr:
             return False

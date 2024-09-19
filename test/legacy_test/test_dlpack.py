@@ -175,7 +175,7 @@ class TestDLPack(unittest.TestCase):
             if paddle.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                for _ in range(1):
+                for _ in range(4):
                     x = paddle.rand([10, 10]).to(device=place)
                     x_strided = x[::2, ::2]
                     dlpack = paddle.utils.dlpack.to_dlpack(x_strided)
