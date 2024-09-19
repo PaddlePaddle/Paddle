@@ -21,6 +21,7 @@ from test_block_multihead_attention import (
     create_attn_mask,
     get_cuda_version,
     get_padding_offset,
+    is_sm_supported,
     remove_padding,
 )
 
@@ -32,21 +33,6 @@ from paddle.static import Program, program_guard
 
 paddle.seed(2024)
 np.random.seed(2024)
-
-
-is_sm8x = (
-    core.is_compiled_with_cuda()
-    and paddle.device.cuda.get_device_capability()[0] == 8
-    and paddle.device.cuda.get_device_capability()[1] >= 0
-)
-
-is_sm9x = (
-    core.is_compiled_with_cuda()
-    and paddle.device.cuda.get_device_capability()[0] == 9
-    and paddle.device.cuda.get_device_capability()[1] >= 0
-)
-
-is_sm_supported = is_sm9x or is_sm8x
 
 
 def naive_attention_impl(
