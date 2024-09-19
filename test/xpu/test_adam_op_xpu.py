@@ -422,8 +422,6 @@ class TestSparseAdamOp(unittest.TestCase):
             'Beta2PowOut': beta2_pow * beta2,
         }
 
-        self.no_check_set = ['Moment2MaxOut']
-
     def check_with_place(self, place, lazy_mode):
         scope = core.Scope()
         self.setup(scope, place, lazy_mode)
@@ -448,7 +446,7 @@ class TestSparseAdamOp(unittest.TestCase):
         adam_op.run(scope, place)
 
         for key, np_array in self.outputs.items():
-            if key in self.no_check_set:  # Currently, xpu NOT support amsgrad.
+            if key in ['Moment2MaxOut']:  # Currently, xpu NOT support amsgrad.
                 continue
 
             out_var = scope.var(key).get_tensor()

@@ -137,7 +137,6 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
         def setUp(self):
             self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
             self.seed = 10
-            self.no_check_set = ['Moment2MaxOut']
 
         def gen_rand_data(self, shapes, dtype):
             return [np.random.random(s).astype(dtype) for s in shapes]
@@ -216,7 +215,7 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
             self.assertEqual(len(outs1), len(outs4))
 
             for key in outs1.keys():
-                if key in self.no_check_set:
+                if key in ['Moment2MaxOut']:
                     continue
 
                 value1 = outs1[key]
