@@ -397,7 +397,6 @@ void BindProgram(py::module *m) {
             ...    x = static.data(name="x", shape=[-1, 784], dtype='float32')
             ...    y = static.data(name="y", shape=[-1, 1], dtype='int32')
             ...    z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
-
             >>> print("main program is: {}".format(main_program))
             >>> print("start up program is: {}".format(startup_program))
   )DOC");
