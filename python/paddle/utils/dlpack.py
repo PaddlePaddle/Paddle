@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import paddle
 
@@ -23,6 +23,8 @@ from ..base.data_feeder import check_type
 from ..base.framework import in_dygraph_mode
 
 if TYPE_CHECKING:
+    import enum
+
     from typing_extensions import CapsuleType
 
     from paddle import Tensor
@@ -31,6 +33,14 @@ __all__ = [
     'to_dlpack',
     'from_dlpack',
 ]
+
+
+class SupportDLPack(Protocol):
+    def __dlpack__(self) -> CapsuleType:
+        pass
+
+    def __dlpack_device__(self) -> tuple[enum.IntEnum, int]:
+        pass
 
 
 def to_dlpack(x: Tensor) -> CapsuleType:
@@ -71,17 +81,18 @@ def to_dlpack(x: Tensor) -> CapsuleType:
     return x._to_dlpack()
 
 
-def from_dlpack(dlpack: CapsuleType) -> Tensor:
+def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
     """
     Decodes a DLPack to a tensor.
 
     Args:
-        dlpack (PyCapsule): a PyCapsule object with the dltensor.
+        dlpack (SupportDLPack | CapsuleType): A PyCapsule object with the dltensor,
+            or that implementes '__dlpack__' and '__dlpack_device__' methods.
 
     Returns:
-        out (Tensor), a tensor decoded from DLPack. One thing to be noted, if we get
-                      an input dltensor with data type as `bool`, we return the decoded
-                      tensor as `uint8`.
+        out (Tensor): A tensor decoded from DLPack. One thing to be noted, if we get
+            an input dltensor with data type as `bool`, we return the decoded
+            tensor as `uint8`.
 
     Examples:
         .. code-block:: python
