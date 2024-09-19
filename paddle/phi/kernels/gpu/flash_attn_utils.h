@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "flash_attn.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #ifdef PADDLE_WITH_FLASHATTN
+#include "flash_attn.h"
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
 
@@ -148,22 +148,21 @@ struct FlashAttnParamsBase {
                       const DenseTensor& _out,
                       const bool _is_test,
                       const float _p_dropout,
-                      const bool _is_causal)
-      : is_causal(_is_causal), stream(ctx.stream()) {
-    // q, k, v [batch_size, seq_len, num_heads, head_dim]
-    const auto& dims = _q.dims();
-    PADDLE_ENFORCE_EQ(dims.size(),
-                      4,
-                      phi::errors::InvalidArgument(
-                          "flash_attn receive input with dim "
-                          "[batch_size, seq_len, num_heads, head_dim]"));
-
-    batch_size = dims[0];
-    seqlen_q = dims[1];
-    num_heads = dims[2];
-    head_size = dims[3];
-    seqlen_k = _k.dims()[1];
-    num_heads_k = _k.dims()[2];
+                      const bool _is_causal,
+                      int64_t _batch_size,
+                      int64_t _seqlen_q,
+                      int64_t _num_heads,
+                      int64_t _head_size,
+                      int64_t _seqlen_k,
+                      int64_t _num_heads_k)
+      : is_causal(_is_causal),
+        stream(ctx.stream()),
+        batch_size(_batch_size),
+        seqlen_q(_seqlen_q),
+        num_heads(_num_heads),
+        head_size(_head_size),
+        seqlen_k(_seqlen_k),
+        num_heads_k(_num_heads_k) {
     softmax_scale = 1.0f / std::sqrt(head_size);
     p_dropout = _is_test ? 0.0f : _p_dropout;
     q = DenseTensorToMcFlashAttnTensor(_q);
@@ -202,9 +201,27 @@ struct FlashAttnParamsFwd : public FlashAttnParamsBase {
                      bool _is_causal,
                      const paddle::optional<DenseTensor>& _fixed_seed_offset,
                      DenseTensor& _seed_offset,
-                     const std::string& _rng_name)
-      : FlashAttnParamsBase(
-            ctx, _q, _k, _v, _out, _is_test, _p_dropout, _is_causal) {
+                     const std::string& _rng_name,
+                     int64_t _batch_size,
+                     int64_t _seqlen_q,
+                     int64_t _num_heads,
+                     int64_t _head_size,
+                     int64_t _seqlen_k,
+                     int64_t _num_heads_k)
+      : FlashAttnParamsBase(ctx,
+                            _q,
+                            _k,
+                            _v,
+                            _out,
+                            _is_test,
+                            _p_dropout,
+                            _is_causal,
+                            _batch_size,
+                            _seqlen_q,
+                            _num_heads,
+                            _head_size,
+                            _seqlen_k,
+                            _num_heads_k) {
     if (_attn_mask.get_ptr()) {
       PADDLE_ENFORCE_NE(_is_causal,
                         true,
@@ -241,8 +258,7 @@ struct FlashAttnParamsFwd : public FlashAttnParamsBase {
           {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
       ctx.template Alloc<T>(&_softmax);
       p = DenseTensorToMcFlashAttnTensor(_softmax);
-    }
-    else{
+    } else {
       p = nullptr;
     }
 
@@ -287,9 +303,27 @@ struct FlashAttnParamsBwd : public FlashAttnParamsBase {
                      DenseTensor& _dk,
                      DenseTensor& _dv,
                      float _p_dropout,
-                     bool _is_causal)
-      : FlashAttnParamsBase(
-            ctx, _q, _k, _v, _out, false, _p_dropout, _is_causal) {
+                     bool _is_causal,
+                     int64_t _batch_size,
+                     int64_t _seqlen_q,
+                     int64_t _num_heads,
+                     int64_t _head_size,
+                     int64_t _seqlen_k,
+                     int64_t _num_heads_k)
+      : FlashAttnParamsBase(ctx,
+                            _q,
+                            _k,
+                            _v,
+                            _out,
+                            false,
+                            _p_dropout,
+                            _is_causal,
+                            _batch_size,
+                            _seqlen_q,
+                            _num_heads,
+                            _head_size,
+                            _seqlen_k,
+                            _num_heads_k) {
     if (_attn_mask.get_ptr()) {
       PADDLE_ENFORCE_NE(_is_causal,
                         true,
@@ -352,8 +386,7 @@ static void CheckFlashAttnStatus(const mcflashattnStatus_t status) {
   PADDLE_ENFORCE_EQ(
       status,
       MCFLASHATTN_STATUS_SUCCESS,
-      phi::errors::External("Error in McFlashAttn, error code is %d",
-                            status));
+      phi::errors::External("Error in McFlashAttn, error code is %d", status));
 }
 #endif
 

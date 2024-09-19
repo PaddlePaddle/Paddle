@@ -86,7 +86,7 @@
 	ignore = dirty
 [submodule "third_party/rocksdb"]
 	path = third_party/rocksdb
-	url = http://pdegit.metax-internal.com/pde-ai/rocksdb.git
+	url = http://pdegit.metax-internal.com/pde-ai/rocksdb-for-paddle.git
 	ignore = dirty
 [submodule "third_party/cutlass"]
 	path = third_party/cutlass

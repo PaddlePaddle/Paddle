@@ -15,8 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <mutex>  // NOLINT
-
+#ifdef PADDLE_WITH_FLASHATTN
 #include "flash_attn.h"
+#endif
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
