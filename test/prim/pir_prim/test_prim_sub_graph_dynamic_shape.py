@@ -300,6 +300,14 @@ def unstack_net6(x):
     return paddle.unstack(x, axis=-1)
 
 
+def numel_net(x):
+    return paddle.numel(x)
+
+
+def swish_net(x):
+    return paddle.nn.functional.swish(x)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -1424,6 +1432,34 @@ class TestPrimUnstack6(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = unstack_net6
         self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimNumel(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [5, 10, 15]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = numel_net
+        self.necessary_ops = "pd_op.numel"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSwish(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = swish_net
+        self.necessary_ops = "pd_op.swish"
         self.enable_cinn = False
         self.tol = 1e-6
 
