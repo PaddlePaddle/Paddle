@@ -34,7 +34,7 @@ void ShadowFeedKernel(const Context& ctx,
       target_place = CPUPlace();
       break;
     case 1:  // CUDAPlace
-      target_place = GPUPlace();
+      target_place = GPUPlace(backends::gpu::GetCurrentDeviceId());
       break;
     default:
       PADDLE_THROW(errors::Unimplemented("dst_place_type: %d is not supported.",
