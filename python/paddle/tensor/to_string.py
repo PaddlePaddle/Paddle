@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 
 import paddle
@@ -282,30 +284,30 @@ def to_string(var, prefix='Tensor'):
     )
 
 
-def convert_xpu_tensor_to_fp32(tensor):
-    dtype = tensor.dtype
-    tensor = tensor.astype("float32")
+def mask_xpu_bf16_tensor(np_tensor):
     # For XPU, we mask out the 0x8000 added to the tail when converting bf16 to fp32.
-    if dtype == paddle.bfloat16 or dtype == core.VarDesc.VarType.BF16:
-        mask = paddle.to_tensor(0xFFFF0000, dtype='int32')
-        tensor = (tensor.view('int32') & mask).view('float32')
-    return tensor
+    mask = np.array(0xFFFF0000, dtype='uint32')
+    return (np_tensor.view('uint32') & mask).view('float32')
 
 
 def _format_dense_tensor(tensor, indent):
+    dtype = tensor.dtype
     if (
         tensor.dtype == paddle.bfloat16
         or tensor.dtype == core.VarDesc.VarType.BF16
         or tensor.dtype == core.VarDesc.VarType.FP8_E4M3FN
         or tensor.dtype == core.VarDesc.VarType.FP8_E5M2
     ):
-        if paddle.is_compiled_with_xpu():
-            tensor = convert_xpu_tensor_to_fp32(tensor)
-        else:
-            tensor = tensor.astype('float32')
+        tensor = tensor.astype('float32')
 
     # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
     np_tensor = tensor.numpy(False)
+    if (
+        paddle.is_compiled_with_xpu()
+        and os.getenv("XPU_PADDLE_MASK_BF16_PRINT") is not None
+        and (dtype == paddle.bfloat16 or dtype == core.VarDesc.VarType.BF16)
+    ):
+        np_tensor = mask_xpu_bf16_tensor(np_tensor)
 
     if len(tensor.shape) == 0:
         size = 0
