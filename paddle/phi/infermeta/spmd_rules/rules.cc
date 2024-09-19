@@ -681,10 +681,16 @@ PD_REGISTER_SPMD_RULE(unbind,
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
 
+// logsumexp
 PD_REGISTER_SPMD_RULE(
     logsumexp,
     PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmd),
     PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmdReverse));
+
+// p_norm
+PD_REGISTER_SPMD_RULE(p_norm,
+                      PD_INFER_SPMD(phi::distributed::PNormInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::PNormInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

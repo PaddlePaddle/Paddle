@@ -40,6 +40,7 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_fused_dropout_add_rule MODULES
                   test_fused_dropout_add_rule)
   py_test_modules(test_logsumexp_rule MODULES test_logsumexp_rule)
+  py_test_modules(test_p_norm_rule MODULES test_p_norm_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
