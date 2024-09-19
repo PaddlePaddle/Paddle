@@ -1662,6 +1662,17 @@ std::vector<Tensor> unstack_decomp(const Tensor& x, int axis, const int num) {
   return res;
 }
 
+template <typename T>
+Tensor addmm_decomp(const Tensor& input,
+                    const Tensor& x,
+                    const Tensor& y,
+                    const float beta,
+                    const float alpha) {
+  Tensor xy = matmul<T>(x, y);
+  return full_scalar<T>(alpha, xy.dtype()) * xy +
+         full_scalar<T>(beta, input.dtype()) * input;
+}
+
 }  // namespace details
 
 }  // namespace primitive
