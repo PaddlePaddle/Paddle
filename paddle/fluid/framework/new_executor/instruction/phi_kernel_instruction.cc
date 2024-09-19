@@ -192,11 +192,32 @@ void PhiKernelInstruction::Run() {
     ShareVarBuffer(pair.first, pair.second);
   }
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
+
+  std::cerr << phi_op_name_ << " kernel." << std::endl;
+
+  for (size_t i = 0; i < kernel_context_.InputsSize(); ++i) {
+    if (kernel_context_.MutableIutputAt(i)) {
+      std::cerr << "phi input " << i << "\t"
+                << kernel_context_.InputAt<phi::DenseTensor>(i) << std::endl;
+    } else {
+      std::cerr << "phi input " << i << " is empty\n";
+    }
+  }
   {
     phi::RecordEvent record_event(kernel_name_ + " kernel launch",
                                   phi::TracerEventType::StaticKernelLaunch,
                                   1);
     (*(phi_kernel_))(&(kernel_context_));
+  }
+
+  for (size_t i = 0; i < kernel_context_.OutputsSize(); ++i) {
+    if (kernel_context_.MutableOutputAt<phi::DenseTensor>(i)) {
+      std::cerr << "phi out "
+                << *(kernel_context_.MutableOutputAt<phi::DenseTensor>(i))
+                << std::endl;
+    } else {
+      std::cerr << "phi output " << i << " is empty\n";
+    }
   }
 
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";

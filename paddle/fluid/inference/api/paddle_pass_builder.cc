@@ -182,7 +182,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add_act_fuse_pass",
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
-    "transfer_layout_pass",
+    // "transfer_layout_pass",
     "multihead_matmul_fuse_pass_v2",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -603,7 +603,7 @@ const std::vector<std::string> kPirGpuPasses{
     "matmul_transpose_fuse_pass",
     "transpose_flatten_concat_fuse_pass",
     "remove_redundant_transpose_pass",
-    "transfer_layout_pass",
+    // "transfer_layout_pass",
     "horizontal_fuse_pass",
 };
 
