@@ -2420,6 +2420,44 @@ class DistModel:
 
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
 
+        def _get_suffix(s, prefix):
+            if s.startswith(prefix):
+                return s[len(prefix) :]
+            else:
+                return None
+
+        if self._engine.fused_ffn_qkv is not None:
+            with paddle.base.dygraph.guard():
+                for key, pat_list in self._engine.fused_ffn_qkv.items():
+                    for fusion_map in pat_list:
+                        ((fused_param, ori_params),) = fusion_map.items()
+                        origin_params = list(dist_state_dict.keys())
+                        for param in origin_params:
+                            suffix = _get_suffix(param, fused_param)
+                            if suffix is not None:
+                                value = dist_state_dict[param]
+                                assert (
+                                    value.is_dist()
+                                ), f"key {param} value:{value} is not a dist tensor."
+                                mesh = value.process_mesh
+                                placements = value.placements
+                                out = paddle.split(
+                                    value._local_value(),
+                                    num_or_sections=len(ori_params),
+                                    axis=-1,
+                                )
+                                for i in range(len(ori_params)):
+                                    dist_tensor = dtensor_from_local(
+                                        out[i], mesh, placements
+                                    )
+                                    paddle.assign(
+                                        out[i], dist_tensor._local_value()
+                                    )
+                                    dist_state_dict[ori_params[i] + suffix] = (
+                                        dist_tensor
+                                    )
+                                dist_state_dict.pop(param)
+
         mapping_names = [
             (
                 self._parameter_to_structured_name[k]
