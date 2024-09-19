@@ -222,7 +222,6 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
     }
     Tensor input_dim = concat<T>(
         {x_dims, full<T>({1}, num_classes_tensor.shape()[0], x_shape.dtype())});
-    << num_classes_tensor.shape()[0] << std::endl;
     auto input_tensor = backend::full_with_tensor<T>(input_dim, 0, x.dtype());
     auto output_dim = concat<T>(
         {x_shape,
