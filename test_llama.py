@@ -52,7 +52,7 @@ def llama_init():
     config = config_class()
     config.hidden_size = 2048
     config.intermediate_size = 4096
-    config.num_hidden_layers = 2
+    config.num_hidden_layers = 4
     config.seq_length = 1024
     config.max_position_embeddings = 1024
     config.alibi = False
