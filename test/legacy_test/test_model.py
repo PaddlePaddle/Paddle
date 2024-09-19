@@ -974,9 +974,6 @@ class TestModelFunction(unittest.TestCase):
 
 class TestModelWithLRScheduler(unittest.TestCase):
     def test_fit_by_step(self):
-        if paddle.framework.in_pir_mode():
-            return
-
         base_lr = 1e-3
         boundaries = [5, 8]
 
@@ -1040,8 +1037,6 @@ class TestModelWithLRScheduler(unittest.TestCase):
             )
 
     def test_fit_by_epoch(self):
-        if paddle.framework.in_pir_mode():
-            return
         base_lr = 1e-3
         boundaries = [5, 8]
         epochs = 10

@@ -760,9 +760,6 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
 
     @to_legacy_ir_test
     def test_save_load(self):
-        if paddle.framework.in_pir_mode():
-            return
-
         # train and save model
         train_layer = self.train_and_save_model()
         # load model
