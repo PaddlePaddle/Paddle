@@ -682,25 +682,44 @@ ExprTransformer RemoveOneTransformer(int one) {
         ExprSetFinderUtils::DirectlyFather(copied).GetSingle(target_for);
     VLOG(4) << "RemoveOneTransformer: directly target_block of for is "
             << target_block;
-    PADDLE_ENFORCE(
-        target_block.As<ir::Block>() != nullptr,
-        "RemoveOneTransformer: target for father is not a ir::Block.");
-    // for -> replaced_body
-    std::vector<ir::Expr> new_bodies;
-    for (const auto& expr : target_block.As<ir::Block>()->stmts) {
-      if (expr != target_for) {
-        new_bodies.push_back(expr);
+    if (target_block.As<ir::ScheduleBlockRealize>() != nullptr) {
+      VLOG(4) << "RemoveOneTransformer: father block is root realize";
+      ir::Expr shedule_block =
+          target_block.As<ir::ScheduleBlockRealize>()->schedule_block;
+      PADDLE_ENFORCE_EQ(shedule_block.As<ir::ScheduleBlock>()->body,
+                        target_for,
+                        ::common::errors::PreconditionNotMet(
+                            "Root realize body should be equal to target for"));
+      const auto for_body = target_for.As<ir::For>()->body;
+      const auto for_body_stmts = for_body.As<ir::Block>()->stmts;
+      if (for_body_stmts.size() == 1 &&
+          for_body_stmts[0].As<ir::For>() != nullptr) {
+        shedule_block.As<ir::ScheduleBlock>()->body = for_body_stmts[0];
       } else {
-        for (const auto& origin_for :
-             target_for.As<ir::For>()->body.As<ir::Block>()->stmts) {
-          new_bodies.push_back(origin_for);
+        shedule_block.As<ir::ScheduleBlock>()->body = for_body;
+      }
+    } else if (target_block.As<ir::Block>() != nullptr) {
+      VLOG(4) << "RemoveOneTransformer: father block is Block";
+      std::vector<ir::Expr> new_bodies;
+      for (const auto& expr : target_block.As<ir::Block>()->stmts) {
+        if (expr != target_for) {
+          new_bodies.push_back(expr);
+        } else {
+          for (const auto& origin_for :
+               target_for.As<ir::For>()->body.As<ir::Block>()->stmts) {
+            new_bodies.push_back(origin_for);
+          }
         }
       }
+      ir::Expr to_replace_block = ir::Block::Make(new_bodies);
+      ComposeUtils::MappingTargetExprToDestExprMutator(
+          target_block, to_replace_block)(&copied);
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "RemoveOneTransformer: target for father should be a ir::Block or "
+          "ir::ScheduleBlockRealize."));
     }
-    ir::Expr to_replace_block = ir::Block::Make(new_bodies);
-    ComposeUtils::MappingTargetExprToDestExprMutator(target_block,
-                                                     to_replace_block)(&copied);
-    VLOG(4) << "Remove Var to 0 in ScheduleBlockRealizer" << copied;
+    VLOG(4) << "Remove Var to 0 in ScheduleBlockRealizer: " << copied;
     // Remove var to 0 in ScheduleBlockRealizer
     InplaceMutateSingleExpr(
         &copied,
@@ -889,8 +908,11 @@ ir::Expr GetBodyBlock(const ir::Expr& root) {
       });
   if (reduce_size == iters.size()) {
     PADDLE_THROW(::common::errors::Unimplemented(
-        "Unimplemented get body block for reduce all op."));
-    return root;
+        "Currently can not get body block with no reduce axis."));
+    return (ExprSetFinderUtils::ChildRootScheduleBlockRealizes *
+            ExprSetFinderUtils::Realizer2ScheduleBlock *
+            ExprSetFinderUtils::ScheduleBlock2Body)
+        .GetSingle(root);
   } else {
     return (ExprSetFinderUtils::ChildFors *
             ExprSetFinderUtils::IsForIterVar(
