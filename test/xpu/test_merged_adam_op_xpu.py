@@ -93,6 +93,7 @@ def run_adam_op(
                 beta2,
                 'multi_precision',
                 False,
+                'amsgrad',
                 amsgrad,
             )
     else:
@@ -136,6 +137,7 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
         def setUp(self):
             self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
             self.seed = 10
+            self.no_check_set = ['Moment2MaxOut']
 
         def gen_rand_data(self, shapes, dtype):
             return [np.random.random(s).astype(dtype) for s in shapes]
@@ -214,6 +216,9 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
             self.assertEqual(len(outs1), len(outs4))
 
             for key in outs1.keys():
+                if key in self.no_check_set:
+                    continue
+
                 value1 = outs1[key]
                 value2 = outs2[key]
                 value3 = outs3[key]

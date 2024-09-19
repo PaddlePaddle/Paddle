@@ -36,7 +36,7 @@ def adamw_step(inputs, attributes):
     grad = inputs['Grad']
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
-    moment2_max = inputs['Moment2Max']
+    moment2_max = inputs.get('Moment2Max', None)
     lr = inputs['LearningRate']
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
@@ -61,7 +61,7 @@ def adamw_step(inputs, attributes):
     else:
         beta2 = inputs['Beta2Tensor'][0]
 
-    amsgrad = attributes['amsgrad']
+    amsgrad = attributes.get('amsgrad', False)
 
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
@@ -70,7 +70,7 @@ def adamw_step(inputs, attributes):
         moment2_max_out = np.maximum(moment2_out, moment2_max)
         denom = (np.sqrt(moment2_max_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
     else:
-        moment2_max_out = np.zeros_like(moment2_out)
+        moment2_max_out = np.empty_like(moment2_out)
         denom = (np.sqrt(moment2_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
 
     param_out = param + ((moment1_out / denom) * (-(lr / (1.0 - beta1_pow))))
