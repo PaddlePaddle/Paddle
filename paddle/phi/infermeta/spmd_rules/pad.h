@@ -25,14 +25,17 @@ SpmdInfo PadInferSpmd(const DistMetaTensor& x,
                       const std::vector<int>& paddings,
                       int pad_value);
 
-SpmdInfo PadInferSpmdReverse(const DistMetaTensor& x,
-                             const DistMetaTensor& out,
-                             const std::vector<int>& paddings,
-                             int pad_value);
+SpmdInfo PadGradInferSpmd(const DistMetaTensor& x,
+                          const DistMetaTensor& out,
+                          const std::vector<int>& paddings,
+                          int pad_value);
 
 SpmdInfo PadInferSpmdDynamic(const DistMetaTensor& x,
                              const std::vector<int>& paddings,
                              const Scalar& pad_value);
 
+SpmdInfo PadGradInferSpmdDynamic(const DistMetaTensor& out_grad,
+                                 const std::vector<int>& paddings,
+                                 const Scalar& pad_value);
 }  // namespace distributed
 }  // namespace phi
