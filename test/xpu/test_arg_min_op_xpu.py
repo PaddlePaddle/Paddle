@@ -115,7 +115,7 @@ class TestArgMinAPI(unittest.TestCase):
 
     def setUp(self):
         self.initTestCase()
-        self.__class__.use_Xpu = True
+        self.__class__.use_xpu = True
         self.place = [paddle.XPUPlace(0)]
 
     def test_dygraph_api(self):
