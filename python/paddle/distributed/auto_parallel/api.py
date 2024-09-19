@@ -1086,7 +1086,7 @@ class _ShardOptimizer(Optimizer):
         # shard the accumulators
         for key in self._inner_opt._accumulators.keys():
             accumulator = self._inner_opt._accumulators[key][target_name]
-            if accumulator.is_dist():
+            if accumulator.is_dist() and not isinstance(accumulator, pir.Value):
                 continue
             if self._shard_fn is not None:
                 self._inner_opt._accumulators[key][target_name] = (
@@ -1147,6 +1147,16 @@ class _ShardOptimizer(Optimizer):
             # reset the parameter and grad to right placements
             for p, _ in parameters_and_grads['params']:
                 self._reset_placements(p)
+
+    def apply_gradients(self, params_grads):
+        new_params_grads = []
+        if self._shard_fn is not None:
+            for param, grad in params_grads:
+                new_params_grads.append(
+                    (param, self._shard_fn("grad", param, grad))
+                )
+            return Optimizer.apply_gradients(self, new_params_grads)
+        return Optimizer.apply_gradients(self, params_grads)
 
     def state_dict(self):
         """
@@ -1336,11 +1346,37 @@ class ShardingStage1(_ShardingStageBase):
                     dist.Replicate()
                     for _ in range(len(param.process_mesh.shape))
                 ]
-            return shard_tensor(
-                accumulator,
-                mesh=param.process_mesh,
-                placements=placements,
-            )
+
+            if accumulator.is_dist():
+                if accumulator.get_defining_op().name() == "pd_op.data":
+                    dim_map, partial_status = (
+                        dist.auto_parallel.placement_type.to_dim_map(
+                            placements, len(accumulator.shape)
+                        )
+                    )
+                    dist_attr = (
+                        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                            param.process_mesh, dim_map, partial_status
+                        )
+                    )
+                    dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                        accumulator.type(), dist_attr
+                    )
+                    accumulator.set_type(dist_type)
+                    op_dist_attr = (
+                        paddle.base.libpaddle.pir.create_op_dist_attribute(
+                            param.process_mesh, [], [dist_attr]
+                        )
+                    )
+                    accumulator.get_defining_op().dist_attr = op_dist_attr
+                    return accumulator
+                return dist.reshard(accumulator, param.process_mesh, placements)
+            else:
+                return shard_tensor(
+                    accumulator,
+                    mesh=param.process_mesh,
+                    placements=placements,
+                )
         return accumulator
 
 
@@ -1397,11 +1433,36 @@ class ShardingStage2(_ShardingStageBase):
                     dist.Replicate()
                     for _ in range(len(param.process_mesh.shape))
                 ]
-            return shard_tensor(
-                accumulator,
-                mesh=param.process_mesh,
-                placements=placements,
-            )
+            if accumulator.is_dist():
+                if accumulator.get_defining_op().name() == "pd_op.data":
+                    dim_map, partial_status = (
+                        dist.auto_parallel.placement_type.to_dim_map(
+                            placements, len(accumulator.shape)
+                        )
+                    )
+                    dist_attr = (
+                        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                            param.process_mesh, dim_map, partial_status
+                        )
+                    )
+                    dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                        accumulator.type(), dist_attr
+                    )
+                    accumulator.set_type(dist_type)
+                    op_dist_attr = (
+                        paddle.base.libpaddle.pir.create_op_dist_attribute(
+                            param.process_mesh, [], [dist_attr]
+                        )
+                    )
+                    accumulator.get_defining_op().dist_attr = op_dist_attr
+                    return accumulator
+                return dist.reshard(accumulator, param.process_mesh, placements)
+            else:
+                return shard_tensor(
+                    accumulator,
+                    mesh=param.process_mesh,
+                    placements=placements,
+                )
         return accumulator
 
     @staticmethod
