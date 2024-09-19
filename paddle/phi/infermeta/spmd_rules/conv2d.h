@@ -43,15 +43,16 @@ SpmdInfo Conv2dInferSpmd(const DistMetaTensor& input,
                          int groups = 1,
                          const std::string& data_format = "NCHW");
 
-SpmdInfo Conv2dInferSpmdReverse(const DistMetaTensor& input,
-                                const DistMetaTensor& filter,
-                                const DistMetaTensor& output,
-                                const std::vector<int>& strides,
-                                const std::vector<int>& paddings,
-                                const std::string& padding_algorithm,
-                                const std::vector<int>& dilations,
-                                int groups,
-                                const std::string& data_format);
+SpmdInfo Conv2dInferSpmdReverse(
+    const DistMetaTensor& input,
+    const DistMetaTensor& filter,
+    const DistMetaTensor& output,
+    const std::vector<int>& strides = {1, 1},
+    const std::vector<int>& paddings = {0, 0},
+    const std::string& padding_algorithm = "EXPLICIT",
+    const std::vector<int>& dilations = {1, 1},
+    int groups = 1,
+    const std::string& data_format = "NCHW");
 
 SpmdInfo Conv2dGradInferSpmd(const DistMetaTensor& input,
                              const DistMetaTensor& filter,
