@@ -31,6 +31,7 @@ struct FusionItersSignature {
 };
 
 struct FusionItersManager {
+  enum FusionDirection { upstream2downstream = 0, downstream2upstream = 1 };
   FusionItersManager(pir::ShapeConstraintIRAnalysis* shape_analysis,
                      ShardableAxesInfoManager* axes_info)
       : shape_analysis_(shape_analysis), axes_info_(axes_info) {
@@ -47,7 +48,8 @@ struct FusionItersManager {
       const FusionItersSignature& downstream);
   FusionItersSignature MultiDownstreamItersFusion(
       const FusionItersSignature& upstream,
-      const FusionItersSignature& downstream);
+      const FusionItersSignature& downstream,
+      const FusionItersManager::FusionDirection& direction);
 
   bool IterSymbolEqual(const std::string& lhs, const std::string& rhs);
   bool IterSymbolEqualOne(const std::string& sym);

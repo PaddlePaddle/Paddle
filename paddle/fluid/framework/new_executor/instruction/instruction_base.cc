@@ -183,6 +183,52 @@ static double GetDenseTensorEleSum(const Scope& scope,
   return std::numeric_limits<double>::quiet_NaN();
 }
 
+static std::string GetDenseTensorEleDebugStr(const Scope& scope,
+                                             const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "NaN";
+  }
+  if (var->IsType<phi::DenseTensor>() &&
+      var->Get<phi::DenseTensor>().initialized()) {
+    phi::DenseTensor cpu_tensor;
+    phi::CPUPlace place;
+    paddle::framework::TensorCopy(
+        var->Get<phi::DenseTensor>(), place, &cpu_tensor);
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(var->Get<phi::DenseTensor>().place());
+    dev_ctx.Wait();
+    std::string result;
+    for (int64_t i = 0; i < cpu_tensor.numel(); i++) {
+      if (cpu_tensor.dtype() == phi::DataType::FLOAT32) {
+        result +=
+            std::to_string(static_cast<double>(cpu_tensor.data<float>()[i]));
+      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT64) {
+        result +=
+            std::to_string(static_cast<double>(cpu_tensor.data<double>()[i]));
+      } else if (cpu_tensor.dtype() == phi::DataType::INT32) {
+        result +=
+            std::to_string(static_cast<double>(cpu_tensor.data<int32_t>()[i]));
+      } else if (cpu_tensor.dtype() == phi::DataType::INT64) {
+        result +=
+            std::to_string(static_cast<double>(cpu_tensor.data<int64_t>()[i]));
+      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT16) {
+        const phi::dtype::float16* data =
+            cpu_tensor.data<phi::dtype::float16>();
+        result += std::to_string(static_cast<double>(data[0]));
+      } else if (cpu_tensor.dtype() == phi::DataType::BOOL) {
+        result +=
+            std::to_string(static_cast<double>(cpu_tensor.data<bool>()[i]));
+      } else {
+        return "NaN";
+      }
+      result += ", ";
+    }
+    return result;
+  }
+  return "NaN";
+}
+
 InstructionBase::InstructionBase(size_t id, const phi::Place& place)
     : next_instrs_in_different_thread_(),
       next_instrs_in_same_thread_(),
@@ -375,6 +421,7 @@ std::string InstructionBase::DebugStringEx(
 
         ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
         ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
+        ss << "value=" << GetDenseTensorEleDebugStr(*scope, var_name) << ";";
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
@@ -402,6 +449,7 @@ std::string InstructionBase::DebugStringEx(
         ss << "place=" << GetPlace(*scope, var_name) << ";";
         ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
         ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
+        ss << "value=" << GetDenseTensorEleDebugStr(*scope, var_name) << ";";
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";

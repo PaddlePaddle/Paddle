@@ -208,8 +208,12 @@ struct FuseItersPermutatioOperation {
     };
     auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     merged_node->set_fusion_iters(
-        graph->iters_fusion_policy()->MultiDownstreamItersFusion(upstream,
-                                                                 downstream));
+        graph->iters_fusion_policy()->MultiDownstreamItersFusion(
+            upstream,
+            downstream,
+            is_rise
+                ? FusionItersManager::FusionDirection::downstream2upstream
+                : FusionItersManager::FusionDirection::upstream2downstream));
     const auto update_tracker_fn = [=](const PatternNodePtr& source,
                                        const PatternNodePtr& target) {
       const std::string source_tmp_id = GetNewTmpId(source->id());

@@ -164,7 +164,8 @@ FusionItersSignature FusionItersManager::SingleDownstreamItersFusion(
 
 FusionItersSignature FusionItersManager::MultiDownstreamItersFusion(
     const FusionItersSignature& upstream,
-    const FusionItersSignature& downstream) {
+    const FusionItersSignature& downstream,
+    const FusionItersManager::FusionDirection& direction) {
   VLOG(4) << "[ItersFusion] Start MultiDownstreamItersFusion."
           << "\nUpstream: " << PrintItersSignature(upstream)
           << "\nDownstream: " << PrintItersSignature(downstream);
@@ -174,24 +175,17 @@ FusionItersSignature FusionItersManager::MultiDownstreamItersFusion(
       SplitReduceIters(upstream);
   const auto [downstream_non_reduce_iters, downstream_reduce_iters] =
       SplitReduceIters(downstream);
+  fused_signature.loop_iters = direction == FusionDirection::upstream2downstream
+                                   ? downstream.loop_iters
+                                   : upstream.loop_iters;
   if (upstream_reduce_iters.empty() && downstream_reduce_iters.empty()) {
     // Trivial x Trivial Fusion
-    fused_signature.loop_iters =
-        upstream_non_reduce_iters.size() >= downstream_non_reduce_iters.size()
-            ? upstream_non_reduce_iters
-            : downstream_non_reduce_iters;
     fused_signature.reduce_iter_nums = 0;
   } else if (upstream_reduce_iters.empty()) {
     // Trivial x Reduce Fusion
-    fused_signature.loop_iters = downstream.loop_iters;
     fused_signature.reduce_iter_nums = downstream.reduce_iter_nums;
-  } else if (downstream_reduce_iters.empty()) {
-    // Reduce x Trivial Fusion
-    fused_signature.loop_iters = upstream.loop_iters;
-    fused_signature.reduce_iter_nums = upstream.reduce_iter_nums;
   } else {
-    // Reduce x Reduce Fusion
-    fused_signature.loop_iters = upstream.loop_iters;
+    // Reduce x Reduce Fusion + Reduce x Others Fusion
     fused_signature.reduce_iter_nums = upstream.reduce_iter_nums;
   }
 

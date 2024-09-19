@@ -38,7 +38,9 @@ struct ItersFusionPolicy final : public PolicyBase {
   FusionItersSignature SingleDownstreamItersFusion(
       const PatternNodePtr& upstream, const PatternNodePtr& downstream);
   FusionItersSignature MultiDownstreamItersFusion(
-      const PatternNodePtr& upstream, const PatternNodePtr& downstream);
+      const PatternNodePtr& upstream,
+      const PatternNodePtr& downstream,
+      const FusionItersManager::FusionDirection& direction);
 
   std::pair<std::vector<symbol::DimExpr>, std::vector<bool>> GetLoopDims(
       const FusionItersSignature& sig);

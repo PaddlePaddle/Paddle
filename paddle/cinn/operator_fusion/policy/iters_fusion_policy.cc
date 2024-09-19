@@ -55,9 +55,11 @@ FusionItersSignature ItersFusionPolicy::SingleDownstreamItersFusion(
 }
 
 FusionItersSignature ItersFusionPolicy::MultiDownstreamItersFusion(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
-  return iters_manager_->MultiDownstreamItersFusion(upstream->fusion_iters(),
-                                                    downstream->fusion_iters());
+    const PatternNodePtr& upstream,
+    const PatternNodePtr& downstream,
+    const FusionItersManager::FusionDirection& direction) {
+  return iters_manager_->MultiDownstreamItersFusion(
+      upstream->fusion_iters(), downstream->fusion_iters(), direction);
 }
 
 std::pair<std::vector<symbol::DimExpr>, std::vector<bool>>

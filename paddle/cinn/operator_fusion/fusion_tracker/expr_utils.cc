@@ -30,8 +30,10 @@ ir::Expr ApplyItersTransform::operator()(const TransposeItersTransform& trans) {
 }
 
 ir::Expr ApplyItersTransform::operator()(const RemoveOnesTransform& trans) {
+  VLOG(4) << "[ItersTransform] Before RemoveOnesTransform("
+          << utils::Join(trans.ones_, ",") << "'): " << expr_;
   auto result = RemoveOnesTransformer(trans.ones_)(expr_);
-  VLOG(4) << "[ItersTransform] After RemoveOnesTransform: " << result;
+  VLOG(4) << "[ItersTransform] After  RemoveOnesTransform: " << result;
   return result;
 }
 
