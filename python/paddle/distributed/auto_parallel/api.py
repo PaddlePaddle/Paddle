@@ -130,6 +130,13 @@ def _to_lodtensor(tensor: paddle.Tensor):
     return lodtensor
 
 
+def _get_suffix(s, prefix):
+    if s.startswith(prefix):
+        return s[len(prefix) :]
+    else:
+        return None
+
+
 class DistAttr(core.TensorDistAttr):
     """
     DistAttr specifies how tensors are distributed or sliced on ProcessMesh.
@@ -2419,12 +2426,6 @@ class DistModel:
             ).state_dict(mode)
 
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
-
-        def _get_suffix(s, prefix):
-            if s.startswith(prefix):
-                return s[len(prefix) :]
-            else:
-                return None
 
         if self._engine.fused_ffn_qkv is not None:
             with paddle.base.dygraph.guard():
