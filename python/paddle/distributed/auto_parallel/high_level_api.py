@@ -23,7 +23,6 @@ from paddle.base import (
 from paddle.base.framework import (
     in_dygraph_mode,
 )
-from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.tuner.pir_rule_based_tuner import (
     _PIR_PATTERNS,
     match_all_patterns,
@@ -78,15 +77,16 @@ def record_program_ops_post_hook(layer, inputs, outputs):
         # print(f"layer: {layer._full_name}, start: {layer._op_recorder.start}, end: {end}, corresponding ops: {ops}")
 
 
-def get_layer_pp_info(num_hidden_layers, layer_index):
-    mesh = fleet.auto.get_mesh()
+def get_layer_pp_info(mesh, num_hidden_layers, layer_index):
     if "pp" in mesh.dim_names:
         pp_degree = mesh.get_dim_size("pp")
         layer_per_stage = math.ceil(num_hidden_layers / pp_degree)
-        input_need_reshard = layer_index % layer_per_stage == 0
-        return layer_index // layer_per_stage, input_need_reshard
+        # input_need_reshard = layer_index % layer_per_stage == 0
+        # return layer_index // layer_per_stage, input_need_reshard
+        return layer_index // layer_per_stage
     else:
-        return None, False
+        # return None, False
+        return None
 
 
 # mesh, config: input_spec
@@ -134,17 +134,18 @@ def to_distributed(model, mesh, config):
     print(f"match patterns based on pir program is: {results}")
 
     # # # # step5: mark pir programs ops dist infos
-    matched_programs = []
+    matched_programs = {}
     for pattern_name, matched_patterns in results.items():
         # process one pattern
         pattern_ops_dist_infos = _PIR_PATTERNS[pattern_name].ops_dist_infos
         assert (
             pattern_ops_dist_infos is not None
         ), f"{pattern_name} does not contain ops_dist_infos, cannot reshard, please check"
-        print(f"{pattern_name} op dist infos are {pattern_ops_dist_infos}")
+        # print(f"{pattern_name} op dist infos are {pattern_ops_dist_infos}")
         print(
             f"matched patterns are {matched_patterns}"
         )  # [dict{pattern_node_id : graph_node_id, ..., ...}, dict, dict]
+        processed_patterns = []
         for matched_pattern in matched_patterns:
             # convert pattern_ops_dist_infos to program_ops_dist_infos
             program_ops_dist_infos = {}
@@ -157,37 +158,53 @@ def to_distributed(model, mesh, config):
                     program_op_id = matched_pattern[pattern_op_id]
                     program_ops_id.append(program_op_id)
                 program_ops_dist_infos[tuple(program_ops_id)] = op_dist_info
-            matched_programs.append(program_ops_dist_infos)
+            processed_patterns.append(program_ops_dist_infos)
+
+        matched_programs[pattern_name] = processed_patterns
         print(f"matched program and ops dist infos are {matched_programs}")
 
-    print(f"num_hidden_layers is: {config.num_hidden_layers}")
-
-    # # # # step6-0: SHARD INPUTS
-
-    # # # # step6-1: SHARD PATRAMETERS, get dynamic layer dist infos
-    for matched_program in matched_programs:
-        for program_ops_id, dist_infos in matched_program.items():
-            if program_ops_id not in ops_id_to_layer.keys():
-                print(
-                    f"program_ops: {program_ops_id} is not corresponding to a dynamic layer"
-                )
+    # # # # step6-0: SHARD PATRAMETERS, get dynamic layer dist infos
+    for pattern_name, processed_patterns in matched_programs.items():
+        print(f"num_hidden_layers is: {config.num_hidden_layers}")
+        assert (
+            len(processed_patterns) == config.num_hidden_layers
+        ), "transformer patterns matched are incomplete"
+        for idx, processed_pattern in enumerate(processed_patterns):
+            pp_stage_id = get_layer_pp_info(mesh, config.num_hidden_layers, idx)
+            local_mesh = mesh
+            if pp_stage_id is None:
+                print("pp_stage_id is None")
+                local_mesh = mesh
             else:
-                dynamic_layer = ops_id_to_layer[program_ops_id]
-                # shard layers
-                # print(f"sharding info is {dist_infos.print_dist_infos()}")
-                mesh_num_dims = len(mesh.shape)
-                # print(f"mesh shape is {mesh.shape}, num_dims is {mesh_num_dims}")
-                sharding_info = dist_infos.get_dist_info(mesh_num_dims)
-                print(
-                    f"shard layer {dynamic_layer._full_name}, sharding info is {sharding_info}"
-                )
-                dynamic_layer.weight = dist.shard_tensor(
-                    dynamic_layer.weight, mesh, sharding_info[0]
-                )
-                if dynamic_layer.bias is not None:
-                    dynamic_layer.bias = dist.shard_tensor(
-                        dynamic_layer.bias, mesh, sharding_info[1]
+                print(f"pp_stage_id is {pp_stage_id}")
+                local_mesh = mesh.get_mesh_with_dim("pp", pp_stage_id)
+            print(f"local_mesh is {local_mesh}")
+            for program_ops_id, dist_infos in processed_pattern.items():
+                if program_ops_id not in ops_id_to_layer.keys():
+                    print(
+                        f"program_ops: {program_ops_id} is not corresponding to a dynamic layer"
                     )
+                else:
+                    dynamic_layer = ops_id_to_layer[program_ops_id]
+                    # shard layers
+                    # print(f"sharding info is {dist_infos.print_dist_infos()}")
+                    mesh_num_dims = len(local_mesh.shape)
+                    print(
+                        f"local mesh shape is {local_mesh.shape}, num_dims is {mesh_num_dims}"
+                    )
+                    # breakpoint()
+                    sharding_info = dist_infos.get_dist_info(mesh_num_dims)
+                    print(
+                        f"shard layer {dynamic_layer._full_name}, sharding info is {sharding_info}"
+                    )
+                    dynamic_layer.weight = dist.shard_tensor(
+                        dynamic_layer.weight, local_mesh, sharding_info[0]
+                    )
+                    if dynamic_layer.bias is not None:
+                        dynamic_layer.bias = dist.shard_tensor(
+                            dynamic_layer.bias, local_mesh, sharding_info[1]
+                        )
+    # # # # step6-0: SHARD INPUTS
 
     # # # # step7: clean layer_op recorder hooks
     for layer in model.sublayers():
