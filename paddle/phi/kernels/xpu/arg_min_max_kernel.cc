@@ -63,10 +63,11 @@ void ArgMaxKernel(const Context& dev_ctx,
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);
     if (x.dims().size() == 0) {
-      xpu::constant(dev_ctx.x_context(),
-                    out->data<int64_t>(),
-                    x.numel(),
-                    static_cast<int64_t>(0));
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out->data<int64_t>(),
+                            x.numel(),
+                            static_cast<int64_t>(0));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       return;
     }
     r = xpu::argmax(dev_ctx.x_context(),
@@ -85,10 +86,11 @@ void ArgMaxKernel(const Context& dev_ctx,
     out_int64.Resize(out->dims());
     dev_ctx.template Alloc<int64_t>(&out_int64);
     if (x.dims().size() == 0) {
-      xpu::constant(dev_ctx.x_context(),
-                    out_int64.data<int64_t>(),
-                    x.numel(),
-                    static_cast<int64_t>(0));
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out_int64.data<int64_t>(),
+                            x.numel(),
+                            static_cast<int64_t>(0));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     } else {
       r = xpu::argmax(dev_ctx.x_context(),
                       reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -158,10 +160,11 @@ void ArgMinKernel(const Context& dev_ctx,
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);
     if (x.dims().size() == 0) {
-      xpu::constant(dev_ctx.x_context(),
-                    out->data<int64_t>(),
-                    x.numel(),
-                    static_cast<int64_t>(0));
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out->data<int64_t>(),
+                            x.numel(),
+                            static_cast<int64_t>(0));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       return;
     }
     r = xpu::argmin(dev_ctx.x_context(),
@@ -180,10 +183,11 @@ void ArgMinKernel(const Context& dev_ctx,
     out_int64.Resize(out->dims());
     dev_ctx.template Alloc<int64_t>(&out_int64);
     if (x.dims().size() == 0) {
-      xpu::constant(dev_ctx.x_context(),
-                    out_int64.data<int64_t>(),
-                    x.numel(),
-                    static_cast<int64_t>(0));
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out_int64.data<int64_t>(),
+                            x.numel(),
+                            static_cast<int64_t>(0));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     } else {
       r = xpu::argmin(dev_ctx.x_context(),
                       reinterpret_cast<const XPUType*>(x.data<T>()),
