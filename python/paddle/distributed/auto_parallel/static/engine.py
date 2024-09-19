@@ -69,7 +69,6 @@ from .pir_pass import (
     RemovePasses,
     ReshardPasses,
     apply_partition_pass,
-    fuse_attention_ffn_qkv_pass,
     pipeline_pass,
     remove_unuseful_comm_op_pass,
 )
@@ -701,10 +700,10 @@ class Engine:
         mix_fw_program = self._fwd_main_progs[mode]
         startup_program = self._startup_progs[mode]
 
-        # Add fused_ffn/fused_attention_qkv
-        self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
-            startup_program, mix_fw_program, self.concrete_program
-        )
+        # TODO(zhangbo) Open fused_ffn/fused_attention_qkv pass
+        # self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
+        #     startup_program, mix_fw_program, self.concrete_program
+        # )
 
         forward_op_start_idx = 0
         backward_op_start_idx = -1
