@@ -34,14 +34,14 @@ void FusedGemmEpilogueGradKernel(
     DenseTensor* x_grad,
     DenseTensor* y_grad,
     DenseTensor* bias_grad) {
-#if CUDA_VERSION < 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 11060
   PADDLE_THROW(common::errors::Unimplemented(
       "The fused_gemm_epilogue operator only support CUDA 11.6 "
       "or higher version."));
 #endif
 
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 11060
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
+    defined(PADDLE_WITH_HIP)
 
   // (M * K) * (K * N)
   auto x_mat_dims =
@@ -70,7 +70,6 @@ void FusedGemmEpilogueGradKernel(
                                                   x_grad,
                                                   y_grad,
                                                   bias_grad);
-#endif
 #endif
 }
 

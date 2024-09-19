@@ -1768,7 +1768,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                                 bool trans_y,
                                 const std::string& activation,
                                 MetaTensor* out,
-                                MetaTensor* reserve_space) {
+                                MetaTensor* reserve_space,
+                                MetaConfig config) {
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
   const auto& bias_dims = bias.dims();
@@ -1809,15 +1810,17 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
 
   int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
   int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
-
-  PADDLE_ENFORCE_EQ(
-      K_from_x,
-      K_from_y,
-      common::errors::InvalidArgument(
-          "The last dimension of X should be equal with Y's first dimension."
-          "But received X[-1] = [%d], Y[0] = [%d].",
-          K_from_x,
-          K_from_y));
+  bool check_dim = (!config.is_runtime && K_from_x != -1) || config.is_runtime;
+  if (check_dim) {
+    PADDLE_ENFORCE_EQ(
+        K_from_x,
+        K_from_y,
+        common::errors::InvalidArgument(
+            "The last dimension of X should be equal with Y's first dimension."
+            "But received X[-1] = [%d], Y[0] = [%d].",
+            K_from_x,
+            K_from_y));
+  }
 
   std::vector<int64_t> out_dims;
   out_dims.reserve(static_cast<size_t>(x_dims.size()));
@@ -3904,6 +3907,88 @@ void FCInferMeta(const MetaTensor& input,
       in_dims, w_dims, output_dims, in_num_col_dims, padding_weights);
 
   out->set_dims(common::make_ddim(output_dims));
+  out->share_lod(input);
+  out->set_dtype(input.dtype());
+}
+
+void FCOneDNNInferMeta(const MetaTensor& input,
+                       const MetaTensor& w,
+                       const MetaTensor& bias,
+                       const int in_num_col_dims,
+                       const std::string& activation_type,
+                       const bool padding_weights,
+                       const std::vector<int>& fused_reshape2_shape,
+                       MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      in_num_col_dims,
+      1,
+      common::errors::InvalidArgument(
+          "The in_num_col_dims is expected to equal or greater than 1. "
+          "But received the in_num_col_dims is %d. ",
+          in_num_col_dims));
+
+  auto w_dims = w.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The input Weight of fc is expected to be a 2-D tensor. "
+          "But received the number of Weight's dimensions is %d, "
+          "Weight's shape is %s.",
+          w_dims.size(),
+          w_dims));
+
+  if (bias) {
+    auto bias_dims = bias.dims();
+    auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
+
+    PADDLE_ENFORCE_EQ(
+        bias_dims[bias_dims.size() - 1],
+        w_dims1,
+        common::errors::InvalidArgument(
+            "The last dimension of input Bias is expected be equal "
+            "to the actual width of input Weight. But received the last "
+            "dimension of Bias is %d, Bias's shape is %s; "
+            "the actual width of Weight is %d, Weight's shape is %s.",
+            bias_dims[bias_dims.size() - 1],
+            bias_dims,
+            w_dims1,
+            w_dims));
+  }
+
+  auto in_dims = input.dims();
+  // VLOG(-2) << "fc in dims: " << in_dims.size();
+  PADDLE_ENFORCE_LT(
+      in_num_col_dims,
+      in_dims.size(),
+      common::errors::InvalidArgument(
+          "The attribute in_num_col_dims used to flatten Input to "
+          "a 2-D tensor, is expected to be less than the number of "
+          "Input's dimensions. But received in_num_col_dims is %d, "
+          "the number of Input's dimensions is %d, Input's shape is %s.",
+          in_num_col_dims,
+          in_dims.size(),
+          in_dims));
+
+  std::unordered_set<std::string> support_acts = {"", "relu", "gelu"};
+  PADDLE_ENFORCE_EQ(
+      support_acts.count(activation_type),
+      1,
+      common::errors::InvalidArgument(
+          "The attribute activation_type of fc is expected "
+          "to be one of [\"\", \"relu\", \"gelu\"], but received %s.",
+          activation_type.c_str()));
+
+  std::vector<int64_t> output_dims;
+  phi::funcs::FCOutputSize(
+      in_dims, w_dims, output_dims, in_num_col_dims, padding_weights);
+
+  auto out_dims = common::make_ddim(output_dims);
+  auto reshape_size = fused_reshape2_shape;
+  if (!reshape_size.empty()) {
+    out_dims = out_dims.reshape(reshape_size);
+  }
+  out->set_dims(out_dims);
   out->share_lod(input);
   out->set_dtype(input.dtype());
 }
