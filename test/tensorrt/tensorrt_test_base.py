@@ -139,7 +139,10 @@ class TensorRTBaseTest(unittest.TestCase):
             # init all parameter
             exe.run(startup_program)
             fetch_num = len(fetch_list)
-            fetch_index = [i for i, v in enumerate(fetch_list)]
+            if isinstance(fetch_list[0], list):
+                fetch_index = [i for i, v in enumerate(fetch_list)]
+            else:
+                fetch_index = [v.index() for v in fetch_list]
             output_expected = self.run_program(main_program, fetch_list)
 
             min_shape_data = dict()  # noqa: C408

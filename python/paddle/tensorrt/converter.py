@@ -207,10 +207,7 @@ class PaddleToTensorRTConverter:
                     _logger.warning(f"Skipping uninitialized source: {source}")
                     continue
                 define_op_name = source.get_defining_op().name()
-                # Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
-                if define_op_name == "builtin.split":
-                    continue
-                elif define_op_name == "builtin.combine":
+                if define_op_name == "builtin.combine":
                     for combined_operand in source.get_defining_op().operands():
                         combined_source = combined_operand.source()
                         combined_source_id = combined_source.id
