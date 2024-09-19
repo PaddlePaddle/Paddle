@@ -211,6 +211,24 @@ class TestAdadeltaV2(unittest.TestCase):
         )
 
 
+class TestAdadeltaV2WeightDecay(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static(paddle.CPUPlace())
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.Adadelta(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+
 class TestAdadeltaV2Group(TestAdadeltaV2):
     def test_adadelta_dygraph(self):
         paddle.disable_static(paddle.CPUPlace())
