@@ -134,22 +134,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::DecompVjp(pir::Operation* o
 
   VLOG(6) << "Decomp call {{fwd_name}}'s backward composite rule prepare";
 
-  std::vector<std::vector<bool>> stop_gradients(op->results().size());
-  if (op->HasAttribute(kAttrStopGradients)) {
-    auto stop_gradients_attr = op->attribute(kAttrStopGradients)
-                                   .dyn_cast<pir::ArrayAttribute>()
-                                   .AsVector();
-    {% for k in range(outputs|length) %}
-    stop_gradients[{{k}}].push_back(
-        stop_gradients_attr[{{k}}].dyn_cast<pir::BoolAttribute>().data());
-    {% endfor %}
-    VLOG(4) << " stop_gradients is set ";
-  } else {
-    {% for k in range(outputs|length) %}
-    stop_gradients[{{k}}].push_back(false);
-    {% endfor %}
-    VLOG(4) << " stop_gradients is not set ";
-  }
+  std::vector<std::vector<bool>> stop_gradients = ConstructStopGradient(op);
 
   std::vector<std::vector<paddle::Tensor>> tensor_res;
   for (auto arg : stop_gradients) {

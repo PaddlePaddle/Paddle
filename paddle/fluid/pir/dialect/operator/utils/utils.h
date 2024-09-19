@@ -203,5 +203,7 @@ void SetStopGradient(T value, Args... args) {
   SetStopGradient(args...);
 }
 
+std::vector<std::vector<bool>> ConstructStopGradient(pir::Operation* op);
+
 }  // namespace dialect
 }  // namespace paddle
