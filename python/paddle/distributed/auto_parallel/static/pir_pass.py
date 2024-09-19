@@ -804,7 +804,10 @@ def fuse_attention_ffn_qkv_pass(
                     shape=fusion_bias_shape,
                     name=fusion_bias_name,
                     process_mesh=fusion_bias_process_mesh,
-                    placements=[paddle.distributed.Shard(1)],
+                    placements=[
+                        paddle.distributed.Replicate(),
+                        paddle.distributed.Shard(0),
+                    ],
                     initializer=paddle.nn.initializer.Constant(value=0),
                 )
 
@@ -895,7 +898,10 @@ def fuse_attention_ffn_qkv_pass(
                     shape=fusion_bias_shape,
                     name=fusion_bias_name,
                     process_mesh=fusion_bias_process_mesh,
-                    placements=[paddle.distributed.Shard(1)],
+                    placements=[
+                        paddle.distributed.Replicate(),
+                        paddle.distributed.Shard(0),
+                    ],
                     initializer=paddle.nn.initializer.Constant(value=0),
                 )
         # insert dst pattern
@@ -955,12 +961,12 @@ def fuse_attention_ffn_qkv_pass(
         op.erase()
 
     # 4. Initialize fused parameters and delete orignal parameters.
+    concated_dy_param_index = []
     for key, pat_list in fused_name_map.items():
         for pat in pat_list:
             for pir_param, dy_param_list in pat.items():
                 # Retrieve the params of ffn and qkv patterns from concrete_program for fusion.
                 concated_dy_param_list = []
-                concated_dy_param_index = []
                 for dy_param in dy_param_list:
                     param_index = dy_param_names.index(dy_param)
                     concated_dy_param_list.append(
@@ -981,12 +987,11 @@ def fuse_attention_ffn_qkv_pass(
                 )
                 pir_scope_param._share_data_with(concated_param.get_tensor())
                 # Pop and relase original params from concrete_program
-
-                concated_dy_param_index.sort(reverse=True)
-                for index in concated_dy_param_index:
-                    concrete_program.parameters[0].pop(index)
-                    concrete_program.parameters[1].pop(index)
                 for param in concated_dy_param_list:
                     param.get_tensor()._clear()
+    concated_dy_param_index.sort(reverse=True)
+    for index in concated_dy_param_index:
+        concrete_program.parameters[0].pop(index)
+        concrete_program.parameters[1].pop(index)
 
     return fused_name_map
