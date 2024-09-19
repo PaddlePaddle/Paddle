@@ -19,7 +19,10 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 
@@ -37,7 +40,6 @@ using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
 class Serializer {
  public:
   void operator()(const Layer& layer, const std::string& file_dir);
-
   //  private:
   //   void WriteTensorData(const Layer& layer, const std::string& file_name)
   //   const;
@@ -64,6 +66,8 @@ class Deserializer {
   // void ReadExtraInfo(const std::string& file_name) const;
 
   // void ReadByteCode(const std::string& file_name) const;
+
+  std::shared_ptr<pir::Program> LoadPirProgram(const std::string& file_name);
 
   framework::ProgramDesc LoadProgram(const std::string& file_name);
 };

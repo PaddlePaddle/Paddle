@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -76,7 +75,6 @@ class TestTypeHints(Dy2StTestBase):
         else:
             return ret
 
-    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
@@ -91,13 +89,11 @@ class TestAnnAssign(Dy2StTestBase):
         dygraph_res = dygraph_fn(x)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
-    @test_legacy_and_pt_and_pir
     def test_ann_assign_with_value(self):
         self.assert_fn_dygraph_and_static_unified(
             fn_annotation_assign_with_value, paddle.to_tensor(1)
         )
 
-    @test_legacy_and_pt_and_pir
     def test_ann_assign_without_value(self):
         self.assert_fn_dygraph_and_static_unified(
             fn_annotation_assign_without_value, paddle.to_tensor(1)
