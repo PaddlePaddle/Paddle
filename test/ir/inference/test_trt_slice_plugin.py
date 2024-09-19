@@ -40,26 +40,29 @@ class SlicePluginTRTTest(InferencePassTest):
     def setUp(self):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
-        with base.program_guard(self.main_program, self.startup_program):
-            data = paddle.static.data(
-                name="data", shape=[3, 3, 3, 3], dtype="float32"
-            )
-            axes = self.params_axes
-            starts = self.params_starts
-            ends = self.params_ends
-            slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
-            out = nn.batch_norm(slice_out, is_test=True)
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(self.main_program, self.startup_program):
+                data = paddle.static.data(
+                    name="data", shape=[3, 3, 3, 3], dtype="float32"
+                )
+                axes = self.params_axes
+                starts = self.params_starts
+                ends = self.params_ends
+                slice_out = paddle.slice(
+                    data, axes=axes, starts=starts, ends=ends
+                )
+                out = nn.batch_norm(slice_out, is_test=True)
 
-        self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("float32"),
-        }
-        self.dynamic_shape_params = SlicePluginTRTTest.DynamicShapeParam(
-            {'data': [3, 3, 3, 3]},
-            {'data': [3, 3, 3, 3]},
-            {'data': [3, 3, 3, 3]},
-            False,
-        )
-        self.fetch_list = [out]
+            self.feeds = {
+                "data": np.random.random((3, 3, 3, 3)).astype("float32"),
+            }
+            self.dynamic_shape_params = SlicePluginTRTTest.DynamicShapeParam(
+                {'data': [3, 3, 3, 3]},
+                {'data': [3, 3, 3, 3]},
+                {'data': [3, 3, 3, 3]},
+                False,
+            )
+            self.fetch_list = [out]
 
     def test_check_output(self):
         use_gpu = [False]
@@ -117,27 +120,32 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
     def setUp(self):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
-        with base.program_guard(self.main_program, self.startup_program):
-            data = paddle.static.data(
-                name="data", shape=[3, 3, 3, 3], dtype="int32"
-            )
-            axes = self.params_axes
-            starts = self.params_starts
-            ends = self.params_ends
-            slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
-            cast_out = paddle.cast(slice_out, 'float32')
-            out = nn.batch_norm(cast_out, is_test=True)
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(self.main_program, self.startup_program):
+                data = paddle.static.data(
+                    name="data", shape=[3, 3, 3, 3], dtype="int32"
+                )
+                axes = self.params_axes
+                starts = self.params_starts
+                ends = self.params_ends
+                slice_out = paddle.slice(
+                    data, axes=axes, starts=starts, ends=ends
+                )
+                cast_out = paddle.cast(slice_out, 'float32')
+                out = nn.batch_norm(cast_out, is_test=True)
 
-        self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("int32"),
-        }
-        self.dynamic_shape_params = SlicePluginTRTTestInt32.DynamicShapeParam(
-            {'data': [3, 3, 3, 3]},
-            {'data': [3, 3, 3, 3]},
-            {'data': [3, 3, 3, 3]},
-            False,
-        )
-        self.fetch_list = [out]
+            self.feeds = {
+                "data": np.random.random((3, 3, 3, 3)).astype("int32"),
+            }
+            self.dynamic_shape_params = (
+                SlicePluginTRTTestInt32.DynamicShapeParam(
+                    {'data': [3, 3, 3, 3]},
+                    {'data': [3, 3, 3, 3]},
+                    {'data': [3, 3, 3, 3]},
+                    False,
+                )
+            )
+            self.fetch_list = [out]
 
 
 class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
@@ -150,29 +158,32 @@ class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
     def setUp(self):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
-        with base.program_guard(self.main_program, self.startup_program):
-            data = paddle.static.data(
-                name="data", shape=[3, 3, 3, 3], dtype="int32"
-            )
-            axes = self.params_axes
-            starts = self.params_starts
-            ends = self.params_ends
-            slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
-            cast_out = paddle.cast(slice_out, 'float32')
-            out = nn.batch_norm(cast_out, is_test=True)
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(self.main_program, self.startup_program):
+                data = paddle.static.data(
+                    name="data", shape=[3, 3, 3, 3], dtype="int32"
+                )
+                axes = self.params_axes
+                starts = self.params_starts
+                ends = self.params_ends
+                slice_out = paddle.slice(
+                    data, axes=axes, starts=starts, ends=ends
+                )
+                cast_out = paddle.cast(slice_out, 'float32')
+                out = nn.batch_norm(cast_out, is_test=True)
 
-        self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("int32"),
-        }
-        self.dynamic_shape_params = (
-            StaticSlicePluginTRTTestInt32.DynamicShapeParam(
-                {'data': [3, 3, 3, 3]},
-                {'data': [3, 3, 3, 3]},
-                {'data': [3, 3, 3, 3]},
-                False,
+            self.feeds = {
+                "data": np.random.random((3, 3, 3, 3)).astype("int32"),
+            }
+            self.dynamic_shape_params = (
+                StaticSlicePluginTRTTestInt32.DynamicShapeParam(
+                    {'data': [3, 3, 3, 3]},
+                    {'data': [3, 3, 3, 3]},
+                    {'data': [3, 3, 3, 3]},
+                    False,
+                )
             )
-        )
-        self.fetch_list = [out]
+            self.fetch_list = [out]
 
 
 if __name__ == "__main__":

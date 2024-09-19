@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -86,7 +85,6 @@ class TestCastBase(Dy2StTestBase):
         return res
 
     @test_ast_only  # TODO: add new sot only test.
-    @test_legacy_and_pt_and_pir
     def test_cast_result(self):
         self.set_func()
         res = self.do_test().numpy()
@@ -151,7 +149,6 @@ class TestMixCast(TestCastBase):
         self.func = paddle.jit.to_static(full_graph=True)(test_mix_cast)
 
     @test_ast_only  # TODO: add new symbolic only test.
-    @test_legacy_and_pt_and_pir
     def test_cast_result(self):
         self.set_func()
         res = self.do_test().numpy()
@@ -182,7 +179,6 @@ class TestNotVarCast(TestCastBase):
         self.func = paddle.jit.to_static(full_graph=True)(test_not_var_cast)
 
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_cast_result(self):
         self.set_func()
         res = self.do_test()

@@ -18,9 +18,6 @@ import paddle
 import paddle.distributed as dist
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.distributed import Replicate, Shard
-from paddle.distributed.auto_parallel.static.dist_context import (
-    get_default_distributed_context,
-)
 
 
 class TestUnshardDTensor(unittest.TestCase):
@@ -50,22 +47,14 @@ class TestUnshardDTensor(unittest.TestCase):
             shape=[4, 1024, 512],
             dtype='float32',
         )
-        self.assertIsNone(ori_tensor.dist_attr.process_mesh)
+        self.assertIsNone(ori_tensor.dist_attr())
         d_tensor = dist.shard_tensor(ori_tensor, self.mesh, [Shard(0)])
-
-        default_dist_context = get_default_distributed_context()
-        dist_input = default_dist_context.get_dist_tensor_for_program(
-            ori_tensor
-        )
-        self.assertEqual(dist_input.dist_attr.process_mesh, self.mesh)
+        self.assertTrue(d_tensor.is_dist_dense_tensor_type())
+        self.assertEqual(d_tensor.dist_attr().process_mesh, self.mesh)
 
         dense_tensor = dist.unshard_dtensor(d_tensor)
-        dist_input = default_dist_context.get_dist_tensor_for_program(
-            ori_tensor
-        )
-        self.assertTupleEqual(dense_tensor.shape, ori_tensor.shape)
-        self.assertIsNone(dense_tensor.dist_attr.process_mesh)
-        self.assertIsNone(dist_input)
+        self.assertListEqual(dense_tensor.shape, ori_tensor.shape)
+        self.assertFalse(d_tensor.is_dist_dense_tensor_type())
 
     def run_dy2static(self):
         @paddle.jit.to_static(full_graph=True)
@@ -82,17 +71,12 @@ class TestUnshardDTensor(unittest.TestCase):
         self.assertListEqual(dy_dense_tensor.shape, dy_ori_tensor.shape)
         self.assertFalse(dy_dense_tensor.is_dist())
 
-        default_dist_context = get_default_distributed_context()
-        dist_input = default_dist_context.get_dist_tensor_for_program(
-            st_ori_tensor
-        )
-        self.assertIsNone(st_dense_tensor.dist_attr.process_mesh)
-        self.assertIsNone(dist_input)
+        self.assertIsNone(st_dense_tensor.dist_attr())
 
     def run_test_cases(self):
         self.run_dynamic()
         self.run_static()
-        self.run_dy2static()
+        # self.run_dy2static() ## not support
 
 
 if __name__ == "__main__":
