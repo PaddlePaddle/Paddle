@@ -219,6 +219,8 @@ phi::DataType GetTensorDtype(Type type) {
     return dialect::TransToPhiDataType(select_rows.dtype());
   } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
     return dialect::TransToPhiDataType(dense_array.dtype());
+  } else if (auto vec_type = type.dyn_cast<VectorType>()) {
+    return GetTensorDtype(vec_type[0]);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
@@ -1120,6 +1122,10 @@ const phi::DDim &GetTensorDims(Type type) {
   } else if (auto sparse_csr_tensr_type =
                  type.dyn_cast<SparseCsrTensorType>()) {
     return sparse_csr_tensr_type.dims();
+  } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
+    return dense_array.dims();
+  } else if (auto vec_type = type.dyn_cast<VectorType>()) {
+    return GetTensorDims(vec_type[0]);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get shape for dense and selsect rows type."));
@@ -1371,6 +1377,14 @@ void BindValue(py::module *m) {
       .def("_has_only_one_name",
            [](Value self) -> bool {
              return name_analysis::HasOnlyOneValueName(self);
+           })
+      .def("is_nullptr",
+           [](Value self) -> bool {
+             if (self.impl() == nullptr) {
+               return true;
+             } else {
+               return false;
+             }
            })
       .def("detach",
            [](Value self) {

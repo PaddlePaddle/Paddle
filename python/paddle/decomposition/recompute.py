@@ -647,6 +647,10 @@ def replace_mid_values_with_forward_subgraph(
         program, origin_ops, origin_subgraph_inputs, first_backward_op
     )
 
+    for origin_op in origin_ops:
+        origin_op.set_bool_attr("is_recompute_op", True)
+    for cloned_op in cloned_ops:
+        cloned_op.set_bool_attr("is_recompute_bw_op", False)
     # 3. replace mid values that backward need to hold with recompute subgraph's outputs
     cloned_subgraph_outputs = backward_utils.ValueSet()
     for origin_value in origin_subgraph_outputs:
