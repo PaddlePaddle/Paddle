@@ -1621,14 +1621,32 @@ bool FusedAttentionOpInferSymbolicShape(
         op->result(15),
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
-    infer_context->SetShapeOrDataForValue(
-        op->result(16),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
-    infer_context->SetShapeOrDataForValue(
-        op->result(17),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(x_shape)});
+    if (paddle::dialect::details::IsFakeValue(op->result(16)) ||
+        op->result(16)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size() == 0) {
+      infer_context->SetSymbolForValueByStaticShape(op->result(16));
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(16),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
+    }
+    if (paddle::dialect::details::IsFakeValue(op->result(17)) ||
+        op->result(17)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size() == 0) {
+      infer_context->SetSymbolForValueByStaticShape(op->result(17));
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(17),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(x_shape)});
+    }
   }
 
   if (transpose_qkv_wb) {
@@ -1691,14 +1709,23 @@ bool FusedAttentionOpInferSymbolicShape(
 
     out_seq_len = out_seq_len + cache_kv_shape[3];
     // [3, batch_size, num_head, cache_seq_len + seq_len, head_size]
-    infer_context->SetShapeOrDataForValue(
-        op->result(18),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs({cache_kv_shape[0],
-                                               cache_kv_shape[1],
-                                               cache_kv_shape[2],
-                                               out_seq_len,
-                                               cache_kv_shape[4]})});
+    if (paddle::dialect::details::IsFakeValue(op->result(18)) ||
+        op->result(18)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size() == 0) {
+      infer_context->SetSymbolForValueByStaticShape(op->result(18));
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(18),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs({cache_kv_shape[0],
+                                                 cache_kv_shape[1],
+                                                 cache_kv_shape[2],
+                                                 out_seq_len,
+                                                 cache_kv_shape[4]})});
+    }
   }
 
   // [batch, num_head, seq_len, out_seq_len]
@@ -1754,10 +1781,19 @@ bool FusedAttentionOpInferSymbolicShape(
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs(x_shape)});
   }
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(19),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  if (paddle::dialect::details::IsFakeValue(op->result(19)) ||
+      op->result(19)
+              .type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dims()
+              .size() == 0) {
+    infer_context->SetSymbolForValueByStaticShape(op->result(19));
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(19),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_shape)});
+  }
   return true;
 }
 
