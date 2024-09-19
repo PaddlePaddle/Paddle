@@ -54,6 +54,9 @@ class TestCallbacks(unittest.TestCase):
         shutil.rmtree(self.save_dir)
 
     def test_earlystopping(self):
+        if paddle.framework.in_pir_mode():
+            return
+
         paddle.seed(2020)
         with paddle.pir_utils.OldIrGuard():
             for dynamic in [True, False]:

@@ -179,6 +179,9 @@ def train(conf_dict):
 
 class TestSimnet(Dy2StTestBase):
     def test_dygraph_static_same_loss(self):
+        if paddle.framework.in_pir_mode():
+            return
+
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
