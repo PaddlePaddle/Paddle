@@ -841,7 +841,7 @@ def complete_chunk_id(dist_program, pipeline_strategy):
     if vpp_degree < 2:
         return
 
-    RemovePasses.fold_reshard_pass(dist_program)
+    ReshardPasses.fold_reshard_pass(dist_program)
     seg_struct_names = _get_seg_struct_names(
         dist_program.global_block().ops, seg_method
     )
