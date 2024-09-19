@@ -88,46 +88,45 @@ class Pool2dOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    auto padding_attr = op->attribute<pir::ArrayAttribute>("paddings");
-    std::vector<int32_t> paddings;
-    for (const auto &attr : padding_attr.AsVector()) {
-      paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
-    }
-    if (paddings.size() > 2) {
-      VLOG(3) << "The padding size should be less than 2";
+    paddle::dialect::FullIntArrayOp full_int_array_op =
+        pir::GetDefiningOpForInput(op, 1)
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    if (!full_int_array_op) {
+      VLOG(3) << "The second input of Pool2dOp should be FullIntArrayOp";
       return false;
-    }
-    if (op->HasAttribute("data_format")) {
-      auto data_format =
-          op->attribute<pir::StrAttribute>("data_format").AsString();
-      if (data_format == "NHWC" || data_format == "NDHWC") {
-        VLOG(3) << "Pool2d not support NHWC or NDHWC into trt ";
+      auto padding_attr = op->attribute<pir::ArrayAttribute>("paddings");
+      std::vector<int32_t> paddings;
+      for (const auto &attr : padding_attr.AsVector()) {
+        paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+      }
+      if (paddings.size() > 2) {
+        VLOG(3) << "The padding size should be less than 2";
         return false;
       }
-    }
-    if (!op->HasAttribute("pooling_type")) {
-      VLOG(3) << "The pooling_type attribute does not exist";
-      return false;
-    } else {
-      std::string pool_type =
-          op->attribute<pir::StrAttribute>("pooling_type").AsString();
-      if (pool_type != "max" && pool_type != "avg") {
-        VLOG(3) << "Wrong pool op type, the trt do not support the "
-                << pool_type << " pool type.";
-        return false;
+      if (op->HasAttribute("data_format")) {
+        auto data_format =
+            op->attribute<pir::StrAttribute>("data_format").AsString();
+        if (data_format == "NHWC" || data_format == "NDHWC") {
+          VLOG(3) << "Pool2d not support NHWC or NDHWC into trt ";
+          return false;
+        }
       }
-      if (pool_type == "avg") {
-        if (op->HasAttribute("global_pooling")) {
-          if (!op->attribute<pir::BoolAttribute>("global_pooling").data()) {
-            if (op->HasAttribute("exclusive")) {
-              if (op->attribute<pir::BoolAttribute>("exclusive").data()) {
-                paddle::dialect::FullIntArrayOp full_int_array_op =
-                    pir::GetDefiningOpForInput(op, 1)
-                        ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-                if (!full_int_array_op) {
-                  VLOG(3) << "Cannot find FullIntArrayOp";
-                  return false;
-                } else {
+      if (!op->HasAttribute("pooling_type")) {
+        VLOG(3) << "The pooling_type attribute does not exist";
+        return false;
+      } else {
+        std::string pool_type =
+            op->attribute<pir::StrAttribute>("pooling_type").AsString();
+        if (pool_type != "max" && pool_type != "avg") {
+          VLOG(3) << "Wrong pool op type, the trt do not support the "
+                  << pool_type << " pool type.";
+          return false;
+        }
+        if (pool_type == "avg") {
+          if (op->HasAttribute("global_pooling")) {
+            if (!op->attribute<pir::BoolAttribute>("global_pooling").data()) {
+              if (op->HasAttribute("exclusive")) {
+                if (op->attribute<pir::BoolAttribute>("exclusive").data()) {
                   auto attr_value =
                       full_int_array_op->attribute<pir::ArrayAttribute>(
                           "value");
