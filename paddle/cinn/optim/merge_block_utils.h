@@ -19,9 +19,13 @@
 namespace cinn {
 namespace optim {
 
+struct ForTreeNode {
+  const ir::For* val;
+  std::vector<ForTreeNode> children;
+};
+
 using ForEqualFunc =
-    std::function<bool(const std::vector<std::vector<const ir::For*>>&,
-                       const std::vector<std::vector<const ir::For*>>&)>;
+    std::function<bool(const ForTreeNode&, const ForTreeNode&)>;
 
 /**
  * Check if blocks can merge.

@@ -28,30 +28,33 @@ struct ForInfoAnalyzer : public ir::IRMutator<Expr*> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
-  std::vector<std::vector<const ir::For*>> GetInnerForList() {
-    std::vector<std::vector<const ir::For*>> inner_for_list;
-    for (const auto& [level, for_list] : level_to_for_list_) {
-      inner_for_list.push_back(for_list);
+  ForTreeNode BuildTreeNode(const ir::For* node) {
+    ForTreeNode tree_node = {node, std::vector<ForTreeNode>()};
+    for (const auto for_node : for_to_children_[node]) {
+      tree_node.children.push_back(BuildTreeNode(for_node));
     }
-    return inner_for_list;
+    return tree_node;
   }
+
+  ForTreeNode GetRootTreeNode() { return BuildTreeNode(root_node_); }
 
  private:
-  void Visit(const ir::For* op, ir::Expr* expr) override {
-    auto* node = expr->As<ir::For>();
-    if (level_to_for_list_.count(current_for_level_) == 0) {
-      level_to_for_list_[current_for_level_] = {node};
+  void Visit(const ir::For* node, ir::Expr* expr) override {
+    auto old_last_node = last_node_;
+    if (last_node_ == nullptr) {
+      root_node_ = node;
     } else {
-      level_to_for_list_[current_for_level_].push_back(node);
+      for_to_children_[last_node_].push_back(node);
     }
-
-    ++current_for_level_;
-    ir::IRMutator<>::Visit(op, expr);
-    --current_for_level_;
+    last_node_ = const_cast<ir::For*>(node);
+    ir::IRMutator<>::Visit(node, expr);
+    last_node_ = old_last_node;
   }
 
-  int current_for_level_ = 0;
-  std::unordered_map<int, std::vector<const ir::For*>> level_to_for_list_;
+  ir::For* last_node_ = nullptr;
+  const ir::For* root_node_ = nullptr;
+  std::unordered_map<const ir::For*, std::vector<const ir::For*>>
+      for_to_children_;
 };
 
 }  // namespace
@@ -59,10 +62,10 @@ struct ForInfoAnalyzer : public ir::IRMutator<Expr*> {
 bool CanMergeBlocks(const ir::For* first,
                     const ir::For* second,
                     const ForEqualFunc& IsEqual) {
-  auto Get = [&](ir::Expr* expr) -> std::vector<std::vector<const ir::For*>> {
+  auto Get = [&](ir::Expr* expr) -> ForTreeNode {
     ForInfoAnalyzer for_info_analyzer;
     for_info_analyzer(expr);
-    return for_info_analyzer.GetInnerForList();
+    return for_info_analyzer.GetRootTreeNode();
   };
   ir::Expr first_expr = Expr(const_cast<ir::For*>(first));
   ir::Expr second_expr = Expr(const_cast<ir::For*>(second));

@@ -24,26 +24,21 @@ namespace optim {
 
 namespace {
 
-bool IsBlockForAllEqual(
-    const std::vector<std::vector<const ir::For*>>& first,
-    const std::vector<std::vector<const ir::For*>>& second) {
-  auto ForVarExtentEqual =
-      [&](const std::vector<const ir::For*>& first,
-          const std::vector<const ir::For*>& second) -> bool {
-    if (first.size() != second.size()) return false;
-    for (size_t i = 0; i < first.size(); ++i) {
-      const ir::Expr lhs = first[i]->extent;
-      const ir::Expr rhs = second[i]->extent;
-      if (cinn::common::AutoSimplify(ir::Sub::Make(lhs, rhs)) != ir::Expr(0)) {
-        return false;
-      }
+bool IsBlockForAllEqual(const ForTreeNode& first, const ForTreeNode& second) {
+  auto ForVarExtentEqual = [&](const ForTreeNode& first,
+                               const ForTreeNode& second) -> bool {
+    const ir::Expr lhs = first.val->extent;
+    const ir::Expr rhs = second.val->extent;
+    if (cinn::common::AutoSimplify(ir::Sub::Make(lhs, rhs)) != ir::Expr(0)) {
+      return false;
     }
     return true;
   };
 
-  if (first.size() != second.size()) return false;
-  for (size_t i = 0; i < first.size(); ++i) {
-    if (!ForVarExtentEqual(first[i], second[i])) {
+  if (!ForVarExtentEqual(first, second)) return false;
+  if (first.children.size() != second.children.size()) return false;
+  for (size_t i = 0; i < first.children.size(); ++i) {
+    if (!IsBlockForAllEqual(first.children[i], second.children[i])) {
       return false;
     }
   }
@@ -89,16 +84,59 @@ void TestHelper(const std::vector<int>& extents1,
   }
 }
 
+void TestHelper2(const std::vector<std::vector<int>>& extents1,
+                 const std::vector<std::vector<int>>& extents2,
+                 bool is_same) {
+  auto MakeNestLoops =
+      [&](const std::vector<std::vector<int>>& extents) -> ir::Expr {
+    std::vector<ir::Expr> for_loops;
+    for (size_t i = 0; i < extents.size(); ++i) {
+      for_loops.push_back(MakeForLoops(extents[i], 0));
+    }
+    ir::Expr block = ir::Block::Make(for_loops);
+    ir::Expr for_expr = ir::For::Make(ir::Var("i"),
+                                      ir::Expr(0),
+                                      ir::Expr(1),
+                                      ir::ForType::Serial,
+                                      ir::DeviceAPI::CUDA,
+                                      block,
+                                      ir::VectorizeInfo(),
+                                      ir::BindInfo());
+    return for_expr;
+  };
+
+  auto for_expr1 = MakeNestLoops(extents1);
+  auto for_expr2 = MakeNestLoops(extents2);
+  auto f1 = for_expr1.As<ir::For>();
+  auto f2 = for_expr2.As<ir::For>();
+
+  if (is_same) {
+    EXPECT_TRUE(CanMergeBlocks(f1, f2, IsBlockForAllEqual));
+  } else {
+    EXPECT_FALSE(CanMergeBlocks(f1, f2, IsBlockForAllEqual));
+  }
+}
+
 TEST(ForInfo, ForInfoEqual) {
   TestHelper({10}, {10}, true);
   TestHelper({10, 5}, {10, 5}, true);
   TestHelper({10, 5, 3}, {10, 5, 3}, true);
+
+  TestHelper2({{10}, {10}}, {{10}, {10}}, true);
+  TestHelper2({{10, 5}, {4, 7}}, {{10, 5}, {4, 7}}, true);
+  TestHelper2(
+      {{10, 5, 3}, {4, 7, 9}, {2, 8}}, {{10, 5, 3}, {4, 7, 9}, {2, 8}}, true);
 }
 
 TEST(ForInfo, ForInfoNotEqual) {
   TestHelper({10}, {9}, false);
   TestHelper({10, 5}, {10, 4}, false);
   TestHelper({10, 5, 3}, {10, 5, 2}, false);
+
+  TestHelper2({{10}, {10}}, {{10}, {9}}, false);
+  TestHelper2({{10, 5}, {4, 7}}, {{10, 5}, {4, 3}}, false);
+  TestHelper2(
+      {{10, 5, 3}, {4, 7, 9}, {2, 8}}, {{10, 5, 3}, {4, 7, 9}, {2, 7}}, false);
 }
 
 }  // namespace
