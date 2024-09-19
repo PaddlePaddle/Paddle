@@ -899,20 +899,41 @@ def fuse_attention_ffn_qkv_pass(
         if add_q is not None and add_k is not None and add_v is not None:
             fused_o = paddle.add(fused_o, fused_bias)
             fused_o.get_defining_op().copy_attrs_from(add_q)
-        out = paddle.reshape(
-            fused_o,
-            shape=[0, 0, reshape_q.result(0).shape[-2], -1],
-        )
-        out.get_defining_op().copy_attrs_from(reshape_q)
-        out_q, out_k, out_v = paddle.split(
-            out,
-            num_or_sections=[
-                reshape_q.result(0).shape[-1],
-                reshape_k.result(0).shape[-1],
-                reshape_v.result(0).shape[-1],
-            ],
-            axis=-1,
-        )
+        if reshape_q.result(0).shape[-2] != reshape_k.result(0).shape[-2]:
+            out = paddle.reshape(
+                fused_o,
+                shape=[0, 0, -1, reshape_q.result(0).shape[-1]],
+            )
+            out.get_defining_op().copy_attrs_from(reshape_q)
+            out_q, out_k, out_v = paddle.split(
+                out,
+                num_or_sections=[
+                    reshape_q.result(0).shape[-2],
+                    reshape_k.result(0).shape[-2],
+                    reshape_v.result(0).shape[-2],
+                ],
+                axis=-2,
+            )
+        else:
+            out = paddle.reshape(
+                fused_o,
+                shape=[
+                    0,
+                    0,
+                    reshape_q.result(0).shape[-2],
+                    reshape_q.result(0).shape[-1] * 3,
+                ],
+            )
+            out.get_defining_op().copy_attrs_from(reshape_q)
+            out_q, out_k, out_v = paddle.split(
+                out,
+                num_or_sections=[
+                    reshape_q.result(0).shape[-1],
+                    reshape_q.result(0).shape[-1],
+                    reshape_q.result(0).shape[-1],
+                ],
+                axis=-1,
+            )
         reshape_q.result(0).replace_all_uses_with(out_q)
         reshape_k.result(0).replace_all_uses_with(out_k)
         reshape_v.result(0).replace_all_uses_with(out_v)
