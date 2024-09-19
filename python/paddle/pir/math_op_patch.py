@@ -478,7 +478,7 @@ def monkey_patch_value():
 
     def _int_(self):
         error_msg = """\
-            int(Value) is not supported in static graph mode. Because it's value is not available during the static mode.
+            int(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
             If you haven't call int(Tensor) explicitly, it's usually triggered by the logging implicitly, for example:
                 >>> logging.info("The value of x is: {int(x)}")
                                                           ^ `x` is Tensor, `int(x)` triggers int(Tensor)
@@ -503,7 +503,7 @@ def monkey_patch_value():
 
     def _float_(self):
         error_msg = """\
-            float(Value) is not supported in static graph mode. Because it's value is not available during the static mode.
+            float(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
             If you haven't call float(Tensor) explicitly, it's usually triggered by the logging implicitly, for example:
                 >>> logging.info("The value of x is: {float(x)}")
                                                             ^ `x` is Tensor, `float(x)` triggers float(Tensor)
