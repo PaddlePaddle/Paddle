@@ -41,25 +41,28 @@ SpmdInfo PadInferSpmd(const DistMetaTensor& x,
                                    "dims_mapping size [%d] are not matched.",
                                    x_ndim,
                                    x_dims_mapping.size()));
-
-  std::vector<int64_t> dims_to_unshard(x_ndim);
-  std::iota(dims_to_unshard.begin(), dims_to_unshard.end(), 0);
+  std::vector<int64_t> dims_to_unshard;
+  for (size_t i = 0; i < paddings.size(); i += 2) {
+    if (paddings[i] != 0 || paddings[i + 1] != 0) {
+      dims_to_unshard.push_back(i / 2);
+    }
+  }
   auto x_dist_attr = UnShardTensorDims(x_dist_attr_src, dims_to_unshard);
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr);
-  std::vector<int64_t> out_dims_mapping = x_dims_mapping;
-  out_dist_attr.set_dims_mapping(out_dims_mapping);
+  out_dist_attr.set_dims_mapping(x_dist_attr.dims_mapping());
 
   VLOG(4) << "PadInferSpmd: X shape: [" << str_join(x_shape) << "]";
-  VLOG(4) << "X dims_mapping: [" << str_join(x_dims_mapping)
-          << "] Out dims_mapping: [" << str_join(out_dims_mapping) << "]";
+  VLOG(4) << "X dims_mapping: [" << str_join(x_dist_attr.dims_mapping())
+          << "] Out dims_mapping: [" << str_join(out_dist_attr.dims_mapping())
+          << "]";
 
   return {{x_dist_attr}, {out_dist_attr}};
 }
 
-SpmdInfo PadInferSpmdReverse(const DistMetaTensor& x,
-                             const DistMetaTensor& out,
-                             const std::vector<int>& paddings,
-                             int pad_value) {
+SpmdInfo PadGradInferSpmd(const DistMetaTensor& x,
+                          const DistMetaTensor& out,
+                          const std::vector<int>& paddings,
+                          int pad_value) {
   auto out_shape = phi::vectorize(out.dims());
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
@@ -72,17 +75,20 @@ SpmdInfo PadInferSpmdReverse(const DistMetaTensor& x,
                                    out_ndim,
                                    out_dims_mapping.size()));
 
-  std::vector<int64_t> dims_to_unshard(out_ndim);
-  std::iota(dims_to_unshard.begin(), dims_to_unshard.end(), 0);
-  std::vector<int64_t> x_dims_mapping = out_dims_mapping;
+  std::vector<int64_t> dims_to_unshard;
+  for (size_t i = 0; i < paddings.size(); i += 2) {
+    if (paddings[i] != 0 || paddings[i + 1] != 0) {
+      dims_to_unshard.push_back(i / 2);
+    }
+  }
   auto out_dist_attr = UnShardTensorDims(out_dist_attr_src, dims_to_unshard);
-
   TensorDistAttr x_dist_attr = CopyTensorDistAttrForOutput(out_dist_attr);
-  x_dist_attr.set_dims_mapping(x_dims_mapping);
+  x_dist_attr.set_dims_mapping(out_dist_attr.dims_mapping());
 
   VLOG(4) << "PadInferSpmdReverse: Out shape: [" << str_join(out_shape) << "]";
-  VLOG(4) << "Out dims_mapping: [" << str_join(out_dims_mapping)
-          << "] X dims_mapping: [" << str_join(x_dims_mapping) << "]";
+  VLOG(4) << "Out dims_mapping: [" << str_join(x_dist_attr.dims_mapping())
+          << "] X dims_mapping: [" << str_join(x_dist_attr.dims_mapping())
+          << "]";
 
   return {{x_dist_attr}, {out_dist_attr}};
 }
@@ -91,6 +97,12 @@ SpmdInfo PadInferSpmdDynamic(const DistMetaTensor& x,
                              const std::vector<int>& paddings,
                              const Scalar& pad_value) {
   return PadInferSpmd(x, paddings, pad_value.to<int32_t>());
+}
+
+SpmdInfo PadGradInferSpmdDynamic(const DistMetaTensor& out_grad,
+                                 const std::vector<int>& paddings,
+                                 const Scalar& pad_value) {
+  return PadInferSpmd(out_grad, paddings, pad_value.to<int32_t>());
 }
 
 }  // namespace distributed
