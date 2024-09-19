@@ -2514,9 +2514,9 @@
 
 - op : merged_adam_
   inputs :
-    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, moment2: Moment2Max, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam}
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, moment2_max: Moment2Max, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam}
   outputs :
-    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, moment2_out: Moment2MaxOut, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, moment2_max_out: Moment2MaxOut, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
   scalar :
     beta1 :
       data_type : float
