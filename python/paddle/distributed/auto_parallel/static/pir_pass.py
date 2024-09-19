@@ -768,7 +768,7 @@ def fuse_attention_ffn_qkv_pass(
         )
         fusion_w_dtype = mm_gate.operand_source(1).dtype
         fusion_w_shape = mm_gate.operand_source(1).shape
-        fusion_w_shape[-1] *= 2
+        fusion_w_shape[-1] += mm_up.operand_source(1).shape[-1]
         fusion_w_process_mesh = mm_gate.operand_source(1).process_mesh
         # Insert fusion parameter
         with paddle.static.program_guard(main_program, startup_program):
@@ -795,7 +795,7 @@ def fuse_attention_ffn_qkv_pass(
             )
             fusion_bias_dtype = add_gate.operand_source(1).dtype
             fusion_bias_shape = add_gate.operand_source(1).shape
-            fusion_bias_shape[-1] *= 2
+            fusion_bias_shape[-1] += add_up.operand_source(1).shape[-1]
             fusion_bias_process_mesh = add_gate.operand_source(1).process_mesh
             # Insert fusion parameter
             with paddle.static.program_guard(main_program, startup_program):
@@ -861,7 +861,9 @@ def fuse_attention_ffn_qkv_pass(
         )
         fusion_w_dtype = mm_q.operand_source(1).dtype
         fusion_w_shape = mm_q.operand_source(1).shape
-        fusion_w_shape[-1] *= 3
+        fusion_w_shape[-1] += (
+            mm_k.operand_source(1).shape[-1] + mm_v.operand_source(1).shape[-1]
+        )
         fusion_w_process_mesh = mm_q.operand_source(1).process_mesh
         # insert fusion parameter
         with paddle.static.program_guard(main_program, startup_program):
@@ -889,7 +891,10 @@ def fuse_attention_ffn_qkv_pass(
             )
             fusion_bias_dtype = add_q.operand_source(1).dtype
             fusion_bias_shape = add_q.operand_source(1).shape
-            fusion_bias_shape[-1] *= 3
+            fusion_bias_shape[-1] += (
+                add_k.operand_source(1).shape[-1]
+                + add_v.operand_source(1).shape[-1]
+            )
             fusion_bias_process_mesh = add_q.operand_source(1).process_mesh
             # insert fusion parameter
             with paddle.static.program_guard(main_program, startup_program):
@@ -918,20 +923,15 @@ def fuse_attention_ffn_qkv_pass(
             fused_o.get_defining_op().copy_attrs_from(add_q)
         out = paddle.reshape(
             fused_o,
-            shape=[
-                0,
-                0,
-                reshape_q.result(0).shape[-2],
-                reshape_q.result(0).shape[-1] * 3,
-            ],
+            shape=[0, 0, reshape_q.result(0).shape[-2], -1],
         )
         out.get_defining_op().copy_attrs_from(reshape_q)
         out_q, out_k, out_v = paddle.split(
             out,
             num_or_sections=[
                 reshape_q.result(0).shape[-1],
-                reshape_q.result(0).shape[-1],
-                reshape_q.result(0).shape[-1],
+                reshape_k.result(0).shape[-1],
+                reshape_v.result(0).shape[-1],
             ],
             axis=-1,
         )
