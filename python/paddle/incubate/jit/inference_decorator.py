@@ -164,7 +164,17 @@ class InferenceEngine:
         py_script = py_script[py_script.find("def") :]
         if used_as_at_decorator:
             assert self.arg_names[0] == "self"
-        self.save_path = os.path.join(self.save_model_dir, "infer")
+
+        import paddle.distributed as dist
+
+        n_ranks = dist.get_world_size()
+        local_rank: int = dist.ParallelEnv().dev_id
+        if n_ranks > 1:
+            self.save_path = os.path.join(
+                self.save_model_dir, f"{n_ranks}_{local_rank}", "infer"
+            )
+        else:
+            self.save_path = os.path.join(self.save_model_dir, "infer")
         d2s_input_info_path = self.save_path + "_d2s_input_info.txt"
         d2s_input_shapes = []
         d2s_input_names = []
@@ -310,6 +320,7 @@ class InferenceEngine:
             input_spec=input_specs,
             full_graph=True,
         )
+
         paddle.jit.save(model, self.save_path, skip_prune_program=True)
 
         # save d2s_shapes
@@ -359,8 +370,24 @@ class InferenceEngine:
     # why we need input_tensor_lists? this is for TensorRT max/min/opt shape.
     def create_predictor(self, input_tensor_lists):
         # create predictor
-        model_file = os.path.join(self.save_model_dir, "infer.pdmodel")
-        params_file = os.path.join(self.save_model_dir, "infer.pdiparams")
+
+        import paddle.distributed as dist
+
+        n_ranks = dist.get_world_size()
+        local_rank: int = dist.ParallelEnv().dev_id
+
+        if n_ranks > 1:
+            model_file = os.path.join(
+                self.save_model_dir, f"{n_ranks}_{local_rank}", "infer.pdmodel"
+            )
+            params_file = os.path.join(
+                self.save_model_dir,
+                f"{n_ranks}_{local_rank}",
+                "infer.pdiparams",
+            )
+        else:
+            model_file = os.path.join(self.save_model_dir, "infer.pdmodel")
+            params_file = os.path.join(self.save_model_dir, "infer.pdiparams")
 
         config = Config(model_file, params_file)
         config.enable_memory_optim()
