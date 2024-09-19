@@ -868,14 +868,14 @@ void DeleterBridge(phi::Allocation* alloc) {
 phi::DenseTensor from_blob(void* data,
                            DLManagedTensor* src,
                            const phi::DDim& shape,
+                           const phi::DDim& strides,
                            phi::DataType dtype,
-                           phi::DataLayout layout,
                            const phi::Place& place,
                            const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
       data, phi::errors::InvalidArgument("data can not be nullptr."));
 
-  auto meta = phi::DenseTensorMeta(dtype, shape, layout);
+  auto meta = phi::DenseTensorMeta(dtype, shape, strides);
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
   phi::Allocation::DeleterFnPtr f = nullptr;
 
@@ -899,10 +899,17 @@ phi::DenseTensor from_blob(void* data,
 }
 
 phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
-  std::vector<int64_t> vec;
+  std::vector<int64_t> shape_vec;
   std::copy(src->dl_tensor.shape,
             src->dl_tensor.shape + src->dl_tensor.ndim,
-            std::back_inserter(vec));
+            std::back_inserter(shape_vec));
+
+  std::vector<int64_t> strides_vec;
+  if (src->dl_tensor.strides) {
+    std::copy(src->dl_tensor.strides,
+              src->dl_tensor.strides + src->dl_tensor.ndim,
+              std::back_inserter(strides_vec));
+  }
 
   phi::Place place;
   if (src->dl_tensor.device.device_type == kDLCPU) {
@@ -918,19 +925,20 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
   ::DLDataType type = src->dl_tensor.dtype;
   auto dtype = GetDstPtrByDLDataType(type);
   if (!src->dl_tensor.strides) {
-    return from_blob(src->dl_tensor.data,
-                     src,
-                     common::make_ddim(vec),
-                     dtype,
-                     phi::DataLayout::NCHW,
-                     place,
-                     std::move(deleter));
+    return from_blob(
+        src->dl_tensor.data,
+        src,
+        common::make_ddim(shape_vec),
+        phi::DenseTensorMeta::calc_strides(common::make_ddim(shape_vec)),
+        dtype,
+        place,
+        std::move(deleter));
   } else {
     return from_blob(src->dl_tensor.data,
                      src,
-                     common::make_ddim(vec),
+                     common::make_ddim(shape_vec),
+                     common::make_ddim(strides_vec),
                      dtype,
-                     phi::DataLayout::NCHW,
                      place,
                      deleter);
   }
