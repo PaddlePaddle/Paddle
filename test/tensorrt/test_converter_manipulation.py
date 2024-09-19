@@ -55,5 +55,22 @@ class TestFlattenTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestSliceTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.slice
+        self.api_args = {
+            "x": np.random.random([6, 6, 64, 64]).astype("float32"),
+            "axes": [0, 1],
+            "starts": [0, 1],
+            "ends": [2, 2],
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [2, 6, 64, 64]}
+        self.max_shape = {"x": [8, 6, 64, 64]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 if __name__ == '__main__':
     unittest.main()
