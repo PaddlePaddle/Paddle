@@ -1546,8 +1546,8 @@ bool FlashAttnQKVPackedOpInferSymbolicShape(
                     common::errors::InvalidArgument(
                         "qkv dims must be 4(unpadded) or 5(padded batch)"));
   std::vector<symbol::DimExpr> out_dims;
-  std::vector<symbol::DimExpr> softmax_lse_shape std::vector<symbol::DimExpr>
-      softmax_shape;
+  std::vector<symbol::DimExpr> softmax_lse_shape;
+  std::vector<symbol::DimExpr> softmax_shape;
   if (rank == 4UL) {
     // qkv [total_*,nheads/nheads_k+2,nheads_k,headdim]
     out_dims = {qkv_shape[0], (qkv_shape[1] - 2) * qkv_shape[2], qkv_shape[3]};
@@ -1558,7 +1558,7 @@ bool FlashAttnQKVPackedOpInferSymbolicShape(
     softmax_lse_shape = {qkv_shape[0],
                          (qkv_shape[1] - 2) * qkv_shape[2],
                          infer_context->GetNextSymName()};
-  } else if (rank == 5) {
+  } else if (rank == 5UL) {
     // qkv [batchsize,seqlen,nheads/nheads_k+2,nheads_k,headdim]
     out_dims = {qkv_shape[0],
                 qkv_shape[1],
