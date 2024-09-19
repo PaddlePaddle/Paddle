@@ -66,6 +66,16 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "dltensor" at 0x7f6103c681b0>
+            >>> #doctest: -SKIP
+
+            # doctest: +SKIP('torch will not be installed')
+            >>> # convert tensor from paddle to other framework using to_dlpack
+            >>> import torch
+            >>> x = paddle.randn([2, 4]).to(device="cpu")
+            >>> y = torch.from_dlpack(paddle.utils.dlpack.to_dlpack(x))
+            >>> print(y.shape)
+            torch.Size([2, 4])
+            >>> #doctest: -SKIP
     """
 
     if in_dygraph_mode():
@@ -100,13 +110,35 @@ def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
             >>> import paddle
             >>> # x is a tensor with shape [2, 4]
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-            ...                       [0.1, 0.2, 0.6, 0.7]])
+            ...                       [0.1, 0.2, 0.6, 0.7]], place="cpu")
             >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
-            >>> x = paddle.utils.dlpack.from_dlpack(dlpack)
-            >>> print(x)
+
+            >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
+            >>> print(dlpack)
+            >>> # doctest: +SKIP('the address will change in every run')
+            <capsule object "used_dltensor" at 0x7f6103c681b0>
+
+            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> print(y)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
+
+            >>> # convert tensor from numpy to paddle using from_dlpack
+            >>> import numpy as np
+            >>> x = np.random.randn(2, 4)
+            >>> y = paddle.utils.dlpack.from_dlpack(x)
+            >>> print(y.shape)
+            [2, 4]
+
+            >>> # convert tensor from torch to paddle using from_dlpack
+            # doctest: +SKIP('torch will not be installed')
+            >>> import torch
+            >>> x = torch.randn(2, 4)
+            >>> y = paddle.utils.dlpack.from_dlpack(x)
+            >>> print(y.shape)
+            [2, 4]
+            >>> #doctest: -SKIP
     """
 
     t = type(dlpack)
