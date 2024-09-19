@@ -615,16 +615,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     return plan
 
 
-def is_ffn_pattern(op_list):
-    if len(op_list) != 3 and len(op_list) != 5:
-        return False
-    order = [
-        "pd_op.matmul",
-        "pd_op.add",
-        "pd_op.matmul",
-        "pd_op.add",
-        "pd_op.swiglu",
-    ]
+def check_order(op_list, order):
     pointer = 0
     for item in order:
         if item == "pd_op.add":
@@ -638,6 +629,19 @@ def is_ffn_pattern(op_list):
                 return False
             pointer += 1
     return True
+
+
+def is_ffn_pattern(op_list):
+    if len(op_list) != 3 and len(op_list) != 5:
+        return False
+    order = [
+        "pd_op.matmul",
+        "pd_op.add",
+        "pd_op.matmul",
+        "pd_op.add",
+        "pd_op.swiglu",
+    ]
+    return check_order(op_list, order)
 
 
 def is_qkv_pattern(op_list):
@@ -657,19 +661,7 @@ def is_qkv_pattern(op_list):
         "pd_op.full_int_array",
         "pd_op.reshape",
     ]
-    pointer = 0
-    for item in order:
-        if item == "pd_op.add":
-            while (
-                pointer < len(op_list)
-                and op_list[pointer].name() == "pd_op.add"
-            ):
-                pointer += 1
-        else:
-            if pointer >= len(op_list) or op_list[pointer].name() != item:
-                return False
-            pointer += 1
-    return True
+    return check_order(op_list, order)
 
 
 def get_param_op(program, param_name):
