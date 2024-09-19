@@ -615,10 +615,6 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     return plan
 
 
-# ffn pattern:
-# (o1) = "pd_op.matmul" (in, w1)
-# (o2) = "pd_op.matmul" (in, w2)
-# (o3) = "pd_op.swiglu" (o1, o2)
 def is_ffn_pattern(op_list):
     if len(op_list) != 3 and len(op_list) != 5:
         return False
@@ -644,16 +640,6 @@ def is_ffn_pattern(op_list):
     return True
 
 
-# qkv pattern:
-# (o1) = "pd_op.matmul" (in, wq)
-# (o2) = "pd_op.full_int_array" ()
-# (o3) = "pd_op.reshape" (o1, o2)
-# (o4) = "pd_op.matmul" (in, wk)
-# (o5) = "pd_op.full_int_array" ()
-# (o6) = "pd_op.reshape" (o4, o5)
-# (o7) = "pd_op.matmul" (in, wv)
-# (o8) = "pd_op.full_int_array" ()
-# (o9) = "pd_op.reshape" (o7, o8)
 def is_qkv_pattern(op_list):
     if len(op_list) != 9 and len(op_list) != 12:
         return False
