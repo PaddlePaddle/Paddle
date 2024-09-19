@@ -2744,9 +2744,22 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
   bool keepdim = GetBoolAttr(op, "keepdim");
   bool reduce_all = GetBoolAttr(op, "reduce_all");
 
-  const auto &axis = details::GetVectorAttr(op, "axis");
-
-  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+  auto axis_gen_op = op->operand_source(1).defining_op();
+  if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
+    std::vector<int64_t> axis = details::GetVectorAttr(
+        axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+    if (axis.size() == 0) {
+      reduce_all = true;
+    }
+    return details::ReduceInferDim(
+        op, infer_context, axis, keepdim, reduce_all);
+  } else {
+    // TODO(lanxianghit): deal with other source: pir::VectorType,
+    // paddle::dialect::DenseTensorType
+    PADDLE_THROW(
+        common::errors::Unimplemented("SumOpInferSymbolicShape: 'axis' only "
+                                      "support FullIntArrayOp's result now."));
+  }
 }
 
 bool QrOpInferSymbolicShape(pir::Operation *op,
