@@ -143,9 +143,10 @@ class InferenceEngine:
 
         n_ranks = dist.get_world_size()
         local_rank: int = dist.ParallelEnv().dev_id
-        self.save_model_dir = os.path.join(
-            self.save_model_dir, f"{n_ranks}_{local_rank}"
-        )
+        if n_ranks > 1:
+            self.save_model_dir = os.path.join(
+                self.save_model_dir, f"{n_ranks}_{local_rank}"
+            )
 
         self.precision_mode = kwargs.get("precision_mode")
         self.switch_ir_optim = kwargs.get("switch_ir_optim")
