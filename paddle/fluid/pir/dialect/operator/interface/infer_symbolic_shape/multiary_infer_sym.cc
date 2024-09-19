@@ -1780,7 +1780,7 @@ bool ReindexGraphOpInferSymbolicShape(
   GraphReindexShapeCheck(neighbors_shape, "Neighbors");
   GraphReindexShapeCheck(count_shape, "Count");
 
-  if (op->operand(3) && op->operand(4)) {
+  if (!IsFakeValue(op->operand(3)) && !IsFakeValue(op->operand(4))) {
     GraphReindexShapeCheck(hashtable_value_shape, "HashTable_Value");
     GraphReindexShapeCheck(hashtable_index_shape, "HashTable_Index");
   }
