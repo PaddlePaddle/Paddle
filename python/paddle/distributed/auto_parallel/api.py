@@ -2442,11 +2442,16 @@ class DistModel:
                                 ), f"key {param} value:{value} is not a dist tensor."
                                 mesh = value.process_mesh
                                 placements = value.placements
-                                out = paddle.split(
-                                    value._local_value(),
-                                    num_or_sections=len(ori_params),
-                                    axis=-1,
-                                )
+                                if "_pow_acc" in suffix:
+                                    out = (value._local_value(),) * len(
+                                        ori_params
+                                    )
+                                else:
+                                    out = paddle.split(
+                                        value._local_value(),
+                                        num_or_sections=len(ori_params),
+                                        axis=-1,
+                                    )
                                 for i in range(len(ori_params)):
                                     dist_tensor = dtensor_from_local(
                                         out[i], mesh, placements
