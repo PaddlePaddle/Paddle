@@ -20,8 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
-#include "paddle/fluid/pybind/eval_frame.h"
-#include "paddle/fluid/pybind/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/eval_frame.h"
+#include "paddle/fluid/pybind/sot/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/macros.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/utils/pybind.h"
 
@@ -43,11 +44,11 @@ void BindJit(pybind11::module *m) {
       *m, "Function", R"DOC(Function Class.)DOC");
   g_jit_function_pytype = reinterpret_cast<PyTypeObject *>(function.ptr());
 
-  py::class_<jit::FunctionInfo, std::shared_ptr<jit::FunctionInfo>>(
-      *m, "FunctionInfo", R"DOC(FunctionInfo Class.)DOC")
-      .def("name", &jit::FunctionInfo::FunctionName)
-      .def("input_names", &jit::FunctionInfo::InputArgNames)
-      .def("output_names", &jit::FunctionInfo::OutputArgNames);
+  py::class_<jit::BaseFunctionInfo, std::shared_ptr<jit::BaseFunctionInfo>>(
+      *m, "FunctionInfo", R"DOC(BaseFunctionInfo Class.)DOC")
+      .def("name", &jit::BaseFunctionInfo::FunctionName)
+      .def("input_names", &jit::BaseFunctionInfo::InputArgNames)
+      .def("output_names", &jit::BaseFunctionInfo::OutputArgNames);
 
   m->def("Load", [](const std::string &path, const phi::CPUPlace &cpu_place) {
     return paddle::jit::Load(path, cpu_place);
@@ -58,7 +59,8 @@ void BindJit(pybind11::module *m) {
   });
 }
 
-void BindEvalFrame(pybind11::module *m) {
+void BindSot(pybind11::module *m) {
+#if SOT_IS_SUPPORTED
   PyInit__eval_frame();
   m->def(
       "set_eval_frame",
@@ -105,6 +107,7 @@ void BindEvalFrame(pybind11::module *m) {
         return obj;
       },
       py::arg("py_codes"));
+#endif
 }
 
 }  // namespace pybind
