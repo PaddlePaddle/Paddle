@@ -2437,7 +2437,9 @@ class DistModel:
                 for key, pat_list in self._engine.fused_ffn_qkv.items():
                     # Traverse each fusion pattern dict, such as: fused_p1_p2:[p1, p2].
                     for fusion_map in pat_list:
-                        ((fused_param, ori_params),) = fusion_map.items()
+                        ((fused_param, ori_params), (shape, shape_list)) = (
+                            fusion_map.items()
+                        )
                         origin_params = list(dist_state_dict.keys())
                         for param in origin_params:
                             suffix = _get_suffix(param, fused_param)
@@ -2455,7 +2457,7 @@ class DistModel:
                                 else:
                                     out = paddle.split(
                                         value._local_value(),
-                                        num_or_sections=len(ori_params),
+                                        num_or_sections=shape_list,
                                         axis=-1,
                                     )
                                 for i in range(len(ori_params)):

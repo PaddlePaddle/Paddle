@@ -961,6 +961,7 @@ def fuse_attention_ffn_qkv_pass(
         op.erase()
 
     # 4. Initialize fused parameters and delete orignal parameters.
+    fused_local_shape_map = {"ffn": [], "qkv": []}
     concated_dy_param_index = []
     for key, pat_list in fused_name_map.items():
         for pat in pat_list:
@@ -973,6 +974,15 @@ def fuse_attention_ffn_qkv_pass(
                         concrete_program.parameters[0][param_index]
                     )
                     concated_dy_param_index.append(param_index)
+
+                fused_local_shape_map[key].append(
+                    {
+                        "shape": [
+                            obj._local_value().shape[-1]
+                            for obj in concated_dy_param_list
+                        ]
+                    }
+                )
                 # Fuse params and init pir program fusion params.
                 with paddle.base.dygraph.guard():
                     concated_param = paddle.concat(
@@ -981,7 +991,6 @@ def fuse_attention_ffn_qkv_pass(
                         ],
                         axis=-1,
                     )
-                    print("concated_param: ", concated_param, flush=1)
                 pir_scope_param = (
                     paddle.static.global_scope().var(pir_param).get_tensor()
                 )
@@ -993,5 +1002,9 @@ def fuse_attention_ffn_qkv_pass(
     for index in concated_dy_param_index:
         concrete_program.parameters[0].pop(index)
         concrete_program.parameters[1].pop(index)
+
+    for key, pat_list in fused_name_map.items():
+        for i in range(len(pat_list)):
+            pat_list[i].update(fused_local_shape_map[key][i])
 
     return fused_name_map
