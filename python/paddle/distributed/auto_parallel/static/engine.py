@@ -69,6 +69,8 @@ from .pir_pass import (
     RemovePasses,
     ReshardPasses,
     apply_partition_pass,
+    check_chunk_id,
+    complete_chunk_id,
     pipeline_pass,
     remove_unuseful_comm_op_pass,
 )
@@ -715,6 +717,12 @@ class Engine:
         apply_mix2dist_pass(dist_program)
         set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
 
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "VPP"
+        ):
+            complete_chunk_id(dist_program, self._strategy.pipeline)
+
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
@@ -827,6 +835,13 @@ class Engine:
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
         ReshardPasses.apply_reshard_pass(dist_program, params_grads)
+
+        # Note(luchang): When using VPP pipeline pass, we need to split the whole graph into
+        # multiple chunks and adjust the process mesh accordingly. Here, we need to store the
+        # distributed information of the entire graph for later resharding of the dynamic graph parameters.
+        all_params = dist_program.global_block().all_parameters()
+        self.program_helper.cache_whole_graph_dist_attr(all_params)
+
         RemovePasses.apply_all(dist_program, startup_program, params_grads)
 
         # Part 4: Optimization Pass
@@ -865,6 +880,12 @@ class Engine:
             auto_parallel_gradient_merge_pass.apply(
                 [dist_program], [startup_program]
             )
+
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "VPP"
+        ):
+            check_chunk_id(dist_program)
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
@@ -2108,7 +2129,12 @@ class Engine:
                 # not the program to be executed. The ``plan`` object is already
                 # constructed, and the programs to be executed are  stored in the
                 # ``plan`` object.
-                program_for_executor = self._job_plan.ir_program("forward")
+                loss_job_type = "forward"
+                if self._strategy.pipeline.schedule_mode == "VPP":
+                    vpp_degree = self._strategy.pipeline.vpp_degree
+                    loss_job_type = f"forward{vpp_degree - 1}"
+
+                program_for_executor = self._job_plan.ir_program(loss_job_type)
 
             loss_value = program_for_executor.get_output_value_by_name(
                 self._loss_names[0]

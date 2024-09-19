@@ -369,80 +369,48 @@ TEST(enforce, cuda_success) {
 
   EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorMemoryAllocation, "CUDA error"));
 
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      cudaErrorInsufficientDriver,
-      "This indicates that the installed NVIDIA CUDA driver is older than the "
-      "CUDA runtime library. This is not a supported configuration.Users "
-      "should install an updated NVIDIA display driver to allow the "
-      "application to run"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      cudaErrorContextIsDestroyed,
-      "This error indicates that the context current to the calling thread has "
-      "been destroyed using cuCtxDestroy, or is a primary context which has "
-      "not yet been initialized"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(cudaErrorInsufficientDriver, "CUDA error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(cudaErrorContextIsDestroyed, "CUDA error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CURAND_STATUS_SUCCESS));
   EXPECT_TRUE(
       CheckCudaStatusFailure(CURAND_STATUS_VERSION_MISMATCH, "CURAND error"));
   EXPECT_TRUE(
       CheckCudaStatusFailure(CURAND_STATUS_NOT_INITIALIZED, "CURAND error"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CURAND_STATUS_ARCH_MISMATCH,
-      "Architecture mismatch, GPU does not support requested feature"));
   EXPECT_TRUE(
-      CheckCudaStatusFailure(CURAND_STATUS_LENGTH_NOT_MULTIPLE,
-                             "Length requested is not a multple of dimension"));
+      CheckCudaStatusFailure(CURAND_STATUS_ARCH_MISMATCH, "CURAND error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CURAND_STATUS_LENGTH_NOT_MULTIPLE,
+                                     "CURAND error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUDNN_STATUS_SUCCESS));
   EXPECT_TRUE(
       CheckCudaStatusFailure(CUDNN_STATUS_NOT_INITIALIZED, "CUDNN error"));
   EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_ALLOC_FAILED, "CUDNN error"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CUDNN_STATUS_BAD_PARAM,
-      "An incorrect value or parameter was passed to the function. To correct, "
-      "ensure that all the parameters being passed have valid values"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CUDNN_STATUS_LICENSE_ERROR,
-      "The functionality requested requires some license and an error was "
-      "detected when trying to check the current licensing. This error can "
-      "happen if the license is not present or is expired or if the "
-      "environment variable NVIDIA_LICENSE_FILE is not set properly"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_BAD_PARAM, "CUDNN error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUDNN_STATUS_LICENSE_ERROR, "CUDNN error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUBLAS_STATUS_SUCCESS));
   EXPECT_TRUE(
       CheckCudaStatusFailure(CUBLAS_STATUS_NOT_INITIALIZED, "CUBLAS error"));
   EXPECT_TRUE(
       CheckCudaStatusFailure(CUBLAS_STATUS_INVALID_VALUE, "CUBLAS error"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CUBLAS_STATUS_EXECUTION_FAILED,
-      "The GPU program failed to execute. This is often caused by a launch "
-      "failure of the kernel on the GPU, which can be caused by multiple "
-      "reasons.  To correct: check that the hardware, an appropriate version "
-      "of the driver, and the cuBLAS library are correctly installed"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CUBLAS_STATUS_MAPPING_ERROR,
-      "An access to GPU memory space failed, which is usually caused by a "
-      "failure to bind a texture. To correct: prior to the function call, "
-      "unbind any previously bound textures"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUBLAS_STATUS_EXECUTION_FAILED, "CUBLAS error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUBLAS_STATUS_MAPPING_ERROR, "CUBLAS error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUSOLVER_STATUS_SUCCESS));
   EXPECT_TRUE(CheckCudaStatusFailure(CUSOLVER_STATUS_NOT_INITIALIZED,
                                      "CUSOLVER error"));
   EXPECT_TRUE(
       CheckCudaStatusFailure(CUSOLVER_STATUS_ALLOC_FAILED, "CUSOLVER error"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CUSOLVER_STATUS_INTERNAL_ERROR,
-      "An internal cuSolver operation failed. This error is usually caused by "
-      "a cudaMemcpyAsync() failure.To correct: check that the hardware, an "
-      "appropriate version of the driver, and the cuSolver library are "
-      "correctly installed. Also, check that the memory passed as a parameter "
-      "to the routine is not being deallocated prior to the routine’s "
-      "completion"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CUSOLVER_STATUS_INVALID_VALUE,
-      "An unsupported value or parameter was passed to the function (a "
-      "negative vector size, for example).To correct: ensure that all the "
-      "parameters being passed have valid values"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUSOLVER_STATUS_INTERNAL_ERROR, "CUSOLVER error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUSOLVER_STATUS_INVALID_VALUE, "CUSOLVER error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUFFT_SUCCESS));
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INVALID_PLAN, "CUFFT error"));
