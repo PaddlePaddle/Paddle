@@ -2735,6 +2735,59 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_is_coalesced__doc__,  // NOLINT
+             R"DOC(is_coalesced($self, /)
+--
+
+Check whether the Tensor is a coalesced SparseCooTensor. If not it will return False.
+Any Tensor type among DenseTensor/SparseCooTensor/SparseCsrTensor are supported.
+
+Args:
+    x (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
+
+Returns:
+    bool: True if the Tensor is a coalesced SparseCooTensor, and False otherwise.
+
+Examples:
+
+    .. code-block:: python
+
+        >>> import paddle
+
+        >>> indices = [[0, 0, 1], [1, 1, 2]]
+        >>> values = [1.0, 2.0, 3.0]
+        >>> x = paddle.sparse.sparse_coo_tensor(indices, values)
+
+        >>> x.is_coalesced()
+        False
+        >>> x.coalesce()
+        >>> x.is_coalesced()
+        True
+
+        >>> x = paddle.to_tensor([1., 2., 3.])
+        >>> x.is_coalesced()
+        False
+
+        >>> x = x.to_sparse_csr()
+        >>> x.is_coalesced()
+        False
+
+)DOC");                                   // NOLINT
+
+static PyObject* tensor_method_is_coalesced(TensorObject* self,
+                                            PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_sparse_coo_tensor()) {
+    auto sparse_coo_tensor =
+        std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
+    return ToPyObject(sparse_coo_tensor->coalesced());
+  } else {
+    return ToPyObject(false);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyDoc_STRVAR(tensor_is_same_shape__doc__,  // NOLINT
              R"DOC(is_same_shape($self, y, /)
 --
@@ -3503,6 +3556,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor_method_to_sparse_csr,
      METH_VARARGS | METH_KEYWORDS,
      tensor_to_sparse_csr__doc__},
+    {"is_coalesced",
+     (PyCFunction)(void (*)())tensor_method_is_coalesced,
+     METH_VARARGS | METH_KEYWORDS,
+     tensor_is_coalesced__doc__},
     /***the method of sparse tensor****/
     {"element_size",
      (PyCFunction)(void (*)())tensor_method_element_size,
