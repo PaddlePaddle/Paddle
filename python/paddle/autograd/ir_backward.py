@@ -32,6 +32,7 @@ from paddle.autograd.backward_utils import (
     dynamic_shape_prim_vjp_guard,
     get_grad_semantic_info,
     get_real_op_inputs,
+    get_real_op_outputs,
     get_split_op,
     inverse_sort_op,
     is_builtin_op,
@@ -260,13 +261,13 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     # from input to output
     if inputs_set:
         for i, op in enumerate(total_ops):
-            if some_in_set(op.results(), inputs_set):
+            if some_in_set(get_real_op_outputs(op), inputs_set):
                 union_op_flags[i] = True
                 continue
 
             if some_in_set(get_real_op_inputs(op), inputs_set):
                 union_op_flags[i] = True
-                for value in op.results():
+                for value in get_real_op_outputs(op):
                     if value not in no_grad_set:
                         inputs_set.add(value)
             else:
@@ -274,7 +275,7 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
 
     # from output to input
     for i, op in reversed(list(enumerate(total_ops))):
-        if some_in_set(op.results(), outputs_set):
+        if some_in_set(get_real_op_outputs(op), outputs_set):
             union_op_flags[i] = True
             for operand in get_real_op_inputs(op):
                 if operand not in no_grad_set:
