@@ -109,6 +109,51 @@ class MpDistInfos(DistInfos):
 
 # Llama
 # @register_pir_pattern
+class PIRRMSNormPattern(PIRBasePattern):
+    """RMSNorm pattern"""
+
+    name = "rmsnorm"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        # # # build program # # #
+        paddle.enable_static()
+        # program init
+        start_program, main_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
+        # data init
+        x_shape = [4, 1024, 2048]
+        x = paddle.randn(x_shape)
+        weight_shape = [2048]
+        variance_epsilon = 1e-6
+        # program construction
+        with paddle.static.program_guard(main_program, start_program):
+            x = paddle.static.data('x', x_shape, x.dtype)
+            weight = paddle.create_parameter(
+                shape=weight_shape,
+                dtype=paddle.get_default_dtype(),
+                default_initializer=paddle.nn.initializer.Constant(1.0),
+            )
+            with paddle.amp.auto_cast(False):
+                x = x.astype("float32")
+                variance = x.pow(2).mean(-1, keepdim=True)
+                x = paddle.rsqrt(variance + variance_epsilon) * x
+                out = x * weight
+
+        self.pir_program = main_program
+        print(f"in RMSNorm, program is {self.pir_program}")
+        paddle.disable_static()
+
+        # # todo: how to design an efficient distributed infos for each pattern
+        self.ops_dist_infos = None
+
+
+# Llama
+# @register_pir_pattern
 class PIRRotateHalfPattern(PIRBasePattern):
     """Rotate Half pattern"""
 
@@ -447,7 +492,7 @@ class PIRScaleDotProductPattern(PIRBasePattern):
 
 
 # Llama
-@register_pir_pattern
+# @register_pir_pattern
 class PIRAttentionPattern(PIRBasePattern):
     """Attention pattern"""
 
@@ -601,7 +646,7 @@ class PIRAttentionPattern(PIRBasePattern):
 
 
 # Llama
-@register_pir_pattern
+# @register_pir_pattern
 class PIRMLPPattern(PIRBasePattern):
     """MLP pattern"""
 
@@ -659,6 +704,227 @@ class PIRMLPPattern(PIRBasePattern):
             (7,): down_linear_dist_infos,
         }
         self.ops_dist_infos = ops_dist_infos
+
+
+# Llama
+@register_pir_pattern
+class PIRDecoderLayerPattern(PIRBasePattern):
+    """Decoder layer pattern"""
+
+    name = "decoder layer"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        # # # build program # # #
+        paddle.enable_static()
+        # program init
+        start_program, main_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
+        # data init
+        batch_size = 4
+        seq_length = 1024
+        num_heads = 32
+        head_size = 64
+        hidden_size = num_heads * head_size
+        intermediate_size = 4096
+        hidden_states_shape = [batch_size, seq_length, hidden_size]
+        hidden_states = paddle.randn(hidden_states_shape)
+        cos_cached_shape = [1, seq_length, 1, head_size]
+        cos_cached = paddle.randn(cos_cached_shape)
+        sin_cached_shape = [1, seq_length, 1, head_size]
+        sin_cached = paddle.randn(sin_cached_shape)
+        position_ids_shape = [batch_size, seq_length]
+        position_ids = paddle.randint(low=1, shape=position_ids_shape)
+        attention_mask_shape = [batch_size, 1, seq_length, seq_length]
+        attention_mask = paddle.randn(attention_mask_shape)
+        weight_shape = [hidden_size, hidden_size]
+        rms_norm_weight_shape = [hidden_size]
+        up_weight_shape = [hidden_size, intermediate_size]
+        down_weight_shape = [intermediate_size, hidden_size]
+
+        # program construction
+        with paddle.static.program_guard(main_program, start_program):
+            hidden_states = paddle.static.data(
+                'hidden_states', hidden_states_shape, hidden_states.dtype
+            )
+            q_weight = paddle.create_parameter(weight_shape, "float32")
+            k_weight = paddle.create_parameter(weight_shape, "float32")
+            v_weight = paddle.create_parameter(weight_shape, "float32")
+            out_weight = paddle.create_parameter(weight_shape, "float32")
+            input_rms_norm_weight = paddle.create_parameter(
+                rms_norm_weight_shape, "float32"
+            )
+            post_attention_rms_norm_weight = paddle.create_parameter(
+                rms_norm_weight_shape, "float32"
+            )
+            gate_weight = paddle.create_parameter(up_weight_shape, "float32")
+            up_weight = paddle.create_parameter(up_weight_shape, "float32")
+            down_weight = paddle.create_parameter(down_weight_shape, "float32")
+            cos_cached = paddle.static.data(
+                'cos_cached', cos_cached_shape, cos_cached.dtype
+            )
+            sin_cached = paddle.static.data(
+                'sin_cached', cos_cached_shape, cos_cached.dtype
+            )
+            position_ids = paddle.static.data(
+                'position_ids', position_ids_shape, position_ids.dtype
+            )
+            attention_mask = paddle.static.data(
+                'attention_mask', attention_mask_shape, attention_mask.dtype
+            )
+
+            residual = hidden_states
+            hidden_states = self.rms_norm(hidden_states, input_rms_norm_weight)
+            output = self.attention(
+                hidden_states,
+                q_weight,
+                k_weight,
+                v_weight,
+                out_weight,
+                cos_cached,
+                sin_cached,
+                position_ids,
+                attention_mask,
+                num_heads,
+                head_size,
+                seq_length,
+            )
+            hidden_states = residual + output
+            residual = hidden_states
+            hidden_states = self.rms_norm(
+                hidden_states, post_attention_rms_norm_weight
+            )
+            hidden_states = self.mlp(
+                hidden_states, gate_weight, up_weight, down_weight
+            )
+            hidden_states = residual + hidden_states
+
+        self.pir_program = main_program
+        print(f"in Decoder_layer_pattern, program is {self.pir_program}")
+        paddle.disable_static()
+
+        # # todo: how to design an efficient distributed infos for each pattern
+
+    def rms_norm(self, hidden_states, norm_weight):
+        variance_epsilon = 1e-6
+        with paddle.amp.auto_cast(False):
+            hidden_states = hidden_states.astype("float32")
+            variance = hidden_states.pow(2).mean(-1, keepdim=True)
+            hidden_states = (
+                paddle.rsqrt(variance + variance_epsilon) * hidden_states
+            )
+            out = hidden_states * norm_weight
+        return out
+
+    def attention(
+        self,
+        hidden_states,
+        q_weight,
+        k_weight,
+        v_weight,
+        out_weight,
+        cos_cached,
+        sin_cached,
+        position_ids,
+        attention_mask,
+        num_heads,
+        head_size,
+        seq_length,
+    ):
+        # qkv (not fused)
+        q = paddle.matmul(hidden_states, q_weight)
+        k = paddle.matmul(hidden_states, k_weight)
+        v = paddle.matmul(hidden_states, v_weight)
+        target_q_shape = [0, 0, num_heads, head_size]
+        target_kv_shape = [0, 0, num_heads, head_size]
+        q = q.reshape(shape=target_q_shape)
+        k = k.reshape(shape=target_kv_shape)
+        v = v.reshape(shape=target_kv_shape)
+
+        # rope_emb
+        cos = cos_cached[:, :seq_length, :, :]
+        sin = sin_cached[:, :seq_length, :, :]
+
+        # apply_rotary_pos_emb
+        if position_ids is None:
+            cos = cos[:, : q.shape[1], :, :]  # [bs, seq_len, 1, dim]
+            sin = sin[:, : q.shape[1], :, :]  # [bs, seq_len, 1, dim]
+        else:
+            cos = cos.squeeze(axis=[0, 2])  # [seq_len, dim]
+            sin = sin.squeeze(axis=[0, 2])  # [seq_len, dim]
+            cos = cos[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
+            sin = sin[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
+        q_embed = (q * cos) + (self.rotate_half(q) * sin)
+        k_embed = (k * cos) + (self.rotate_half(k) * sin)
+
+        # scale_dot_product
+        tmp = self.scale_dot_product_attention(
+            q_embed, k_embed, v, attention_mask
+        )
+
+        # out_linear
+        output = paddle.matmul(tmp, out_weight)
+        return output
+
+    def rotate_half(self, x):
+        x1 = x[..., : x.shape[-1] // 2]
+        x2 = x[..., x.shape[-1] // 2 :]
+        return paddle.concat([-x2, x1], axis=-1)  # shape is the same as x
+
+    def scale_dot_product_attention(
+        self,
+        query_states,
+        key_states,
+        value_states,
+        attention_mask,
+    ):
+
+        bsz, q_len, num_heads, head_dim = query_states.shape
+        _, kv_seq_len, _, _ = value_states.shape
+
+        #  [ bz, seqlen, nhead, head_dim] -> [bs, nhead, seq_len, head_dim]
+        query_states = paddle.transpose(query_states, [0, 2, 1, 3])
+        # merge with the next tranpose
+        key_states = paddle.transpose(key_states, [0, 2, 1, 3])
+        value_states = paddle.transpose(value_states, [0, 2, 1, 3])
+
+        # matmul and devide by sqrt(head_dim)
+        attn_weights = paddle.matmul(
+            query_states / math.sqrt(head_dim),
+            key_states.transpose([0, 1, 3, 2]),
+        )
+
+        attention_mask = attention_mask.reshape([bsz, 1, q_len, kv_seq_len])
+
+        attn_weights = attn_weights + attention_mask
+
+        attn_weights = F.softmax(attn_weights, axis=-1, dtype="float32").astype(
+            query_states.dtype
+        )
+
+        attn_output = paddle.matmul(attn_weights, value_states)
+        attn_output = attn_output.transpose([0, 2, 1, 3])
+
+        attn_output = attn_output.reshape([bsz, q_len, head_dim * num_heads])
+
+        return attn_output
+
+    def mlp(
+        self,
+        hidden_states,
+        gate_weight,
+        up_weight,
+        down_weight,
+    ):
+        gate = paddle.matmul(hidden_states, gate_weight)
+        up = paddle.matmul(hidden_states, up_weight)
+        tmp = paddle.incubate.nn.functional.swiglu(gate, up)
+        out = paddle.matmul(tmp, down_weight)
+        return out
 
 
 # GPT
@@ -807,7 +1073,7 @@ class PIRCoreAttnPattern(PIRBasePattern):
 
 
 # # GPT
-@register_pir_pattern
+# @register_pir_pattern
 class PIRAttentio2nPattern(PIRBasePattern):
     """Attention2 pattern"""
 
@@ -927,7 +1193,7 @@ class PIRAttentio2nPattern(PIRBasePattern):
 
 
 # DemoNet, GPT
-@register_pir_pattern
+# @register_pir_pattern
 class PIRFFNPattern(PIRBasePattern):
     """FFN pattern"""
 
