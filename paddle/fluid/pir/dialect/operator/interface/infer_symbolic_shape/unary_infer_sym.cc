@@ -667,7 +667,7 @@ bool CumminOpInferSymbolicShape(pir::Operation *op,
 }
 bool CumprodOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return UnchangedCheckAxisOpInferSymbolicShape(op, infer_context);
+  return UnchangedCheckAxisInferSymbolicShape(op, infer_context);
 }
 bool Cumprod_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1701,7 +1701,7 @@ bool LrnOpInferSymbolicShape(pir::Operation *op,
 
 bool LogSoftmaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return UnchangedCheckAxisOpInferSymbolicShape(op, infer_context);
+  return UnchangedCheckAxisInferSymbolicShape(op, infer_context);
 }
 
 bool LuOpInferSymbolicShape(pir::Operation *op,
@@ -3864,7 +3864,7 @@ bool UnbindOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool UnchangedCheckAxisOpInferSymbolicShape(
+bool UnchangedCheckAxisInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
