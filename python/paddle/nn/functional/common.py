@@ -1975,7 +1975,6 @@ def pad(
         "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
         f"but got {data_format}"
     )
-
     supported_format_map = {
         3: ["NCL", "NLC"],
         4: ["NCHW", "NHWC"],

@@ -689,7 +689,6 @@ class TestPadAPI(unittest.TestCase):
             mode=mode,
             value=value,
         )
-
         np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
         np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
         np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
