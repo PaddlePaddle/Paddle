@@ -114,13 +114,13 @@ void BatchNormKernel(const Context &dev_ctx,
         dev_ctx.template Alloc<T>(variance_out), C);
 
     const auto &x_dims = x.dims();
-    int N = -1, C = -1, H = -1, W = -1, D = -1;
-    funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    int N = -1, c = -1, H = -1, W = -1, D = -1;
+    funcs::ExtractNCWHD(x_dims, data_layout, &N, &c, &H, &W, &D);
     N = (N == 0) ? 1 : N;
-    C = (C == 0) ? 1 : C;
     H = (H == 0) ? 1 : H;
     W = (W == 0) ? 1 : W;
     D = (D == 0) ? 1 : D;
+    W = W * D;
 
     float normalization_factor =
         static_cast<float>(N * H * W) / static_cast<float>(N * H * W - 1);
