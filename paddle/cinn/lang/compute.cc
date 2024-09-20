@@ -212,20 +212,21 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   auto op = ir::ComputeOp::Make(
       unique_name, fn, real_shape, domain_without_reduce_axis, reduce_axis);
 
-  VLOG(1) << "unique_name: " << unique_name
-          << "; fn_body.type(): " << fn_body.type();
-  auto dtype = fn_body.type();
-  if (fn_body.defined() && fn_body.As<ir::Reduce>()) {
-    auto reduce = fn_body.As<ir::Reduce>();
-    if (reduce->reduce_type == ir::Reduce::kSum && fn_body.type().is_int(32)) {
-      reduce->init->set_type(Int(64));
-      dtype = Int(64);
-      VLOG(1) << "set dtype to int64";
-    }
-  }
+  // VLOG(1) << "unique_name: " << unique_name
+  //         << "; fn_body.type(): " << fn_body.type();
+  // auto dtype = fn_body.type();
+  // if (fn_body.defined() && fn_body.As<ir::Reduce>()) {
+  //   auto reduce = fn_body.As<ir::Reduce>();
+  //   if (reduce->reduce_type == ir::Reduce::kSum && fn_body.type().is_int(32))
+  //   {
+  //     reduce->init->set_type(Int(64));
+  //     dtype = Int(64);
+  //     VLOG(1) << "set dtype to int64";
+  //   }
+  // }
 
   auto tensor = ir::Tensor(unique_name,
-                           dtype,
+                           fn_body.type(),
                            real_shape,
                            domain_without_reduce_axis,
                            op,
