@@ -3660,8 +3660,8 @@ bool WhereOpInferSymbolicShape(pir::Operation *op,
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
-  const std::vector<pir::Value> &operands = {op->operand_source(0),
-                                             op->operand_source(1)};
+  const std::vector<pir::Value> &operands = {
+      op->operand_source(0), op->operand_source(1), op->operand_source(2)};
 
   size_t rank = x_shape.size();
 
