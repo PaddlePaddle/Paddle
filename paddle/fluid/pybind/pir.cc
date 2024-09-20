@@ -859,6 +859,12 @@ void BindOperation(py::module *m) {
              self.set_attribute(
                  attr_name, StrAttribute::get(pir::IrContext::Instance(), val));
            })
+      .def("set_int_attr",
+           [](Operation &self, std::string &attr_name, int val) {
+             self.set_attribute(
+                 attr_name,
+                 Int32Attribute::get(pir::IrContext::Instance(), val));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;

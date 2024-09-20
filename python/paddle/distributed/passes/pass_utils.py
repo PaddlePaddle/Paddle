@@ -310,6 +310,12 @@ def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         ops = program.global_block().ops
         for op in ops:
             if op.name() == "builtin.shadow_output":
+                if (
+                    op.operand_source(0)
+                    .get_defining_op()
+                    .has_attr("skip_gc_check")
+                ):
+                    continue
                 # if a value is renamed by shadow_output,
                 # it will be used by other sub_programs
                 type_to_var_names[job_type].add(op.attrs()["output_name"])
@@ -464,6 +470,30 @@ def _create_program(src_block, dst_block, src_op, force_create=False):
             force_create and src_block._find_var_recursive(output_varname)
         ):
             _create_var(src_block, dst_block, output_varname, force_create)
+
+
+def _pir_overlap_send_recv(program):
+    """
+    This function is used to replace the function '_insert_sync_for_fthenb_1f1b'.
+    The finally target of this function is as follows:
+        1. no need to insert the 'c_sync_calc' and 'c_sync_calc' operators
+        2. 'send_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
+        3. 'recv_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
+    """
+    for block in program.blocks:
+        for op in block.ops:
+            if op.name() == "pd_op.send_v2":
+                op.set_bool_attr("dynamic_shape", False)
+                op.set_bool_attr("use_calc_stream", True)
+                ring_id = op.attrs()["ring_id"]
+                op.set_execution_stream(f"set_stream_{ring_id}")
+                op.set_scheduling_priority(0)
+            elif op.name() == "pd_op.recv_v2":
+                op.set_bool_attr("dynamic_shape", False)
+                op.set_bool_attr("use_calc_stream", True)
+                ring_id = op.attrs()["ring_id"]
+                op.set_execution_stream("recv_stream")
+                op.set_scheduling_priority(0)
 
 
 def _insert_sync_for_fthenb_1f1b(program, dist_context=None):
@@ -626,8 +656,6 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     """
     if enable_send_recv_overlap:
         _overlap_send_recv(program)
-    else:
-        _insert_sync_for_fthenb_1f1b(program)
 
     fwd_prog = Program()
     bwd_prog = Program()
@@ -805,6 +833,9 @@ def find_var_used_op_chunk_id(var):
 def _split_program_into_forward_backward_optimize(
     main_program, enable_send_recv_overlap=False
 ):
+    if enable_send_recv_overlap:
+        _pir_overlap_send_recv(main_program)
+
     forward_complete_op_role(main_program)
     complete_ops = main_program.global_block().ops
 
@@ -837,22 +868,43 @@ def _split_program_into_forward_backward_optimize(
                 # if this op's output is used, create the persistable
                 # var to be used in other programs.
                 result_in_opt = opt_ops[op_idx].result(idx)
+                opt_used_ops = result_in_opt.all_used_ops()
+
+                skip_gc_check = False
+                for opt_op in opt_used_ops:
+                    if opt_op.name() in [
+                        "pd_op.c_sync_comm_stream",
+                        "pd_op.conditional_block",
+                        "pd_op.data",
+                        "pd_op.while",
+                    ]:
+                        skip_gc_check = True
+                        break
+
                 if result_in_opt.use_empty() is False:
                     name = f"var_{op_idx}_{complete_ops[op_idx].name()}_{idx}"
                     paddle.pir.set_insertion_point_after(bwd_ops[op_idx])
                     paddle._C_ops.set_persistable_value(
                         bwd_ops[op_idx].result(idx), name
                     )
-                    # bwd_ops[op_idx].result(idx).persistable = True
+
                     new_result_var_in_opt = opt_block.add_kwarg(
                         name, result_in_opt.type()
                     )
                     new_result_var_in_opt.persistable = (
                         result_in_opt.persistable
                     )
+
                     opt_ops[op_idx].result(idx).replace_all_uses_with(
                         new_result_var_in_opt
                     )
+
+                    if skip_gc_check:
+                        out_var = bwd_program.get_output_value_by_name(name)
+                        out_var.get_defining_op().set_bool_attr(
+                            "skip_gc_check", True
+                        )
+
             opt_ops[op_idx].erase()
         else:
             # in backward program, only the forward ops should be removed
