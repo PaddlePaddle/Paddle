@@ -1112,6 +1112,7 @@
     func : crop
     data_type : x
   backward : crop_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cross
   args : (Tensor x, Tensor y, int axis = 9)
@@ -3656,7 +3657,7 @@
     func : pool3d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool3d_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pow
   args : (Tensor x, Scalar y=1.0f)
@@ -3838,6 +3839,7 @@
     param : [filename]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : real
   args : (Tensor x)
@@ -4412,6 +4414,7 @@
   kernel :
     func : slogdet
   backward : slogdet_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softplus
   args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
@@ -5009,6 +5012,7 @@
     func: unpool
     data_type: x
   backward: unpool_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unpool3d
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides={1,1,1}, int[] paddings={0,0,0}, int[] output_size={0,0,0}, str data_format="NCDHW")
