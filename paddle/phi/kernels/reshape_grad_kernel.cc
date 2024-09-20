@@ -36,6 +36,14 @@ void ReshapeGradKernel(const Context& dev_ctx,
   x_grad->Resize(x_dims);
 }
 
+template <typename Context>
+void LegacyReshapeGradKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& out_grad,
+                             DenseTensor* x_grad) {
+  ReshapeGradKernel<Context>(dev_ctx, x, out_grad, x_grad);
+}
+
 #ifdef PADDLE_WITH_XPU
 template <>
 void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
@@ -53,6 +61,14 @@ void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
                       size);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
   x_grad->Resize(x_dims);
+}
+
+template <>
+void LegacyReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
+                                              const DenseTensor& x,
+                                              const DenseTensor& out_grad,
+                                              DenseTensor* x_grad) {
+  ReshapeGradKernel<phi::XPUContext>(dev_ctx, x, out_grad, x_grad);
 }
 #endif
 
@@ -72,3 +88,7 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_grad,
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_double_grad,
                                          ALL_LAYOUT,
                                          phi::ReshapeDoubleGradKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(legacy_reshape_grad,
+                                         ALL_LAYOUT,
+                                         phi::LegacyReshapeGradKernel) {}

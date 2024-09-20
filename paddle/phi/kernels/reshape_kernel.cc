@@ -46,6 +46,14 @@ void ReshapeKernel(const Context& dev_ctx,
   out->ResetLoD(x.lod());
 }
 
+template <typename Context>
+void LegacyReshapeKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const IntArray& shape,
+                         DenseTensor* out) {
+  ReshapeKernel<Context>(dev_ctx, x, shape, out);
+}
+
 #ifdef PADDLE_WITH_XPU
 template <>
 void ReshapeKernel<phi::XPUContext>(const XPUContext& dev_ctx,
@@ -72,6 +80,14 @@ void ReshapeKernel<phi::XPUContext>(const XPUContext& dev_ctx,
   out->Resize(dims);
   out->ResetLoD(x.lod());
 }
+
+template <>
+void LegacyReshapeKernel<phi::XPUContext>(const XPUContext& dev_ctx,
+                                          const DenseTensor& x,
+                                          const IntArray& shape,
+                                          DenseTensor* out) {
+  ReshapeKernel<phi::XPUContext>(dev_ctx, x, shape, out);
+}
 #endif
 
 template <typename Context>
@@ -95,3 +111,7 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_with_xshape,
                                          phi::ReshapeWithXShapeKernel) {
   kernel->OutputAt(1).SetBackend(phi::Backend::UNDEFINED);
 }
+
+// PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(legacy_reshape,
+//                                          ALL_LAYOUT,
+//                                          phi::LegacyReshapeKernel) {}
