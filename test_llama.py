@@ -68,9 +68,10 @@ def llama_init():
 
 # create mesh
 # mesh = dist.ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7], dim_names=["x"])
-mesh = dist.ProcessMesh(
-    [[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dim_names=["pp", "dp", "mp"]
-)
+mesh = dist.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "mp"])
+# mesh = dist.ProcessMesh(
+#     [[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dim_names=["pp", "dp", "mp"]
+# )
 
 model_config, model = llama_init()
 print(f"llama config is {model_config}")
