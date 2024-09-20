@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include <chrono>
 #include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
@@ -134,8 +135,13 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
     compile_result = task();
   }
 
+  auto start = std::chrono::high_resolution_clock::now();
   // Triggering llvm compilation in thread
   compile_result->GetKernelInfo();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  LOG(INFO) << "Time of llvm compile: ***** [ " << duration.count()
+            << " ] ***** seconds.";
   return compile_result;
 }
 

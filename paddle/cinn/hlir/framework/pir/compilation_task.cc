@@ -148,8 +148,19 @@ void UnifyBroadcastGroupFuncArgs(
 }
 
 std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
+  auto start = std::chrono::high_resolution_clock::now();
   Lowering();
-  return CodegenAndJit();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  LOG(INFO) << "Time of lowering: ***** [ " << duration.count()
+            << " ] ***** seconds.";
+  start = std::chrono::high_resolution_clock::now();
+  auto result = CodegenAndJit();
+  end = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  LOG(INFO) << "Time of codegenandjit: ***** [ " << duration.count()
+            << " ] ***** seconds.";
+  return result;
 }
 
 void CompilationTask::Lowering() {

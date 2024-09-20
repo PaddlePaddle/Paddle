@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
+#include <chrono>
 
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
@@ -67,8 +68,16 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
       return CompilationCache::Instance().GetKernelInfo(fusion_info);
     };
     const auto& CreateFromNewCompile = [&]() {
+      VLOG(0) << "before lowering group: " << *group;
+      auto start = std::chrono::high_resolution_clock::now();
       PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
-      return pir_compiler.Build({group})[0];
+      auto res = pir_compiler.Build({group})[0];
+      auto end = std::chrono::high_resolution_clock::now();
+      auto duration =
+          std::chrono::duration_cast<std::chrono::seconds>(end - start);
+      LOG(INFO) << "Time of lowering and compiling group: ***** [ "
+                << duration.count() << " ] ***** seconds.";
+      return res;
     };
 
     if (FLAGS_enable_cinn_compile_cache) {

@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include <chrono>
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/optimize.h"
@@ -25,10 +26,15 @@ namespace cinn {
 namespace ir {
 
 void Module::Builder::AddFunction(ir::LoweredFunc func) {
+  auto start = std::chrono::high_resolution_clock::now();
   optim::Simplify(&(func->body));
   optim::SimplifyForLoops(&(func->body));
   optim::SimplifyBlocks(&(func->body));
   func->body = optim::Optimize(func->body, module_->target);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  LOG(INFO) << "Time of optimization in AddFunction: ***** [ "
+            << duration.count() << " ] ***** seconds.";
   module_->functions.push_back(func);
 }
 
@@ -105,7 +111,12 @@ Module Module::Builder::Build() {
 
   auto res = ir::Module(module_.get());
 
+  auto start = std::chrono::high_resolution_clock::now();
   res = optim::Optimize(res, module_->target);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  LOG(INFO) << "Time of optimization in Builder::Build(): ***** [ "
+            << duration.count() << " ] ***** seconds.";
   return res;
 }
 
