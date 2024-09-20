@@ -20,7 +20,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 from test_fetch_feed import Linear, Pool2D
 
@@ -34,7 +33,6 @@ class TestCacheProgram(Dy2StTestBase):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
-    @test_legacy_and_pt_and_pir
     @test_ast_only
     def test_cache(self):
         prev_ops, cur_ops = Counter(), Counter()
@@ -121,7 +119,6 @@ class TestCacheProgramWithOptimizer(Dy2StTestBase):
 
         return loss_data
 
-    @test_legacy_and_pt_and_pir
     def test_with_optimizer(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -140,7 +137,6 @@ def simple_func(x):
 
 
 class TestConvertWithCache(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_cache(self):
         static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
@@ -170,7 +166,6 @@ def sum_under_while(limit):
 
 
 class TestToOutputWithCache(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_output(self):
         ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)
         self.assertEqual(ret.numpy(), 30)

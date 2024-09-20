@@ -8,6 +8,17 @@
     func : dequantize
     data_type : input
 
+- op : fc
+  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool padding_weights = false, bool use_quantizer=false, str mkldnn_data_type="float32", float scale_in=1.0, float[] scale_weights={1.0f}, float scale_out=1.0, bool force_fp32_output=false, str fuse_activation = "", float fuse_alpha = 0.0, float fuse_beta = 0.0, float fused_output_scale = 1.0f, int[] fused_reshape2_shape = {})
+  output : Tensor(out)
+  infer_meta :
+    func : FCOneDNNInferMeta
+    param : [input, w, bias, in_num_col_dims, activation_type, padding_weights, fused_reshape2_shape]
+  kernel :
+    func : fc
+    data_type : input
+  optional : bias
+
 - op : fused_conv2d
   args : (Tensor input, Tensor filter, Tensor bias, Tensor residual_param, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int[] dilations={1, 1}, int groups=1, str data_format="NCHW", str mkldnn_data_type="float32", str fuse_activation="", bool fuse_residual_connection=false, bool force_fp32_output=false)
   output : Tensor(output)

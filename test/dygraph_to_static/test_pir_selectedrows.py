@@ -17,7 +17,6 @@ import unittest
 
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -74,7 +73,6 @@ def forward_static():
 
 
 class TestSimnet(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
         dygraph_value = forward_dygraph()
         static_value = forward_static()

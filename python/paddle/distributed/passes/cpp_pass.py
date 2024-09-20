@@ -155,17 +155,17 @@ class FuseOptimizerPass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
-@register_pass("inplace_addto_op")
-class InplaceAddtoOpPass(CPPPassWrapper):
-    def __init__(self):
-        super().__init__()
+# @register_pass("inplace_addto_op")
+# class InplaceAddtoOpPass(CPPPassWrapper):
+#     def __init__(self):
+#         super().__init__()
 
-    @property
-    def cpp_name(self):
-        return "inplace_addto_op_pass"
+#     @property
+#     def cpp_name(self):
+#         return "inplace_addto_op_pass"
 
-    def _type(self):
-        return PassType.CALC_OPT
+#     def _type(self):
+#         return PassType.CALC_OPT
 
 
 @register_pass("fuse_resunit")

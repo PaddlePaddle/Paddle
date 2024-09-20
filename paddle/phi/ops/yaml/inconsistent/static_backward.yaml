@@ -264,6 +264,30 @@
     param: [x, y, out_grad, transpose_x, transpose_y, alpha]
     data_type: out_grad
 
+- backward_op : lookup_table_grad
+  forward : lookup_table (Tensor w, Tensor ids, bool is_sparse = false, bool is_distributed = false,
+    int64_t padding_idx = -1, bool remote_prefetch = false, str entry_config
+    = "", bool is_test = false, str entry = "none", str table_class = "none", str[]
+    table_names = {}, int trainer_id = 0, int slot = 0, bool grad_inplace = false, str[]
+    epmap = {}, int64_t[] height_sections = {}) -> Tensor (out)
+  args : (Tensor w, Tensor ids, Tensor out_grad, bool is_sparse = false, bool is_distributed = false,
+    int64_t padding_idx = -1, bool remote_prefetch = false, str entry_config
+    = "", bool is_test = false, str entry = "none", str table_class = "none", str[]
+    table_names = {}, int trainer_id = 0, int slot = 0, bool grad_inplace = false, str[]
+    epmap = {}, int64_t[] height_sections = {})
+  output : Tensor (w_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [w]
+  kernel :
+    func : lookup_table_grad {dense, dense, dense -> dense}
+           lookup_table_sparse_grad {dense, dense, dense -> selected_rows}
+           lookup_table_grad_sr {selected_rows, dense, dense -> dense}
+           lookup_table_sparse_grad_sr {selected_rows, dense, dense -> selected_rows}
+    param: [w, ids, out_grad, is_sparse, is_distributed, padding_idx, remote_prefetch, entry_config, is_test, entry, table_class, table_names, trainer_id, grad_inplace, epmap, height_sections]
+    data_type: out_grad
+  no_need_buffer: w
+
 - backward_op : lrn_grad
   forward: lrn (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout") -> Tensor (out), Tensor (mid_out)
   args: (Tensor x, Tensor out, Tensor mid_out, Tensor out_grad, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format

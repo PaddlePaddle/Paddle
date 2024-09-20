@@ -406,6 +406,25 @@ def create_persistable_value(dtype, shape, name=None, **kwargs):
     value_name = name
     if not value_name:
         value_name = unique_name.generate('persistable_value')
+
+    is_dist = 'dist_attr' in kwargs and kwargs['dist_attr']
+
+    def to_dist(value):
+        import paddle
+
+        dist_attr = kwargs['dist_attr']
+        dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+            value.type(), dist_attr
+        )
+        value.set_type(dist_type)
+        op_dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+            dist_attr.process_mesh, [], [dist_attr]
+        )
+        define_op = value.get_defining_op()
+        define_op.dist_attr = op_dist_attr
+        if define_op.has_attr("shape"):
+            define_op.set_int_array_attr("shape", value._local_shape)
+
     startup_program = default_startup_program()
     main_program = default_main_program()
 
@@ -416,13 +435,16 @@ def create_persistable_value(dtype, shape, name=None, **kwargs):
             parameter_meta, startup_program.global_block()
         )
         init_result.persistable = True
+        if is_dist:
+            to_dist(init_result)
         set_persistable_value(init_result, value_name)
 
     with program_guard(default_main_program()):
         reset_insertion_point_to_start()
         persist_value = data(value_name, shape, dtype, Place())
         persist_value.persistable = True
-
+        if is_dist:
+            to_dist(persist_value)
     return persist_value
 
 

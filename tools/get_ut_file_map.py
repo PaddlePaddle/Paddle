@@ -18,7 +18,7 @@ import sys
 
 
 def get_all_paddle_file(rootPath):
-    """get all file in Paddle repo: paddle/fluild, python"""
+    """get all file in Paddle repo: paddle/fluid, python"""
     traverse_files = [f'{rootPath}']
     all_file_paddle = f'{rootPath}/build/all_file_paddle'
     all_file_paddle_list = []
@@ -84,7 +84,7 @@ def handle_ut_file_map(rootPath):
             filename = f'{ut_map_path}/{ut}/related_{ut}.txt'
             try:
                 f = open(filename)
-                print(f"oepn {filename} succesfully")
+                print(f"open {filename} successfully")
             except FileNotFoundError:
                 print(f"{filename} is not found.")
                 return
@@ -120,7 +120,7 @@ def handle_ut_file_map(rootPath):
             filename = f'{ut_map_path}/{ut}/notrelated_{ut}.txt'
             try:
                 f = open(filename)
-                print(f"oepn {filename} succesfully")
+                print(f"open {filename} successfully")
             except FileNotFoundError:
                 print(f"{filename} is not found.")
             lines = f.readlines()
