@@ -991,6 +991,7 @@
   output : Tensor
   infer_meta :
     func : ConvInferMeta
+    spmd_rule : Conv2dInferSpmd
   kernel :
     func : conv2d
     data_type : input
@@ -3657,7 +3658,7 @@
     func : pool3d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool3d_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pow
   args : (Tensor x, Scalar y=1.0f)
@@ -3839,6 +3840,7 @@
     param : [filename]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : real
   args : (Tensor x)

@@ -2719,6 +2719,20 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool Pool3dOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<int> kernel_size_ =
+      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
+  std::vector<symbol::DimExpr> kernel_size;
+  for (size_t i = 0; i < kernel_size_.size(); ++i) {
+    kernel_size.push_back(symbol::DimExpr(kernel_size_[i]));
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));
+  return true;
+}
+
 // bool PoolOpInferSymbolicShape(pir::Operation *op,
 //                               pir::InferSymbolicShapeContext *infer_context)
 //                               {
