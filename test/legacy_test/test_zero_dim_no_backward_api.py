@@ -271,13 +271,13 @@ class TestNoBackwardAPI(unittest.TestCase):
 
     def test_eye_zero_dim_input(self):
         # use zero-dim tensor as inputs
-        num_cols = paddle.to_tensor(4, stop_gradient=False)
         num_rows = paddle.to_tensor(5, stop_gradient=False)
-        out = paddle.linalg.eye(num_rows, num_cols)
+        num_cols = paddle.to_tensor(4, stop_gradient=False)
+        out = paddle.eye(num_rows, num_cols)
 
         self.assertEqual(num_cols.shape, [])
         self.assertEqual(num_rows.shape, [])
-        self.assertEqual(out.shape, [4, 5])
+        self.assertEqual(out.shape, [5, 4])
 
 
 class TestNoBackwardAPIStatic(unittest.TestCase):
