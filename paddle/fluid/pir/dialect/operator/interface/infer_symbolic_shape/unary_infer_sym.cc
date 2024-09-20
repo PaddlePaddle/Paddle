@@ -667,7 +667,7 @@ bool CumminOpInferSymbolicShape(pir::Operation *op,
 }
 bool CumprodOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return UnchangedCheckAxisInferSymbolicShape(op, infer_context);
+  return UnchangedCheckAxisInferSymbolicShape(op, infer_context, "dim");
 }
 bool Cumprod_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -3865,36 +3865,42 @@ bool UnbindOpInferSymbolicShape(pir::Operation *op,
 }
 
 bool UnchangedCheckAxisInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+    pir::Operation *op,
+    pir::InferSymbolicShapeContext *infer_context,
+    const std::string &axisAttrName = "axis") {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
-  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  int axisAttrValue = op->attribute<pir::Int32Attribute>(axisAttrName).data();
   size_t rank = x_shape.size();
 
   if (rank > 0) {
-    PADDLE_ENFORCE_GE(axis,
+    PADDLE_ENFORCE_GE(axisAttrValue,
                       -rank,
                       common::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-R, R-1], "
-                          "R is the rank of Input(X)."));
-    PADDLE_ENFORCE_LT(axis,
+                          "Attr(%s) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X).",
+                          axisAttrName));
+    PADDLE_ENFORCE_LT(axisAttrValue,
                       rank,
                       common::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-R, R-1], "
-                          "R is the rank of Input(X)."));
+                          "Attr(%s) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X).",
+                          axisAttrName));
   } else if (rank == 0) {
-    PADDLE_ENFORCE_GE(axis,
+    PADDLE_ENFORCE_GE(axisAttrValue,
                       -1,
                       common::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-1, "
-                          "0] when input is 0D Tensor "));
-    PADDLE_ENFORCE_LE(axis,
+                          "Attr(%s) value should be in range [-1, "
+                          "0] when input is 0D Tensor ",
+                          axisAttrName));
+    PADDLE_ENFORCE_LE(axisAttrValue,
                       0,
                       common::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-1, "
-                          "0] when input is 0D Tensor "));
+                          "Attr(%s) value should be in range [-1, "
+                          "0] when input is 0D Tensor ",
+                          axisAttrName));
   }
 
   infer_context->SetShapeOrDataForValue(
