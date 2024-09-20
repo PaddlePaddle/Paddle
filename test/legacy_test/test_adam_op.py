@@ -549,6 +549,10 @@ class TestSparseAdamOp(unittest.TestCase):
         adam_op.run(scope, place)
 
         for key, np_array in self.outputs.items():
+            # do not check keys in `no_check_set``
+            if self.no_check_set is not None and key in self.no_check_set:
+                continue
+
             out_var = scope.var(key).get_tensor()
             actual = np.array(out_var)
             actual = actual.reshape([actual.size])
