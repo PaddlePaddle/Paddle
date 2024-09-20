@@ -344,6 +344,7 @@ Json serializeAttrToJson<paddle::dialect::OperationDistAttribute>(
     results_json.push_back(writeAttr(attr.results().at(i)));
   }
   content.push_back(results_json);
+  content.push_back(attr.chunk_id());
 
   json_obj[DATA] = content;
   return json_obj;
