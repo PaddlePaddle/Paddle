@@ -556,11 +556,12 @@ bool convtransposefunction(pir::Operation *op,
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     symbol::DimExpr filter_extent =
         new_dilations[i] * (filter_shape[i + 2] - 1) + 1;
-    symbol::DimExpr infer_shape =
-        (x_shape[i + offset].Get<std::int64_t>() > 0)
-            ? (x_shape[i + offset] - 1) * strides[i] - new_paddings[2 * i] -
-                  new_paddings[2 * i + 1] + filter_extent
-            : -1;
+    symbol::DimExpr infer_shape;
+    if (x_shape[i + offset].Get<std::int64_t>() > 0) {
+      infer_shape = (x_shape[i + offset] - 1) * strides[i] -
+                    new_paddings[2 * i] - new_paddings[2 * i + 1] +
+                    filter_extent;
+    }
     if (output_size.size() > 0) {
       output_shape.push_back(output_size[i]);
     } else if (output_padding.size() > 0) {
