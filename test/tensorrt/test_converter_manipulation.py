@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from tensorrt_test_base import TensorRTBaseTest
-
+from python.paddle.tensor.creation import fill_constant
 import paddle
 from paddle import _C_ops
 
@@ -91,6 +91,41 @@ class TestSlice1TRTPattern(TensorRTBaseTest):
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [2, 6, 64, 64]}
         self.max_shape = {"x": [8, 6, 64, 64]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+def slice_not_fullIntArray_python_api(x, axes, shape,fill_value,dtype,name, infer_flags, decrease_axis):
+    if dtype is None:
+        dtype = paddle.get_default_dtype()
+
+    starts=fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
+    ends=fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
+    return _C_ops.slice(x, axes, starts, ends, infer_flags, decrease_axis)
+
+    
+class TestSlice2TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.slice
+        
+        self.api_args = {
+            "x": np.random.random([6, 6, 64, 64]).astype("float32"),
+            "axes": [0, 1],
+            "starts": np.array([0, 1], dtype="int32"),
+            "ends": np.array([2, 2], dtype="int32"),   
+        }
+        self.program_config = {"feed_list": ["x","starts","ends"], "dynamic_input_name":{"x"}}
+        self.min_shape = {
+            "x": [2, 6, 64, 64],
+            "starts":[2],
+            "ends":[2]
+        }
+        self.max_shape = {
+            "x": [8, 6, 64, 64],
+            "starts":[2],
+            "ends":[2]
+        }
 
     def test_trt_result(self):
         self.check_trt_result()

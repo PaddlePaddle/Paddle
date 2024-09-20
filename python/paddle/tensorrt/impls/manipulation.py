@@ -215,6 +215,15 @@ def slice_converter(network, paddle_op, inputs):
 
     axes = paddle_op.attrs()["axes"]
     decrease_axis = paddle_op.attrs().get("decrease_axis")
+    
+    starts_op =paddle_op.operands()[1].source().get_defining_op()
+    ends_op =paddle_op.operands()[2].source().get_defining_op()
+    if starts_op.name() =="pd_op.full_int_array":
+        starts=starts_op.attrs()["value"]
+    else:
+        starts=inputs[1]
+        ends=inputs[2]
+        
     starts = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
     ends = paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
 
