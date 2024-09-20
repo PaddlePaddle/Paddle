@@ -87,7 +87,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
 
-            # doctest: +SKIP('torch will not be installed')
+            >>> # doctest: +SKIP('torch will not be installed')
             >>> # convert tensor from paddle to other framework using to_dlpack
             >>> import torch
             >>> x = paddle.randn([2, 4]).to(device="cpu")
