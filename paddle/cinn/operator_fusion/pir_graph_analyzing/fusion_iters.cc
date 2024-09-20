@@ -79,7 +79,7 @@ FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
   if (axes.reduce_size > 0) {
     PADDLE_ENFORCE_LE(
         axes.reduce_size,
-        GetRank(op->operand(0).source()),
+        GetCompitableRank(op->operand(0).source()),
         ::common::errors::InvalidArgument("The number of reduce_axis should be "
                                           "no more than output value ranks."));
   }
