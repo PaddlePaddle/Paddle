@@ -991,6 +991,7 @@
   output : Tensor
   infer_meta :
     func : ConvInferMeta
+    spmd_rule : Conv2dInferSpmd
   kernel :
     func : conv2d
     data_type : input
