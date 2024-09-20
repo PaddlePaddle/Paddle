@@ -991,6 +991,7 @@
   output : Tensor
   infer_meta :
     func : ConvInferMeta
+    spmd_rule : Conv2dInferSpmd
   kernel :
     func : conv2d
     data_type : input
@@ -3839,6 +3840,7 @@
     param : [filename]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : real
   args : (Tensor x)

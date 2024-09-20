@@ -4697,6 +4697,157 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
+                              const MetaTensor& cvm,
+                              const std::string& pooltype,
+                              float pad_value,
+                              bool use_cvm,
+                              int cvm_offset,
+                              std::vector<MetaTensor*> out,
+                              MetaConfig config) {
+  PADDLE_ENFORCE_GE(x.size(),
+                    1UL,
+                    common::errors::InvalidArgument(
+                        "Inputs(X) of FusedSeqpoolCVMOp should not be empty."));
+  PADDLE_ENFORCE_GE(
+      out.size(),
+      1UL,
+      common::errors::InvalidArgument(
+          "Outputs(Out) of FusedSeqpoolCVMOp should not be empty."));
+
+  const auto& cvm_dims = cvm.dims();
+  PADDLE_ENFORCE_EQ(
+      cvm_dims.size(),
+      2UL,
+      common::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
+  PADDLE_ENFORCE_EQ(cvm_dims[1],
+                    2UL,
+                    common::errors::InvalidArgument("The 2nd dimension of "
+                                                    "Input(CVM) should be 2."));
+
+  const size_t num_inputs = x.size();
+  std::vector<phi::DDim> outs_dims;
+  outs_dims.resize(num_inputs);
+
+  PADDLE_ENFORCE_GT(num_inputs,
+                    0UL,
+                    common::errors::InvalidArgument(
+                        "Input tensors count should be greater than 0, "
+                        "but received value is %d.",
+                        num_inputs));
+
+  // The output height should be confirmed in Compute,
+  // since input lod is not accessible here.
+  auto size_tmp = x[0]->dims().size();
+  PADDLE_ENFORCE_EQ(size_tmp,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dims size of first input should be equal to 2, "
+                        "but received value is %d.",
+                        size_tmp));
+
+  for (size_t i = 0; i < num_inputs; ++i) {
+    const auto dims = x[i]->dims();
+    int rank = dims.size();
+    if (use_cvm) {
+      PADDLE_ENFORCE_GT(
+          dims[rank - 1],
+          2,
+          common::errors::InvalidArgument(
+              "Shape error in %lu id, the last dimension(embedding) of the "
+              "'X' tensor must be larger than 2.",
+              i));
+    }
+    // input lod is not accessible here
+    std::vector<int64_t> out_dim;
+    if (use_cvm) {
+      out_dim = {-1, dims[rank - 1]};
+    } else {
+      out_dim = {-1, dims[rank - 1] - cvm_offset};
+    }
+    outs_dims[i] = common::make_ddim(out_dim);
+  }
+  for (size_t i = 0; i < out.size(); ++i) {
+    out[i]->set_dims(outs_dims[i]);
+  }
+
+  for (size_t i = 0; i < out.size(); ++i) {
+    out[i]->share_lod(*x[i]);
+    out[i]->set_dtype(x[i]->dtype());
+  }
+}
+
+void FusedSeqpoolCvmGradInferMeta(
+    const std::vector<const MetaTensor*>& x,
+    const MetaTensor& cvm,
+    const std::vector<const MetaTensor*>& out_grad,
+    const std::string& pooltype,
+    float pad_value,
+    bool use_cvm,
+    int cvm_offset,
+    std::vector<MetaTensor*> x_grad,
+    MetaTensor* cvm_grad,
+    MetaConfig config) {
+  std::vector<phi::DDim> og_dims;
+  std::vector<phi::DDim> x_dims;
+  og_dims.resize(out_grad.size());
+  x_dims.resize(x.size());
+  for (size_t i = 0; i < out_grad.size(); ++i) {
+    og_dims[i] = out_grad[i]->dims();
+  }
+  for (size_t i = 0; i < x.size(); ++i) {
+    x_dims[i] = x[i]->dims();
+  }
+  auto cvm_dims = cvm.dims();
+  PADDLE_ENFORCE_EQ(
+      cvm_dims.size(),
+      2,
+      common::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
+
+  for (size_t i = 0; i < og_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(og_dims[i].size(),
+                      x_dims[i].size(),
+                      common::errors::InvalidArgument(
+                          "The rank of output grad must equal to Input(X). But "
+                          "received: input rank %u, input shape [%s].",
+                          og_dims[i].size(),
+                          og_dims[i]));
+    if (use_cvm) {
+      auto o_dim = og_dims[i][og_dims[i].size() - 1];
+      PADDLE_ENFORCE_EQ(
+          o_dim,
+          x_dims[i][og_dims[i].size() - 1],
+          common::errors::InvalidArgument(
+              "The dimension mismatch between Input(OUT@GRAD) and "
+              "Input(X). Received Input(OUT@GRAD): input rank %u, "
+              "input shape [%s]; received Input(X): input rank %u, "
+              "input shape [%s].",
+              og_dims[i].size(),
+              og_dims[i],
+              x_dims[i].size(),
+              x_dims[i]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          og_dims[i][og_dims[i].size() - 1],
+          x_dims[i][og_dims[i].size() - 1] - cvm_offset,
+          common::errors::InvalidArgument(
+              "The dimension mismatch between Input(OUT@GRAD) and "
+              "Input(X). Received Input(OUT@GRAD): input rank %u, "
+              "input shape [%s]; received Input(X): input rank %u, "
+              "input shape [%s].",
+              og_dims[i].size(),
+              og_dims[i],
+              x_dims[i].size(),
+              x_dims[i]));
+    }
+  }
+  for (size_t i = 0; i < x_dims.size(); ++i) {
+    x_grad[i]->share_lod(*x[i]);
+    x_grad[i]->set_dims(x[i]->dims());
+    x_grad[i]->set_dtype(x[i]->dtype());
+  }
+}
+
 void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                      const MetaTensor& cvm,
                                      const std::string& pooltype,
