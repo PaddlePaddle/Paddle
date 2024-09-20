@@ -195,6 +195,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_embedding_fc_lstm',
     'fused_gate_attention',
     'fused_multi_transformer_int8',
+    'fused_seqpool_cvm',
     'fusion_group',
     'fusion_lstm',
     'fusion_seqpool_cvm_concat',
