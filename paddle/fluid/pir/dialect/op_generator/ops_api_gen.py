@@ -199,6 +199,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_lstm',
     'fusion_seqpool_cvm_concat',
     'nce',
+    'lookup_table',
     'lrn',
     'max_pool2d_v2',
     'partial_sum',
