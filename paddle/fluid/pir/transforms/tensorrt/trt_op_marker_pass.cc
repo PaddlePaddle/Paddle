@@ -92,56 +92,55 @@ class Pool2dOpPattern
         pir::GetDefiningOpForInput(op, 1)
             ->dyn_cast<paddle::dialect::FullIntArrayOp>();
     if (!full_int_array_op) {
-      VLOG(3) << "The second input of Pool2dOp should be FullIntArrayOp";
+      VLOG(3) << "Cannot find FullIntArrayOp";
       return false;
-      auto padding_attr = op->attribute<pir::ArrayAttribute>("paddings");
-      std::vector<int32_t> paddings;
-      for (const auto &attr : padding_attr.AsVector()) {
-        paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
-      }
-      if (paddings.size() > 2) {
-        VLOG(3) << "The padding size should be less than 2";
+    }
+    auto padding_attr = op->attribute<pir::ArrayAttribute>("paddings");
+    std::vector<int32_t> paddings;
+    for (const auto &attr : padding_attr.AsVector()) {
+      paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+    if (paddings.size() > 2) {
+      VLOG(3) << "The padding size should be less than 2";
+      return false;
+    }
+    if (op->HasAttribute("data_format")) {
+      auto data_format =
+          op->attribute<pir::StrAttribute>("data_format").AsString();
+      if (data_format == "NHWC" || data_format == "NDHWC") {
+        VLOG(3) << "Pool2d not support NHWC or NDHWC into trt ";
         return false;
       }
-      if (op->HasAttribute("data_format")) {
-        auto data_format =
-            op->attribute<pir::StrAttribute>("data_format").AsString();
-        if (data_format == "NHWC" || data_format == "NDHWC") {
-          VLOG(3) << "Pool2d not support NHWC or NDHWC into trt ";
-          return false;
-        }
-      }
-      if (!op->HasAttribute("pooling_type")) {
-        VLOG(3) << "The pooling_type attribute does not exist";
+    }
+    if (!op->HasAttribute("pooling_type")) {
+      VLOG(3) << "The pooling_type attribute does not exist";
+      return false;
+    } else {
+      std::string pool_type =
+          op->attribute<pir::StrAttribute>("pooling_type").AsString();
+      if (pool_type != "max" && pool_type != "avg") {
+        VLOG(3) << "Wrong pool op type, the trt do not support the "
+                << pool_type << " pool type.";
         return false;
-      } else {
-        std::string pool_type =
-            op->attribute<pir::StrAttribute>("pooling_type").AsString();
-        if (pool_type != "max" && pool_type != "avg") {
-          VLOG(3) << "Wrong pool op type, the trt do not support the "
-                  << pool_type << " pool type.";
-          return false;
-        }
-        if (pool_type == "avg") {
-          if (op->HasAttribute("global_pooling")) {
-            if (!op->attribute<pir::BoolAttribute>("global_pooling").data()) {
-              if (op->HasAttribute("exclusive")) {
-                if (op->attribute<pir::BoolAttribute>("exclusive").data()) {
-                  auto attr_value =
-                      full_int_array_op->attribute<pir::ArrayAttribute>(
-                          "value");
-                  std::vector<int64_t> kernel_size;
-                  for (const auto &attr : attr_value.AsVector()) {
-                    kernel_size.push_back(
-                        attr.dyn_cast<pir::Int64Attribute>().data());
-                  }
-                  for (size_t i = 0; i < kernel_size.size(); ++i) {
-                    if (kernel_size[i] <= paddings[i]) {
-                      VLOG(3) << "the padding size should be less than the "
-                                 "filter size "
-                                 "for exclusive-counting pooling.";
-                      return false;
-                    }
+      }
+      if (pool_type == "avg") {
+        if (op->HasAttribute("global_pooling")) {
+          if (!op->attribute<pir::BoolAttribute>("global_pooling").data()) {
+            if (op->HasAttribute("exclusive")) {
+              if (op->attribute<pir::BoolAttribute>("exclusive").data()) {
+                auto attr_value =
+                    full_int_array_op->attribute<pir::ArrayAttribute>("value");
+                std::vector<int64_t> kernel_size;
+                for (const auto &attr : attr_value.AsVector()) {
+                  kernel_size.push_back(
+                      attr.dyn_cast<pir::Int64Attribute>().data());
+                }
+                for (size_t i = 0; i < kernel_size.size(); ++i) {
+                  if (kernel_size[i] <= paddings[i]) {
+                    VLOG(3) << "the padding size should be less than the "
+                               "filter size "
+                               "for exclusive-counting pooling.";
+                    return false;
                   }
                 }
               }
