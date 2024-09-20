@@ -2949,6 +2949,26 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
 };
 
 struct SetValueOpTranscriber : public OpTranscriber {
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SetValueOp::name();
+    // check In/Out var names(Input/Out), if in_name == out_name: ->
+    // pd_op.set_value_
+    auto in_name = op_desc.Input("Input")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    if (in_name == out_name) {
+      target_op_name += "_";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Op set_value should have corresponding OpInfo "
+          "pd_op.set_value or pd_op.set_value_"));
+    }
+
+    return op_info;
+  }
+
   pir::Value GetAttributeAsInput(pir::IrContext* ctx,
                                  pir::Block* block,
                                  const OpDesc& op_desc,
@@ -2981,11 +3001,18 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     std::string target_op_name = dialect::SetValueWithTensorOp::name();
+    // check In/Out var names(Input/Out), if in_name == out_name: ->
+    // pd_op.set_value_with_tensor_
+    auto in_name = op_desc.Input("Input")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    if (in_name == out_name) {
+      target_op_name += "_";
+    }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Op set_value should have corresponding OpInfo "
-          "pd_op.set_value_with_tensor"));
+          "pd_op.set_value_with_tensor or pd_op.set_value_with_tensor_"));
     }
 
     return op_info;
@@ -3989,72 +4016,6 @@ struct ReduceSumTranscriber : public OpTranscriber {
   }
 };
 
-struct SetValueTranscriber : public OpTranscriber {
-  std::vector<pir::Value> GenerateOperationInput(
-      pir::IrContext* ctx,
-      TranslationContext* param_map,
-      const OpDesc& op_desc,
-      const std::string& normalized_op_name,
-      const OpInputInfoList& input_infos,
-      pir::Block* block) override {
-    auto x_names = op_desc.Input("Input", true);
-    PADDLE_ENFORCE_EQ(
-        x_names.size(),
-        1UL,
-        common::errors::InvalidArgument(
-            "Expected op[%s]'s input X has only 1 variable, but got %d",
-            op_desc.Type(),
-            x_names.size()));
-    auto x_name = x_names[0];
-    PADDLE_ENFORCE_GT(param_map->count(x_name),
-                      0UL,
-                      common::errors::InvalidArgument(
-                          "Expected op[%s]'s input %s has been parsed",
-                          op_desc.Type(),
-                          x_name));
-    auto x_defining_info = param_map->at(x_name);
-    if (x_defining_info.generated_by_vector) {
-      InsertSliceOperationForTarget(
-          ctx, param_map, block, x_defining_info, x_name);
-      x_defining_info = param_map->at(x_name);
-    }
-    pir::Value x_value = x_defining_info.value;
-    PADDLE_ENFORCE_NE(
-        x_value,
-        nullptr,
-        common::errors::PreconditionNotMet(
-            "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
-    pir::Type x_type = x_value.type();
-    PADDLE_ENFORCE_EQ(
-        x_type.isa<dialect::DenseTensorType>(),
-        true,
-        common::errors::InvalidArgument(
-            "Expected op[%s]'s input %s is DenseTensor but got %s",
-            op_desc.Type(),
-            x_name,
-            x_type));
-
-    pir::Builder builder(ctx, block);
-    auto starts = paddle::get<std::vector<int64_t>>(op_desc.GetAttr("starts"));
-    auto ends = paddle::get<std::vector<int64_t>>(op_desc.GetAttr("ends"));
-    auto steps = paddle::get<std::vector<int64_t>>(op_desc.GetAttr("steps"));
-    paddle::dialect::FullIntArrayOp full_starts_op =
-        builder.Build<paddle::dialect::FullIntArrayOp>(
-            starts, phi::DataType::INT64, phi::CPUPlace());
-    paddle::dialect::FullIntArrayOp full_ends_op =
-        builder.Build<paddle::dialect::FullIntArrayOp>(
-            ends, phi::DataType::INT64, phi::CPUPlace());
-    paddle::dialect::FullIntArrayOp full_steps_op =
-        builder.Build<paddle::dialect::FullIntArrayOp>(
-            steps, phi::DataType::INT64, phi::CPUPlace());
-
-    return {x_value,
-            full_starts_op->result(0),
-            full_ends_op->result(0),
-            full_steps_op->result(0)};
-  }
-};
-
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -4162,7 +4123,6 @@ OpTranslator::OpTranslator() {
 
   special_handlers["cumsum"] = CumSumTranscriber();
   special_handlers["reduce_sum"] = ReduceSumTranscriber();
-  special_handlers["set_value"] = SetValueTranscriber();
   special_handlers["scale"] = ScaleTranscriber();
 }
 }  // namespace translator
