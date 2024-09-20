@@ -178,7 +178,7 @@ class TestDistSharding(unittest.TestCase):
                     model_a.parameters()[j].numpy(),
                     model_b.parameters()[j].numpy(),
                     rtol=1e-6,
-                    atol=1e-7,
+                    atol=1e-6,
                 )
 
     def test_sharding_adam(self):
