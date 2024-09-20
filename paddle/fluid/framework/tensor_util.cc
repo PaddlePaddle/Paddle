@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 
 #include <algorithm>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <string>
@@ -793,6 +794,158 @@ void* GetDstPtrByDLDataType(DLDataType type,
   }
 }
 
+// get Tensor data dtype from given DLDataType
+phi::DataType GetDstPtrByDLDataType(DLDataType type) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(
+      type.lanes,
+      1,
+      common::errors::Unimplemented("Vector type is not supported currently."));
+
+  switch (type.bits) {
+    case 8:
+      if (type.code == kDLBool) return phi::DataType::BOOL;
+      if (type.code == kDLInt) return phi::DataType::INT8;
+      if (type.code == kDLUInt) return phi::DataType::UINT8;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 16:
+      if (type.code == kDLInt) return phi::DataType::INT16;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT16;
+      if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 32:
+      if (type.code == kDLInt) return phi::DataType::INT32;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT32;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 64:
+      if (type.code == kDLInt) return phi::DataType::INT64;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT64;
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 128:
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX128;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported DLDataType.bits %d.", type.bits));
+  }
+}
+
+/*
+dlpack related code ref:
+https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
+and paddle/phi/api/lib/tensor_utils.cc
+*/
+using Deleter = std::function<void(void*)>;
+
+std::unordered_map<void*, std::function<void(phi::Allocation*)>> ptr_to_deleter;
+std::mutex ptr_to_deleter_mutex;  // use mutex to keep thread safe
+
+void DeleterBridge(phi::Allocation* alloc) {
+  std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
+  auto it = ptr_to_deleter.find(static_cast<void*>(alloc->ptr()));
+  if (it != ptr_to_deleter.end()) {
+    it->second(alloc);         // call the deleter
+    ptr_to_deleter.erase(it);  // remove the entry from the map safely
+  }
+}
+
+phi::DenseTensor from_blob(void* data,
+                           DLManagedTensor* src,
+                           const phi::DDim& shape,
+                           phi::DataType dtype,
+                           phi::DataLayout layout,
+                           const phi::Place& place,
+                           const Deleter& deleter) {
+  PADDLE_ENFORCE_NOT_NULL(
+      data, phi::errors::InvalidArgument("data can not be nullptr."));
+
+  auto meta = phi::DenseTensorMeta(dtype, shape, layout);
+  size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
+  phi::Allocation::DeleterFnPtr f = nullptr;
+
+  if (deleter) {
+    auto g = [deleter, src](phi::Allocation* p) {
+      if (src->manager_ctx) {
+        deleter(src);
+      }
+    };
+
+    {
+      std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
+      ptr_to_deleter[data] = g;
+    }
+
+    f = DeleterBridge;
+  }
+
+  auto alloc = std::make_shared<phi::Allocation>(data, size, f, place);
+  return phi::DenseTensor(alloc, meta);
+}
+
+phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
+  std::vector<int64_t> vec;
+  std::copy(src->dl_tensor.shape,
+            src->dl_tensor.shape + src->dl_tensor.ndim,
+            std::back_inserter(vec));
+
+  phi::Place place;
+  if (src->dl_tensor.device.device_type == kDLCPU) {
+    place = phi::CPUPlace();
+  } else if (src->dl_tensor.device.device_type == kDLCUDA) {
+    place = phi::GPUPlace();
+  } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
+    place = phi::GPUPinnedPlace();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented("Given Place is not supported"));
+  }
+
+  ::DLDataType type = src->dl_tensor.dtype;
+  auto dtype = GetDstPtrByDLDataType(type);
+  if (!src->dl_tensor.strides) {
+    return from_blob(src->dl_tensor.data,
+                     src,
+                     common::make_ddim(vec),
+                     dtype,
+                     phi::DataLayout::NCHW,
+                     place,
+                     std::move(deleter));
+  } else {
+    return from_blob(src->dl_tensor.data,
+                     src,
+                     common::make_ddim(vec),
+                     dtype,
+                     phi::DataLayout::NCHW,
+                     place,
+                     deleter);
+  }
+}
+
+phi::DenseTensor TensorFromDLPack(DLManagedTensor* src) {
+  auto deleter = [src](void* self [[maybe_unused]]) {
+    if (src->deleter) {
+      src->deleter(src);
+    }
+  };
+  return TensorFromDLPack(src, std::move(deleter));
+}
+
+// Keep the this overloaded version of the interface unchanged.
 void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
   phi::CPUPlace dst_place = phi::CPUPlace();
   phi::CPUPlace src_place = phi::CPUPlace();
@@ -815,7 +968,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (dl_tensor.device.device_type == kDLGPU) {
+  if (dl_tensor.device.device_type == kDLCUDA) {
     phi::GPUPlace dst_place = phi::GPUPlace(dl_tensor.device.device_id);
     phi::GPUPlace src_place = phi::GPUPlace(dl_tensor.device.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
@@ -828,46 +981,6 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
                  reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
   }
 #endif
-#ifdef PADDLE_WITH_XPU
-  PADDLE_THROW(common::errors::Unimplemented("XPUPlace is not supported"));
-#endif
-}
-
-void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
-  std::vector<int64_t> vec;
-  std::copy(src->dl_tensor.shape,
-            src->dl_tensor.shape + src->dl_tensor.ndim,
-            std::back_inserter(vec));
-
-  phi::DDim vddim = common::make_ddim(vec);
-  dst->Resize(vddim);
-  ::DLDataType type = src->dl_tensor.dtype;
-
-  auto src_ptr = static_cast<const void*>(src->dl_tensor.data);
-  auto size = common::product(vddim) * type.bits / 8;
-
-  if (src->dl_tensor.device.device_type == kDLCPU) {
-    phi::CPUPlace dst_place = phi::CPUPlace();
-    phi::CPUPlace src_place = phi::CPUPlace();
-    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (src->dl_tensor.device.device_type == kDLGPU) {
-    phi::GPUPlace dst_place = phi::GPUPlace(src->dl_tensor.device.device_id);
-    phi::GPUPlace src_place = phi::GPUPlace(src->dl_tensor.device.device_id);
-    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-    auto* ctx = phi::DeviceContextPool::Instance().GetByPlace(dst_place);
-    // Fix copy by share allocation.
-    memory::Copy(dst_place,
-                 dst_ptr,
-                 src_place,
-                 src_ptr,
-                 size,
-                 reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
-  }
-#endif
-  src->deleter(const_cast<DLManagedTensor*>(src));
 #ifdef PADDLE_WITH_XPU
   PADDLE_THROW(common::errors::Unimplemented("XPUPlace is not supported"));
 #endif

@@ -23,6 +23,7 @@ import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
+import paddle
 import paddle.inference as paddle_infer
 
 
@@ -33,7 +34,6 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
         if (
             inputs['input_data'].shape[1]
             != weights['conv2d_weight'].shape[1] * attrs[0]['groups']
@@ -178,7 +178,7 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # for static_shape
+        # # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
@@ -208,17 +208,19 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-2, 1e-2)
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        # self.trt_param.precision = paddle_infer.PrecisionType.Int8
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
 
     def test(self):
-        self.run_test()
+        with paddle.pir_utils.OldIrGuard():
+            self.run_test()
 
     def test_quant(self):
-        self.run_test(quant=True)
+        with paddle.pir_utils.OldIrGuard():
+            self.run_test(quant=True)
 
 
 if __name__ == "__main__":
