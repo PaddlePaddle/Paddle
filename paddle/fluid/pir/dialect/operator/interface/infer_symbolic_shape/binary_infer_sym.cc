@@ -2051,7 +2051,7 @@ bool LogLossOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &input_shape_or_data =
                                         infer_context->GetShapeOrDataForValue(
                                             op->operand_source(0)),
-                                    ,
+
                                     &label_shape_or_data =
                                         infer_context->GetShapeOrDataForValue(
                                             op->operand_source(1));
