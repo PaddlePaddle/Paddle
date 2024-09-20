@@ -3839,6 +3839,7 @@
     param : [filename]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : real
   args : (Tensor x)
