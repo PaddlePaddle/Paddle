@@ -146,36 +146,26 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
     VLOG(3) << i << "-th block_loop:\n" << block_loops[i];
     std::optional<bool> prove_eq = analyzer.ProveEQ(
         loops[i].As<ir::For>()->extent, block_loops[i].As<ir::For>()->extent);
-    // PADDLE_ENFORCE_EQ(
-    //     prove_eq.has_value(),
-    //     true,
-    //     phi::errors::InvalidArgument(
-    //         "[IRScheduleError] An error occurred in the schedule primitive "
-    //         "<SimpleComputeAt>.\n"
-    //         "[Error info] Extent of loop in Expr Param(loop) and extent of "
-    //         "loop in Expr Param(block) should be equal correspondingly!\n"
-    //         "[Error info] The Expr of current schedule is: %s.",
-    //         module_expr_.GetExprs()));
-
-    // PADDLE_ENFORCE_EQ(
-    //     prove_eq.value(),
-    //     true,
-    //     phi::errors::InvalidArgument(
-    //         "[IRScheduleError] An error occurred in the schedule primitive "
-    //         "<SimpleComputeAt>.\n"
-    //         "[Error info] Extent of loop in Expr Param(loop) and extent of "
-    //         "loop in Expr Param(block) should be equal correspondingly!\n"
-    //         "[Error info] The Expr of current schedule is: %s.",
-    //         module_expr_.GetExprs()));
     PADDLE_ENFORCE_EQ(
-        prove_eq.has_value() && prove_eq.value(),
+        prove_eq.has_value(),
         true,
         phi::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<SimpleComputeAt>.\n"
             "[Error info] Extent of loop in Expr Param(loop) and extent of "
             "loop in Expr Param(block) should be equal correspondingly!\n"
-            "[Error info] The Expr of current schedule is : %s.",
+            "[Error info] The Expr of current schedule is: %s.",
+            module_expr_.GetExprs()));
+
+    PADDLE_ENFORCE_EQ(
+        prove_eq.value(),
+        true,
+        phi::errors::InvalidArgument(
+            "[IRScheduleError] An error occurred in the schedule primitive "
+            "<SimpleComputeAt>.\n"
+            "[Error info] Extent of loop in Expr Param(loop) and extent of "
+            "loop in Expr Param(block) should be equal correspondingly!\n"
+            "[Error info] The Expr of current schedule is: %s.",
             module_expr_.GetExprs()));
     if (block_loops[i].As<ir::For>()->bind_info().valid() &&
         !loops[i].As<ir::For>()->bind_info().valid()) {
