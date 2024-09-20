@@ -1766,7 +1766,6 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
 
-  const auto &attributes = op->attributes();
   std::vector<int64_t> axis;
   if (paddle::dialect::details::GetAxisFromOpInput(
           op->operand_source(1), infer_context, &axis)) {
