@@ -1311,7 +1311,7 @@ def fuse_attention_ffn_qkv_pass(
                 axis=-2,
             )
         else:
-            out = paddle.reshape(
+            out = paddle.reshape_(
                 fused_o,
                 shape=[
                     0,
@@ -1325,8 +1325,8 @@ def fuse_attention_ffn_qkv_pass(
                 out,
                 num_or_sections=[
                     reshape_q.result(0).shape[-1],
-                    reshape_q.result(0).shape[-1],
-                    reshape_q.result(0).shape[-1],
+                    reshape_k.result(0).shape[-1],
+                    reshape_v.result(0).shape[-1],
                 ],
                 axis=-1,
             )
