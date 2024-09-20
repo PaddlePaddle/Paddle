@@ -13,7 +13,10 @@
 # limitations under the License.
 
 from __future__ import annotations
-
+import hashlib
+from paddle.distributed.auto_parallel.static.process_group import (
+    new_process_group,
+)
 import copy
 import json
 import logging
@@ -698,6 +701,18 @@ class Engine:
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
         set_all_ops_op_role(dist_program, OpRole.Forward)
+        print("set role dist_program:",dist_program)
+        print('before replace', dist_program, flush=1)
+        if self._strategy.mp_optimization.replace_with_c_embedding:
+            config = {}
+            config["test"] = 1
+            auto_parallel_c_embedding_pass = new_pass(
+                "auto_parallel_c_embedding_pass", config
+            )
+            auto_parallel_c_embedding_pass.apply(
+                [dist_program], [startup_program]
+            )
+        print('before backward', dist_program, flush=1)
 
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
@@ -768,8 +783,9 @@ class Engine:
                 )
 
         # re-run apply_mix2dist_pass to dist accumulator.
+        # print('before apply_mix2dist_pass', startup_program, dist_program, flush=1)
         apply_mix2dist_pass(dist_program)
-        # print('program', startup_program, dist_program, flush=1)
+        # print('after apply_mix2dist_pass', startup_program, dist_program, flush=1)
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
@@ -789,11 +805,37 @@ class Engine:
         else:
             raise ValueError("auto_mode [] is not supported yet.".format())
 
+        # block = dist_program.global_block()
+        # ops = block.ops
+        # for op in reversed(ops):
+        #     if op.name() == 'pd_op.adamw_':
+        #         print("### lzx ### pd.id:",op.id())
+        #         # if op.id() == 1093:
+        #         paddle.pir.set_insertion_point_after(op)
+        #         src_mesh = op.operand(0).source().process_mesh
+        #         num_of_process = len(src_mesh.process_ids)
+        #         group = new_process_group(sorted(src_mesh.process_ids))
+        #         t_op = paddle._C_ops.all_gather(
+        #             op.operand(0).source(), group.id, num_of_process
+        #         )
+        #         t_op.get_defining_op().op_role = int(OpRole.Optimize)
+        #         # paddle.pir.set_insertion_point(op)
+        #         # src_mesh = op.operand(0).source().process_mesh
+        #         # num_of_process = len(src_mesh.process_ids)
+        #         # group = new_process_group(sorted(src_mesh.process_ids))
+        #         # t_op = paddle._C_ops.all_gather(
+        #         #     op.operand(0).source(), group.id, num_of_process
+        #         # )
+        #         # t_op.get_defining_op().op_role = int(OpRole.Optimize)
+        #         break
+
+
         # Part 3: Graph partition
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
         apply_partition_pass(dist_program)
+        print('after apply_partition', dist_program, flush=1)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
@@ -801,7 +843,8 @@ class Engine:
         global_params_grads = params_grads
 
         apply_reshard_pass(dist_program, params_grads)
-        # print('after reshard', dist_program, flush=1)
+        print('after reshard', dist_program, flush=1)
+        print('after reshard startup program', startup_program, dist_program, flush=1)
 
         remove_other_rank_input_output_pass(dist_program)
         # print(
@@ -809,6 +852,7 @@ class Engine:
         # )
 
         remove_other_rank_op_pass(dist_program, params_grads)
+        print('after remove_other_rank_op_pass')
 
         # print('after remove_other_rank_op_pass', dist_program, flush=1)
 
@@ -848,6 +892,17 @@ class Engine:
             auto_parallel_gradient_merge_pass.apply(
                 [dist_program], [startup_program]
             )
+        # if self._strategy.mp_optimization.replace_with_c_embedding:
+        #     print("### lzx ### replace_with_c_embedding is True")
+        #     config = {}
+        #     config["test"] = 1
+        #     auto_parallel_c_embedding_pass = new_pass(
+        #         "auto_parallel_c_embedding_pass", config
+        #     )
+        #     auto_parallel_c_embedding_pass.apply(
+        #         [dist_program], [startup_program]
+        #     )
+        # print('after replace_with_c_embedding', dist_program, flush=1)
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
@@ -2099,6 +2154,52 @@ class Engine:
                 fetch_names = [loss_value]
             fetch_names += self._pir_fetch_values
 
+        fetch_ops = []
+        # for op in reversed(self.main_program.global_block().ops):
+        for op in self.main_program.global_block().ops:
+            # if str(op.id()) == "1550" :
+            #     fetch_names += [op.result(0)]
+            #     fetch_ops += [op]
+
+            if (
+                # op.name() == "pd_op.embedding"
+                # or op.name() == "pd_op.c_embedding"
+                # or op.name() == "pd_op.c_allreduce_sum"
+                # op.name() == "pd_op.embedding_grad"
+                # or op.name() == "pd_op.c_embedding_grad"
+                # or op.name() == "pd_op.slice"
+                op.name() == "pd_op.c_embedding_grad"
+                or op.name() == "pd_op.embedding_grad"
+                or op.name() == "pd_op.embedding"
+                or op.name() == "pd_op.c_embedding"
+                or op.name() == "pd_op.mean"
+                # or op.name() == "pd_op.concat"
+                # or op.name() == "pd_op.assign_out_"
+                # or op.name() == "builtin.parameter"
+                # op.id() == 1437
+                # op.id() == 1454
+                
+            ):
+                # print("### lzx ### id:",op.id())
+                # for i,operand in enumerate(op.operands_source()):
+                #     if i==7 or i==8:
+                #         continue
+                #     fetch_names += [operand]
+                #     fetch_ops += [operand]
+                # break
+                for result in op.results():
+
+                    fetch_names += [result]
+                    fetch_ops += [result]
+            # if op.name() == "pd_op.all_gather":
+            #     for result in op.results():
+            #         fetch_names += [result]
+            #         fetch_ops += [result]
+
+        print("### lzx ### before _executor.run")
+        print(self.main_program)
+        print("data")
+        print(data)
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
@@ -2106,8 +2207,33 @@ class Engine:
             use_program_cache=use_cache,
             return_numpy=self._strategy.return_numpy,
         )
+        print("### lzx ### over _executor.run")
 
         if self._in_pir_mode:
+            for index in range(1, len(outs)):
+                if len(fetch_ops) > index - 1:
+                    t = fetch_ops[index - 1]
+                    print("### lzx ### op::", t)
+                    # print(dir(fetch_ops[index - 1]))
+                    print("shape:", t.shape)
+                    print("placements:", t.placements)
+                    print("dist_attr:", t.dist_attr)
+                    print("out[index]",outs[index])
+                    array_bytes = outs[index].tobytes()
+                    md5_hash = hashlib.md5(array_bytes).hexdigest()
+
+                    print("out[index] md5",md5_hash)
+                    # m, n = 1000, 1000
+                    # if hasattr(outs[index], 'shape'):
+                    #     if len(outs[index].shape) == 0:
+                    #         continue
+                    #     if outs[index].shape[0] > m:
+                    #         sub_array = outs[index][:m, :n]
+                    #         array_bytes = sub_array.tobytes()
+                    #         md5_hash = hashlib.md5(array_bytes).hexdigest()
+                    #         print("out[index] md5",md5_hash)
+
+                    
             if no_fetch:
                 logs = {"outputs": None, "loss": None}
                 start_idx = 0

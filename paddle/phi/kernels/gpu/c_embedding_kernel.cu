@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/c_embedding_kernel.h"
-
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 namespace phi {
 
@@ -67,18 +68,28 @@ void CEmbeddingKernel(const Context& ctx,
                       int64_t start_index,
                       int64_t vocab_size,
                       DenseTensor* out) {
+  VLOG(0) << "### lzx ### CCCCC CEmbeddingKernel"<<start_index<<" "<<vocab_size;
   size_t N = w.dims()[0];
   size_t D = w.dims()[1];
   size_t K = ids.numel();
 
   const int64_t end_idx = start_index + N;
 
-  auto* table = w.data<T>();
-  auto* output = ctx.template Alloc<T>(out);
+  paddle::funcs::TensorFormatter formatter;
+  formatter.Print(w, "xing", "message");
+  formatter.Print(ids, "xing", "ids");
 
+  auto* table = w.data<T>();
+  // VLOG(0)<<table.size();
+  auto* output = ctx.template Alloc<T>(out);
   auto limit = K * D;
   int blocks = NumBlocks(limit);
   int threads = kNumCUDAThreads;
+  VLOG(0)<<"limit"<<limit;
+  VLOG(0)<<"#### lzx start_idx: "<<start_index<<" "<<end_idx;
+  VLOG(0)<<"N"<<N;
+  VLOG(0)<<"D"<<D;
+  VLOG(0)<<"K"<<K;
 
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32) {
@@ -110,6 +121,7 @@ void CEmbeddingKernel(const Context& ctx,
     PADDLE_THROW(common::errors::Unavailable(
         "GPU c_embedding ids only support int32 or int64."));
   }
+  formatter.Print(*out, "xing", "message1");
 }
 }  // namespace phi
 

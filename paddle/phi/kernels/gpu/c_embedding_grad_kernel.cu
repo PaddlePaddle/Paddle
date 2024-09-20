@@ -22,7 +22,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
-
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 COMMON_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
@@ -45,11 +45,11 @@ __global__ void CEmbeddingGrad(T* table,
                                const int64_t start_idx,
                                const int64_t end_idx,
                                const int64_t limit) {
-  CUDA_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {// 524288
     size_t row = i / columns;
     size_t col = i % columns;
     auto id = ids[row];
-    if (id >= start_idx && id < end_idx) {
+    if (id >= start_idx && id < end_idx) {// index
       auto real_idx = id - start_idx;
       phi::CudaAtomicAdd(&table[real_idx * columns + col], output[i]);
     }
@@ -66,18 +66,21 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
   int N = w_grad->dims()[0];
   int D = w_grad->dims()[1];
   int K = ids.numel();
-
+  VLOG(0) << "CEmbeddingGradKernel:: N " << N;
+  VLOG(0) << "CEmbeddingGradKernel:: D " << D;
+  VLOG(0) << "CEmbeddingGradKernel:: K " << K;
   auto limit = K * D;
   int blocks = NumBlocks(limit);
   int threads = kNumCUDAThreads;
 
-  const T* d_output = out_grad.data<T>();
-  T* d_table = dev_ctx.template Alloc<T>(w_grad);
+  const T* d_output = out_grad.data<T>();//1*128*4096
+  T* d_table = dev_ctx.template Alloc<T>(w_grad);//16000*4096
 
   auto t = EigenVector<T>::Flatten(*w_grad);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
   const auto& index_type = ids.dtype();
+    VLOG(0) << "kk grad embedding :start_index:" <<start_index <<"end_idx:"<< start_index + N;
   if (FLAGS_embedding_deterministic == 1) {
     if (index_type == phi::DataType::INT32) {
       phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, int32_t>(
@@ -103,12 +106,17 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
       return;
     }
   } else {
+    VLOG(0)<<"FLAGS_embedding_deterministic none";
     if (FLAGS_embedding_deterministic > 1) {
       VLOG(2) << "Run grad kernel of embedding with single thread.";
       blocks = 1;
     }
     const int64_t end_idx = start_index + N;
     if (index_type == phi::DataType::INT32) {
+      VLOG(0) << "grad embedding :start_index:" <<start_index <<"end_idx:"<<end_idx;
+      paddle::funcs::TensorFormatter formatter;
+      formatter.Print(*w_grad, "c_embedding_grad", "w_grad");
+      formatter.Print(out_grad, "c_embedding_grad", "out_grad");
       CEmbeddingGrad<T, int32_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
                                                      d_output,
@@ -119,6 +127,9 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                                                      start_index,
                                                      end_idx,
                                                      limit);
+      VLOG(0) << "end grad embedding :start_idx:" <<start_index <<"end_idx:"<<end_idx;
+      formatter.Print(*w_grad, "c_embedding_grad_1", "w_grad");
+
       return;
     } else if (index_type == phi::DataType::INT64) {
       CEmbeddingGrad<T, int64_t>

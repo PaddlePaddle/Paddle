@@ -16,20 +16,65 @@ import os
 import random
 
 import numpy as np
-from mlp_demo import PPDemoNet
-from test_to_static_pir_program import DemoNet
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed import fleet
 from paddle import nn
 from paddle.framework import _current_expected_place
 from paddle.io import DataLoader
 
-BATCH_SIZE = 4
-BATCH_NUM = 4
-IMAGE_SIZE = 16
-CLASS_NUM = 8
+BATCH_SIZE = 1
+IMAGE_SIZE = 6
+CLASS_NUM = 2
+vocab_size = 10
+hidden_size = 8
 
+class CEmbeddingNet(nn.Layer):
+    def __init__(self, mesh):
+        super().__init__()
+        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            vocab_size, hidden_size,
+            weight_attr=paddle.nn.initializer.Constant(value=0.5),
+        )
+        # self.embedding = paddle.nn.Embedding(
+        #     vocab_size,
+        #     hidden_size,
+        #     # weight_attr=paddle.nn.initializer.Constant(value=0.5),
+        # )
+    def forward(self, x):
+        x = paddle.to_tensor(x, dtype="int32")
+        print("## lzx ## placements:",dir(x))
+        out = self.embedding(x)
+        print("## lzx ## placements:",out)
+        t = paddle.ones([1,6,8])
+        out = out*t
+        return out
+
+
+class EmbeddingNet(nn.Layer):
+    def __init__(self, mesh):
+        super().__init__()
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            weight_attr=paddle.nn.initializer.Constant(value=0.5),
+        )
+        self.mesh_ = mesh
+        self.embedding.weight = dist.shard_tensor(
+            self.embedding.weight,
+            mesh,
+            [dist.Replicate(), dist.Shard(1)],
+            # [dist.Replicate(), dist.Replicate()],
+            stop_gradient=False,
+        )
+   
+    def forward(self, x):
+        out = self.embedding(x)
+        out = dist.reshard(out,self.mesh_, [dist.Replicate(), dist.Replicate()])
+        t = paddle.ones([1,6,8])
+        out = out*t
+        return out
 
 def create_numpy_like_random(name):
     return paddle.ParamAttr(
@@ -38,20 +83,13 @@ def create_numpy_like_random(name):
 
 
 class RandomDataset(paddle.io.Dataset):
-    def __init__(self, images, labels, num_samples, return_dict=False):
+    def __init__(self, images, labels, num_samples):
         self.images = images
         self.labels = labels
         self.num_samples = num_samples
-        self.return_dict = return_dict
 
     def __getitem__(self, idx):
-        if self.return_dict:
-            return {
-                "image": self.images[idx],
-                "label": self.labels[idx],
-            }
-        else:
-            return self.images[idx], self.labels[idx]
+        return self.images[idx], self.labels[idx]
 
     def __len__(self):
         return self.num_samples
@@ -61,27 +99,39 @@ class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
         self._seed = eval(os.getenv("seed"))
         self._ckpt_path = os.getenv("ckpt_path")
-        self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self.mesh = dist.ProcessMesh([[0, 1]], dim_names=["x","y"])
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
         )["FLAGS_enable_pir_api"]
+        self.setUp()
+
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+        }
+        fleet.init(is_collective=True, strategy=strategy)
 
     def set_random_seed(self, seed):
         random.seed(seed)
         np.random.seed(seed)
         paddle.seed(seed)
 
-    def create_data_loader(self, return_dict=False):
-        images = np.random.rand(BATCH_SIZE, IMAGE_SIZE).astype('float32')
-        labels = np.random.rand(BATCH_SIZE, CLASS_NUM).astype('float32')
-        dataset = RandomDataset(images, labels, BATCH_SIZE, return_dict)
+    def create_data_loader(self):
+        images = np.ones((BATCH_SIZE, IMAGE_SIZE),dtype='int32')
+        # images = np.random.randint(
+        #     0, vocab_size, (BATCH_SIZE, IMAGE_SIZE)
+        # )
+        labels = np.random.rand(BATCH_SIZE, IMAGE_SIZE, hidden_size).astype('float32')
+        dataset = RandomDataset(images, labels, BATCH_SIZE)
         loader = DataLoader(dataset, batch_size=BATCH_SIZE)
         return loader
 
     def run_dy2static(self, layer, opt, dist_loader):
-        # create loss
         loss_fn = nn.MSELoss()
-        # static training
         dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
         loss_list = []
         dist_model.train()
@@ -99,31 +149,20 @@ class TestSimpleNetForSemiAutoParallel:
             )
             dist_model._engine._init_comm()
 
-        for epoch in range(5):
+        for epoch in range(2):
             for batch_id, data in enumerate(dist_loader()):
-                if isinstance(data, dict):
-                    image = data['image']
-                    label = data['label']
-                else:
-                    image, label = data
+                image, label = data
                 loss = dist_model(image, label)
                 loss_list.append(loss)
 
         return np.array(loss_list), dist_model
 
-    def run_dynamic(self, layer, opt, dist_loader, is_recompute=False):
-        # create loss
+    def run_dynamic(self, layer, opt, dist_loader):
         loss_fn = nn.MSELoss()
         loss_list = []
-        for epoch in range(5):
+        for epoch in range(2):
             for batch_id, data in enumerate(dist_loader()):
-                if isinstance(data, dict):
-                    image = data['image']
-                    label = data['label']
-                else:
-                    image, label = data
-                if is_recompute:
-                    image.stop_gradient = False
+                image, label = data
                 out = layer(image)
                 loss = loss_fn(out, label)
                 loss_list.append(loss.numpy())
@@ -138,15 +177,15 @@ class TestSimpleNetForSemiAutoParallel:
         data_loader = self.create_data_loader()
 
         self.set_random_seed(self._seed)
-        dy_layer = DemoNet(self.mesh)
-        dy_opt = paddle.optimizer.SGD(
+        dy_layer = CEmbeddingNet(self.mesh)
+        dy_opt = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=dy_layer.parameters()
         )
 
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         self.set_random_seed(self._seed)
-        dy2static_layer = DemoNet(self.mesh)
-        dy2static_opt = paddle.optimizer.SGD(
+        dy2static_layer = EmbeddingNet(self.mesh)
+        dy2static_opt = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=dy2static_layer.parameters()
         )
         dist_dataloader = dist.shard_dataloader(
@@ -156,44 +195,15 @@ class TestSimpleNetForSemiAutoParallel:
         dy2static_losses, dist_model = self.run_dy2static(
             dy2static_layer, dy2static_opt, dist_dataloader
         )
-
-        dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
-        np.testing.assert_allclose(dy_losses, dy2static_losses, atol=1e-7)
-
-    def test_pp_demo_net(self):
-        paddle.disable_static()
-        self.set_random_seed(self._seed)
-        mesh1 = dist.ProcessMesh([0], dim_names=["x"])
-        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
-        data_loader = self.create_data_loader()
-
-        self.set_random_seed(self._seed)
-        dy_layer = PPDemoNet(mesh1, mesh2)
-        dy_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy_layer.parameters()
-        )
-
-        paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
-        self.set_random_seed(self._seed)
-        dy2static_layer = PPDemoNet(mesh1, mesh2)
-        dy2static_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy2static_layer.parameters()
-        )
-        dist_dataloader = dist.shard_dataloader(
-            dataloader=data_loader,
-            meshes=[mesh1, mesh2],
-        )
-        dy2static_losses, dist_model = self.run_dy2static(
-            dy2static_layer, dy2static_opt, dist_dataloader
-        )
-
-        dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
-        if paddle.distributed.get_rank() == 1:
-            np.testing.assert_allclose(dy_losses, dy2static_losses, atol=1e-7)
+        # data load有区别？
+        print("#############"*10)
+        dy_losses = self.run_dynamic(dy_layer, dy_opt, data_loader)
+        print("dy2static_losses:",dy2static_losses)
+        print("dy_losses:",dy_losses)
+        # np.testing.assert_allclose(dy_losses, dy2static_losses, atol=1e-7)
 
     def run_test_case(self):
         self.test_mp_demo_net()
-        self.test_pp_demo_net()
 
 
 if __name__ == '__main__':

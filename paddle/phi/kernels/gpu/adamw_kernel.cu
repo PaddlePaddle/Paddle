@@ -29,6 +29,7 @@
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 namespace phi {
 template <typename T, typename TG, typename MT>
@@ -171,8 +172,17 @@ void AdamwDenseKernel(const Context& dev_ctx,
 
   const auto grad_type = grad.dtype();
 
-  VLOG(4) << "multi_precision: " << multi_precision;
-  VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+  VLOG(0) << "lzx debug multi_precision: " << multi_precision;
+  VLOG(0) << "lzx debug use_global_beta_pow:" << use_global_beta_pow;
+  paddle::funcs::TensorFormatter formatter;
+  formatter.Print(param, "adamw", "param");
+  formatter.Print(grad, "adamw", "grad");
+  formatter.Print(learning_rate, "adamw", "learning_rate");
+  formatter.Print(moment1, "adamw", "moment1");
+  formatter.Print(moment2, "adamw", "moment2");
+  formatter.Print(beta1_pow, "adamw", "beta1_pow");
+  formatter.Print(beta2_pow, "adamw", "beta2_pow");
+
 
   MPDType coeff_ = static_cast<MPDType>(coeff);
   MPDType lr_ratio_ = static_cast<MPDType>(lr_ratio);
@@ -192,7 +202,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
   // skip_update=true, just copy input to output, and TensorCopy will call
   // mutable_data
   if (skip_update_) {
-    VLOG(4) << "Adamw skip update";
+    VLOG(0) << "Adamw skip update";
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
@@ -211,9 +221,9 @@ void AdamwDenseKernel(const Context& dev_ctx,
   MPDType beta1_ = beta1.to<MPDType>();
   MPDType beta2_ = beta2.to<MPDType>();
   MPDType epsilon_ = epsilon.to<MPDType>();
-  VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel()
+  VLOG(0) << "beta1_pow.numel() : " << beta1_pow.numel()
           << "beta2_pow.numel() : " << beta2_pow.numel();
-  VLOG(3) << "param.numel(): " << param.numel();
+  VLOG(0) << "lzx debug param.numel(): " << param.numel();
   PADDLE_ENFORCE_EQ(
       beta1_pow_out->numel(),
       1,
@@ -343,6 +353,15 @@ void AdamwDenseKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<MPDType>(beta2_pow_out));
     }
   }
+  formatter.Print(*param_out, "adamw", "param_out");
+  // formatter.Print(grad, "adamw", "grad");
+  // formatter.Print(learning_rate, "adamw", "learning_rate");
+  formatter.Print(*moment1_out, "adamw", "moment1_out");
+  formatter.Print(*moment2_out, "adamw", "moment2_out");
+  formatter.Print(*beta1_pow_out, "adamw", "beta1_pow_out");
+  formatter.Print(*beta2_pow_out, "adamw", "beta2_pow_out");
+  // formatter.Print(*master_param_outs, "adamw", "master_param_outs");
+
 }
 
 }  // namespace phi

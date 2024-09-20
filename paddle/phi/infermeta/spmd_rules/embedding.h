@@ -55,5 +55,11 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& out_grad,
                                 int64_t padding_idx,
                                 bool sparse = false);
+
+SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
+                                 const DistMetaTensor& x,
+                                 const DistMetaTensor& out_grad,
+                                 int64_t padding_idx,
+                                 bool sparse = false);
 }  // namespace distributed
 }  // namespace phi
