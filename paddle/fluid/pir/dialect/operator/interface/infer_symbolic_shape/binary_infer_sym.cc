@@ -2066,7 +2066,7 @@ bool LogLossOpInferSymbolicShape(
           "The rank of input and label should both be 2, but received: "
           "input: %d, label: %d\n",
           input_shape.size(),
-          label_shape.size()))
+          label_shape.size()));
 
   for (int i = 0; i < 2; i++) {
     infer_context->AddEqualCstr(input_shape[i], label_shape[i]);
