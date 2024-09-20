@@ -205,8 +205,8 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
                     amsgrad=False,  # Currently, xpu NOT support amsgrad.
                 )
 
-            outs1 = run_op(True, "xpu")
-            # outs2 = run_op(True, "cpu")
+            # outs1 = run_op(True, "xpu")
+            outs2 = run_op(True, "cpu")
             # outs3 = run_op(False, "xpu")
             # outs4 = run_op(False, "cpu")
 
