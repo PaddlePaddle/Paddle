@@ -50,6 +50,7 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'grad_fn',
         'gradient',
         'inplace_version',
+        'is_coalesced',
         'is_dense',
         'is_dist',
         'is_leaf',
