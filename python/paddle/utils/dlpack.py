@@ -25,7 +25,6 @@ from ..base.data_feeder import check_type
 from ..base.framework import in_dygraph_mode
 
 if TYPE_CHECKING:
-
     from typing_extensions import CapsuleType
 
     from paddle import Tensor
@@ -62,9 +61,9 @@ def to_dlpack(x: Tensor) -> CapsuleType:
     Encodes a tensor to DLPack.
 
     Args:
-        x (Tensor): The input tensor, and the data type can be `bool`, `float16`, `float32`,
-                    `float64`, `int8`, `int16`, `int32`, `int64`, `uint8`, `complex64`,
-                    `complex128`.
+        x (Tensor): The input tensor, and the data type can be ``bool``, ``float16``, ``float32``,
+            ``float64``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64``,
+            ``complex128``.
 
     Returns:
         dltensor, and the data type is PyCapsule.
@@ -118,7 +117,7 @@ def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
 
     Args:
         dlpack (SupportDLPack | CapsuleType): A PyCapsule object with the dltensor,
-            or that implementes '__dlpack__' and '__dlpack_device__' methods.
+            or that implements '__dlpack__' and '__dlpack_device__' methods.
 
             If `dlpack` is a tensor (or ndarray) object, it must support
             the `__dlpack__` protocol (i.e., have a `dlpack.__dlpack__`
@@ -127,9 +126,9 @@ def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
             `to_dlpack` function or method.
 
     Returns:
-        out (Tensor): A tensor decoded from DLPack. One thing to be noted, if we get
-            an input dltensor with data type as `bool`, we return the decoded
-            tensor as `uint8`.
+        out (Tensor): A tensor decoded from DLPack. The data type of returned tensor
+            can be one of: ``int32``, ``int64``, ``float16``, ``float32`` and ``float64``.
+            The device of returned tensor can be one of: ``CPU``, ``CUDAPlace``, ``CUDAPinnedPlace``.
 
     Examples:
         .. code-block:: python
