@@ -832,6 +832,12 @@ void TestKernelAdam() {
               << ref_mom2_out.data()[3] << std::endl;
     std::cout << ">>>>>>>>>> TestKernelAdam ref_param_out.data()[3] "
               << ref_param_out.data()[3] << std::endl;
+    std::cout << ">>>>>>>>>> TestKernelAdam jit_mom1_out.data()[3] "
+              << jit_mom1_out.data()[3] << std::endl;
+    std::cout << ">>>>>>>>>> TestKernelAdam jit_mom2_out.data()[3] "
+              << jit_mom2_out.data()[3] << std::endl;
+    std::cout << ">>>>>>>>>> TestKernelAdam jit_param_out.data()[3] "
+              << jit_param_out.data()[3] << std::endl;
 
     ExpectEQ<T>(ref_mom1_out.data(), jit_mom1_out.data(), numel);
     ExpectEQ<T>(ref_mom2_out.data(), jit_mom2_out.data(), numel);
