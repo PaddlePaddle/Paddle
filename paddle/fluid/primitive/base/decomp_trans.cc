@@ -54,8 +54,7 @@ std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
                                                            "pd_op.batch_norm",
                                                            "pd_op.batch_norm_",
                                                            "pd_op.bmm",
-                                                           "pd_op.flatten",
-                                                           "pd_op.one_hot"};
+                                                           "pd_op.flatten"};
 
 namespace {
 std::set<std::string> StringSplit(const std::string& str) {

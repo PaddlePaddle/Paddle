@@ -989,14 +989,25 @@ class Optimizer:
             device = self._get_device_for_param(param.name)
 
         if in_pir_mode():
-            var = paddle.pir.core.create_persistable_value(
-                dtype or param.dtype,
-                shape,
-                var_name,
-                initializer=paddle.nn.initializer.Constant(
-                    value=float(fill_value)
-                ),
-            )
+            if 'beta' not in var_name:
+                var = paddle.pir.core.create_persistable_value(
+                    dtype or param.dtype,
+                    shape,
+                    var_name,
+                    initializer=paddle.nn.initializer.Constant(
+                        value=float(fill_value)
+                    ),
+                    dist_attr=param.dist_attr(),
+                )
+            else:
+                var = paddle.pir.core.create_persistable_value(
+                    dtype or param.dtype,
+                    shape,
+                    var_name,
+                    initializer=paddle.nn.initializer.Constant(
+                        value=float(fill_value)
+                    ),
+                )
         else:
             if self.helper is None:
                 self.helper = LayerHelper(self.__class__.__name__)
