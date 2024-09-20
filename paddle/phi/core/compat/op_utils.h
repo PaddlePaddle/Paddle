@@ -27,49 +27,6 @@ limitations under the License. */
 
 namespace phi {
 
-const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
-
-/**
- * Some fluid ops are no longer used under the corresponding official API
- * system of 2.0. These names need to correspond to the official API names
- * after 2.0, and can no longer be occupied by the previously abandoned ops.
- * They are marked here uniformly.
- */
-static const std::unordered_set<std::string> deprecated_op_names(
-    {"diag",
-     "flatten",
-     "flatten_grad",
-     "isinf",
-     "isnan",
-     "unsqueeze",
-     "unsqueeze_grad",
-     "squeeze",
-     "squeeze_grad",
-     "isfinite",
-     "fill",
-     "max",
-     "max_grad",
-     "min",
-     "min_grad",
-     "prod",
-     "prod_grad",
-     "any",
-     "all",
-     "reshape",
-     "reshape_grad",
-     "expand_as",
-     "expand_as_grad",
-     "one_hot",
-     // If remove top_k in PHI, uncomment the lines.
-     // "top_k",
-     // "top_k_grad",
-     "linear_interp",
-     "linear_interp_grad",
-     "trilinear_interp",
-     "trilinear_interp_grad",
-     "bicubic_interp",
-     "bicubic_interp_grad"});
-
 class DefaultKernelSignatureMap {
  public:
   static DefaultKernelSignatureMap& Instance();
@@ -150,9 +107,6 @@ class OpUtilsMap {
   }
 
   const std::string& GetBaseKernelName(const std::string& op_type) const {
-    if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
-      return deprecated_kernel_name;
-    }
     auto it = fluid_op_to_phi_kernel_.find(op_type);
     if (it == fluid_op_to_phi_kernel_.end()) {
       return op_type;
