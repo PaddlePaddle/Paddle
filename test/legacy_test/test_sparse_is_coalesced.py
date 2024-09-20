@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -318,6 +318,101 @@ class TestSparseIsCoalescedAPIStatic(unittest.TestCase):
                 )
                 self.assertEqual(fetch[0], excepted[0])
                 self.assertEqual(fetch[1], excepted[1])
+
+
+class TestSparseIsCoalescedAPIStatic2(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "float64"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+class TestSparseIsCoalescedAPIStatic3(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "int8"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+class TestSparseIsCoalescedAPIStatic4(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "int16"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+class TestSparseIsCoalescedAPIStatic5(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "int32"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+class TestSparseIsCoalescedAPIStatic6(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "int64"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+class TestSparseIsCoalescedAPIStatic7(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "uint8"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+class TestSparseIsCoalescedAPIStatic8(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "bool"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 0.0, 0.0, 1.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+class TestSparseIsCoalescedAPIStatic9(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "complex64"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+class TestSparseIsCoalescedAPIStatic10(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "complex128"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the float16",
+)
+class TestSparseIsCoalescedFP16APIStatic(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "float16"
+        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
+        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
+        self.coo_shape = [2, 3]
+        self.other_tensor_arr = np.array([1, 2, 3, 4])
 
 
 if __name__ == "__main__":
