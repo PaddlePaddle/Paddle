@@ -3003,31 +3003,46 @@ void AddShadowFeedOpForDataOrFeed(
   }
 }
 
-// shadow_feed(x) + memcpy_d2h(x, y) + any_op(y) -> shadow_feed(x,
-// dst_place=cpu_place) + any_op(x) shadow_feed(x) + memcpy_h2d(x, y) +
-// any_op(y) -> shadow_feed(x, dst_place=gpu_place) + any_op(x)
+/*
+   shadow_feed(x), y = memcpy_d2h(x), any_op(y)
+=> shadow_feed(x, dst_place=cpu_place), any_op(x)
+
+   shadow_feed(x), y = memcpy_h2d(x), any_op(y)
+=> shadow_feed(x, dst_place=gpu_place), any_op(x)
+*/
 void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
                                           pir::IrContext* ctx) {
   for (auto it = block->rbegin(); it != block->rend(); ++it) {
-    if (it->isa<ShadowFeedOp>() || it->isa<ShadowFeedTensorsOp>()) {
-      VLOG(6) << *it;
+    if (it->isa<PhiKernelOp>() &&
+        (it->dyn_cast<PhiKernelOp>().op_name() == "pd_op.shadow_feed" ||
+         it->dyn_cast<PhiKernelOp>().op_name() ==
+             "pd_op.shadow_feed_tensors")) {
       pir::Value shadow_value = it->result(0);
       if (shadow_value.use_count() == 1) {
         pir::Operation* next_op = shadow_value.first_use().owner();
+        bool is_memcpy_d2h =
+            next_op->isa<PhiKernelOp>() &&
+            next_op->dyn_cast<PhiKernelOp>().op_name() == "pd_op.memcpy_d2h";
+        bool is_memcpy_h2d =
+            next_op->isa<PhiKernelOp>() &&
+            next_op->dyn_cast<PhiKernelOp>().op_name() == "pd_op.memcpy_h2d";
 
-        if (next_op->isa<MemcpyD2hOp>() || next_op->isa<MemcpyH2dOp>()) {
+        if (is_memcpy_d2h || is_memcpy_h2d) {
           VLOG(6) << "Remove redundant memcpy op after shadow_feed";
           VLOG(6) << *it;
           VLOG(6) << next_op;
+          VLOG(6) << "==>";
 
           // remove memcpy op
-          next_op->operand(0).source().ReplaceAllUsesWith(shadow_value);
+          next_op->result(0).ReplaceAllUsesWith(shadow_value);
           block->erase(next_op->operator pir::Block::ConstIterator());
 
-          // set dst_place_type for shadow_feed
-          int dst_place_type = next_op->isa<MemcpyD2hOp>() ? 0 : 1;
+          // set dst_place_type for shadow_feed, 0 for cpu_place, 1 for
+          // gpu_place
+          int dst_place_type = is_memcpy_d2h ? 0 : 1;
           it->set_attribute("dst_place_type",
                             pir::Int32Attribute::get(ctx, dst_place_type));
+          VLOG(6) << *it;
         }
       }
     }
