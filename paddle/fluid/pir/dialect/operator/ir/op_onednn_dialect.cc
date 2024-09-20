@@ -129,7 +129,8 @@ pir::Attribute OneDNNOperatorDialect::ParseAttribute(
   }
 }
 
-pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(pir::Operation *op) const {
+pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(
+    const pir::Operation &op) const {
   if (auto if_op = op->dyn_cast<IfOp>()) {
     return [](pir::Operation *op, pir::IrPrinter &printer) {
       auto if_op = op->dyn_cast<IfOp>();

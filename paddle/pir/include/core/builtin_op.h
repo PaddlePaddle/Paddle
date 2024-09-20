@@ -244,7 +244,7 @@ class IR_API ConstantTensorOp : public ConstantOp {
  public:
   using ConstantOp::ConstantOp;
 
-  static ConstantTensorOp dyn_cast(Operation *op);
+  static ConstantTensorOp dyn_cast(const Operation *op);
   static bool classof(const Operation *op);
 
   static void Build(Builder &builder,             // NOLINT

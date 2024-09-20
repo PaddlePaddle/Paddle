@@ -20,7 +20,7 @@ namespace paddle {
 namespace dialect {
 class ForwardOnlyTrait : public pir::OpTraitBase<ForwardOnlyTrait> {
  public:
-  explicit ForwardOnlyTrait(pir::Operation *op)
+  explicit ForwardOnlyTrait(const pir::Operation *op)
       : pir::OpTraitBase<ForwardOnlyTrait>(op) {}
 };
 

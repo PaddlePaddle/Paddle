@@ -250,7 +250,7 @@ void StackCreateOp::Print(IrPrinter &printer) {  // NOLINT
     printer.AddValueAlias(inlet(), "%inlet_" + std::to_string(index));
     printer.AddValueAlias(outlet(), "%outlet_" + std::to_string(index));
   }
-  printer.PrintGeneralOperation(*this);
+  printer.PrintGeneralOperation(**this);
 }
 
 }  // namespace pir

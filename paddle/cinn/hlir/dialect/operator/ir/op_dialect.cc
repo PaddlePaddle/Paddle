@@ -91,7 +91,7 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
   }
 }
 
-pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation *op) const {
+pir::OpPrintFn OperatorDialect::PrintOperation(const pir::Operation &op) const {
   if (auto group_op = op->dyn_cast<GroupOp>()) {
     return [](pir::Operation *op, pir::IrPrinter &printer) {
       auto group_op = op->dyn_cast<GroupOp>();

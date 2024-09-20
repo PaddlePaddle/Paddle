@@ -46,7 +46,7 @@ class CacheGradOpSymbolicShapeInterface
   };
 
   /// Constructor
-  CacheGradOpSymbolicShapeInterface(pir::Operation *op, Concept *impl)
+  CacheGradOpSymbolicShapeInterface(const pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<CacheGradOpSymbolicShapeInterface>(op),
         impl_(impl) {}
 

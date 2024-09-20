@@ -28,7 +28,7 @@ namespace paddle {
 namespace dialect {
 class CustomVjpTrait : public pir::OpTraitBase<CustomVjpTrait> {
  public:
-  explicit CustomVjpTrait(pir::Operation *op)
+  explicit CustomVjpTrait(const pir::Operation *op)
       : pir::OpTraitBase<CustomVjpTrait>(op) {}
 };
 

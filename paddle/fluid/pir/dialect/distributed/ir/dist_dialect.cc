@@ -119,7 +119,7 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
   }
 }
 
-pir::OpPrintFn DistDialect::PrintOperation(pir::Operation *op) const {
+pir::OpPrintFn DistDialect::PrintOperation(const pir::Operation &op) const {
   return nullptr;
 }
 

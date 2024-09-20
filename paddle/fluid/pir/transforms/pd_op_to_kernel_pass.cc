@@ -3010,11 +3010,16 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
                                           pir::IrContext* ctx) {
   for (auto it = block->rbegin(); it != block->rend(); ++it) {
     if (it->isa<ShadowFeedOp>() || it->isa<ShadowFeedTensorsOp>()) {
+      VLOG(6) << *it;
       pir::Value shadow_value = it->result(0);
       if (shadow_value.use_count() == 1) {
         pir::Operation* next_op = shadow_value.first_use().owner();
 
         if (next_op->isa<MemcpyD2hOp>() || next_op->isa<MemcpyH2dOp>()) {
+          VLOG(6) << "Remove redundant memcpy op after shadow_feed";
+          VLOG(6) << *it;
+          VLOG(6) << next_op;
+
           // remove memcpy op
           next_op->operand(0).source().ReplaceAllUsesWith(shadow_value);
           block->erase(next_op->operator pir::Block::ConstIterator());

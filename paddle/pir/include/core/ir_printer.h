@@ -49,26 +49,26 @@ class IR_API IrPrinter : public BasicIrPrinter {
   void PrintProgram(const Program* program);
 
   /// @brief dispatch to custom printer function or PrintGeneralOperation
-  virtual void PrintOperation(Operation* op);
+  virtual void PrintOperation(const Operation& op);
   /// @brief print operation itself without its regions
-  void PrintOperationWithNoRegion(Operation* op);
+  void PrintOperationWithNoRegion(const Operation& op);
   /// @brief print operation and its regions
-  void PrintGeneralOperation(Operation* op);
+  void PrintGeneralOperation(const Operation& op);
 
   void PrintRegion(const Region& Region);
   void PrintBlock(const Block& block);
 
   virtual void PrintValue(Value v);
 
-  void PrintOpResult(Operation* op);
+  void PrintOpResult(const Operation& op);
 
-  void PrintAttributeMap(Operation* op);
+  void PrintAttributeMap(const Operation& op);
 
-  void PrintOpOperands(Operation* op);
+  void PrintOpOperands(const Operation& op);
 
-  void PrintOperandsType(Operation* op);
+  void PrintOperandsType(const Operation& op);
 
-  void PrintOpReturnType(Operation* op);
+  void PrintOpReturnType(const Operation& op);
 
   void AddValueAlias(Value value, const std::string& alias);
 
@@ -90,7 +90,7 @@ using TypePrintHook =
 using AttributePrintHook =
     std::function<void(Attribute attr, IrPrinter& printer)>;  // NOLINT
 using OpPrintHook =
-    std::function<void(Operation* op, IrPrinter& printer)>;  // NOLINT
+    std::function<void(const Operation& op, IrPrinter& printer)>;  // NOLINT
 
 struct IR_API PrintHooks {
   ValuePrintHook value_print_hook{nullptr};

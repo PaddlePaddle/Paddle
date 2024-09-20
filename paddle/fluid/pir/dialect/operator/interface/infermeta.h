@@ -47,7 +47,7 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
   };
 
   /// Constructor
-  InferMetaInterface(pir::Operation *op, Concept *impl)
+  InferMetaInterface(const pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<InferMetaInterface>(op), impl_(impl) {}
 
   void InferMeta(phi::InferMetaContext *infer_meta) {

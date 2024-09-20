@@ -36,10 +36,11 @@ void ControlFlowDialect::PrintType(pir::Type type, std::ostream& os) const {
   }
 }
 
-pir::OpPrintFn ControlFlowDialect::PrintOperation(pir::Operation* op) const {
-  if (auto create_op = op->dyn_cast<StackCreateOp>()) {
-    return [](pir::Operation* op, pir::IrPrinter& printer) {
-      auto create_op = op->dyn_cast<StackCreateOp>();
+pir::OpPrintFn ControlFlowDialect::PrintOperation(
+    const pir::Operation& op) const {
+  if (auto create_op = op.dyn_cast<StackCreateOp>()) {
+    return [](const pir::Operation& op, pir::IrPrinter& printer) {
+      auto create_op = op.dyn_cast<StackCreateOp>();
       create_op.Print(printer);
     };
   }

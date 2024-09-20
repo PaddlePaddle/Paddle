@@ -43,7 +43,7 @@ class OpYamlInfoInterface : public pir::OpInterfaceBase<OpYamlInfoInterface> {
   };
 
   /// Constructor
-  OpYamlInfoInterface(pir::Operation* op, Concept* impl)
+  OpYamlInfoInterface(const pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<OpYamlInfoInterface>(op), impl_(impl) {}
 
   OpInfoTuple GetOpInfo() { return impl_->get_op_info_(operation_->name()); }
