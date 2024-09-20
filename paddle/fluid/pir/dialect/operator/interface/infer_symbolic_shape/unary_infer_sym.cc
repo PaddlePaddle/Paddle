@@ -1779,6 +1779,7 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
         "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
         "support FullIntArrayOp's result or constant DimExpr now."));
   }
+  return false;
 }
 
 bool ModeOpInferSymbolicShape(pir::Operation *op,
@@ -2003,6 +2004,7 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
         "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
         "support FullIntArrayOp's result or constant DimExpr now."));
   }
+  return false;
 }
 
 bool MeanAllOpInferSymbolicShape(
@@ -2759,6 +2761,7 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
         "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
         "support FullIntArrayOp's result or constant DimExpr now."));
   }
+  return false;
 }
 
 bool QrOpInferSymbolicShape(pir::Operation *op,
@@ -3334,7 +3337,7 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
         "support FullIntArrayOp's result or constant DimExpr now."));
   }
 
-  return true;
+  return false;
 }
 
 bool SvdOpInferSymbolicShape(pir::Operation *op,
