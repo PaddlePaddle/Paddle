@@ -16,6 +16,7 @@ from __future__ import annotations
 import functools
 import math
 import os
+from collections import deque
 from typing import TYPE_CHECKING
 
 import paddle
@@ -149,7 +150,6 @@ COMPUTE_INTENSIVE_OPS: list[str] = [
     "pd_op.c_reduce_sum_",
 ]
 
-
 AGGRESSIVE_RECOMPUTATION = False
 # Restricts the amount of computation recompute can do.
 MAX_DIST_FROM_BW = 3
@@ -159,6 +159,133 @@ def DebugPrint(*args):
     flag = os.getenv("FLAGS_print_auto_recompute_debug")
     if flag and str(flag).lower() in ("1", "true"):
         print(*args)
+
+
+class JudgeFusionLoop:
+    def __init__(self, program, unrecomputable_ops):
+        self.ops = program.global_block().ops
+        self.operand_value_set = set()
+        self.result_value_set = set()
+        self.unrecomputable_ops = unrecomputable_ops
+        self.has_unfusible_on_path_map = self._set_has_unfusible_on_path_map()
+
+    def _set_has_unfusible_on_path_map(self):
+        def _get_used_external_value(op):
+            defined_values = set()
+            used_values = []
+            _get_used_external_value_impl(defined_values, used_values, op)
+            return used_values
+
+        def _get_used_external_value_impl(defined_values, used_values, op):
+            for operand in op.operands_source():
+                if operand not in defined_values:
+                    used_values.append(operand)
+                    defined_values.add(operand)
+            for block in op.blocks():
+                for value in block.args():
+                    defined_values.add(value)
+                for _, value in block.kwargs():
+                    defined_values.add(value)
+            for block in op.blocks():
+                for inner_op in block.ops():
+                    _get_used_external_value_impl(
+                        defined_values, used_values, inner_op
+                    )
+            for result_value in op.results():
+                defined_values.add(result_value)
+
+        def _get_producer_ops(op):
+            producers = set()
+            for operand in _get_used_external_value(op):
+                if operand.get_defining_op() is None:
+                    continue
+                source_op = operand.get_defining_op()
+                if source_op.get_parent_block() == op.get_parent_block():
+                    producers.add(source_op)
+                    self.operand_value_set.add(operand)
+            return producers
+
+        def _get_consumer_ops(op):
+            consumers = set()
+            for result in op.results():
+                for parent_op in result.all_used_ops():
+                    while parent_op is not None:
+                        if (
+                            parent_op.get_parent_block()
+                            == op.get_parent_block()
+                        ):
+                            consumers.add(parent_op)
+                            self.result_value_set.add(result)
+                            break
+                        parent_op = (
+                            parent_op.get_parent_block().parent_op
+                            if parent_op.get_parent_block() is not None
+                            else None
+                        )
+            return consumers
+
+        def _get_producer_ops_recursivly(root):
+            visited = set()
+            queue = deque()
+            result = set()
+            queue.append(root)
+            visited.add(root)
+            while queue:
+                cur = queue.popleft()
+                result.add(cur)
+                for new_op in _get_producer_ops(cur):
+                    if new_op in visited:
+                        continue
+                    visited.add(new_op)
+                    queue.append(new_op)
+            return result
+
+        def _get_consumer_ops_recursivly(root):
+            visited = set()
+            queue = deque()
+            result = set()
+            queue.append(root)
+            visited.add(root)
+            while queue:
+                cur = queue.popleft()
+                result.add(cur)
+                for new_op in _get_consumer_ops(cur):
+                    if new_op in visited:
+                        continue
+                    visited.add(new_op)
+                    queue.append(new_op)
+            return result
+
+        has_unfusible_on_path_map = {
+            op1: {op2: False for op2 in self.ops} for op1 in self.ops
+        }
+        for op in self.ops:
+            if op.name() in self.unrecomputable_ops:
+                upstream_set = _get_producer_ops_recursivly(op)
+                downstream_set = _get_consumer_ops_recursivly(op)
+
+                for upstream_op in upstream_set:
+                    for downstream_op in downstream_set:
+                        has_unfusible_on_path_map[upstream_op][
+                            downstream_op
+                        ] = True
+                        has_unfusible_on_path_map[downstream_op][
+                            upstream_op
+                        ] = True
+        return has_unfusible_on_path_map
+
+    def _has_unfusible_op_on_any_path(self, op1, op2):
+        return (
+            self.has_unfusible_on_path_map[op1][op2]
+            if op1 is not None and op2 is not None
+            else False
+        )
+
+    def _get_operand_value_set(self):
+        return backward_utils.ValueSet(self.operand_value_set)
+
+    def _get_result_value_set(self):
+        return backward_utils.ValueSet(self.result_value_set)
 
 
 def auto_recompute(
@@ -332,6 +459,7 @@ def auto_recompute(
         mem_sz = int(
             mem_sz * (1.1 ** max(min(dist_from_bw[value_node], 100), 1))
         )
+
         if _is_materialized(value_node, placeholder_value_nodes):
             return mem_sz
         else:
@@ -366,6 +494,10 @@ def auto_recompute(
     inputs = backward_utils.ValueSet(inputs)
     value_id_dict = {}
     nx_graph = nx.DiGraph()
+
+    judge_fusion_loop = JudgeFusionLoop(program, unrecomputable_ops)
+    forward_ops = set(program.global_block().ops[: fwd_op_end_idx + 1])
+
     for value_node in (
         required_fw_value_nodes
         | required_bw_value_nodes
@@ -448,6 +580,33 @@ def auto_recompute(
             nx_graph.add_edge(
                 value_node.id + "_out", user.id + "_in", capacity=math.inf
             )
+        for user in value_node.all_used_ops():
+            if user in forward_ops:
+                if judge_fusion_loop._has_unfusible_op_on_any_path(
+                    value_node.get_defining_op(), user
+                ):
+                    DebugPrint(
+                        "add edge link from: ",
+                        " source ",
+                        " -> ",
+                        value_node.id,
+                        "(inf)",
+                    )
+                    nx_graph.add_edge(
+                        "source", value_node.id + "_in", capacity=math.inf
+                    )
+
+                    DebugPrint(
+                        "add edge link from: ",
+                        value_node.id,
+                        " -> ",
+                        " sink ",
+                        "(inf)",
+                    )
+
+                    nx_graph.add_edge(
+                        value_node.id + "_out", "sink", capacity=math.inf
+                    )
 
     # 1.5  find saved values by minimum cut.
     cut_value, partition = nx.minimum_cut(nx_graph, "source", "sink")

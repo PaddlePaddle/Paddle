@@ -37,7 +37,7 @@ def getFNDAFile(rootPath, test):
     os.system(f'touch {fn_filename}')
     try:
         f = open(filename)
-        print(f"oepn {filename} successfully")
+        print(f"open {filename} successfully")
     except FileNotFoundError:
         print(f"{filename} is not found.")
         return

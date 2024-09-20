@@ -169,6 +169,20 @@ class TestDLPack(unittest.TestCase):
 
                     self.assertEqual(x.data_ptr(), y.data_ptr())
 
+    def test_to_dlpack_strides_consistency(self):
+        with dygraph_guard():
+            places = [base.CPUPlace()]
+            if paddle.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                for _ in range(4):
+                    x = paddle.rand([10, 10]).to(device=place)
+                    x_strided = x[::2, ::2]
+                    dlpack = paddle.utils.dlpack.to_dlpack(x_strided)
+                    y = paddle.utils.dlpack.from_dlpack(dlpack)
+
+                    self.assertEqual(x_strided.strides, y.strides)
+
     def test_to_dlpack_from_ext_tensor(self):
         with dygraph_guard():
             for _ in range(4):
