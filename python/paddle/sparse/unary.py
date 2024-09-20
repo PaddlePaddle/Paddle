@@ -126,7 +126,7 @@ def asin(x: Tensor, name: str | None = None) -> Tensor:
         out = asin(x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -311,7 +311,7 @@ def atan(x: Tensor, name: str | None = None) -> Tensor:
         out = atan(x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -381,7 +381,7 @@ def asinh(x: Tensor, name: str | None = None) -> Tensor:
         out = asinh(x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -451,7 +451,7 @@ def tanh(x: Tensor, name: str | None = None) -> Tensor:
         out = tanh(x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -486,7 +486,7 @@ def square(x: Tensor, name: str | None = None) -> Tensor:
         out = square(x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -556,7 +556,7 @@ def log1p(x: Tensor, name: str | None = None) -> Tensor:
         out = ln(1+x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -853,7 +853,7 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
         out = exp(x) - 1
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
