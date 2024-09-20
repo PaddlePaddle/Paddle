@@ -717,6 +717,8 @@ void TestKernelAdam() {
   T eps = epsilon * sqrt(1 - beta2_pow);
   bool amsgrad = false;
 
+  std::cout << ">>>>>>>>>> TestKernelAdam init ..." << std::endl;
+
   std::vector<T> param(numel);
   std::vector<T> grad(numel);
   std::vector<T> mom1(numel);
@@ -728,15 +730,22 @@ void TestKernelAdam() {
   std::vector<T> mom2_out(mom2.size());
   std::vector<T> mom2_max_out(mom2_max.size());
 
+  std::cout << ">>>>>>>>>> TestKernelAdam vars ..." << std::endl;
+
   RandomVec<T>(numel, param.data(), 0.5f);
   RandomVec<T>(numel, grad.data(), 0.5f);
   RandomVec<T>(numel, mom1.data(), 0.5f);
   RandomVec<T>(numel, mom2.data(), 0.5f);
   ZeroVec<T>(numel, mom2_max.data());
 
+  std::cout << ">>>>>>>>>> TestKernelAdam RandomVec ..." << std::endl;
+
   auto ref = jit::GetReferFunc<KernelTuple>();
   EXPECT_TRUE(ref != nullptr);
   jit::adam_attr_t attr(beta1, beta2);
+
+  std::cout << ">>>>>>>>>> TestKernelAdam jit::adam_attr_t ..." << std::endl;
+
   ref(beta1,
       beta2,
       -learning_rate,
@@ -752,6 +761,8 @@ void TestKernelAdam() {
       mom2_max_out.data(),
       param_out.data(),
       amsgrad);
+
+  std::cout << ">>>>>>>>>> TestKernelAdam ref(beta1, ..." << std::endl;
 
   auto verifier = [](const typename KernelTuple::func_type tgt,
                      T beta1,
@@ -780,6 +791,10 @@ void TestKernelAdam() {
     std::vector<T> jit_mom2_max_out(ref_mom2_max_out.size());
     std::vector<T> jit_param_out(ref_param_out.size());
 
+    std::cout << ">>>>>>>>>> TestKernelAdam std::vector<T> "
+                 "jit_param_out(ref_param_out.size()); ..."
+              << std::endl;
+
     tgt(beta1,
         beta2,
         -lr,
@@ -795,6 +810,8 @@ void TestKernelAdam() {
         jit_mom2_max_out.data(),
         jit_param_out.data(),
         amsgrad);
+
+    std::cout << ">>>>>>>>>> TestKernelAdam tgt(beta1, ..." << std::endl;
 
     ExpectEQ<T>(ref_mom1_out.data(), jit_mom1_out.data(), numel);
     ExpectEQ<T>(ref_mom2_out.data(), jit_mom2_out.data(), numel);
@@ -817,6 +834,7 @@ void TestKernelAdam() {
                                        mom2_max_out,
                                        param_out,
                                        amsgrad);
+  std::cout << ">>>>>>>>>> TestKernelAdam TestAllImpls ..." << std::endl;
 }
 
 template <typename KernelTuple, typename PlaceType>
