@@ -265,7 +265,7 @@ class TestPNormSPMDRule(unittest.TestCase):
         # reduce on dim 1, keepdims = true, asvector = false
         # [0, -1] --> [0, -1], [0, -1] (output --> input, output)
         self.attrs['keepdims'] = True
-        self.attrs['axis'] = [1]
+        self.attrs['axis'] = 1
         self.attrs['asvector'] = False
         self.out_dist_tensor_spec.shape = [64, 1]
         self.out_dist_tensor_spec.set_dims_mapping([0, -1])
@@ -287,7 +287,7 @@ class TestPNormSPMDRule(unittest.TestCase):
         # reduce on dim 0 and 1, keepdims = false, asvector = true
         # [] --> [-1, -1], [] (output --> input, output)
         self.attrs['keepdims'] = False
-        self.attrs['axis'] = [0, 1]
+        self.attrs['axis'] = 0
         self.attrs['asvector'] = True
         self.out_dist_tensor_spec.shape = []
         self.out_dist_tensor_spec.set_dims_mapping([])
@@ -309,7 +309,7 @@ class TestPNormSPMDRule(unittest.TestCase):
         # reduce on dim 0 and 1, keepdims = true, asvector = true
         # [-1, -1] --> [-1, -1], [-1, -1] (output --> input, output)
         self.attrs['keepdims'] = True
-        self.attrs['axis'] = [0, 1]
+        self.attrs['axis'] = 0
         self.attrs['asvector'] = True
         self.out_dist_tensor_spec.shape = [1, 1]
         self.out_dist_tensor_spec.set_dims_mapping([-1, -1])
