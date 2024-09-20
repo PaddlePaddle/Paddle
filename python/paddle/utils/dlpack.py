@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import enum
+import warnings
 from typing import TYPE_CHECKING, Protocol
 
 import paddle
@@ -23,7 +25,6 @@ from ..base.data_feeder import check_type
 from ..base.framework import in_dygraph_mode
 
 if TYPE_CHECKING:
-    import enum
 
     from typing_extensions import CapsuleType
 
@@ -41,6 +42,19 @@ class SupportDLPack(Protocol):
 
     def __dlpack_device__(self) -> tuple[enum.IntEnum, int]:
         pass
+
+
+class DLDeviceType(enum.IntEnum):
+    kDLCPU = (1,)
+    kDLCUDA = (2,)
+    kDLCUDAHost = (3,)
+    kDLOpenCL = (4,)
+    kDLVulkan = (7,)
+    kDLMetal = (8,)
+    kDLVPI = (9,)
+    kDLROCM = (10,)
+    kDLExtDev = (12,)
+    kDLOneAPI = (14,)
 
 
 def to_dlpack(x: Tensor) -> CapsuleType:
@@ -68,6 +82,12 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             <capsule object "dltensor" at 0x7f6103c681b0>
             >>> #doctest: -SKIP
 
+            >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
+            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> print(dlpack)
+            >>> # doctest: +SKIP('the address will change in every run')
+            <capsule object "used_dltensor" at 0x7f6103c681b0>
+
             # doctest: +SKIP('torch will not be installed')
             >>> # convert tensor from paddle to other framework using to_dlpack
             >>> import torch
@@ -87,17 +107,24 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
         return x.value().get_tensor()._to_dlpack()
 
-    check_type(x, 'x', (LoDTensor), 'to_dlpack')
+    check_type(x, "x", (LoDTensor), "to_dlpack")
     return x._to_dlpack()
 
 
 def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
     """
-    Decodes a DLPack to a tensor.
+    Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
+    the tensor from given dlpack.
 
     Args:
         dlpack (SupportDLPack | CapsuleType): A PyCapsule object with the dltensor,
             or that implementes '__dlpack__' and '__dlpack_device__' methods.
+
+            If `dlpack` is a tensor (or ndarray) object, it must support
+            the `__dlpack__` protocol (i.e., have a `dlpack.__dlpack__`
+            method). Otherwise `dlpack` may be a DLPack capsule, which is
+            an opaque `PyCapsule` instance, typically produced by a
+            `to_dlpack` function or method.
 
     Returns:
         out (Tensor): A tensor decoded from DLPack. One thing to be noted, if we get
@@ -108,51 +135,68 @@ def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
         .. code-block:: python
 
             >>> import paddle
-            >>> # x is a tensor with shape [2, 4]
+            >>> # From DLPack capsule
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
             ...                       [0.1, 0.2, 0.6, 0.7]], place="cpu")
             >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
 
+            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
             >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
 
-            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
             >>> print(y)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
+            >>> # data of tensor x is shared with tensor y
+            >>> y[0, 0] = 10.0
+            >>> print(x)
+            Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[10.       , 0.30000001, 0.50000000, 0.89999998],
+                    [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
 
-            >>> # convert tensor from numpy to paddle using from_dlpack
+            >>> # Directly from external tensor that implements '__dlpack__' and '__dlpack_device__' methods
             >>> import numpy as np
-            >>> x = np.random.randn(2, 4)
+            >>> x = np.array([[0.2, 0.3, 0.5, 0.9],
+            ...              [0.1, 0.2, 0.6, 0.7]])
             >>> y = paddle.utils.dlpack.from_dlpack(x)
-            >>> print(y.shape)
-            [2, 4]
-
-            >>> # convert tensor from torch to paddle using from_dlpack
-            # doctest: +SKIP('torch will not be installed')
-            >>> import torch
-            >>> x = torch.randn(2, 4)
-            >>> y = paddle.utils.dlpack.from_dlpack(x)
-            >>> print(y.shape)
-            [2, 4]
-            >>> #doctest: -SKIP
+            >>> y[0, 0] = 10.0
+            >>> # data of tensor x is shared with tensor y
+            >>> print(x)
+            [[10.   0.3  0.5  0.9]
+            [ 0.1  0.2  0.6  0.7]]
     """
 
-    t = type(dlpack)
-    dlpack_flag = t.__module__ == 'builtins' and t.__name__ == 'PyCapsule'
-    if not dlpack_flag:
-        raise TypeError(
-            "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
-            f" but received {type(dlpack)}."
-        )
+    if hasattr(dlpack, "__dlpack__"):
+        device = dlpack.__dlpack_device__()
+        # device is CUDA, we need to pass the current
+        # stream
+        if device[0] in (DLDeviceType.kDLCUDA,):
+            with warnings.catch_warnings():
+                # ignore deprecation warning
+                warnings.filterwarnings("ignore", category=UserWarning)
+                stream = paddle.device.cuda.current_stream(device[1])
+            # cuda_stream is the pointer to the stream and it is a public
+            # attribute, but it is not documented
+            # The array API specify that the default legacy stream must be passed
+            # with a value of 1 for CUDA
+            # https://data-apis.org/array-api/latest/API_specification/array_object.html?dlpack-self-stream-none#dlpack-self-stream-none
+            is_gpu = device[0] == DLDeviceType.kDLCUDA
+            stream_ptr = (
+                1 if is_gpu and stream.cuda_stream == 0 else stream.cuda_stream
+            )
+            dlpack_ = dlpack.__dlpack__(stream=stream_ptr)
+        else:
+            dlpack_ = dlpack.__dlpack__()
+    else:
+        # Old versions just call the converter
+        dlpack_ = dlpack
+
+    out: paddle.base.libpaddle.Tensor = paddle.base.core.from_dlpack(dlpack_)
 
     if in_dygraph_mode():
-        out = paddle.base.core.from_dlpack(dlpack)
-        out = paddle.to_tensor(out)
-        return out
+        out: Tensor = paddle.Tensor(out, place=out._place())
 
-    out = paddle.base.core.from_dlpack(dlpack)
     return out

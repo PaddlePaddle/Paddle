@@ -1050,10 +1050,35 @@ def calc_gradient_helper(
         state,
         ValueDict(),
     )
+
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's grad value)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
+
+    # set struct name for grad ops
+    for op in block.ops:
+        if op in state.op_to_opgrad:
+            if op.dist_attr is None:
+                continue
+
+            op_chunk_id = op.dist_attr.chunk_id
+            if op_chunk_id == -1 and op.name() == "dist_op.reshard":
+                op_chunk_id = (
+                    op.operand_source(0).get_defining_op().dist_attr.chunk_id
+                )
+
+            for bwd_op in state.op_to_opgrad[op]:
+                if bwd_op.dist_attr is None:
+                    continue
+                bwd_op.dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        bwd_op.dist_attr.process_mesh,
+                        bwd_op.dist_attr.operands(),
+                        bwd_op.dist_attr.results(),
+                        op_chunk_id,
+                    )
+                )
 
     remove_ops = []
     if not is_inplace_net(backward_ops) and inputs:
@@ -1077,6 +1102,7 @@ def calc_gradient_helper(
         if bwd_op.result(0).use_empty():
             remove_op(block, bwd_op, state)
     state.turn_map()
+
     input_grad_map = state.value_to_valuegrad
 
     return input_grad_map
