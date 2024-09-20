@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <iostream>
+
 #include <cmath>
 #include <limits>
 #include <string>
@@ -530,6 +532,12 @@ void Adam(T beta1,
           T* mom2_max_out_ptr,
           T* param_out_ptr,
           bool amsgrad) {
+  std::cout << ">>>>>>>>>> refer.h ..." << std::endl;
+  std::cout << ">>>>>>>>>> mom1_ptr[3] ..." << mom1_ptr[3] << std::endl;
+  std::cout << ">>>>>>>>>> mom2_ptr[3] ..." << mom2_ptr[3] << std::endl;
+  std::cout << ">>>>>>>>>> grad_ptr[3] ..." << grad_ptr[3] << std::endl;
+  std::cout << ">>>>>>>>>> param_ptr[i] ..." << param_ptr[3] << std::endl;
+
   for (int i = 0; i < numel; ++i) {
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
     mom2_out_ptr[i] =
@@ -547,6 +555,11 @@ void Adam(T beta1,
           param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_) + eps));
     }
   }
+
+  std::cout << ">>>>>>>>>> param_out_ptr[3] ..." << param_out_ptr[3]
+            << std::endl;
+  std::cout << ">>>>>>>>>> mom1_out_ptr[3] ..." << mom1_out_ptr[3] << std::endl;
+  std::cout << ">>>>>>>>>> mom2_out_ptr[3] ..." << mom2_out_ptr[3] << std::endl;
 }
 
 template <typename T>

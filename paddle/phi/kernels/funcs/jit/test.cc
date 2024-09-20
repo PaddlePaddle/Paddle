@@ -763,6 +763,20 @@ void TestKernelAdam() {
       amsgrad);
 
   std::cout << ">>>>>>>>>> TestKernelAdam ref(beta1, ..." << std::endl;
+  std::cout << ">>>>>>>>>> TestKernelAdam mom1.data()[3] " << mom1.data()[3]
+            << std::endl;
+  std::cout << ">>>>>>>>>> TestKernelAdam mom2.data()[3] " << mom2.data()[3]
+            << std::endl;
+  std::cout << ">>>>>>>>>> TestKernelAdam mom1_out.data()[3] "
+            << mom1_out.data()[3] << std::endl;
+  std::cout << ">>>>>>>>>> TestKernelAdam mom2_out.data()[3] "
+            << mom2_out.data()[3] << std::endl;
+  std::cout << ">>>>>>>>>> TestKernelAdam param.data()[3] " << param.data()[3]
+            << std::endl;
+  std::cout << ">>>>>>>>>> TestKernelAdam param_out.data()[3] "
+            << param_out.data()[3] << std::endl;
+  std::cout << ">>>>>>>>>> TestKernelAdam grad.data()[3] " << grad.data()[3]
+            << std::endl;
 
   auto verifier = [](const typename KernelTuple::func_type tgt,
                      T beta1,
@@ -812,6 +826,12 @@ void TestKernelAdam() {
         amsgrad);
 
     std::cout << ">>>>>>>>>> TestKernelAdam tgt(beta1, ..." << std::endl;
+    std::cout << ">>>>>>>>>> TestKernelAdam ref_mom1_out.data()[3] "
+              << ref_mom1_out.data()[3] << std::endl;
+    std::cout << ">>>>>>>>>> TestKernelAdam ref_mom2_out.data()[3] "
+              << ref_mom2_out.data()[3] << std::endl;
+    std::cout << ">>>>>>>>>> TestKernelAdam ref_param_out.data()[3] "
+              << ref_param_out.data()[3] << std::endl;
 
     ExpectEQ<T>(ref_mom1_out.data(), jit_mom1_out.data(), numel);
     ExpectEQ<T>(ref_mom2_out.data(), jit_mom2_out.data(), numel);
