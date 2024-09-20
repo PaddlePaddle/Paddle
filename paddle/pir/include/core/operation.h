@@ -20,12 +20,14 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/ir_mapping.h"
 #include "paddle/pir/include/core/iterator.h"
 #include "paddle/pir/include/core/op_info.h"
 #include "paddle/pir/include/core/operation_utils.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/visitors.h"
+
 namespace pir {
 class OpBase;
 class Program;
@@ -205,6 +207,16 @@ class IR_API alignas(8) Operation final
   /// \brief Returns true if this operation has no uses.
   ///
   bool use_empty();
+
+  void set_is_test_attr() {
+    for (auto p : attributes_) {
+      if (p.first == "is_test") {
+        this->set_attribute(
+            "is_test",
+            pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+      }
+    }
+  }
 
   template <typename T>
   T dyn_cast() {

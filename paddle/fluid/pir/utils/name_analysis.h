@@ -29,6 +29,9 @@ std::string GetValueFirstName(pir::Value value);
 std::optional<std::string> TryGetValueFirstName(pir::Value value);
 pir::Value GetParameterValueByName(const pir::Program &program,
                                    const std::string &name);
+std::unordered_map<std::string, pir::Value> GetAllParameterValues(
+    const pir::Program &program);
+
 void SetValueName(pir::Value value, const std::string name);
 
 std::map<std::string, std::string> RenameValue(Value value,

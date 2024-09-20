@@ -444,6 +444,10 @@ void BindProgram(py::module *m) {
            [](const std::shared_ptr<Program> &self) {
              return self->parameters_num();
            })
+      .def("set_is_test_attr",
+           [](const std::shared_ptr<Program> &self) {
+             self->set_is_test_attr();
+           })
       .def("set_parameters_from",
            [](const std::shared_ptr<Program> &self,
               const std::shared_ptr<Program> &other) {
@@ -528,6 +532,10 @@ void BindProgram(py::module *m) {
       .def("get_parameter_value_by_name",
            [](Program &self, const std::string &name) {
              return name_analysis::GetParameterValueByName(self, name);
+           })
+      .def("get_all_parameter_values",
+           [](Program &self) {
+             return name_analysis::GetAllParameterValues(self);
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
       .def(

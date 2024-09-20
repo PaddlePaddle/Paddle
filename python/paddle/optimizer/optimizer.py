@@ -453,6 +453,26 @@ class Optimizer:
     def get_opti_var_name_list(self) -> list[str]:
         return self._opti_name_list
 
+    def change_parameter_hapi(self, parameters):
+        if isinstance(parameters, paddle.Tensor):
+            raise TypeError(
+                "`parameters` argument given to the optimizer should be "
+                f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."
+            )
+        if isinstance(parameters, dict):
+            raise TypeError(
+                "`parameters` argument should not get dict type, "
+                "if parameter groups is needed, please set `parameters`"
+                " as list of dict"
+            )
+        self._parameter_list = list(parameters)
+
+        if self._parameter_list and isinstance(self._parameter_list[0], dict):
+            for param_group in self._parameter_list:
+                self._add_param_group(param_group.copy())
+        else:
+            self._param_groups = self._parameter_list
+
     def _create_global_learning_rate(self):
         def do_create():
             # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr

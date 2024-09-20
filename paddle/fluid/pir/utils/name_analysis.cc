@@ -59,6 +59,20 @@ pir::Value GetParameterValueByName(const pir::Program &program,
   return value;
 }
 
+std::unordered_map<std::string, pir::Value> GetAllParameterValues(
+    const pir::Program &program) {
+  auto &block = *program.block();
+  std::unordered_map<std::string, pir::Value> values;
+  for (auto &op : block) {
+    if (op.isa<pir::ParameterOp>()) {
+      values[op.attribute("parameter_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString()] = op.result(0);
+    }
+  }
+  return values;
+}
+
 void SetValueName(pir::Value value, const std::string name) {
   pir::Operation *define_op = value.defining_op();
   if (define_op->isa<pir::ParameterOp>()) {
