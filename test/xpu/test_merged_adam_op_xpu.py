@@ -206,8 +206,8 @@ class XPUTestMergedAdamWrapper(XPUOpTestWrapper):
                 )
 
             # outs1 = run_op(True, "xpu")
-            outs2 = run_op(True, "cpu")
-            # outs3 = run_op(False, "xpu")
+            # outs2 = run_op(True, "cpu")
+            outs3 = run_op(False, "xpu")
             # outs4 = run_op(False, "cpu")
 
             # self.assertEqual(len(outs1), len(outs2))
