@@ -100,6 +100,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
+    RoundingMode = Literal['trunc', 'floor', None]
+
 __all__ = []
 
 _supported_int_dtype_ = [
@@ -894,7 +896,12 @@ def subtract_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.subtract_(x, y)
 
 
-def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def divide(
+    x: Tensor,
+    y: Tensor,
+    rounding_mode: RoundingMode = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Divide two tensors element-wise. The equation is:
 
@@ -909,6 +916,9 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        rounding_mode (str|None): Type of rounding applied to the result. Must be one of `trunc`, `floor` and None. If `rounding_mode` is `None`,
+            it performs no rounding. If `rounding_mode` is `trunc`, it rounds the results of the division towards zero. If `rounding_mode` is
+            `floor`, rounds the results of the division down.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -928,14 +938,39 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [2.        , 0.60000000, 2.        ])
 
     """
+    if rounding_mode == "floor":
+        return floor_divide(x, y)
+    if x.dtype in [paddle.float32, paddle.float64]:
+        x = x.astype(paddle.float32)
+    if y.dtype in [paddle.float32, paddle.float64]:
+        y = y.astype(paddle.float32)
     if in_dynamic_or_pir_mode():
-        return _C_ops.divide(x, y)
+        out = _C_ops.divide(x, y)
     else:
-        return _elementwise_op(LayerHelper('elementwise_div', **locals()))
+        out = _elementwise_op(LayerHelper('elementwise_div', **locals()))
+
+    if rounding_mode == "trunc":
+        return trunc(out)
+    elif rounding_mode is not None:
+        raise ValueError(
+            f"Expect `round_mode` to be one of `trunc`, `floor` and None, but got {rounding_mode}."
+        )
+    if (
+        rounding_mode is not None
+        and x.dtype in [paddle.int64, paddle.int32]
+        and y.dtype in [paddle.int64, paddle.int32]
+    ):
+        out = out.astype(x.dtype)
+    return out
 
 
 @inplace_apis_in_dygraph_only
-def divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def divide_(
+    x: Tensor,
+    y: Tensor,
+    rounding_mode: RoundingMode = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_divide`.
@@ -945,7 +980,25 @@ def divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         raise ValueError(
             f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
-    return _C_ops.divide_(x, y)
+    if x.dtype in [paddle.float32, paddle.float64]:
+        x = x.astype(paddle.float32)
+    if y.dtype in [paddle.float32, paddle.float64]:
+        y = y.astype(paddle.float32)
+    if rounding_mode == "floor":
+        return floor_divide_(x, y)
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
+        )
+    out = _C_ops.divide_(x, y)
+    if rounding_mode == "trunc":
+        out = _C_ops.trunc_(out)
+    elif rounding_mode is not None:
+        raise ValueError(
+            f"Expect `round_mode` to be one of `trunc`, `floor` and None, but got {rounding_mode}."
+        )
+    return out
 
 
 def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
