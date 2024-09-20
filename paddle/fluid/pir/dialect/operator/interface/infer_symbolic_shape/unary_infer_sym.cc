@@ -667,15 +667,7 @@ bool CumminOpInferSymbolicShape(pir::Operation *op,
 }
 bool CumprodOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  pir::Value operand_source = op->operand_source(0);
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      infer_context->GetShapeOrDataForValue(operand_source);
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(operand_shape_or_data.shape())});
-  return true;
+  return UnchangedCheckAxisOpInferSymbolicShape(op, infer_context);
 }
 bool Cumprod_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1705,6 +1697,51 @@ bool LrnOpInferSymbolicShape(pir::Operation *op,
   infer_context->SetShapeOrDataForValue(
       op->result(1), symbol::TensorShapeOrDataDimExprs(x_shape));
   return true;
+}
+
+bool UnchangedCheckAxisOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  size_t rank = x_shape.size();
+
+  if (rank > 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -rank,
+                      common::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+    PADDLE_ENFORCE_LT(axis,
+                      rank,
+                      common::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+  } else if (rank == 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -1,
+                      common::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-1, "
+                          "0] when input is 0D Tensor "));
+    PADDLE_ENFORCE_LE(axis,
+                      0,
+                      common::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-1, "
+                          "0] when input is 0D Tensor "));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  return true;
+}
+
+bool LogSoftmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return UnchangedCheckAxisOpInferSymbolicShape(op, infer_context);
 }
 
 bool LuOpInferSymbolicShape(pir::Operation *op,
