@@ -300,6 +300,10 @@ def unstack_net6(x):
     return paddle.unstack(x, axis=-1)
 
 
+def one_hot_net(x):
+    return paddle.nn.functional.one_hot(x, 10)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -333,7 +337,7 @@ class TestPrimBase(unittest.TestCase):
             ops = [
                 op.name()
                 for op in fn.get_concrete_program(x)[-1]
-                .program.backward_program.global_block()
+                .program.forward_program.global_block()
                 .ops
             ]
             assert self.necessary_ops not in ops
@@ -504,7 +508,7 @@ class TestPrimTwo(unittest.TestCase):
             ops = [
                 op.name()
                 for op in fn.get_concrete_program(x, y)[-1]
-                .program.backward_program.global_block()
+                .program.forward_program.global_block()
                 .ops
             ]
             assert self.necessary_ops not in ops
@@ -809,7 +813,7 @@ class TestPrimThree(unittest.TestCase):
             ops = [
                 op.name()
                 for op in fn.get_concrete_program(x, y, z)[-1]
-                .program.backward_program.global_block()
+                .program.forward_program.global_block()
                 .ops
             ]
             assert self.necessary_ops not in ops
@@ -1424,6 +1428,21 @@ class TestPrimUnstack6(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = unstack_net6
         self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimOneHot(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [50, 10, 70, 30]
+        self.dtype_x = "int32"
+        self.init_x_shape = [None, None, None, 30]
+        x = [np.random.randint(0, 9) for i in range(np.prod(self.shape_x))]
+        self.x = np.array(x).astype("int32").reshape(self.shape_x)
+        self.net = one_hot_net
+        self.necessary_ops = "pd_op.one_hot"
         self.enable_cinn = False
         self.tol = 1e-6
 
