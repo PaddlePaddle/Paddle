@@ -413,11 +413,10 @@ def get_window(
             >>> n_fft = 512
             >>> cosine_window = paddle.audio.functional.get_window('cosine', n_fft)
 
+            >>> nuttall_window = paddle.audio.functional.get_window('nuttall', n_fft)
+
             >>> std = 7
             >>> gaussian_window = paddle.audio.functional.get_window(('gaussian',std), n_fft)
-
-            >>> beta = 7
-            >>> kaiser_window = paddle.audio.functional.get_window(('kaiser',beta), n_fft)
     """
     sym = not fftbins
 
