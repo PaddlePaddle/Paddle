@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/funcs/jit/gen/adam.h"
 
 #include <cstddef>  // offsetof
+#include <iostream>
 
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
@@ -22,6 +23,8 @@
 namespace phi::jit::gen {
 
 void AdamJitCode::loadArgs() {
+  std::cout << ">>>>>>>>>> AdamJitCode::loadArgs" << std::endl;
+
   static constexpr int32_t one_as_float = 0x3f800000;
   static constexpr int32_t mask_all_ones = static_cast<int32_t>(0xFFFFFFFF);
   static constexpr int64_t mask_8_divisible =
@@ -54,6 +57,8 @@ void AdamJitCode::loadArgs() {
 }
 
 void AdamJitCode::setTailOpmask() {
+  std::cout << ">>>>>>>>>> AdamJitCode::setTailOpmask" << std::endl;
+
   mov(r13, rcx);
 
   mov(rcx, reg_numel);
@@ -68,6 +73,8 @@ void AdamJitCode::setTailOpmask() {
 }
 
 void AdamJitCode::mainCode() {
+  std::cout << ">>>>>>>>>> AdamJitCode::mainCode" << std::endl;
+
   // load grad
   vmovups(ymm7 | k1, ptr[reg_grad_ptr + reg_offset]);
 
@@ -97,6 +104,8 @@ void AdamJitCode::mainCode() {
 }
 
 void AdamJitCode::genCode() {
+  std::cout << ">>>>>>>>>> AdamJitCode::genCode" << std::endl;
+
   static constexpr int64_t main_loop_elems_size =
       8 * sizeof(float);  // 8 floats in YMM
   static constexpr int64_t offset_increment = main_loop_elems_size;
