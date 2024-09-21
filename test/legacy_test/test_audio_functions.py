@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -234,6 +234,32 @@ class TestAudioFuncitons(unittest.TestCase):
         )
 
     @parameterize([1, 512])
+    def test_bartlett_nuttall_kaiser_window(self, n_fft: int):
+        window_scipy_bartlett = signal.windows.bartlett(n_fft)
+        window_paddle_bartlett = paddle.audio.functional.get_window(
+            'bartlett', n_fft
+        )
+        np.testing.assert_array_almost_equal(
+            window_scipy_bartlett, window_paddle_bartlett.numpy(), decimal=5
+        )
+
+        window_scipy_nuttall = signal.windows.nuttall(n_fft)
+        window_paddle_nuttall = paddle.audio.finctional.get_window(
+            'nuttall', n_fft
+        )
+        np.testing.assert_array_almost_equal(
+            window_scipy_nuttall, window_paddle_nuttall.numpy(), decimal=5
+        )
+
+        window_scipy_kaiser = signal.windows.kaiser(n_fft, beta=14)
+        window_paddle_kaiser = paddle.audio.functional.get_window(
+            ('kaiser', 14.0), n_fft, False
+        )
+        np.testing.assert_array_almost_equal(
+            window_scipy_kaiser, window_paddle_kaiser.numpy(), decimal=5
+        )
+
+    @parameterize([1, 512])
     def test_gaussian_window_and_exception(self, n_fft: int):
         window_scipy_gaussain = signal.windows.gaussian(n_fft, std=7)
         window_paddle_gaussian = paddle.audio.functional.get_window(
@@ -259,6 +285,7 @@ class TestAudioFuncitons(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             window_scipy_exp, window_paddle_exp.numpy(), decimal=5
         )
+
         try:
             window_paddle = paddle.audio.functional.get_window("hann", -1)
         except ValueError:
@@ -292,7 +319,14 @@ class TestAudioFuncitons(unittest.TestCase):
         np.testing.assert_array_almost_equal(librosa_dct, paddle_dct, decimal=5)
 
     @parameterize(
-        [128, 256, 512], ["hamming", "hann", "triang", "bohman"], [True, False]
+        [128, 256, 512],
+        [
+            "hamming",
+            "hann",
+            "triang",
+            "bohman",
+        ],
+        [True, False],
     )
     def test_stft_and_spect(
         self, n_fft: int, window_str: str, center_flag: bool
@@ -347,7 +381,14 @@ class TestAudioFuncitons(unittest.TestCase):
         )
 
     @parameterize(
-        [128, 256, 512], [64, 82], ["hamming", "hann", "triang", "bohman"]
+        [128, 256, 512],
+        [64, 82],
+        [
+            "hamming",
+            "hann",
+            "triang",
+            "bohman",
+        ],
     )
     def test_istft(self, n_fft: int, hop_length: int, window_str: str):
         if len(self.waveform.shape) == 2:  # (C, T)
