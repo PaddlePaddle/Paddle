@@ -61,11 +61,9 @@ KernelFactory& KernelFactory::Instance() {
 }
 
 bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
-  if (deprecated_op_names.find(op_type) == deprecated_op_names.end()) {
-    if (phi::OpUtilsMap::Instance().Contains(op_type) ||
-        (kernels_.find(op_type) != kernels_.end())) {
-      return true;
-    }
+  if (phi::OpUtilsMap::Instance().Contains(op_type) ||
+      (kernels_.find(op_type) != kernels_.end())) {
+    return true;
   }
   return false;
 }
@@ -73,8 +71,7 @@ bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
 bool KernelFactory::HasStructuredKernel(const std::string& op_type) const {
   auto phi_kernel_name = phi::OpUtilsMap::Instance().GetBaseKernelName(op_type);
   auto kernel_iter = kernels_.find(phi_kernel_name);
-  if (deprecated_op_names.find(op_type) == deprecated_op_names.end() &&
-      kernel_iter != kernels_.end()) {
+  if (kernel_iter != kernels_.end()) {
     return std::any_of(kernel_iter->second.begin(),
                        kernel_iter->second.end(),
                        [](phi::KernelKeyMap::const_reference kernel_pair) {
