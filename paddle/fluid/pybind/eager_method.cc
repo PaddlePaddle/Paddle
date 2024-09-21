@@ -2760,11 +2760,11 @@ Examples:
 
         >>> x.is_coalesced()
         False
-        >>> x.coalesce()
+        >>> x = x.coalesce()
         >>> x.is_coalesced()
         True
 
-        >>> x = paddle.to_tensor([1., 2., 3.])
+        >>> x = paddle.to_tensor([[1., 2., 3.]])
         >>> x.is_coalesced()
         False
 

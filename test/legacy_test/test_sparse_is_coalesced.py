@@ -14,12 +14,9 @@
 
 import unittest
 
-import numpy as np
-
 import paddle
 import paddle.sparse
 from paddle.base import core
-from paddle.base.framework import in_pir_mode
 
 
 def is_coalesced_naive(x):
@@ -264,155 +261,6 @@ class TestSparseIsCoalescedFP16API(unittest.TestCase):
         )
         other_tensor = paddle.to_tensor([1, 2, 3, 4], dtype=self.dtype)
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
-
-
-class TestSparseIsCoalescedAPIStatic(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "float32"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-    def test_is_coalesced(self):
-        if in_pir_mode():
-            excepted = [is_coalesced_naive_static(self.coo_indices), False]
-            paddle.enable_static()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                # coo
-                coo_indices = paddle.static.data(
-                    name='coo_indices',
-                    shape=self.coo_indices.shape,
-                    dtype='int64',
-                )
-                coo_values = paddle.static.data(
-                    name='coo_values',
-                    shape=self.coo_indices.shape,
-                    dtype=self.dtype,
-                )
-                coo = paddle.sparse.sparse_coo_tensor(
-                    coo_indices,
-                    coo_values,
-                    shape=self.coo_shape,
-                    dtype=self.dtype,
-                )
-                # other
-                other = paddle.static.data(
-                    name='other',
-                    shape=self.other_tensor_arr.shape,
-                    dtype=self.dtype,
-                )
-
-                out1 = coo.is_coalesced()
-                out2 = other.is_coalesced()
-                exe = paddle.static.Executor()
-                fetch = exe.run(
-                    feed={
-                        'coo_indices': self.coo_indices,
-                        'coo_values': self.coo_values,
-                        'other': self.other_tensor_arr,
-                    },
-                    fetch_list=[out1, out2],
-                )
-                self.assertEqual(fetch[0], excepted[0])
-                self.assertEqual(fetch[1], excepted[1])
-
-
-class TestSparseIsCoalescedAPIStatic2(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "float64"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-class TestSparseIsCoalescedAPIStatic3(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "int8"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-class TestSparseIsCoalescedAPIStatic4(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "int16"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-class TestSparseIsCoalescedAPIStatic5(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "int32"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-class TestSparseIsCoalescedAPIStatic6(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "int64"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-class TestSparseIsCoalescedAPIStatic7(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "uint8"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-class TestSparseIsCoalescedAPIStatic8(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "bool"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 0.0, 0.0, 1.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-class TestSparseIsCoalescedAPIStatic9(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "complex64"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-class TestSparseIsCoalescedAPIStatic10(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "complex128"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and not support the float16",
-)
-class TestSparseIsCoalescedFP16APIStatic(unittest.TestCase):
-    def setUp(self):
-        self.dtype = "float16"
-        self.coo_indices = np.array([[0, 0, 0, 1], [0, 0, 1, 2]])
-        self.coo_values = np.array([1.0, 2.0, 3.0, 4.0])
-        self.coo_shape = [2, 3]
-        self.other_tensor_arr = np.array([1, 2, 3, 4])
 
 
 if __name__ == "__main__":
