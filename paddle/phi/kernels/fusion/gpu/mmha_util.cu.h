@@ -72,6 +72,13 @@ namespace cub = hipcub;
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
+
+
 #ifdef PADDLE_WITH_HIP
 /// integral_constant
 template <typename _Tp, _Tp __v>
@@ -3905,6 +3912,303 @@ __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
   abs_max_val = WarpReduceAbsMax(abs_max_val, mask);
   return abs_max_val;
 }
+
+
+//// kai
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename K_vec>
+inline __device__ void hmma_fp32(float4& c, K_vec const& a, K_vec b) {
+  // Not supported.
+  assert(false);
+}
+
+template <>
+inline __device__ void hmma_fp32(float4& c, uint32_t const& a, uint32_t b) {
+  asm volatile(
+      "mma.sync.aligned.m16n8k8.row.col.f32.f16.f16.f32 \n"
+      "    {%0, %1, %2, %3}, \n"
+      "    {%4, %5}, \n"
+      "    {%6}, \n"
+      "    {%0, %1, %2, %3}; \n"
+      : "+f"(c.x), "+f"(c.y), "+f"(c.z), "+f"(c.w)
+      : "r"(a), "r"(a), "r"(b));
+}
+
+template <>
+inline __device__ void hmma_fp32(float4& c, uint4 const& a, uint4 b) {
+  hmma_fp32(c, a.x, b.x);
+  hmma_fp32(c, a.y, b.y);
+  hmma_fp32(c, a.z, b.z);
+  hmma_fp32(c, a.w, b.w);
+}
+
+template <typename K_vec, int THREADS_PER_KEY, int N>
+inline __device__ float trtllm_qk_hmma_dot_(const K_vec (&q)[N],
+                                            const K_vec (&k)[N]) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
+
+  // Each quad computes its partial result.
+  float4 acc = make_float4(0.f, 0.f, 0.f, 0.f);
+
+#pragma unroll
+  for (int ii = 0; ii < N; ++ii) {
+    hmma_fp32(acc, q[ii], k[ii]);
+  }
+
+  // The position inside the warp.
+  int lane = threadIdx.x % 32;
+
+  // The position inside the HMMA instruction.
+  int row = lane / 4;
+  int col = lane % 4 * 2;
+
+  // The result. Only 1 thread in each quad owns a valid value.
+  //
+  // Row 0, it's lane  0 (col 0) in acc.x.
+  // Row 1, it's lane  4 (col 0) in acc.y.
+  // Row 2, it's lane  9 (col 2) in acc.x.
+  // Row 3, it's lane 13 (col 2) in acc.y.
+  // Row 4, it's lane 18 (col 4) in acc.x.
+  // Row 5, it's lane 22 (col 4) in acc.y.
+  // Row 6, it's lane 27 (col 6) in acc.x.
+  // Row 7, it's lane 31 (col 6) in acc.y.
+  //
+  float result = (row == col) ? acc.x : acc.y;
+
+  // Do the reduction inside the warp.
+  if (THREADS_PER_KEY > 4) {
+    result += __shfl_xor_sync(unsigned(-1), result, 4);
+  }
+  if (THREADS_PER_KEY > 8) {
+    result += __shfl_xor_sync(unsigned(-1), result, 9);
+  }
+  if (THREADS_PER_KEY > 16) {
+    result += __shfl_xor_sync(unsigned(-1), result, 18);
+  }
+
+  // The warp leader has the correct value.
+  return result;
+
+#else  // !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 750
+  return 0.f;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <int THREADS_PER_KEY, typename Q_vec, typename K_vec, int N>
+inline __device__ float trtllm_qk_dot_(const Q_vec (&q)[N],
+                                       const K_vec (&k)[N]) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+  using K_vec_accum = typename V_vec_acum_fp32_<K_vec>::Type;
+#else
+  using K_vec_accum = K_vec;
+#endif
+  // Compute the parallel products for Q*K^T (treat vector lanes separately).
+  K_vec_accum qk_vec = mul<K_vec_accum, Q_vec, K_vec>(q[0], k[0]);
+#pragma unroll
+  for (int ii = 1; ii < N; ++ii) {
+    qk_vec = fma(q[ii], k[ii], qk_vec);
+  }
+
+  // Finalize the reduction across lanes.
+  float qk = sum(qk_vec);
+#pragma unroll
+  for (int mask = THREADS_PER_KEY / 2; mask >= 1; mask /= 2) {
+    qk += __shfl_xor_sync(uint32_t(-1), qk, mask);
+  }
+  return qk;
+}
+
+template <int THREADS_PER_KEY, typename Q_vec, typename K_vec, int N>
+inline __device__ float trtllm_qk_scale_dot_(const Q_vec (&q)[N],
+                                             const K_vec (&k)[N],
+                                             float const k_scale) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+  using K_vec_accum = typename V_vec_acum_fp32_<K_vec>::Type;
+#else
+  using K_vec_accum = K_vec;
+#endif
+  // Compute the parallel products for Q*K^T (treat vector lanes separately).
+  K_vec_accum k_vec = mul<K_vec_accum, float, K_vec>(k_scale, k[0]);
+  K_vec_accum qk_vec = mul<K_vec_accum, Q_vec, K_vec_accum>(q[0], k_vec);
+#pragma unroll
+  for (int ii = 1; ii < N; ++ii) {
+    K_vec_accum k_vec = mul<K_vec_accum, float, K_vec>(k_scale, k[ii]);
+    qk_vec = fma(q[ii], k_vec, qk_vec);
+  }
+
+  // Finalize the reduction across lanes.
+  float qk = sum(qk_vec);
+#pragma unroll
+  for (int mask = THREADS_PER_KEY / 2; mask >= 1; mask /= 2) {
+    qk += __shfl_xor_sync(uint32_t(-1), qk, mask);
+  }
+  return qk;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T, int THREADS_PER_KEY>
+struct trtllm_Qk_dot {
+  template <typename Q_vec, typename K_vec, int N>
+  static inline __device__ float dot(const Q_vec (&q)[N], const K_vec (&k)[N]) {
+    return trtllm_qk_dot_<THREADS_PER_KEY>(q, k);
+  }
+
+  template <typename Q_vec, typename K_vec, int N>
+  static inline __device__ float scale_dot(const Q_vec (&q)[N],
+                                           const K_vec (&k)[N],
+                                           float const k_scale) {
+#ifdef MMHA_USE_HMMA
+    static_assert("HMMA doesn't support k scales");
+#endif  // MMHA_USE_HMMA
+    return trtllm_qk_scale_dot_<THREADS_PER_KEY>(q, k, k_scale);
+  }
+
+  static inline __device__ bool is_leader(int const tidx) {
+    return (tidx % THREADS_PER_KEY) == 0;
+  }
+};
+
+template <int THREADS_PER_KEY>
+struct trtllm_Qk_dot<uint16_t, THREADS_PER_KEY> {
+  template <typename Q_vec, typename K_vec, int N>
+  static inline __device__ float dot(const Q_vec (&q)[N], const K_vec (&k)[N]) {
+#if __CUDA_ARCH__ >= 750 && defined(MMHA_USE_HMMA)
+    return trtllm_qk_hmma_dot_<K_vec, THREADS_PER_KEY, N>(q, k);
+#else
+    return trtllm_qk_dot_<THREADS_PER_KEY>(q, k);
+#endif  // defined MMHA_USE_HMMA
+  }
+
+  template <typename Q_vec, typename K_vec, int N>
+  static inline __device__ float scale_dot(const Q_vec (&q)[N],
+                                           const K_vec (&k)[N],
+                                           float const k_scale) {
+#ifdef MMHA_USE_HMMA
+    static_assert("HMMA doesn't support k scales");
+#endif  // MMHA_USE_HMMA
+    return trtllm_qk_scale_dot_<THREADS_PER_KEY>(q, k, k_scale);
+  }
+
+  static inline __device__ bool is_leader(int const tidx) {
+    // Use HMMA.FP32, leader threads are in the diagonal roughly (0, 4, 9, 13,
+    // 18, 22, 27, 31).
+#if __CUDA_ARCH__ >= 750 && defined(MMHA_USE_HMMA)
+    int leader = 0;
+    // The thread position inside the warp.
+    int lane = tidx % 32;
+    if (THREADS_PER_KEY == 4) {
+      leader = int(lane / 8);
+    } else {
+      leader = int(lane / THREADS_PER_KEY) * int(THREADS_PER_KEY / 8);
+    }
+#else
+    bool const leader = 0;
+#endif  // defined MMHA_USE_HMMA
+    return (tidx % THREADS_PER_KEY) == leader;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+__device__ __host__ constexpr inline T const& const_min(T const& a, T const& b)
+{
+    return b < a ? b : a;
+}
+
+template <typename T>
+__device__ __host__ constexpr inline T const& const_max(T const& a, T const& b)
+{
+    return b > a ? b : a;
+}
+
+inline unsigned constexpr next_power_of_two(unsigned i) {
+  --i;
+  i |= i >> 1;
+  i |= i >> 2;
+  i |= i >> 4;
+  i |= i >> 8;
+  i |= i >> 16;
+  ++i;
+  return i;
+}
+
+inline __device__ __host__ constexpr unsigned getDhMax(unsigned dh) {
+  return next_power_of_two(const_max(dh, 32u));
+}
+
+template <typename T, unsigned Dh>
+inline __device__ __host__ constexpr unsigned getThreadsPerValue() {
+  return getDhMax(Dh) * sizeof(T) / 16;
+}
+
+template <unsigned Dh>
+inline __device__ __host__ constexpr unsigned getThreadsPerKey() {
+  // Dh * sizeof(T) 应该是 16B * threads_per_key的整数倍
+  // threads_per_key应该是2的幂 且属于[1,2,4]
+  constexpr unsigned threads = next_power_of_two(Dh / 8u);
+  return std::min(4u, threads);
+}
+
+template <typename T, typename T_VEC, unsigned VECS_PER_CHUNK>
+__device__ inline constexpr uint2 chunk_index(unsigned tidx) {
+  // The chunk associated with the thread.
+  auto const idx_chunk = tidx / VECS_PER_CHUNK;
+
+  // The position of the T_VEC vector in that chunk associated with the thread.
+  static_assert(sizeof(T_VEC) % sizeof(T) == 0);
+  unsigned constexpr kVecSize{sizeof(T_VEC) / sizeof(T)};
+  auto const idx_vec = (tidx % VECS_PER_CHUNK) * kVecSize;
+
+  return uint2{idx_chunk, idx_vec};
+}
+
+inline int getMultiProcessorCount() {
+  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+  return sm_count;
+}
+
+inline int getMaxSharedMemoryPerBlockOptin() {
+  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  int max_shared_memory_per_block;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetAttribute(&max_shared_memory_per_block,
+                             cudaDevAttrMaxSharedMemoryPerBlockOptin,
+                             device_id));
+  return max_shared_memory_per_block;
+}
+
+// 大致意思就是：一个block耗尽最大共享内存用来处理元素情况下，需要多少个block处理seq_len
+template <typename T>
+inline int estimate_min_multi_block_count(int max_timesteps,
+                                          int max_dynamic_shmem_per_block) {
+  auto const qk_elts = static_cast<int>((max_timesteps + 1 + 4 - 1) / 4);
+  int size_per_elts = 16;
+#ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS
+  if (sizeof(T) != 4) {
+    size_per_elts += 4 * sizeof(T);
+  }
+#endif
+  int elts_per_block = max_dynamic_shmem_per_block / size_per_elts;
+  int min_block_count = (qk_elts + elts_per_block - 1) / elts_per_block;
+  return std::max(1, min_block_count);
+}
+
+// 大致意思就是：从硬件角度，一个wave处理完全部任务的情况下，最大的seq_len_tile
+// 实际上最后也是一个wave处理完的，只要一个wave。
+// 假定了一个SM只能有一个block
+/// TODO:
+/// 整个attention实现的思路就是要block尽量大(占用资源尽可能多)，所以说这个假定什么时候不合理呢？
+// 就是一个block有1024线程，但是寄存器和共享内存都只占了不到一半。这种情况下，A100说不定能启动
+// 两个block/SM 但是很难说这种情况会性能好，所以暂时来讲，这个假定还算合理。
+int getMaxNumSeqLenTile(int batch_size, int num_heads) {
+  return div_up(getMultiProcessorCount(), batch_size * num_heads);
+}
+
 
 }  // namespace fusion
 }  // namespace phi
