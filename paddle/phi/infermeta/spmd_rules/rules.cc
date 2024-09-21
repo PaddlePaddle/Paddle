@@ -154,6 +154,10 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
+    conv2d,
+    PD_INFER_SPMD(phi::distributed::Conv2dInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::Conv2dInferSpmdReverseBase));
+PD_REGISTER_SPMD_RULE(
     cos,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
@@ -680,6 +684,11 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(unbind,
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    logsumexp,
+    PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmd),
+    PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

@@ -1768,7 +1768,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                                 bool trans_y,
                                 const std::string& activation,
                                 MetaTensor* out,
-                                MetaTensor* reserve_space) {
+                                MetaTensor* reserve_space,
+                                MetaConfig config) {
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
   const auto& bias_dims = bias.dims();
@@ -1809,15 +1810,17 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
 
   int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
   int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
-
-  PADDLE_ENFORCE_EQ(
-      K_from_x,
-      K_from_y,
-      common::errors::InvalidArgument(
-          "The last dimension of X should be equal with Y's first dimension."
-          "But received X[-1] = [%d], Y[0] = [%d].",
-          K_from_x,
-          K_from_y));
+  bool check_dim = (!config.is_runtime && K_from_x != -1) || config.is_runtime;
+  if (check_dim) {
+    PADDLE_ENFORCE_EQ(
+        K_from_x,
+        K_from_y,
+        common::errors::InvalidArgument(
+            "The last dimension of X should be equal with Y's first dimension."
+            "But received X[-1] = [%d], Y[0] = [%d].",
+            K_from_x,
+            K_from_y));
+  }
 
   std::vector<int64_t> out_dims;
   out_dims.reserve(static_cast<size_t>(x_dims.size()));
@@ -3908,6 +3911,88 @@ void FCInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void FCOneDNNInferMeta(const MetaTensor& input,
+                       const MetaTensor& w,
+                       const MetaTensor& bias,
+                       const int in_num_col_dims,
+                       const std::string& activation_type,
+                       const bool padding_weights,
+                       const std::vector<int>& fused_reshape2_shape,
+                       MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      in_num_col_dims,
+      1,
+      common::errors::InvalidArgument(
+          "The in_num_col_dims is expected to equal or greater than 1. "
+          "But received the in_num_col_dims is %d. ",
+          in_num_col_dims));
+
+  auto w_dims = w.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The input Weight of fc is expected to be a 2-D tensor. "
+          "But received the number of Weight's dimensions is %d, "
+          "Weight's shape is %s.",
+          w_dims.size(),
+          w_dims));
+
+  if (bias) {
+    auto bias_dims = bias.dims();
+    auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
+
+    PADDLE_ENFORCE_EQ(
+        bias_dims[bias_dims.size() - 1],
+        w_dims1,
+        common::errors::InvalidArgument(
+            "The last dimension of input Bias is expected be equal "
+            "to the actual width of input Weight. But received the last "
+            "dimension of Bias is %d, Bias's shape is %s; "
+            "the actual width of Weight is %d, Weight's shape is %s.",
+            bias_dims[bias_dims.size() - 1],
+            bias_dims,
+            w_dims1,
+            w_dims));
+  }
+
+  auto in_dims = input.dims();
+  // VLOG(-2) << "fc in dims: " << in_dims.size();
+  PADDLE_ENFORCE_LT(
+      in_num_col_dims,
+      in_dims.size(),
+      common::errors::InvalidArgument(
+          "The attribute in_num_col_dims used to flatten Input to "
+          "a 2-D tensor, is expected to be less than the number of "
+          "Input's dimensions. But received in_num_col_dims is %d, "
+          "the number of Input's dimensions is %d, Input's shape is %s.",
+          in_num_col_dims,
+          in_dims.size(),
+          in_dims));
+
+  std::unordered_set<std::string> support_acts = {"", "relu", "gelu"};
+  PADDLE_ENFORCE_EQ(
+      support_acts.count(activation_type),
+      1,
+      common::errors::InvalidArgument(
+          "The attribute activation_type of fc is expected "
+          "to be one of [\"\", \"relu\", \"gelu\"], but received %s.",
+          activation_type.c_str()));
+
+  std::vector<int64_t> output_dims;
+  phi::funcs::FCOutputSize(
+      in_dims, w_dims, output_dims, in_num_col_dims, padding_weights);
+
+  auto out_dims = common::make_ddim(output_dims);
+  auto reshape_size = fused_reshape2_shape;
+  if (!reshape_size.empty()) {
+    out_dims = out_dims.reshape(reshape_size);
+  }
+  out->set_dims(out_dims);
+  out->share_lod(input);
+  out->set_dtype(input.dtype());
+}
+
 void SelfDPAttenInferMeta(const MetaTensor& x,
                           const float alpha,
                           const int head_number,
@@ -4610,6 +4695,157 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
                         cos_emb_dims[3]));
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
+}
+
+void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
+                              const MetaTensor& cvm,
+                              const std::string& pooltype,
+                              float pad_value,
+                              bool use_cvm,
+                              int cvm_offset,
+                              std::vector<MetaTensor*> out,
+                              MetaConfig config) {
+  PADDLE_ENFORCE_GE(x.size(),
+                    1UL,
+                    common::errors::InvalidArgument(
+                        "Inputs(X) of FusedSeqpoolCVMOp should not be empty."));
+  PADDLE_ENFORCE_GE(
+      out.size(),
+      1UL,
+      common::errors::InvalidArgument(
+          "Outputs(Out) of FusedSeqpoolCVMOp should not be empty."));
+
+  const auto& cvm_dims = cvm.dims();
+  PADDLE_ENFORCE_EQ(
+      cvm_dims.size(),
+      2UL,
+      common::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
+  PADDLE_ENFORCE_EQ(cvm_dims[1],
+                    2UL,
+                    common::errors::InvalidArgument("The 2nd dimension of "
+                                                    "Input(CVM) should be 2."));
+
+  const size_t num_inputs = x.size();
+  std::vector<phi::DDim> outs_dims;
+  outs_dims.resize(num_inputs);
+
+  PADDLE_ENFORCE_GT(num_inputs,
+                    0UL,
+                    common::errors::InvalidArgument(
+                        "Input tensors count should be greater than 0, "
+                        "but received value is %d.",
+                        num_inputs));
+
+  // The output height should be confirmed in Compute,
+  // since input lod is not accessible here.
+  auto size_tmp = x[0]->dims().size();
+  PADDLE_ENFORCE_EQ(size_tmp,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dims size of first input should be equal to 2, "
+                        "but received value is %d.",
+                        size_tmp));
+
+  for (size_t i = 0; i < num_inputs; ++i) {
+    const auto dims = x[i]->dims();
+    int rank = dims.size();
+    if (use_cvm) {
+      PADDLE_ENFORCE_GT(
+          dims[rank - 1],
+          2,
+          common::errors::InvalidArgument(
+              "Shape error in %lu id, the last dimension(embedding) of the "
+              "'X' tensor must be larger than 2.",
+              i));
+    }
+    // input lod is not accessible here
+    std::vector<int64_t> out_dim;
+    if (use_cvm) {
+      out_dim = {-1, dims[rank - 1]};
+    } else {
+      out_dim = {-1, dims[rank - 1] - cvm_offset};
+    }
+    outs_dims[i] = common::make_ddim(out_dim);
+  }
+  for (size_t i = 0; i < out.size(); ++i) {
+    out[i]->set_dims(outs_dims[i]);
+  }
+
+  for (size_t i = 0; i < out.size(); ++i) {
+    out[i]->share_lod(*x[i]);
+    out[i]->set_dtype(x[i]->dtype());
+  }
+}
+
+void FusedSeqpoolCvmGradInferMeta(
+    const std::vector<const MetaTensor*>& x,
+    const MetaTensor& cvm,
+    const std::vector<const MetaTensor*>& out_grad,
+    const std::string& pooltype,
+    float pad_value,
+    bool use_cvm,
+    int cvm_offset,
+    std::vector<MetaTensor*> x_grad,
+    MetaTensor* cvm_grad,
+    MetaConfig config) {
+  std::vector<phi::DDim> og_dims;
+  std::vector<phi::DDim> x_dims;
+  og_dims.resize(out_grad.size());
+  x_dims.resize(x.size());
+  for (size_t i = 0; i < out_grad.size(); ++i) {
+    og_dims[i] = out_grad[i]->dims();
+  }
+  for (size_t i = 0; i < x.size(); ++i) {
+    x_dims[i] = x[i]->dims();
+  }
+  auto cvm_dims = cvm.dims();
+  PADDLE_ENFORCE_EQ(
+      cvm_dims.size(),
+      2,
+      common::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
+
+  for (size_t i = 0; i < og_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(og_dims[i].size(),
+                      x_dims[i].size(),
+                      common::errors::InvalidArgument(
+                          "The rank of output grad must equal to Input(X). But "
+                          "received: input rank %u, input shape [%s].",
+                          og_dims[i].size(),
+                          og_dims[i]));
+    if (use_cvm) {
+      auto o_dim = og_dims[i][og_dims[i].size() - 1];
+      PADDLE_ENFORCE_EQ(
+          o_dim,
+          x_dims[i][og_dims[i].size() - 1],
+          common::errors::InvalidArgument(
+              "The dimension mismatch between Input(OUT@GRAD) and "
+              "Input(X). Received Input(OUT@GRAD): input rank %u, "
+              "input shape [%s]; received Input(X): input rank %u, "
+              "input shape [%s].",
+              og_dims[i].size(),
+              og_dims[i],
+              x_dims[i].size(),
+              x_dims[i]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          og_dims[i][og_dims[i].size() - 1],
+          x_dims[i][og_dims[i].size() - 1] - cvm_offset,
+          common::errors::InvalidArgument(
+              "The dimension mismatch between Input(OUT@GRAD) and "
+              "Input(X). Received Input(OUT@GRAD): input rank %u, "
+              "input shape [%s]; received Input(X): input rank %u, "
+              "input shape [%s].",
+              og_dims[i].size(),
+              og_dims[i],
+              x_dims[i].size(),
+              x_dims[i]));
+    }
+  }
+  for (size_t i = 0; i < x_dims.size(); ++i) {
+    x_grad[i]->share_lod(*x[i]);
+    x_grad[i]->set_dims(x[i]->dims());
+    x_grad[i]->set_dtype(x[i]->dtype());
+  }
 }
 
 void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
@@ -5319,6 +5555,155 @@ void ResnetUnitGradInferMeta(const MetaTensor& x,
     scale_z_grad->set_dtype(scale_z.dtype());
     bias_z_grad->set_dtype(bias_z.dtype());
   }
+}
+
+void FusedGateAttentionInferMeta(const MetaTensor& query,
+                                 const MetaTensor& key,
+                                 const MetaTensor& query_weight,
+                                 const MetaTensor& key_weight,
+                                 const MetaTensor& value_weight,
+                                 const MetaTensor& qkv_weight,
+                                 const MetaTensor& nonbatched_bias,
+                                 const MetaTensor& src_mask,
+                                 const MetaTensor& gate_weight,
+                                 const MetaTensor& gate_bias,
+                                 const MetaTensor& out_linear_weight,
+                                 const MetaTensor& out_linear_bias,
+                                 bool has_gating,
+                                 bool merge_qkv,
+                                 bool use_flash_attn,
+                                 MetaTensor* query_transpose_out,
+                                 MetaTensor* key_transpose_out,
+                                 MetaTensor* value_transpose_out,
+                                 MetaTensor* qkv_transpose_out,
+                                 MetaTensor* softmax_out,
+                                 MetaTensor* softmax_lse,
+                                 MetaTensor* fmha_out,
+                                 MetaTensor* gate_out,
+                                 MetaTensor* out,
+                                 MetaConfig config) {
+  const auto& input_q_dims = query.dims();
+  int batch_size = input_q_dims[0];
+  int seq_len_m = input_q_dims[1];
+  int seq_len_r = input_q_dims[2];
+
+  int num_head, m_size, head_dim;
+  if (merge_qkv) {
+    // QKV's input: [batch_size, seq_len_m, seq_len_r, qkv_dim]
+    // QKV's weight: [3, num_head, head_dim, qkv_dim]
+    const auto& qkv_w_dims = qkv_weight.dims();
+
+    num_head = qkv_w_dims[1];
+    head_dim = qkv_w_dims[2];
+    m_size = seq_len_r;
+
+    qkv_transpose_out->set_dims(
+        {3, batch_size, seq_len_m, num_head, seq_len_r, head_dim});
+    qkv_transpose_out->set_dtype(query.dtype());
+  } else {
+    const auto& input_k_dims = key.dims();
+    const auto& q_w_dims = query_weight.dims();
+
+    num_head = q_w_dims[1];
+    head_dim = q_w_dims[2];
+    m_size = input_k_dims[2];
+
+    query_transpose_out->set_dims(
+        {batch_size, seq_len_m, num_head, seq_len_r, head_dim});
+    key_transpose_out->set_dims(
+        {batch_size, seq_len_m, num_head, m_size, head_dim});
+    value_transpose_out->set_dims(
+        {batch_size, seq_len_m, num_head, m_size, head_dim});
+    query_transpose_out->set_dtype(query.dtype());
+    key_transpose_out->set_dtype(query.dtype());
+    value_transpose_out->set_dtype(query.dtype());
+  }
+
+  softmax_out->set_dims({batch_size, seq_len_m, num_head, seq_len_r, m_size});
+  fmha_out->set_dims({batch_size, seq_len_m, seq_len_r, num_head, head_dim});
+  softmax_out->set_dtype(query.dtype());
+  fmha_out->set_dtype(query.dtype());
+
+  if (has_gating) {
+    gate_out->set_dims({batch_size, seq_len_m, seq_len_r, num_head, head_dim});
+    gate_out->set_dtype(query.dtype());
+  }
+  out->set_dims(query.dims());
+  out->set_dtype(query.dtype());
+}
+
+void FusedGateAttentionGradInferMeta(const MetaTensor& query,
+                                     const MetaTensor& key,
+                                     const MetaTensor& query_weight,
+                                     const MetaTensor& key_weight,
+                                     const MetaTensor& value_weight,
+                                     const MetaTensor& qkv_weight,
+                                     const MetaTensor& nonbatched_bias,
+                                     const MetaTensor& src_mask,
+                                     const MetaTensor& gate_weight,
+                                     const MetaTensor& gate_bias,
+                                     const MetaTensor& out_linear_weight,
+                                     const MetaTensor& out_linear_bias,
+                                     const MetaTensor& query_transpose_out,
+                                     const MetaTensor& key_transpose_out,
+                                     const MetaTensor& value_transpose_out,
+                                     const MetaTensor& qkv_transpose_out,
+                                     const MetaTensor& softmax_out,
+                                     const MetaTensor& softmax_lse,
+                                     const MetaTensor& fmha_out,
+                                     const MetaTensor& gate_out,
+                                     const MetaTensor& out_grad,
+                                     bool has_gating,
+                                     bool merge_qkv,
+                                     bool use_flash_attn,
+                                     MetaTensor* query_grad,
+                                     MetaTensor* key_grad,
+                                     MetaTensor* query_weight_grad,
+                                     MetaTensor* key_weight_grad,
+                                     MetaTensor* value_weight_grad,
+                                     MetaTensor* qkv_weight_grad,
+                                     MetaTensor* nonbatched_bias_grad,
+                                     MetaTensor* gate_weight_grad,
+                                     MetaTensor* gate_bias_grad,
+                                     MetaTensor* out_linear_weight_grad,
+                                     MetaTensor* out_linear_bias_grad,
+                                     MetaConfig config) {
+  if (query_grad != nullptr) {
+    query_grad->set_dims(query.dims());
+    query_grad->set_dtype(query.dtype());
+  }
+  if (key_grad != nullptr) {
+    key_grad->set_dims(key.dims());
+    key_grad->set_dtype(key.dtype());
+  }
+
+  if (merge_qkv) {
+    qkv_weight_grad->set_dims(qkv_weight.dims());
+    qkv_weight_grad->set_dtype(qkv_weight.dtype());
+  } else {
+    query_weight_grad->set_dims(query_weight.dims());
+    key_weight_grad->set_dims(key_weight.dims());
+    value_weight_grad->set_dims(value_weight.dims());
+    query_weight_grad->set_dtype(query_weight.dtype());
+    key_weight_grad->set_dtype(key_weight.dtype());
+    value_weight_grad->set_dtype(value_weight.dtype());
+  }
+
+  if (has_gating) {
+    gate_weight_grad->set_dims(gate_weight.dims());
+    gate_bias_grad->set_dims(gate_bias.dims());
+    gate_weight_grad->set_dtype(gate_weight.dtype());
+    gate_bias_grad->set_dtype(gate_bias.dtype());
+  }
+
+  if (nonbatched_bias_grad != nullptr) {
+    nonbatched_bias_grad->set_dims(nonbatched_bias.dims());
+    nonbatched_bias_grad->set_dtype(nonbatched_bias.dtype());
+  }
+  out_linear_weight_grad->set_dims(out_linear_weight.dims());
+  out_linear_bias_grad->set_dims(out_linear_bias.dims());
+  out_linear_weight_grad->set_dtype(out_linear_weight.dtype());
+  out_linear_bias_grad->set_dtype(out_linear_bias.dtype());
 }
 
 void ResnetBasicBlockInferMeta(const MetaTensor& x,

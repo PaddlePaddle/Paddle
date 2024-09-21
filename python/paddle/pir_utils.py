@@ -254,3 +254,21 @@ def analysis_io(program: paddle.pir.Program):
             total_io += get_memory(value)
 
     return total_io / 1024 / 1024 / 1024
+
+
+def append_activation_in_pir(input, act=None, use_cudnn=None):
+    if act is None:
+        return input
+
+    act_name_mapping = {
+        "hard_swish": "hardswish",
+    }
+    act = act_name_mapping.get(act, act)
+
+    attrs = ()
+    if use_cudnn:
+        attrs = ('use_cudnn', use_cudnn)
+    act_op = getattr(paddle._C_ops, act)
+    if act == 'softmax':
+        return act_op(input, -1)
+    return act_op(input, *attrs)

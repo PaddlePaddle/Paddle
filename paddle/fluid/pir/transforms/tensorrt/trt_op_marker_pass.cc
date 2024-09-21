@@ -22,6 +22,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/platform/tensorrt/helper.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/pass/pass.h"
@@ -70,6 +72,9 @@ DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
 DEFINE_GENERAL_PATTERN(Shape, paddle::dialect::ShapeOp)
 DEFINE_GENERAL_PATTERN(Expand, paddle::dialect::ExpandOp)
 DEFINE_GENERAL_PATTERN(Sigmoid, paddle::dialect::SigmoidOp)
+DEFINE_GENERAL_PATTERN(Sqrt, paddle::dialect::SqrtOp)
+DEFINE_GENERAL_PATTERN(Hardsigmoid, paddle::dialect::HardsigmoidOp)
+DEFINE_GENERAL_PATTERN(Hardswish, paddle::dialect::HardswishOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -1088,6 +1093,164 @@ class RemainderOpPattern
     return true;
   }
 };
+
+class MulticlassNms3OpPattern
+    : public pir::OpRewritePattern<paddle::dialect::MulticlassNms3Op> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::MulticlassNms3Op>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MulticlassNms3Op op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op.attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    auto rois_num = op.operand_source(2);
+    if (rois_num.impl() != nullptr) {
+      return false;
+    }
+    for (auto operand : op->operands()) {
+      auto operand_source = operand.source();
+      if (operand_source.impl() == nullptr) {
+        continue;
+      }
+      auto shape = operand_source.type()
+                       .dyn_cast<paddle::dialect::DenseTensorType>()
+                       .dims();
+      if (shape.size() != 3) {
+        VLOG(3) << "multiclass_nms op dims != 3 not supported in tensorrt, "
+                   "but got dims "
+                << shape.size() << ", so jump it.";
+        return false;
+      }
+    }
+    bool has_attrs =
+        (op->HasAttribute("background_label") &&
+         op->HasAttribute("score_threshold") && op->HasAttribute("nms_top_k") &&
+         op->HasAttribute("keep_top_k") && op->HasAttribute("normalized"));
+    if (has_attrs == false) return false;
+
+    // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
+    // plugin are not constient with those of multiclass_nms3
+    if (op->HasAttribute("nms_eta") == false) return false;
+    auto nms_eta = op.attribute<pir::FloatAttribute>("nms_eta").data();
+    if (nms_eta <= 1.0) return false;
+
+    auto nms_top_k = op.attribute<pir::Int32Attribute>("nms_top_k").data();
+    if (nms_top_k < 0) return false;
+
+    auto keep_top_k = op.attribute<pir::Int32Attribute>("keep_top_k").data();
+    if (keep_top_k < 0) return false;
+
+    auto registry = paddle::platform::GetPluginRegistry();
+
+    if (registry == nullptr) return false;
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class ArgmaxOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ArgmaxOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ArgmaxOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::ArgmaxOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op.attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op.axis().defining_op()->isa<paddle::dialect::FullOp>()) {
+      VLOG(3) << "Skip to convert into TRT while found axis is not a constant "
+                 "data in arg_max.";
+      return false;
+    }
+    auto x = op.x();
+    auto x_tensor_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto data_type = paddle::dialect::TransToPhiDataType(x_tensor_type.dtype());
+    if (!(data_type == phi::DataType::FLOAT32 ||
+          data_type == phi::DataType::FLOAT16 ||
+          data_type == phi::DataType::FLOAT64)) {
+      return false;
+    }
+    int axis = static_cast<int>(op.axis()
+                                    .defining_op()
+                                    ->attribute<pir::DoubleAttribute>("value")
+                                    .data());
+
+    bool flatten = op.attribute<pir::BoolAttribute>("flatten").data();
+    phi::DataType dtype =
+        op.attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
+    if (axis == 0 || flatten ||
+        (dtype != phi::DataType::INT32 && dtype != phi::DataType::INT64))
+      return false;
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+class MaxOpPattern : public pir::OpRewritePattern<paddle::dialect::MaxOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MaxOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MaxOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op->HasAttribute("keepdim")) {
+      VLOG(3) << "the max does not have attr keep_dim ";
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    if (!(x_dtype.isa<pir::Float32Type>() || x_dtype.isa<pir::Float64Type>() ||
+          x_dtype.isa<pir::Int32Type>() || x_dtype.isa<pir::Int64Type>())) {
+      VLOG(3) << "max input data type must be int32 or int64 or "
+                 "float32 or "
+                 "float64";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class MeanOpPattern : public pir::OpRewritePattern<paddle::dialect::MeanOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MeanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MeanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+
+    if (!op->HasAttribute("axis")) {
+      VLOG(3) << "The axis attribute does not exist";
+      return false;
+    }
+
+    if (!op->HasAttribute("keepdim")) {
+      VLOG(3) << "The keepdim attribute does not exist";
+      return false;
+    }
+
+    pir::Value input = op.operand_source(0);
+    auto input_type = pir::GetDataTypeFromValue(input);
+    if (!input_type.isa<pir::Int32Type>() &&
+        !input_type.isa<pir::Int64Type>() &&
+        !input_type.isa<pir::Float32Type>() &&
+        !input_type.isa<pir::Float64Type>()) {
+      VLOG(3) << "The input type of pd_op.mean is not int32 or int64 or "
+                 "float32 or float64";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1119,6 +1282,9 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Shape)
     ADD_PATTERN(Expand)
     ADD_PATTERN(Sigmoid)
+    ADD_PATTERN(Sqrt)
+    ADD_PATTERN(Hardsigmoid)
+    ADD_PATTERN(Hardswish)
 #if IS_TRT_VERSION_GE(8600)
     ADD_PATTERN(Layer_norm)
 #endif
@@ -1152,15 +1318,17 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MinimumOpPattern>(context));
     ps.Add(std::make_unique<MaximumOpPattern>(context));
     ps.Add(std::make_unique<FloorDivideOpPattern>(context));
+    ps.Add(std::make_unique<MeanOpPattern>(context));
     ps.Add(std::make_unique<RemainderOpPattern>(context));
+    ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
+    ps.Add(std::make_unique<ArgmaxOpPattern>(context));
+    ps.Add(std::make_unique<MaxOpPattern>(context));
     return ps;
   }
 };
-
 }  // namespace
 
 namespace pir {
-
 std::unique_ptr<Pass> CreateTrtOpMarkerPass() {
   return std::make_unique<TrtOpMarkerPass>();
 }

@@ -71,8 +71,8 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_multi_precision_fp16_train$|\
 ^test_imperative_skip_op$|\
 ^test_qat$|\
-^test_standalone_cuda_graph_multi_stream$|\
-^test_standalone_cuda_graph_multi_stream_static_build$|\
+^test_standalone_cuda_graph_multi_stream_deprecated$|\
+^test_standalone_cuda_graph_multi_stream_deprecated_static_build$|\
 ^test_save_load$|\
 ^test_conv_transpose_nn_grad$|\
 ^test_dygraph_spectral_norm$|\
@@ -235,7 +235,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_add_reader_dependency_deprecated$|\
 ^test_conv2d_fusion_op$|\
 ^test_fused_conv2d_add_act_op$|\
-^test_analyzer_detect_functional_mkldnn$|\
 ^test_audio_datasets$|\
 ^test_signal$|\
 ^test_stft_op$|\

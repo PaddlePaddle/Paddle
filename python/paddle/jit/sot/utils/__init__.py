@@ -32,7 +32,6 @@ from .envs import (  # noqa: F401
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,
-    DynamicShapeFallbackError,
     ExportError,
     FallbackError,
     InnerError,
@@ -56,7 +55,7 @@ from .utils import (  # noqa: F401
     StepInfoManager,
     StepState,
     count_if,
-    current_tmp_name_records,
+    current_symbol_registry,
     execute_time,
     flatten,
     flatten_extend,
@@ -74,11 +73,12 @@ from .utils import (  # noqa: F401
     list_find_index_by_id,
     log,
     log_do,
+    log_enabled,
     log_format,
     map_if,
     map_if_extend,
     meta_str,
     no_eval_frame,
     printable,
-    tmp_name_guard,
+    switch_symbol_registry,
 )

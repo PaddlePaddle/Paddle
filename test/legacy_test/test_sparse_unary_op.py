@@ -166,31 +166,67 @@ class TestSparseUnary(unittest.TestCase):
         self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'complex128')
 
     def test_sparse_tan(self):
-        self.compare_with_dense(paddle.tan, paddle.sparse.tan)
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'float16')
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'float32')
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'float64')
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'complex64')
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'complex128')
 
     def test_sparse_asin(self):
-        self.compare_with_dense(paddle.asin, paddle.sparse.asin)
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'float16')
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'float32')
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'float64')
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'complex64')
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'complex128')
 
     def test_sparse_atan(self):
-        self.compare_with_dense(paddle.atan, paddle.sparse.atan)
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'float16')
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'float32')
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'float64')
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'complex64')
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'complex128')
 
     def test_sparse_tanh(self):
-        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh)
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'float16')
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'float32')
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'float64')
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'complex64')
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'complex128')
 
     def test_sparse_asinh(self):
-        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh)
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float16')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float32')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float64')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'complex64')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'complex128')
 
     def test_sparse_atanh(self):
-        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh)
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'float16')
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'float32')
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'float64')
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'complex64')
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'complex128')
 
     def test_sparse_sqrt(self):
         self.compare_with_dense(paddle.sqrt, paddle.sparse.sqrt)
 
     def test_sparse_square(self):
-        self.compare_with_dense(paddle.square, paddle.sparse.square)
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float16')
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float32')
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float64')
+        self.compare_with_dense(
+            paddle.square, paddle.sparse.square, 'complex64'
+        )
+        self.compare_with_dense(
+            paddle.square, paddle.sparse.square, 'complex128'
+        )
 
     def test_sparse_log1p(self):
-        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p)
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'float16')
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'float32')
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'float64')
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'complex64')
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'complex128')
 
     def test_sparse_relu(self):
         self.compare_with_dense(paddle.nn.ReLU(), paddle.sparse.nn.ReLU())
@@ -204,10 +240,18 @@ class TestSparseUnary(unittest.TestCase):
         )
 
     def test_sparse_sinh(self):
-        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh)
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float16')
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float32')
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float64')
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'complex64')
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'complex128')
 
     def test_sparse_expm1(self):
-        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1)
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float16')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float32')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float64')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'complex64')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'complex128')
 
     def test_sparse_deg2rad(self):
         self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad)
@@ -400,31 +444,67 @@ class TestSparseUnaryStatic(unittest.TestCase):
         self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'complex128')
 
     def test_sparse_tan(self):
-        self.compare_with_dense(paddle.tan, paddle.sparse.tan)
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'float16')
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'float32')
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'float64')
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'complex64')
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan, 'complex128')
 
     def test_sparse_asin(self):
-        self.compare_with_dense(paddle.asin, paddle.sparse.asin)
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'float16')
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'float32')
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'float64')
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'complex64')
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin, 'complex128')
 
     def test_sparse_atan(self):
-        self.compare_with_dense(paddle.atan, paddle.sparse.atan)
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'float16')
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'float32')
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'float64')
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'complex64')
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan, 'complex128')
 
     def test_sparse_tanh(self):
-        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh)
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'float16')
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'float32')
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'float64')
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'complex64')
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh, 'complex128')
 
     def test_sparse_asinh(self):
-        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh)
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float16')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float32')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'float64')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'complex64')
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh, 'complex128')
 
     def test_sparse_atanh(self):
-        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh)
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'float16')
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'float32')
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'float64')
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'complex64')
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh, 'complex128')
 
     def test_sparse_sqrt(self):
         self.compare_with_dense(paddle.sqrt, paddle.sparse.sqrt)
 
     def test_sparse_square(self):
-        self.compare_with_dense(paddle.square, paddle.sparse.square)
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float16')
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float32')
+        self.compare_with_dense(paddle.square, paddle.sparse.square, 'float64')
+        self.compare_with_dense(
+            paddle.square, paddle.sparse.square, 'complex64'
+        )
+        self.compare_with_dense(
+            paddle.square, paddle.sparse.square, 'complex128'
+        )
 
     def test_sparse_log1p(self):
-        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p)
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'float16')
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'float32')
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'float64')
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'complex64')
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p, 'complex128')
 
     def test_sparse_relu(self):
         self.compare_with_dense(paddle.nn.ReLU(), paddle.sparse.nn.ReLU())
@@ -438,10 +518,18 @@ class TestSparseUnaryStatic(unittest.TestCase):
         )
 
     def test_sparse_sinh(self):
-        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh)
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float16')
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float32')
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float64')
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'complex64')
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'complex128')
 
     def test_sparse_expm1(self):
-        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1)
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float16')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float32')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'float64')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'complex64')
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1, 'complex128')
 
     def test_sparse_deg2rad(self):
         self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad)
