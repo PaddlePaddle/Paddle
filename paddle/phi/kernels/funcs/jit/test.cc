@@ -82,8 +82,17 @@ void TestAllImpls(const typename KernelTuple::attr_type& attr,
                   const Tester& verifier,
                   const Args&... args) {
   auto funcs = jit::GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
+
+  std::cout << ">>>>>>>>>> TestAllImpls funcs size is " << funcs.size()
+            << std::endl;
+
   for (auto const& f : funcs) {
     VLOG(10) << "Test Kernel " << f.first;
+
+    std::cout << ">>>>>>>>>> TestAllImpls verifier is " << &verifier
+              << std::endl;
+    std::cout << ">>>>>>>>>> TestAllImpls f is " << &f.second << std::endl;
+
     verifier(f.second, args...);
   }
 }
@@ -778,7 +787,7 @@ void TestKernelAdam() {
   std::cout << ">>>>>>>>>> TestKernelAdam grad.data()[3] " << grad.data()[3]
             << std::endl;
 
-  auto verifier = [](const typename KernelTuple::func_type tgt,
+  auto verifier = [](const typename KernelTuple::func_type& tgt,
                      T beta1,
                      T beta2,
                      T lr,
@@ -808,6 +817,7 @@ void TestKernelAdam() {
     std::cout << ">>>>>>>>>> TestKernelAdam std::vector<T> "
                  "jit_param_out(ref_param_out.size()); ..."
               << std::endl;
+    std::cout << ">>>>>>>>>> TestKernelAdam tgt is " << &tgt << std::endl;
 
     tgt(beta1,
         beta2,
