@@ -45,7 +45,7 @@ if _use_four_directions:
 else:
     from .pp_utils import p2p_communication as p2p
 
-from paddle.distributed import fleet, in_auto_parallel_align_mode
+from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
@@ -1007,7 +1007,7 @@ class PipelineParallel(MetaParallelBase):
             )
             if self.is_pipeline_last_stage():
                 assert output_tensor_grad is None
-                if in_auto_parallel_align_mode():
+                if paddle.distributed.in_auto_parallel_align_mode():
                     output_tensor = output_tensor / _get_align_mode_scale()
                 if self.scaler:
                     paddle.autograd.backward(self.scaler.scale(output_tensor))

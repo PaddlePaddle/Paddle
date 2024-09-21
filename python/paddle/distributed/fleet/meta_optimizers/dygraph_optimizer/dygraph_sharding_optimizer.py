@@ -21,7 +21,7 @@ import paddle
 from paddle import framework
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
-from paddle.distributed import fleet, in_auto_parallel_align_mode
+from paddle.distributed import fleet
 from paddle.distributed.communication.reduce import (
     ReduceOp,
     is_avg_reduce_op_supported,
@@ -338,7 +338,7 @@ class DygraphShardingOptimizer:
                         g_var.scale_(1.0 / sharding_nrank)
                         reduce_op = ReduceOp.SUM
 
-                    if in_auto_parallel_align_mode():
+                    if paddle.distributed.in_auto_parallel_align_mode():
                         reduce_op = ReduceOp.SUM
 
                     param_rank = self._param2rank[param.name]
