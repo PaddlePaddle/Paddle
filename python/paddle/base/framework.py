@@ -1298,7 +1298,7 @@ def name_struct(prefix=None):
                 for idx in reversed(range(op_num_before, op_num)):
                     op = all_ops[idx]
                     if op.has_attr("struct_name"):
-                        break
+                        continue
                     op.set_str_attr("struct_name", _full_name_struct())
 
             _name_struct = _name_struct.parent()

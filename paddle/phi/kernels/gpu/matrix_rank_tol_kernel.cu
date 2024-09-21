@@ -544,9 +544,6 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
     // when `rtol` is specified to be None in py api
     // use rtol=eps*max(m, n) only if `atol` is passed with value 0.0, else use
     // rtol=0.0
-    DenseTensor zero_tensor;
-    zero_tensor = phi::FullLike<T, Context>(dev_ctx, atol, static_cast<T>(0.0));
-
     T rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
     DenseTensor default_rtol_tensor;
     default_rtol_tensor =
@@ -554,13 +551,17 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
     default_rtol_tensor =
         phi::Multiply<T>(dev_ctx, default_rtol_tensor, max_eigenvalue_tensor);
 
+    DenseTensor zero_tensor;
+    zero_tensor = phi::FullLike<T, Context>(
+        dev_ctx, default_rtol_tensor, static_cast<T>(0.0));
+
     DenseTensor atol_compare_result;
-    atol_compare_result.Resize(atol.dims());
+    atol_compare_result.Resize(default_rtol_tensor.dims());
     phi::EqualKernel<T, Context>(
         dev_ctx, atol, zero_tensor, &atol_compare_result);
 
     DenseTensor selected_rtol_tensor;
-    selected_rtol_tensor.Resize(atol.dims());
+    selected_rtol_tensor.Resize(default_rtol_tensor.dims());
     phi::WhereKernel<T, Context>(dev_ctx,
                                  atol_compare_result,
                                  default_rtol_tensor,

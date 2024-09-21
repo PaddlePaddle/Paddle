@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -43,7 +42,6 @@ class TestSetItemBase(Dy2StTestBase):
 
         return foo
 
-    @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)
@@ -202,7 +200,6 @@ class TestCase12(TestSetItemBase):
         y = func()
         return (y,)
 
-    @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)
