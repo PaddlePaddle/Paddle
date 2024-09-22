@@ -893,7 +893,7 @@ def GenDistBranch(args, op_info):
             # Tensor input
             else:
                 TEMPLATE = """
-    dist_operand_attrs.push_back(GetTensorDistAttr({name}.type()));"""
+    dist_operand_attrs.push_back(GetTensorDistAttr({name}.dtype()));"""
                 dist_branch_str += TEMPLATE.format(
                     name=op_info.input_name_list[i]
                 )
