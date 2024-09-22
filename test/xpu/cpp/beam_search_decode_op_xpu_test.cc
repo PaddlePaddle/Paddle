@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/beam_search_decode_op_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/phi/kernels/funcs/beam_search_decode_xpu.h"
 
 #include "gtest/gtest.h"
 
@@ -23,11 +23,11 @@ using LoD = paddle::framework::LoD;
 using LoDTensorArray = phi::TensorArray;
 
 template <typename T>
-using BeamSearchDecoder = paddle::operators::BeamSearchDecoder<T>;
+using BeamSearchDecoder = phi::funcs::BeamSearchDecoder<T>;
 template <typename T>
-using Sentence = paddle::operators::Sentence<T>;
+using Sentence = phi::funcs::Sentence<T>;
 template <typename T>
-using SentenceVector = paddle::operators::SentenceVector<T>;
+using SentenceVector = phi::funcs::SentenceVector<T>;
 
 namespace paddle {
 namespace test {
@@ -177,7 +177,7 @@ void BeamSearchDecodeTestByXPUFrame() {
   phi::DenseTensor id_tensor_cpu;
   phi::DenseTensor score_tensor_cpu;
 
-  paddle::operators::BeamSearchDecodeXPUFunctor bs_xpu(
+  phi::funcs::BeamSearchDecodeXPUFunctor bs_xpu(
       ids, scores, &id_tensor_cpu, &score_tensor_cpu, 2, 1);
   bs_xpu.apply_xpu<T>();
 
