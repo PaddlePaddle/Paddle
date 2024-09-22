@@ -721,6 +721,79 @@ std::vector<int64_t> GetLoopStrides(const ir::Expr& body,
   return loop_strides;
 }
 
+bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
+                           const std::vector<int64_t>& reduce_axis) {
+  using trivial_fusion_detail::GetAllForIters;
+  using trivial_fusion_detail::IsReduceBody;
+  using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
+  using trivial_fusion_detail::ExprSetFinderUtils::ChildStores;
+  using trivial_fusion_detail::ExprSetFinderUtils::ChildTensorLoads;
+  using trivial_fusion_detail::ExprSetFinderUtils::
+      ScheduleBlockRealizeIsNotInit;
+
+  const auto HasBroadcastInReduceAxis = [&](const ir::Expr& body,
+                                            const ir::Expr& expr_block) {
+    std::vector<ir::Var> all_loop_vars = GetAllForIters(body);
+    std::unordered_set<std::string> reduce_loop_vars;
+    for (int64_t axis : reduce_axis) {
+      reduce_loop_vars.insert(all_loop_vars[axis]->name);
+    }
+
+    std::unordered_set<std::string> reduce_iter_vars;
+    auto* block = expr_block.As<ir::ScheduleBlockRealize>();
+    auto& iter_vars = block->schedule_block.As<ir::ScheduleBlock>()->iter_vars;
+    for (int i = 0; i < iter_vars.size(); i++) {
+      ir::Var loop_var = block->iter_values[i].as_var_ref();
+      if (reduce_loop_vars.count(loop_var->name) > 0) {
+        reduce_iter_vars.insert(iter_vars[i]->name);
+      }
+    }
+
+    // The result is true if the indices of the output tensor contain any
+    // reduce iter vars.
+    auto expr_store = ChildStores.GetSingle(expr_block);
+    for (auto& index_expr : expr_store.As<ir::Store>()->indices) {
+      if (reduce_iter_vars.count(index_expr.as_var_ref()->name) > 0) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  std::unordered_set<std::string> reduce_downstream_tensor_names;
+  int reduce_count = 0;
+
+  // We can apply grid reduce if there is exactly one reduce, and whose result
+  // is not broadcasted before output.
+  for (const auto& body : op_compute_bodies) {
+    ir::Expr expr_block =
+        (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit)
+            .GetSingle(body);
+    bool is_reduce_downstream = false;
+    for (auto& expr_load : ChildTensorLoads(expr_block)) {
+      std::string load_tensor_name = expr_load.As<ir::Load>()->name();
+      if (reduce_downstream_tensor_names.count(load_tensor_name) > 0) {
+        is_reduce_downstream = true;
+      }
+    }
+    if (is_reduce_downstream && HasBroadcastInReduceAxis(body, expr_block)) {
+      return false;
+    }
+
+    bool is_reduce_body = IsReduceBody(body);
+    if (is_reduce_body) {
+      ++reduce_count;
+    }
+    if (is_reduce_downstream || is_reduce_body) {
+      auto expr_store = ChildStores.GetSingle(expr_block);
+      std::string store_tensor_name = expr_store.As<ir::Store>()->name();
+      reduce_downstream_tensor_names.insert(store_tensor_name);
+    }
+  }
+
+  return reduce_count == 1;
+}
+
 std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies) {
   using trivial_fusion_detail::AppendBound;
@@ -792,6 +865,10 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
                      }
                    });
   }
+
+  group_info->can_apply_grid_reduce =
+      GetCanApplyGridReduce(op_compute_bodies, group_info->reduce_axis);
+
   VLOG(4) << group_info->DebugPrint();
   return group_info;
 }
