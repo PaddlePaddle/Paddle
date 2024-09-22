@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
@@ -23,7 +25,11 @@ g_enable_math = None
 g_enable_flash = None
 g_enable_mem_efficient = None
 
+
 def _is_hopper_device():
+    if os.environ.get('PADDLE_DISABLE_CUDNN_FA', False):
+        return False
+
     # 获取指定设备的属性
     if paddle.device.is_compiled_with_cuda():
         place = paddle.framework._current_expected_place_()
@@ -257,20 +263,22 @@ def flash_attention(
                     mask_type = "none"
                     bias_type = "none"
 
-                (result_attention, result_softmax, _) = (
-                    _C_ops.fused_dot_product_attention(
-                        query,
-                        key,
-                        value,
-                        attn_mask,
-                        cu_seqlen_q,
-                        cu_seqlen_k,
-                        scaling_factor,
-                        dropout,
-                        training,
-                        mask_type,
-                        bias_type,
-                    )
+                (
+                    result_attention,
+                    result_softmax,
+                    _,
+                ) = _C_ops.fused_dot_product_attention(
+                    query,
+                    key,
+                    value,
+                    attn_mask,
+                    cu_seqlen_q,
+                    cu_seqlen_k,
+                    scaling_factor,
+                    dropout,
+                    training,
+                    mask_type,
+                    bias_type,
                 )
             else:
                 (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
