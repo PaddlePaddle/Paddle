@@ -128,17 +128,16 @@ std::vector<PatternNodePtr> PatternGraph::SortByReverseTopoOrder() const {
 }
 
 void PatternGraph::SinkTrivialPattern() {
-  GraphTransformer<NodePattern,
-                   And<StmtPatternGraphMatcher<TrivialPattern>,
-                       DownstreamSmallerThan<2>,
-                       NonSinkNodeMatcher>,
-                   MergeTrivialPatternOperation>(this);
+  GraphTransformer<
+      NodePattern,
+      And<StmtPatternGraphMatcher<TrivialPattern>, NonSinkNodeMatcher>,
+      MergeTrivialPatternOperation>(this);
 
-  GraphTransformer<NodePattern,
-                   And<StmtPatternGraphMatcher<TrivialPattern>,
-                       NonSinkNodeMatcher,
-                       LEOneElementWiseDownstreamMatcher>,
-                   MergeTrivialPatternOperation>(this);
+  // GraphTransformer<NodePattern,
+  //                  And<StmtPatternGraphMatcher<TrivialPattern>,
+  //                      NonSinkNodeMatcher,
+  //                      LEOneElementWiseDownstreamMatcher>,
+  //                  MergeTrivialPatternOperation>(this);
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
