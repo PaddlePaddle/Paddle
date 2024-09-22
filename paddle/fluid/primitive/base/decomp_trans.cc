@@ -53,7 +53,6 @@ std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
                                                            "pd_op.unsqueeze",
                                                            "pd_op.batch_norm",
                                                            "pd_op.batch_norm_",
-                                                           "pd_op.bmm",
                                                            "pd_op.flatten"};
 
 namespace {
