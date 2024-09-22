@@ -2448,6 +2448,7 @@ def empty(
                 'float16',
                 'float32',
                 'float64',
+                'uint16',
                 'int8',
                 'int16',
                 'int32',

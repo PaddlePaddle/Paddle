@@ -21,9 +21,9 @@ namespace fusion {
 namespace cutlass_internal {
 
 template <typename T>
-float diff(const T *C_cutlass, const T *C_naive, int n) {
+float diff(const T *C_cutlass, const T *C_naive, size_t n) {
   float max_diff = -1.;
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     float cutlass_value = static_cast<float>(C_cutlass[i]);
     float naive_value = static_cast<float>(C_naive[i]);
     if (std::abs(naive_value - cutlass_value) > max_diff) {
@@ -45,21 +45,21 @@ __global__ void naive_gemm_epilogue_kernel(const T *input,
                                            const T *weight,
                                            const T *bias,
                                            T *output,
-                                           int M,
-                                           int N,
-                                           int K,
-                                           int lda,
-                                           int ldb,
-                                           int ldd,
+                                           size_t M,
+                                           size_t N,
+                                           size_t K,
+                                           size_t lda,
+                                           size_t ldb,
+                                           size_t ldd,
                                            float leaky_alpha,
                                            bool isVec_bias,
                                            OpType op_type) {
-  int j = threadIdx.x + blockIdx.x * blockDim.x;
-  int i = threadIdx.y + blockIdx.y * blockDim.y;
+  size_t j = threadIdx.x + blockIdx.x * blockDim.x;
+  size_t i = threadIdx.y + blockIdx.y * blockDim.y;
 
   if (i < M && j < N) {
     float accumulator = 0.;
-    for (int k = 0; k < K; ++k) {
+    for (size_t k = 0; k < K; ++k) {
       float input_ele = static_cast<float>(input[i * lda + k]);
       float weight_ele = static_cast<float>(weight[k * ldb + j]);
       accumulator += input_ele * weight_ele;
@@ -106,8 +106,8 @@ float gemm_epilogue_diff_gpu(const GemmEpilogueAllParams &params,
   const T *weight = reinterpret_cast<const T *>(params.weight);
   const T *bias = reinterpret_cast<const T *>(params.bias);
   T *output_cutlass_D = reinterpret_cast<T *>(params.output);
-  int M = params.m, N = params.n, K = params.k;
-  int lda = params.lda, ldb = params.ldb, ldd = params.ldd;
+  size_t M = params.m, N = params.n, K = params.k;
+  size_t lda = params.lda, ldb = params.ldb, ldd = params.ldd;
   float leaky_alpha = params.leaky_alpha;
   bool isVec_bias = params.isVec_bias;
 
