@@ -76,7 +76,9 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
+#include <cuda_runtime_api.h>
 
 
 #ifdef PADDLE_WITH_HIP
@@ -109,6 +111,8 @@ namespace fusion {
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
 #define MMHA_USE_FP32_ACUM_FOR_FMA
+// Use HMMA to compute with FP16/BF16 inputs and FP32 accumulators.
+// #define MMHA_USE_HMMA
 
 enum CacheType {
   NORMAL,
@@ -3997,14 +4001,41 @@ inline __device__ float trtllm_qk_hmma_dot_(const K_vec (&q)[N],
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+inline __device__ float sum(Float8_ v)
+{
+    float out = 0.f;
+
+    out += sum(v.x);
+    out += sum(v.y);
+    out += sum(v.z);
+    out += sum(v.w);
+
+    return out;
+}
+
+
+inline __device__ Float8_ fma(uint4 a, uint4 b, Float8_ c)
+{
+    Float8_ d;
+
+    d.x = fma(half2_to_float2(a.x), half2_to_float2(b.x), c.x);
+    d.y = fma(half2_to_float2(a.y), half2_to_float2(b.y), c.y);
+    d.z = fma(half2_to_float2(a.z), half2_to_float2(b.z), c.z);
+    d.w = fma(half2_to_float2(a.w), half2_to_float2(b.w), c.w);
+
+    return d;
+}
+
+
 template <int THREADS_PER_KEY, typename Q_vec, typename K_vec, int N>
 inline __device__ float trtllm_qk_dot_(const Q_vec (&q)[N],
                                        const K_vec (&k)[N]) {
-#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
-  using K_vec_accum = typename V_vec_acum_fp32_<K_vec>::Type;
-#else
+// #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+//   using K_vec_accum = typename V_vec_acum_fp32_<K_vec>::Type;
+// #else
+//   using K_vec_accum = K_vec;
+// #endif
   using K_vec_accum = K_vec;
-#endif
   // Compute the parallel products for Q*K^T (treat vector lanes separately).
   K_vec_accum qk_vec = mul<K_vec_accum, Q_vec, K_vec>(q[0], k[0]);
 #pragma unroll
@@ -4025,11 +4056,12 @@ template <int THREADS_PER_KEY, typename Q_vec, typename K_vec, int N>
 inline __device__ float trtllm_qk_scale_dot_(const Q_vec (&q)[N],
                                              const K_vec (&k)[N],
                                              float const k_scale) {
-#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
-  using K_vec_accum = typename V_vec_acum_fp32_<K_vec>::Type;
-#else
+// #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+//   using K_vec_accum = typename V_vec_acum_fp32_<K_vec>::Type;
+// #else
+//   using K_vec_accum = K_vec;
+// #endif
   using K_vec_accum = K_vec;
-#endif
   // Compute the parallel products for Q*K^T (treat vector lanes separately).
   K_vec_accum k_vec = mul<K_vec_accum, float, K_vec>(k_scale, k[0]);
   K_vec_accum qk_vec = mul<K_vec_accum, Q_vec, K_vec_accum>(q[0], k_vec);
@@ -4145,12 +4177,18 @@ inline __device__ __host__ constexpr unsigned getThreadsPerValue() {
   return getDhMax(Dh) * sizeof(T) / 16;
 }
 
+inline __device__ __host__ constexpr unsigned gcd(unsigned a, unsigned b) {
+	if(b == 0) return a;
+	return gcd(b, a % b);
+}
+
 template <unsigned Dh>
 inline __device__ __host__ constexpr unsigned getThreadsPerKey() {
+  /// 我们希望 Dh和DhMax 都是 K_ELTS_PER_CHUNK 的整数倍
+  /// 我们希望 threads_per_key应该是2的幂 且属于[1,2,4] 即4的公约数
   // Dh * sizeof(T) 应该是 16B * threads_per_key的整数倍
-  // threads_per_key应该是2的幂 且属于[1,2,4]
-  constexpr unsigned threads = next_power_of_two(Dh / 8u);
-  return std::min(4u, threads);
+  // 如果 Dh=48 4和6的最大公约数就是2
+  return gcd(4u, Dh / 8u);
 }
 
 template <typename T, typename T_VEC, unsigned VECS_PER_CHUNK>
@@ -4175,7 +4213,7 @@ inline int getMultiProcessorCount() {
 inline int getMaxSharedMemoryPerBlockOptin() {
   const int device_id = phi::backends::gpu::GetCurrentDeviceId();
   int max_shared_memory_per_block;
-  PADDLE_ENFORCE_GPU_SUCCESS(
+  check_cuda_error(
       cudaDeviceGetAttribute(&max_shared_memory_per_block,
                              cudaDevAttrMaxSharedMemoryPerBlockOptin,
                              device_id));
@@ -4196,17 +4234,6 @@ inline int estimate_min_multi_block_count(int max_timesteps,
   int elts_per_block = max_dynamic_shmem_per_block / size_per_elts;
   int min_block_count = (qk_elts + elts_per_block - 1) / elts_per_block;
   return std::max(1, min_block_count);
-}
-
-// 大致意思就是：从硬件角度，一个wave处理完全部任务的情况下，最大的seq_len_tile
-// 实际上最后也是一个wave处理完的，只要一个wave。
-// 假定了一个SM只能有一个block
-/// TODO:
-/// 整个attention实现的思路就是要block尽量大(占用资源尽可能多)，所以说这个假定什么时候不合理呢？
-// 就是一个block有1024线程，但是寄存器和共享内存都只占了不到一半。这种情况下，A100说不定能启动
-// 两个block/SM 但是很难说这种情况会性能好，所以暂时来讲，这个假定还算合理。
-int getMaxNumSeqLenTile(int batch_size, int num_heads) {
-  return div_up(getMultiProcessorCount(), batch_size * num_heads);
 }
 
 

@@ -12,9 +12,9 @@
 
 /// Multi-block mmha kernel can only be selected when CUDA >= 11.7
 /// 我们这里没有处理这个宏
-// #if (CUDART_VERSION >= 11070)
-// #define ENABLE_MULTI_BLOCK_OPTION
-// #endif
+#if (CUDART_VERSION >= 11070)
+#define ENABLE_MULTI_BLOCK_OPTION
+#endif
 
 namespace phi {
 namespace fusion {
@@ -31,7 +31,7 @@ struct Masked_multihead_attention_params {
   float *partial_sum;
   float *partial_max;
 
-  int* block_counter;
+  int *block_counter;
   // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
   const T *qkv;
 
@@ -64,12 +64,12 @@ struct Masked_multihead_attention_params {
   unsigned num_heads_kv;
   unsigned num_heads;
   unsigned timestep;
-  unsigned timesteps_per_block;
-  unsigned seq_len_tile;
+  mutable unsigned timesteps_per_block;
+  mutable unsigned seq_len_tile;
   int dim_head;
 
-  int max_seq_len_tile;
-  int min_seq_len_tile;
+  unsigned max_seq_len_tile;
+  unsigned min_seq_len_tile;
   int dynamic_block_size;
 
   int max_seq_length;
@@ -81,13 +81,10 @@ struct Masked_multihead_attention_params {
   bool neox_rotary_style;
   bool mask_broadcast_num_heads;
 
-  bool multi_block_mode;
+  mutable bool multi_block_mode;
 };
 
-/// 因为加入了K_LOOP_UNROLL, 加载cacheK的思路转为一个thread做一个LDG.128
-// THREADS_PER_KEY最大为4,
-// Dh最小是32的情况下，4*16B=32*2B，只支持f32和f16，不支持fp8
-// 同样因为这样的加载模式太大了，所以如果Dh是16的倍数，THREADS_PER_KEY最大为2
+/// 因为加入了K_LOOP_UNROLL, 我(YKTian)把加载cacheK的思路转为一个thread做一个LDG.128
 /// 加载cacheV的思路是一个thread做一个LDG.128
 template <typename T,
           unsigned Dh,
@@ -114,7 +111,8 @@ __global__ void masked_multihead_attention_kernel(
 
   // The current timestep (including paddings).
   // It is only used to calculate the smem stride.
-  unsigned const timestep = DO_MULTI_BLOCK ? params.timesteps_per_block : params.timestep;
+  unsigned const timestep =
+      DO_MULTI_BLOCK ? params.timesteps_per_block : params.timestep;
   // The actual sequence length excluding the paddings.
   // 暂时同 tlength kv_loop_length
   const unsigned real_time_step = params.sequence_lengths == nullptr
@@ -145,31 +143,26 @@ __global__ void masked_multihead_attention_kernel(
   constexpr bool IS_Dh_MAX = Dh == Dh_MAX;
   static_assert(Dh_MAX >= WARP_SIZE);
   static_assert(Dh_MAX >= Dh);
+  // THREADS_PER_KEY in {1, 2, 4}
   static_assert(THREADS_PER_KEY <= 4);
+  static_assert(Dh_MAX % THREADS_PER_KEY == 0);
 
   extern __shared__ char smem_[];
   auto qk_smem = reinterpret_cast<float *>(smem_);
-  // __shared__ float qk_current_smem[1];
 
   char *logits_smem_ = smem_;
 #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS
-  // 不懂这个为什么？
-  if (sizeof(T) != 4)
-  {
+  if (sizeof(T) != 4) {
     logits_smem_ += divUp(timestep + 1, 4u) * 16;
   }
-  T* logits_smem = reinterpret_cast<T*>(logits_smem_);
+  T *logits_smem = reinterpret_cast<T *>(logits_smem_);
 #else
   float *logits_smem = reinterpret_cast<float *>(logits_smem_);
 #endif
 
   T *out_smem = reinterpret_cast<T *>(smem_);
 
-  // __shared__ T logits_current_smem[1];
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
-
-  // THREADS_PER_KEY in {1, 2, 4}
-  static_assert(Dh_MAX % THREADS_PER_KEY == 0);
 
   constexpr unsigned K_VEC_SIZE = 16u / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0);
@@ -187,9 +180,9 @@ __global__ void masked_multihead_attention_kernel(
   unsigned const qhead_per_kv{params.num_heads / params.num_heads_kv};
   unsigned const hi_kv{hi / qhead_per_kv};
   // The number of heads.
-  auto const num_heads = static_cast<unsigned>(params.num_heads);
+  unsigned const num_heads = params.num_heads;
   // The number of heads for keys and values adjusted for MQA/GQA.
-  auto const num_heads_kv = static_cast<unsigned>(params.num_heads_kv);
+  unsigned const num_heads_kv = params.num_heads_kv;
 
   // qkv [B, S=1, num_head + 2 * num_heads_kv, head_dim]
   // this hi means the head index in query!
@@ -210,9 +203,11 @@ __global__ void masked_multihead_attention_kernel(
     load_func.template load<Qk_vec>(q, q_offset);
     // q = *reinterpret_cast<Qk_vec const *>(&params.q[q_offset]);
 
-    auto const k_offset = qkv_bi + (num_heads + hi_kv) * Dh + qk_vec_idx;
-    load_func.template load<Qk_vec>(k, k_offset);
-    // k = *reinterpret_cast<Qk_vec const *>(&params.k[k_offset]);
+    if (is_last_block_static) {
+      auto const k_offset = qkv_bi + (num_heads + hi_kv) * Dh + qk_vec_idx;
+      load_func.template load<Qk_vec>(k, k_offset);
+      // k = *reinterpret_cast<Qk_vec const *>(&params.k[k_offset]);
+    }
   }
   /// TODO:省略了位置编码 +bias
 
@@ -244,7 +239,7 @@ __global__ void masked_multihead_attention_kernel(
     if (tid == 0) {
       qk *= params.inv_sqrt_dh;
       qk_max = qk;
-      // qk_current_smem[0] = qk;
+      ///TODO: attn_mask
       qk_smem[real_time_step - start_seq] = qk;
     }
   }
@@ -254,15 +249,18 @@ __global__ void masked_multihead_attention_kernel(
   //// q dot cacheK （1841-1961-2216）
   /// cacheK [B, num_head, dim_head/chunk_eles, max_seq_len, chunk_eles]
   using K_vec = typename V_vec_<T, K_VEC_SIZE>::Type;  // 16B
-  static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
+  static_assert(Dh_MAX % K_VEC_SIZE == 0);
   const bool is_leader = trtllm_Qk_dot<T, THREADS_PER_KEY>::is_leader(tid);
 
   /// 一个chunk是 处理同一个key的多个线程 一次取的元素的集合
   constexpr unsigned K_ELTS_PER_CHUNK{THREADS_PER_KEY * K_VEC_SIZE};
+  static_assert(Dh % K_ELTS_PER_CHUNK == 0);
+  // {chunk_id, inner_chunk_id(elt_id)}
   // {tid/THREADS_PER_KEY, (tid % THREADS_PER_KEY) * K_VEC_SIZE}
   auto const k_idx = chunk_index<T, K_vec, THREADS_PER_KEY>(tid);
 
   constexpr unsigned K_VECS_PER_THREAD{Dh_MAX / K_ELTS_PER_CHUNK};
+  
   static_assert(Dh_MAX == K_ELTS_PER_CHUNK * K_VECS_PER_THREAD);
 
   K_vec q_vec[K_VECS_PER_THREAD];
@@ -297,22 +295,22 @@ __global__ void masked_multihead_attention_kernel(
       for (int k_vec_i = 0; k_vec_i < K_VECS_PER_THREAD; ++k_vec_i) {
         /// Make sure we read data within the bound.
         // Dh OOB values will be handled by zero_q.
-        // 比如说现在就 f16, 2*8=16=K_ELTS_PER_CHUNK, dh=80。 80-8=72;
-        // 72/16=4with8
         /// int dh_offs = min(Dh - K_VEC_SIZE, k_vec_i * K_ELTS_PER_CHUNK +
         /// k_idx.y);
-        const int local_idx0 = min(div_up(Dh, K_ELTS_PER_CHUNK), k_vec_i);
+        const int local_idx0 = min(Dh / K_ELTS_PER_CHUNK, k_vec_i);
         const int local_idx2 =
             k_vec_i > local_idx0 ? (THREADS_PER_KEY - 1) * K_VEC_SIZE : k_idx.y;
 
         // Seq OOB values will be masked out when storing back to smem.
         const int local_idx1 =
-            min(real_time_step - 1, time_now + k_loop * K_PER_ITER);
+            min(end_seq - 1, time_now + k_loop * K_PER_ITER);
 
+        // (k_vec_i * params.max_seq_length + k_idx.x + start_seq + k_loop * K_PER_ITER) * K_VEC_SIZE + k_idx.y;
         const int cache_k_local_off =
             (local_idx0 * params.max_seq_length + local_idx1) *
                 K_ELTS_PER_CHUNK +
             local_idx2;
+
         k_vec_cache[k_loop][k_vec_i] =
             *reinterpret_cast<K_vec const *>(&k_cache[cache_k_local_off]);
       }
@@ -409,7 +407,14 @@ __global__ void masked_multihead_attention_kernel(
   float inv_sum = __fdividef(1.f, sum + 1.e-6f);
 
   for (int ti = tid; ti <= logit_loop_end; ti += THREADS_PER_BLOCK) {
-    convert_from_float(logits_smem[ti], qk_smem[ti]);
+    if (!DO_MULTI_BLOCK)
+    {
+      convert_from_float(logits_smem[ti], qk_smem[ti] * inv_sum);
+    }
+    else
+    {
+      convert_from_float(logits_smem[ti], qk_smem[ti]);
+    }
   }
 
   __syncthreads();
@@ -454,21 +459,22 @@ __global__ void masked_multihead_attention_kernel(
         const int time_now =
             min(start_seq + local_time_now, curr_seq_section - 1);
         v_vec_cache[v_loop] =
-            *reinterpret_cast<V_vec const *>(&v_cache[time_now * Dh]);
+            *reinterpret_cast<V_vec const *>(&v_cache[time_now * Dh + vi]);
       }
 
       for (int v_loop = 0; v_loop < V_LOOP_UNROLL; v_loop++) {
         const int local_time_now = ti + (v_loop * V_PER_ITER);
         const int time_now = start_seq + local_time_now;
-        V_vec v_vec = reinterpret_cast<V_vec *>(&v_vec_cache[v_loop])[0];
-        bool const is_mask = DO_MULTI_BLOCK && time_now >= curr_seq_section;
+        V_vec v_vec = *reinterpret_cast<V_vec *>(&v_vec_cache[v_loop]);
+
+        bool const is_mask = DO_MULTI_BLOCK && time_now >= end_seq;
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
         float logit =
             is_mask ? 0.f
-                    : reinterpret_cast<float *>(logits_smem + time_now)[0];
+                    : *reinterpret_cast<float *>(logits_smem + local_time_now);
         out = fma(logit, cast_to_float(v_vec), out);
 #else   // MMHA_USE_FP32_ACUM_FOR_LOGITS
-        T logit = is_mask ? T(0.f) : (logits_smem + time_now)[0];
+        T logit = is_mask ? T(0.f) : *(logits_smem + local_time_now);
         out = fma(logit, v_vec, out);
 #endif  // MMHA_USE_FP32_ACUM_FOR_LOGITS
       }
@@ -482,7 +488,9 @@ __global__ void masked_multihead_attention_kernel(
       is_valid_vi) {
     const int v_offset = v_offset_base + vi;
     V_vec v = *reinterpret_cast<V_vec const *>(&params.qkv[v_offset]);
-    *reinterpret_cast<V_vec *>(&v_cache[real_time_step * Dh + vi]) = v;
+    if(hi == hi_kv * qhead_per_kv){
+      *reinterpret_cast<V_vec *>(&v_cache[real_time_step * Dh + vi]) = v;
+    }
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
     out = fma(logits_smem[real_time_step - start_seq], cast_to_float(v), out);
@@ -501,7 +509,8 @@ __global__ void masked_multihead_attention_kernel(
     if (vo >= midpoint && vo < active_groups && is_valid_vi) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
       convert_from_float(
-          *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]), out);
+          *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]),
+          out);
 #else
       *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]) = out;
 #endif
@@ -521,21 +530,32 @@ __global__ void masked_multihead_attention_kernel(
   auto const bhi_seq_len_tile = bhi * params.seq_len_tile;
   if (vo == 0 && is_valid_vi) {
     const int bhvi = bhi * Dh + vi;
-    // for write partial output to partial_out
-    int partial_out_offset = c_tile * params.batch_size * num_heads * Dh;
-    // for write partial statistics to partial_max and partial_sum
-    int partial_stats_offset = bhi_seq_len_tile + c_tile;
+    if (!DO_MULTI_BLOCK){
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+      V_vec final_out;
+      convert_from_float(final_out, out);
+      store_func.template store<V_vec>(final_out, bhvi);
+#else
+      store_func.template store<V_vec>(out, bhvi);
+#endif
+    }
+    else{
+      // for write partial output to partial_out
+      int partial_out_offset = c_tile * params.batch_size * num_heads * Dh;
+      // for write partial statistics to partial_max and partial_sum
+      int partial_stats_offset = bhi_seq_len_tile + c_tile;
 
-    // This makes sure we have coalesced memory access.
-    V_vec partial_out;
-    convert_from_float(partial_out, out);
-    *reinterpret_cast<V_vec *>(&params.partial_out[partial_out_offset + bhvi]) =
-        partial_out;
+      // This makes sure we have coalesced memory access.
+      V_vec partial_out;
+      convert_from_float(partial_out, out);
+      *reinterpret_cast<V_vec *>(&params.partial_out[partial_out_offset + bhvi]) =
+          partial_out;
 
-    *reinterpret_cast<float *>(&params.partial_max[partial_stats_offset]) =
-        qk_max;
+      *reinterpret_cast<float *>(&params.partial_max[partial_stats_offset]) =
+          qk_max;
 
-    *reinterpret_cast<float *>(&params.partial_sum[partial_stats_offset]) = sum;
+      *reinterpret_cast<float *>(&params.partial_sum[partial_stats_offset]) = sum;
+    }
   }
 
   //// reduce part_out to out (2699-2863)
@@ -543,15 +563,15 @@ __global__ void masked_multihead_attention_kernel(
     // cuda::thread_scope_device	与发起线程同一GPU设备中的所有CUDA线程同步。
     cuda::atomic_ref<int, cuda::thread_scope_device> count_ref{
         params.block_counter[bhi]};
-    bool is_last_block_dynamic{false};
+    bool is_last_block_runtime{false};
     if (tid == 0) {
       if (count_ref.fetch_add(1, cuda::memory_order_acq_rel) ==
           (gridDim.z - 1)) {
-        is_last_block_dynamic = true;
+        is_last_block_runtime = true;
       }
     }
 
-    if (__syncthreads_or(is_last_block_dynamic)) {
+    if (__syncthreads_or(is_last_block_runtime)) {
       float final_max = -FLT_MAX;
       float thread_partial_max = -FLT_MAX;
       thread_partial_max =
@@ -587,14 +607,13 @@ __global__ void masked_multihead_attention_kernel(
       // partial_out [seq_len_tile, bsz, num_head, dim_head]
       T *out_oi_smem = reinterpret_cast<T *>(smem_);
       auto const o_idx = chunk_index<T, V_vec, THREADS_PER_VALUE>(tid);
-
-      V_vec zero_k;
-      zero(zero_k);
-      V_vec thread_accumulated_out = zero_k;
       auto const oo = o_idx.x;
       auto const oi = o_idx.y;
-
-      for (int tile_idx = oo; tile_idx < gridDim.z; tile_idx += V_PER_ITER) {
+      
+      V_vec thread_accumulated_out;
+      zero(thread_accumulated_out);
+      
+      for (int tile_idx = oo; tile_idx < gridDim.x; tile_idx += V_PER_ITER) {
         // Load partial output
         int thread_partial_out_offset =
             tile_idx * params.batch_size * num_heads * Dh;
@@ -606,11 +625,9 @@ __global__ void masked_multihead_attention_kernel(
         V_vec thread_partial_out = *reinterpret_cast<V_vec const *>(
             &params.partial_out[thread_partial_out_offset + bhi * Dh + oi]);
         // Apply the correction factor.
-        T factor_compute;
-        convert_from_float(factor_compute,
-                           __expf(thread_partial_max_for_out - final_max));
+        float factor_compute = __expf(thread_partial_max_for_out - final_max);
         thread_partial_out =
-            mul<V_vec, T, V_vec>(factor_compute, thread_partial_out);
+            mul<V_vec, float, V_vec>(factor_compute, thread_partial_out);
         thread_accumulated_out =
             add(thread_partial_out, thread_accumulated_out);
       }
@@ -637,11 +654,9 @@ __global__ void masked_multihead_attention_kernel(
       }
 
       if (oo == 0 && (Dh == Dh_MAX || oi < Dh)) {
-        auto const inv_sum = __fdividef(1.f, final_sum + 1.e-6f);
-        T inv_sum_compute;
-        convert_from_float(inv_sum_compute, inv_sum);
+        float const inv_sum = __fdividef(1.f, final_sum + 1.e-6f);
         thread_accumulated_out =
-            mul<V_vec, T, V_vec>(inv_sum_compute, thread_accumulated_out);
+            mul<V_vec, float, V_vec>(inv_sum, thread_accumulated_out);
         // *reinterpret_cast<V_vec *>(static_cast<T *>(params.out) +
         //                            (bhi * Dh + oi)) = thread_accumulated_out;
         store_func.template store<V_vec>(thread_accumulated_out, bhi * Dh + oi);
@@ -660,15 +675,16 @@ inline size_t smem_size_in_bytes(
   // The amount of shared memory needed to store the Q*K^T values in float.
   unsigned const max_timesteps =
       DO_MULTI_BLOCK ? params.timesteps_per_block : params.timestep;
+  // 这里想表达elts是16B为单位的，就是4个float。
   std::size_t const qk_elts = static_cast<std::size_t>(
       div_up(max_timesteps + 1, 4u));  // explicit cast because of the sign
   std::size_t const qk_sz = qk_elts * 16;
 
   // The extra memory needed if we are not using floats for the final logits.
+  // 我觉得固定用float存logits就挺好，不过可能多点也没事。一个SM起一个Block的情况下。
   size_t logits_sz = 0;
 #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS
   if (sizeof(T) != 4) {
-    // TDOD
     logits_sz = qk_elts * 4 * sizeof(T);
   }
 #endif
@@ -697,15 +713,18 @@ template <typename T, unsigned Dh>
 inline void get_seq_len_tile(Masked_multihead_attention_params<T> const &params,
                              unsigned blocks_per_sm,
                              unsigned block_size) {
-  int balanced_seq_len_tile = div_up(getMultiProcessorCount() * blocks_per_sm,
-                                     params.batch_size * params.num_heads);
+  unsigned balanced_seq_len_tile =
+      div_up(getMultiProcessorCount() * blocks_per_sm,
+             params.batch_size * params.num_heads);
 
   unsigned const threads_per_value = getThreadsPerValue<T, Dh>();
   /// Make sure that each block at least processes one loop of kv (unroll size
   /// is default at 8)
-  int const seq_len_per_kv_loop = div_up(block_size, threads_per_value) * 8;
-  int max_seq_len_tile = min(params.max_seq_len_tile,
-                             div_up(params.timestep + 1, seq_len_per_kv_loop));
+  unsigned const seq_len_per_kv_loop =
+      div_up(block_size, threads_per_value) * 8;
+  unsigned max_seq_len_tile =
+      min(params.max_seq_len_tile,
+          div_up(params.timestep + 1, seq_len_per_kv_loop));
 
   // seq_len_tile的下界是在seq超长的情况下，至少需要这些block，可能一个wave解决不了。
   // seq_len_tile的上界是在seq超短的情况下，一个wave能启动的seq维block数，如果硬件还是太充足，优先保证一个block的工作长度。
@@ -742,31 +761,35 @@ inline void get_seq_len_tile(Masked_multihead_attention_params<T> const &params,
             params, load_func, store_func);                            \
     break;
 
-#define MMHA_LAUNCH_CHECK(DYNAMIC_THDS_PER_BLOCK)                      \
-  std::size_t const smem_sz{smem_size_in_bytes<T, Dh, DO_MULTI_BLOCK>( \
-      params, DYNAMIC_THDS_PER_BLOCK)};                                \
-  constexpr auto kernel_fn =                                           \
-      masked_multihead_attention_kernel<T,                             \
-                                        Dh,                            \
-                                        dynamic_block_size,            \
-                                        decltype(load_func),           \
-                                        decltype(store_func),          \
-                                        DO_MULTI_BLOCK>;               \
-  if (smem_sz >= 46 * 1024) {                                          \
-    cudaError_t res = cudaFuncSetAttribute(kernel_fn,                  \  
-        cudaFuncAttributeMaxDynamicSharedMemorySize,                   \
-                                           smem_sz);                   \
-    PADDLE_ENFORCE_EQ(                                                 \
-        res,                                                           \
-        cudaSuccess,                                                   \
-        common::errors::PreconditionNotMet(                            \
-            "Sequence Length is too long for the MMHA kernel."));      \
-  }                                                                    \
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaOccupancyMaxActiveBlocksPerMultiprocessor(    \
+#define MMHA_LAUNCH_CHECK(DYNAMIC_THDS_PER_BLOCK)                              \
+  std::size_t const dynamic_smem_sz{smem_size_in_bytes<T, Dh, DO_MULTI_BLOCK>( \
+      params, DYNAMIC_THDS_PER_BLOCK)};                                        \
+  if (dynamic_smem_sz >= 46 * 1024) {                                          \
+    cudaError_t res = cudaFuncSetAttribute(                                    \
+        masked_multihead_attention_kernel<T,                                   \
+                                          Dh,                                  \
+                                          DYNAMIC_THDS_PER_BLOCK,              \
+                                          decltype(load_func),                 \
+                                          decltype(store_func),                \
+                                          DO_MULTI_BLOCK>,                     \
+        cudaFuncAttributeMaxDynamicSharedMemorySize,                           \
+        dynamic_smem_sz);                                                      \
+    PADDLE_ENFORCE_EQ(                                                         \
+        res,                                                                   \
+        cudaSuccess,                                                           \
+        common::errors::PreconditionNotMet(                                    \
+            "Sequence Length is too long for the MMHA kernel."));              \
+  }                                                                            \
+  check_cuda_error(cudaOccupancyMaxActiveBlocksPerMultiprocessor(              \
       &available_blocks,                                                       \
-      kernel_fn,                                                               \                                             
+      masked_multihead_attention_kernel<T,                                     \
+                                        Dh,                                    \
+                                        DYNAMIC_THDS_PER_BLOCK,                \
+                                        decltype(load_func),                   \
+                                        decltype(store_func),                  \
+                                        DO_MULTI_BLOCK>,                       \                                             
       DYNAMIC_THDS_PER_BLOCK,                                                  \
-      smem_sz));
+      dynamic_smem_sz));
 
 // if resources are not enough to launch 512 threads per block, we will fallback
 // to 256.
@@ -813,7 +836,7 @@ void getGrid(Masked_multihead_attention_params<T> &params,
   int num_blocks_per_sm = -1;
   // Set 0 dynamic shared memory size as we need the number of available blocks
   // limited by registers.
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+  check_cuda_error(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
       &num_blocks_per_sm,
       masked_multihead_attention_kernel<T,
                                         Dh,
@@ -1127,6 +1150,18 @@ struct DispatchDtypeTrait<int32_t> {
   using FuncVersion = UnusedVersion;
 };
 
+// 大致意思就是：从硬件角度，一个wave处理完全部任务的情况下，最大的seq_len_tile
+// 实际上最后也是一个wave处理完的，只要一个wave。
+// 假定了一个SM只能有一个block
+/// TODO:
+/// 整个attention实现的思路就是要block尽量大(占用资源尽可能多)，所以说这个假定什么时候不合理呢？
+// 就是一个block有1024线程，但是寄存器和共享内存都只占了不到一半。这种情况下，A100说不定能启动
+// 两个block/SM 但是很难说这种情况会性能好，所以暂时来讲，这个假定还算合理。
+int getMaxNumSeqLenTile(int batch_size, int num_heads) {
+  return div_up(getMultiProcessorCount(), batch_size * num_heads);
+}
+
+
 template <typename T, typename Context>
 void DispatchWithDtype(const Context &dev_ctx,
                        const DenseTensor &x,
@@ -1255,13 +1290,13 @@ void DispatchWithDtype(const Context &dev_ctx,
   if (multi_block_mode) {
     // partial_max/partial_sum [bsz, num_head, max_seq_len_tile]
     phi::DenseTensor partial_sum;
-    partial_sum.Resize({{batch_size, num_heads, params.max_seq_len_tile}});
+    partial_sum.Resize({{batch_size, num_heads, max_num_seq_len_tiles}});
     dev_ctx.template Alloc<float>(&partial_sum,
                                   partial_sum.numel() * sizeof(float));
     params.partial_sum = partial_sum.data<float>();
 
     phi::DenseTensor partial_max;
-    partial_max.Resize({{batch_size, num_heads, params.max_seq_len_tile}});
+    partial_max.Resize({{batch_size, num_heads, max_num_seq_len_tiles}});
     dev_ctx.template Alloc<float>(&partial_max,
                                   partial_max.numel() * sizeof(float));
     params.partial_max = partial_max.data<float>();
@@ -1269,7 +1304,7 @@ void DispatchWithDtype(const Context &dev_ctx,
     // partial_out [max_seq_len_tile, bsz, num_head, dim_head]
     phi::DenseTensor partial_out;
     partial_out.Resize(
-        {{params.max_seq_len_tile, batch_size, num_heads, dim_head}});
+        {{max_num_seq_len_tiles, batch_size, num_heads, dim_head}});
     dev_ctx.template Alloc<float>(&partial_out,
                                   partial_out.numel() * sizeof(float));
     params.partial_out = partial_out.data<float>();
