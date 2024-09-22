@@ -23,6 +23,7 @@ from paddle.distributed.auto_parallel.static.operators.common import (
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
 from ..pass_utils import (
+    _pir_program_for_vpp,
     _program_for_vpp,
     _program_for_vpp_split_bwk,
     split_matmul_grad_to_matmul,
@@ -305,6 +306,25 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 num_model_chunks,
                 dist_context,
                 enable_send_recv_overlap,
+            )
+
+        return types, sub_program_list
+
+    def _partial_pir_programs(self, program):
+        num_model_chunks = self.get_attr("vpp_degree")
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+
+        assert (
+            not enable_send_recv_overlap
+        ), "PIR does not support VPP with enable_send_recv_overlap yet."
+
+        types, sub_program_list = _pir_program_for_vpp(
+            program, num_model_chunks, enable_send_recv_overlap
+        )
+
+        for i in range(len(types)):
+            logger.debug(
+                f"type = {types[i]}, sub_programs = {sub_program_list[i]}\n"
             )
 
         return types, sub_program_list
