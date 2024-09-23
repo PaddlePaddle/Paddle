@@ -186,6 +186,7 @@ PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
   if (FLAGS_print_kernel_run_info) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto place =
         kernel_context_.GetDeviceContext<phi::DeviceContext>().GetPlace();
     if (phi::is_gpu_place(place)) {
@@ -208,6 +209,7 @@ void PhiKernelInstruction::Run() {
                 << ": thread_id=" << std::this_thread::get_id()
                 << ", backend=" << place << std::endl;
     }
+#endif
   }
   VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
