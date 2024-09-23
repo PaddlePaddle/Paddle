@@ -20,9 +20,9 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 
+#include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
