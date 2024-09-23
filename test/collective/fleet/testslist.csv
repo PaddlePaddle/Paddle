@@ -1,5 +1,5 @@
 name,os,arch,timeout,run_type,launcher,num_port,run_serial,envs,conditions
-test_fleet_static_mp_layers,LINUX;WIN32,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_fleet_static_mp_layers_deprecated,LINUX;WIN32,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dgc_op,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_DGC
 test_dgc_optimizer,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_DGC
 test_parallel_margin_cross_entropy,,GPU,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
@@ -18,7 +18,7 @@ test_parallel_dygraph_pipeline_parallel_with_virtual_stage,,GPU,500,DIST,../../l
 test_parallel_dygraph_pp_adaptor,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_class_center_sample,,GPU,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
 test_pipeline,,,160,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
-test_fleet_utils,LINUX;APPLE,,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_fleet_utils_deprecated,LINUX;APPLE,,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_static_model_parallel,,,240,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_no_sync,,GPU,300,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
 test_dygraph_dataparallel_bf16,,,200,DIST,../../legacy_test/dist_test.sh,2,,NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..,
@@ -30,7 +30,7 @@ test_parallel_dygraph_control_flow,,,350,DIST,../../legacy_test/dist_test.sh,2,,
 test_fleet_rolemaker_new,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dist_mnist_gradient_merge,LINUX;WIN32,GPU;ROCM,360,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_recv_save_op,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
-test_communicator_sync,,,,,test_runner.py,2,,FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_communicator_sync_deprecated,,,,,test_runner.py,2,,FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_fleet_meta_optimizer_base,LINUX;WIN32,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_sharding_parallel,,,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_tensor_parallel,,,200,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,

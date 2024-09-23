@@ -1546,11 +1546,68 @@ bool SequenceMaskOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool StftOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool StftOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &window_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &window_shape =
+      window_shape_or_data.shape();
+
+  int n_fft = op->attribute<pir::Int32Attribute>("n_fft").data();
+  int hop_length = op->attribute<pir::Int32Attribute>("hop_length").data();
+  bool onesided = op->attribute<pir::BoolAttribute>("onesided").data();
+
+  const int x_rank = x_shape.size();
+
+  PADDLE_ENFORCE_EQ(
+      x_rank,
+      2,
+      common::errors::InvalidArgument(
+          "Input(X) of StftOp should be a tensor with shape [N, T], "
+          "but got rank %s.",
+          x_rank));
+
+  PADDLE_ENFORCE_GT(
+      hop_length,
+      0,
+      common::errors::InvalidArgument(
+          "Attribute(hop_length) should be greater than 0, but got %s.",
+          hop_length));
+
+  infer_context->AddEqualCstr(window_shape[0], symbol::DimExpr{n_fft});
+  const symbol::DimExpr seq_length = x_shape[x_rank - 1];
+  const symbol::DimExpr n_frames =
+      (symbol::DimExpr{1}) +
+      (seq_length - symbol::DimExpr{n_fft}) / symbol::DimExpr{hop_length};
+
+  if (seq_length.isa<int64_t>()) {
+    PADDLE_ENFORCE_LE(n_fft,
+                      seq_length.Get<std::int64_t>(),
+                      common::errors::InvalidArgument(
+                          "Attribute(frame_length) should be less equal than "
+                          "sequence length, but got (%s) > (%s).",
+                          n_fft,
+                          seq_length.Get<std::int64_t>()));
+  }
+
+  std::vector<symbol::DimExpr> output_shape;
+  output_shape.push_back(x_shape[0]);
+  if (onesided) {
+    output_shape.push_back(symbol::DimExpr{n_fft / 2 + 1});
+  } else {
+    output_shape.push_back(symbol::DimExpr{n_fft});
+  }
+  output_shape.push_back(n_frames);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+  return true;
+}
 
 bool SwigluOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
@@ -1822,12 +1879,51 @@ bool Unpool3dOpInferSymbolicShape(
   return true;
 }
 
-// bool UnpoolOpInferSymbolicShape(pir::Operation *op,
-//                                 pir::InferSymbolicShapeContext
-//                                 *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UnpoolOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &indices_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &indices_shape =
+      indices_shape_or_data.shape();
+
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], indices_shape[i]);
+  }
+
+  const std::vector<int> &ksize = details::GetVectorAttr<int>(op, "ksize");
+
+  const auto &attributes = op->attributes();
+  std::vector<symbol::DimExpr> output_size;
+  if (attributes.find("output_size") != attributes.end()) {
+    std::vector<int64_t> output_size_int =
+        details::GetVectorAttr<int64_t>(op, "output_size");
+    for (size_t i = 0; i < output_size_int.size(); i++) {
+      output_size.emplace_back(symbol::DimExpr(output_size_int[i]));
+    }
+  } else if (op->operand_source(2)) {
+    const auto &shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    output_size =
+        details::GetOrCreateExprVecFromData(shape_or_data, infer_context);
+  }
+
+  std::vector<symbol::DimExpr> output_shape = {x_shape[0], x_shape[1]};
+  for (size_t i = 0; i < ksize.size(); ++i) {
+    output_shape.emplace_back(output_size[i]);
+  }
+
+  if (op->result(0)) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(output_shape)});
+  }
+
+  return true;
+}
 
 // bool WeightDequantizeOpInferSymbolicShape(pir::Operation *op,
 //                                           pir::InferSymbolicShapeContext
@@ -2006,6 +2102,45 @@ bool IndexPutOpInferSymbolicShape(
 bool IndexPut_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return IndexPutOpInferSymbolicShape(op, infer_context);
+}
+
+bool LogLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &input_shape_or_data =
+                                        infer_context->GetShapeOrDataForValue(
+                                            op->operand_source(0)),
+
+                                    &label_shape_or_data =
+                                        infer_context->GetShapeOrDataForValue(
+                                            op->operand_source(1));
+
+  const auto &input_shape = input_shape_or_data.shape();
+  const auto &label_shape = label_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      input_shape.size() == 2 && label_shape.size() == 2,
+      true,
+      common::errors::InvalidArgument(
+          "The rank of input and label should both be 2, but received: "
+          "input: %d, label: %d\n",
+          input_shape.size(),
+          label_shape.size()));
+
+  for (int i = 0; i < 2; i++) {
+    infer_context->AddEqualCstr(input_shape[i], label_shape[i]);
+  }
+
+  symbol::DimExpr one_dim = symbol::DimExpr{1};
+
+  infer_context->AddEqualCstr(input_shape[1], one_dim);
+  infer_context->AddEqualCstr(label_shape[1], one_dim);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(input_shape)});
+
+  return true;
 }
 
 }  // namespace paddle::dialect
