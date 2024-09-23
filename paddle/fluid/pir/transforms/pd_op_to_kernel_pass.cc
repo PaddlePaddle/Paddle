@@ -1367,9 +1367,9 @@ phi::KernelKey GetKernelKey(
     VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";
   }
 
-  if (op->isa<CSyncCommStream_Op>() || op->isa<CSyncCommStreamOp>()) {
+  if (op->isa<SyncCommStream_Op>() || op->isa<SyncCommStreamOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
-    VLOG(8) << "CSyncCommStream_Op/CSyncCommStreamOp's kernel data type must "
+    VLOG(8) << "SyncCommStream_Op/SyncCommStreamOp's kernel data type must "
                "be FLOAT32";
   }
 
