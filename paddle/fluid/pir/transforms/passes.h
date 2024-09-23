@@ -49,6 +49,7 @@ USE_PIR_PASS(fused_rotary_position_embedding_pass);
 USE_PIR_PASS(horizontal_fuse_pass);
 USE_PIR_PASS(auto_layout_simplify_pass);
 USE_PIR_PASS(auto_layout_pass);
+USE_PIR_PASS(common_subexpression_elimination_pass);
 
 #ifdef PADDLE_WITH_DNNL
 USE_PIR_PASS(depthwise_conv_onednn_pass);

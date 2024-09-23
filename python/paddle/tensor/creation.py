@@ -1360,7 +1360,9 @@ def eye(
 
     def _check_attr(attr, message):
         if isinstance(attr, ((Variable, core.eager.Tensor, paddle.pir.Value))):
-            assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
+            assert len(attr.shape) == 0 or (
+                len(attr.shape) == 1 and attr.shape[0] in [1, -1]
+            )
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
 
