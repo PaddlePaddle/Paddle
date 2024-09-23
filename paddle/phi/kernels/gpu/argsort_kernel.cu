@@ -252,42 +252,32 @@ void ArgsortKernel(const Context& dev_ctx,
   // Compared to the following 'Special case for full sort', ascending sort is
   // 34 times faster and descending sort is 31 times faster.
   if (size == in_dims[axis]) {
+#ifdef PADDLE_WITH_CUDA
+    const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#else
+    const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
+#endif
     if (stable) {
-      thrust::sequence(
-          thrust::cuda::par.on(dev_ctx.stream()), ids_data, ids_data + size);
-      thrust::copy(thrust::cuda::par.on(dev_ctx.stream()),
-                   in_data,
-                   in_data + size,
-                   out_data);
+      thrust::sequence(exec_policy, ids_data, ids_data + size);
+      thrust::copy(exec_policy, in_data, in_data + size, out_data);
       if (descending) {
-        thrust::stable_sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+        thrust::stable_sort_by_key(exec_policy,
                                    out_data,
                                    out_data + size,
                                    ids_data,
                                    thrust::greater<T>());
       } else {
-        thrust::stable_sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-                                   out_data,
-                                   out_data + size,
-                                   ids_data);
+        thrust::stable_sort_by_key(
+            exec_policy, out_data, out_data + size, ids_data);
       }
       return;
     } else {
-      thrust::sequence(
-          thrust::cuda::par.on(dev_ctx.stream()), ids_data, ids_data + size);
-      thrust::copy(thrust::cuda::par.on(dev_ctx.stream()),
-                   in_data,
-                   in_data + size,
-                   out_data);
-      thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-                          out_data,
-                          out_data + size,
-                          ids_data);
+      thrust::sequence(exec_policy, ids_data, ids_data + size);
+      thrust::copy(exec_policy, in_data, in_data + size, out_data);
+      thrust::sort_by_key(exec_policy, out_data, out_data + size, ids_data);
       if (descending) {
-        thrust::reverse(
-            thrust::cuda::par.on(dev_ctx.stream()), out_data, out_data + size);
-        thrust::reverse(
-            thrust::cuda::par.on(dev_ctx.stream()), ids_data, ids_data + size);
+        thrust::reverse(exec_policy, out_data, out_data + size);
+        thrust::reverse(exec_policy, ids_data, ids_data + size);
       }
       return;
     }
