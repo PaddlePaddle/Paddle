@@ -55,8 +55,6 @@ static const std::unordered_set<std::string> deprecated_op_names(
      "prod_grad",
      "any",
      "all",
-     "reshape",
-     "reshape_grad",
      "expand_as",
      "expand_as_grad",
      "one_hot",

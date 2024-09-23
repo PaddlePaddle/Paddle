@@ -18,6 +18,8 @@ import gc
 import traceback
 from typing import TYPE_CHECKING, List, Tuple
 
+from paddle.base.dygraph.base import sot_simulation_mode_guard
+
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
 from ...utils import (
@@ -217,7 +219,8 @@ def start_translate(
     simulator = OpcodeExecutor(frame, **kwargs)
     try:
         simulator.check_code_simulatable()
-        new_custom_code, guard_fn = simulator.transform()
+        with sot_simulation_mode_guard(True):
+            new_custom_code, guard_fn = simulator.transform()
         if not simulator._graph.need_cache:
             return (
                 CustomCode(None, True),

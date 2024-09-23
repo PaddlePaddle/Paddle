@@ -300,14 +300,6 @@ if(TARGET layer_test)
   add_dependencies(layer_test jit_download_program)
 endif()
 
-if(TEST buddy_allocator_test)
-  if(NOT WIN32)
-    add_dependencies(buddy_allocator_test download_data)
-  endif()
-  set_tests_properties(buddy_allocator_test PROPERTIES LABELS
-                                                       "RUN_TYPE=EXCLUSIVE")
-endif()
-
 add_custom_target(build_tests)
 
 # add target to build all cpp tests
