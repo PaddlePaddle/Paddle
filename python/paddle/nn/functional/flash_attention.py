@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from distutils.util import strtobool
 
 import paddle
 import paddle.nn.functional as F
@@ -20,7 +21,6 @@ from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.utils import strtobool
 
 g_enable_math = None
 g_enable_flash = None
