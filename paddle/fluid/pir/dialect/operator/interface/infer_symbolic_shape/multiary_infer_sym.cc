@@ -1542,7 +1542,8 @@ bool FlashAttnQKVPackedOpInferSymbolicShape(
   };
 
   size_t rank = qkv_shape.size();
-  PADDLE_ENFORCE_EQ(rank == 4UL || rank == 5UL,
+  PADDLE_ENFORCE_EQ((rank == 4UL || rank == 5UL),
+                    true,
                     common::errors::InvalidArgument(
                         "qkv dims must be 4(unpadded) or 5(padded batch)"));
   std::vector<symbol::DimExpr> out_dims;
