@@ -13,7 +13,6 @@
 # limitations under the License.
 import unittest
 
-import numpy as np
 from scipy import signal
 
 import paddle
@@ -29,25 +28,22 @@ class TestAudioFuncitons(unittest.TestCase):
         window_paddle_bartlett = paddle.audio.functional.get_window(
             'bartlett', n_fft
         )
-        np.testing.assert_almost_equal(
-            window_scipy_bartlett, window_paddle_bartlett.numpy(), decimal=4
-        )
+        window_scipy_bartlett = paddle.to_tensor(window_scipy_bartlett, dtype=window_paddle_bartlett.dtype)
+        paddle.allclose(window_scipy_bartlett, window_paddle_bartlett, atol=0.0001, rtol=0.0001)
 
         window_scipy_nuttall = signal.windows.nuttall(n_fft)
         window_paddle_nuttall = paddle.audio.functional.get_window(
             'nuttall', n_fft
         )
-        np.testing.assert_almost_equal(
-            window_scipy_nuttall, window_paddle_nuttall.numpy(), decimal=4
-        )
+        window_scipy_nuttall = paddle.to_tensor(window_scipy_nuttall, dtype=window_paddle_nuttall.dtype)
+        paddle.allclose(window_scipy_nuttall, window_paddle_nuttall, atol=0.0001, rtol=0.0001)
 
         window_scipy_kaiser = signal.windows.kaiser(n_fft, beta=14.0)
         window_paddle_kaiser = paddle.audio.functional.get_window(
             ('kaiser', 14.0), n_fft
         )
-        np.testing.assert_almost_equal(
-            window_scipy_kaiser, window_paddle_kaiser.numpy(), decimal=4
-        )
+        window_scipy_kaiser = paddle.to_tensor(window_scipy_kaiser, dtype=window_paddle_kaiser.dtype)
+        paddle.allclose(window_scipy_kaiser, window_paddle_kaiser, atol=0.0001, rtol=0.0001)
 
         n_fft = 512
 
@@ -55,25 +51,22 @@ class TestAudioFuncitons(unittest.TestCase):
         window_paddle_bartlett = paddle.audio.functional.get_window(
             'bartlett', n_fft
         )
-        np.testing.assert_almost_equal(
-            window_scipy_bartlett, window_paddle_bartlett.numpy(), decimal=4
-        )
+        window_scipy_bartlett = paddle.to_tensor(window_scipy_bartlett, dtype=window_paddle_bartlett.dtype)
+        paddle.allclose(window_scipy_bartlett, window_paddle_bartlett, atol=0.0001, rtol=0.0001)
 
         window_scipy_nuttall = signal.windows.nuttall(n_fft)
         window_paddle_nuttall = paddle.audio.functional.get_window(
             'nuttall', n_fft
         )
-        np.testing.assert_almost_equal(
-            window_scipy_nuttall, window_paddle_nuttall.numpy(), decimal=4
-        )
+        window_scipy_nuttall = paddle.to_tensor(window_scipy_nuttall, dtype=window_paddle_nuttall.dtype)
+        paddle.allclose(window_scipy_nuttall, window_paddle_nuttall, atol=0.0001, rtol=0.0001)
 
         window_scipy_kaiser = signal.windows.kaiser(n_fft, beta=14.0)
         window_paddle_kaiser = paddle.audio.functional.get_window(
             ('kaiser', 14.0), n_fft
         )
-        np.testing.assert_almost_equal(
-            window_scipy_kaiser, window_paddle_kaiser.numpy(), decimal=4
-        )
+        window_scipy_kaiser = paddle.to_tensor(window_scipy_kaiser, dtype=window_paddle_kaiser.dtype)
+        paddle.allclose(window_scipy_kaiser, window_paddle_kaiser, atol=0.0001, rtol=0.0001)
 
 
 if __name__ == '__main__':
