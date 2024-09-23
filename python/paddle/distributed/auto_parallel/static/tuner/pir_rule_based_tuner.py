@@ -807,7 +807,22 @@ class PIRDecoderLayerPattern(PIRBasePattern):
         print(f"in Decoder_layer_pattern, program is {self.pir_program}")
         paddle.disable_static()
 
-        # # todo: how to design an efficient distributed infos for each pattern
+        qkv_linear_dist_infos = MpDistInfos("column")
+        out_linear_dist_infos = MpDistInfos("row")
+        up_linear_dist_infos = MpDistInfos("column")
+        down_linear_dist_infos = MpDistInfos("row")
+
+        # # # build ops dist infos # # #
+        ops_dist_infos = {
+            (22,): qkv_linear_dist_infos,
+            (23,): qkv_linear_dist_infos,
+            (24,): qkv_linear_dist_infos,
+            (90,): out_linear_dist_infos,
+            (100,): up_linear_dist_infos,
+            (101,): up_linear_dist_infos,
+            (103,): down_linear_dist_infos,
+        }
+        self.ops_dist_infos = ops_dist_infos
 
     def rms_norm(self, hidden_states, norm_weight):
         variance_epsilon = 1e-6
