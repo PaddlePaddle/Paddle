@@ -20,7 +20,6 @@ import paddle
 from paddle.base import core
 from paddle.incubate.nn.functional import fused_dropout_add
 from paddle.incubate.nn.layer.fused_dropout_add import FusedDropoutAdd
-from paddle.pir_utils import test_with_pir_api
 
 
 def paddle_dropout_add(x, y, p=0.5, training=True, mode="upscale_in_train"):
@@ -125,7 +124,6 @@ class TestFusedDropoutAddStatic(unittest.TestCase):
         self.shape = (2, 80, 8, 2)
         self.dtype = 'float16'
 
-    @test_with_pir_api
     def test_static_op(self):
         paddle.disable_static()
         paddle.seed(312)

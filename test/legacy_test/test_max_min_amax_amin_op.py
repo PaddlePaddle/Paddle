@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -91,7 +90,7 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
         return out
 
     # We check the output between paddle API and numpy in static graph.
-    @test_with_pir_api
+
     def test_static_graph(self):
         def _test_static_graph(func):
             startup_program = base.Program()

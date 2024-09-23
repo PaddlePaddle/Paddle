@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 # Test python API
@@ -37,7 +36,6 @@ class TestRandintLikeAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -59,7 +57,6 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out >= -10) & (out <= 10)).all(), True)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_api_with_int32(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -84,7 +81,6 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out2 >= -5) & (out2 <= 10)).all(), True)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_api_with_int64(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -105,7 +101,6 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out >= -100) & (out <= 100)).all(), True)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_api_with_fp16(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
@@ -129,7 +124,6 @@ class TestRandintLikeAPI(unittest.TestCase):
                     self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_api_with_float32(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -152,7 +146,6 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_api_with_float64(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -209,7 +202,6 @@ class TestRandintLikeAPI(unittest.TestCase):
                 )
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

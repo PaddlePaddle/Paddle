@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def compute_index_add_ref(
@@ -306,7 +305,6 @@ class TestIndexAddAPI(unittest.TestCase):
         )
         return res
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for device in self.place:

@@ -20,7 +20,6 @@ from op_test import OpTest, convert_uint16_to_float, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -423,7 +422,6 @@ class TestComplexRandnAPI(unittest.TestCase):
                 np.testing.assert_allclose(var_real, 0.5, rtol=0.02, atol=0.02)
                 np.testing.assert_allclose(var_imag, 0.5, rtol=0.02, atol=0.02)
 
-    @test_with_pir_api
     def test_static(self):
         place = (
             paddle.CUDAPlace(0)

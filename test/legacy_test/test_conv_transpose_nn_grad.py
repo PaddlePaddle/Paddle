@@ -22,7 +22,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestConvTransposeDoubleGradCheck(unittest.TestCase):
@@ -68,7 +67,6 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
             place=place,
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 4, 3, 3]
@@ -169,7 +167,6 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
             place=place,
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 3, 3]
@@ -259,7 +256,6 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
             place=place,
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 3, 3]
@@ -350,7 +346,6 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
             place=place,
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 3, 3]
@@ -443,7 +438,6 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
             place=place,
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 3, 3, 2]

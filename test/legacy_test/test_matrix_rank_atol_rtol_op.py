@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 SEED = 2049
@@ -273,7 +272,6 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():

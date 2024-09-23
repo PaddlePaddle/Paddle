@@ -22,13 +22,12 @@ from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestAPICase(unittest.TestCase):
-    @test_with_pir_api
+
     def test_return_single_var(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -102,7 +101,6 @@ class TestAPICase(unittest.TestCase):
             np.testing.assert_allclose(res[3], 2, rtol=1e-05)
             np.testing.assert_allclose(res[4], 2, rtol=1e-05)
 
-    @test_with_pir_api
     def test_0d_tensor(self):
         def fn_1():
             return paddle.full(shape=[], dtype='int32', fill_value=1)
@@ -169,7 +167,6 @@ class TestAPICase(unittest.TestCase):
             np.testing.assert_allclose(res[4], 2, rtol=1e-05)
             self.assertEqual(res[4].shape, ())
 
-    @test_with_pir_api
     def test_0d_tensor_backward(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -264,7 +261,6 @@ class TestAPICase(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_return_var_tuple(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -318,7 +314,7 @@ class TestAPICase(unittest.TestCase):
 
 
 class TestAPICase_Nested(unittest.TestCase):
-    @test_with_pir_api
+
     def test_nested_case(self):
         def fn_1(x=1):
             var_5 = paddle.tensor.fill_constant(
@@ -436,7 +432,6 @@ class TestAPICase_Nested(unittest.TestCase):
             np.testing.assert_allclose(res[1], 2, rtol=1e-05)
             np.testing.assert_allclose(res[2], 3, rtol=1e-05)
 
-    @test_with_pir_api
     def test_nested_0d_tensor(self):
         def fn_1(x=1):
             var_5 = paddle.full(shape=[], dtype='int32', fill_value=5)
@@ -542,7 +537,7 @@ class TestAPICase_Nested(unittest.TestCase):
 
 
 class TestAPICase_Error(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -611,7 +606,7 @@ class TestAPICase_Error(unittest.TestCase):
 
 # when optimizer in case
 class TestMutiTask(unittest.TestCase):
-    @test_with_pir_api
+
     def test_optimizer_in_case(self):
         BATCH_SIZE = 1
         INPUT_SIZE = 784

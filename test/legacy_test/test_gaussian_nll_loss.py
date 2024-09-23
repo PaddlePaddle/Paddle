@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -128,7 +127,6 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                 np.allclose(out_ref, r.numpy(), rtol=1e-5, atol=1e-5)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static_case(self, type=None, full=False, reduction='none'):
         self.setUp(type)
         paddle.enable_static()

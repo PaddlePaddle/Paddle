@@ -22,7 +22,6 @@ from paddle import base
 from paddle.autograd.ir_backward import grad
 from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestWhereOp(OpTest):
@@ -272,7 +271,6 @@ class TestWhereAPI(unittest.TestCase):
                                 out[1], self.ref_y_backward(out[1])
                             )
 
-    @test_with_pir_api
     def test_api_broadcast(self, use_cuda=False):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
@@ -297,7 +295,6 @@ class TestWhereAPI(unittest.TestCase):
                     out[0], np.where((x_i > 1), x_i, y_i)
                 )
 
-    @test_with_pir_api
     def test_scalar(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
@@ -404,56 +401,48 @@ class TestWhereAPI(unittest.TestCase):
                     np.testing.assert_array_equal(out[0], expect)
                     self.assertEqual(out[0].dtype, expect.dtype)
 
-    @test_with_pir_api
     def test_static_api_broadcast_1(self):
         cond_shape = [2, 4]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
-    @test_with_pir_api
     def test_static_api_broadcast_2(self):
         cond_shape = [2, 1]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
-    @test_with_pir_api
     def test_static_api_broadcast_3(self):
         cond_shape = [2, 2, 1]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
-    @test_with_pir_api
     def test_static_api_broadcast_4(self):
         cond_shape = [2, 1, 4]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
-    @test_with_pir_api
     def test_static_api_broadcast_5(self):
         cond_shape = [3, 2, 2, 4]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
-    @test_with_pir_api
     def test_static_api_broadcast_6(self):
         cond_shape = [2, 2, 4]
         a_shape = [2, 2, 1]
         b_shape = [2, 2, 1]
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
-    @test_with_pir_api
     def test_static_api_broadcast_7(self):
         cond_shape = [2, 2, 4]
         a_shape = [2, 1, 4]
         b_shape = [2, 1, 4]
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
-    @test_with_pir_api
     def test_static_api_broadcast_8(self):
         cond_shape = [3, 2, 2, 4]
         a_shape = [2, 2, 1]

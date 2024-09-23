@@ -20,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 def cummin_dim2(arr, axis=None):
@@ -151,7 +150,6 @@ class TestCumminAPI(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
         np.testing.assert_array_equal(ind, indices.numpy())
 
-    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with base.program_guard(base.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
@@ -218,7 +216,6 @@ class TestCumminAPI(unittest.TestCase):
         paddle.enable_static()
         with base.program_guard(base.Program()):
 
-            @test_with_pir_api
             def test_x_type():
                 data = [1, 2, 3]
                 y, indices = paddle.cummin(data, axis=0)

@@ -22,7 +22,6 @@ import numpy as np
 import paddle
 import paddle.nn.quant as Q
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def get_cuda_version():
@@ -92,7 +91,6 @@ class ApplyPerChannelScaleTest(unittest.TestCase):
         paddle.disable_static()
         return out
 
-    @test_with_pir_api
     def test_apply_per_channel_scale(self):
         if self.static:
             self.out_real = self.get_out_static()

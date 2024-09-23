@@ -25,7 +25,6 @@ import paddle
 import paddle.inference as paddle_infer
 from paddle import base
 from paddle.base.framework import in_dygraph_mode, in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -33,7 +32,6 @@ paddle.enable_static()
 class TestBincountOpAPI(unittest.TestCase):
     """Test bincount api."""
 
-    @test_with_pir_api
     def test_static_graph(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
@@ -257,7 +255,6 @@ class TestTensorMinlength(unittest.TestCase):
         )
         np.testing.assert_allclose(np_out, pd_out.numpy())
 
-    @test_with_pir_api
     def test_static_and_infer(self):
         paddle.enable_static()
         np_x = np.random.randn(100).astype('float32')

@@ -25,7 +25,6 @@ from test_attribute_var import UnittestBase
 import paddle
 from paddle.base import Program, program_guard
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class BaseTestCase(OpTest):
@@ -301,7 +300,6 @@ class TestArgMaxTensorAxis(UnittestBase):
         self.x = [np.random.randn(*shape) for shape in self.shapes]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
-    @test_with_pir_api
     def test_static(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -345,7 +343,7 @@ class TestArgMaxTensorAxis(UnittestBase):
 
 
 class TestArgMinTensorAxis(TestArgMaxTensorAxis):
-    @test_with_pir_api
+
     def test_static(self):
         main_prog = paddle.base.Program()
         startup_prog = paddle.base.Program()

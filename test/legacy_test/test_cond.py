@@ -25,14 +25,12 @@ import paddle
 from paddle import base
 from paddle.base import core, framework
 from paddle.base.backward import append_backward
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
 
 
 class TestCondInputOutput(unittest.TestCase):
     @compare_legacy_with_pt
-    @test_with_pir_api
     def test_return_single_var(self):
         """
         pseudocode:
@@ -84,7 +82,6 @@ class TestCondInputOutput(unittest.TestCase):
         )
 
     @compare_legacy_with_pt
-    @test_with_pir_api
     def test_return_0d_tensor(self):
         """
         pseudocode:
@@ -126,7 +123,6 @@ class TestCondInputOutput(unittest.TestCase):
         self.assertEqual(ret.shape, ())
 
     @compare_legacy_with_pt
-    @test_with_pir_api
     def test_0d_tensor_as_cond(self):
         """
         pseudocode:
@@ -168,7 +164,6 @@ class TestCondInputOutput(unittest.TestCase):
             np.asarray(ret), np.full((3, 3), 2, np.int32), rtol=1e-05
         )
 
-    @test_with_pir_api
     def test_0d_tensor_backward(self):
         """
         pseudocode:
@@ -380,7 +375,6 @@ class TestCondInputOutput(unittest.TestCase):
             self.assertIsNone(out3)
 
     @compare_legacy_with_pt
-    @test_with_pir_api
     def test_wrong_structure_exception(self):
         """
         test returning different number of tensors cannot merge into output
@@ -441,7 +435,6 @@ class TestCondInputOutput(unittest.TestCase):
                 in str(e.exception)
             )
 
-    @test_with_pir_api
     def test_extremely_simple_net_with_op_in_condition(self):
         paddle.enable_static()
         main_program = base.Program()
@@ -485,7 +478,7 @@ class TestCondInputOutput(unittest.TestCase):
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
-    @test_with_pir_api
+
     def test_cond_inside_cond(self):
         """
         pseudocode:
@@ -565,7 +558,6 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
 
-    @test_with_pir_api
     def test_cond_inside_cond_0d_tensor(self):
         """
         pseudocode:
@@ -640,7 +632,6 @@ class TestCondNestedControlFlow(unittest.TestCase):
         )
         self.assertEqual(ret[1].shape, ())
 
-    @test_with_pir_api
     def test_cond_op_in_condition(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -846,7 +837,6 @@ class TestCondBackward(unittest.TestCase):
         self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
         self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
 
-    @test_with_pir_api
     def test_half_nested_cond_backward(self):
         paddle.enable_static()
         np.random.seed(2023)
@@ -887,7 +877,6 @@ class TestCondBackward(unittest.TestCase):
             core.is_compiled_with_cuda(),
         )
 
-    @test_with_pir_api
     def test_nested_cond_backward(self):
         paddle.enable_static()
         np.random.seed(2023)
@@ -917,7 +906,6 @@ class TestCondBackward(unittest.TestCase):
 
 class TestCondWithError(unittest.TestCase):
     @compare_legacy_with_pt
-    @test_with_pir_api
     def test_input_type_error(self):
         paddle.enable_static()
         main_program = framework.Program()
@@ -942,7 +930,7 @@ class TestCondWithError(unittest.TestCase):
 
 
 class TestCondWithDict(unittest.TestCase):
-    @test_with_pir_api
+
     @compare_legacy_with_pt
     def test_input_with_dict(self):
         paddle.enable_static()

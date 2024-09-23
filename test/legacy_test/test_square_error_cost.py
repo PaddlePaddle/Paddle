@@ -20,11 +20,10 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.executor import Executor
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSquareErrorCost(unittest.TestCase):
-    @test_with_pir_api
+
     def test_square_error_cost(self):
         paddle.enable_static()
         shape = [2, 3]
@@ -60,7 +59,7 @@ class TestSquareErrorCost(unittest.TestCase):
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error(self):
         def test_invalid_input():
             input = [256, 3]

@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api as _test_with_pir_api
 
 RTOL = {'float32': 1e-7, 'float64': 1e-11}
 ATOL = {'float32': 1e-7, 'float64': 1e-11}
@@ -84,7 +83,6 @@ class TestCholeskyInverse(unittest.TestCase):
                 rtol=RTOL.get(self._dtype),
             )
 
-    @_test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = []

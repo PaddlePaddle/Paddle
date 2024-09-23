@@ -22,13 +22,12 @@ from decorator_helper import prog_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestSliceOpDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         self.config()
@@ -75,7 +74,7 @@ class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
 
 
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         shape = [7, 11]
@@ -106,7 +105,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
 
 
 class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         shape = [7, 11]
@@ -137,7 +136,7 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
 
 
 class TestReshapeDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         x_shape = [3, 12]
@@ -172,7 +171,6 @@ class TestTileDoubleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [4, 9])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [3, 12]
@@ -210,7 +208,6 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
     def expand_wrapper(self, x):
         return paddle.expand(x[0], [4, 12])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [1, 12]
@@ -249,7 +246,6 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
         axes = [0, 2]
         return paddle.squeeze(x[0], axes)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [1, 3, 1, 40]
@@ -288,7 +284,6 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
         axes = [1, 2]
         return paddle.unsqueeze(x[0], axes)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [3, 40]
@@ -326,7 +321,6 @@ class TestClipDoubleGradCheck(unittest.TestCase):
     def clip_wrapper(self, x):
         return paddle.clip(x[0], min=-1.0, max=1.0)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 4, 10]
@@ -357,7 +351,7 @@ class TestClipDoubleGradCheck(unittest.TestCase):
 
 
 class TestTransposeDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         x_shape = [3, 40]
@@ -386,7 +380,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
 
 
 class TestTransposeDoubleGradCheckCase1(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -419,7 +413,6 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
         pad = [1, 1, 1, 1]
         return paddle.nn.functional.pad(x[0], pad)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -455,7 +448,7 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
 
 
 class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -474,7 +467,6 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     def concat_wrapper(self, x):
         return paddle.concat(x, axis=0)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -519,7 +511,6 @@ class TestStackDoubleGradCheck(unittest.TestCase):
     def stack_wrapper(self, x):
         return paddle.stack(x, axis=1)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -561,7 +552,7 @@ class TestStackDoubleGradCheck(unittest.TestCase):
 
 
 class TestAvgPool2DDoubleGradCheckCase1(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         input_NCHW = paddle.static.data(
@@ -598,7 +589,6 @@ class TestAvgPool2DDoubleGradCheckCase2(unittest.TestCase):
             x[0], kernel_size=2, data_format="NHWC"
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         input_NHWC = paddle.static.data(
@@ -641,7 +631,6 @@ class TestAvgPool2DDoubleGradCheckCase3(unittest.TestCase):
             x[0], kernel_size=2, padding=[1, 1]
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         input_NCHW = paddle.static.data(
@@ -681,7 +670,6 @@ class TestAvgPool2DDoubleGradCheckCase4(unittest.TestCase):
     def pool2d_wrapper(self, x):
         return paddle.nn.functional.avg_pool2d(x[0], kernel_size=[4, 4])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         input_NCHW = paddle.static.data(

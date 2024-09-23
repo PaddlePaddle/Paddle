@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base, tensor
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestTraceOp(OpTest):
@@ -150,7 +149,7 @@ class TestTraceBF16Op2(TestTraceBF16Op1):
 
 
 class TestTraceAPICase(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case1(self):
         with paddle.static.program_guard(paddle.static.Program()):
             case = np.random.randn(2, 20, 2, 3).astype('float32')

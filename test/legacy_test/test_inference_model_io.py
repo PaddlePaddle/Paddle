@@ -19,14 +19,13 @@ from paddle.base import core, executor
 from paddle.distributed.io import (
     load_inference_model_distributed,
 )
-from paddle.pir_utils import test_with_pir_api
 from paddle.static.io import load_inference_model
 
 paddle.enable_static()
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_load_model_not_exist(self):
         place = core.CPUPlace()
         exe = executor.Executor(place)

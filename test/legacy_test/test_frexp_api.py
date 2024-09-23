@@ -17,7 +17,6 @@ import numpy as np
 
 import paddle
 import paddle.base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestFrexpAPI(unittest.TestCase):
@@ -36,7 +35,7 @@ class TestFrexpAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
 
     # 静态图单测
-    @test_with_pir_api
+
     def test_static_api(self):
         # 开启静态图模式
         paddle.enable_static()

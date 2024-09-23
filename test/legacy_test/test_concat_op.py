@@ -24,7 +24,7 @@ import paddle
 import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import IrGuard, test_with_pir_api
+from paddle.pir_utils import IrGuard
 
 
 class TestConcatOp(OpTest):
@@ -599,7 +599,7 @@ class TestConcatOpError(unittest.TestCase):
 
 
 class TestConcatAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_base_api(self):
         paddle.enable_static()
         with paddle.base.program_guard(paddle.base.Program()):
@@ -638,7 +638,6 @@ class TestConcatAPI(unittest.TestCase):
                 res_3, np.concatenate((input_2, input_3), axis=1)
             )
 
-    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
         with paddle.base.program_guard(paddle.base.Program()):
@@ -798,7 +797,6 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     def concat_wrapper(self, x):
         return paddle.concat(x)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -848,7 +846,6 @@ class TestConcatTripleGradCheck(unittest.TestCase):
     def concat_wrapper(self, x):
         return paddle.concat(x, 1)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -961,7 +958,7 @@ class TestConcatOpAutoParallel(OpTest):
 
 
 class TestConcatOpErrorWithPir(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors_with_pir(self):
         paddle.enable_static()
         with paddle.base.program_guard(

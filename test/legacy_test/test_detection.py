@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -218,7 +217,6 @@ class TestDistributeFpnProposals(LayerTest):
                     output_dy_np.append(output_np)
         return output_dy_np
 
-    @test_with_pir_api
     def test_distribute_fpn_proposals(self):
         rois_np = np.random.rand(10, 4).astype('float32')
         rois_num_np = np.array([4, 6]).astype('int32')

@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestGraphSampleNeighbors(unittest.TestCase):
@@ -117,7 +116,6 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 )
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
-    @test_with_pir_api
     def test_sample_result_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -186,7 +184,6 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         self.assertRaises(ValueError, check_eid_error)
         self.assertRaises(ValueError, check_perm_buffer_error)
 
-    @test_with_pir_api
     def test_sample_result_with_eids(self):
         paddle.disable_static()
         row = paddle.to_tensor(self.row)
@@ -357,7 +354,6 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 )
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
-    @test_with_pir_api
     def test_sample_result_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -416,7 +412,6 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
 
         self.assertRaises(ValueError, check_eid_error)
 
-    @test_with_pir_api
     def test_sample_result_with_eids(self):
         paddle.disable_static()
         row = paddle.to_tensor(self.row)

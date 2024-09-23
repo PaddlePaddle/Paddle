@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestMVOp(OpTest):
@@ -55,7 +54,6 @@ class TestMVAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static_graph(self):
         for x_stop_gradient in [False, True]:
             for vec_stop_gradient in [False, True]:
@@ -90,7 +88,7 @@ class TestMVAPI(unittest.TestCase):
 
 
 class TestMVError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_input(self):
         def test_shape():
             paddle.enable_static()

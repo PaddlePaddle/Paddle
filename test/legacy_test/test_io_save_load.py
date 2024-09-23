@@ -19,7 +19,7 @@ import unittest
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_dygraph_pir, test_with_pir_api
+from paddle.pir_utils import test_with_dygraph_pir
 
 
 class TestSaveLoadAPIError(unittest.TestCase):
@@ -67,7 +67,6 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_with_pir_api
     def test_useless_feeded_var_names(self):
         start_prog = base.Program()
         main_prog = base.Program()

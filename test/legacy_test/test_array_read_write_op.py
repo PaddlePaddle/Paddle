@@ -22,7 +22,6 @@ from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.base.framework import default_main_program
-from paddle.pir_utils import test_with_pir_api
 
 
 def _test_read_write(x):
@@ -199,7 +198,6 @@ class TestPirArrayOp(unittest.TestCase):
             fetched_out1, np.ones([1, 3], dtype="float32") * 6
         )
 
-    @test_with_pir_api
     def test_array_backward(self):
         np.random.seed(2013)
         main_program = paddle.static.Program()

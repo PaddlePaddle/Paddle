@@ -27,7 +27,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
 
@@ -36,7 +35,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_return_single_var(self):
         """
         pseudocode:
@@ -66,7 +64,7 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         )
 
     # NOTE: Users should not be able to return none when actually using it.
-    @test_with_pir_api
+
     def test_return_0d_tensor(self):
         """
         pseudocode:
@@ -95,7 +93,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         )
         self.assertEqual(ret.shape, ())
 
-    @test_with_pir_api
     def test_0d_tensor_backward(self):
         '''
         pseudocode:
@@ -149,7 +146,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         )
         self.assertEqual(x_grad.shape, ())
 
-    @test_with_pir_api
     def test_return_var_type(self):
         def forward_fn(a, b):
             return 3 * a, -2 * b
@@ -182,7 +178,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
             rtol=1e-05,
         )
 
-    @test_with_pir_api
     def test_return_forward_none(self):
         input_shape = (1, 3)
 
@@ -206,7 +201,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         exe.run(main_program)
         self.assertIsNone(out)
 
-    @test_with_pir_api
     def test_wrong_structure_exception(self):
         """
         test not all ``stop_gradient`` of inputs is True when ``backward_fn`` is None, and
@@ -249,7 +243,6 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_cond_inside_static_pylayer(self):
         """
         forward propagation:
@@ -395,7 +388,6 @@ class TestStaticPyLayerBackward(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_identity_backward(self):
         def forward_fn(x):
             return x
@@ -461,7 +453,6 @@ class TestStaticPyLayerBackward(unittest.TestCase):
             rtol=1e-05,
         )
 
-    @test_with_pir_api
     def test_static_pylayer_backward(self):
         '''
         pseudocode:

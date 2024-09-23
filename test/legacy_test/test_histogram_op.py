@@ -18,13 +18,11 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestHistogramOpAPI(unittest.TestCase):
     """Test histogram api."""
 
-    @test_with_pir_api
     def test_static_graph(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
@@ -77,7 +75,6 @@ class TestHistogramOpError(unittest.TestCase):
             exe = base.Executor()
             exe.run(main_program)
 
-    @test_with_pir_api
     def test_bins_error(self):
         """Test bins should be greater than or equal to 1."""
 
@@ -90,7 +87,6 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_network(net_func)
 
-    @test_with_pir_api
     def test_min_max_error(self):
         """Test max must be larger or equal to min."""
 
@@ -103,7 +99,6 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_network(net_func)
 
-    @test_with_pir_api
     def test_min_max_range_error(self):
         """Test range of min, max is not finite"""
 
@@ -116,7 +111,6 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.run_network(net_func)
 
-    @test_with_pir_api
     def test_input_range_error(self):
         """Test range of input is out of bound"""
 
@@ -139,7 +133,6 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_network(net_func)
 
-    @test_with_pir_api
     def test_type_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
@@ -175,7 +168,6 @@ class TestHistogram(unittest.TestCase):
         self.density = False
         self.is_weight = True
 
-    @test_with_pir_api
     def test_static_graph(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()

@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -205,7 +204,6 @@ class TestSqueezeAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_error(self):
         def test_axes_type():
             with paddle.static.program_guard(

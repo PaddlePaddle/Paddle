@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -221,7 +220,6 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
             else base.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_case(self):
         self.program = paddle.static.Program()
         with paddle.static.program_guard(self.program):
@@ -259,7 +257,6 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
             else base.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_case(self):
         self.program = paddle.static.Program()
         with paddle.static.program_guard(self.program):
@@ -282,7 +279,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
 
 
 class API_test(unittest.TestCase):
-    @test_with_pir_api
+
     def test_out(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -303,7 +300,6 @@ class API_test(unittest.TestCase):
             expected_result = np.stack([input1, input2, input3], axis=0)
             np.testing.assert_allclose(expected_result, result, rtol=1e-05)
 
-    @test_with_pir_api
     def test_single_tensor_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -340,7 +336,7 @@ class API_DygraphTest(unittest.TestCase):
 
 
 class TestStackOpWithNegativeShape(unittest.TestCase):
-    @test_with_pir_api
+
     def test_out(self):
         main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(main_prg, startup_prg):
@@ -493,7 +489,6 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
 
             paddle.enable_static()
 
-    @test_with_pir_api
     def test_static_cpu(self):
         paddle.enable_static()
         place = base.CPUPlace()
@@ -515,7 +510,6 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
             expected_result = np.stack([input1, input2, input3], axis=0)
             np.testing.assert_equal(expected_result, result)
 
-    @test_with_pir_api
     def test_static_gpu(self):
         if base.is_compiled_with_cuda():
             paddle.enable_static()

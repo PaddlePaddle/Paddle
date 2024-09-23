@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class LinalgLstsqTestCase(unittest.TestCase):
@@ -92,7 +91,6 @@ class LinalgLstsqTestCase(unittest.TestCase):
             self._result_sg_values = results[3].numpy()
             self.assert_np_close()
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for dev in self.devices:
@@ -285,7 +283,6 @@ class TestLinalgLstsqAPIError(unittest.TestCase):
     def setUp(self):
         pass
 
-    @test_with_pir_api
     def test_api_errors(self):
         def test_x_bad_shape():
             x = paddle.to_tensor(np.random.random(size=(5)), dtype=np.float32)

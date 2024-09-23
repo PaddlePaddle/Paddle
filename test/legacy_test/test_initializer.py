@@ -22,7 +22,6 @@ from utils import dygraph_guard, static_guard
 import paddle
 from paddle.base import framework
 from paddle.base.core import VarDesc
-from paddle.pir_utils import test_with_pir_api
 from paddle.regularizer import L2Decay
 
 DELTA = 0.00001
@@ -1943,7 +1942,6 @@ class TestOrthogonalInitializer4(unittest.TestCase):
             np.matmul(a, a.T), 9 * np.eye(6), rtol=1e-5, atol=1e-8
         )
 
-    @test_with_pir_api
     def test_orthogonal(self):
         self.config()
         paddle.set_default_dtype(self.dtype)

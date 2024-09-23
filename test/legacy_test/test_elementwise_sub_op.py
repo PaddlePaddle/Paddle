@@ -23,7 +23,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseOp(OpTest):
@@ -905,7 +904,6 @@ class TestSubtractApi(unittest.TestCase):
                 y_1 = self._executed_api(x, y, name='subtract_res')
                 self.assertEqual(('subtract_res' in y_1.name), True)
 
-    @test_with_pir_api
     def test_declarative(self):
         with paddle.static.program_guard(paddle.static.Program()):
 

@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def sigmoid(x):
@@ -263,7 +262,7 @@ class TestYoloBoxDygraph(unittest.TestCase):
 
 
 class TestYoloBoxStatic(unittest.TestCase):
-    @test_with_pir_api
+
     def test_static(self):
         x1 = paddle.static.data('x1', [2, 14, 8, 8], 'float32')
         img_size = paddle.static.data('img_size', [2, 2], 'int32')

@@ -24,7 +24,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -776,7 +775,6 @@ class TestTriangularSolveAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.place:
             self.check_static_result(place=place)
@@ -812,7 +810,6 @@ class TestTriangularSolveOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.linalg.triangular_solve, x1, y1)
 
-    @test_with_pir_api
     def test_errors2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

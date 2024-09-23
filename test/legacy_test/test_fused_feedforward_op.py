@@ -22,7 +22,6 @@ import paddle.nn.functional as F
 from paddle.nn.layer import transformer
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestFusedFFNOp(OpTest):
@@ -377,7 +376,6 @@ class APITestStaticFusedFFN(unittest.TestCase):
 
         return fetch
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
 
@@ -428,7 +426,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
 
 
 class TestFusedFFNOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

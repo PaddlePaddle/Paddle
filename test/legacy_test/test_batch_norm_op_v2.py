@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestBatchNorm(unittest.TestCase):
@@ -309,7 +308,6 @@ class TestBatchNorm(unittest.TestCase):
             np.testing.assert_allclose(g3_2, g4, rtol=1e-05)
             np.testing.assert_allclose(g3_3, g4, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         places = []
         if (

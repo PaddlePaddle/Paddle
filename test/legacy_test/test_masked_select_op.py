@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def np_masked_select(x, mask):
@@ -157,7 +156,6 @@ class TestMaskedSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), np_out, rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static_mode(self):
         shape = [8, 9, 6]
         x = paddle.static.data(shape=shape, dtype='float32', name='x')

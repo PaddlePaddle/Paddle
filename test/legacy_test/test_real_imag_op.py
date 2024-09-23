@@ -20,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import base, static
-from paddle.pir_utils import test_with_pir_api
 
 numpy_apis = {
     "real": np.real,
@@ -108,7 +107,6 @@ class TestRealAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
         self._shape = [2, 20, 2, 3]
 
-    @test_with_pir_api
     def test_in_static_mode(self):
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(
@@ -155,7 +153,6 @@ class TestRealAPI(unittest.TestCase):
                 out = paddle_apis[self.api](x, name="real_res")
                 self.assertTrue("real_res" in out.name)
 
-    @test_with_pir_api
     def test_dtype_static_error(self):
         # in static graph mode
         with self.assertRaises(TypeError):

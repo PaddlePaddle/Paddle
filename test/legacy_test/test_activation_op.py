@@ -27,7 +27,6 @@ import paddle.nn.functional as F
 from paddle import base, static
 from paddle.base import Program, core, program_guard
 from paddle.base.layer_helper import LayerHelper
-from paddle.pir_utils import test_with_pir_api
 
 devices = ['cpu', 'gpu']
 
@@ -42,7 +41,7 @@ def dynamic_guard():
 
 
 class TestSqrtOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -218,7 +217,7 @@ class TestExp_Complex128(TestExp_Complex64):
 
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api_fp16(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -635,7 +634,6 @@ class TestSiluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -660,7 +658,6 @@ class TestSiluAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -737,7 +734,6 @@ class TestLogSigmoidAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -762,7 +758,6 @@ class TestLogSigmoidAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -883,7 +878,6 @@ class TestTanhAPI(unittest.TestCase):
     def executed_api(self):
         self.tanh = F.tanh
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -908,7 +902,6 @@ class TestTanhAPI(unittest.TestCase):
             for r in [out1, out2, out3]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -978,7 +971,6 @@ class TestAtan(TestActivation, TestParameter):
                 check_prim_pir=True,
             )
 
-    @test_with_pir_api
     def test_out_name(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -1074,7 +1066,6 @@ class TestSinhAPI(unittest.TestCase):
             z_expected = np.sinh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
-    @test_with_pir_api
     def test_api(self):
         with static_guard():
             test_data_shape = [11, 17]
@@ -1117,7 +1108,7 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1206,7 +1197,6 @@ class TestCoshAPI(unittest.TestCase):
             z_expected = np.cosh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
-    @test_with_pir_api
     def test_api(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -1248,7 +1238,7 @@ class TestCoshAPI(unittest.TestCase):
 
 
 class TestCoshOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with static_guard():
             with program_guard(Program()):
@@ -1315,7 +1305,6 @@ class TestTanhshrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1339,7 +1328,6 @@ class TestTanhshrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1426,7 +1414,6 @@ class TestHardShrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1457,7 +1444,6 @@ class TestHardShrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1494,7 +1480,6 @@ class TestHardtanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1525,7 +1510,6 @@ class TestHardtanhAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1599,7 +1583,6 @@ class TestSoftshrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1623,7 +1606,6 @@ class TestSoftshrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2231,7 +2213,6 @@ class TestTanAPI(unittest.TestCase):
             out_ref = np.tan(self.x_np)
             np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2332,7 +2313,6 @@ class TestSin(TestActivation, TestParameter):
     def init_shape(self):
         self.shape = [10, 12]
 
-    @test_with_pir_api
     def test_out_name(self):
         # inherit from `TestParameter`
         super().test_out_name()
@@ -2765,7 +2745,6 @@ class TestReluAPI(unittest.TestCase):
     def executed_api(self):
         self.relu = F.relu
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2789,7 +2768,6 @@ class TestReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -2904,7 +2882,6 @@ class TestLeakyReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2935,7 +2912,6 @@ class TestLeakyReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3088,7 +3064,6 @@ class TestGELUAPI(unittest.TestCase):
         self.rev_comp_rtol = 1e-8
         self.rev_comp_atol = 1e-8
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3119,7 +3094,6 @@ class TestGELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3238,7 +3212,6 @@ class TestRelu6API(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3262,7 +3235,6 @@ class TestRelu6API(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -3273,7 +3245,6 @@ class TestRelu6API(unittest.TestCase):
             out_ref = ref_relu6(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3426,7 +3397,6 @@ class TestHardswishAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3450,7 +3420,6 @@ class TestHardswishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -3466,7 +3435,6 @@ class TestHardswishAPI(unittest.TestCase):
             out = paddle.nn.functional.hardswish(x)
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3596,7 +3564,6 @@ class TestELUAPI(unittest.TestCase):
     def executed_api(self):
         self.elu = F.elu
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3629,7 +3596,6 @@ class TestELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3711,7 +3677,6 @@ class TestCELUAPI(unittest.TestCase):
     def executed_api(self):
         self.celu = F.celu
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3744,7 +3709,6 @@ class TestCELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4009,7 +3973,6 @@ class TestLog2(TestActivation):
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
 
-    @test_with_pir_api
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -4085,7 +4048,6 @@ class TestLog2_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_api_bf16(self):
         with static_guard():
             with static.program_guard(
@@ -4171,7 +4133,6 @@ class TestLog10_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_api_bf16(self):
         paddle.enable_static()
         with static.program_guard(
@@ -4187,7 +4148,7 @@ class TestLog10_Op_Int(unittest.TestCase):
 
 
 class TestLog10API(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -4276,7 +4237,7 @@ class TestLog1p_Complex128(TestLog1p_Complex64):
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api_fp16(self):
         with static_guard():
             with static.program_guard(
@@ -4302,7 +4263,6 @@ class TestLog1p_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_api_bf16(self):
         with static_guard():
             with static.program_guard(
@@ -4323,7 +4283,7 @@ class TestLog1p_ZeroDim(TestLog1p):
 
 
 class TestLog1pAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         with static_guard():
             with base.program_guard(
@@ -4664,7 +4624,6 @@ class TestSTanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4684,7 +4643,6 @@ class TestSTanhAPI(unittest.TestCase):
             for r in [out]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -4695,7 +4653,6 @@ class TestSTanhAPI(unittest.TestCase):
             out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4844,7 +4801,6 @@ class TestSoftplusAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4868,7 +4824,6 @@ class TestSoftplusAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4976,7 +4931,6 @@ class TestSoftsignAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5000,7 +4954,6 @@ class TestSoftsignAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5079,7 +5032,6 @@ class TestThresholdedReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5111,7 +5063,6 @@ class TestThresholdedReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5210,7 +5161,6 @@ class TestHardsigmoidAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5234,7 +5184,6 @@ class TestHardsigmoidAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -5250,7 +5199,6 @@ class TestHardsigmoidAPI(unittest.TestCase):
         out = paddle.nn.functional.hardsigmoid(x, slope=0.2)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5316,7 +5264,6 @@ class TestSwishAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5340,7 +5287,6 @@ class TestSwishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -5351,7 +5297,6 @@ class TestSwishAPI(unittest.TestCase):
             out_ref = ref_swish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5424,7 +5369,6 @@ class TestMishAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5448,7 +5392,6 @@ class TestMishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -5459,7 +5402,6 @@ class TestMishAPI(unittest.TestCase):
             out_ref = ref_mish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):

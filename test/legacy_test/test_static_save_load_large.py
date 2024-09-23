@@ -23,13 +23,12 @@ import paddle
 from paddle import base
 from paddle.base import framework
 from paddle.framework.io_utils import is_pir_fetch_var
-from paddle.pir_utils import test_with_pir_api
 
 LARGE_PARAM = 2**26
 
 
 class TestStaticSaveLoadLargeParameters(unittest.TestCase):
-    @test_with_pir_api
+
     def test_large_parameters_static_save(self):
         # enable static graph mode
         paddle.enable_static()

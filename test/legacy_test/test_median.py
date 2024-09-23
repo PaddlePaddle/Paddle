@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 DELTA = 1e-6
 
@@ -142,7 +141,6 @@ class TestMedianAvg(unittest.TestCase):
         res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
         self.check_numpy_res(res_pd.numpy(False), res_np)
 
-    @test_with_pir_api
     def test_median_static(self):
         h = 3
         w = 4
@@ -258,7 +256,6 @@ class TestMedianMin(unittest.TestCase):
             )
         np.testing.assert_allclose(res_pd.numpy(False), res_np)
 
-    @test_with_pir_api
     def test_median_static(self):
         h = 3
         w = 4

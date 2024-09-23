@@ -22,7 +22,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.framework import core
-from paddle.pir_utils import test_with_pir_api as _test_with_pir_api
 
 RTOL = 1e-06
 ATOL = 1e-06
@@ -277,7 +276,6 @@ class TestNAdamAPI(unittest.TestCase):
             nadam.apply_gradients(param_grads)
             nadam.clear_gradients()
 
-    @_test_with_pir_api
     def test_nadam_static(self):
         paddle.enable_static()
         place = base.CPUPlace()
@@ -308,7 +306,6 @@ class TestNAdamAPI(unittest.TestCase):
         assert rets[0] is not None
         paddle.disable_static()
 
-    @_test_with_pir_api
     def test_pir_nadam(self):
         with paddle.pir_utils.IrGuard():
             place = base.CPUPlace()
@@ -747,7 +744,6 @@ def get_places():
     return places
 
 
-@_test_with_pir_api
 def main_test_func(place, dtype):
     paddle.enable_static()
     main = base.Program()

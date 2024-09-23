@@ -17,11 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
-@test_with_pir_api
 class TestDiagFlatError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
@@ -70,7 +68,6 @@ class TestDiagFlatAPI(unittest.TestCase):
         y = paddle.diagflat(x, offset=-1)
         np.testing.assert_allclose(y.numpy(), self.expected5, rtol=1e-05)
 
-    @test_with_pir_api
     def run_static(self, use_gpu=False):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -113,7 +110,6 @@ class TestDiagFlatAPI(unittest.TestCase):
         with paddle.static.program_guard(Program()):
             self.run_static(use_gpu=True)
 
-    @test_with_pir_api
     def test_fp16_with_gpu(self, use_gpu=False):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)

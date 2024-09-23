@@ -18,12 +18,11 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 # Test python API
 class TestFullAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -203,7 +202,7 @@ class TestFullAPI(unittest.TestCase):
 
 
 class TestFullOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

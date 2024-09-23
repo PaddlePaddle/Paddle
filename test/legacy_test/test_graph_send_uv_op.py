@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def compute_graph_send_uv(inputs, attributes):
@@ -193,7 +192,6 @@ class API_GeometricSendUVTest(unittest.TestCase):
                 err_msg=f'two value is                {np_res}\n{paddle_res}, check diff!',
             )
 
-    @test_with_pir_api
     def test_compute_all_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

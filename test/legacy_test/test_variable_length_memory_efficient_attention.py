@@ -24,7 +24,6 @@ from paddle.framework import core
 from paddle.incubate.nn.functional import (
     variable_length_memory_efficient_attention,
 )
-from paddle.pir_utils import test_with_pir_api
 
 paddle.seed(2023)
 
@@ -302,7 +301,6 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
             self.scale,
         )
 
-    @test_with_pir_api
     def test_all(self):
         paddle.enable_static()
         with paddle.static.program_guard(

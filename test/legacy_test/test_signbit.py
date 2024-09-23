@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def ref_np_signbit(x: np.ndarray):
@@ -116,7 +115,6 @@ class TestSignbitAPI(unittest.TestCase):
         for place in self.place:
             run(place)
 
-    @test_with_pir_api
     def test_static(self):
         np_input1 = np.random.uniform(-10, 10, (12, 10)).astype("int8")
         np_input2 = np.random.uniform(-10, 10, (12, 10)).astype("uint8")

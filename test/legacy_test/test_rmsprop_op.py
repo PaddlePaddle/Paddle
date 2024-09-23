@@ -21,7 +21,6 @@ from op import Operator
 import paddle
 from paddle import base
 from paddle.base import core, in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def create_selected_rows_and_tensor(
@@ -280,7 +279,6 @@ class TestRMSPropV2(unittest.TestCase):
         adam.step()
         adam.clear_gradients()
 
-    @test_with_pir_api
     def test_rmsprop(self):
         paddle.enable_static()
         place = base.CPUPlace()

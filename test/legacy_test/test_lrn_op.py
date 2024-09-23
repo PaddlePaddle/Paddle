@@ -21,7 +21,6 @@ from op_test import OpTest, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestLRNOp(OpTest):
@@ -212,7 +211,6 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
             fetches1_tran = np.transpose(fetches[1], (0, 4, 1, 2, 3))
             np.testing.assert_allclose(fetches[0], fetches1_tran, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         with paddle_static_guard():
             for place in self.places:
@@ -282,7 +280,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
 
 
 class TestLocalResponseNormFAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle_static_guard():
             with paddle.static.program_guard(
@@ -361,7 +359,6 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
                 res2_tran = np.transpose(res2.numpy(), (0, 3, 1, 2))
                 np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)

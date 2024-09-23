@@ -20,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestIscloseOp(OpTest):
@@ -116,7 +115,7 @@ class TestIscloseOpNanTrue(TestIscloseOp):
 
 
 class TestIscloseStatic(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api_case(self):
         paddle.enable_static()
         x_data = np.random.rand(10, 10)
@@ -224,7 +223,7 @@ class TestIscloseError(unittest.TestCase):
 
 
 class TestIscloseOpFp16(unittest.TestCase):
-    @test_with_pir_api
+
     def test_fp16(self):
         if core.is_compiled_with_cuda():
             x_data = np.random.rand(10, 10).astype('float16')
@@ -283,7 +282,7 @@ class TestIscloseOpFloat64(TestIscloseOp):
 
 
 class TestIscloseOpCp64(unittest.TestCase):
-    @test_with_pir_api
+
     def test_cp64(self):
         x_data = (
             np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
@@ -305,7 +304,7 @@ class TestIscloseOpCp64(unittest.TestCase):
 
 
 class TestIscloseOpCp128(unittest.TestCase):
-    @test_with_pir_api
+
     def test_cp128(self):
         x_data = (
             np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)

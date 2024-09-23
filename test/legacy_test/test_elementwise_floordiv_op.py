@@ -22,7 +22,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import base, static
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseModOp(OpTest):
@@ -108,7 +107,7 @@ def device_guard(device=None):
 
 
 class TestFloorDivideOp(unittest.TestCase):
-    @test_with_pir_api
+
     def test_static(self):
         paddle.enable_static()
         places = []

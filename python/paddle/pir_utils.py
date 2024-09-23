@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import os
 from functools import wraps
 
 import paddle
@@ -181,21 +180,6 @@ class DygraphOldIrGuard:
             paddle.base.framework.global_var._use_pir_api_ = True
             bind_datatype()
             _switch_to_pir_()
-
-
-def test_with_pir_api(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        skip_old_ir = os.environ.get("FLAGS_CI_skip_old_ir", "False")
-        skip_pir = os.environ.get("FLAGS_CI_skip_pir", "False")
-        if skip_old_ir == "False" or not skip_old_ir:
-            with OldIrGuard():
-                func(*args, **kwargs)
-        if skip_pir == "False" or not skip_pir:
-            with IrGuard():
-                func(*args, **kwargs)
-
-    return impl
 
 
 def test_with_old_ir_only(func):

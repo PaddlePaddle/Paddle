@@ -26,7 +26,6 @@ from paddle import base
 from paddle.base import core, framework
 from paddle.framework import in_pir_mode
 from paddle.optimizer import Adam
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -255,7 +254,6 @@ class TestSaveLoadBase(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
-    @test_with_pir_api
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -401,7 +399,6 @@ class TestSaveLoadPartial(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
-    @test_with_pir_api
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -559,7 +556,6 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
-    @test_with_pir_api
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -704,7 +700,6 @@ class TestProgramStatePartial(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
-    @test_with_pir_api
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -968,7 +963,6 @@ class TestVariableInit(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
-    @test_with_pir_api
     def test_variable_init(self):
         x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
         y = paddle.static.nn.fc(x, 10)
@@ -1078,7 +1072,7 @@ class TestVariableInit(unittest.TestCase):
 
 
 class TestStaticSaveLoadPickle(unittest.TestCase):
-    @test_with_pir_api
+
     def test_pickle_protocol(self):
         # enable static graph mode
         paddle.enable_static()
@@ -1167,7 +1161,6 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_with_pir_api
     def test_no_params(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):

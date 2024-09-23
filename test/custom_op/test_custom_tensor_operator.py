@@ -25,7 +25,6 @@ from utils import (
 
 import paddle
 from paddle import static
-from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -252,7 +251,6 @@ class TestJITLoad(unittest.TestCase):
         self._test_logical_operants()
         self._test_compare_operants()
 
-    @test_with_pir_api
     def test_static(self):
         self.add = self.custom_module.custom_add
         self.subtract = self.custom_module.custom_subtract

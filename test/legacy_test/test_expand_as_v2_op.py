@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestExpandAsBasic(OpTest):
@@ -262,7 +261,7 @@ class TestExpandAsV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input1 = np.random.random([12, 14]).astype("float32")

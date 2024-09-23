@@ -20,7 +20,6 @@ from utils import check_output, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import static
-from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -113,7 +112,6 @@ class TestCustomConjJit(unittest.TestCase):
             check_output(out, pd_out, "out")
             check_output(x_grad, pd_x_grad, "x's grad")
 
-    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
             np_input = np.random.random(self.shape).astype(dtype)

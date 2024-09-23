@@ -24,7 +24,6 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
@@ -292,7 +291,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             paddle.full([], 4, 'int32'),
         ]
 
-    @test_with_pir_api
     def test_slice(self):
         starts = [paddle.full([], 1, 'int32'), paddle.full([], 1, 'int32')]
         ends = [paddle.full([], 3, 'int32'), paddle.full([], 3, 'int32')]
@@ -303,7 +301,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         self.assertEqual(res.shape, (5, 2, 2))
 
-    @test_with_pir_api
     @prog_scope()
     def test_strided_slice(self):
         starts = [paddle.full([], 0, 'int32'), paddle.full([], 0, 'int32')]
@@ -316,7 +313,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         self.assertEqual(res.shape, (5, 2, 2))
 
-    @test_with_pir_api
     def test_linspace(self):
         start = paddle.full([], 1.0)
         stop = paddle.full([], 5.0)
@@ -327,7 +323,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
 
-    @test_with_pir_api
     def test_arange(self):
         start = paddle.full([], 1.0)
         stop = paddle.full([], 6.0)
@@ -338,7 +333,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
 
-    @test_with_pir_api
     def test_normal(self):
         mean = paddle.full([], 0.0)
         std = paddle.full([], 0.0)
@@ -353,7 +347,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_rand(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -367,7 +360,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(res[0].shape, ())
             self.assertEqual(res[1].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_randn(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -381,7 +373,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(res[0].shape, ())
             self.assertEqual(res[1].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_randint(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -402,7 +393,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_randint_like(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -417,7 +407,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
-    @test_with_pir_api
     def test_standard_normal(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -431,7 +420,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(res[0].shape, ())
             self.assertEqual(res[1].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_uniform(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -445,7 +433,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(res[0].shape, ())
             self.assertEqual(res[1].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_empty_and_empty_like(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -461,7 +448,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(res[1].shape, ())
             self.assertEqual(res[2].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_full_and_full_like(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -482,7 +468,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(res[2].shape, (2, 3, 4))
             self.assertEqual(res[3].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_ones_and_ones_like(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -498,7 +483,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(res[1].shape, ())
             self.assertEqual(res[2].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_zeros_and_zeros_like(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -514,7 +498,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(res[1].shape, ())
             self.assertEqual(res[2].shape, (2, 3, 4))
 
-    @test_with_pir_api
     def test_embedding(self):
         ids = paddle.full(shape=[], fill_value=1, dtype='int64')
         w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
@@ -530,7 +513,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         for i in range(len(res)):
             self.assertEqual(res[0][i], result[i])
 
-    @test_with_pir_api
     def test_one_hot_label(self):
         label = paddle.full(shape=[], fill_value=2, dtype='int64')
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
@@ -541,7 +523,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
 
-    @test_with_pir_api
     def test_unique_consecutive(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -566,7 +547,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(inverse_res.shape, (1,))
             self.assertEqual(counts_res.shape, (1,))
 
-    @test_with_pir_api
     def test_unique(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -594,7 +574,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             self.assertEqual(inverse_res.shape, (1,))
             self.assertEqual(counts_res.shape, (1,))
 
-    @test_with_pir_api
     def test_static_matrix_rank(self):
         # 2D : OUTPUT 0D
         with paddle.static.program_guard(

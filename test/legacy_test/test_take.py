@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestTakeAPI(unittest.TestCase):
@@ -50,7 +49,6 @@ class TestTakeAPI(unittest.TestCase):
             else base.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -113,7 +111,6 @@ class TestTakeFloat32(TestTakeAPI):
 class TestTakeTypeError(TestTakeAPI):
     """Test take Type Error"""
 
-    @test_with_pir_api
     def test_static_type_error(self):
         """Argument 'index' must be Tensor"""
         paddle.enable_static()
@@ -130,7 +127,6 @@ class TestTakeTypeError(TestTakeAPI):
         x = paddle.to_tensor(self.input_np)
         self.assertRaises(TypeError, paddle.take, x, self.index_np, self.mode)
 
-    @test_with_pir_api
     def test_static_dtype_error(self):
         """Data type of argument 'index' must be in [paddle.int32, paddle.int64]"""
         paddle.enable_static()
@@ -182,7 +178,6 @@ class TestTakeModeRaisePos(unittest.TestCase):
             else base.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_index_error(self):
         """When the index is out of range,
         an error is reported directly through `paddle.index_select`"""

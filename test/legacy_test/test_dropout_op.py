@@ -27,7 +27,6 @@ from paddle.base import Program, Scope, core, program_guard
 from paddle.base.executor import scope_guard
 from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
-from paddle.pir_utils import test_with_pir_api
 
 
 def dropout_wrapper(
@@ -539,7 +538,7 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
 
 
 class TestDropoutOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -579,7 +578,6 @@ class TestDropoutFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -666,7 +664,6 @@ class TestDropoutFAPI(unittest.TestCase):
                 )
                 np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
 
-    @test_with_pir_api
     def check_static_result2(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -802,7 +799,7 @@ class TestDropoutFAPI(unittest.TestCase):
 
 
 class TestDropoutFAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -837,7 +834,6 @@ class TestDropoutFAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
-    @test_with_pir_api
     def test_errors2(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -948,7 +944,6 @@ class TestDropout2DFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1001,7 +996,7 @@ class TestDropout2DFAPI(unittest.TestCase):
 
 
 class TestDropout2DFAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1053,7 +1048,6 @@ class TestDropout2DCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
-    @test_with_pir_api
     def test_static_fp16_with_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -1092,7 +1086,6 @@ class TestDropout3DFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1145,7 +1138,7 @@ class TestDropout3DFAPI(unittest.TestCase):
 
 
 class TestDropout3DFAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1211,7 +1204,6 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1266,7 +1258,7 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
 
 
 class TestAlphaDropoutFAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -1281,7 +1273,6 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-    @test_with_pir_api
     def test_errors2(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1342,7 +1333,6 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
-    @test_with_pir_api
     def test_static_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)

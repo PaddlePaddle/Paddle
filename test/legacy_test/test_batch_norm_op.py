@@ -28,7 +28,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import grad_var_name
-from paddle.pir_utils import test_with_pir_api
 
 _set_use_system_allocator(True)
 
@@ -552,7 +551,7 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -601,7 +600,6 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             y2 = compute(x, True, True)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         places = []
         if (
@@ -640,7 +638,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
 
 class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
-    @test_with_pir_api
+
     def test_reservespace(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()

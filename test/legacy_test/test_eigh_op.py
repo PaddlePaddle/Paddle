@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def valid_eigh_result(A, eigh_value, eigh_vector, uplo):
@@ -194,7 +193,6 @@ class TestEighAPI(unittest.TestCase):
             )
             valid_eigh_result(self.complex_symm, actual_w, actual_v, self.UPLO)
 
-    @test_with_pir_api
     def test_in_static_mode(self):
         paddle.enable_static()
         self.check_static_float_result()
@@ -233,7 +231,7 @@ class TestEighBatchAPI(TestEighAPI):
 
 
 class TestEighAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()

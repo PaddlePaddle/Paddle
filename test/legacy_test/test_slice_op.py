@@ -23,7 +23,6 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -1143,7 +1142,6 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
             x[0], axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -1185,7 +1183,6 @@ class TestSliceTripleGradCheck(unittest.TestCase):
             x[0], axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
         )
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.

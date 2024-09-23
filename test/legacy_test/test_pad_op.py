@@ -26,7 +26,6 @@ from utils import static_guard
 import paddle
 from paddle.base import core
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def pad_wrapper(x, paddings, pad_value):
@@ -132,7 +131,7 @@ create_test_fp16(TestCase3)
 
 
 class TestPadOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -156,7 +155,6 @@ class TestPaddingValueTensor(UnittestBase):
         self.shapes = [[2, 4]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
-    @test_with_pir_api
     def test_static(self):
         with static_guard():
             main_prog = paddle.static.Program()
@@ -242,7 +240,7 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
 
 
 class TestPaddingValueTensor3(unittest.TestCase):
-    @test_with_pir_api
+
     def test_static(self):
         with static_guard():
             np_x = np.random.random((16, 16)).astype("float32")
@@ -362,7 +360,6 @@ class TestPadOrder2N(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_order_static(self):
         self.init_case()
         place = paddle.CPUPlace()
@@ -453,7 +450,6 @@ class TestPadOrder(unittest.TestCase):
         )
         np.testing.assert_array_equal(out, out_np)
 
-    @test_with_pir_api
     def test_order_static(self):
         self.init_case()
         place = paddle.CPUPlace()

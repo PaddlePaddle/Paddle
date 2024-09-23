@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 def call_bce_layer(
@@ -173,7 +172,6 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                 np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
-                @test_with_pir_api
                 def test_static_or_pir_mode():
                     static_result = test_static(
                         place, logit_np, label_np, reduction=reduction
@@ -236,7 +234,6 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
-            @test_with_pir_api
             def test_static_or_pir_mode():
                 static_result = test_static(
                     place,
@@ -300,7 +297,6 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
         np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             static_result = test_static(
                 place, logit_np, label_np, weight_np, reduction, pos_weight_np

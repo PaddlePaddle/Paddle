@@ -19,7 +19,6 @@ from op_test import convert_float_to_uint16
 
 import paddle
 from paddle.framework import in_dynamic_mode
-from paddle.pir_utils import test_with_pir_api
 
 SUPPORTED_DTYPES = [
     bool,
@@ -134,7 +133,6 @@ def np_data_generator(np_shape, dtype, *args, **kwargs):
         return np.random.normal(0, 1, np_shape).astype(dtype)
 
 
-@test_with_pir_api
 def test(unit_test, use_gpu=False, test_error=False):
     for op_data in TEST_META_OP_DATA:
         meta_data = dict(op_data)

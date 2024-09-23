@@ -21,7 +21,6 @@ from scipy import special
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(100)
 paddle.seed(100)
@@ -72,7 +71,6 @@ class TestPolygammaAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    @test_with_pir_api
     def test_api_static(self):
         def run(place):
             paddle.enable_static()

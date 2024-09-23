@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestMultiplyApi(unittest.TestCase):
@@ -55,7 +54,6 @@ class TestMultiplyApi(unittest.TestCase):
         res = paddle.inner(x, y)
         return res.numpy()
 
-    @test_with_pir_api
     def test_multiply_static_case1(self):
         # test static computation graph: 3-d array
         x_data = np.random.rand(2, 10, 10).astype(np.float64)
@@ -63,7 +61,6 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_static_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.inner(x_data, y_data), rtol=1e-05)
 
-    @test_with_pir_api
     def test_multiply_static_case2(self):
         # test static computation graph: 2-d array
         x_data = np.random.rand(200, 5).astype(np.float64)
@@ -71,7 +68,6 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_static_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.inner(x_data, y_data), rtol=1e-05)
 
-    @test_with_pir_api
     def test_multiply_static_case3(self):
         # test static computation graph: 1-d array
         x_data = np.random.rand(50).astype(np.float64)
@@ -124,7 +120,7 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors_static_case1(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
@@ -135,7 +131,6 @@ class TestMultiplyError(unittest.TestCase):
             y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
             self.assertRaises(TypeError, paddle.inner, x, y)
 
-    @test_with_pir_api
     def test_errors_static_case2(self):
         # test static computation graph: inputs must be broadcastable
         paddle.enable_static()

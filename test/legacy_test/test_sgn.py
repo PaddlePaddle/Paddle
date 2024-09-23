@@ -18,7 +18,6 @@ import numpy as np
 from utils import static_guard
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def np_sgn(x: np.ndarray):
@@ -45,7 +44,6 @@ class TestSgnError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.sgn, input2)
         self.assertRaises(TypeError, paddle.sgn, input3)
 
-    @test_with_pir_api
     def test_errors_static_and_pir(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -77,7 +75,6 @@ class TestSignAPI(unittest.TestCase):
             z_expected = np_sgn(np_x)
             np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
-    @test_with_pir_api
     def test_complex_static_and_pir(self):
         with static_guard():
             for dtype in ['complex64', 'complex128']:
@@ -116,7 +113,6 @@ class TestSignAPI(unittest.TestCase):
             z_expected = np_sgn(np_x)
             np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
-    @test_with_pir_api
     def test_float_static_and_pir(self):
         dtype_list = ['float32', 'float64']
         if paddle.is_compiled_with_cuda():

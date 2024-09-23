@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class ApiFMaxTest(unittest.TestCase):
@@ -44,7 +43,6 @@ class ApiFMaxTest(unittest.TestCase):
         self.np_expected3 = np.fmax(self.input_a, self.input_c)
         self.np_expected4 = np.fmax(self.input_b, self.input_c)
 
-    @test_with_pir_api
     def test_static_api(self):
         """test_static_api"""
         paddle.enable_static()

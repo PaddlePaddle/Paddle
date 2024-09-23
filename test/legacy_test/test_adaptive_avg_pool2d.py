@@ -21,7 +21,6 @@ from test_attribute_var import UnittestBase
 import paddle
 from paddle.base import core
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -114,7 +113,6 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             x=self.x_np, output_size=[None, 3], pool_type="avg"
         )
 
-    @test_with_pir_api
     def test_static_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -241,7 +239,6 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             x=self.x_np, output_size=[None, 3], pool_type="avg"
         )
 
-    @test_with_pir_api
     def test_static_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -351,7 +348,6 @@ class TestOutputSizeTensor(UnittestBase):
         self.shapes = [[1, 3, 6, 6]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()

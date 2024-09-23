@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -33,7 +32,6 @@ class TestDeg2radAPI(unittest.TestCase):
         self.x_shape = [6]
         self.out_np = np.deg2rad(self.x_np)
 
-    @test_with_pir_api
     def test_static_graph(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()

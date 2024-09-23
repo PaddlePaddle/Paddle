@@ -23,7 +23,7 @@ sys.path.append("../../legacy_test")
 from test_nms_op import nms
 
 import paddle
-from paddle.pir_utils import test_with_dygraph_pir, test_with_pir_api
+from paddle.pir_utils import test_with_dygraph_pir
 
 
 def _find(condition):
@@ -142,7 +142,6 @@ class TestOpsNMS(unittest.TestCase):
                     err_msg=f'paddle out: {out}\n py out: {out_py}\n',
                 )
 
-    @test_with_pir_api
     def test_multiclass_nms_static(self):
         for device in self.devices:
             for dtype in self.dtypes:

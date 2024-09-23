@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 paddle.seed(10)
@@ -143,7 +142,6 @@ class TestLogNormalAPI(unittest.TestCase):
         paddle.enable_static()
         return ret
 
-    @test_with_pir_api
     def test_api(self):
         ret_static = self.static_api()
         ret_dygraph = self.dygraph_api()
@@ -181,7 +179,7 @@ class TestLogNormalAPI_mean_std_are_tensor(TestLogNormalAPI):
 
 
 class TestLogNormalAlias(unittest.TestCase):
-    @test_with_pir_api
+
     def test_alias(self):
         paddle.disable_static()
         shape = [1, 2, 3]
@@ -192,7 +190,7 @@ class TestLogNormalAlias(unittest.TestCase):
 
 
 class TestLogNormalErrors(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):

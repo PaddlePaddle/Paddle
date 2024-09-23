@@ -20,7 +20,6 @@ from decorator_helper import prog_scope
 import paddle
 from paddle import base
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -30,7 +29,6 @@ class TestMathOpPatches(unittest.TestCase):
         paddle.enable_static()
 
     @prog_scope()
-    @test_with_pir_api
     def test_equal_and_cond(self):
         a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
         b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')

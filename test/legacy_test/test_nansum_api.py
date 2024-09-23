@@ -18,11 +18,10 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class API_Test_Nansum(unittest.TestCase):
-    @test_with_pir_api
+
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -77,7 +76,7 @@ class API_Test_Nansum(unittest.TestCase):
             )
 
     # test nansum api with float16
-    @test_with_pir_api
+
     def test_static_graph_fp16(self):
         if not base.core.is_compiled_with_cuda():
             return

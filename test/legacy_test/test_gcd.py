@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestGcdAPI(unittest.TestCase):
@@ -28,7 +27,6 @@ class TestGcdAPI(unittest.TestCase):
         self.x_shape = [1]
         self.y_shape = [1]
 
-    @test_with_pir_api
     def test_static_graph(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)

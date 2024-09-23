@@ -18,11 +18,10 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestIncrement(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
@@ -63,7 +62,7 @@ class TestIncrement(unittest.TestCase):
 
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
-    @test_with_pir_api
+
     def test_increment(self):
         if base.core.is_compiled_with_cuda():
             paddle.enable_static()

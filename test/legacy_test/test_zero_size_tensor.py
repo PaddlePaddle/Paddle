@@ -22,7 +22,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 # Use to test zero-size of Sundry API, which is unique and can not be classified
@@ -80,7 +79,6 @@ class TestSundryAPI(unittest.TestCase):
         with self.assertRaises(ValueError):
             out4 = paddle.reshape(x5, [2, 0, -1])
 
-    @test_with_pir_api
     def test_reshape_static(self):
         paddle.enable_static()
         place = paddle.CPUPlace()

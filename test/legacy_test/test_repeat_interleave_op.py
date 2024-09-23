@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestRepeatInterleaveOp(OpTest):
@@ -115,7 +114,6 @@ class TestIndexSelectAPI(unittest.TestCase):
         self.data_zero_dim_index = np.array(2)
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
 
-    @test_with_pir_api
     def test_repeat_interleave_api(self):
         paddle.enable_static()
         self.input_data()

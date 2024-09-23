@@ -28,7 +28,6 @@ from paddle.framework import in_pir_mode
 from paddle.framework.io_utils import get_value, is_pir_fetch_var, set_value
 from paddle.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
-from paddle.pir_utils import test_with_pir_api
 
 BATCH_SIZE = 16
 BATCH_NUM = 4
@@ -212,7 +211,6 @@ class TestSaveLoadAny(unittest.TestCase):
         state_dict_opt = paddle.load(model_path + '.pdopt')
         program.set_state_dict(state_dict_opt, scope)
 
-    @test_with_pir_api
     def test_replace_static_save_load(self):
         paddle.enable_static()
         with new_program_scope():
@@ -367,7 +365,6 @@ class TestSaveLoadAny(unittest.TestCase):
                     print(load_dict_np[k])
                 np.testing.assert_array_equal(v.numpy(), load_dict_np[k])
 
-    @test_with_pir_api
     def test_single_pickle_var_dygraph(self):
         # enable dygraph mode
         paddle.disable_static()
@@ -398,7 +395,6 @@ class TestSaveLoadAny(unittest.TestCase):
         np.testing.assert_array_equal(tensor.numpy(), np_static)
         np.testing.assert_array_equal(tensor.numpy(), np.array(lod_static))
 
-    @test_with_pir_api
     def test_single_pickle_var_static(self):
         # enable static graph mode
         paddle.enable_static()
@@ -486,7 +482,6 @@ class TestSaveLoadAny(unittest.TestCase):
                         tensor.numpy(), np.array(state_dict_param[tensor.name])
                     )
 
-    @test_with_pir_api
     def test_save_load_complex_object_dygraph_save(self):
         paddle.disable_static()
         layer = paddle.nn.Linear(3, 4)
@@ -663,7 +658,6 @@ class TestSaveLoadAny(unittest.TestCase):
 
         np.testing.assert_array_equal(load_array4[0], obj4[0])
 
-    @test_with_pir_api
     def test_save_load_complex_object_static_save(self):
         paddle.enable_static()
         with new_program_scope():
@@ -978,7 +972,6 @@ class TestSaveLoad(unittest.TestCase):
             )
             np.testing.assert_array_equal(value.numpy(), load_value)
 
-    @test_with_pir_api
     def test_save_load(self):
         paddle.disable_static()
         layer, opt = self.build_and_train_model()

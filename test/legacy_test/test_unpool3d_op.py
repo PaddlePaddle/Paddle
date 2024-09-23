@@ -21,7 +21,6 @@ from op_test import OpTest
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 paddle.seed(2022)
@@ -437,7 +436,7 @@ class TestUnpool3DOpAPI_dygraph4(unittest.TestCase):
 
 
 class TestUnpool3DOpAPI_static(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case(self):
         paddle.enable_static()
         places = []

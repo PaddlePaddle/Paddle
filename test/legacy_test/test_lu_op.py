@@ -25,7 +25,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def scipy_lu(A, pivot):
@@ -246,7 +245,6 @@ class TestLUAPI(unittest.TestCase):
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_dygraph(tensor_shape, dtype)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
 

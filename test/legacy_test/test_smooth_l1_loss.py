@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 def smooth_l1_loss_forward(val, delta):
@@ -56,7 +55,6 @@ class SmoothL1Loss(unittest.TestCase):
 
         expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
 
-        @test_with_pir_api
         def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -104,7 +102,6 @@ class SmoothL1Loss(unittest.TestCase):
         )
         expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
 
-        @test_with_pir_api
         def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -152,7 +149,6 @@ class SmoothL1Loss(unittest.TestCase):
         )
         expected = smooth_l1_loss_np(input_np, label_np, reduction='none')
 
-        @test_with_pir_api
         def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -201,7 +197,6 @@ class SmoothL1Loss(unittest.TestCase):
         )
         expected = smooth_l1_loss_np(input_np, label_np, delta=delta)
 
-        @test_with_pir_api
         def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
