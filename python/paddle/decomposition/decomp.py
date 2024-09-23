@@ -224,6 +224,7 @@ def decompose(
     blacklist = core.prim_config["forward_blacklist"] | blacklist
     assert isinstance(start_index, int)
     assert isinstance(end_index, int)
+    print("program", program)
     return core.sinking_decomp(
         program, src_vars, blacklist, whitelist, start_index, end_index
     )
