@@ -1543,6 +1543,84 @@ bool FlashAttnOpInferSymbolicShape(
 //   return true;
 // }
 
+bool FlashMaskAttentionOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &q =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &k =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const symbol::ShapeOrDataDimExprs &v =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  PADDLE_ENFORCE_EQ(q.shape().size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+
+  infer_context->AddEqualCstr(q.shape()[0], k.shape()[0]);
+  infer_context->AddEqualCstr(q.shape()[0], v.shape()[0]);
+  infer_context->AddEqualCstr(k.shape()[1], v.shape()[1]);
+
+  if (op->operand_source(3)) {
+    const std::vector<symbol::DimExpr> &startend_row_indices =
+        infer_context->GetShapeOrDataForValue(op->operand_source(4)).shape();
+    PADDLE_ENFORCE_EQ(
+        startend_row_indices.size(),
+        4,
+        common::errors::InvalidArgument(
+            "flashmask_attention receive startend_row_indices with dim "
+            "[batch_size, num_heads,seq_len, mask_bounds]"));
+    PADDLE_ENFORCE_EQ(
+        infer_context->IsEqual(startend_row_indices[3], symbol::DimExpr{1}) ||
+            infer_context->IsEqual(startend_row_indices[3],
+                                   symbol::DimExpr{2}) ||
+            infer_context->IsEqual(startend_row_indices[3], symbol::DimExpr{4}),
+        true,
+        common::errors::InvalidArgument(
+            "flashmask_attention startend_row_indices "
+            "mask_bounds must in [1,2,4]"));
+  }
+  std::vector<symbol::DimExpr> out_shape = q.shape();
+
+  out_shape.back() = v.shape().back();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+
+  // GPU has round for seqlen, but XPU has not. Here we align with the GPU
+  // version.
+  auto round_multiple = [](symbol::DimExpr x) {
+    auto m = symbol::DimExpr{128};
+    auto m_minus_one = symbol::DimExpr{127};
+    return (x + m_minus_one) / m * m;
+  };
+  auto batch_size_expr = q.shape()[0];
+  auto num_heads_expr = q.shape()[2];
+  auto seqlen_q_rounded_expr = round_multiple(q.shape()[1]);
+  auto seqlen_k_rounded_expr = round_multiple(k.shape()[1]);
+
+  if (op->result(1)) {
+    std::vector<symbol::DimExpr> softmax_shape{batch_size_expr,
+                                               num_heads_expr,
+                                               seqlen_q_rounded_expr,
+                                               seqlen_k_rounded_expr};
+    infer_context->SetShapeOrDataForValue(
+        op->result(1), symbol::TensorShapeOrDataDimExprs(softmax_shape));
+  }
+  if (op->result(2)) {
+    std::vector<symbol::DimExpr> softmax_lse_shape{
+        batch_size_expr, num_heads_expr, seqlen_q_rounded_expr};
+    infer_context->SetShapeOrDataForValue(
+        op->result(2), symbol::TensorShapeOrDataDimExprs(softmax_lse_shape));
+  }
+  if (op->result(3)) {
+    std::vector<symbol::DimExpr> seed_offset_shape{symbol::DimExpr{2}};
+    infer_context->SetShapeOrDataForValue(
+        op->result(3), symbol::TensorShapeOrDataDimExprs(out_shape));
+  }
+  return true;
+}
 bool FusedBatchNormActOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return BatchNormOpInferSymbolicShape(op, infer_context);
