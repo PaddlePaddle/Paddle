@@ -344,6 +344,7 @@ Json serializeAttrToJson<paddle::dialect::OperationDistAttribute>(
     results_json.push_back(writeAttr(attr.results().at(i)));
   }
   content.push_back(results_json);
+  content.push_back(attr.chunk_id());
 
   json_obj[DATA] = content;
   return json_obj;
@@ -613,6 +614,10 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     VLOG(8) << "Write DenseTensorType ... ";
     return pir::serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
         type.dyn_cast<pir::DenseTensorType>());
+  } else if (type.isa<pir::UndefinedType>()) {
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Unexpected type pir::UndefinedType, "
+        "it should be replace with a concrete type when ArrayWrite."));
   } else {
     PADDLE_ENFORCE(false,
                    common::errors::InvalidArgument(

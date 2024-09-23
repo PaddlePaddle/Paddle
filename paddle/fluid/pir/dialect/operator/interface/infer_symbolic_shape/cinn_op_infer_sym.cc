@@ -266,6 +266,25 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool UniformRandomOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<int64_t> shape =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
+
+  const std::vector<symbol::DimExpr> out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    for (int64_t dim : shape) {
+      out_dims.emplace_back(symbol::DimExpr{dim});
+    }
+    return out_dims;
+  }();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 bool GatherOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape_or_data =
