@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,11 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void MatmulKernel(const Context& dev_ctx,
+void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& x,
                  const DenseTensor& y,
@@ -31,17 +30,19 @@ void MatmulKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
-  const XPUType* input_ptr = reinterpret_cast<const XPUType*>(input.data<T>());
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
+
+  phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+
   auto x_dims = x.dims();
   auto y_dims = y.dims();
 
   XpuFcInfo fc_info;
-  GetFCInfo(x_dims, y_dims, transpose_x, transpose_y, &fc_info);
+  GetFCInfo(x_dims, y_dims, false, false, &fc_info);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
-  MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
+  MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
 }
 }  // namespace phi
 
@@ -52,4 +53,3 @@ PD_REGISTER_KERNEL(addmm,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
-

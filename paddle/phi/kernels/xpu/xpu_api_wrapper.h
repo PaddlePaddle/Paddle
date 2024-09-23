@@ -158,21 +158,8 @@ static void GetFCInfo(const phi::DDim& x_dims,
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(new_x_dims, 0, trans_x);
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(new_y_dims, 0, trans_y);
 
-  if (x_dims.size() >= 3 && y_dims.size() <= 2) {
-    if (!trans_x || mat_dim_a.batch_size_ == 1) {
-      mat_dim_a.height_ *= mat_dim_a.batch_size_;
-      mat_dim_a.batch_size_ = 0;
-    } else {
-      info->is_y_need_broadcast = true;
-    }
-  }
-
-  if (y_dims.size() >= 3 && x_dims.size() <= 2) {
-    info->is_x_need_broadcast = (mat_dim_b.batch_size_ > 1);
-  }
-
-  PADDLE_ENFORCE_EQ(mat_dim_a.width_,
-                    mat_dim_b.height_,
+  PADDLE_ENFORCE_EQ(mat_dim_a.width_ == mat_dim_b.height_ && mat_dim_a.height_ == mat_dim_b.width_,
+                    true,
                     common::errors::InvalidArgument(
                         "Shape mistake in matmul_op xdims = %s ydims = %s "
                         "x_trans = %d y_trans = %d",
@@ -181,11 +168,17 @@ static void GetFCInfo(const phi::DDim& x_dims,
                         mat_dim_a.trans_,
                         mat_dim_b.trans_));
 
-  if (mat_dim_a.batch_size_ == 0 && mat_dim_b.batch_size_ == 1) {
-    mat_dim_a.batch_size_ = mat_dim_b.batch_size_ = 0;
-  }
-  if (mat_dim_a.batch_size_ == 1 && mat_dim_b.batch_size_ == 0) {
-    mat_dim_a.batch_size_ = mat_dim_b.batch_size_ = 0;
+  if (mat_dim_a.batch_size_ > 1 || mat_dim_b.batch_size_ > 1) {
+    if (mat_dim_a.batch_size_ > mat_dim_b.batch_size_) {
+        info->is_y_need_broadcast = true;
+    }
+    else if (mat_dim_a.batch_size_ < mat_dim_b.batch_size_) {
+        info->is_x_need_broadcast = true;
+    }
+    else {
+        info->is_x_need_broadcast = false;
+        info->is_y_need_broadcast = false;
+    }
   }
 
   info->m = mat_dim_a.height_;
@@ -414,7 +407,7 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
       stride_x,
       reinterpret_cast<const XPUType*>(w),
       stride_w,
-      0.0,
+      beta,
       reinterpret_cast<XPUType*>(y),
       stride_y,
       x_maxptr,
@@ -434,7 +427,7 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
       stride_x,
       reinterpret_cast<const XPUType*>(w),
       stride_w,
-      0.0,
+      beta,
       reinterpret_cast<XPUType*>(y),
       stride_y,
       x_maxptr,
@@ -505,6 +498,7 @@ static void MatMulXPUFunction(
     T* out,
     const XpuFcInfo& fcinfo,
     float alpha,
+    float beta = 0.f,
     bool is_grad = false,
     xpu::Activation_t act = xpu::Activation_t::LINEAR) {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -581,7 +575,7 @@ static void MatMulXPUFunction(
                  ldy,
                  ldout,
                  alpha,
-                 0,
+                 beta,
                  bias,
                  act,
                  scale_x,
@@ -626,7 +620,7 @@ static void MatMulXPUFunction(
                        ldx,                              // int stride_a,
                        y_data,                           // const TW* w,
                        ldy,                              // int stride_b,
-                       0.0,                              // float beta,
+                       beta,                              // float beta,
                        reinterpret_cast<XPUType*>(out),  // TY* y,
                        ldout,                            // int stride_c,
                        max_x,   // const float* x_maxptr,
@@ -645,12 +639,12 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                  const T* y,
                  const T* dout) {
   XpuFcInfo dx_shape, dy_shape;
-  const T* dx_a = NULL;
-  const T* dx_b = NULL;
-  const T* dy_a = NULL;
-  const T* dy_b = NULL;
+  const T* dx_a = nullptr;
+  const T* dx_b = nullptr;
+  const T* dy_a = nullptr;
+  const T* dy_b = nullptr;
   bool copy_to_l3 = false;
-  float* max_dout = NULL;
+  float* max_dout = nullptr;
   int maxptr_size = xpu_ctx->max_ptr_size();
   uint64_t l3_size = uint64_t(xpu_ctx->_l3_mgr.get_size());
   int bs = (dout_shape.bs <= 1) ? (1) : (dout_shape.bs);
