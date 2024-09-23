@@ -22,7 +22,6 @@ from dygraph_to_static_utils import (
     enable_to_static_guard,
     static_guard,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -142,7 +141,6 @@ class TestSliceWithoutControlFlow(TestSliceBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_without_control_flow
 
-    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         static_res = self.run_static_mode()
@@ -154,7 +152,6 @@ class TestSliceInIf(TestSliceBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_if
 
-    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         static_res = self.run_static_mode()
@@ -191,7 +188,6 @@ class TestSetValueWithLayerAndSave(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_set_value_with_save(self):
         with enable_to_static_guard(True):
             model = paddle.jit.to_static(
@@ -208,7 +204,6 @@ class TestSetValueWithLayerAndSave(Dy2StTestBase):
 
 class TestSliceSupplementSpecialCase(Dy2StTestBase):
     # unittest for slice index which abs(step)>0. eg: x[::2]
-    @test_legacy_and_pt_and_pir
     def test_static_slice_step(self):
         with static_guard():
             array = np.arange(4**3).reshape((4, 4, 4)).astype('int64')
@@ -227,7 +222,6 @@ class TestSliceSupplementSpecialCase(Dy2StTestBase):
         np.testing.assert_array_equal(out[0], array[::2])
         np.testing.assert_array_equal(out[1], array[::-2])
 
-    @test_legacy_and_pt_and_pir
     def test_static_slice_step_dygraph2static(self):
         array = np.arange(4**2 * 5).reshape((5, 4, 4)).astype('int64')
         inps = paddle.to_tensor(array)
@@ -250,7 +244,6 @@ class TestSliceSupplementSpecialCase(Dy2StTestBase):
 
 
 class TestPaddleStridedSlice(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_compare_paddle_strided_slice_with_numpy(self):
         array = np.arange(5)
         pt = paddle.to_tensor(array)
@@ -311,7 +304,6 @@ def slice_zero_shape_tensor(x):
 
 
 class TestSliceZeroShapeTensor(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_slice(self):
         x = paddle.ones([0, 0, 0, 0])
         y = slice_zero_shape_tensor(x)

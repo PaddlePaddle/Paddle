@@ -84,10 +84,10 @@ class AddNArrayOp : public pir::Op<AddNArrayOp,
       pir::AttributeMap *p_attributes);
 };
 
-class FusedGemmEpilogueOp
-    : public pir::Op<FusedGemmEpilogueOp,
-                     paddle::dialect::OpYamlInfoInterface,
-                     paddle::dialect::InferMetaInterface> {
+class FusedGemmEpilogueOp : public pir::Op<FusedGemmEpilogueOp,
+                                           paddle::dialect::OpYamlInfoInterface,
+                                           paddle::dialect::InferMetaInterface,
+                                           InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.fused_gemm_epilogue"; }
@@ -112,6 +112,7 @@ class FusedGemmEpilogueOp
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class TEST_API FusedGemmEpilogueGradOp

@@ -263,6 +263,7 @@ Json ParseOpPairPatches(const YAML::Node &root) {
       j_patch["op_pair"].push_back(op_name);
     }
     j_patch["patch"] = Json::object();
+    j_patch["patch"]["op_pair"] = j_patch["op_pair"];
     // parse actions
     auto actions = node["actions"];
     for (size_t j = 0; j < actions.size(); j++) {
@@ -275,21 +276,21 @@ Json ParseOpPairPatches(const YAML::Node &root) {
         int out_id = action["object"][0].as<int>();
         int in_id = action["object"][1].as<int>();
         Json j_add_out;
-        j_add_out[VALUE_ID] = out_id;
+        j_add_out[ID] = out_id;
         j_add_out[TYPE_TYPE] = BuildTypeJsonPatch(action);
         j_patch["patch"][OPRESULTS]["ADD"].push_back(j_add_out);
         Json j_add_in;
-        j_add_in[VALUE_ID] = in_id;
+        j_add_in[ID] = in_id;
         j_patch["patch"][OPOPERANDS]["ADD"].push_back(j_add_in);
       } else if (action_name == "delete_value") {
         VLOG(8) << "Patch for deleting values.";
         int out_id = action["object"][0].as<int>();
         int in_id = action["object"][1].as<int>();
         Json j_del_out;
-        j_del_out[VALUE_ID] = out_id;
+        j_del_out[ID] = out_id;
         j_patch["patch"][OPRESULTS]["DELETE"].push_back(j_del_out);
         Json j_del_in;
-        j_del_in[VALUE_ID] = in_id;
+        j_del_in[ID] = in_id;
         j_patch["patch"][OPOPERANDS]["DELETE"].push_back(j_del_in);
       }
     }
@@ -332,7 +333,13 @@ Json ParseOpPatches(const YAML::Node &root) {
         Json j_attr;
         j_attr[NAME] = attr_name;
         j_attr[ATTR_TYPE] = BuildAttrJsonPatch(action);
-        j_patch["patch"][ATTRS].push_back(j_attr);
+        if (action_name == "add_attr") {
+          Json j_add = Json::object();
+          j_add["ADD"] = j_attr;
+          j_patch["patch"][ATTRS].push_back(j_add);
+        } else {
+          j_patch["patch"][ATTRS].push_back(j_attr);
+        }
       } else if (action_name == "add_output_attr" ||
                  action_name == "modify_output_attr" ||
                  action_name == "delete_output_attr") {
@@ -341,7 +348,13 @@ Json ParseOpPatches(const YAML::Node &root) {
         Json j_attr;
         j_attr[NAME] = attr_name;
         j_attr[ATTR_TYPE] = BuildAttrJsonPatch(action);
-        j_patch["patch"][OPRESULTS_ATTRS].push_back(j_attr);
+        if (action_name == "add_output_attr") {
+          Json j_add = Json::object();
+          j_add["ADD"] = j_attr;
+          j_patch["patch"][OPRESULTS_ATTRS].push_back(j_add);
+        } else {
+          j_patch["patch"][OPRESULTS_ATTRS].push_back(j_attr);
+        }
       } else if (action_name == "modify_attr_name" ||
                  action_name == "modify_output_attr_name") {
         VLOG(8) << "Patch for modify attr name.";
@@ -355,22 +368,29 @@ Json ParseOpPatches(const YAML::Node &root) {
         j_patch["patch"][col].push_back(j_attr);
       } else if (action_name == "delete_input") {
         VLOG(8) << "Patch for delete_input";
+        Json j_input;
         int op_id = action["object"].as<int>();
-        j_patch["patch"][OPOPERANDS]["DELETE"].push_back(op_id);
+        j_input[ID] = op_id;
+        j_patch["patch"][OPOPERANDS]["DELETE"].push_back(j_input);
       } else if (action_name == "add_output") {
         VLOG(8) << "Patch for add_output";
         Json j_output;
         int op_id = action["object"].as<int>();
-        j_output[VALUE_ID] = op_id;
+        j_output[ID] = op_id;
         j_output[TYPE_TYPE] = BuildTypeJsonPatch(action);
         j_patch["patch"][OPRESULTS]["ADD"].push_back(j_output);
       } else if (action_name == "modify_output_type") {
         VLOG(8) << "Patch for modify_output_type";
         int op_id = action["object"].as<int>();
         Json j_type;
-        j_type[VALUE_ID] = op_id;
+        j_type[ID] = op_id;
         j_type[TYPE_TYPE] = BuildTypeJsonPatch(action);
-        j_patch["patch"][OPRESULTS].push_back(j_type);
+        j_patch["patch"][OPRESULTS]["UPDATE"].push_back(j_type);
+      } else if (action_name == "modify_name") {
+        VLOG(8) << "Patch for modify_name";
+        std::string op_name = action["default"].as<std::string>();
+        GetCompressOpName(&op_name);
+        j_patch["patch"]["NEW_NAME"] = op_name;
       }
     }
     json_patch.push_back(j_patch);
