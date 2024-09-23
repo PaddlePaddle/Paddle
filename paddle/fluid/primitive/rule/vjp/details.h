@@ -20,8 +20,10 @@
 
 #include <math.h>
 #include <vector>
+#include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace paddle {
 namespace primitive {
@@ -39,6 +41,41 @@ template <typename T>
 void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     by_pass<T>(out_grad, x_grad);
+  }
+}
+
+template <typename T>
+Tensor ConverToMT(const Tensor& x) {
+  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
+                   x.dtype() == phi::DataType::BFLOAT16;
+  if (need_cast) {
+    return cast<T>(x, phi::DataType::FLOAT32);
+  }
+  return x;
+}
+
+template <typename T>
+Tensor ConverToOrig(const Tensor& out, phi::DataType input_dtype) {
+  bool need_cast = out.dtype() != input_dtype;
+  if (need_cast) {
+    return cast<T>(out, input_dtype);
+  }
+  return out;
+}
+
+template <typename T>
+void bce_loss_grad(const Tensor& input,
+                   const Tensor& label,
+                   const Tensor& out_grad,
+                   Tensor* input_grad) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  if (input_grad) {
+    auto input_mt = ConverToMT<MT>(input);
+    auto term = maximum<MT>((1 - input_mt) * input_mt,
+                            full_scalar<MT>(1e-12, input_mt.dtype()));
+    auto out_base =
+        ConverToMT<MT>(out_grad) * (input_mt - ConverToMT<MT>(label)) / term;
+    set_output<T>(ConverToOrig<T>(out_base, input.dtype()), input_grad);
   }
 }
 
@@ -1880,7 +1917,12 @@ void topk_grad(const Tensor& x,
       by_pass<T>(out_grad, x_grad);
       return;
     }
-    auto zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+    Tensor zero_tensor;
+    if (has_dynamic_shape(x.shape())) {
+      zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
+    } else {
+      zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+    }
     auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
     set_output<T>(x_grad_tmp, x_grad);
   }
