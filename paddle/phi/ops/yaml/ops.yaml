@@ -1325,7 +1325,7 @@
   args : (Tensor x)
   output : Tensor
   infer_meta :
-    func : UnchangedInferMeta
+    func : DetInferMeta
   kernel :
     func : determinant
   backward : det_grad
@@ -2889,6 +2889,7 @@
   kernel :
     func : log_loss
   backward : log_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : log_softmax
   args : (Tensor x, int axis = -1)
