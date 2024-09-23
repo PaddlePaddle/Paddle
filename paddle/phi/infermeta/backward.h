@@ -360,6 +360,13 @@ void GradSameWithXInferMeta(const MetaTensor& xshape,
                             const MetaTensor& out,
                             MetaTensor* dx);
 
+void LodResetGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& out_grad,
+                           const std::vector<int>& target_lod,
+                           bool append,
+                           MetaTensor* x_grad,
+                           MetaConfig config = MetaConfig());
+
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,
                      const MetaTensor& pivots,

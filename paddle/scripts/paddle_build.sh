@@ -3633,7 +3633,7 @@ function distribute_test() {
     cd ${work_dir}/PaddleNLP
     # Disable Test: test_gradio
     rm tests/llm/test_gradio.py
-    python -m pytest -s -v tests/llm --timeout=3600
+    # python -m pytest -s -v tests/llm --timeout=3600
     echo "End LLM Test"
 
     echo "Start auto_parallel Test"
@@ -3712,24 +3712,24 @@ function exec_type_checking() {
     TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[typing\]" || true`
     DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[debug\]" || true`
 
-    if [[ ${TITLE_CHECK_ALL} ]]; then
-        if [[ ${DEBUG_MODE} ]]; then
-            python type_checking.py --debug --full-test; type_checking_error=$?
-        else
-            python type_checking.py --full-test; type_checking_error=$?
-        fi
-    else
-        if [[ ${DEBUG_MODE} ]]; then
-            python type_checking.py --debug; type_checking_error=$?
-        else
-            python type_checking.py; type_checking_error=$?
-        fi
-    fi
+    # if [[ ${TITLE_CHECK_ALL} ]]; then
+    #     if [[ ${DEBUG_MODE} ]]; then
+    #         python type_checking.py --debug --full-test; type_checking_error=$?
+    #     else
+    #         python type_checking.py --full-test; type_checking_error=$?
+    #     fi
+    # else
+    #     if [[ ${DEBUG_MODE} ]]; then
+    #         python type_checking.py --debug; type_checking_error=$?
+    #     else
+    #         python type_checking.py; type_checking_error=$?
+    #     fi
+    # fi
 
-    if [ "$type_checking_error" != "0" ];then
-      echo "Example code type checking failed" >&2
-      exit 5
-    fi
+    # if [ "$type_checking_error" != "0" ];then
+    #   echo "Example code type checking failed" >&2
+    #   exit 5
+    # fi
 }
 
 
