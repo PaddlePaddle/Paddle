@@ -75,9 +75,10 @@ class TestNonZeroSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attr[0].dims_mapping, [-1, -1, -1])
         self.assertEqual(infered_output_dist_attr[0].dims_mapping, [-1, -1])
 
-    def _test_infer_reverse(self):
-        # [1, 1] (output) -->
+    def test_infer_reverse(self):
+        # [1, 1, 1], [-1, -1] (x, output) -->
         # [-1, -1, -1], [-1, -1] (x, output)
+        self.x_dist_tensor_spec.set_dims_mapping([1, 1, 1])
         self.output_dist_tensor_spec.set_dims_mapping([1, 1])
 
         infered_dist_attr = self.rule1.infer_backward(
@@ -94,8 +95,9 @@ class TestNonZeroSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attr[0].dims_mapping, [-1, -1, -1])
         self.assertEqual(infered_output_dist_attr[0].dims_mapping, [-1, -1])
 
-        # [-1, -1] (output) -->
+        # [-1, -1, -1], [-1, -1] (x, output) -->
         # [-1, -1, -1], [-1, -1] (x, output)
+        self.x_dist_tensor_spec.set_dims_mapping([1, 1, 1])
         self.output_dist_tensor_spec.set_dims_mapping([-1, -1])
 
         infered_dist_attr = self.rule1.infer_backward(
