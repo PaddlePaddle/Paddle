@@ -22,7 +22,6 @@
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -41,11 +40,11 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
-#include "paddle/phi/kernels/assign_kernel.h"
-#include "paddle/phi/common/place.h"
 
 namespace {
 
