@@ -35,8 +35,27 @@ void AddmmKernel(const Context& dev_ctx,
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
 
+  auto input_dims = input.dims();
   auto x_dims = x.dims();
   auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size() == 2 || input_dims.size() == 1,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Variable 'input' of AddmmOp must be 1-dimensional or 2-dimensional, "
+                        "but received shape: [%s]",
+                        input_dims));
+  PADDLE_ENFORCE_EQ(x_dims.size() == 2,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Variable 'x' of AddmmOp must be 2-dimensional, "
+                        "but received shape: [%s]",
+                        input_dims));
+  PADDLE_ENFORCE_EQ(y_dims.size() == 2,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Variable 'y' of AddmmOp must be 2-dimensional, "
+                        "but received shape: [%s]",
+                        input_dims));
 
   XpuFcInfo fc_info;
   GetFCInfo(x_dims, y_dims, false, false, &fc_info);
@@ -48,17 +67,21 @@ void AddmmKernel(const Context& dev_ctx,
   int r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(input.data<T>()),
                      reinterpret_cast<XPUType*>(tmp),
-                     out->numel(),
+                     input.numel(),
                      true,
                      beta,
                      0.f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
-  r = xpu::broadcast_add(dev_ctx.x_context(),
-                             out_ptr,
-                             reinterpret_cast<XPUType*>(tmp),
-                             out_ptr,
-                             {out->numel()},
-                             {out->numel()});
+  auto out_dims = out->dims();
+  auto out_dims_vec = common::vectorize<int64_t>(out_dims);
+  auto input_dims_vec = common::vectorize<int64_t>(input_dims);
+  r = xpu::broadcast_add(
+    dev_ctx.x_context(),
+    out_ptr,
+    reinterpret_cast<XPUType*>(tmp),
+    out_ptr,
+    out_dims_vec,
+    input_dims_vec);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 }
 }  // namespace phi
