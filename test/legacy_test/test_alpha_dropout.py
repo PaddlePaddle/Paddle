@@ -235,6 +235,7 @@ class TestAlphaDropoutClassAPI(unittest.TestCase):
                 self.assertTrue((grad == 1).all())
 
     def test_static_fp16_gpu(self):
+        paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
@@ -259,6 +260,7 @@ class TestAlphaDropoutClassAPI(unittest.TestCase):
                 np.testing.assert_allclose(res[0], input, rtol=1e-05)
 
     def test_static_bfp16_gpu(self):
+        paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(

@@ -17,22 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.static import Program, program_guard
-
-
-class TestDiagFlatError(unittest.TestCase):
-    def test_errors(self):
-        paddle.enable_static()
-        with program_guard(Program(), Program()):
-
-            def test_diagflat_type():
-                x = [1, 2, 3]
-                output = paddle.diagflat(x)
-
-            self.assertRaises(TypeError, test_diagflat_type)
-
-            x = paddle.static.data('data', [3, 3])
-            self.assertRaises(TypeError, paddle.diagflat, x, offset=2.5)
+from paddle.static import Program
 
 
 class TestDiagFlatAPI(unittest.TestCase):

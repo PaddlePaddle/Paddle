@@ -143,6 +143,7 @@ class TestLogNormalAPI(unittest.TestCase):
         return ret
 
     def test_api(self):
+        paddle.enable_static()
         ret_static = self.static_api()
         ret_dygraph = self.dygraph_api()
         for ret in [ret_static, ret_dygraph]:

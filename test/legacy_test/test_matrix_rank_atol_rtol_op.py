@@ -273,6 +273,7 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
             np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
     def test_static(self):
+        paddle.enable_static()
         places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
