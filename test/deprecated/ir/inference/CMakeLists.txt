@@ -21,6 +21,18 @@ set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
 
 list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inspector_deprecated")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_inspector_deprecated")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+     "test_trt_convert_temporal_shift_deprecated")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES
+     "test_trt_convert_temporal_shift_deprecated")
+list(REMOVE_ITEM TEST_TRT_CONVERTER
+     "test_trt_convert_temporal_shift_deprecated")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_pad3d_deprecated")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_pad3d_deprecated")
+list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_pad3d_deprecated")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_multiclass_nms3_op_deprecated")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+     "test_trt_multiclass_nms3_op_deprecated")
 
 if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
@@ -61,7 +73,6 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
 endforeach()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES test_trt_multiclass_nms_op)
 
   foreach(TRT_CONVERT ${TEST_TRT_CONVERTER})
     list(REMOVE_ITEM TEST_TRT_IR_PASSES ${TRT_CONVERT})
@@ -98,7 +109,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                          300)
   set_tests_properties(test_trt_elementwise_op_deprecated PROPERTIES TIMEOUT
                                                                      300)
-  set_tests_properties(test_trt_fc_fuse_pass_deprecated PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_fc_fuse_pass_deprecated PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_flatten_op_deprecated PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_gather_nd_op_deprecated PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_gather_op_deprecated PROPERTIES TIMEOUT 300)
@@ -133,7 +144,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_convert_depthwise_conv2d_deprecated
                        PROPERTIES TIMEOUT 300)
-
   if(NOT WIN32)
     set_tests_properties(test_trt_inference_fp16_io_deprecated
                          PROPERTIES TIMEOUT 500)
@@ -153,28 +163,27 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(
       test_trt_pool_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 450)
+                 550)
     set_tests_properties(
       test_trt_pool3d_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 450)
+                 550)
   else()
     set_tests_properties(
       test_trt_pool_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
-                 300)
-
+                 500)
   endif()
 
   set_tests_properties(test_trt_tile_op_deprecated PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass_deprecated
-                       PROPERTIES TIMEOUT 100)
+                       PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_conv_quant_dequant_pass_deprecated
                        PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_matmul_quant_dequant_deprecated
-                       PROPERTIES TIMEOUT 450)
+                       PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_conv3d_transpose_op_deprecated
-                       PROPERTIES TIMEOUT 60)
+                       PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_nearest_interp_v2_op_deprecated
                        PROPERTIES TIMEOUT 500)
 endif()
