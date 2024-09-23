@@ -70,6 +70,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
     Examples:
         .. code-block:: python
+            :name: code-paddle_to_paddle
 
             >>> import paddle
             >>> # x is a tensor with shape [2, 4]
@@ -87,10 +88,14 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
 
+        .. code-block:: python
+            :name: code-paddle_to_torch
+
             >>> # doctest: +SKIP('torch will not be installed')
             >>> # type: ignore
             >>> # convert tensor from paddle to other framework using to_dlpack
             >>> import torch
+
             >>> x = paddle.randn([2, 4]).to(device="cpu")
             >>> y = torch.from_dlpack(paddle.utils.dlpack.to_dlpack(x))
             >>> print(y.shape)
@@ -133,6 +138,7 @@ def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
 
     Examples:
         .. code-block:: python
+            :name: code-paddle_from_paddle
 
             >>> import paddle
             >>> # From DLPack capsule
@@ -156,6 +162,9 @@ def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
             Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [[10.       , 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
+
+        .. code-block:: python
+            :name: code-paddle_from_numpy
 
             >>> # Directly from external tensor that implements '__dlpack__' and '__dlpack_device__' methods
             >>> import numpy as np
