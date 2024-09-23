@@ -414,7 +414,8 @@ Expr For::Make(Var loop_var,
                                         "A valid extent is required."));
 
   // Author(liuruyan): Narrow the integer range to int32 if possible.
-  if (extent.type().is_int(64) && extent.as_int64() < INT_MAX) {
+  if (extent.is_constant() && extent.type().is_int(64) &&
+      extent.as_int64() < INT_MAX) {
     loop_var->set_type(Int(32));
     min->set_type(Int(32));
     extent->set_type(Int(32));
