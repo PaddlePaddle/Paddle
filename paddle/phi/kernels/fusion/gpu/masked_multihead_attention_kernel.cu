@@ -29,7 +29,9 @@ constexpr unsigned int str2int(const char *str, int h = 0) {
 
 template <typename T>
 struct Masked_multihead_attention_params {
-  float *partial_out;
+  // [max_seq_len_tile, bsz, num_head, dim_head]
+  T *partial_out;
+  // [bsz, num_head, max_seq_len_tile]
   float *partial_sum;
   float *partial_max;
 
@@ -67,6 +69,7 @@ struct Masked_multihead_attention_params {
   unsigned num_heads;
   unsigned timestep;
   mutable unsigned timesteps_per_block;
+  // 就是seq维度切的份数
   mutable unsigned seq_len_tile;
   int dim_head;
 
@@ -113,7 +116,6 @@ __global__ void masked_multihead_attention_kernel(
   unsigned const tid{threadIdx.x};
 
   // The actual sequence length excluding the paddings.
-  // 暂时同 tlength kv_loop_length
   const unsigned real_time_step = params.sequence_lengths == nullptr
                                       ? params.timestep
                                       : params.sequence_lengths[bi];
@@ -150,6 +152,8 @@ __global__ void masked_multihead_attention_kernel(
   auto qk_smem = reinterpret_cast<float *>(smem_);
 
   char *logits_smem_ = smem_;
+  auto const timestep =
+      DO_MULTI_BLOCK ? params.timesteps_per_block : params.timestep;
 #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS
   if (sizeof(T) != 4) {
     logits_smem_ += divUp(timestep + 1, 4u) * 16;
@@ -167,6 +171,7 @@ __global__ void masked_multihead_attention_kernel(
   static_assert(Dh_MAX % K_VEC_SIZE == 0);
 
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
+  using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
 
   __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
 
@@ -192,23 +197,150 @@ __global__ void masked_multihead_attention_kernel(
 
   float qk_max = -FLT_MAX;
   float qk = 0.0F;
+  T *q_bias_base = nullptr;
+  T *k_bias_base = nullptr;
+  if (params.add_qkv_bias) {
+    q_bias_base = params.qkv_bias;
+    k_bias_base = params.qkv_bias + num_heads * Dh;
+  }
 
   auto const qk_vec_idx = tid * QK_VEC_SIZE;
-  auto const is_valid_qk_vec = qk_vec_idx < Dh;
+  auto const is_valid_qk_vec = qk_vec_idx < Dh; 
   //// 加载当前q k 并作位置编码 +bias（1505-1729）
   Qk_vec q, k;
+  zero(q);
+  zero(k);
   if (is_valid_qk_vec) {
     auto const q_offset = qkv_bi + hi * Dh + qk_vec_idx;
     load_func.template load<Qk_vec>(q, q_offset);
     // q = *reinterpret_cast<Qk_vec const *>(&params.q[q_offset]);
 
-    if (is_last_block_static) {
-      auto const k_offset = qkv_bi + (num_heads + hi_kv) * Dh + qk_vec_idx;
-      load_func.template load<Qk_vec>(k, k_offset);
-      // k = *reinterpret_cast<Qk_vec const *>(&params.k[k_offset]);
+    /// TODO: if (is_last_block_static) 才需要执行如下，有点繁琐...
+    auto const k_offset = qkv_bi + (num_heads + hi_kv) * Dh + qk_vec_idx;
+    load_func.template load<Qk_vec>(k, k_offset);
+    // k = *reinterpret_cast<Qk_vec const *>(&params.k[k_offset]);
+  }
+
+  if(tid < QK_VECS_PER_Dh_MAX){
+    /// 如下的bias和位置编码是直接copy来的，没更新...
+    int qkv_base_offset = bi * (num_heads + 2 * num_heads_kv) * Dh + hi * Dh;
+    int qk_offset = qkv_base_offset + qk_vec_idx;
+    int q_bias_offset = hi * Dh + qk_vec_idx;
+    int k_bias_offset = hi_kv * Dh + qk_vec_idx;
+    if (params.add_qkv_bias) {
+      Qk_vec q_bias;
+      zero(q_bias);
+      Qk_vec k_bias;
+      zero(k_bias);
+
+      q_bias =
+          (IS_Dh_MAX || is_valid_qk_vec)
+              ? *reinterpret_cast<const Qk_vec *>(&q_bias_base[q_bias_offset])
+              : q_bias;
+      k_bias =
+          (IS_Dh_MAX || is_valid_qk_vec)
+              ? *reinterpret_cast<const Qk_vec *>(&k_bias_base[k_bias_offset])
+              : k_bias;
+
+      q = add(q, q_bias);
+      // TODO(wangxi): See this https://github.com/microsoft/unilm/issues/510
+      //   we may not require k_bias.
+      k = add(k, k_bias);
+    }
+
+    if (!params.neox_rotary_style) {
+      if (params.rotary_emb_dims != 0) {
+        int rotary_offset = bi * Dh + qk_vec_idx;
+        const float *cos_base = params.rotary_emb;
+        const float *sin_base = params.rotary_emb + params.batch_size * Dh;
+        Qk_vec_RoPE cos_emb, sin_emb;
+        zero(cos_emb);
+        zero(sin_emb);
+        cos_emb = (IS_Dh_MAX || is_valid_qk_vec) ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                                        &cos_base[rotary_offset])
+                                  : cos_emb;
+        sin_emb = (IS_Dh_MAX || is_valid_qk_vec) ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                                        &sin_base[rotary_offset])
+                                  : sin_emb;
+        apply_rotary_embedding(q, k, cos_emb, sin_emb);
+      }
+    } else {
+      /* old rotary pos emb */
+      if (params.rotary_emb_dims != 0) {
+        int last_dim = Dh / params.rotary_emb_dims;
+        int half_lastdim = last_dim / 2;
+        int rotary_offset = bi * Dh + qk_vec_idx;
+        const float *cos_base = params.rotary_emb;
+        const float *sin_base = params.rotary_emb + params.batch_size * Dh;
+        int stride = half_lastdim / QK_VEC_SIZE;
+        int stride_all_lastdim = 2 * stride;
+        int right_id = tid / stride_all_lastdim * stride_all_lastdim +
+                       (tid + stride) % (stride_all_lastdim);
+        int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
+        int q_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
+        int k_right_bias_offset =
+            hi_kv * Dh + right_id * QK_VEC_SIZE;
+        Qk_vec q_right;
+        zero(q_right);
+        // q_right =
+        //     (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+        //         ? *reinterpret_cast<const Qk_vec *>(&q_base[qk_right_offset])
+        //         : q_right;
+        if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
+          load_func.template load<Qk_vec>(q_right, qk_right_offset);
+        }
+        Qk_vec k_right;
+        zero(k_right);
+        // k_right =
+        //     (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+        //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_right_offset])
+        //         : k_right;
+        if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
+          load_func.template load<Qk_vec>(k_right,
+                                          num_heads * Dh +
+                                              qk_right_offset - hi * Dh +
+                                              hi_kv * Dh);
+        }
+
+        if (params.add_qkv_bias) {
+          Qk_vec q_right_bias;
+          zero(q_right_bias);
+          q_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+                             ? *reinterpret_cast<const Qk_vec *>(
+                                   &q_bias_base[q_right_bias_offset])
+                             : q_right_bias;
+          Qk_vec k_right_bias;
+          zero(k_right_bias);
+          k_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+                             ? *reinterpret_cast<const Qk_vec *>(
+                                   &k_bias_base[k_right_bias_offset])
+                             : k_right_bias;
+
+          q_right = add(q_right, q_right_bias);
+          k_right = add(k_right, k_right_bias);
+        }
+
+        Qk_vec_RoPE cos_emb;
+        zero(cos_emb);
+        cos_emb = (IS_Dh_MAX || is_valid_qk_vec) ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                                        &cos_base[rotary_offset])
+                                  : cos_emb;
+
+        Qk_vec_RoPE sin_emb;
+        zero(sin_emb);
+        sin_emb = (IS_Dh_MAX || is_valid_qk_vec) ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                                        &sin_base[rotary_offset])
+                                  : sin_emb;
+        float alpha = (tid % stride_all_lastdim) < stride
+                          ? static_cast<float>(-1)
+                          : static_cast<float>(1);
+        q = apply_rotary_emb<Qk_vec, Qk_vec_RoPE>(
+            q, q_right, cos_emb, sin_emb, alpha);
+        k = apply_rotary_emb<Qk_vec, Qk_vec_RoPE>(
+            k, k_right, cos_emb, sin_emb, alpha);
+      }
     }
   }
-  /// TODO:省略了位置编码 +bias
 
   //// 将当前q 存入共享内存中, k存入全局内存中。计算当前q dot
   /// k（1733-1769-1839）
@@ -237,8 +369,13 @@ __global__ void masked_multihead_attention_kernel(
 
     if (tid == 0) {
       qk *= params.inv_sqrt_dh;
+      if (params.attn_mask) {
+        auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
+        T mask =
+            params.attn_mask[mask_bhi * (params.timestep + 1) + real_time_step];
+        qk += static_cast<float>(mask);
+      }
       qk_max = qk;
-      /// TODO: attn_mask
       qk_smem[real_time_step - start_seq] = qk;
     }
   }
@@ -296,7 +433,7 @@ __global__ void masked_multihead_attention_kernel(
         // Dh OOB values will be handled by zero_q.
         /// int dh_offs = min(Dh - K_VEC_SIZE, k_vec_i * K_ELTS_PER_CHUNK +
         /// k_idx.y);
-        const int local_idx0 = min(Dh / K_ELTS_PER_CHUNK, k_vec_i);
+        const int local_idx0 = min((Dh / K_ELTS_PER_CHUNK) - 1, k_vec_i);
         const int local_idx2 =
             k_vec_i > local_idx0 ? (THREADS_PER_KEY - 1) * K_VEC_SIZE : k_idx.y;
 
@@ -318,7 +455,7 @@ __global__ void masked_multihead_attention_kernel(
 #pragma unroll
     for (int k_loop = 0; k_loop < K_LOOP_UNROLL; ++k_loop) {
       int const local_ti = ti + k_loop * K_PER_ITER;
-      int const local_time_now = local_ti + start_seq;
+      int const time_now = local_ti + start_seq;
 
       // Perform the dot product and normalize qk.
       // WARNING: ALL THE THREADS OF A WARP MUST ENTER!!!
@@ -333,7 +470,13 @@ __global__ void masked_multihead_attention_kernel(
                   params.inv_sqrt_dh;
 
       // For multi-block mode, we need to make sure it will not be OOB.
-      if (local_time_now < end_seq && is_leader) {
+      if (time_now < end_seq && is_leader) {
+        if (params.attn_mask) {
+          auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
+          T mask =
+              params.attn_mask[mask_bhi * (params.timestep + 1) + time_now];
+          qk += static_cast<float>(mask);
+        }
         // Calculate the max for softmax.
         qk_max = fmaxf(qk_max, qk_);
         // Store the product to shared memory.
@@ -452,8 +595,7 @@ __global__ void masked_multihead_attention_kernel(
 #pragma unroll
       for (int v_loop = 0; v_loop < V_LOOP_UNROLL; v_loop++) {
         const int local_time_now = ti + (v_loop * V_PER_ITER);
-        const int time_now =
-            min(start_seq + local_time_now, curr_seq_section - 1);
+        const int time_now = min(start_seq + local_time_now, end_seq - 1);
         v_vec_cache[v_loop] =
             *reinterpret_cast<V_vec const *>(&v_cache[time_now * Dh + vi]);
       }
@@ -479,13 +621,19 @@ __global__ void masked_multihead_attention_kernel(
   __syncthreads();
 
   //// 当前 logits dot v 和当前v写回全局内存(2530-2617)
+  V_vec v_bias;
+  zero(v_bias);
   const int v_offset_base = qkv_bi + (num_heads + num_heads_kv + hi_kv) * Dh;
   if (is_last_block_static && (vo == real_time_step % V_PER_ITER) &&
       is_valid_vi) {
     const int v_offset = v_offset_base + vi;
     V_vec v;
     load_func.template load<V_vec>(v, v_offset);
-
+    if (params.add_qkv_bias) {
+      v_bias = *reinterpret_cast<const V_vec *>(
+          &params.qkv_bias[(num_heads_kv + num_heads) * Dh + hi_kv * Dh + vi]);
+      v = add(v, v_bias);
+    }
     if (hi == hi_kv * qhead_per_kv) {
       *reinterpret_cast<V_vec *>(&v_cache[real_time_step * Dh + vi]) = v;
     }
@@ -564,7 +712,7 @@ __global__ void masked_multihead_attention_kernel(
     bool is_last_block_runtime{false};
     if (tid == 0) {
       if (count_ref.fetch_add(1, cuda::memory_order_acq_rel) ==
-          (gridDim.z - 1)) {
+          (gridDim.x - 1)) {
         is_last_block_runtime = true;
       }
     }
@@ -734,30 +882,29 @@ inline void get_seq_len_tile(Masked_multihead_attention_params<T> const &params,
   params.multi_block_mode = (params.seq_len_tile > 1);
 }
 
-#define MMHA_LAUNCH_KERNEL(DYNAMIC_THDS_PER_BLOCK, MULTI_BLOCK_FLAG)    \
-  case DYNAMIC_THDS_PER_BLOCK:                                          \
-    smem_sz = smem_size_in_bytes<T, Dh, MULTI_BLOCK_FLAG>(              \
-        params, DYNAMIC_THDS_PER_BLOCK);                                \
-    if (smem_sz >= 46 * 1024) {                                         \
-      cudaFuncSetAttribute(                                             \
-          masked_multihead_attention_kernel<T,                          \
-                                            Dh,                         \
-                                            DYNAMIC_THDS_PER_BLOCK,     \
-                                            decltype(load_func),        \
-                                            decltype(store_func),       \
-                                            MULTI_BLOCK_FLAG>,          \
-          cudaFuncAttributeMaxDynamicSharedMemorySize,                  \
-          smem_sz);                                                     \
-    }                                                                   \
-    masked_multihead_attention_kernel<T,                                \
-                                      Dh,                               \
-                                      DYNAMIC_THDS_PER_BLOCK,           \
-                                      decltype(load_func),              \
-                                      decltype(store_func),             \
-                                      MULTI_BLOCK_FLAG>                 \
-        <<<grid, DYNAMIC_THDS_PER_BLOCK, smem_sz, dev_ctx.stream()>>>(  \
-            params, load_func, store_func);                             \
-    std::cout << "MULTI_BLOCK_FLAG: " << MULTI_BLOCK_FLAG << std::endl; \
+#define MMHA_LAUNCH_KERNEL(DYNAMIC_THDS_PER_BLOCK, MULTI_BLOCK_FLAG)   \
+  case DYNAMIC_THDS_PER_BLOCK:                                         \
+    smem_sz = smem_size_in_bytes<T, Dh, MULTI_BLOCK_FLAG>(             \
+        params, DYNAMIC_THDS_PER_BLOCK);                               \
+    if (smem_sz >= 46 * 1024) {                                        \
+      cudaFuncSetAttribute(                                            \
+          masked_multihead_attention_kernel<T,                         \
+                                            Dh,                        \
+                                            DYNAMIC_THDS_PER_BLOCK,    \
+                                            decltype(load_func),       \
+                                            decltype(store_func),      \
+                                            MULTI_BLOCK_FLAG>,         \
+          cudaFuncAttributeMaxDynamicSharedMemorySize,                 \
+          smem_sz);                                                    \
+    }                                                                  \
+    masked_multihead_attention_kernel<T,                               \
+                                      Dh,                              \
+                                      DYNAMIC_THDS_PER_BLOCK,          \
+                                      decltype(load_func),             \
+                                      decltype(store_func),            \
+                                      MULTI_BLOCK_FLAG>                \
+        <<<grid, DYNAMIC_THDS_PER_BLOCK, smem_sz, dev_ctx.stream()>>>( \
+            params, load_func, store_func);                            \
     break;
 
 #define MMHA_LAUNCH_CHECK(DYNAMIC_THDS_PER_BLOCK)                              \
@@ -947,78 +1094,78 @@ void DispatchWithLSFunc(const phi::GPUContext &dev_ctx,
                      decltype(store_func),
                      DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
       break;
-    // case 48:
-    //   DispatchWithDh<T,
-    //                  48,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
-    // case 80:
-    //   DispatchWithDh<T,
-    //                  80,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
-    // case 96:
-    //   DispatchWithDh<T,
-    //                  96,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
-    // case 104:
-    //   DispatchWithDh<T,
-    //                  104,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
-    // case 112:
-    //   DispatchWithDh<T,
-    //                  112,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
-    // case 144:
-    //   DispatchWithDh<T,
-    //                  144,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
-    // case 160:
-    //   DispatchWithDh<T,
-    //                  160,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
-    // case 192:
-    //   DispatchWithDh<T,
-    //                  192,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
-    // case 224:
-    //   DispatchWithDh<T,
-    //                  224,
-    //                  256,
-    //                  decltype(load_func),
-    //                  decltype(store_func),
-    //                  DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
-    //   break;
+    case 48:
+      DispatchWithDh<T,
+                     48,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
+    case 80:
+      DispatchWithDh<T,
+                     80,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
+    case 96:
+      DispatchWithDh<T,
+                     96,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
+    case 104:
+      DispatchWithDh<T,
+                     104,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
+    case 112:
+      DispatchWithDh<T,
+                     112,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
+    case 144:
+      DispatchWithDh<T,
+                     144,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
+    case 160:
+      DispatchWithDh<T,
+                     160,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
+    case 192:
+      DispatchWithDh<T,
+                     192,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
+    case 224:
+      DispatchWithDh<T,
+                     224,
+                     256,
+                     decltype(load_func),
+                     decltype(store_func),
+                     DO_MULTI_BLOCK>(dev_ctx, params, load_func, store_func);
+      break;
     default:
       PADDLE_THROW(common::errors::Unimplemented("Dim_head = %d is unsupport!",
                                                  params.dim_head));
@@ -1163,7 +1310,6 @@ struct DispatchDtypeTrait<int32_t> {
 // 大致意思就是：从硬件角度，一个wave处理完全部任务的情况下，最大的seq_len_tile
 // 实际上最后也是一个wave处理完的，只要一个wave。
 // 假定了一个SM只能有一个block
-/// TODO:
 /// 整个attention实现的思路就是要block尽量大(占用资源尽可能多)，所以说这个假定什么时候不合理呢？
 // 就是一个block有1024线程，但是寄存器和共享内存都只占了不到一半。这种情况下，A100说不定能启动
 // 两个block/SM 但是很难说这种情况会性能好，所以暂时来讲，这个假定还算合理。
@@ -1314,16 +1460,55 @@ void DispatchWithDtype(const Context &dev_ctx,
     phi::DenseTensor partial_out;
     partial_out.Resize(
         {{max_num_seq_len_tiles, batch_size, num_heads, dim_head}});
-    dev_ctx.template Alloc<float>(&partial_out,
-                                  partial_out.numel() * sizeof(float));
-    params.partial_out = partial_out.data<float>();
+    dev_ctx.template Alloc<T>(&partial_out, partial_out.numel() * sizeof(T));
+    params.partial_out = partial_out.data<T>();
 
     // block_counter [batch_size, num_heads]
     phi::DenseTensor block_counter;
     block_counter.Resize({{batch_size, num_heads}});
-    dev_ctx.template Alloc<int>(&block_counter,
-                                block_counter.numel() * sizeof(int));
+    size_t const block_counter_sz = block_counter.numel() * sizeof(int);
+    dev_ctx.template Alloc<int>(&block_counter, block_counter_sz);
     params.block_counter = block_counter.data<int>();
+    /// TODO:有木有别的paddle实现, 像Alloc这种感觉。
+    phi::backends::gpu::GpuMemsetAsync(
+        params.block_counter, 0, block_counter_sz, dev_ctx.stream());
+    
+    /*
+    // 实际上一个 [batch_size, num_heads]确定的case，可以只分配一次Semaphore
+    // 就不能在当前文件下分配了，参见如下trtllm的方法。
+    template <typename T, typename Del = std::default_delete<T>>
+    class UniqPtrWNullCopy : public std::unique_ptr<T, Del>
+    {
+    public:
+        using std::unique_ptr<T, Del>::unique_ptr;
+
+        // for compatibility with std::make_unique
+        explicit UniqPtrWNullCopy(std::unique_ptr<T, Del>&& src)
+            : std::unique_ptr<T, Del>::unique_ptr{std::move(src)}
+        {
+        }
+
+        // copy constructor produces nullptr
+        UniqPtrWNullCopy(UniqPtrWNullCopy const&)
+            : std::unique_ptr<T, Del>::unique_ptr{}
+        {
+        }
+    };
+    struct Deleter
+    {
+        void operator()(void* ptr)
+        {
+            cudaFree(ptr);
+        }
+    };
+    UniqPtrWNullCopy<int[], Deleter> mMultiBlockSemaphores = {};
+    int * ptr;
+    size_t block_counter_size = batch_size * num_heads;
+    check_cuda_error(cudaMalloc((void**) (&ptr), sizeof(int) * block_counter_size)); 
+    check_cuda_error(cudaMemset((void*) (ptr), 0,sizeof(int) * block_counter_size));
+    mMultiBlockSemaphores.reset(ptr);
+    params.block_counter = mMultiBlockSemaphores.get();
+    */
 
     if (out_shift) {
       DispatchWithMultiBlock<T, true>(dev_ctx,

@@ -110,9 +110,9 @@ namespace fusion {
 
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
-#define MMHA_USE_FP32_ACUM_FOR_FMA
+// #define MMHA_USE_FP32_ACUM_FOR_FMA
 // Use HMMA to compute with FP16/BF16 inputs and FP32 accumulators.
-// #define MMHA_USE_HMMA
+#define MMHA_USE_HMMA
 
 enum CacheType {
   NORMAL,
@@ -4030,6 +4030,7 @@ inline __device__ Float8_ fma(uint4 a, uint4 b, Float8_ c)
 template <int THREADS_PER_KEY, typename Q_vec, typename K_vec, int N>
 inline __device__ float trtllm_qk_dot_(const Q_vec (&q)[N],
                                        const K_vec (&k)[N]) {
+/// 这里如果想USE_FP32_ACUM_FOR_FMA 还得配一套返回值为Float8_的mul，我们暂时忽略它。
 // #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
 //   using K_vec_accum = typename V_vec_acum_fp32_<K_vec>::Type;
 // #else
