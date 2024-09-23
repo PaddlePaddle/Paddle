@@ -70,17 +70,12 @@ void ArgMaxKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       return;
     }
-    r = xpu::argmax(dev_ctx.x_context(),
-                    reinterpret_cast<const XPUType*>(x.data<T>()),
-                    out->data<int64_t>(),
-                    xdims_vec,
-                    axis_val);
-    PADDLE_ENFORCE_XDNN_SUCCESS(
-        r,
-        XPU_SUCCESS,
-        errors::External("XPU argmax kernel return wrong value[%d %s].",
-                         r,
-                         XPUAPIErrorMsg[r]));
+    int r = xpu::argmax(dev_ctx.x_context(),
+                        reinterpret_cast<const XPUType*>(x.data<T>()),
+                        out->data<int64_t>(),
+                        xdims_vec,
+                        axis_val);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "argmax");
   } else {
     DenseTensor out_int64;
     out_int64.Resize(out->dims());
@@ -92,30 +87,20 @@ void ArgMaxKernel(const Context& dev_ctx,
                             static_cast<int64_t>(0));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     } else {
-      r = xpu::argmax(dev_ctx.x_context(),
-                      reinterpret_cast<const XPUType*>(x.data<T>()),
-                      out_int64.data<int64_t>(),
-                      xdims_vec,
-                      axis_val);
-      PADDLE_ENFORCE_XDNN_SUCCESS(
-          r,
-          XPU_SUCCESS,
-          errors::External("XPU argmax kernel return wrong value[%d %s].",
-                           r,
-                           XPUAPIErrorMsg[r]));
+      int r = xpu::argmax(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(x.data<T>()),
+                          out_int64.data<int64_t>(),
+                          xdims_vec,
+                          axis_val);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "argmax");
     }
 
     dev_ctx.template Alloc<int>(out);
-    r = xpu::cast_v2<int64_t, int>(dev_ctx.x_context(),
-                                   out_int64.data<int64_t>(),
-                                   out->data<int>(),
-                                   out_int64.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(
-        r,
-        XPU_SUCCESS,
-        errors::External("XPU cast kernel return wrong value[%d %s].",
-                         r,
-                         XPUAPIErrorMsg[r]));
+    int r = xpu::cast<int64_t, int>(dev_ctx.x_context(),
+                                    out_int64.data<int64_t>(),
+                                    out->data<int>(),
+                                    out_int64.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   }
 }
 
@@ -167,17 +152,12 @@ void ArgMinKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       return;
     }
-    r = xpu::argmin(dev_ctx.x_context(),
-                    reinterpret_cast<const XPUType*>(x.data<T>()),
-                    out->data<int64_t>(),
-                    xdims_vec,
-                    axis_val);
-    PADDLE_ENFORCE_XDNN_SUCCESS(
-        r,
-        XPU_SUCCESS,
-        errors::External("XPU argmin kernel return wrong value[%d %s].",
-                         r,
-                         XPUAPIErrorMsg[r]));
+    int r = xpu::argmin(dev_ctx.x_context(),
+                        reinterpret_cast<const XPUType*>(x.data<T>()),
+                        out->data<int64_t>(),
+                        xdims_vec,
+                        axis_val);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "argmin");
   } else {
     DenseTensor out_int64;
     out_int64.Resize(out->dims());
@@ -189,30 +169,20 @@ void ArgMinKernel(const Context& dev_ctx,
                             static_cast<int64_t>(0));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     } else {
-      r = xpu::argmin(dev_ctx.x_context(),
-                      reinterpret_cast<const XPUType*>(x.data<T>()),
-                      out_int64.data<int64_t>(),
-                      xdims_vec,
-                      axis_val);
-      PADDLE_ENFORCE_XDNN_SUCCESS(
-          r,
-          XPU_SUCCESS,
-          errors::External("XPU argmin kernel return wrong value[%d %s].",
-                           r,
-                           XPUAPIErrorMsg[r]));
+      int r = xpu::argmin(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(x.data<T>()),
+                          out_int64.data<int64_t>(),
+                          xdims_vec,
+                          axis_val);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "argmin");
     }
 
     dev_ctx.template Alloc<int>(out);
-    r = xpu::cast_v2<int64_t, int>(dev_ctx.x_context(),
-                                   out_int64.data<int64_t>(),
-                                   out->data<int>(),
-                                   out_int64.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(
-        r,
-        XPU_SUCCESS,
-        errors::External("XPU cast kernel return wrong value[%d %s].",
-                         r,
-                         XPUAPIErrorMsg[r]));
+    int r = xpu::cast<int64_t, int>(dev_ctx.x_context(),
+                                    out_int64.data<int64_t>(),
+                                    out->data<int>(),
+                                    out_int64.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   }
 }
 
