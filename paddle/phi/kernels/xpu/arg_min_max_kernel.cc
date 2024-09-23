@@ -75,7 +75,7 @@ void ArgMaxKernel(const Context& dev_ctx,
                     out->data<int64_t>(),
                     xdims_vec,
                     axis_val);
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_XDNN_SUCCESS(
         r,
         XPU_SUCCESS,
         errors::External("XPU argmax kernel return wrong value[%d %s].",
@@ -97,20 +97,20 @@ void ArgMaxKernel(const Context& dev_ctx,
                       out_int64.data<int64_t>(),
                       xdims_vec,
                       axis_val);
+      PADDLE_ENFORCE_XDNN_SUCCESS(
+          r,
+          XPU_SUCCESS,
+          errors::External("XPU argmax kernel return wrong value[%d %s].",
+                           r,
+                           XPUAPIErrorMsg[r]));
     }
 
-    PADDLE_ENFORCE_EQ(
-        r,
-        XPU_SUCCESS,
-        errors::External("XPU argmax kernel return wrong value[%d %s].",
-                         r,
-                         XPUAPIErrorMsg[r]));
     dev_ctx.template Alloc<int>(out);
     r = xpu::cast_v2<int64_t, int>(dev_ctx.x_context(),
                                    out_int64.data<int64_t>(),
                                    out->data<int>(),
                                    out_int64.numel());
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_XDNN_SUCCESS(
         r,
         XPU_SUCCESS,
         errors::External("XPU cast kernel return wrong value[%d %s].",
@@ -172,7 +172,7 @@ void ArgMinKernel(const Context& dev_ctx,
                     out->data<int64_t>(),
                     xdims_vec,
                     axis_val);
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_XDNN_SUCCESS(
         r,
         XPU_SUCCESS,
         errors::External("XPU argmin kernel return wrong value[%d %s].",
@@ -194,20 +194,20 @@ void ArgMinKernel(const Context& dev_ctx,
                       out_int64.data<int64_t>(),
                       xdims_vec,
                       axis_val);
+      PADDLE_ENFORCE_XDNN_SUCCESS(
+          r,
+          XPU_SUCCESS,
+          errors::External("XPU argmin kernel return wrong value[%d %s].",
+                           r,
+                           XPUAPIErrorMsg[r]));
     }
 
-    PADDLE_ENFORCE_EQ(
-        r,
-        XPU_SUCCESS,
-        errors::External("XPU argmin kernel return wrong value[%d %s].",
-                         r,
-                         XPUAPIErrorMsg[r]));
     dev_ctx.template Alloc<int>(out);
     r = xpu::cast_v2<int64_t, int>(dev_ctx.x_context(),
                                    out_int64.data<int64_t>(),
                                    out->data<int>(),
                                    out_int64.numel());
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_XDNN_SUCCESS(
         r,
         XPU_SUCCESS,
         errors::External("XPU cast kernel return wrong value[%d %s].",
