@@ -20,8 +20,8 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& x,
-                             const DistMetaTensor& weight,
+SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
+                             const DistMetaTensor& x,
                              int padding_idx,
                              bool sparse = false);
 

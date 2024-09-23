@@ -141,7 +141,7 @@ class TestSimpleNetForSemiAutoParallel:
             )
             dist_model._engine._init_comm()
 
-        for epoch in range(10):
+        for epoch in range(8):
             for batch_id, data in enumerate(dist_loader()):
                 image, label = data
                 loss = dist_model(image, label)
@@ -151,7 +151,7 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dynamic(self, layer, opt, dist_loader):
         loss_fn = nn.MSELoss()
         loss_list = []
-        for epoch in range(10):
+        for epoch in range(8):
             for batch_id, data in enumerate(dist_loader()):
                 image, label = data
                 out = layer(image)

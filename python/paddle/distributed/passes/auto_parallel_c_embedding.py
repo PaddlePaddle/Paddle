@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import re
+import warnings
 
 import paddle
 import paddle.distributed as dist
@@ -29,7 +30,27 @@ class AutoParallelCEmbeddingPass(PassBase):
         super().__init__()
 
     def _check_self(self):
-        return True
+        main_program = self.get_attr("dist_program")
+        ops = main_program.global_block().ops
+        for i, op in enumerate(ops):
+            if op.name() == 'pd_op.embedding':
+                placements = op.operand(1).source().placements
+                dim_map, partial_status = (
+                    dist.auto_parallel.placement_type.to_dim_map(
+                        placements, op.operand(1).source().ndim
+                    )
+                )
+                if dim_map[1] == -1 or dim_map[1] in partial_status:
+                    warnings.warn(
+                        "The c_embedding pass is only applicable to column-wise parallel `embedding` kernel."
+                    )
+                    return False
+                else:
+                    return True
+        warnings.warn(
+            "The c_embedding pass is only applicable to column-wise parallel `embedding` kernel."
+        )
+        return False
 
     def _check_conflict(self, other_pass):
         return True

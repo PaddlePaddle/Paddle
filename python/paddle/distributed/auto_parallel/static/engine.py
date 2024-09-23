@@ -702,6 +702,7 @@ class Engine:
         if self._strategy.mp_optimization.replace_with_c_embedding:
             config = {}
             config["concrete_program"] = self.concrete_program
+            config["dist_program"] = dist_program
             auto_parallel_c_embedding_pass = new_pass(
                 "auto_parallel_c_embedding_pass", config
             )

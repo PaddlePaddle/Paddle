@@ -28,12 +28,102 @@ namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& x,
-                             const DistMetaTensor& weight,
+SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
+                             const DistMetaTensor& x,
                              int padding_idx,
                              bool sparse) {
-  DistMetaTensor w(weight.dims(), weight.dist_attr());
-  return EmbeddingInferSpmd(x, w, padding_idx, sparse);
+  // Step0: Verify input args based on c_embedding logic
+  auto x_shape = common::vectorize(x.dims());
+  auto weight_shape = common::vectorize(weight.dims());
+  int x_ndim = static_cast<int>(x_shape.size());
+  int weight_ndim = static_cast<int>(weight_shape.size());
+  auto x_dist_attr_src = x.dist_attr();
+  auto weight_dist_attr_src = weight.dist_attr();
+  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<int64_t> weight_dims_mapping =
+      weight_dist_attr_src.dims_mapping();
+
+  PADDLE_ENFORCE_EQ(
+      x_ndim,
+      x_dims_mapping.size(),
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(
+      weight_ndim,
+      weight_dims_mapping.size(),
+      common::errors::InvalidArgument("Tensor W's tensor rank [%d] and W's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      weight_ndim,
+                                      weight_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(weight_ndim,
+                    2,
+                    common::errors::InvalidArgument(
+                        "CEmbedding table should have TWO dimension, "
+                        "but got a tensor with [%d] dimension.",
+                        weight_ndim));
+
+  // determine parallel mode
+  int64_t weight_row_axis_mapping = weight_dims_mapping[0];
+
+  VLOG(6) << "CEmbeddingSPMDRule InferForward Inputs: "
+          << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
+          << str_join(x_dims_mapping) << "]; Weight shape: ["
+          << str_join(weight_shape) << "], weight_dims_mapping: ["
+          << str_join(weight_dims_mapping) << "]; padding_idx: "
+          << "[" << padding_idx << "]; "
+          << "sparse: "
+          << "[" << (sparse ? "true" : "false") << "]; ";
+
+  // Step1: Build Einsum Notation
+  std::string alphabet = "abcdefghilmnopqrstuvwxyz";
+  std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
+  std::string weight_axes = "jk";
+  std::string out_axes = x_axes + "k";
+
+  // Step2: Sharding Propagation
+  // Step2.1: merge input shardings
+  auto axis_to_dim_map = ShardingMergeForTensors(
+      {{x_axes, x_dims_mapping}, {weight_axes, weight_dims_mapping}}, false);
+
+  // Step2.2: infer output's dims mapping.
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  std::vector<int64_t> out_dims_mapping =
+      GetDimsMappingForAxes(out_axes, axis_to_dim_map);
+  out_dist_attr.set_dims_mapping(out_dims_mapping);
+
+  // Step2.3: merge potential conflict in inputs,
+  // update input dims mapping with merged shardings.
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(x_axes, axis_to_dim_map));
+  TensorDistAttr weight_dist_attr_dst =
+      CopyTensorDistAttrForOutput(weight_dist_attr_src);
+  weight_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(weight_axes, axis_to_dim_map));
+
+  // Step3: Handle Partial
+  // (TODO) support case where c_embedding table is partial at very beginning.
+  std::vector<int64_t> partial_on_dims;
+  if (weight_row_axis_mapping > -1) {
+    partial_on_dims.push_back(weight_row_axis_mapping);
+  }
+  out_dist_attr.set_partial_status(partial_on_dims);
+
+  VLOG(4) << "CEmbeddingInferSpmd:\n"
+          << "Einsum notation: [" << x_axes << "," << weight_axes << " --> "
+          << out_axes << "]. " << std::endl
+          << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
+          << str_join(x_dims_mapping) << "], dst_dims_mapping: ["
+          << str_join(x_dist_attr_dst.dims_mapping()) << "]\n W shape: ["
+          << str_join(weight_shape) << "], src_dims_mapping: ["
+          << str_join(weight_dims_mapping) << "], dst_dims_mapping: ["
+          << str_join(weight_dist_attr_dst.dims_mapping())
+          << "]\n Out dims_mapping: [" << str_join(out_dims_mapping)
+          << "], partial_on_dims: [" << str_join(partial_on_dims) << "]\n\n";
+
+  return {{x_dist_attr_dst, weight_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
@@ -51,7 +141,7 @@ SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
 
   if (sparse) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "EmbeddingGradInferSpmd does't support sparse currently."));
+        "CEmbeddingGradInferSpmd does't support sparse currently."));
   }
 
   // Propagate sharding info using composite operators.
