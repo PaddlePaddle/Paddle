@@ -84,8 +84,7 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
           return false;
         }
         auto data_format = match_ctx.Attr<std::string>("data_format");
-        if (data_format != "NCHW" && data_format != "AnyLayout" &&
-            data_format != "NHWC") {
+        if (data_format != "NCHW" && data_format != "AnyLayout") {
           return false;
         }
       } else {

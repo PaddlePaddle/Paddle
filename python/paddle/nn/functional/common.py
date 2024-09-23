@@ -1690,7 +1690,7 @@ def pad(
     pad: ShapeLike,
     mode: _PaddingTensorMode = 'constant',
     value: float = 0.0,
-    data_format: DataLayoutND = "NCHW",
+    data_format: DataLayoutND | None = None,
     pad_from_left_axis: bool = True,
     name: str | None = None,
 ) -> Tensor:
@@ -1733,7 +1733,9 @@ def pad(
         value (float, optional): The value to fill the padded areas in 'constant' mode . Default is :math:`0.0`.
         data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``, ``'NHWC'``, ``'NCHW'``, ``'NCDHW'``, ``'NDHWC'``. Specify the data format of
            the input data when: 1. mode is any of ``'reflect'``, ``'replicate'`` or ``'circular'``; or 2. the input ``'pad'`` is a tensor;
-           or 3. the length of ``'pad'`` is ``2*(x.ndim - 2)``. Default: ``'NCHW'``.
+           or 3. the length of ``'pad'`` is ``2*(x.ndim - 2)``. The default value is None, which means it will be automatically inferred from the
+           input dimension of ``'x'``. When ``'x'`` is a 3-D Tensor, data_format will be set to ``'NCL'``; When ``'x'`` is a 4-D Tensor,
+           data_format will be set to ``'NCHW'``; When ``'x'`` is a 5-D Tensor, data_format will be set to ``'NCDHW'``.
         pad_from_left_axis (bool, optional): The parameter is only valid when mode is ``'constant'`` and the input ``'pad'`` is
            length of ``'pad'`` is ``2*x.ndim``, the order of padding can be customized. If True, the padding will be started from
            the first axis of ``'x'``; if False, it will be started from the last axis of ``'x'``. Default: True.
@@ -1888,12 +1890,6 @@ def pad(
         'circular',
     ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
 
-    data_format = data_format.upper()
-    assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], (
-        "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-        f"but got {data_format}"
-    )
-
     x_dim = len(x.shape)
 
     if (
@@ -1966,6 +1962,19 @@ def pad(
         5,
     ], f"input tensor dimension must be in [3, 4, 5] but got {x_dim}"
 
+    if data_format is None:
+        if x_dim == 3:
+            data_format = "NCL"
+        elif x_dim == 4:
+            data_format = "NCHW"
+        elif x_dim == 5:
+            data_format = "NCDHW"
+
+    data_format = data_format.upper()
+    assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], (
+        "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
+        f"but got {data_format}"
+    )
     supported_format_map = {
         3: ["NCL", "NLC"],
         4: ["NCHW", "NHWC"],

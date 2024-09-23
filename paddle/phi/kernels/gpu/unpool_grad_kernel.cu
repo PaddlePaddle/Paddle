@@ -23,10 +23,10 @@
 
 namespace phi {
 
-template <typename T>
+template <typename T, typename IndT>
 __global__ void KernelUnpool2dMaxGrad(const int nthreads,
                                       const T* input_data,
-                                      const int* indices_data,
+                                      const IndT* indices_data,
                                       const int input_height,
                                       const int input_width,
                                       const int channels,
@@ -39,15 +39,15 @@ __global__ void KernelUnpool2dMaxGrad(const int nthreads,
     int c = (linearIndex / input_width / input_height) % channels;
     int n = linearIndex / input_width / input_height / channels;
     output_grad += (n * channels + c) * output_height * output_width;
-    int maxind = indices_data[linearIndex];
+    IndT maxind = indices_data[linearIndex];
     input_grad[linearIndex] = output_grad[maxind];
   }
 }
 
-template <typename T>
+template <typename T, typename IndT>
 __global__ void KernelUnpool3dMaxGrad(const int nthreads,
                                       const T* input_data,
-                                      const int* indices_data,
+                                      const IndT* indices_data,
                                       const int input_depth,
                                       const int input_height,
                                       const int input_width,
@@ -63,12 +63,12 @@ __global__ void KernelUnpool3dMaxGrad(const int nthreads,
     int n = linearIndex / input_depth / input_width / input_height / channels;
     output_grad +=
         (n * channels + c) * output_depth * output_height * output_width;
-    int maxind = indices_data[linearIndex];
+    IndT maxind = indices_data[linearIndex];
     input_grad[linearIndex] = output_grad[maxind];
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename IndT, typename Context>
 class Unpool2dMaxGradFunctor {
  public:
   void operator()(const Context& dev_ctx,
@@ -84,13 +84,13 @@ class Unpool2dMaxGradFunctor {
     const int output_height = output.dims()[2];
     const int output_width = output.dims()[3];
     const T* input_data = input.data<T>();
-    const int* indices_data = indices.data<int>();
+    const IndT* indices_data = indices.data<IndT>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool2dMaxGrad<T>
+    KernelUnpool2dMaxGrad<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
                                                  input_data,
                                                  indices_data,
@@ -105,7 +105,7 @@ class Unpool2dMaxGradFunctor {
   }
 };
 
-template <typename T, typename Context>
+template <typename T, typename IndT, typename Context>
 class Unpool3dMaxGradFunctor {
  public:
   void operator()(const Context& dev_ctx,
@@ -123,13 +123,13 @@ class Unpool3dMaxGradFunctor {
     const int output_height = output.dims()[3];
     const int output_width = output.dims()[4];
     const T* input_data = input.data<T>();
-    const int* indices_data = indices.data<int>();
+    const IndT* indices_data = indices.data<IndT>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool3dMaxGrad<T>
+    KernelUnpool3dMaxGrad<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
                                                  input_data,
                                                  indices_data,
@@ -162,8 +162,14 @@ void UnpoolGradKernel(const Context& dev_ctx,
   const T* output_grad_data = out_grad.data<T>();
   phi::funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
-  Unpool2dMaxGradFunctor<T, Context> unpool2d_max_backward;
-  unpool2d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
+  const auto& indices_type = indices.dtype();
+  if (indices_type == phi::DataType::INT32) {
+    Unpool2dMaxGradFunctor<T, int, Context> unpool2d_max_backward;
+    unpool2d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
+  } else {
+    Unpool2dMaxGradFunctor<T, int64_t, Context> unpool2d_max_backward;
+    unpool2d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
+  }
 }
 
 template <typename T, typename Context>
@@ -182,8 +188,14 @@ void Unpool3dGradKernel(const Context& dev_ctx,
   const T* output_grad_data = out_grad.data<T>();
   phi::funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
-  Unpool3dMaxGradFunctor<T, Context> unpool3d_max_backward;
-  unpool3d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
+  const auto& indices_type = indices.dtype();
+  if (indices_type == phi::DataType::INT32) {
+    Unpool3dMaxGradFunctor<T, int, Context> unpool3d_max_backward;
+    unpool3d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
+  } else {
+    Unpool3dMaxGradFunctor<T, int64_t, Context> unpool3d_max_backward;
+    unpool3d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
+  }
 }
 
 }  // namespace phi

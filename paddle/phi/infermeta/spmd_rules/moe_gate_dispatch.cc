@@ -43,15 +43,15 @@ SpmdInfo MoEGateDispatchFwdInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       2,
-      phi::errors::InvalidArgument(
+      errors::InvalidArgument(
           "x should be a 2-D tensor, but got x_shape.size() == %d",
           x_shape.size()));
   PADDLE_ENFORCE_EQ(
       gate_logits_shape.size(),
       2,
-      phi::errors::InvalidArgument("gate_logits should be a 2-D tensor, but "
-                                   "got gate_logits_shape.size() == %d",
-                                   gate_logits_shape.size()));
+      errors::InvalidArgument("gate_logits should be a 2-D tensor, but "
+                              "got gate_logits_shape.size() == %d",
+                              gate_logits_shape.size()));
   // infer axes dims_mapping
   std::string x_axes = "sh";
   std::string gate_logits_axes = "se";
@@ -138,33 +138,33 @@ SpmdInfo MoEGateDispatchBwdInferSpmd(const DistMetaTensor& combine_weights,
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(grad_y);
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(grad_combine_weights);
   // do some check
-  PADDLE_ENFORCE_EQ(combine_weights_shape.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "combine_weights should be a 2-D tensor, but "
-                        "got combine_weights_shape.size() == %d",
-                        combine_weights_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      combine_weights_shape.size(),
+      2,
+      errors::InvalidArgument("combine_weights should be a 2-D tensor, but "
+                              "got combine_weights_shape.size() == %d",
+                              combine_weights_shape.size()));
   PADDLE_ENFORCE_EQ(
       scatter_index_shape.size(),
       2,
-      phi::errors::InvalidArgument("scatter_index should be a 2-D tensor, but "
-                                   "got scatter_index_shape.size() == %d",
-                                   scatter_index_shape.size()));
+      errors::InvalidArgument("scatter_index should be a 2-D tensor, but "
+                              "got scatter_index_shape.size() == %d",
+                              scatter_index_shape.size()));
   PADDLE_ENFORCE_EQ(
       expert_id_shape.size(),
       2,
-      phi::errors::InvalidArgument("expert_id should be a 2-D tensor, but "
-                                   "got expert_id_shape.size() == %d",
-                                   expert_id_shape.size()));
+      errors::InvalidArgument("expert_id should be a 2-D tensor, but "
+                              "got expert_id_shape.size() == %d",
+                              expert_id_shape.size()));
   PADDLE_ENFORCE_EQ(
       grad_y_shape.size(),
       3,
-      phi::errors::InvalidArgument("grad_y should be a 3-D tensor, but "
-                                   "got grad_y_shape.size() == %d",
-                                   grad_y_shape.size()));
+      errors::InvalidArgument("grad_y should be a 3-D tensor, but "
+                              "got grad_y_shape.size() == %d",
+                              grad_y_shape.size()));
   PADDLE_ENFORCE_EQ(grad_combine_weights_shape.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "grad_combine_weights should be a 2-D tensor, but "
                         "got grad_combine_weights_shape.size() == %d",
                         grad_combine_weights_shape.size()));
