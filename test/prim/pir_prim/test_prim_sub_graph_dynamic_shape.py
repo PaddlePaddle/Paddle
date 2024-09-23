@@ -86,6 +86,36 @@ def bce_loss_net(x, label):
     return paddle._C_ops.bce_loss(x, label)
 
 
+def batch_norm_net1(x, y, z):
+    var = paddle.ones([40], dtype="float32")
+    mean = paddle.zeros([40], dtype='float32')
+    return paddle.nn.functional.batch_norm(x, mean, var, y, z)
+
+
+def batch_norm_net2(x, y, z):
+    var = paddle.ones([40], dtype="float32")
+    mean = paddle.zeros([40], dtype='float32')
+    return paddle.nn.functional.batch_norm(
+        x, mean, var, y, z, use_global_stats=True
+    )
+
+
+def batch_norm_net3(x, y, z):
+    var = paddle.ones([60], dtype="float32")
+    mean = paddle.zeros([60], dtype='float32')
+    return paddle.nn.functional.batch_norm(
+        x, mean, var, y, z, data_format='NHWC'
+    )
+
+
+def batch_norm_net4(x, y, z):
+    var = paddle.ones([60], dtype="float32")
+    mean = paddle.zeros([60], dtype='float32')
+    return paddle.nn.functional.batch_norm(
+        x, mean, var, y, z, use_global_stats=True, data_format='NHWC'
+    )
+
+
 def swiglu_net1(x, y):
     return paddle.incubate.nn.functional.swiglu(x, y)
 
@@ -886,6 +916,174 @@ class TestPrimLerp3(TestPrimThree):
         self.z = np.random.random(self.shape_z).astype(self.dtype_z)
         self.net = lerp_net
         self.necessary_ops = "pd_op.lerp"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimBatchNorm(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 40, 50, 60]
+        self.shape_y = [40]
+        self.shape_z = [40]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None, None, 60]
+        self.init_y_shape = [None]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = batch_norm_net1
+        self.necessary_ops = "pd_op.batch_norm_"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimBatchNorm2(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 40, 50, 60]
+        self.shape_y = [40]
+        self.shape_z = [40]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, 40, None, None]
+        self.init_y_shape = [None]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = batch_norm_net1
+        self.necessary_ops = "pd_op.batch_norm_"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimBatchNorm3(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 40, 50, 60]
+        self.shape_y = [40]
+        self.shape_z = [40]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None, None, 60]
+        self.init_y_shape = [None]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = batch_norm_net2
+        self.necessary_ops = "pd_op.batch_norm_"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimBatchNorm4(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 40, 50, 60]
+        self.shape_y = [40]
+        self.shape_z = [40]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, 40, None, None]
+        self.init_y_shape = [None]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = batch_norm_net2
+        self.necessary_ops = "pd_op.batch_norm_"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimBatchNorm5(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 40, 50, 60]
+        self.shape_y = [60]
+        self.shape_z = [60]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None, None, 60]
+        self.init_y_shape = [None]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = batch_norm_net3
+        self.necessary_ops = "pd_op.batch_norm_"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimBatchNorm6(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 40, 50, 60]
+        self.shape_y = [60]
+        self.shape_z = [60]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, 40, None, None]
+        self.init_y_shape = [None]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = batch_norm_net3
+        self.necessary_ops = "pd_op.batch_norm_"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimBatchNorm7(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 40, 50, 60]
+        self.shape_y = [60]
+        self.shape_z = [60]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None, None, 60]
+        self.init_y_shape = [None]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = batch_norm_net4
+        self.necessary_ops = "pd_op.batch_norm_"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimBatchNorm8(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 40, 50, 60]
+        self.shape_y = [60]
+        self.shape_z = [60]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, 40, None, None]
+        self.init_y_shape = [None]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = batch_norm_net4
+        self.necessary_ops = "pd_op.batch_norm_"
         self.enable_cinn = False
         self.tol = 1e-5
 
