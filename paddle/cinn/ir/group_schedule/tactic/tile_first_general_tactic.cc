@@ -220,8 +220,9 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
             << "], loop nest:\n"
             << sch->GetModule().GetExprs().front();
 
-    if (IsReductionSBlock(sch->GetBlock(block_id))) {
-      loops = sch->GetLoops(block_id);
+    loops = sch->GetLoops(block_id);
+    if (IsReductionSBlock(sch->GetBlock(block_id)) &&
+        ir::GetLoopExtent(loops[current_reduce_axis]) != 1) {
       ir::Expr rf_tensor =
           sch->FactorizeReduction(loops[current_reduce_axis],
                                   /* rf_axis = */ 0,
@@ -363,7 +364,8 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
   sch->Split(loops[2], std::vector<int>{16, -1});
 
   loops = sch->GetLoops(block_id);
-  if (IsReductionSBlock(sch->GetBlock(block_id))) {
+  if (IsReductionSBlock(sch->GetBlock(block_id)) &&
+      ir::GetLoopExtent(loops[2]) != 1) {
     ir::Expr rf_tensor =
         sch->FactorizeReduction(loops[2],
                                 0,
