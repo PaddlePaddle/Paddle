@@ -128,7 +128,7 @@ void DenseTensorCastToFp32(phi::DenseTensor* in,
         *cpu_ctx, *out_ptr, 1.0f / world_size, 0.f, false, out_ptr);
   }
   if (out == nullptr) {
-    paddle::framework::ir::Assign(*out_ptr, in);
+    paddle::framework::ir::Assign(*out_ptr, *in);
   }
 }
 
