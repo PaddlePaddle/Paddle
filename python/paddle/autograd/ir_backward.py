@@ -1061,13 +1061,26 @@ def calc_gradient_helper(
     for op in block.ops:
         if op in state.op_to_opgrad:
             if op.dist_attr is None:
-                continue
-
-            op_chunk_id = op.dist_attr.chunk_id
-            if op_chunk_id == -1 and op.name() == "dist_op.reshard":
-                op_chunk_id = (
-                    op.operand_source(0).get_defining_op().dist_attr.chunk_id
-                )
+                if op.name() == "builtin.split":
+                    op_chunk_id = (
+                        op.operand_source(0)
+                        .get_defining_op()
+                        .dist_attr.chunk_id
+                    )
+                elif op.name() == "builtin.combine":
+                    op_chunk_id = (
+                        op.result(0).get_defining_op().dist_attr.chunk_id
+                    )
+                else:
+                    continue
+            else:
+                op_chunk_id = op.dist_attr.chunk_id
+                if op_chunk_id == -1 and op.name() == "dist_op.reshard":
+                    op_chunk_id = (
+                        op.operand_source(0)
+                        .get_defining_op()
+                        .dist_attr.chunk_id
+                    )
 
             for bwd_op in state.op_to_opgrad[op]:
                 if bwd_op.dist_attr is None:
