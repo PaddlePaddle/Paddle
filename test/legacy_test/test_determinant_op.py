@@ -91,13 +91,14 @@ class TestDeterminantAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.shape)
-            out = paddle.linalg.det(x)
+            out_value = paddle.linalg.det(x)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x}, fetch_list=[out])
+            (out_np,) = exe.run(feed={'X': self.x}, fetch_list=[out_value])
         out_ref = np.linalg.det(self.x)
 
-        for out in res:
-            np.testing.assert_allclose(out, out_ref, rtol=0.001)
+        np.testing.assert_allclose(out_np, out_ref, rtol=0.001)
+        self.assertEqual(out_np.shape, out_ref.shape)
+        self.assertEqual(tuple(out_value.shape), out_ref.shape)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)

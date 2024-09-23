@@ -70,9 +70,17 @@ def layernorm_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.batch_norm_", trt_version="8.x")
 def batch_norm_converter(network, paddle_op, inputs):
     input_tensor, mean, variance, scale, bias = inputs
-
     scale_shape = paddle_op.operands()[3].source().shape
+    eps = paddle_op.attrs().get("epsilon", 1e-8)
+    mean_np = mean.numpy()
+    variance_np = variance.numpy()
+    scale_np = scale.numpy()
+    bias_np = bias.numpy()
 
+    actual_scale_np = scale_np / np.sqrt(variance_np + eps)
+    actual_bias_np = bias_np - mean_np * actual_scale_np
+    bias = trt.Weights(actual_bias_np)
+    scale = trt.Weights(actual_scale_np)
     power = np.ones(scale_shape, dtype='float32')
     power = trt.Weights(power)
     input_tensor_shape = paddle_op.operands()[0].source().shape

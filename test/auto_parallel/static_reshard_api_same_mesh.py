@@ -94,22 +94,22 @@ class DemoNet(nn.Layer):
         self.mlp0 = MLP(mesh, False, "block0")
         self.mlp1 = MLP(mesh, False, "block1")
         self.mlp2 = MLP(mesh, True, "block2")
-        self.varnames = []
+        self.vars_to_check = []
 
     def forward(self, x):
         # TP Region
         out0 = self.mlp0(x)
 
         # SP Region
-        self.varnames.append(out0.name)
+        self.vars_to_check.append(out0)
         out0 = dist.reshard(out0, self._mesh, [Shard(0), Replicate()])
-        self.varnames.append(out0.name)
+        self.vars_to_check.append(out0)
         out1 = self.mlp1(out0)
 
         # TP Region
-        self.varnames.append(out1.name)
+        self.vars_to_check.append(out1)
         out1 = dist.reshard(out1, self._mesh, [Replicate(), Replicate()])
-        self.varnames.append(out1.name)
+        self.vars_to_check.append(out1)
         out2 = self.mlp2(out1)
 
         return out2
@@ -149,22 +149,27 @@ class TestStaticReshard(unittest.TestCase):
         dist_model = dist.to_static(
             dy2static_layer, dist_loader, loss_fn, dy2static_opt
         )
-
-        program = dist_model._engine._dist_contexts["train"].dist_main_programs[
-            dist_model._engine._cur_rank
-        ]
+        dist_model.train()
+        program = dist_model.dist_main_program()
         block = program.global_block()
-        # filter
-        varnames = []
-        for varname in dy2static_layer.varnames:
-            if varname not in varnames:
-                varnames.append(varname)
 
         # check
-        assert block.var(varnames[0]).shape == (4, 8)
-        assert block.var(varnames[1]).shape == (2, 8)
-        assert block.var(varnames[2]).shape == (2, 8)
-        assert block.var(varnames[3]).shape == (4, 8)
+        assert dy2static_layer.vars_to_check[0].dist_attr().dims_mapping == [
+            -1,
+            -1,
+        ]
+        assert dy2static_layer.vars_to_check[1].dist_attr().dims_mapping == [
+            0,
+            -1,
+        ]
+        assert dy2static_layer.vars_to_check[2].dist_attr().dims_mapping == [
+            0,
+            -1,
+        ]
+        assert dy2static_layer.vars_to_check[3].dist_attr().dims_mapping == [
+            -1,
+            -1,
+        ]
 
     def run_test_case(self):
         self.test_reshard_dims_mapping()

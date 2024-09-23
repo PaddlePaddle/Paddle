@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -320,7 +319,6 @@ def train():
 
 
 class TestWord2Vec(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
         with enable_to_static_guard(False):
             dygraph_loss = train()
