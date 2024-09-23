@@ -586,7 +586,7 @@ void ClassCenterSampleInferMeta(const MetaTensor& label,
           "output of sampled local class center should not be null."));
   remapped_label->set_dims(label.dims());
   remapped_label->set_dtype(label.dtype());
-  sampled_local_class_center->set_dims(common::make_ddim({num_samples}));
+  sampled_local_class_center->set_dims(common::make_ddim({-1}));
   sampled_local_class_center->set_dtype(label.dtype());
 }
 
@@ -4715,6 +4715,17 @@ void SumInferMeta(const MetaTensor& x,
     reduce_all = true;
   }
   SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out, config);
+}
+
+void DetInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
+  // remove the last two demension
+  auto out_dim = common::vectorize<int>(x.dims());
+  out_dim.pop_back();
+  out_dim.pop_back();
+
+  out->set_dims(common::make_ddim(out_dim));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,

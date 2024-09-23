@@ -44,5 +44,17 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
                                    float epsilon,
                                    int begin_norm_axis);
 
+SpmdInfo FastLnInferSpmd(const DistMetaTensor& x,
+                         const DistMetaTensor& scale,
+                         const DistMetaTensor& bias,
+                         float epsilon);
+
+SpmdInfo FastLnGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& scale,
+                             const DistMetaTensor& mean,
+                             const DistMetaTensor& invvar,
+                             const DistMetaTensor& y_grad,
+                             float epsilon);
+
 }  // namespace distributed
 }  // namespace phi
