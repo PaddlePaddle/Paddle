@@ -1678,6 +1678,13 @@
   outputs:
     {cache_kv_out : CacheKVOut, out : Out}
 
+- op : fused_seqpool_cvm
+  backward: fused_seqpool_cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
+
 - op : fused_transpose
   inputs:
     {x : X}
@@ -2345,6 +2352,16 @@
     x : X
   outputs :
     out : Out
+
+- op : lookup_table
+  backward: lookup_table_grad
+  inputs:
+    {w : W, ids : Ids}
+  outputs:
+    out : Out
+  extra:
+    attrs: [int slot = 0]
+  manual_signature : [lookup_table, lookup_table_grad]
 
 - op : lrn
   backward : lrn_grad
