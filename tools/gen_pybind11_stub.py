@@ -286,7 +286,7 @@ def replace_bad_attr(filename: str):
         return ' ' + text
 
     stub_file = None
-    with open(filename) as f:
+    with open(filename, encoding='utf-8') as f:
         stub_file = f.read()
 
     for _bad_attr, _replacement in BAD_ATTR.items():
@@ -294,7 +294,7 @@ def replace_bad_attr(filename: str):
         replacement = wrap_text(_replacement)
         stub_file = stub_file.replace(bad_attr, replacement)
 
-    with open(filename, 'w') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         f.write(stub_file)
 
 
@@ -306,7 +306,7 @@ def insert_import_modules(filename: str):
     future_import = 'from __future__ import annotations\n'
 
     stub_file = None
-    with open(filename) as f:
+    with open(filename, encoding='utf-8') as f:
         stub_file = f.read()
 
     for _module, _import_txt in EXTRA_IMPORTS.items():
@@ -316,7 +316,7 @@ def insert_import_modules(filename: str):
                 future_import, future_import + _import_txt + '\n'
             )
 
-    with open(filename, 'w') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         f.write(stub_file)
 
 
