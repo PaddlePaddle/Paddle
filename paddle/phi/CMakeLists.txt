@@ -50,9 +50,9 @@ set(PHI_DEPS
     xxhash
     cblas
     utf8proc
-    common
-    static_prim_api
-    primitive_backend_static_experimental)
+    common)
+    # static_prim_api
+    # primitive_backend_static_experimental)
 
 set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
 
