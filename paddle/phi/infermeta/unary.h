@@ -775,6 +775,10 @@ void SumInferMeta(const MetaTensor& x,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
 
+void DetInferMeta(const MetaTensor& x,
+                  MetaTensor* out,
+                  MetaConfig config = MetaConfig());
+
 void SumRawInferMeta(const MetaTensor& x,
                      const IntArray& axis,
                      bool keep_dim,
