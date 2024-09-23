@@ -66,11 +66,12 @@ from .helper import ProgramHelper
 from .mix_to_dist_pass import apply_mix2dist_pass
 from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
+    RemovePasses,
+    ReshardPasses,
     apply_partition_pass,
-    apply_reshard_pass,
+    check_chunk_id,
+    complete_chunk_id,
     pipeline_pass,
-    remove_other_rank_input_output_pass,
-    remove_other_rank_op_pass,
     remove_unuseful_comm_op_pass,
 )
 from .planner_v2 import Planner
@@ -711,6 +712,12 @@ class Engine:
         apply_mix2dist_pass(dist_program)
         set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
 
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "VPP"
+        ):
+            complete_chunk_id(dist_program, self._strategy.pipeline)
+
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
@@ -822,9 +829,16 @@ class Engine:
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        apply_reshard_pass(dist_program, params_grads)
-        remove_other_rank_input_output_pass(dist_program)
-        remove_other_rank_op_pass(dist_program, startup_program, params_grads)
+        ReshardPasses.apply_reshard_pass(dist_program, params_grads)
+
+        # Note(luchang): When using VPP pipeline pass, we need to split the whole graph into
+        # multiple chunks and adjust the process mesh accordingly. Here, we need to store the
+        # distributed information of the entire graph for later resharding of the dynamic graph parameters.
+        all_params = dist_program.global_block().all_parameters()
+        self.program_helper.cache_whole_graph_dist_attr(all_params)
+
+        RemovePasses.apply_all(dist_program, startup_program, params_grads)
+
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
 
@@ -861,6 +875,12 @@ class Engine:
             auto_parallel_gradient_merge_pass.apply(
                 [dist_program], [startup_program]
             )
+
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "VPP"
+        ):
+            check_chunk_id(dist_program)
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
@@ -901,6 +921,32 @@ class Engine:
                 jobs,
             )
             self._job_plan = core.Plan(jobs, type_to_program)
+
+        if self._strategy.fused_passes.fused_passes_list is not None:
+            pm = pir.PassManager()
+            for p in self._strategy.fused_passes.fused_passes_list:
+                # Temporary implementation, it will be refined when auto_parallel refactored
+                if p == 'eliminate_transpose':
+                    from paddle.distributed.auto_parallel.static.pir_pass import (
+                        eliminate_transpose_by_reshape,
+                    )
+
+                    if self._job_plan is None:
+                        eliminate_transpose_by_reshape(dense_program)
+                    else:
+                        for job_type in self._job_plan.job_types():
+                            ir_program = self._job_plan.ir_program(job_type)
+                            eliminate_transpose_by_reshape(ir_program)
+
+                else:
+                    pm.add_pass(p, {})
+
+            if self._job_plan is None:
+                pm.run(dense_program)
+            else:
+                for job_type in self._job_plan.job_types():
+                    ir_program = self._job_plan.ir_program(job_type)
+                    pm.run(ir_program)
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
@@ -1338,7 +1384,7 @@ class Engine:
                     del_op.erase()
 
                 set_all_ops_op_role(startup_prog.global_block(), OpRole.Forward)
-                apply_reshard_pass(startup_prog)
+                ReshardPasses.apply_reshard_pass(startup_prog)
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
                 self._executor.run(startup_prog)
@@ -2104,7 +2150,12 @@ class Engine:
                 # not the program to be executed. The ``plan`` object is already
                 # constructed, and the programs to be executed are  stored in the
                 # ``plan`` object.
-                program_for_executor = self._job_plan.ir_program("forward")
+                loss_job_type = "forward"
+                if self._strategy.pipeline.schedule_mode == "VPP":
+                    vpp_degree = self._strategy.pipeline.vpp_degree
+                    loss_job_type = f"forward{vpp_degree - 1}"
+
+                program_for_executor = self._job_plan.ir_program(loss_job_type)
 
             loss_value = program_for_executor.get_output_value_by_name(
                 self._loss_names[0]
