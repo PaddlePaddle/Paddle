@@ -154,6 +154,10 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
+    conv2d,
+    PD_INFER_SPMD(phi::distributed::Conv2dInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::Conv2dInferSpmdReverseBase));
+PD_REGISTER_SPMD_RULE(
     cos,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
@@ -649,6 +653,12 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(scatter,
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmdReverse));
+
+// scatter_nd_add
+PD_REGISTER_SPMD_RULE(
+    scatter_nd_add,
+    PD_INFER_SPMD(phi::distributed::ScatterNdAddInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ScatterNdAddInferSpmdReverse));
 
 // gather
 PD_REGISTER_SPMD_RULE(

@@ -24,9 +24,17 @@ export case_list=()
 install_paddle(){
     echo -e "\033[31m ---- Install paddlepaddle-gpu  \033"
     if [ -n "$paddle" ];then
-      python -m pip install --user --no-cache-dir ${paddle} --no-dependencies;
+      python -m pip install --user --no-cache-dir ${paddle} --force-reinstall --no-dependencies;
     fi
     python -c "import paddle; print('paddle version:',paddle.__version__,'\npaddle commit:',paddle.version.commit)";
+}
+
+install_external_ops(){
+    echo -e "\033[31m ---- Install extern_ops  \033"
+    export PYTHONPATH=/workspace/PaddleNLP:$PYTHONPATH
+    cd /workspace/PaddleNLP/legacy/model_zoo/gpt-3/external_ops
+    python setup.py install
+    python -c "import fused_ln;";
 }
 
 get_diff_TO_case(){
@@ -123,6 +131,8 @@ if [[ ${#case_list[*]} -ne 0 ]];then
 
     # Install paddle
     install_paddle
+    # Install external_ops
+    install_external_ops
     case_num=1
     export FLAGS_install_deps=0
     for case in ${case_list[*]};do

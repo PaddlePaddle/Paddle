@@ -479,6 +479,20 @@
     param: [x, y, transpose_x, transpose_y, alpha]
   backward : legacy_matmul_grad
 
+- op : legacy_reshape
+  args : (Tensor x, IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+    spmd_rule : ReshapeInferSpmd
+    local_shape: out
+    global_shape: out
+  kernel :
+    func : reshape
+  inplace : (x -> out)
+  view: (x -> out)
+  backward: legacy_reshape_grad
+
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -516,6 +530,16 @@
 - op : lod_array_length
   args : (Tensor[] x)
   output : Tensor(out)
+
+- op : lod_reset
+  args: (Tensor x, Tensor y, int[] target_lod={}, bool append=false)
+  output: Tensor(out)
+  infer_meta:
+    func: LodResetInferMeta
+  kernel:
+    func: lod_reset
+  optional: y
+  inplace: (x -> out)
 
 - op : lookup_table
   args : (Tensor w, Tensor ids, bool is_sparse = false, bool is_distributed = false,
