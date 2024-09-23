@@ -20,7 +20,6 @@
 #include <unordered_set>
 
 #include "paddle/common/enforce.h"
-#include "paddle/common/errors.h"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
@@ -40,7 +39,7 @@ namespace {
 
 class AutoLayoutPass : public pir::Pass {
  public:
-  AutoLayoutPass() : pir::Pass("auto_layout_pass", 1) {}
+  AutoLayoutPass() : pir::Pass("auto_layout_pass", 3) {}
   void Run(pir::Operation* op) override {
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
@@ -139,7 +138,7 @@ class AutoLayoutPass : public pir::Pass {
       if (op->operands().size() == 0) continue;
 
       // NHWC ops branch, Only support conv2d now, it will add white list later.
-      if (op_name == "pd_op.conv2d") {
+      if (op->isa<paddle::dialect::Conv2dOp>()) {
         if (op->HasAttribute("data_format") &&
             op->attribute<pir::StrAttribute>("data_format").AsString() ==
                 "NCHW") {
@@ -164,7 +163,7 @@ class AutoLayoutPass : public pir::Pass {
       PADDLE_THROW(common::errors::Fatal(
           "value is null, please check the input tensor."));
     }
-    if (!value.type().isa<paddle::dialect::DenseTensorType>()) {
+    if (!value.type()) {
       PADDLE_THROW(common::errors::Fatal(
           "value type is null, please check the input tensor type."));
     }
@@ -179,7 +178,7 @@ class AutoLayoutPass : public pir::Pass {
     builder.set_insertion_point(op);
 
     // For conv2d, only transpose the input.
-    if (op->name() == "pd_op.conv2d") {
+    if (op->isa<paddle::dialect::Conv2dOp>()) {
       auto inp = op->operand(0);
       if (!JudgeValue(inp.source())) return;
       auto transpose_op =
@@ -192,7 +191,6 @@ class AutoLayoutPass : public pir::Pass {
 
     for (auto& operand : op->operands()) {
       if (!JudgeValue(operand.source())) continue;
-
       // Canbe optimize with cache when not eliminate the transpose op.
       auto transpose_op = builder.Build<paddle::dialect::TransposeOp>(
           operand.source(), NCHW2NHWC_);
