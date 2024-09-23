@@ -163,29 +163,36 @@ static void GetModebySort(const phi::GPUContext& dev_ctx,
     T* begin = input_tmp_data + num_cols * i;
     T* end = input_tmp_data + num_cols * (i + 1);
     thrust::device_vector<int64_t> indices_data(num_cols);
-    thrust::sequence(
-        thrust::device, indices_data.begin(), indices_data.begin() + num_cols);
-    thrust::sort_by_key(thrust::device, begin, end, indices_data.begin());
-    int unique = 1 + thrust::inner_product(thrust::device,
-                                           begin,
-                                           end - 1,
-                                           begin + 1,
-                                           0,
-                                           thrust::plus<int>(),
-                                           thrust::not_equal_to<T>());
+    thrust::sequence(thrust::cuda::par.on(dev_ctx.stream()),
+                     indices_data.begin(),
+                     indices_data.begin() + num_cols);
+    thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+                        begin,
+                        end,
+                        indices_data.begin());
+    int unique =
+        1 + thrust::inner_product(thrust::cuda::par.on(dev_ctx.stream()),
+                                  begin,
+                                  end - 1,
+                                  begin + 1,
+                                  0,
+                                  thrust::plus<int>(),
+                                  thrust::not_equal_to<T>());
     thrust::device_vector<T> keys_data(unique);
     thrust::device_vector<int64_t> cnts_data(unique);
-    thrust::reduce_by_key(thrust::device,
+    thrust::reduce_by_key(thrust::cuda::par.on(dev_ctx.stream()),
                           begin,
                           end,
                           thrust::constant_iterator<int>(1),
                           keys_data.begin(),
                           cnts_data.begin());
-    auto it = thrust::max_element(
-        thrust::device, cnts_data.begin(), cnts_data.begin() + unique);
+    auto it = thrust::max_element(thrust::cuda::par.on(dev_ctx.stream()),
+                                  cnts_data.begin(),
+                                  cnts_data.begin() + unique);
     T mode = keys_data[it - cnts_data.begin()];
     int64_t counts = cnts_data[it - cnts_data.begin()];
-    auto pos = thrust::find(thrust::device, begin, end, mode);
+    auto pos =
+        thrust::find(thrust::cuda::par.on(dev_ctx.stream()), begin, end, mode);
     int64_t index = indices_data[pos - begin + counts - 1];
     out_tensor_ptr[i] = static_cast<T>(mode);
     indices_tensor_ptr[i] = static_cast<int64_t>(index);
