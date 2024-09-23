@@ -103,6 +103,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
         ProcessBlock(&block, builder);
       }
     }
+    cached_cast_ops_.clear();
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
