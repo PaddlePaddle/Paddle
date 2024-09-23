@@ -441,7 +441,9 @@ PD_REGISTER_KERNEL(add_csr_csr_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
@@ -455,7 +457,9 @@ PD_REGISTER_KERNEL(subtract_csr_csr_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
@@ -498,7 +502,9 @@ PD_REGISTER_KERNEL(add_coo_coo_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -512,7 +518,9 @@ PD_REGISTER_KERNEL(subtract_coo_coo_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -554,6 +562,8 @@ PD_REGISTER_KERNEL(add_coo_dense_grad,
                    float,
                    double,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
