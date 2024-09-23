@@ -135,11 +135,12 @@ void PatternGraph::SinkTrivialPattern() {
                        NonSinkNodeMatcher>,
                    MergeTrivialPatternOperation>(this);
 
-  // GraphTransformer<NodePattern,
-  //                  And<StmtPatternGraphMatcher<TrivialPattern>,
-  //                      NonSinkNodeMatcher,
-  //                      LEOneElementWiseDownstreamMatcher>,
-  //                  MergeTrivialPatternOperation>(this);
+  // TODO(huangjiyi): remove sink multi downstream transpose after
+  // supporting transpose plus reduce anchor fusion
+  GraphTransformer<
+      NodePattern,
+      And<StmtPatternGraphMatcher<TrivialPattern>, TransposeOpMatcher>,
+      MergeTrivialPatternOperation>(this);
 }
 
 void PatternGraph::ReduceLiftReduceTree() {

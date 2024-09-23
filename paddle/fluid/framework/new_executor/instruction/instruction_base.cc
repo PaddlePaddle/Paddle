@@ -421,7 +421,7 @@ std::string InstructionBase::DebugStringEx(
 
         ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
         ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
-        ss << "value=" << GetDenseTensorEleDebugStr(*scope, var_name) << ";";
+        // ss << "value=" << GetDenseTensorEleDebugStr(*scope, var_name) << ";";
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
@@ -449,7 +449,7 @@ std::string InstructionBase::DebugStringEx(
         ss << "place=" << GetPlace(*scope, var_name) << ";";
         ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
         ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
-        ss << "value=" << GetDenseTensorEleDebugStr(*scope, var_name) << ";";
+        // ss << "value=" << GetDenseTensorEleDebugStr(*scope, var_name) << ";";
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
