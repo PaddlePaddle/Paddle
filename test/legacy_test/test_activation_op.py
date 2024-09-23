@@ -1893,6 +1893,14 @@ class TestSqrtComp_ZeroDim(TestSqrtComp):
     def init_shape(self):
         self.shape = []
 
+class TestSqrtCompComplex64(TestSqrtComp):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSqrtCompComplex128(TestSqrtComp):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 class TestRsqrt(TestActivation):
     def setUp(self):
@@ -5861,6 +5869,112 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
+
+def create_test_act_complex64_class(
+    parent,
+    atol=1e-5,
+    grad_check=True,
+    check_dygraph=True,
+    check_prim=False,
+    enable_cinn=False,
+    check_pir=False,
+    check_prim_pir=False,
+    grad_atol=1e-4,
+    **kwargs,
+):
+    class TestActComplex(parent):
+        def setUp(self):
+            super().setUp()
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+        def init_dtype(self):
+            self.dtype = np.complex64 
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(
+                place,
+                atol=atol,
+                check_dygraph=check_dygraph,
+                check_prim=check_prim,
+                check_pir=check_pir,
+                check_prim_pir=check_prim_pir,
+                check_pir_onednn=self.check_pir_onednn,
+            )
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if grad_check:
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    max_relative_error=grad_atol,
+                    check_dygraph=check_dygraph,
+                    check_prim=check_prim,
+                    check_pir=check_pir,
+                    check_prim_pir=check_prim_pir,
+                )
+
+    cls_name = "{}_{}".format(parent.__name__, "Complex64OP")
+    TestActComplex.__name__ = cls_name
+    globals()[cls_name] = TestActComplex
+
+create_test_act_complex64_class(TestSqrtCompComplex64)
+
+def create_test_act_complex128_class(
+    parent,
+    atol=1e-5,
+    grad_check=True,
+    check_dygraph=True,
+    check_prim=False,
+    enable_cinn=False,
+    check_pir=False,
+    check_prim_pir=False,
+    grad_atol=1e-4,
+    **kwargs,
+):
+    class TestActComplex(parent):
+        def setUp(self):
+            super().setUp()
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+        def init_dtype(self):
+            self.dtype = np.complex128
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(
+                place,
+                atol=atol,
+                check_dygraph=check_dygraph,
+                check_prim=check_prim,
+                check_pir=check_pir,
+                check_prim_pir=check_prim_pir,
+                check_pir_onednn=self.check_pir_onednn,
+            )
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if grad_check:
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    max_relative_error=grad_atol,
+                    check_dygraph=check_dygraph,
+                    check_prim=check_prim,
+                    check_pir=check_pir,
+                    check_prim_pir=check_prim_pir,
+                )
+
+    cls_name = "{}_{}".format(parent.__name__, "Complex1280P")
+    TestActComplex.__name__ = cls_name
+    globals()[cls_name] = TestActComplex
+
+create_test_act_complex128_class(TestSqrtCompComplex128)
 
 if __name__ == "__main__":
     unittest.main()
