@@ -927,8 +927,12 @@ struct DescriptorSetter {
       sub_key = planner->GenSubKey();
     }
 
-    auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-    if (matmul_cache.FindSubKey(sub_key)) {
+    bool has_cache = false;
+    if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
+      auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+      has_cache = matmul_cache.FindSubKey(sub_key);
+    }
+    if (has_cache) {
       desc = *(reinterpret_cast<DescT*>(matmul_cache.GetSubKey(sub_key)));
       desc.template SetFusedEpiloguePtr<DYT>(planner);
       VLOG(7) << desc.GetDescResultString("[Heap CublasltDescriptor] ");
