@@ -1030,9 +1030,6 @@ def _dynamic_decode_pir_declarative(
     return_length=False,
     **kwargs,
 ):
-    # outputs_arrays = BeamSearchDecoder.OutputWrapper(
-    #         paddle.tensor.array.create_array('float64'), paddle.tensor.array.create_array("int64"), paddle.tensor.array.create_array('int64')
-    #     )
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
     global_inputs, global_states, global_finished = (
         initial_inputs,

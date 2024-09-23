@@ -35,9 +35,6 @@ list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
 list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
-list(REMOVE_ITEM TEST_OPS test_model)
-list(REMOVE_ITEM TEST_OPS test_callback_early_stop)
-
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
