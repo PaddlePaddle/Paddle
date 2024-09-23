@@ -43,6 +43,27 @@ from pybind11_stubgen.structs import (
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+# some invalid attr can NOT be parsed.
+# to avoid sytax error, we can only do plain replacement.
+# e.g. {'a': 'b'}, do replace 'a' -> 'b' .
+BAD_ATTR = {
+    # python/paddle/_typing/libs/libpaddle/cinn/ir.pyi
+    'cinn::ir::_paddle.Tensor_': 'typing.Any',
+    # python/paddle/_typing/libs/libpaddle/cinn/common.pyi
+    'None: typing.ClassVar[Type.cpp_type_t]': '# None: typing.ClassVar[Type.cpp_type_t]',
+}
+
+# add some import modules
+# e.g. {'a': 'b'}, if not found ' a.' in stub file,
+# we insert 'b' after 'from __future__ import annotations'.
+# 'a' should be converted to ' a.'
+EXTRA_IMPORTS = {
+    'typing': 'import typing',
+    'typing_extensions': 'import typing_extensions',
+    'pybind11_stubgen': 'import pybind11_stubgen',
+    'npt': 'import numpy.typing as npt',
+}
+
 # some invalid attr from pybind11.
 # ref:
 # - https://pybind11.readthedocs.io/en/latest/advanced/misc.html#avoiding-cpp-types-in-docstrings
@@ -259,6 +280,55 @@ def gen_stub(
     )
 
 
+def replace_bad_attr(filename: str):
+    def wrap_text(text):
+        """wrap text to avoid bad math"""
+        return ' ' + text
+
+    stub_file = None
+    with open(filename) as f:
+        stub_file = f.read()
+
+    for _bad_attr, _replacement in BAD_ATTR.items():
+        bad_attr = wrap_text(_bad_attr)
+        replacement = wrap_text(_replacement)
+        stub_file = stub_file.replace(bad_attr, replacement)
+
+    with open(filename, 'w') as f:
+        f.write(stub_file)
+
+
+def insert_import_modules(filename: str):
+    def wrap_text(text):
+        """wrap text to avoid bad math"""
+        return ' ' + text + '.'
+
+    future_import = 'from __future__ import annotations\n'
+
+    stub_file = None
+    with open(filename) as f:
+        stub_file = f.read()
+
+    for _module, _import_txt in EXTRA_IMPORTS.items():
+        module = wrap_text(_module)
+        if module in stub_file and _import_txt not in stub_file:
+            stub_file = stub_file.replace(
+                future_import, future_import + _import_txt + '\n'
+            )
+
+    with open(filename, 'w') as f:
+        f.write(stub_file)
+
+
+def post_process(output_dir: str):
+    for root, _, files in os.walk(output_dir):
+        if files:
+            for f in files:
+                if f.endswith('.pyi'):
+                    replace_bad_attr(str(Path(root) / f))
+                    insert_import_modules(str(Path(root) / f))
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -356,6 +426,9 @@ def generate_stub_file(
                 os.remove(str(_path_dst))
 
         shutil.move(str(source_path), output_dir)
+
+    # post process: replace some bad attr, insert some import modules
+    post_process(output_dir)
 
 
 class _OpsYamlInputs(TypedDict):
