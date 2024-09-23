@@ -26,7 +26,7 @@ from paddle.framework import (
     base as imperative_base,
     core,
 )
-from paddle.framework.recall_error import LOSS_NAN_ERROR
+from paddle.framework.recall_error import check_naninf
 
 from .log_util import logger
 
@@ -667,10 +667,10 @@ class FusedCommBuffer:
 
         need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
         if need_check:
-            naninf = paddle.isfinite(self.grad_storage).all()
-            if not naninf.item():
+            err_msg = check_naninf(self.grad_storage)
+            if err_msg is not None:
                 raise ValueError(
-                    f"{LOSS_NAN_ERROR}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
+                    f"{err_msg}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
                 )
 
         if self._act == HOOK_ACTION.ALL_REDUCE:
