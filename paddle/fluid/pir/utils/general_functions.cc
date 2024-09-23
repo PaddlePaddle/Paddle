@@ -127,9 +127,9 @@ void DenseTensorCastToFp32(phi::DenseTensor* in,
     phi::ScaleKernel<float, phi::CPUContext>(
         *cpu_ctx, *out_ptr, 1.0f / world_size, 0.f, false, out_ptr);
   }
-  if (out == nullptr) {
-    paddle::framework::ir::Assign(*out_ptr, in);
-  }
+  // if (out == nullptr) {
+  //   paddle::framework::ir::Assign(*out_ptr, in);
+  // }
 }
 
 pir::Type TranslateToIrDataType(phi::DenseTensor* tensor) {
@@ -148,13 +148,13 @@ Parameter* GetParameter(Operation* op, const std::string& name) {
   return param;
 }
 
-// pir::Operation* CreateOpeartionByName(const std::string& op_name,
-//                                       const std::vector<pir::Value>& inputs,
-//                                       const pir::AttributeMap& attrs,
-//                                       const pir::PatternRewriter& rewriter) {
-//   return paddle::drr::OperationFactory::Instance().CreateOperation(
-//       op_name, inputs, attrs, const_cast<pir::PatternRewriter&>(rewriter));
-// }
+pir::Operation* CreateOpeartionByName(const std::string& op_name,
+                                      const std::vector<pir::Value>& inputs,
+                                      const pir::AttributeMap& attrs,
+                                      const pir::PatternRewriter& rewriter) {
+  return paddle::drr::OperationFactory::Instance().CreateOperation(
+      op_name, inputs, attrs, const_cast<pir::PatternRewriter&>(rewriter));
+}
 
 template <typename T>
 T* VarGetMutable(Variable* var) {
