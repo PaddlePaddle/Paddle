@@ -20,6 +20,7 @@ from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.utils import strtobool
 
 g_enable_math = None
 g_enable_flash = None
@@ -27,7 +28,7 @@ g_enable_mem_efficient = None
 
 
 def _is_hopper_device():
-    if os.environ.get('PADDLE_DISABLE_CUDNN_FA', False):
+    if strtobool(os.getenv('PADDLE_DISABLE_CUDNN_FA', '0')):
         return False
 
     # 获取指定设备的属性
