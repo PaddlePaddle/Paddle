@@ -22,7 +22,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
@@ -221,13 +220,11 @@ class TestEnableDeclarative(Dy2StTestBase):
         self.weight = np.random.randn(32, 64).astype('float32')
 
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_raise_error(self):
         net = paddle.jit.to_static(full_graph=True)(NetWithError())
         with self.assertRaises(ValueError):
             net(paddle.to_tensor(self.x))
 
-    @test_legacy_and_pt_and_pir
     def test_enable_disable_to_static(self):
         static_output = paddle.jit.to_static(decorated_simple_func)(
             self.x, self.weight
@@ -275,7 +272,6 @@ switch_mode_function = paddle.jit.to_static(full_graph=True)(
 
 class TestFunctionTrainEvalMode(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_switch_mode(self):
         switch_mode_function.eval()
         switch_mode_function()
@@ -289,7 +285,6 @@ class TestFunctionTrainEvalMode(Dy2StTestBase):
         _, partial_layer = switch_mode_function.program_cache.last()[-1]
         self.assertEqual(partial_layer.training, True)
 
-    @test_legacy_and_pt_and_pir
     def test_raise_error(self):
         net = paddle.jit.to_static(SwitchModeNet())
 
@@ -304,7 +299,6 @@ class TestFunctionTrainEvalMode(Dy2StTestBase):
 
 
 class TestIfElseEarlyReturn(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_ifelse_early_return1(self):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
@@ -316,7 +310,6 @@ class TestIfElseEarlyReturn(Dy2StTestBase):
         elif isinstance(out, tuple):
             np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
-    @test_legacy_and_pt_and_pir
     def test_ifelse_early_return2(self):
         answer = np.zeros([2, 2]) + 3
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)
@@ -337,7 +330,6 @@ class TestRemoveCommentInDy2St(Dy2StTestBase):
         # Comment3
         y = paddle.to_tensor([4, 5, 6])
 
-    @test_legacy_and_pt_and_pir
     def test_remove_comment(self):
         code_string = func_to_source_code(self.func_with_comment)
         self.assertEqual('#' not in code_string, True)
@@ -371,7 +363,6 @@ class Net2:
 
 
 class TestParameterRecorder(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_recorder(self):
         """function calls nn.Layer case."""
         net = Net()

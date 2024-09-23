@@ -183,6 +183,82 @@ class TestPlacementSlicePass(PassTest):
         self.check_pass_correct()
 
 
+class TestPlacementSlicePassCase2(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[2, 5, 5, 5], dtype='float16'
+                )
+                out_1 = x[0, :, :, :]
+                out_2 = x[1, :, :, :]
+                out_1 = paddle.assign(out_1)
+                out_2 = paddle.assign(out_2)
+                self.pass_attr_list = [{'onednn_placement_pass': {}}]
+                self.feeds = {
+                    "x": np.random.random((2, 5, 5, 5)).astype("float16"),
+                }
+                self.fetch_list = [out_1, out_2]
+                self.valid_op_map = {
+                    "onednn_op.slice": 0,
+                    "pd_op.slice": 2,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
+class TestPlacementCastFailedCase(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x1 = paddle.static.data(
+                    name='x1', shape=[1, 30], dtype='float16'
+                )
+
+                out = paddle.cast(x1, 'float16')
+                out = paddle.assign(out)
+                self.pass_attr_list = [
+                    {'onednn_placement_pass': {}},
+                ]
+                self.feeds = {
+                    "x1": np.random.random((1, 30)).astype("float16"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "onednn_op.cast": 0,
+                    "pd_op.cast": 1,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
 # This case is for testing layout transformation
 class TestConv2dAddPlacmentPass(PassTest):
     def is_program_valid(self, program=None):

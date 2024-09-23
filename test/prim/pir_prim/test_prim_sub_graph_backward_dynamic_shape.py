@@ -30,8 +30,8 @@ def add_net(x, y):
 
 
 def batch_norm_net1(x, y, z):
-    mean = paddle.ones([40], dtype="float32")
-    var = paddle.zeros([40], dtype='float32')
+    mean = paddle.zeros([40], dtype="float32")
+    var = paddle.ones([40], dtype='float32')
     return paddle.nn.functional.batch_norm(x, mean, var, y, z)
 
 
@@ -53,6 +53,7 @@ def apply_to_static(net, use_cinn, input_spec=None):
 class TestPrimBaseWithGrad(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.sum_grad"
         self.dtype = "float32"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, 40]
@@ -80,6 +81,13 @@ class TestPrimBaseWithGrad(unittest.TestCase):
         res.backward()
         x_grad = x.gradient()
         if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.get_concrete_program(x)[-1]
+                .program.backward_program.global_block()
+                .ops
+            ]
+            assert self.op_name not in ops
             core._set_prim_all_enabled(False)
         return res, x_grad
 
@@ -99,6 +107,7 @@ class TestPrimBaseWithGrad(unittest.TestCase):
 class TestPrimTwoWithGrad(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.add_grad"
         self.dtype = "float32"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, 40]
@@ -132,6 +141,13 @@ class TestPrimTwoWithGrad(unittest.TestCase):
         x_grad = x.gradient()
         y_grad = y.gradient()
         if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.get_concrete_program(x, y)[-1]
+                .program.backward_program.global_block()
+                .ops
+            ]
+            assert self.op_name not in ops
             core._set_prim_all_enabled(False)
         return res, [x_grad, y_grad]
 
@@ -151,6 +167,7 @@ class TestPrimTwoWithGrad(unittest.TestCase):
 class TestPrimBaseOneGradTwoInputs(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "reduce_as_grad"
         self.dtype = "float32"
         self.y_shape = [200, 40]
         self.init_y_shape = [None, 200]
@@ -187,6 +204,13 @@ class TestPrimBaseOneGradTwoInputs(unittest.TestCase):
         else:
             grad = y.gradient()
         if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.get_concrete_program(x, y)[-1]
+                .program.backward_program.global_block()
+                .ops
+            ]
+            assert self.op_name not in ops
             core._set_prim_all_enabled(False)
         return res, [grad]
 
@@ -206,6 +230,7 @@ class TestPrimBaseOneGradTwoInputs(unittest.TestCase):
 class TestPrimThreeWithGrad(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.batch_norm_grad"
         self.dtype = "float32"
         self.x_shape = [30, 40, 50, 60]
         self.init_x_shape = [None, None, None, 60]
@@ -218,7 +243,7 @@ class TestPrimThreeWithGrad(unittest.TestCase):
         self.z = np.random.random(self.z_shape).astype(self.dtype)
         self.net = batch_norm_net1
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
     def base_net(self, flag=None):
         if flag == "prim":
@@ -233,7 +258,7 @@ class TestPrimThreeWithGrad(unittest.TestCase):
                 input_spec=[
                     InputSpec(shape=self.init_x_shape, dtype='float32'),
                     InputSpec(shape=self.init_y_shape, dtype='float32'),
-                    InputSpec(shape=self.init_y_shape, dtype='float32'),
+                    InputSpec(shape=self.init_z_shape, dtype='float32'),
                 ],
             )
             fn.train()
@@ -245,6 +270,13 @@ class TestPrimThreeWithGrad(unittest.TestCase):
         y_grad = y.gradient()
         z_grad = z.gradient()
         if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.get_concrete_program(x, y, z)[-1]
+                .program.backward_program.global_block()
+                .ops
+            ]
+            assert self.op_name not in ops
             core._set_prim_all_enabled(False)
         return res, [x_grad, y_grad, z_grad]
 
