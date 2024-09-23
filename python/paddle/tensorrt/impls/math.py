@@ -11,28 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-import os
-import sys
 
 import numpy as np
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
 import tensorrt as trt
 
-from paddle.base.log_helper import get_logger
-from paddle.tensorrt.register import converter_registry
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
-)
 from paddle.tensorrt.converter_utils import (
+    add_elementwise_layer,
     broadcast,
+    get_axes_for_reduce_op,
 )
+from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.add", trt_version="8.x")
@@ -84,3 +72,49 @@ def scale_converter(network, paddle_op, inputs):
         power=power_weight,
     )
     return scale_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.max", trt_version="8.x")
+def max_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    axis = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    input_shape = paddle_op.operands()[0].source().shape
+    keepdim = paddle_op.attrs()["keepdim"]
+    if network.has_implicit_batch_dimension:
+        assert (
+            axis != 0
+        ), "can't reduce on axis == 0 when network has implicit batch dimension"
+    output_shape = []
+    if len(axis) == 0:
+        axis = list(range(len(input_shape)))
+    for i in range(len(axis)):
+        if axis[i] < 0:
+            axis[i] = len(input_shape) + axis[i]
+    layer = network.add_reduce(
+        input_tensor,
+        trt.ReduceOperation.MAX,
+        axes=get_axes_for_reduce_op(axis),
+        keep_dims=keepdim,
+    )
+    return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.divide", trt_version="8.x")
+def divide_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.DIV
+    )
+
+
+@converter_registry.register("pd_op.subtract", trt_version="8.x")
+def substract_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.SUB
+    )
+
+
+@converter_registry.register("pd_op.multiply", trt_version="8.x")
+def multiply_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.PROD
+    )

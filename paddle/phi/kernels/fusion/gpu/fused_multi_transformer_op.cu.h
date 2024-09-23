@@ -22,11 +22,16 @@ limitations under the License. */
 #include <fstream>
 #include <iomanip>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
+
+COMMON_DECLARE_bool(fused_multi_transformer_op_use_mbfmha);
+COMMON_DECLARE_int64(multi_block_attention_min_partition_size);
+
 namespace phi {
 namespace fusion {
 
@@ -85,11 +90,18 @@ struct Masked_multihead_attention_params {
   int gqa_group_size;
   int gqa_num_per_partitions;
 
+  int max_num_partitions;
+  int partition_size;
+
   // 1.f / sqrt(Dh)
   float inv_sqrt_dh;
 
   bool add_qkv_bias;
   bool neox_rotary_style;
+
+  float *exp_sums;
+  float *max_logits;
+  T *partial_out;
 };
 
 template <typename T,
@@ -139,7 +151,8 @@ __global__ void masked_multihead_attention_kernel(
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
-  const int kv_hi = hi / params.gqa_num_per_partitions;
+  const int kv_hi =
+      hi / params.gqa_num_per_partitions;  // if no gqa, kv_hi = hi
   const int bhi = bi * params.num_head + hi;
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
   const int ti =
@@ -332,6 +345,7 @@ __global__ void masked_multihead_attention_kernel(
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
+
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
   constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;
 
@@ -703,6 +717,880 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
   }
 }
 
+template <typename T,
+          int Dh,
+          int Dh_MAX,
+          int THREADS_PER_KEY,
+          int THREADS_PER_VALUE,
+          int THREADS_PER_BLOCK,
+          typename LoadFunc,
+          typename StoreFunc>
+__global__ void multi_block_masked_multihead_attention_kernel(
+    Masked_multihead_attention_params<T> params,
+    LoadFunc load_func,
+    StoreFunc store_func) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+  const int bi = blockIdx.y;
+  // Each Partition responsible for partial KeyCache and Value Cache Compute.
+  const int partition_idx = blockIdx.z;
+
+  const int act_time_step = params.sequence_lengths[bi];
+
+  // There is no work for decoding.
+  if (act_time_step == 0) {
+    return;
+  }
+
+  /*
+  Note(zhengzekang):
+  If current block processed partition is out of the real sequence length, we
+  directly terminate it.
+
+  The reason for why we do not Init Zeros for partial expsum, maxlogits, output
+  is: Each sequence need real partition is different, assume partition_size
+  is 8. seq0[8] need 1 partition, seq1[26] need 4 partitions. Though we launch 4
+  blocks in blockDim.z, for seq0, it only write the `partition_idx == 0`
+  position value, other position_idx is random init.
+
+  In rescale operations, it will also compute the real partition num to select
+  value, for seq0, it will only select `partition_idx==0` partial value to do
+  rescale.
+  */
+  if (partition_idx * params.partition_size >= act_time_step) {
+    return;
+  }
+  const int num_partitions = div_up(act_time_step, params.partition_size);
+
+  // Each Partition block's start position.
+  const auto partition_times_timesteps_per_block =
+      partition_idx * params.partition_size;
+
+  typedef phi::PDDataTypeTraits<T> traits_;
+  typedef typename traits_::DataType DataType_;
+
+  static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
+  static_assert(Dh_MAX % THREADS_PER_VALUE == 0, "");
+
+  constexpr int WARP_SIZE_TMP = 32;
+  constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE_TMP;
+
+  extern __shared__ char smem_[];
+  float *qk_smem = reinterpret_cast<float *>(smem_);
+
+  /*
+  Here We allocate a shared float variable to store the New SingleQuery matmul
+  the New SingleKey results. In previous implementation, we set the result in
+  qk_smem[act_time_step] and then iterate KCache to get
+  qk_smem[0...act_time_step-1]
+
+  For now, we set the result in qk_current_smem. Final we will get result
+  according to the time_now == timestep? if time_now < timestep, we get result
+  from `qk_smem`, else from `qk_current_smem`.
+  */
+  __shared__ float qk_current_smem[1];
+
+  // logits_smem is used to store the resut of exp(q*k^T).
+  char *logits_smem_ = smem_;
+
+  T *out_smem = reinterpret_cast<T *>(smem_);
+
+  __shared__ float red_smem[WARPS_PER_BLOCK * 2];
+  using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
+  using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
+  __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
+
+  const int tid = threadIdx.x;
+  const int hi = blockIdx.x;  // head_idx
+  const int kv_hi = hi / params.gqa_num_per_partitions;
+
+  const int bhi = bi * params.num_head + hi;
+  const int ti =
+      params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
+  const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
+
+  float qk_max = -FLT_MAX;
+  float qk = 0;
+
+  // qkv [B, S=1, 3, num_head, head_dim]
+  int qkv_base_offset = bi * (params.num_head + 2 * params.gqa_group_size) *
+                        Dh;  // // if no gqa, gqa_group_size = num_head
+
+  constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
+
+  static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
+  // Use block reduction if needed
+  // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE_TMP, "");
+  constexpr int QK_VECS_PER_WARP = Dh_MAX / QK_VEC_SIZE;
+
+  // cache_k, [B, num_head, head_dim / x, max_seq_len, x]
+  // x == 4/8 for FP32/FP16, 128bit, 16Byte
+  constexpr int QK_ELTS_IN_16B = 16 / sizeof(T);
+  constexpr int QK_VECS_IN_16B = 16 / sizeof(Qk_vec);
+
+  const T *q_bias_base = nullptr;
+  const T *k_bias_base = nullptr;
+
+  if (params.add_qkv_bias) {
+    q_bias_base = params.qkv_bias;
+    k_bias_base = params.qkv_bias + params.num_head * Dh;
+  }
+
+  if (tid < QK_VECS_PER_WARP) {
+    const int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
+
+    Qk_vec q;
+    zero(q);
+    if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
+      load_func.template load<Qk_vec>(q, qk_offset + hi * Dh);
+    }
+
+    Qk_vec k;
+    zero(k);
+    if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
+      load_func.template load<Qk_vec>(
+          k, params.num_head * Dh + qk_offset + kv_hi * Dh);
+    }
+
+    if (params.add_qkv_bias) {
+      const int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
+      const int k_bias_offset = kv_hi * Dh + tid * QK_VEC_SIZE;
+      Qk_vec q_bias;
+      zero(q_bias);
+      Qk_vec k_bias;
+      zero(k_bias);
+
+      q_bias =
+          (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+              ? *reinterpret_cast<const Qk_vec *>(&q_bias_base[q_bias_offset])
+              : q_bias;
+      k_bias =
+          (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+              ? *reinterpret_cast<const Qk_vec *>(&k_bias_base[k_bias_offset])
+              : k_bias;
+
+      q = add(q, q_bias);
+      k = add(k, k_bias);
+    }
+
+    if (!params.neox_rotary_style) {
+      if (params.rotary_emb_dims != 0) {
+        int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+        const float *cos_base = params.rotary_emb;
+        const float *sin_base = params.rotary_emb + params.rotary_bsz * Dh;
+        Qk_vec_RoPE cos_emb, sin_emb;
+        zero(cos_emb);
+        zero(sin_emb);
+        cos_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &cos_base[rotary_offset])
+                      : cos_emb;
+        sin_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &sin_base[rotary_offset])
+                      : sin_emb;
+        apply_rotary_embedding(q, k, cos_emb, sin_emb);
+      }
+    } else {
+      /* old rotary pos emb */
+      if (params.rotary_emb_dims != 0) {
+        int last_dim = Dh / params.rotary_emb_dims;
+        int half_lastdim = last_dim / 2;
+        int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+        const float *cos_base = params.rotary_emb;
+        const float *sin_base = params.rotary_emb + params.rotary_bsz * Dh;
+        int stride = half_lastdim / QK_VEC_SIZE;
+        int stride_all_lastdim = 2 * stride;
+        int right_id = tid / stride_all_lastdim * stride_all_lastdim +
+                       (tid + stride) % (stride_all_lastdim);
+        int q_right_offset = qkv_base_offset + hi * Dh + right_id * QK_VEC_SIZE;
+        int k_right_offset = qkv_base_offset + params.num_head * Dh +
+                             kv_hi * Dh + right_id * QK_VEC_SIZE;
+        Qk_vec q_right;
+        zero(q_right);
+        if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
+          load_func.template load<Qk_vec>(q_right, q_right_offset);
+        }
+        Qk_vec k_right;
+        zero(k_right);
+        if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
+          load_func.template load<Qk_vec>(k_right, k_right_offset);
+        }
+
+        Qk_vec_RoPE cos_emb;
+        zero(cos_emb);
+        cos_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &cos_base[rotary_offset])
+                      : cos_emb;
+
+        Qk_vec_RoPE sin_emb;
+        zero(sin_emb);
+        sin_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &sin_base[rotary_offset])
+                      : sin_emb;
+        float alpha = (tid % stride_all_lastdim) < stride
+                          ? static_cast<float>(-1)
+                          : static_cast<float>(1);
+        q = apply_rotary_emb<Qk_vec, Qk_vec_RoPE>(
+            q, q_right, cos_emb, sin_emb, alpha);
+        k = apply_rotary_emb<Qk_vec, Qk_vec_RoPE>(
+            k, k_right, cos_emb, sin_emb, alpha);
+      }
+    }
+
+    *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
+    if (partition_idx == num_partitions - 1) {
+      if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
+        int co = tid / QK_VECS_IN_16B;
+        int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
+        int offset = bi * params.gqa_group_size * params.max_seq_length * Dh +
+                     kv_hi * params.max_seq_length * Dh +
+                     co * params.max_seq_length * QK_ELTS_IN_16B +
+                     act_time_step * QK_ELTS_IN_16B + ci;
+        *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
+      }
+
+      qk = dot<Qk_vec, Qk_vec>(q, k);
+
+      if (QK_VECS_PER_WARP <= WARP_SIZE_TMP) {
+#pragma unroll
+        for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
+          qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+        }
+      }
+    }
+  }
+
+  if (partition_idx == num_partitions - 1) {
+    if (QK_VECS_PER_WARP > WARP_SIZE_TMP) {
+      constexpr int WARPS_PER_RED =
+          (QK_VECS_PER_WARP + WARP_SIZE_TMP - 1) / WARP_SIZE_TMP;
+      qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
+    }
+    if (tid == 0) {
+      qk *= params.inv_sqrt_dh;
+      qk_max = qk;
+      // The query and new Key matmul result will be stored in `qk_current_smem`
+      // not `qk_smem`!.
+      qk_current_smem[0] = qk;
+    }
+  }
+
+  __syncthreads();
+
+  using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
+  constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
+  static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
+  constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
+  constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;
+
+  int ko = tid / THREADS_PER_KEY;
+  int ki = (tid % THREADS_PER_KEY) * K_VEC_SIZE;
+  T *k_cache =
+      &params.cache_kv[bi * params.gqa_group_size * params.max_seq_length * Dh +
+                       kv_hi * params.max_seq_length * Dh + ki];
+  static_assert(Dh_MAX == THREADS_PER_KEY * K_VEC_SIZE * K_VECS_PER_THREAD, "");
+
+  K_vec q[K_VECS_PER_THREAD];
+#pragma unroll
+  for (int i = 0; i < K_VECS_PER_THREAD; ++i) {
+    q[i] = *reinterpret_cast<const K_vec *>(
+        &q_smem[ki + i * THREADS_PER_KEY * K_VEC_SIZE]);
+  }
+
+  constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
+  constexpr int K_PER_WARP = WARP_SIZE_TMP / THREADS_PER_KEY;
+
+  // Each Block iterate PARTITION_SIZE length KVCache.
+  int ti_end = div_up(params.partition_size, K_PER_WARP) * K_PER_WARP;
+
+  K_vec k[K_VECS_PER_THREAD];
+  K_vec k_vec_zero;
+  zero(k_vec_zero);
+  for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
+    // First, move each block to their start position.
+    const int time_now = ti + partition_times_timesteps_per_block;
+    const int k_offset =
+        bi * params.gqa_group_size * params.max_seq_length * Dh +
+        kv_hi * params.max_seq_length * Dh + time_now * Dh + ki;
+
+#pragma unroll
+    for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
+      int jj = ii * params.max_seq_length + time_now;
+      if (time_now < act_time_step) {
+        k[ii] =
+            (Dh == Dh_MAX || jj * QK_ELTS_IN_16B < Dh * params.max_seq_length)
+                ? *reinterpret_cast<const K_vec *>(
+                      &k_cache[jj * QK_ELTS_IN_16B])
+                : k_vec_zero;
+      } else {
+        k[ii] = k_vec_zero;
+      }
+    }
+
+    float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
+
+    if (time_now < act_time_step && tid % THREADS_PER_KEY == 0) {
+      qk_max = fmaxf(qk_max, qk);
+      qk_smem[ti] = qk;
+    }
+  }
+
+#pragma unroll
+  for (int mask = WARP_SIZE_TMP / 2; mask >= THREADS_PER_KEY; mask /= 2) {
+    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+  }
+
+  const int warp = tid / WARP_SIZE_TMP;
+  const int lane = tid % WARP_SIZE_TMP;
+
+  if (lane == 0) {
+    red_smem[warp] = qk_max;
+  }
+
+  __syncthreads();
+
+  qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
+#pragma unroll
+  for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+  }
+
+  qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
+
+  float exp_sum = 0.f;
+  for (int ti = tid; ti <= params.partition_size; ti += THREADS_PER_BLOCK) {
+    const int time_now = ti + partition_times_timesteps_per_block;
+    /*
+    Here if we processed the seq_idx < act_time_step, it means we processed the
+    KVCache, store in `qk_smem`. if seq_idx == act_time_step, it means the
+    thread processed the new Single Query, Key. store in `qk_current_smem`.
+    */
+    if (time_now < act_time_step && ti != params.partition_size) {
+      float logit = expf(qk_smem[ti] - qk_max);
+      exp_sum += logit;
+      qk_smem[ti] = logit;
+    } else if (time_now == act_time_step) {
+      float logit = expf(qk_current_smem[0] - qk_max);
+      exp_sum += logit;
+      qk_current_smem[0] = logit;
+    }
+  }
+
+  exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
+  // Here store the max logit and exp_sum for rescale in reduce kernel.
+  if (tid == 0) {
+    float *max_logits_ptr = params.max_logits +
+                            bi * params.num_head * params.max_num_partitions +
+                            hi * params.max_num_partitions + partition_idx;
+    *max_logits_ptr = qk_max;
+    float *exp_sums_ptr = params.exp_sums +
+                          bi * params.num_head * params.max_num_partitions +
+                          hi * params.max_num_partitions + partition_idx;
+    *exp_sums_ptr = exp_sum;
+  }
+
+  constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
+  using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
+
+  int vo = tid / THREADS_PER_VALUE;
+  int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
+
+  T *v_cache =
+      &params.cache_kv[params.cache_batch_size * params.gqa_group_size *
+                           params.max_seq_length * Dh +
+                       bi * params.gqa_group_size * params.max_seq_length * Dh +
+                       kv_hi * params.max_seq_length * Dh + vi];
+
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+  using V_vec_acum = typename V_vec_acum_fp32_<V_vec>::Type;
+#else
+  using V_vec_acum = V_vec;
+#endif
+
+  V_vec_acum out;
+  zero(out);
+
+  constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
+  if (Dh == Dh_MAX || vi < Dh) {
+    // for (int ti = vo; ti < act_time_step; ti += V_PER_ITER) {
+    for (int ti = vo; ti < params.partition_size; ti += V_PER_ITER) {
+      // local time idx means the current time step in each threadBlock.
+      int local_time_idx = ti + partition_times_timesteps_per_block;
+
+      // Only local_time_idx < act_time_step, do logits matmul CacheV.
+      const bool is_mask = local_time_idx >= act_time_step;
+      if (!is_mask) {
+        V_vec v;
+        v = *reinterpret_cast<const V_vec *>(&v_cache[local_time_idx * Dh]);
+
+#if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
+        float logit = qk_smem[ti];
+        out = fma(logit, cast_to_float(v), out);
+#else
+        DataType_ logit = static_cast<DataType_>(qk_smem[ti]);
+        // Update the partial sums.
+        out = fma(logit, v, out);
+#endif
+      }
+    }
+  }
+
+  V_vec v_bias;
+  zero(v_bias);
+
+  /*
+  Note(Zhengzekang): Only the Last Block(in gridDim.z axis) need to add [logits
+  x V] result to out. and the new logits will be fetch from
+  `logits_current_smem`  not `logits_smem`.
+
+  We should also notice that each sequence use partition num is different.
+  For example we have 2 sequence, and partition size is 8.
+  - seq0: 8
+  - seq1: 26.
+  We launch blockZ is determined by the max_seqlen / partition_size ->
+  round_up(26 / 8) = 4 For seq0, it only need 1 partition to process, and the
+  Last Block for seq0 is blockIdx.z==0. So here we need to compute Last Block
+  Index for each sequence like:
+
+  - num_partitions = div_up(context_len, params.partition_size);
+
+  And add a condition: (blockIdx.z == num_partitions - 1)
+  */
+  if ((blockIdx.z == num_partitions - 1) &&
+      vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
+    V_vec v;
+    load_func.template load<V_vec>(
+        v,
+        (params.num_head + params.gqa_group_size) * Dh + qkv_base_offset +
+            kv_hi * Dh + vi);
+    if (params.add_qkv_bias) {
+      v_bias = *reinterpret_cast<const V_vec *>(
+          &params.qkv_bias[(params.num_head + params.gqa_group_size) * Dh +
+                           kv_hi * Dh + vi]);
+      v = add(v, v_bias);
+    }
+
+    *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
+
+#if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
+    out = fma(qk_current_smem[0], cast_to_float(v), out);
+#else
+    out = fma(qk_current_smem[0], v, out);
+#endif
+  }
+
+  __syncthreads();
+
+  if (Dh == Dh_MAX || vi < Dh) {
+#pragma unroll
+    for (int active_groups = V_PER_ITER; active_groups >= 2;
+         active_groups /= 2) {
+      int midpoint = active_groups / 2;
+
+      if (vo >= midpoint && vo < active_groups && (Dh == Dh_MAX || vi < Dh)) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+        convert_from_float(
+            *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]),
+            out);
+#else
+        *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]) = out;
+#endif
+      }
+      __syncthreads();
+      if (vo < midpoint && (Dh == Dh_MAX || vi < Dh)) {
+        out =
+            add(*reinterpret_cast<const V_vec *>(&out_smem[vo * Dh + vi]), out);
+      }
+      __syncthreads();
+    }
+  }
+
+  if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
+    // Compute the index to store in `partial_out`.
+    const int32_t store_partial_idx =
+        bi * params.num_head * params.max_num_partitions * Dh +
+        hi * params.max_num_partitions * Dh + partition_idx * Dh + vi;
+    // Actually, we do not need the store_func, just use T vectorized type
+    // `V_vec` to store in params.partial_out.
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+    V_vec tmp_out;
+    convert_from_float(tmp_out, out);
+    *reinterpret_cast<V_vec *>(params.partial_out + store_partial_idx) =
+        tmp_out;
+#else
+    *reinterpret_cast<V_vec *>(params.partial_out + store_partial_idx) = out;
+#endif
+  }
+#else
+  assert(false);
+#endif
+}
+
+template <typename T, int HEAD_SIZE, int THREADS_PER_BLOCK, typename StoreFunc>
+__global__
+__launch_bounds__(THREADS_PER_BLOCK) void multi_block_attention_reduce_kernel(
+    Masked_multihead_attention_params<T> params, StoreFunc store_func) {
+  const int num_heads = params.num_head;
+  const int head_idx = blockIdx.x;
+  const int seq_idx = blockIdx.y;
+  const int context_len = params.sequence_lengths[seq_idx];
+  if (context_len == 0) {
+    return;
+  }
+
+  const int bhi = seq_idx * params.num_head + head_idx;
+  const int ti = params.cum_offsets
+                     ? seq_idx * params.seq_len - params.cum_offsets[seq_idx]
+                     : -1;
+  const int thi = params.cum_offsets ? ti * params.num_head + head_idx : -1;
+
+  const int num_partitions = div_up(context_len, params.partition_size);
+  if (num_partitions == 1) {
+    // No need to reduce. Only copy tmp_out to out.
+    const float *exp_sums_ptr =
+        params.exp_sums + seq_idx * num_heads * params.max_num_partitions +
+        head_idx * params.max_num_partitions;
+    const float inv_global_exp_sum = fdividef(1.0f, exp_sums_ptr[0] + 1e-6f);
+    T *tmp_out_ptr =
+        params.partial_out +
+        seq_idx * num_heads * params.max_num_partitions * HEAD_SIZE +
+        head_idx * params.max_num_partitions * HEAD_SIZE;
+    for (int i = threadIdx.x; i < HEAD_SIZE; i += blockDim.x) {
+      store_func.template store<T>(
+          *(tmp_out_ptr + i),
+          inv_global_exp_sum,
+          thi != -1 ? thi * HEAD_SIZE + i : bhi * HEAD_SIZE + i);
+    }
+    // Terminate the thread block.
+    return;
+  }
+
+  constexpr int NUM_WARPS = THREADS_PER_BLOCK / WARP_SIZE_TMP;
+  const int warp_idx = threadIdx.x / WARP_SIZE_TMP;
+  const int lane = threadIdx.x % WARP_SIZE_TMP;
+
+  // Size: 2 * num_partitions.
+  extern __shared__ char shared_mem[];
+  // Workspace for reduction.
+  __shared__ float red_smem[2 * NUM_WARPS];
+
+  // Load max logits to shared memory.
+  float *shared_max_logits = reinterpret_cast<float *>(shared_mem);
+  const float *max_logits_ptr =
+      params.max_logits + seq_idx * num_heads * params.max_num_partitions +
+      head_idx * params.max_num_partitions;
+  float max_logit = -FLT_MAX;
+  for (int i = threadIdx.x; i < num_partitions; i += blockDim.x) {
+    const float l = max_logits_ptr[i];
+    shared_max_logits[i] = l;
+    max_logit = fmaxf(max_logit, l);
+  }
+  __syncthreads();
+
+  // Get the global max logit.
+  // Reduce within the warp.
+#pragma unroll
+  for (int mask = WARP_SIZE_TMP / 2; mask >= 1; mask /= 2) {
+    max_logit =
+        fmaxf(max_logit, __shfl_xor_sync(uint32_t(-1), max_logit, mask));
+  }
+  if (lane == 0) {
+    red_smem[warp_idx] = max_logit;
+  }
+  __syncthreads();
+  // Reduce across warps.
+  max_logit = lane < NUM_WARPS ? red_smem[lane] : -FLT_MAX;
+#pragma unroll
+  for (int mask = NUM_WARPS / 2; mask >= 1; mask /= 2) {
+    max_logit =
+        fmaxf(max_logit, __shfl_xor_sync(uint32_t(-1), max_logit, mask));
+  }
+  // Broadcast the max value to all threads.
+  max_logit = __shfl_sync(uint32_t(-1), max_logit, 0);
+
+  // Load rescaled exp sums to shared memory.
+  float *exp_sub_maxes =
+      reinterpret_cast<float *>(shared_mem + sizeof(float) * num_partitions);
+  const float *exp_sums_ptr = params.exp_sums +
+                              seq_idx * num_heads * params.max_num_partitions +
+                              head_idx * params.max_num_partitions;
+  float global_exp_sum = 0.0f;
+  for (int i = threadIdx.x; i < num_partitions; i += blockDim.x) {
+    float l = shared_max_logits[i];
+    float exp_sub_max = expf(l - max_logit);
+    float rescaled_exp_sum = exp_sums_ptr[i] * exp_sub_max;
+    global_exp_sum += rescaled_exp_sum;
+    exp_sub_maxes[i] = exp_sub_max;
+  }
+  __syncthreads();
+  global_exp_sum = block_sum<NUM_WARPS>(&red_smem[NUM_WARPS], global_exp_sum);
+  const float inv_global_exp_sum = fdividef(1.0f, global_exp_sum + 1e-6f);
+
+  // Aggregate tmp_out to out.
+  T *tmp_out_ptr = params.partial_out +
+                   seq_idx * num_heads * params.max_num_partitions * HEAD_SIZE +
+                   head_idx * params.max_num_partitions * HEAD_SIZE;
+
+#pragma unroll
+  for (int i = threadIdx.x; i < HEAD_SIZE; i += THREADS_PER_BLOCK) {
+    float acc = 0.0f;
+    for (int j = 0; j < num_partitions; ++j) {
+      acc += static_cast<float>(tmp_out_ptr[j * HEAD_SIZE + i]) *
+             exp_sub_maxes[j] * inv_global_exp_sum;
+    }
+    T acc_val = static_cast<T>(acc);
+    store_func.template store<T>(
+        acc_val, thi != -1 ? thi * HEAD_SIZE + i : bhi * HEAD_SIZE + i);
+  }
+}
+
+template <typename T>
+inline size_t multi_block_attn_smem_size_in_bytes(
+    const Masked_multihead_attention_params<T> &params,
+    int dim_head,
+    int threads_per_value,
+    int threads_per_block) {
+  size_t qk_sz = div_up(params.partition_size, 4) * 4 * sizeof(float);
+
+  size_t logits_table_sz = qk_sz;
+
+  int rows_per_red = threads_per_block / threads_per_value;
+  size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
+
+  return max(logits_table_sz, red_sz);
+}
+
+template <typename T>
+inline size_t get_reduce_smem_size_in_bytes(
+    const Masked_multihead_attention_params<T> &params) {
+  const int32_t max_num_partitions =
+      div_up(params.timestep, params.partition_size);
+  int reduce_shared_mem_size = 2 * max_num_partitions * sizeof(float);
+  VLOG(1) << "get_reduce_smem_size_in_bytes, reduce_shared_mem_size: "
+          << reduce_shared_mem_size;
+  return reduce_shared_mem_size;
+}
+
+#define MBMMHA_LAUNCH_KERNEL(T,                                             \
+                             Dh,                                            \
+                             Dh_MAX,                                        \
+                             THDS_PER_KEY,                                  \
+                             THDS_PER_VALUE,                                \
+                             THDS_PER_BLOCK,                                \
+                             stream,                                        \
+                             load_func,                                     \
+                             reduce_store_func)                             \
+  VLOG(1) << "THREADS_PER_VALUE is: " << THREADS_PER_VALUE                  \
+          << ", partition_size: " << params.partition_size;                 \
+  size_t smem_sz = multi_block_attn_smem_size_in_bytes<T>(                  \
+      params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);                          \
+  dim3 grid(params.num_head,                                                \
+            params.batch_size,                                              \
+            div_up(params.timestep, params.partition_size));                \
+  constexpr auto kernel_fn = multi_block_masked_multihead_attention_kernel< \
+      T,                                                                    \
+      Dh,                                                                   \
+      Dh_MAX,                                                               \
+      THDS_PER_KEY,                                                         \
+      THDS_PER_VALUE,                                                       \
+      THDS_PER_BLOCK,                                                       \
+      decltype(load_func),                                                  \
+      decltype(reduce_store_func)>;                                         \
+  if (smem_sz > 0xc000) {                                                   \
+    cudaFuncSetAttribute(                                                   \
+        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);   \
+  }                                                                         \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
+      params, load_func, reduce_store_func);                                \
+                                                                            \
+  dim3 reduce_kernel_grid(params.num_head, params.batch_size, 1);           \
+  size_t reduce_smem_sz = get_reduce_smem_size_in_bytes<T>(params);         \
+  constexpr int MBLHA_REDUCE_BLOCK_SIZE = 256;                              \
+  constexpr auto reduce_kernel_fn =                                         \
+      multi_block_attention_reduce_kernel<T,                                \
+                                          Dh,                               \
+                                          MBLHA_REDUCE_BLOCK_SIZE,          \
+                                          decltype(reduce_store_func)>;     \
+  reduce_kernel_fn<<<reduce_kernel_grid,                                    \
+                     MBLHA_REDUCE_BLOCK_SIZE,                               \
+                     reduce_smem_sz,                                        \
+                     stream>>>(params, reduce_store_func);
+
+template <typename T,
+          int Dh,
+          int Dh_MAX,
+          typename LoadFunc,
+          typename ReduceStoreFunc>
+void dispatch_mbmmha_impl(const Masked_multihead_attention_params<T> &params,
+                          const cudaStream_t &stream,
+                          LoadFunc load_func,
+                          ReduceStoreFunc reduce_store_func) {
+  constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
+  MBMMHA_LAUNCH_KERNEL(T,
+                       Dh,
+                       Dh_MAX,
+                       1,
+                       THREADS_PER_VALUE,
+                       256,
+                       stream,
+                       load_func,
+                       reduce_store_func)
+}
+
+template <typename T, typename LoadFunc, typename ReduceStoreFunc>
+void dispatch_mbmmha_impl_headsize(
+    const phi::GPUContext &dev_ctx,
+    const Masked_multihead_attention_params<T> &params,
+    int dim_head,
+    LoadFunc load_func,
+    ReduceStoreFunc reduce_store_func,
+    const cudaStream_t &stream) {
+  switch (dim_head) {
+    case 32:
+      dispatch_mbmmha_impl<T, 32, 32>(
+          params, stream, load_func, reduce_store_func);
+      break;
+    case 64:
+      dispatch_mbmmha_impl<T, 64, 64>(
+          params, stream, load_func, reduce_store_func);
+      break;
+    case 128:
+      dispatch_mbmmha_impl<T, 128, 128>(
+          params, stream, load_func, reduce_store_func);
+      break;
+    default:
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+  }
+}
+
+template <typename T>
+void DispatchMBMMHA(const phi::GPUContext &dev_ctx,
+                    const cudaStream_t &stream,
+                    const phi::DenseTensor &qkv_tensor,
+                    const Masked_multihead_attention_params<T> &params,
+                    int num_head,
+                    int dim_head,
+                    phi::DenseTensor *out_tensor) {
+  // In Multi Block Mode, we store partial out val(type is T) into
+  // params.partial_out. Then we do final reduce and postprocess (such quant to
+  // int8.) to save in out_tensor.
+  MMHALoad<T> load_func(qkv_tensor.data<T>());
+  MMHAStore<T> reduce_store_func(out_tensor->data<T>());
+  VLOG(1) << "get into dispatch_mblha_impl_headsize";
+  dispatch_mbmmha_impl_headsize<T,
+                                decltype(load_func),
+                                decltype(reduce_store_func)>(
+      dev_ctx, params, dim_head, load_func, reduce_store_func, stream);
+}
+
+template <typename T>
+void mbfmha(const phi::GPUContext &dev_ctx,
+            const phi::DenseTensor &qkv_tensor,
+            const phi::DenseTensor &qkv_bias_tensor,
+            const phi::DenseTensor *src_mask_tensor,
+            const phi::DenseTensor *cum_offsets_tensor,
+            const phi::DenseTensor *sequence_lengths_tensor,
+            const phi::DenseTensor *rotary_tensor,
+            phi::DenseTensor *cache_kv_tensor,
+            phi::DenseTensor *out_tensor,
+            phi::DenseTensor *partial_max_logits_tensor,
+            phi::DenseTensor *partial_expsum_tensor,
+            phi::DenseTensor *partial_out_tensor,
+            int batch_size,
+            int cache_batch_size,
+            int seq_len,
+            int max_seq_length,
+            int num_head,
+            int dim_head,
+            int timestep,
+            int rotary_emb_dims,
+            float inv_sqrt_dh,
+            const bool mask_broadcast_num_heads = true,
+            const bool add_qkv_bias = true,
+            const bool neox_rotary_style = false,
+            const int gqa_group_size = -1) {
+  VLOG(1) << "MBFMHA is used in FusedMT.";
+  Masked_multihead_attention_params<T> params;
+  cudaStream_t stream = dev_ctx.stream();
+
+  if (gqa_group_size > 0) {
+    params.gqa_group_size = gqa_group_size;
+    params.gqa_num_per_partitions = num_head / gqa_group_size;
+  } else {
+    params.gqa_group_size = num_head;
+    params.gqa_num_per_partitions = 1;
+  }
+  VLOG(1) << "params.gqa_group_size " << params.gqa_group_size;
+  VLOG(1) << "params.gqa_num_per_partitions " << params.gqa_num_per_partitions;
+
+  params.cache_kv = cache_kv_tensor->data<T>();
+  params.neox_rotary_style = neox_rotary_style;
+  if (src_mask_tensor) {
+    params.attn_mask = src_mask_tensor->data<T>();
+    params.mask_length = src_mask_tensor->dims()[3];
+  } else {
+    params.attn_mask = nullptr;
+    params.mask_length = -1;
+  }
+
+  params.exp_sums = partial_expsum_tensor->data<float>();
+  params.max_logits = partial_max_logits_tensor->data<float>();
+  params.partial_out = partial_out_tensor->data<T>();
+
+  if (sequence_lengths_tensor) {
+    params.sequence_lengths = sequence_lengths_tensor->data<int>();
+  }
+
+  if (cum_offsets_tensor) {
+    params.cum_offsets = cum_offsets_tensor->data<int>();
+  } else {
+    params.cum_offsets = nullptr;
+  }
+  params.seq_len = seq_len;
+  if (rotary_emb_dims > 0) {
+    params.rotary_emb = rotary_tensor->data<float>();
+    params.rotary_bsz = rotary_tensor->dims()[1];
+  } else {
+    params.rotary_emb = nullptr;
+    params.rotary_bsz = 0;
+  }
+
+  params.add_qkv_bias = add_qkv_bias;
+  if (add_qkv_bias) {
+    params.qkv_bias = const_cast<T *>(qkv_bias_tensor.data<T>());
+  }
+
+  VLOG(1) << "gqa_group_size " << params.gqa_group_size;
+  VLOG(1) << "gqa_num_per_partitions " << params.gqa_num_per_partitions;
+
+  params.add_qkv_bias = add_qkv_bias;
+  params.batch_size = batch_size;
+  params.cache_batch_size = cache_batch_size;
+  params.num_head = num_head;
+  params.timestep = timestep;
+  params.max_seq_length = max_seq_length;
+  params.inv_sqrt_dh = inv_sqrt_dh;
+  params.rotary_emb_dims = rotary_emb_dims;
+
+  /*
+  Note(Zhengzekang): We preallocate the partial variable by
+  `FLAGS_multi_block_attention_min_partition_size`.
+
+  For align offset, we also compute max_num_partitions by using
+  `FLAGS_multi_block_attention_min_partition_size`.
+  */
+  params.max_num_partitions = div_up(
+      params.timestep,
+      static_cast<int32_t>(FLAGS_multi_block_attention_min_partition_size));
+  params.partition_size = FLAGS_multi_block_attention_min_partition_size;
+
+  DispatchMBMMHA<T>(
+      dev_ctx, stream, qkv_tensor, params, num_head, dim_head, out_tensor);
+}
+
 template <typename T>
 void fmha(const phi::GPUContext &dev_ctx,
           const phi::DenseTensor &qkv_tensor,
@@ -727,6 +1615,7 @@ void fmha(const phi::GPUContext &dev_ctx,
           const bool add_qkv_bias = true,
           const bool neox_rotary_style = false,
           const int gqa_group_size = -1) {
+  VLOG(1) << "FMHA is used in FusedMT.";
   Masked_multihead_attention_params<T> params;
   // params.out = out_tensor->data<T>();
   // params.qkv = qkv_tensor.data<T>();

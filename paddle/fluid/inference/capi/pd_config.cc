@@ -318,22 +318,6 @@ int PD_CpuMathLibraryNumThreads(const PD_AnalysisConfig* config) {
   return config->config.cpu_math_library_num_threads();
 }
 
-void PD_EnableMkldnnQuantizer(PD_AnalysisConfig* config) {
-  PADDLE_ENFORCE_NOT_NULL(
-      config,
-      common::errors::InvalidArgument(
-          "The pointer of analysis configuration shouldn't be nullptr"));
-  config->config.EnableMkldnnQuantizer();
-}
-
-bool PD_MkldnnQuantizerEnabled(const PD_AnalysisConfig* config) {
-  PADDLE_ENFORCE_NOT_NULL(
-      config,
-      common::errors::InvalidArgument(
-          "The pointer of analysis configuration shouldn't be nullptr"));
-  return config->config.mkldnn_quantizer_enabled();
-}
-
 void PD_EnableMkldnnBfloat16(PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(
       config,

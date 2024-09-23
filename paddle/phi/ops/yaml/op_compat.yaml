@@ -1678,6 +1678,13 @@
   outputs:
     {cache_kv_out : CacheKVOut, out : Out}
 
+- op : fused_seqpool_cvm
+  backward: fused_seqpool_cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
+
 - op : fused_transpose
   inputs:
     {x : X}
@@ -2174,6 +2181,20 @@
   outputs:
     {rpn_rois : RpnRois, rpn_roi_probs : RpnRoiProbs, rpn_rois_num : RpnRoisNum}
 
+- op : legacy_matmul (matmul)
+  backward : legacy_matmul_grad (matmul_grad), legacy_matmul_double_grad (matmul_grad_grad)
+  inputs :
+    {x : X, y : Y, out_grad : DOut, x_grad_grad : DDX, y_grad_grad : DDY}
+  attrs :
+    {transpose_x : transpose_X, transpose_y : transpose_Y}
+  outputs :
+    {out : Out, x_grad : DX, y_grad : DY}
+  extra :
+    attrs : [bool use_quantizer = false, str mkldnn_data_type = "float32",
+             float Scale_x = 1.0f, float Scale_y = 1.0f,
+             float Scale_out = 1.0f, bool force_fp32_output = false]
+  complex_promote : [X, Y]
+
 - op : legacy_nearest_interp (nearest_interp)
   backward : legacy_nearest_interp_grad (nearest_interp_grad)
   inputs :
@@ -2331,6 +2352,16 @@
     x : X
   outputs :
     out : Out
+
+- op : lookup_table
+  backward: lookup_table_grad
+  inputs:
+    {w : W, ids : Ids}
+  outputs:
+    out : Out
+  extra:
+    attrs: [int slot = 0]
+  manual_signature : [lookup_table, lookup_table_grad]
 
 - op : lrn
   backward : lrn_grad
@@ -3980,7 +4011,7 @@
     {warpctcgrad : WarpCTCGrad, loss : Loss}
 
 - op : where
-  backward : where_grad
+  backward : where_grad, where_double_grad
   inputs :
     {condition : Condition, x : X, y : Y}
   outputs :
@@ -4420,17 +4451,6 @@
     x : X
   outputs :
     out : Out
-
-- op: moe
-  inputs:
-    x: X
-    gate: Gate
-    bmm0: Bmm0
-    bias0: Bias0
-    bmm1: Bmm1
-    bias1: Bias1
-  outputs:
-    out: Out
 
 - op: nce
   backward: nce_grad

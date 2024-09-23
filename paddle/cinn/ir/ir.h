@@ -1012,6 +1012,71 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
+/**
+ * \brief IterMark is a special ExprNode, which can be used to mark ther entire
+ * ierator. source is a IterSum or iterator. extent is the extent of the
+ * iterator or IterSum.
+ */
+struct IterMark : public ExprNode<IterMark> {
+  IterMark() = default;
+  IterMark(const IterMark& other) : source(other.source), extent(other.extent) {
+    this->set_type(other.type());
+  }
+  IterMark& operator=(const IterMark& other);
+
+  static Expr Make(const Expr& source, const Expr& extent);
+  Type type() const { return source.type(); }
+  Expr source;
+  Expr extent;
+  static const IrNodeTy _node_type_ = IrNodeTy::IterMark;
+};
+
+/**
+ * \brief Split of an iterator.
+ * result = source / lower_factor % extent * scale
+ */
+struct IterSplit : public ExprNode<IterSplit> {
+ public:
+  IterSplit() = default;
+  IterSplit(const IterSplit& other)
+      : source(other.source),
+        lower_factor(other.lower_factor),
+        extent(other.extent),
+        scale(other.scale) {
+    this->set_type(other.type());
+  }
+
+  IterSplit& operator=(const IterSplit& other);
+
+  static Expr Make(const Expr& source,
+                   const Expr& lower_factor,
+                   const Expr& extent,
+                   const Expr& scale);
+  static Expr Make(const Expr& source, const Expr& scale);
+  static Expr Make(const Expr& source);
+
+  Type type() const { return source.type(); }
+  Expr source;
+  Expr lower_factor;
+  Expr extent;
+  Expr scale;
+  static const IrNodeTy _node_type_ = IrNodeTy::IterSplit;
+};
+
+/**
+ * \brief sum of IterSplit.
+ * result = sum(args) + base
+ */
+struct IterSum : public ExprNode<IterSum> {
+ public:
+  IterSum() = default;
+  static Expr Make(const std::vector<Expr>& args, const Expr& base);
+  Type type() const { return base.type(); }
+  std::vector<Expr> args;
+  Expr base;
+  static const IrNodeTy _node_type_ = IrNodeTy::IterSum;
+};
+
 struct NoneReduceMethod {};
 struct WarpReduceMethod {};
 struct BlockReduceMethod {};
