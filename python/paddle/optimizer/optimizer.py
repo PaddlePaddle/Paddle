@@ -140,8 +140,8 @@ class Optimizer:
             then the parameters are list of dict. Note that the learning_rate in parameter groups \
             represents the scale of base learning_rate. \
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
-            It can be a float value as coeff of L2 regularization or \
+        weight_decay (int|float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
+            It can be a int or float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
@@ -262,6 +262,8 @@ class Optimizer:
                 )
         if isinstance(weight_decay, float):
             self.regularization = L2Decay(weight_decay)
+        elif isinstance(weight_decay, int):
+            self.regularization = L2Decay(float(weight_decay))
         else:
             self.regularization = weight_decay
         self._grad_clip = grad_clip

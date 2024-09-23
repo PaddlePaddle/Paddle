@@ -25,6 +25,7 @@ from paddle.base.core import AnalysisConfig
 
 class FCFusePassTRTTest(InferencePassTest):
     def setUp(self):
+        paddle.enable_static()
         with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128, 2, 2], dtype="float32"

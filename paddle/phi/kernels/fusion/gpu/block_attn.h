@@ -4038,10 +4038,10 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
                                                 const int seq_len,
                                                 const int pre_cache_length,
                                                 const int token_num,
-                                                const int head_num,
+                                                const int q_head_num,
+                                                const int kv_head_num,
                                                 const int size_per_head) {
-  const int32_t hidden_size = head_num * size_per_head;
-  const int32_t fused_hidden_size = 3 * hidden_size;
+  const int fused_hidden_size = (q_head_num + 2 * kv_head_num) * size_per_head;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
@@ -4059,22 +4059,33 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
     if (seq_lens[target_batch_id] == 0) continue;
     const int32_t seq_id = ori_token_idx % seq_len;
 
-    const int32_t qkv_id = bias_idx / hidden_size;
-    const int32_t head_id = (linear_index % hidden_size) / size_per_head;
+    const int32_t head_id = bias_idx / size_per_head;
     const int32_t size_id = linear_index % size_per_head;
 
     const int tmp_max_len_this_time =
-        max_len_this_time + (qkv_id == 0 ? 0 : pre_cache_length);
-    const int tmp_seq_id = qkv_id == 0 ? seq_id : seq_id + pre_cache_length;
-    const int write_idx =
-        target_batch_id * head_num * tmp_max_len_this_time * size_per_head +
-        head_id * tmp_max_len_this_time * size_per_head +
-        tmp_seq_id * size_per_head + size_id;
-    if (qkv_id == 0) {
+        max_len_this_time + (head_id < q_head_num ? 0 : pre_cache_length);
+    const int tmp_seq_id =
+        head_id < q_head_num ? seq_id : seq_id + pre_cache_length;
+
+    if (head_id < q_head_num) {
+      const int write_idx =
+          target_batch_id * q_head_num * tmp_max_len_this_time * size_per_head +
+          head_id * tmp_max_len_this_time * size_per_head +
+          tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &q_buf[write_idx]);
-    } else if (qkv_id == 1) {
+    } else if (head_id < q_head_num + kv_head_num) {
+      const int write_idx =
+          target_batch_id * kv_head_num * tmp_max_len_this_time *
+              size_per_head +
+          (head_id - q_head_num) * tmp_max_len_this_time * size_per_head +
+          tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &k_buf[write_idx]);
     } else {
+      const int write_idx = target_batch_id * kv_head_num *
+                                tmp_max_len_this_time * size_per_head +
+                            (head_id - q_head_num - kv_head_num) *
+                                tmp_max_len_this_time * size_per_head +
+                            tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &v_buf[write_idx]);
     }
   }
@@ -4093,12 +4104,14 @@ void qkv_transpose_split(
     const int *seq_lens,
     const int token_num,
     const int batch_size,
-    const int head_num,
+    const int q_head_num,
+    const int kv_head_num,
     const int max_len_this_time,
     const int seq_len,
     const int pre_cache_length,
     const int size_per_head) {
-  int32_t elem_cnt = token_num * head_num * size_per_head * 3;
+  int32_t elem_cnt = token_num * (q_head_num + kv_head_num * 2) * size_per_head;
+
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
@@ -4123,11 +4136,12 @@ void qkv_transpose_split(
                                                       seq_len,
                                                       pre_cache_length,
                                                       token_num,
-                                                      head_num,
+                                                      q_head_num,
+                                                      kv_head_num,
                                                       size_per_head);
   if (pre_key_cache) {
     // stage 2: write pre_cache to kv_buf
-    elem_cnt = batch_size * head_num * pre_cache_length * size_per_head * 2;
+    elem_cnt = batch_size * q_head_num * pre_cache_length * size_per_head * 2;
     pack_num = elem_cnt / PackSize;
     GetNumBlocks(pack_num, &grid_size);
     write_pre_cahe_to_kv_buffer<T, PackSize>
@@ -4138,7 +4152,7 @@ void qkv_transpose_split(
                                                         seq_lens,
                                                         batch_size,
                                                         pre_cache_length,
-                                                        head_num,
+                                                        kv_head_num,
                                                         size_per_head,
                                                         max_len_this_time,
                                                         elem_cnt);
