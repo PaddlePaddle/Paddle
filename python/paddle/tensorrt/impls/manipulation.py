@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import numpy as np
 import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
@@ -205,3 +206,124 @@ def squeeze_converter(network, paddle_op, inputs):
     layer = network.add_shuffle(input_val)
     layer.reshape_dims = tuple(output_shape)
     return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.slice", trt_version="8.x")
+def slice_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    input_shape = paddle_op.operands()[0].source().shape
+
+    axes = paddle_op.attrs()["axes"]
+    decrease_axis = paddle_op.attrs().get("decrease_axis")
+    
+    starts_op =paddle_op.operands()[1].source().get_defining_op()
+    ends_op =paddle_op.operands()[2].source().get_defining_op()
+    if starts_op.name() =="pd_op.full_int_array":
+        starts=starts_op.attrs()["value"]
+    else:
+        starts=inputs[1]
+        ends=inputs[2]
+        
+    starts = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    ends = paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
+
+    input_shape_tensor = network.add_shape(input_tensor).get_output(0)
+    input_rank = len(input_tensor.shape)
+
+    # Create start, size, stride tensors
+    start = []
+    size = []
+    stride = [1] * input_rank  # Default to 1
+
+    for i in range(input_rank):
+        if i in axes:
+            idx = axes.index(i)
+            start_idx = starts[idx]
+            end_idx = ends[idx]
+
+            # Get the size of the current dimension
+            dim_size = network.add_slice(
+                input_shape_tensor, [i], [1], [1]
+            ).get_output(0)
+
+            if start_idx < 0:
+                start_i = network.add_elementwise(
+                    dim_size,
+                    network.add_constant(
+                        [1], np.array([start_idx], dtype=np.int32)
+                    ).get_output(0),
+                    trt.ElementWiseOperation.SUM,
+                ).get_output(0)
+            else:
+                start_i = network.add_constant(
+                    [1], np.array([start_idx], dtype=np.int32)
+                ).get_output(0)
+
+            if end_idx < 0:
+                end_i = network.add_elementwise(
+                    dim_size,
+                    network.add_constant(
+                        [1], np.array([end_idx], dtype=np.int32)
+                    ).get_output(0),
+                    trt.ElementWiseOperation.SUM,
+                ).get_output(0)
+            else:
+                end_i = network.add_constant(
+                    [1], np.array([end_idx], dtype=np.int32)
+                ).get_output(0)
+
+            size_i = network.add_elementwise(
+                end_i, start_i, trt.ElementWiseOperation.SUB
+            ).get_output(0)
+            start.append(start_i)
+            size.append(size_i)
+        else:
+            # For unsliced dimensions, start is 0 and size is the dimension's size
+            start.append(
+                network.add_constant(
+                    [1], np.array([0], dtype=np.int32)
+                ).get_output(0)
+            )
+            size.append(
+                network.add_slice(input_shape_tensor, [i], [1], [1]).get_output(
+                    0
+                )
+            )
+
+    start_tensor = network.add_concatenation(start)
+    start_tensor.axis = 0
+    size_tensor = network.add_concatenation(size)
+    size_tensor.axis = 0
+
+    # Create Slice layer
+    slice_layer = network.add_slice(
+        input_tensor, [0] * input_rank, [0] * input_rank, [1] * input_rank
+    )
+    slice_layer.set_input(1, start_tensor.get_output(0))
+    slice_layer.set_input(2, size_tensor.get_output(0))
+
+    output_tensor = slice_layer.get_output(0)
+
+    # Handle decrease_axis
+    if decrease_axis:
+        output_shape = network.add_shape(output_tensor).get_output(0)
+        new_shape_dims = []
+        for i in range(output_shape.shape[0]):
+            if i not in decrease_axis:
+                dim = network.add_slice(output_shape, [i], [1], [1]).get_output(
+                    0
+                )
+                new_shape_dims.append(dim)
+        if len(new_shape_dims) == 0:
+            new_shape_tensor = network.add_constant(
+                [1], np.array([1], dtype=np.int32)
+            )
+        else:
+            new_shape_tensor = network.add_concatenation(new_shape_dims)
+            new_shape_tensor.axis = 0
+
+        reshape_layer = network.add_shuffle(output_tensor)
+        reshape_layer.set_input(1, new_shape_tensor.get_output(0))
+        output_tensor = reshape_layer.get_output(0)
+
+    return output_tensor
