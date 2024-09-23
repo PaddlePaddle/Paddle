@@ -48,7 +48,9 @@ from paddle.distributed.auto_parallel.static.dist_context import (
 from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
 from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
+    fuse_param_func,
     get_dist_attr,
+    split_param_func,
     to_list,
 )
 from paddle.framework import core
@@ -2437,9 +2439,7 @@ class DistModel:
                 for key, pat_list in self._engine.fused_ffn_qkv.items():
                     # Traverse each fusion pattern dict, such as: fused_p1_p2:[p1, p2].
                     for fusion_map in pat_list:
-                        ((fused_param, ori_params), (shape, shape_list)) = (
-                            fusion_map.items()
-                        )
+                        ((fused_param, ori_params_meta),) = fusion_map.items()
                         origin_params = list(dist_state_dict.keys())
                         for param in origin_params:
                             suffix = _get_suffix(param, fused_param)
@@ -2452,24 +2452,38 @@ class DistModel:
                                 placements = value.placements
                                 if "_pow_acc" in suffix:
                                     out = (value._local_value(),) * len(
-                                        ori_params
+                                        ori_params_meta
                                     )
                                 else:
-                                    out = paddle.split(
+                                    if len(ori_params_meta) == 3:
+                                        is_qkv = True
+                                        num_heads = ori_params_meta[
+                                            0
+                                        ].local_num_head
+                                        num_key_value_heads = ori_params_meta[
+                                            1
+                                        ].local_num_head
+                                    else:
+                                        is_qkv = False
+                                        num_heads = None
+                                        num_key_value_heads = None
+                                    out = split_param_func(
                                         value._local_value(),
-                                        num_or_sections=shape_list,
-                                        axis=-1,
+                                        split_nums=len(ori_params_meta),
+                                        is_qkv=is_qkv,
+                                        num_heads=num_heads,
+                                        num_key_value_heads=num_key_value_heads,
                                     )
-                                for i in range(len(ori_params)):
+                                for i in range(len(ori_params_meta)):
                                     dist_tensor = dtensor_from_local(
                                         out[i], mesh, placements
                                     )
                                     paddle.assign(
                                         out[i], dist_tensor._local_value()
                                     )
-                                    dist_state_dict[ori_params[i] + suffix] = (
-                                        dist_tensor
-                                    )
+                                    dist_state_dict[
+                                        ori_params_meta[i].name + suffix
+                                    ] = dist_tensor
                                 dist_state_dict.pop(param)
 
         mapping_names = [
@@ -2563,11 +2577,11 @@ class DistModel:
                 for key, pat_list in self._engine.fused_ffn_qkv.items():
                     # Traverse each fusion pattern dict, such as: fused_p1_p2:[p1, p2].
                     for fusion_map in pat_list:
-                        ((fused_param, ori_params),) = fusion_map.items()
+                        ((fused_param, ori_params_meta),) = fusion_map.items()
                         # Obtain all the parameters to be fused, differentiated by suffixes, such as: beta1_pow_acc_0, _fp32_master_0_moment1_0.
                         suffix_names = []
                         for k, v in local_state_dict.items():
-                            suffix = _get_suffix(ori_params[0], k)
+                            suffix = _get_suffix(ori_params_meta[0].name, k)
                             if suffix is not None:
                                 suffix_names.append(suffix)
                         if len(suffix_names) == 0:
@@ -2575,27 +2589,43 @@ class DistModel:
                         # Traverse through each parameter for fusion, insert the fused parameters, and delete the pre-fusion parameters.
                         for suffix in suffix_names:
                             concat_tensors = []
-                            for ori_p in ori_params:
-                                if ori_p + suffix not in local_state_dict:
+                            for ori_p in ori_params_meta:
+                                if ori_p.name + suffix not in local_state_dict:
                                     warnings.warn(
-                                        f"{ori_p + suffix} is not in state_dict."
+                                        f"{ori_p.name + suffix} is not in state_dict."
                                     )
                                     break
                                 else:
                                     concat_tensors.append(
-                                        local_state_dict[ori_p + suffix]
+                                        local_state_dict[ori_p.name + suffix]
                                     )
-                            if len(concat_tensors) == len(ori_params):
+                            if len(concat_tensors) == len(ori_params_meta):
                                 if "_pow_acc" in suffix:
                                     fused_w = concat_tensors[0]
                                 else:
-                                    fused_w = paddle.concat(
-                                        concat_tensors, axis=-1
+                                    if len(ori_params_meta) == 3:
+                                        is_qkv = True
+                                        num_heads = ori_params_meta[
+                                            0
+                                        ].local_num_head
+                                        num_key_value_heads = ori_params_meta[
+                                            1
+                                        ].local_num_head
+                                    else:
+                                        is_qkv = False
+                                        num_heads = None
+                                        num_key_value_heads = None
+                                    fused_w = fuse_param_func(
+                                        concat_tensors,
+                                        is_qkv=is_qkv,
+                                        num_heads=num_heads,
+                                        num_key_value_heads=num_key_value_heads,
                                     )
+
                                 local_state_dict[fused_param + suffix] = (
                                     _to_lodtensor(fused_w)
                                 )
-                                for ori_p in ori_params:
+                                for ori_p in ori_params_meta:
                                     local_state_dict.pop(ori_p + suffix)
 
         dist_main_program.set_state_dict(

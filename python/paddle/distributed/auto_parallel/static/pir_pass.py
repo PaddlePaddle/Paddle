@@ -17,8 +17,6 @@ import logging
 import re
 from dataclasses import dataclass
 
-import numpy as np
-
 import paddle
 from paddle import pir
 from paddle.autograd.backward_utils import ValueDict
@@ -36,6 +34,7 @@ from .reshard_funcs.base_reshard_func import (
 )
 from .reshard_funcs.reshard_func_register import register_reshard_funcs
 from .utils import (
+    fuse_param_func,
     get_pp_stage_by_pp_degree,
     get_pp_stage_by_process_mesh,
     get_sub_process_mesh_by_program,
@@ -1073,131 +1072,6 @@ def get_param_op(program, param_name):
             return [all_ops[i], all_ops[i].operand_source(0).get_defining_op()]
 
 
-def fuse_param_func(
-    fuse_params, is_qkv=False, num_heads=None, num_key_value_heads=None
-):
-    """fuse function for fusing weights
-
-    (1) fuse_attention_qkv
-        q => [q1,q2,q3,q4]
-        k => [k1,k2,k3,k4] or [k1,k2] for GQA
-        v => [v1,v2,v3,v4] or [v1,v2] for GQA
-        fused weight => [q1,k1,v1,q2,k2,v2,q3,k3,v3,q4,k4,v4]
-                or for GQA [q1,q2,k1,v1,q3,q4,k2,v2]
-    (2) fuse_attention_ffn
-        directly fuse weights to 1 parts
-        [gate_weight], [up_weight] => [gate_weight, up_weight]
-
-    Args:
-        fuse_params (_type_): to be fused weights
-        is_qkv (bool, optional): for attention qkv weights. Defaults to False.
-        num_heads (_type_, optional): query heads. Defaults to None.
-        num_key_value_heads (_type_, optional): key and value heads. Defaults to None.
-
-    Returns:
-        _type_: fused weights
-    """
-    concat_fn = np.concatenate
-    split_fn = np.split
-    if isinstance(fuse_params[0], paddle.Tensor):
-        concat_fn = paddle.concat
-        split_fn = paddle.split
-
-    if is_qkv:
-        # fuse_attention_qkv
-        assert (
-            num_heads
-        ), f"num_heads should be number of heads for Q, but got {num_heads}"
-        assert (
-            num_key_value_heads
-        ), f"num_key_value_heads should be number of key_value_heads for K and V, but got {num_key_value_heads}"
-        assert (
-            len(fuse_params) == 3
-        ), f"fuse_params length is not equal 3, it should be Q K V list. but got length {len(fuse_params)}"
-        num_query_groups = num_heads // num_key_value_heads
-        q_list = split_fn(fuse_params[0], num_heads, axis=-1)
-        k_list = split_fn(fuse_params[1], num_key_value_heads, axis=-1)
-        v_list = split_fn(fuse_params[2], num_key_value_heads, axis=-1)
-
-        qkv_pairs = []
-        for i in range(num_key_value_heads):
-            qkv_pairs += q_list[
-                i * num_query_groups : (i + 1) * num_query_groups
-            ]
-            qkv_pairs.append(k_list[i])
-            qkv_pairs.append(v_list[i])
-        return concat_fn(qkv_pairs, axis=-1)
-    else:
-        # fuse_attention_ffn
-        return concat_fn(fuse_params, axis=-1)
-
-
-def split_param_func(
-    fused_param,
-    split_nums=2,
-    is_qkv=False,
-    num_heads=None,
-    num_key_value_heads=None,
-):
-    """split function for splitting weights
-
-    (1) fuse_attention_qkv
-        fused weight => [q1,k1,v1,q2,k2,v2,q3,k3,v3,q4,k4,v4]
-                or for GQA [q1,q2,k1,v1,q3,q4,k2,v2]
-        after split
-        q => [q1,q2,q3,q4]
-        k => [k1,k2,k3,k4] or [k1,k2] for GQA
-        v => [v1,v2,v3,v4] or [v1,v2] for GQA
-    (2) fuse_attention_ffn
-        directly split weight to 2 parts
-        [gate_weight, up_weight] => [gate_weight], [up_weight]
-
-    Args:
-        fused_param (_type_): len(fused_param)=1, only one weight to be splitted
-        split_nums (int, optional): split_nums. Defaults to 2.
-        is_qkv (bool, optional): for attention qkv weights. Defaults to False.
-        num_heads (_type_, optional): query heads. Defaults to None.
-        num_key_value_heads (_type_, optional): key and value heads. Defaults to None.
-
-    Returns:
-        _type_: splitted weights
-    """
-    concat_fn = np.concatenate
-    split_fn = np.split
-    if isinstance(fused_param, paddle.Tensor):
-        concat_fn = paddle.concat
-        split_fn = paddle.split
-
-    if is_qkv:
-        # fuse_attention_qkv
-        assert (
-            num_heads
-        ), f"num_heads should be number of heads for Q, but got {num_heads}"
-        assert (
-            num_key_value_heads
-        ), f"num_key_value_heads should be number of key_value_heads for K and V, but got {num_key_value_heads}"
-        num_query_groups = num_heads // num_key_value_heads
-        q_list, k_list, v_list = [], [], []
-        split_heads = split_fn(
-            fused_param, num_heads + 2 * num_key_value_heads, axis=-1
-        )
-        for i in range(num_key_value_heads):
-            q_list += split_heads[
-                i * (num_query_groups + 2) : (i + 1) * (num_query_groups + 2)
-                - 2
-            ]
-            k_list.append(split_heads[(i + 1) * (num_query_groups + 2) - 2])
-            v_list.append(split_heads[(i + 1) * (num_query_groups + 2) - 1])
-        return (
-            concat_fn(q_list, axis=-1),
-            concat_fn(k_list, axis=-1),
-            concat_fn(v_list, axis=-1),
-        )
-    else:
-        # fuse_attention_ffn
-        return split_fn(fused_param, split_nums, axis=-1)
-
-
 @dataclass
 class ParamMeta:
     name: str = None
@@ -1370,7 +1244,6 @@ def fuse_attention_ffn_qkv_pass(
             reshape_k.result(0).shape[-1],
             reshape_v.result(0).shape[-1],
         ]
-
         fusion_w_name = f"fused_{mm_q.operand_source(1).name}_{mm_k.operand_source(1).name}_{mm_v.operand_source(1).name}"
         fusion_map["qkv"].append(
             {
@@ -1396,7 +1269,6 @@ def fuse_attention_ffn_qkv_pass(
                 ]
             }
         )
-
         fusion_w_dtype = mm_q.operand_source(1).dtype
         fusion_w_shape = mm_q.operand_source(1).shape
         fusion_w_shape[-1] += (
@@ -1442,7 +1314,6 @@ def fuse_attention_ffn_qkv_pass(
                     ]
                 }
             )
-
             fusion_bias_dtype = add_q.operand_source(1).dtype
             fusion_bias_shape = add_q.operand_source(1).shape
             fusion_bias_shape[-1] += (
@@ -1475,20 +1346,50 @@ def fuse_attention_ffn_qkv_pass(
         if add_q is not None and add_k is not None and add_v is not None:
             fused_o = paddle.add(fused_o, fused_bias)
             fused_o.get_defining_op().copy_attrs_from(add_q)
-        out = paddle.reshape_(
+        out = paddle.reshape(
             fused_o,
-            shape=[0, 0, -1, reshape_q.result(0).shape[-1]],
+            shape=[
+                0,
+                0,
+                reshape_k.result(0).shape[-2],
+                int(
+                    (
+                        reshape_q.result(0).shape[-2]
+                        / reshape_k.result(0).shape[-2]
+                        + 2
+                    )
+                    * reshape_q.result(0).shape[-1]
+                ),
+            ],
         )
         out.get_defining_op().copy_attrs_from(reshape_q)
         out_q, out_k, out_v = paddle.split(
             out,
             num_or_sections=[
-                reshape_q.result(0).shape[-2],
-                reshape_k.result(0).shape[-2],
-                reshape_v.result(0).shape[-2],
+                int(
+                    (
+                        reshape_q.result(0).shape[-2]
+                        / reshape_k.result(0).shape[-2]
+                    )
+                    * reshape_q.result(0).shape[-1]
+                ),
+                reshape_k.result(0).shape[-1],
+                reshape_v.result(0).shape[-1],
             ],
-            axis=-2,
+            axis=-1,
         )
+        if reshape_q.result(0).shape[-2] != reshape_k.result(0).shape[-2]:
+            out_q = paddle.reshape(
+                out_q,
+                shape=[
+                    0,
+                    0,
+                    reshape_q.result(0).shape[-2],
+                    reshape_q.result(0).shape[-1],
+                ],
+            )
+            out_q.get_defining_op().copy_attrs_from(reshape_q)
+
         reshape_q.result(0).replace_all_uses_with(out_q)
         reshape_k.result(0).replace_all_uses_with(out_k)
         reshape_v.result(0).replace_all_uses_with(out_v)
@@ -1537,7 +1438,6 @@ def fuse_attention_ffn_qkv_pass(
                             dy_param.local_shape[-1] // dy_param.local_head_dims
                         )
                     concated_dy_param_index.append(param_index)
-
                 # Fuse params and init pir program fusion params.
                 with paddle.base.dygraph.guard():
                     if len(dy_param_list) == 3:
@@ -1548,7 +1448,6 @@ def fuse_attention_ffn_qkv_pass(
                         is_qkv = False
                         num_heads = None
                         num_key_value_heads = None
-
                     concated_param = fuse_param_func(
                         [obj._local_value() for obj in concated_dy_param_list],
                         is_qkv=is_qkv,
