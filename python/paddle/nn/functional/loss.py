@@ -573,6 +573,12 @@ def edit_distance(
 
     helper = LayerHelper("edit_distance", **locals())
 
+    # remove some tokens from input and labels
+    if ignored_tokens is not None and len(ignored_tokens) > 0:
+        raise ValueError(
+            f'Expected ignored_tokens is None (got {ignored_tokens})'
+        )
+
     if in_dynamic_mode():
         return _C_ops.edit_distance(
             input, label, input_length, label_length, normalized
