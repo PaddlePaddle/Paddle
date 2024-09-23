@@ -51,6 +51,7 @@ function gen_full_html_report_cinn(){
         '/paddle/paddle/cinn/hlir/*' \
         '/paddle/paddle/cinn/ir/*' \
         '/paddle/paddle/cinn/lang/*' \
+        '/paddle/paddle/cinn/operator_fusion/*' \
         '/paddle/paddle/cinn/optim/*' \
         '/paddle/paddle/cinn/poly/*' \
         '/paddle/paddle/cinn/pybind/*' \
