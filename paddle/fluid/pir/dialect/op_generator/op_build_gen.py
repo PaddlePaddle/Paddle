@@ -59,6 +59,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'ConcatInferMeta',
     'DeformableConvInferMeta',
     'FusedBiasActInferMeta',
+    'FusedLayerNormInferMeta',
     'InterpolateInferMeta',
     'NceInferMeta',
     'SigmoidCrossEntropyWithLogitsInferMeta',
