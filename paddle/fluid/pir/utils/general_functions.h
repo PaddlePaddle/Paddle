@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/phi/common/place.h"
+#include "paddle/pir/include/core/parameter.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/pass/pass.h"
 
