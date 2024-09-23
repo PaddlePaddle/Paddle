@@ -12,24 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fake_quantize_op.h"
-
-#include <algorithm>
-#include <string>
-
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/common/transform.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/impl/clip_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct Compare {
- public:
-  bool operator()(const T a, const T b) { return (std::abs(a) < std::abs(b)); }
-};
 
 class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
  public:
@@ -139,7 +126,6 @@ class StraightThroughEstimatorMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     moving_average_abs_max_scale,
