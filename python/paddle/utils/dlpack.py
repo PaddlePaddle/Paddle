@@ -88,13 +88,14 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             <capsule object "used_dltensor" at 0x7f6103c681b0>
 
             >>> # doctest: +SKIP('torch will not be installed')
+            >>> # type: ignore
             >>> # convert tensor from paddle to other framework using to_dlpack
             >>> import torch
             >>> x = paddle.randn([2, 4]).to(device="cpu")
             >>> y = torch.from_dlpack(paddle.utils.dlpack.to_dlpack(x))
             >>> print(y.shape)
             torch.Size([2, 4])
-            >>> #doctest: -SKIP
+            >>> # doctest: -SKIP
     """
 
     if in_dygraph_mode():
