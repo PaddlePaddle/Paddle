@@ -42,7 +42,8 @@ void AddmmGradKernel(const Context& dev_ctx,
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
 
-  xpu::constant(xpu_ctx, reinterpret_cast<XPUType*>(input_grad->data<T>()), input.numel(), (XPUType)(beta));
+  int r = xpu::constant(xpu_ctx, reinterpret_cast<XPUType*>(input_grad->data<T>()), input.numel(), (XPUType)(beta));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   XpuFcInfo info_forward;
   GetFCInfo(x.dims(), y.dims(), false, false, &info_forward);

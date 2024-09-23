@@ -158,7 +158,7 @@ static void GetFCInfo(const phi::DDim& x_dims,
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(new_x_dims, 0, trans_x);
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(new_y_dims, 0, trans_y);
 
-  PADDLE_ENFORCE_EQ(mat_dim_a.width_ == mat_dim_b.height_ && mat_dim_a.height_ == mat_dim_b.width_,
+  PADDLE_ENFORCE_EQ(mat_dim_a.width_ == mat_dim_b.height_,
                     true,
                     common::errors::InvalidArgument(
                         "Shape mistake in matmul_op xdims = %s ydims = %s "

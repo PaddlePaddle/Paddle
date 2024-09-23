@@ -30,11 +30,10 @@ void AddmmKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
+  //phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
-
-  phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
 
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -43,6 +42,24 @@ void AddmmKernel(const Context& dev_ctx,
   GetFCInfo(x_dims, y_dims, false, false, &fc_info);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  T* tmp = RAII_GUARD.alloc_l3_or_gm<T>(input.numel());
+  int r = xpu::scale(dev_ctx.x_context(),
+                     reinterpret_cast<const XPUType*>(input.data<T>()),
+                     reinterpret_cast<XPUType*>(tmp),
+                     out->numel(),
+                     true,
+                     beta,
+                     0.f);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+  r = xpu::broadcast_add(dev_ctx.x_context(),
+                             out_ptr,
+                             reinterpret_cast<XPUType*>(tmp),
+                             out_ptr,
+                             {out->numel()},
+                             {out->numel()});
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 }
 }  // namespace phi
 
