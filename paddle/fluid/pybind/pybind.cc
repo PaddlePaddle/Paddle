@@ -1072,11 +1072,7 @@ void BindDecompVjp(pybind11::module *m) {
     for (size_t i = 0; i < decomp_res.size(); ++i) {
       py::list sub_res;
       for (size_t j = 0; j < decomp_res[i].size(); ++j) {
-        if (!decomp_res[i][j]) {
-          sub_res.append(nullptr);
-        } else {
-          sub_res.append(decomp_res[i][j]);
-        }
+        sub_res.append(decomp_res[i][j]);
       }
       res.append(sub_res);
     }
