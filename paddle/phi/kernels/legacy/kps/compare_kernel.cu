@@ -40,6 +40,7 @@ inline void CompareRawKernelImpl(const Context& ctx,
                                  DenseTensor* out) {
   ctx.template Alloc<bool>(out);
   out->set_type(phi::DataType::BOOL);
+  if (out->numel() == 0) return;
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{out};
   funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);

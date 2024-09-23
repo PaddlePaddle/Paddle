@@ -37,6 +37,7 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   outputs.emplace_back(out);
   dev_ctx.Alloc<OutT>(out);
   out->set_type(out_dtype);
+  if (out->numel() == 0) return;
   phi::funcs::ElementwiseKernel<OutT>(
       dev_ctx, inputs, &outputs, CastFunctor<InT, OutT>());
 }
