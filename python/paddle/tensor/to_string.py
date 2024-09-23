@@ -293,10 +293,10 @@ def mask_xpu_bf16_tensor(np_tensor):
 def _format_dense_tensor(tensor, indent):
     dtype = tensor.dtype
     if (
-        tensor.dtype == paddle.bfloat16
-        or tensor.dtype == core.VarDesc.VarType.BF16
-        or tensor.dtype == core.VarDesc.VarType.FP8_E4M3FN
-        or tensor.dtype == core.VarDesc.VarType.FP8_E5M2
+        dtype == paddle.bfloat16
+        or dtype == core.VarDesc.VarType.BF16
+        or dtype == core.VarDesc.VarType.FP8_E4M3FN
+        or dtype == core.VarDesc.VarType.FP8_E5M2
     ):
         tensor = tensor.astype('float32')
 
