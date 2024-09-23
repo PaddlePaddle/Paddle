@@ -33,6 +33,15 @@ SpmdInfo ScatterInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  bool overwrite);
 
+SpmdInfo ScatterNdAddInferSpmd(const DistMetaTensor& x,
+                               const DistMetaTensor& index,
+                               const DistMetaTensor& updates);
+
+SpmdInfo ScatterNdAddInferSpmdReverse(const DistMetaTensor& x,
+                                      const DistMetaTensor& index,
+                                      const DistMetaTensor& updates,
+                                      const DistMetaTensor& out);
+
 SpmdInfo ScatterGradInferSpmd(const DistMetaTensor& index,
                               const DistMetaTensor& updates,
                               const DistMetaTensor& out_grad,

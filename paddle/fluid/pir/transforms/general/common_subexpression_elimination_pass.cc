@@ -638,3 +638,6 @@ std::unique_ptr<Pass> CreateCommonSubexpressionEliminationPass() {
 }
 
 }  // namespace pir
+
+REGISTER_IR_PASS(common_subexpression_elimination_pass,
+                 CommonSubexpressionEliminationPass);
