@@ -1533,7 +1533,7 @@ bool FlashAttnQKVPackedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &qkv_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  std::vector<symbol::DimExpr> &qkv_shape = qkv_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &qkv_shape = qkv_shape_or_data.shape();
 
   auto round_multiple = [](symbol::DimExpr x) {
     auto m = symbol::DimExpr{128};
