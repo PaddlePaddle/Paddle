@@ -980,10 +980,6 @@ def divide_(
         raise ValueError(
             f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
-    if x.dtype in [paddle.float32, paddle.float64]:
-        x = x.astype(paddle.float32)
-    if y.dtype in [paddle.float32, paddle.float64]:
-        y = y.astype(paddle.float32)
     if rounding_mode == "floor":
         return floor_divide_(x, y)
     out_shape = broadcast_shape(x.shape, y.shape)
