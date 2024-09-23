@@ -1664,6 +1664,8 @@ bool FusedAttentionOpInferSymbolicShape(
               {x_shape[0],
                x_shape[1],
                symbol::DimExpr(3) * num_heads * dim_head})});
+    } else {
+      infer_context->SetSymbolForValueByStaticShape(op->result(4));
     }
   } else {
     // [batch_size, seq_len, 3, num_head, head_size]
@@ -1684,6 +1686,8 @@ bool FusedAttentionOpInferSymbolicShape(
                                                  symbol::DimExpr(3),
                                                  num_heads,
                                                  dim_head})});
+    } else {
+      infer_context->SetSymbolForValueByStaticShape(op->result(4));
     }
   }
 
@@ -1739,6 +1743,8 @@ bool FusedAttentionOpInferSymbolicShape(
         op->result(11),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
             {x_shape[0], num_heads, x_shape[1], out_seq_len})});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(11));
   }
 
   // the same as QKOut's shape
