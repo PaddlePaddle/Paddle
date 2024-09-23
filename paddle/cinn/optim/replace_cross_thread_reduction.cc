@@ -87,7 +87,8 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     for (int i = 0; i < cur_loops_.size(); ++i) {
       if (is_thread_binded_inner_loop ||
           IsThreadBindOnReduceAxis(cur_loops_[i].As<ir::For>())) {
-        if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
+        int loop_extent = ir::GetLoopExtent(cur_loops_[i]);
+        if (loop_extent > 1024 || loop_extent == 1) {
           return false;
         }
 
