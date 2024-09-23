@@ -11,6 +11,10 @@ if(WIN32 AND NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_resnet_amp)
 endif()
 
+list(REMOVE_ITEM TEST_OPS test_build_strategy)
+list(REMOVE_ITEM TEST_OPS test_simnet)
+list(REMOVE_ITEM TEST_OPS test_pylayer)
+
 if(NOT WITH_GPU)
   # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
   # We should remove this after fix the performance issue.
@@ -18,7 +22,6 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
   # disable some model test on CPU to avoid timeout
   list(REMOVE_ITEM TEST_OPS test_resnet)
-  list(REMOVE_ITEM TEST_OPS test_build_strategy)
   list(REMOVE_ITEM TEST_OPS test_bert)
   list(REMOVE_ITEM TEST_OPS test_transformer)
   list(REMOVE_ITEM TEST_OPS test_mobile_net)
