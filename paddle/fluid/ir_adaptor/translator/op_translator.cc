@@ -3896,7 +3896,7 @@ struct CumSumTranscriber : public OpTranscriber {
             x_type));
 
     pir::Builder builder(ctx, block);
-    int axis = paddle::get<int>(op_desc.GetAttr("axis"));
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
 
     dialect::FullOp full_op = builder.Build<dialect::FullOp>(
         common::vectorize({1}), axis, phi::DataType::INT64, phi::CPUPlace());
@@ -3950,8 +3950,7 @@ struct ScaleTranscriber : public OpTranscriber {
             x_type));
 
     pir::Builder builder(ctx, block);
-
-    int scale = paddle::get<float>(op_desc.GetAttr("scale"));
+    float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("scale"));
 
     dialect::FullOp full_op = builder.Build<dialect::FullOp>(
         common::vectorize({1}), scale, phi::DataType::FLOAT32, phi::CPUPlace());
