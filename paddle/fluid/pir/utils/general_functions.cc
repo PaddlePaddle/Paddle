@@ -66,6 +66,113 @@ void GetUsedExternalValueImpl(
 
 namespace pir {
 
+void DensorTensorCopy(const phi::DenseTensor& src,
+                      phi::DenseTensor* dst,
+                      const phi::Place& dst_place) {
+  paddle::framework::TensorCopySync(src, dst_place, dst);
+}
+
+void DenseTensorCastToFp32(phi::DenseTensor* in,
+                           phi::DenseTensor* out,
+                           int world_size) {
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+
+  phi::DenseTensor fp32_tensor;
+  phi::DenseTensor* out_ptr = out == nullptr ? &fp32_tensor : out;
+  out_ptr->Resize(in->dims());
+  out_ptr->set_type(phi::DataType::FLOAT32);
+  out_ptr->set_layout(in->layout());
+
+  switch (in->dtype()) {
+    case phi::DataType::FLOAT16:
+      phi::CastKernel<phi::dtype::float16, phi::CPUContext>(
+          *cpu_ctx, *in, phi::DataType::FLOAT32, out_ptr);
+      break;
+    case phi::DataType::FLOAT32:
+      if (out == nullptr) {
+        if (world_size > 1) {
+          phi::ScaleKernel<float, phi::CPUContext>(
+              *cpu_ctx, *in, 1.0f / world_size, 0.f, false, in);
+        }
+        return;
+      } else {
+        phi::AssignKernel(*cpu_ctx, *in, out_ptr);
+      }
+      break;
+    default:
+      PADDLE_THROW(common::errors::InvalidType(
+          "Only support fp16 and fp32, but received dtype is %s.",
+          phi::DataTypeToString(in->dtype())));
+      break;
+  }
+  if (world_size > 1) {
+    phi::ScaleKernel<float, phi::CPUContext>(
+        *cpu_ctx, *out_ptr, 1.0f / world_size, 0.f, false, out_ptr);
+  }
+  if (out == nullptr) {
+    paddle::framework::ir::Assign(*out_ptr, in);
+  }
+}
+
+pir::Type TranslateToIrDataType(phi::DenseTensor* tensor) {
+  // Get Meta
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Type data_type =
+      paddle::dialect::TransToIrDataType(tensor->dtype(), ctx);
+  return data_type;
+}
+
+Parameter* GetParameter(Operation* op, const std::string& name) {
+  Parameter* param = op->GetParentProgram()->GetParameter(name);
+  if (param == nullptr) {
+    PADDLE_THROW(common::errors::NotFound("Parameter %s not found.", name));
+  }
+  return param;
+}
+
+pir::Operation* CreateOpeartionByName(const std::string& op_name,
+                                      const std::vector<pir::Value>& inputs,
+                                      const pir::AttributeMap& attrs,
+                                      const pir::PatternRewriter& rewriter) {
+  return paddle::drr::OperationFactory::Instance().CreateOperation(
+      op_name, inputs, attrs, const_cast<pir::PatternRewriter&>(rewriter));
+}
+
+template <typename T>
+T* VarGetMutable(Variable* var) {
+  return var->GetMutable<T>();
+}
+
+template <typename T>
+bool VarIsType(Variable* var) {
+  return var->IsType<T>();
+}
+
+template phi::DenseTensor* VarGetMutable<phi::DenseTensor>(Variable*);
+template bool VarIsType<phi::DenseTensor>(Variable*);
+
+Variable* ScopeFindVar(Scope* scope_, const std::string& name) {
+  return scope_->FindVar(name);
+}
+
+Variable* ScopeGetVar(Scope* scope_, const std::string& name) {
+  return scope_->GetVar(name);
+}
+
+Variable* ScopeVar(Scope* scope_, const std::string& name) {
+  return scope_->Var(name);
+}
+
+std::vector<std::string> ScopeGetVarNames(Scope* scope_) {
+  return scope_->LocalVarNames();
+}
+
+Scope* GetScopeImpl(pir::Pass* pass) {
+  // get scope from pass
+  return &pass->Get<Scope>(pir::Pass::kParamScopeAttr);
+}
+
 std::string GetParameterNameFromValue(const pir::Value& value) {
   pir::Operation* owner = value.defining_op();
   std::string name;
