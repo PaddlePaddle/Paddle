@@ -430,20 +430,22 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> print(t.shape())
                     [5, 30]
            )DOC")
-      .def("_to_dlpack",
-           [](phi::DenseTensor &self) {
-             DLManagedTensor *dmt = framework::toDLPack(self);
-             auto capsule = pybind11::capsule(
-                 static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
-                   if (!PyCapsule_IsValid(ptr, "dltensor")) {
-                     return;
-                   }
-                   DLManagedTensor *dmt = static_cast<DLManagedTensor *>(
-                       PyCapsule_GetPointer(ptr, "dltensor"));
-                   dmt->deleter(dmt);
-                 });
-             return capsule;
-           })
+      .def(
+          "_to_dlpack",
+          [](phi::DenseTensor &self) {
+            DLManagedTensor *dlMTensor = framework::toDLPack(self);
+            auto capsule = pybind11::capsule(
+                static_cast<void *>(dlMTensor), "dltensor", [](PyObject *data) {
+                  if (!PyCapsule_IsValid(data, "dltensor")) {
+                    return;
+                  }
+                  DLManagedTensor *dlMTensor =
+                      reinterpret_cast<DLManagedTensor *>(
+                          PyCapsule_GetPointer(data, "dltensor"));
+                  dlMTensor->deleter(dlMTensor);
+                });
+            return capsule;
+          })
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)

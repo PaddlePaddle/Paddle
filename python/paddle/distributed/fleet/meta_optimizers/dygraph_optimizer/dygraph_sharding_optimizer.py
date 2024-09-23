@@ -28,6 +28,7 @@ from paddle.distributed.communication.reduce import (
 )
 from paddle.utils import strtobool
 
+from ...utils import timer_helper as timer
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
     HOOK_ACTION,
@@ -346,7 +347,7 @@ class DygraphShardingOptimizer:
                         naninf = paddle.isfinite(g_var).all()
                         if not naninf.item():
                             raise ValueError(
-                                f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
+                                f"CUDA error(1002). Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
                             )
 
                     paddle.distributed.reduce(
@@ -630,6 +631,13 @@ class DygraphShardingOptimizerV2:
         comm_buffer_size_MB = sharding_config.comm_buffer_size_MB
         free_grads_in_comm = sharding_config.free_grads_in_comm
 
+        self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]
+
+        if self._enable_timer:
+            if not timer.is_timer_initialized():
+                timer.set_timers()
+            self.timers = timer.get_timers()
+
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
         self.sd_release_grads = (
@@ -795,7 +803,6 @@ class DygraphShardingOptimizerV2:
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
-
         # sync here to guarantee cdnn_cluster parallel correct.
         if (
             paddle.is_compiled_with_xpu()
@@ -812,20 +819,29 @@ class DygraphShardingOptimizerV2:
             if g_sharding_v2_check_zero_padding:
                 self._check_padding_zero()
 
+            if self._enable_timer:
+                self.timers("reduce-gradients").start()
             for comm_buffer in self._comm_buffer_list:
                 if not self.comm_overlap:
                     comm_buffer._comm_grads()
 
                 comm_buffer.scale_grads()
 
+            if self._enable_timer:
+                self.timers("reduce-gradients").stop()
+
     def _check_padding_zero(self):
+        if self._enable_timer:
+            self.timers("check-padding-zero").start()
         for comm_buffer in self._comm_buffer_list:
             for k, v in comm_buffer._sharding_param_grad_view.items():
                 pad_tensor = v._get_padding()
                 if pad_tensor is not None:
                     assert paddle.all(
                         pad_tensor == 0
-                    ).item(), f"The padding of Tensor {k} is not zero"
+                    ).item(), f"CUDA error(1003). The padding of Tensor {k} is not zero"
+        if self._enable_timer:
+            self.timers("check-padding-zero").stop()
 
     def _forward_pre_hook_function(self, tasks):
         def __impl__(x, y):
@@ -838,6 +854,8 @@ class DygraphShardingOptimizerV2:
         """
         sync parameter across sharding group
         """
+        if self._enable_timer:
+            self.timers("sync-parameters").start()
 
         logger.debug("sharding start sync parameters")
         with framework.no_grad():
@@ -862,6 +880,9 @@ class DygraphShardingOptimizerV2:
             else:
                 for comm_buffer in self._comm_buffer_list:
                     comm_buffer.sync_params()
+
+        if self._enable_timer:
+            self.timers("sync-parameters").stop()
 
     def _update_trainable(self):
         """
@@ -955,11 +976,15 @@ class DygraphShardingOptimizerV2:
                 if grad_var is not None:
                     params_grads.append((param, grad_var))
 
+            if self._enable_timer:
+                self.timers("apply-optimize").start()
             self._apply_optimize(
                 loss=None,
                 startup_program=None,
                 params_grads=params_grads,
             )
+            if self._enable_timer:
+                self.timers("apply-optimize").stop()
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
