@@ -1438,9 +1438,21 @@ bool FrobeniusNormOpInferSymbolicShape(
   bool keepdim = op->attribute<pir::BoolAttribute>("keep_dim").data();
   bool reduce_all = op->attribute<pir::BoolAttribute>("reduce_all").data();
 
-  const auto &axis = details::GetVectorAttr(op, "axis");
+  std::vector<int64_t> axis;
+  if (paddle::dialect::details::GetAxisFromOpInput(
+          op->operand_source(1), infer_context, &axis)) {
+    if (axis.size() == 0) {
+      reduce_all = true;
+    }
 
-  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+    return details::ReduceInferDim(
+        op, infer_context, axis, keepdim, reduce_all);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+        "support FullIntArrayOp's result or constant DimExpr now."));
+  }
+  return false;
 }
 
 bool FoldOpInferSymbolicShape(pir::Operation *op,
