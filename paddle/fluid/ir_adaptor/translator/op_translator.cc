@@ -4207,7 +4207,7 @@ OpTranslator::OpTranslator() {
 
   special_handlers["cumsum"] = CumSumTranscriber();
   special_handlers["reduce_sum"] = ReduceSumTranscriber();
-  special_handlers["scale"] = ScaleTranscriber();
+  // special_handlers["scale"] = ScaleTranscriber();
 }
 }  // namespace translator
 }  // namespace paddle
