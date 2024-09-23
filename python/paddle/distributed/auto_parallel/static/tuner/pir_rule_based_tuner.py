@@ -711,7 +711,7 @@ class PIRMLPPattern(PIRBasePattern):
 class PIRDecoderLayerPattern(PIRBasePattern):
     """Decoder layer pattern"""
 
-    name = "decoder layer"
+    name = "decoder_layer"
 
     def __init__(self):
         super().__init__()

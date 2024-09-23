@@ -163,14 +163,20 @@ def to_distributed(model, mesh, config):
         matched_programs[pattern_name] = processed_patterns
         print(f"matched program and ops dist infos are {matched_programs}")
 
+    DECODER_LAYER_NAME = 'decoder_layer'
+    num_hidden_layers = len(matched_programs[DECODER_LAYER_NAME])
+    print(f"num_hidden_layers by pattern matching is {num_hidden_layers}")
+    assert (
+        num_hidden_layers == config.num_hidden_layers
+    ), "num_hidden_layers by pattern matching is not compatible with configuration"
+
     # # # # step6-0: SHARD PATRAMETERS, get dynamic layer dist infos
     for pattern_name, processed_patterns in matched_programs.items():
-        print(f"num_hidden_layers is: {config.num_hidden_layers}")
         assert (
-            len(processed_patterns) == config.num_hidden_layers
+            len(processed_patterns) == num_hidden_layers
         ), "transformer patterns matched are incomplete"
         for idx, processed_pattern in enumerate(processed_patterns):
-            pp_stage_id = get_layer_pp_info(mesh, config.num_hidden_layers, idx)
+            pp_stage_id = get_layer_pp_info(mesh, num_hidden_layers, idx)
             local_mesh = mesh
             if pp_stage_id is None:
                 print("pp_stage_id is None")
