@@ -253,26 +253,41 @@ void ArgsortKernel(const Context& dev_ctx,
   // 34 times faster and descending sort is 31 times faster.
   if (size == in_dims[axis]) {
     if (stable) {
-      thrust::sequence(thrust::device, ids_data, ids_data + size);
-      thrust::copy(thrust::device, in_data, in_data + size, out_data);
+      thrust::sequence(
+          thrust::cuda::par.on(dev_ctx.stream()), ids_data, ids_data + size);
+      thrust::copy(thrust::cuda::par.on(dev_ctx.stream()),
+                   in_data,
+                   in_data + size,
+                   out_data);
       if (descending) {
-        thrust::stable_sort_by_key(thrust::device,
+        thrust::stable_sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
                                    out_data,
                                    out_data + size,
                                    ids_data,
                                    thrust::greater<T>());
       } else {
-        thrust::stable_sort_by_key(
-            thrust::device, out_data, out_data + size, ids_data);
+        thrust::stable_sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+                                   out_data,
+                                   out_data + size,
+                                   ids_data);
       }
       return;
     } else {
-      thrust::sequence(thrust::device, ids_data, ids_data + size);
-      thrust::copy(thrust::device, in_data, in_data + size, out_data);
-      thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data);
+      thrust::sequence(
+          thrust::cuda::par.on(dev_ctx.stream()), ids_data, ids_data + size);
+      thrust::copy(thrust::cuda::par.on(dev_ctx.stream()),
+                   in_data,
+                   in_data + size,
+                   out_data);
+      thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+                          out_data,
+                          out_data + size,
+                          ids_data);
       if (descending) {
-        thrust::reverse(thrust::device, out_data, out_data + size);
-        thrust::reverse(thrust::device, ids_data, ids_data + size);
+        thrust::reverse(
+            thrust::cuda::par.on(dev_ctx.stream()), out_data, out_data + size);
+        thrust::reverse(
+            thrust::cuda::par.on(dev_ctx.stream()), ids_data, ids_data + size);
       }
       return;
     }
