@@ -148,13 +148,13 @@ Parameter* GetParameter(Operation* op, const std::string& name) {
   return param;
 }
 
-pir::Operation* CreateOpeartionByName(const std::string& op_name,
-                                      const std::vector<pir::Value>& inputs,
-                                      const pir::AttributeMap& attrs,
-                                      const pir::PatternRewriter& rewriter) {
-  return paddle::drr::OperationFactory::Instance().CreateOperation(
-      op_name, inputs, attrs, const_cast<pir::PatternRewriter&>(rewriter));
-}
+// pir::Operation* CreateOpeartionByName(const std::string& op_name,
+//                                       const std::vector<pir::Value>& inputs,
+//                                       const pir::AttributeMap& attrs,
+//                                       const pir::PatternRewriter& rewriter) {
+//   return paddle::drr::OperationFactory::Instance().CreateOperation(
+//       op_name, inputs, attrs, const_cast<pir::PatternRewriter&>(rewriter));
+// }
 
 template <typename T>
 T* VarGetMutable(Variable* var) {

@@ -90,10 +90,10 @@ pir::Type TranslateToIrDataType(phi::DenseTensor* tensor);
  */
 Parameter* GetParameter(Operation* op, const std::string& name);
 
-pir::Operation* CreateOpeartionByName(const std::string& op_name,
-                                      const std::vector<pir::Value>& inputs,
-                                      const pir::AttributeMap& attrs,
-                                      const pir::PatternRewriter& rewriter);
+// pir::Operation* CreateOpeartionByName(const std::string& op_name,
+//                                       const std::vector<pir::Value>& inputs,
+//                                       const pir::AttributeMap& attrs,
+//                                       const pir::PatternRewriter& rewriter);
 
 /**
  * @brief Get the mutable data of a Variable.
