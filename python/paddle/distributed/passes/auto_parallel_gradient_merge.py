@@ -347,7 +347,7 @@ def _pir_append_gradient_merge_backward_op(
                 scale_op = scale_out.get_defining_op()
                 scale_op.op_role = int(OpRole.Optimize)
 
-                full_op = scale_op.result(1).get_defining_op()
+                full_op = scale_op.operand_source(1).get_defining_op()
                 assert (
                     full_op.name() == "pd_op.full"
                 ), f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
@@ -690,7 +690,7 @@ def _pir_parse_program(
             scale_op = new_grad.get_defining_op()
             scale_op.op_role = int(OpRole.Optimize)
 
-            full_op = scale_op.result(1).get_defining_op()
+            full_op = scale_op.operand_source(1).get_defining_op()
             assert (
                 full_op.name() == "pd_op.full"
             ), f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
