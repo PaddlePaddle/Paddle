@@ -247,6 +247,45 @@ double Expr::get_constant() const {
 
 bool Expr::is_var() const { return As<_Var_>(); }
 
+bool Expr::is_index() const {
+  switch (node_type()) {
+    case ir::IrNodeTy::_Var_:
+      [[fallthrough]];
+    case ir::IrNodeTy::IterMark:
+      [[fallthrough]];
+    case ir::IrNodeTy::IterSplit:
+      [[fallthrough]];
+    case ir::IrNodeTy::IterSum:
+      return true;
+    case ir::IrNodeTy::IntImm: {
+      if (type().is_index_type()) return true;
+    }
+    case ir::IrNodeTy::Add:
+      [[fallthrough]];
+    case ir::IrNodeTy::Sub:
+      [[fallthrough]];
+    case ir::IrNodeTy::Mul:
+      [[fallthrough]];
+    case ir::IrNodeTy::Div:
+      [[fallthrough]];
+    case ir::IrNodeTy::Mod:
+      return p_->operand(0).is_index() && p_->operand(1).is_index();
+  }
+  return false;
+}
+
+const IndexExpr Expr::as_index() const {
+  if (is_index()) {
+    return IndexExpr(*this);
+  }
+}
+
+IndexExpr Expr::as_index() {
+  if (is_index()) {
+    return IndexExpr(*this);
+  }
+}
+
 _Buffer_ *Expr::as_buffer() { return As<_Buffer_>(); }
 const _Buffer_ *Expr::as_buffer() const { return As<_Buffer_>(); }
 Buffer Expr::as_buffer_ref() const { return Buffer(&Reference(as_buffer())); }

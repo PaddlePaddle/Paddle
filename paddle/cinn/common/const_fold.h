@@ -71,5 +71,41 @@ inline std::optional<ir::Expr> TryConstFold<ir::Mul>(ir::Expr a, ir::Expr b) {
   return std::nullopt;
 }
 
+template <>
+inline std::optional<ir::Expr> TryConstFold<ir::Div>(ir::Expr a, ir::Expr b) {
+  const ir::IntImm* pa = a.As<ir::IntImm>();
+  const ir::IntImm* pb = b.As<ir::IntImm>();
+  const auto& rtype = a.type();
+  if (pa && pb) {
+    int64_t res = pa->value / pb->value;
+    return cinn::common::make_shared<ir::IntImm>(rtype, res);
+  }
+  if (pa) {
+    if (pa->value == 0) return a;
+  }
+  if (pb) {
+    if (pb->value == 1) return a;
+  }
+  return std::nullopt;
+}
+
+template <>
+inline std::optional<ir::Expr> TryConstFold<ir::Mod>(ir::Expr a, ir::Expr b) {
+  const ir::IntImm* pa = a.As<ir::IntImm>();
+  const ir::IntImm* pb = b.As<ir::IntImm>();
+  const auto& rtype = a.type();
+  if (pa && pb) {
+    int64_t res = pa->value % pb->value;
+    return cinn::common::make_shared<ir::IntImm>(rtype, res);
+  }
+  if (pa) {
+    if (pa->value == 0) return a;
+  }
+  if (pb) {
+    if (pb->value == 1) return ir::Zero(rtype);
+  }
+  return std::nullopt;
+}
+
 }  // namespace common
 }  // namespace cinn
