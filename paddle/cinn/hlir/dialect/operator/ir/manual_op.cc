@@ -534,12 +534,6 @@ bool GenerateShapeOp::InferSymbolicShape(
   }();
 
   const auto& out_dims = this->out().type().dyn_cast<DenseTensorType>().dims();
-  if (out_dims.size() == 0) {
-    PADDLE_ENFORCE_EQ(substituted_dim_exprs.size(), 1UL);
-  } else {
-    PADDLE_ENFORCE_EQ(::common::product(out_dims),
-                      substituted_dim_exprs.size());
-  }
   const auto shape = [&] {
     std::vector<symbol::DimExpr> result;
     for (int i = 0; i < out_dims.size(); ++i) {
