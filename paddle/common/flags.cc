@@ -176,7 +176,7 @@ PHI_DEFINE_EXPORTED_string(
     "share-memory only.");
 #endif
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * CUDA related FLAG
  * Name: FLAGS_cublaslt_exhaustive_search_times
@@ -1551,7 +1551,7 @@ PHI_DEFINE_EXPORTED_bool(logging_pir_py_code_dump_symbolic_dims,
  * Example:
  * Note: If True, PIR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable PIR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, true, "Enable PIR API in Python");
 
 /**
  * Using PIR in executor FLAG

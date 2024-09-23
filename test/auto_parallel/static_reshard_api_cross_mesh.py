@@ -95,16 +95,11 @@ class DemoNetPP(nn.Layer):
         self._mesh1 = mesh1
         self.mlp0 = MLP(mesh0, False, "block0")
         self.mlp1 = MLP(mesh1, False, "block1")
-        self.varnames = []
 
     def forward(self, x):
         # stage0
         out0 = self.mlp0(x)
-
-        self.varnames.append(out0.name)
         out0 = dist.reshard(out0, self._mesh1, [Replicate()])
-        self.varnames.append(out0.name)
-
         # stage1
         out1 = self.mlp1(out0)
 
@@ -147,34 +142,71 @@ class TestStaticReshard(unittest.TestCase):
             dy2static_layer, dist_loader, loss_fn, dy2static_opt
         )
 
-        program = dist_model._engine._dist_contexts["train"].dist_main_programs[
-            dist_model._engine._cur_rank
-        ]
+        dist_model.train()
+        program = dist_model.dist_main_program()
         ops = program.global_block().ops
 
         if dist_model._engine._cur_rank == 0:
-            op_names = [op.type for op in ops[:7]]
+            op_names = [op.name() for op in ops]
             assert op_names == [
-                'matmul_v2',
-                'elementwise_add',
-                'relu',
-                'matmul_v2',
-                'elementwise_add',
-                'send_v2',
-                'recv_v2',
+                'pd_op.data',
+                'builtin.parameter',
+                'builtin.parameter',
+                'builtin.parameter',
+                'builtin.parameter',
+                'pd_op.data',
+                'pd_op.matmul',
+                'pd_op.add',
+                'pd_op.relu',
+                'pd_op.matmul',
+                'pd_op.add',
+                'pd_op.send_v2',
+                'pd_op.recv_v2',
+                'pd_op.add_grad',
+                'pd_op.matmul_grad',
+                'pd_op.relu_grad',
+                'pd_op.add_grad',
+                'pd_op.matmul_grad',
+                'pd_op.sgd_',
+                'pd_op.sgd_',
+                'pd_op.sgd_',
+                'pd_op.sgd_',
             ]
+
         elif dist_model._engine._cur_rank == 1:
-            op_names = [op.type for op in ops[:9]]
+            op_names = [op.name() for op in ops]
             assert op_names == [
-                'recv_v2',
-                'assign',
-                'assign',
-                'matmul_v2',
-                'elementwise_add',
-                'relu',
-                'matmul_v2',
-                'elementwise_add',
-                'elementwise_sub',
+                'pd_op.data',
+                'builtin.parameter',
+                'builtin.parameter',
+                'builtin.parameter',
+                'builtin.parameter',
+                'pd_op.data',
+                'pd_op.recv_v2',
+                'pd_op.matmul',
+                'pd_op.add',
+                'pd_op.relu',
+                'pd_op.matmul',
+                'pd_op.add',
+                'pd_op.subtract',
+                'pd_op.square',
+                'pd_op.mean',
+                'builtin.shadow_output',
+                'pd_op.full',
+                'pd_op.full_like',
+                'pd_op.mean_grad',
+                'pd_op.square_grad',
+                'pd_op.subtract_grad',
+                'pd_op.add_grad',
+                'pd_op.matmul_grad',
+                'pd_op.relu_grad',
+                'pd_op.add_grad',
+                'pd_op.matmul_grad',
+                'pd_op.send_v2',
+                'pd_op.sgd_',
+                'pd_op.sgd_',
+                'pd_op.sgd_',
+                'pd_op.sgd_',
             ]
 
     def run_test_case(self):

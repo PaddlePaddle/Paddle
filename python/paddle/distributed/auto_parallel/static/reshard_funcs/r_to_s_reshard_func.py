@@ -47,6 +47,10 @@ class RToSReshardFunction(ReshardFunction):
 
         mesh = src_dist_attr.process_mesh
         curr_global_rank = paddle.distributed.get_rank()
+        chunk_id = -1
+        if src_value.get_defining_op().dist_attr:
+            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+
         if curr_global_rank in mesh.process_ids:
             total_nums = src_value.shape[split_axis]
             num_of_pieces = mesh.shape[mesh_axis]
@@ -60,6 +64,7 @@ class RToSReshardFunction(ReshardFunction):
                         src_dist_attr.process_mesh,
                         [src_dist_attr],
                         [dst_dist_attr],
+                        chunk_id,
                     )
                 )
                 return dst_value
@@ -75,7 +80,7 @@ class RToSReshardFunction(ReshardFunction):
             out_value.set_type(dst_type)
             out_value.get_defining_op().dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
-                    mesh, [src_dist_attr], [dst_dist_attr]
+                    mesh, [src_dist_attr], [dst_dist_attr], chunk_id
                 )
             )
             return out_value
