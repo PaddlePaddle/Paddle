@@ -127,9 +127,9 @@ void DenseTensorCastToFp32(phi::DenseTensor* in,
     phi::ScaleKernel<float, phi::CPUContext>(
         *cpu_ctx, *out_ptr, 1.0f / world_size, 0.f, false, out_ptr);
   }
-  // if (out == nullptr) {
-  //   paddle::framework::ir::Assign(*out_ptr, in);
-  // }
+  if (out == nullptr) {
+    paddle::framework::ir::Assign(*out_ptr, in);
+  }
 }
 
 pir::Type TranslateToIrDataType(phi::DenseTensor* tensor) {
