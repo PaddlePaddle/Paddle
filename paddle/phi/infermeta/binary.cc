@@ -2611,6 +2611,32 @@ void LimitByCapacityInferMeta(const MetaTensor& expert_count,
   out->set_dtype(expert_count.dtype());
 }
 
+void LodResetInferMeta(const MetaTensor& x,
+                       const MetaTensor& y,
+                       const std::vector<int>& target_lod,
+                       bool append,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  if (y.initialized()) {
+    auto level0 = target_lod;
+    PADDLE_ENFORCE_GT(
+        static_cast<int64_t>(level0.size()),
+        0,
+        common::errors::InvalidArgument(
+            "If Input(Y) is not provided, the output's LoD should be "
+            "specified by attribute 'target_lod'. But the size of "
+            "'target_lod' is 0."));
+  } else if (config.is_runtime) {
+    out->share_lod(y);
+  }
+  if (append) {
+    out->share_lod(x);
+  }
+
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       float epsilon,
