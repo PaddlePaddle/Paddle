@@ -203,9 +203,7 @@ def _infer_dense_csr_shape(crows, cols):
     crows_numpy = crows.numpy()
     cols_numpy = cols.numpy()
     batchs = np.sum(crows_numpy[:-1] > crows_numpy[1:]) + 1
-    if (int(len(crows_numpy) / batchs) * batchs) != len(
-        crows_numpy
-    ):
+    if (int(len(crows_numpy) / batchs) * batchs) != len(crows_numpy):
         raise ValueError(
             f"The calculated original matrix batch size is {batchs}, but it cannot correctly split the row data. Please carefully check the data or the input shape."
         )

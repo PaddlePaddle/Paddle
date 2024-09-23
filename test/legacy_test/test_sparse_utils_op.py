@@ -126,7 +126,7 @@ class TestSparseCreate(unittest.TestCase):
         assert [2, 2] == coo.shape
 
     def test_create_csr_no_shape(self):
-        #2D sparse tensor
+        # 2D sparse tensor
         crows = [0, 2, 3, 5]
         clos = [1, 3, 2, 0, 1]
         values = [1.0, 2.0, 3.0, 4.0, 5.0]
@@ -136,7 +136,7 @@ class TestSparseCreate(unittest.TestCase):
         coo = paddle.sparse.sparse_csr_tensor(crows, clos, values)
         assert [3, 4] == coo.shape
 
-        #3D sparse tensor
+        # 3D sparse tensor
         crows = [0, 2, 2, 0, 1, 1, 0, 0, 0]
         clos = [0, 1, 1]
         values = [1, 2, 5]
@@ -146,7 +146,7 @@ class TestSparseCreate(unittest.TestCase):
         coo = paddle.sparse.sparse_csr_tensor(crows, clos, values)
         assert [3, 2, 2] == coo.shape
 
-        #3D sparse tensor
+        # 3D sparse tensor
         crows = [0, 1, 2, 0, 1, 1, 0, 1, 2]
         clos = [0, 2, 1, 0, 1]
         values = [1, 2, 3, 4, 5]
