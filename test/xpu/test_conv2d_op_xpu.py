@@ -261,6 +261,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
         def test_check_grad(self):
             if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
+            print("we are at grad checking stage: XPUTestConv2DOp")
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
@@ -270,6 +271,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
         def test_check_grad_no_filter(self):
             if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
+            print("we are at grad checking stage: XPUTestConv2DOp")
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
@@ -279,6 +281,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
         def test_check_grad_no_input(self):
             if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
+            print("we are at grad checking stage: XPUTestConv2DOp")
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
@@ -424,6 +427,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             # TODO(wangzhongpu): support onednn op in dygraph mode
             if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
+            print("we are at grad checking stage: XPUTestConv2DOp_v2")
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
@@ -434,6 +438,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             # TODO(wangzhongpu): support onednn op in dygraph mode
             if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
+            print("we are at grad checking stage: XPUTestConv2DOp_v2")
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
@@ -444,6 +449,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             # TODO(wangzhongpu): support onednn op in dygraph mode
             if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
+            print("we are at grad checking stage: XPUTestConv2DOp_v2")
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
