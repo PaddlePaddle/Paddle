@@ -374,9 +374,10 @@ class ProgramHelper:
 
         for i in range(len(pir_param)):
             if pir_param[i].name in value_name_to_value:
-                dy_param_name_to_pir_param_name[dy_params[i].name] = pir_param[
-                    i
-                ].name
+                if dy_params[i] is not None:
+                    dy_param_name_to_pir_param_name[dy_params[i].name] = (
+                        pir_param[i].name
+                    )
 
         for param in dy_params:
             # create var in scope and share parameters to scope

@@ -20,6 +20,9 @@ from .auto_parallel_amp import (  # noqa: F401
     AMPPass,
     AMPState,
 )
+from .auto_parallel_c_embedding import (  # noqa: F401
+    AutoParallelCEmbeddingPass,
+)
 from .auto_parallel_data_parallel_optimization import (  # noqa: F401
     DataParallelOptimizationPass,
     GradientsGroup,

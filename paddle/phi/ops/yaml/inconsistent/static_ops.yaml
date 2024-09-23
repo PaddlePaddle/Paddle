@@ -119,6 +119,7 @@
   infer_meta :
     func : CEmbeddingInferMeta
     param : [weight, x, start_index]
+    spmd_rule: CEmbeddingInferSpmd
   kernel :
     func : c_embedding
     param : [weight, x, start_index, vocab_size]
