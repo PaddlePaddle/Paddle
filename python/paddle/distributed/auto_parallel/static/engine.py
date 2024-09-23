@@ -71,6 +71,7 @@ from .pir_pass import (
     apply_partition_pass,
     check_chunk_id,
     complete_chunk_id,
+    fuse_attention_ffn_qkv_pass,
     pipeline_pass,
     remove_unuseful_comm_op_pass,
 )
@@ -703,9 +704,17 @@ class Engine:
         startup_program = self._startup_progs[mode]
 
         # TODO(zhangbo) Open fused_ffn/fused_attention_qkv pass
-        # self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
-        #     startup_program, mix_fw_program, self.concrete_program
-        # )
+        if os.getenv("FLAGS_enable_fused_ffn_qkv_v2") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
+                startup_program,
+                mix_fw_program,
+                self.concrete_program,
+                mode="all",
+            )
 
         forward_op_start_idx = 0
         backward_op_start_idx = -1
