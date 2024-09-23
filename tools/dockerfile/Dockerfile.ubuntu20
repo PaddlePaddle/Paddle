@@ -93,11 +93,13 @@ RUN python3.9 setup.py install && \
 WORKDIR /home
 RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz pip-23.3.1.tar.gz && \
     rm -r setuptools-50.3.2 setuptools-68.2.2 pip-23.3.1
+
 # remove them when apt-get support 2.27 and higher version
 RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \
     tar -xzf binutils-2.33.1.tar.gz && \
     cd binutils-2.33.1 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.33.1 binutils-2.33.1.tar.gz
+
 # Install Go and glide
 RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.17.2.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
@@ -109,13 +111,17 @@ ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
 # install glide
 RUN apt-get install -y golang-glide
+
 # git credential to skip password typing
 RUN git config --global credential.helper store
+
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
 #For pre-commit
 RUN rm -f /usr/local/bin/pip && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip && \
     rm -f /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip3
+
 RUN pip3.8 --no-cache-dir install ipython==5.3.0 && \
     pip3.8 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.9 --no-cache-dir install ipython==5.3.0 && \
@@ -126,6 +132,7 @@ RUN pip3.8 --no-cache-dir install ipython==5.3.0 && \
     pip3.11 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.12 --no-cache-dir install ipython==5.3.0 && \
     pip3.12 --no-cache-dir install ipykernel==4.6.0 wheel
+
 # For PaddleTest CE
 RUN pip3.8 --no-cache-dir install pytest && \
     pip3.9 --no-cache-dir install pytest && \
@@ -144,6 +151,7 @@ RUN pip3.8 --no-cache-dir install pre-commit==2.17.0 && \
 
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
+
 RUN pip3.8 --no-cache-dir install -r  /root/requirements.txt && \
     pip3.9 --no-cache-dir install -r  /root/requirements.txt && \
     pip3.9 --no-cache-dir install -r  /home/requirements.txt && \
@@ -153,6 +161,8 @@ RUN pip3.8 --no-cache-dir install -r  /root/requirements.txt && \
     pip3.11 --no-cache-dir install -r /home/requirements.txt && \
     pip3.12 --no-cache-dir install -r /root/requirements.txt && \
     pip3.12 --no-cache-dir install -r /home/requirements.txt
+
+
 # ccache 4.2.0
 RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
     tar xf ccache-4.8.2.tar.gz && mkdir /usr/local/ccache-4.8.2 && cd ccache-4.8.2 && \
@@ -161,7 +171,9 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
     cd ../../ && rm -rf ccache-4.8.2.tar.gz
+
 # clang12
 RUN apt-get update &&\
     apt install -y clang-12
+
 EXPOSE 22
