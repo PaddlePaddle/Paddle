@@ -940,9 +940,11 @@ def divide(
     """
     if rounding_mode == "floor":
         return floor_divide(x, y)
-    if x.dtype in [paddle.float32, paddle.float64]:
+    x_dtype = x.dtype
+    y_dtype = y.dtype
+    if x.dtype in [paddle.int32, paddle.int64]:
         x = x.astype(paddle.float32)
-    if y.dtype in [paddle.float32, paddle.float64]:
+    if y.dtype in [paddle.int32, paddle.int64]:
         y = y.astype(paddle.float32)
     if in_dynamic_or_pir_mode():
         out = _C_ops.divide(x, y)
@@ -950,17 +952,17 @@ def divide(
         out = _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
     if rounding_mode == "trunc":
-        return trunc(out)
+        out = trunc(out)
     elif rounding_mode is not None:
         raise ValueError(
             f"Expect `round_mode` to be one of `trunc`, `floor` and None, but got {rounding_mode}."
         )
     if (
         rounding_mode is not None
-        and x.dtype in [paddle.int64, paddle.int32]
-        and y.dtype in [paddle.int64, paddle.int32]
+        and x_dtype in [paddle.int64, paddle.int32]
+        and y_dtype in [paddle.int64, paddle.int32]
     ):
-        out = out.astype(x.dtype)
+        out = out.astype(x_dtype)
     return out
 
 
