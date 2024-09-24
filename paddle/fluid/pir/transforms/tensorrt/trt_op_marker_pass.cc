@@ -1264,7 +1264,6 @@ class NearestInterpOpPattern
     if (op->HasAttribute("data_format")) {
       auto data_format =
           op->attribute<pir::StrAttribute>("data_format").AsString();
-      std::cout << "data_format" << data_format << std::endl;
       if (!(data_format == "NCHW" || data_format == "NHWC")) {
         VLOG(3) << "The nearest_interp is only support NCHW or NHWC ";
         return false;
