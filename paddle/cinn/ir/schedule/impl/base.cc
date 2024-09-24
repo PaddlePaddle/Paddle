@@ -206,28 +206,25 @@ void DyScheduleImpl::Annotate(const Expr& block,
                               const std::string& key,
                               const attr_t& value) {
   CINN_IR_SCHEDULE_BEGIN();
-  std::string primitive = "Annotate";
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<Annotate>.\n"
           "[Error info] Expr parameter 'block' must be a "
           "ScheduleBlockRealize!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<Annotate>.\n"
           "[Error info] Expr parameter 'block' must be a ScheduleBlockRealize "
           "with a defined ScheduleBlock!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   auto copied_block = ir::ir_utils::IRCopy(block);
@@ -247,22 +244,20 @@ void DyScheduleImpl::Unannotate(Expr& block,
       block.As<ir::ScheduleBlockRealize>(),
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<Unannotate>.\n"
           "[Error info] Expr parameter 'block' must be a "
           "ScheduleBlockRealize!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<Unannotate>.\n"
           "[Error info] Expr parameter 'block' must be a ScheduleBlockRealize "
           "with a defined ScheduleBlock!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   auto* schedule_block = block.As<ir::ScheduleBlockRealize>()
@@ -287,22 +282,20 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
       block.As<ir::ScheduleBlockRealize>(),
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Expr parameter 'block' must be a "
           "ScheduleBlockRealize!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
       block_target.As<ir::ScheduleBlockRealize>(),
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Expr parameter 'block_target' must be a "
           "ScheduleBlockRealize!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   auto exprs = this->GetModule().GetExprs();
@@ -312,10 +305,9 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
       1U,
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Size of exprs of current module must be 1!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   auto expr = exprs[0];
@@ -335,11 +327,10 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         true,
         phi::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
-            "<%s>.\n"
+            "<CopyTransformAndLoopInfo>.\n"
             "[Error info] Upper bound of iter_vars in both Expr parameter "
             "'block' and Expr parameter 'block_target' must be defined!\n"
             "[Error info] The Expr of current schedule is: %s.",
-            primitive.c_str(),
             module_expr_.GetExprs()));
 
     if (vars[i]->upper_bound.is_constant() &&
@@ -384,11 +375,10 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                     true,
                     phi::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
-                        "primitive <%s>.\n"
+                        "primitive <CopyTransformAndLoopInfo>.\n"
                         "[Error info] Cannot CopyTransformAndLoopInfo since "
                         "there is no loop var in the new_iter_values!\n"
                         "[Error info] The Expr of current schedule is: %s.",
-                        primitive.c_str(),
                         module_expr_.GetExprs()));
 
   std::vector<Expr> used_target_loops;
@@ -405,12 +395,11 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                       1U,
                       phi::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
-                          "primitive <%s>.\n"
+                          "primitive <CopyTransformAndLoopInfo>.\n"
                           "[Error info] Number of loop with iter_var which is "
                           "used in ScheduleBlockRealize for indexing in "
                           "Exprs[0] of module_exprs must be 1!\n"
                           "[Error info] The Expr of current schedule is: %s.",
-                          primitive.c_str(),
                           module_expr_.GetExprs()));
     used_target_loops.push_back(*find_loop_var.begin());
     VLOG(3) << "used_target_loops push_back " << used_target_loops.back();
@@ -488,11 +477,10 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                       1U,
                       phi::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
-                          "primitive <%s>.\n"
+                          "primitive <CopyTransformAndLoopInfo>.\n"
                           "[Error info] Number of ScheduleBlockRealize in "
                           "partial_loop should be 1!\n"
                           "[Error info] The Expr of current schedule is: %s.",
-                          primitive.c_str(),
                           module_expr_.GetExprs()));
 
     Expr sch_block = (*find_schedule_block.begin());
@@ -505,11 +493,10 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
       true,
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Cannot CopyTransformAndLoopInfo since there is no loop "
           "which uses vars in the new_iter_values in Expr[0] of module_expr!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   Expr res;
@@ -536,11 +523,10 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                     true,
                     phi::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
-                        "primitive <%s>.\n"
+                        "primitive <CopyTransformAndLoopInfo>.\n"
                         "[Error info] Cannot CopyTransformAndLoopInfo since "
                         "there is no loop in Expr parameter 'block'!\n"
                         "[Error info] The Expr of current schedule is: %s.",
-                        primitive.c_str(),
                         module_expr_.GetExprs()));
 
   this->Replace(all_loops[0], res);
@@ -597,10 +583,9 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
       loop.As<ir::For>(),
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
-          "<%s>.\n"
+          "<SampleCategorical>.\n"
           "[Error info] Expr parameter 'loop' should be a For loop.\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive.c_str(),
           module_expr_.GetExprs()));
 
   // 检查 n 是否大于等于 2
@@ -608,11 +593,10 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                     2,
                     phi::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
-                        "primitive <%s>.\n"
+                        "primitive <SamplePerfectTile>.\n"
                         "[Error info] The number of tile factors (n) should be "
                         "at least 2, but got %d.\n"
                         "[Error info] The Expr of current schedule is: %s.",
-                        primitive.c_str(),
                         n,
                         module_expr_.GetExprs()));
 
@@ -621,11 +605,10 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                     1,
                     phi::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
-                        "primitive <%s>.\n"
+                        "primitive <SamplePerfectTile>.\n"
                         "[Error info] The max innermost factor should be at "
                         "least 1, but got %d.\n"
                         "[Error info] The Expr of current schedule is: %s.",
-                        primitive.c_str(),
                         max_innermost_factor,
                         module_expr_.GetExprs()));
 
@@ -634,10 +617,9 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                     true,
                     phi::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
-                        "primitive <%s>.\n"
+                        "primitive <SamplePerfectTile>.\n"
                         "[Error info] The For loop should start from 0.\n"
                         "[Error info] The Expr of current schedule is: %s.",
-                        primitive.c_str(),
                         module_expr_.GetExprs()));
 
   int loop_extent = GetLoopExtent(loop);
@@ -653,11 +635,10 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                     true,
                     phi::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
-                        "primitive <%s>.\n"
+                        "primitive <SamplePerfectTile>.\n"
                         "[Error info] No innermost factor found for loop "
                         "extent %d with max_innermost_factor %d.\n"
                         "[Error info] The Expr of current schedule is: %s.",
-                        primitive.c_str(),
                         loop_extent,
                         max_innermost_factor,
                         module_expr_.GetExprs()));
