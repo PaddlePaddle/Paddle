@@ -133,8 +133,8 @@ class TestSparseCreate(unittest.TestCase):
         crows = paddle.to_tensor(crows, dtype='int32')
         clos = paddle.to_tensor(clos, dtype='int32')
         values = paddle.to_tensor(values, dtype='float32')
-        coo = paddle.sparse.sparse_csr_tensor(crows, clos, values)
-        assert [3, 4] == coo.shape
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 4] == csr.shape
 
         # 3D sparse tensor
         crows = [0, 2, 2, 0, 1, 1, 0, 0, 0]
@@ -143,8 +143,8 @@ class TestSparseCreate(unittest.TestCase):
         crows = paddle.to_tensor(crows, dtype='int32')
         clos = paddle.to_tensor(clos, dtype='int32')
         values = paddle.to_tensor(values, dtype='float32')
-        coo = paddle.sparse.sparse_csr_tensor(crows, clos, values)
-        assert [3, 2, 2] == coo.shape
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 2, 2] == csr.shape
 
         # 3D sparse tensor
         crows = [0, 1, 2, 0, 1, 1, 0, 1, 2]
@@ -153,8 +153,8 @@ class TestSparseCreate(unittest.TestCase):
         crows = paddle.to_tensor(crows, dtype='int32')
         clos = paddle.to_tensor(clos, dtype='int32')
         values = paddle.to_tensor(values, dtype='float32')
-        coo = paddle.sparse.sparse_csr_tensor(crows, clos, values)
-        assert [3, 2, 3] == coo.shape
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 2, 3] == csr.shape
 
 
 class TestSparseConvert(unittest.TestCase):
