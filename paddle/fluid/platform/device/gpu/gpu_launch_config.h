@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/kernel_utils.h"
 
 /* CUDA performs better as thread_per_block
    num is between [64, 512] */
@@ -84,12 +85,9 @@ struct GpuLaunchConfig {
     return thread_per_block.x * thread_per_block.y * thread_per_block.z;
   }
 
-  static bool IsEmptyDim3(const dim3& dim) {
-    return dim.x == 0 || dim.y == 0 || dim.z == 0;
-  }
-
   bool IsEmpty() const {
-    return IsEmptyDim3(block_per_grid) || IsEmptyDim3(thread_per_block);
+    return phi::IsEmptyKernelDim(block_per_grid) ||
+           phi::IsEmptyKernelDim(thread_per_block);
   }
 
   int compute_capability = 0;
