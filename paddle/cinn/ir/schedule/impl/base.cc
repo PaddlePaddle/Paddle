@@ -216,7 +216,7 @@ void DyScheduleImpl::Annotate(const Expr& block,
           "[Error info] Expr parameter 'block' must be a "
           "ScheduleBlockRealize!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive,
+          primitive.c_str(),
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
@@ -227,7 +227,7 @@ void DyScheduleImpl::Annotate(const Expr& block,
           "[Error info] Expr parameter 'block' must be a ScheduleBlockRealize "
           "with a defined ScheduleBlock!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive,
+          primitive.c_str(),
           module_expr_.GetExprs()));
 
   auto copied_block = ir::ir_utils::IRCopy(block);
@@ -251,7 +251,7 @@ void DyScheduleImpl::Unannotate(Expr& block,
           "[Error info] Expr parameter 'block' must be a "
           "ScheduleBlockRealize!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive,
+          primitive.c_str(),
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
@@ -262,7 +262,7 @@ void DyScheduleImpl::Unannotate(Expr& block,
           "[Error info] Expr parameter 'block' must be a ScheduleBlockRealize "
           "with a defined ScheduleBlock!\n"
           "[Error info] The Expr of current schedule is: %s.",
-          primitive,
+          primitive.c_str(),
           module_expr_.GetExprs()));
 
   auto* schedule_block = block.As<ir::ScheduleBlockRealize>()
