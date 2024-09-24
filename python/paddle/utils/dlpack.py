@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import enum
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import paddle
 
@@ -27,12 +27,20 @@ from ..base.framework import in_dygraph_mode
 if TYPE_CHECKING:
     from typing_extensions import CapsuleType
 
-    from paddle import Any, Tensor
+    from paddle import Tensor
 
 __all__ = [
     'to_dlpack',
     'from_dlpack',
 ]
+
+
+class SupportDLPack(Protocol):
+    def __dlpack__(self) -> CapsuleType:
+        pass
+
+    def __dlpack_device__(self) -> tuple[enum.IntEnum, int]:
+        pass
 
 
 class DLDeviceType(enum.IntEnum):
@@ -53,15 +61,16 @@ def to_dlpack(x: Tensor) -> CapsuleType:
     Encodes a tensor to DLPack.
 
     Args:
-        x (Tensor): The input tensor, and the data type can be `bool`, `float16`, `float32`,
-                    `float64`, `int8`, `int16`, `int32`, `int64`, `uint8`, `complex64`,
-                    `complex128`.
+        x (Tensor): The input tensor, and the data type can be ``bool``, ``float16``, ``float32``,
+            ``float64``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64``,
+            ``complex128``.
 
     Returns:
         dltensor, and the data type is PyCapsule.
 
     Examples:
         .. code-block:: python
+            :name: code-paddle-to-paddle
 
             >>> import paddle
             >>> # x is a tensor with shape [2, 4]
@@ -78,6 +87,20 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
+
+        .. code-block:: python
+            :name: code-paddle-to-torch
+
+            >>> # doctest: +SKIP('torch will not be installed')
+            >>> # type: ignore
+            >>> # convert tensor from paddle to other framework using to_dlpack
+            >>> import torch
+
+            >>> x = paddle.randn([2, 4]).to(device="cpu")
+            >>> y = torch.from_dlpack(paddle.utils.dlpack.to_dlpack(x))
+            >>> print(y.shape)
+            torch.Size([2, 4])
+            >>> # doctest: -SKIP
     """
 
     if in_dygraph_mode():
@@ -93,14 +116,14 @@ def to_dlpack(x: Tensor) -> CapsuleType:
     return x._to_dlpack()
 
 
-def from_dlpack(dlpack: Any) -> Tensor:
+def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
     """
     Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
     the tensor from given dlpack.
 
     Args:
-        dlpack (object with `__dlpack__` attribute, or a PyCapsule):
-            The tensor or DLPack capsule to convert.
+        dlpack (SupportDLPack | CapsuleType): A PyCapsule object with the dltensor,
+            or that implements '__dlpack__' and '__dlpack_device__' methods.
 
             If `dlpack` is a tensor (or ndarray) object, it must support
             the `__dlpack__` protocol (i.e., have a `dlpack.__dlpack__`
@@ -108,21 +131,27 @@ def from_dlpack(dlpack: Any) -> Tensor:
             an opaque `PyCapsule` instance, typically produced by a
             `to_dlpack` function or method.
 
-
     Returns:
-        out (Tensor), a tensor decoded from DLPack. One thing to be noted, if we get
-                      an input dltensor with data type as `bool`, we return the decoded
-                      tensor as `uint8`.
+        out (Tensor): A tensor decoded from DLPack. The data type of returned tensor
+            can be one of: ``int32``, ``int64``, ``float16``, ``float32`` and ``float64``.
+            The device of returned tensor can be one of: ``CPU``, ``CUDAPlace``, ``CUDAPinnedPlace``.
 
     Examples:
         .. code-block:: python
+            :name: code-paddle-from-paddle
 
             >>> import paddle
             >>> # From DLPack capsule
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-            ...                       [0.1, 0.2, 0.6, 0.7]])
+            ...                       [0.1, 0.2, 0.6, 0.7]], place="cpu")
             >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
+
             >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
+            >>> print(dlpack)
+            >>> # doctest: +SKIP('the address will change in every run')
+            <capsule object "used_dltensor" at 0x7f6103c681b0>
+
             >>> print(y)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
@@ -134,7 +163,10 @@ def from_dlpack(dlpack: Any) -> Tensor:
                    [[10.       , 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
 
-            >>> # Directly from external tensor that has '__dlpack__' attribute
+        .. code-block:: python
+            :name: code-paddle-from-numpy
+
+            >>> # Directly from external tensor that implements '__dlpack__' and '__dlpack_device__' methods
             >>> import numpy as np
             >>> x = np.array([[0.2, 0.3, 0.5, 0.9],
             ...              [0.1, 0.2, 0.6, 0.7]])

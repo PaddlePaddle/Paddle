@@ -3559,6 +3559,7 @@
   output : Tensor
   infer_meta :
     func : PadInferMeta
+    spmd_rule : PadInferSpmdDynamic
   kernel :
     func : pad
   backward : pad_grad
@@ -4140,6 +4141,7 @@
   output : Tensor
   infer_meta :
     func : ScatterNdAddInferMeta
+    spmd_rule : ScatterNdAddInferSpmd
   kernel :
     func : scatter_nd_add
     data_type : x

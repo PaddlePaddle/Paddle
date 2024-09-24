@@ -446,11 +446,12 @@ class TestPadAPI(unittest.TestCase):
             )
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
+            result3 = F.pad(x=x, pad=pad, mode=mode)
             exe = Executor(place)
             fetches = exe.run(
                 paddle.static.default_main_program(),
                 feed={"x": input_data},
-                fetch_list=[result1, result2],
+                fetch_list=[result1, result2, result3],
             )
 
             np_out1 = self._get_numpy_out(
@@ -461,6 +462,7 @@ class TestPadAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
             np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
+            np.testing.assert_allclose(fetches[2], np_out1, rtol=1e-05)
 
     def check_static_result_3(self, place):
         paddle.enable_static()
@@ -481,11 +483,12 @@ class TestPadAPI(unittest.TestCase):
             )
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
+            result3 = F.pad(x=x, pad=pad, mode=mode)
             exe = Executor(place)
             fetches = exe.run(
                 paddle.static.default_main_program(),
                 feed={"x": input_data},
-                fetch_list=[result1, result2],
+                fetch_list=[result1, result2, result3],
             )
 
             np_out1 = self._get_numpy_out(
@@ -496,6 +499,7 @@ class TestPadAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
             np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
+            np.testing.assert_allclose(fetches[2], np_out1, rtol=1e-05)
 
     def check_static_result_4(self, place):
         paddle.enable_static()
@@ -516,11 +520,12 @@ class TestPadAPI(unittest.TestCase):
             )
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
+            result3 = F.pad(x=x, pad=pad, mode=mode)
             exe = Executor(place)
             fetches = exe.run(
                 paddle.static.default_main_program(),
                 feed={"x": input_data},
-                fetch_list=[result1, result2],
+                fetch_list=[result1, result2, result3],
             )
 
             np_out1 = self._get_numpy_out(
@@ -531,6 +536,7 @@ class TestPadAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
             np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
+            np.testing.assert_allclose(fetches[2], np_out1, rtol=1e-05)
 
     def _get_numpy_out(
         self, input_data, pad, mode, value=0, data_format="NCDHW"
@@ -630,10 +636,12 @@ class TestPadAPI(unittest.TestCase):
         y3 = F.pad(
             tensor_data, pad=pad_3, mode=mode, value=value, data_format="NCDHW"
         )
+        y4 = F.pad(tensor_data, pad=pad, mode=mode, value=value)
 
         np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
         np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
         np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
+        np.testing.assert_allclose(y4.numpy(), np_out1, rtol=1e-05)
 
     def test_dygraph_2(self):
         paddle.disable_static()
@@ -673,10 +681,16 @@ class TestPadAPI(unittest.TestCase):
         y3 = F.pad(
             tensor_data, pad=pad_3, mode=mode, value=value, data_format="NCHW"
         )
-
+        y4 = F.pad(
+            tensor_data,
+            pad=tensor_pad,
+            mode=mode,
+            value=value,
+        )
         np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
         np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
         np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
+        np.testing.assert_allclose(y4.numpy(), np_out1, rtol=1e-05)
 
     def test_dygraph_3(self):
         paddle.disable_static()
@@ -719,10 +733,17 @@ class TestPadAPI(unittest.TestCase):
         y3 = F.pad(
             tensor_data, pad=pad_3, mode=mode, value=value, data_format="NCL"
         )
+        y4 = F.pad(
+            tensor_data,
+            pad=tensor_pad,
+            mode=mode,
+            value=value,
+        )
 
         np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
         np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
         np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
+        np.testing.assert_allclose(y4.numpy(), np_out1, rtol=1e-05)
 
 
 class TestPadAPI_complex64(TestPadAPI):
