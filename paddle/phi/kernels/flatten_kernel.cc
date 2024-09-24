@@ -60,7 +60,8 @@ PD_REGISTER_KERNEL(flatten,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(flatten_with_xshape,
                    CPU,
@@ -73,7 +74,8 @@ PD_REGISTER_KERNEL(flatten_with_xshape,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(flatten,
@@ -118,7 +120,8 @@ PD_REGISTER_KERNEL(flatten,
                    int,
                    int16_t,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
@@ -132,7 +135,8 @@ PD_REGISTER_KERNEL(flatten_with_xshape,
                    int,
                    int16_t,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t,
+                   bool) {}
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

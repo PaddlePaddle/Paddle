@@ -46,7 +46,8 @@ PD_REGISTER_KERNEL(flatten_grad,
                    uint8_t,
                    int8_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(flatten_grad,
@@ -77,7 +78,8 @@ PD_REGISTER_KERNEL(flatten_grad,
                    int,
                    int16_t,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t,
+                   bool) {}
 
 #endif
 

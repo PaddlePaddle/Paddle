@@ -30,6 +30,7 @@ PD_REGISTER_KERNEL(flatten2,
                    int,
                    int16_t,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t,
+                   bool) {}
 
 #endif
