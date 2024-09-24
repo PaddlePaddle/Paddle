@@ -301,8 +301,8 @@ def _pir_append_gradient_merge_backward_op(
 
         # step2: Accumulate persistable gradient variables in main_program
         # NOTE(zhaoyingli): inplace operation must be 'a = a + b', cannot be 'a = b + a'
-        gard_defining_op = grad.get_defining_op()
-        paddle.pir.set_insertion_point_after(gard_defining_op)
+        grad_defining_op = grad.get_defining_op()
+        paddle.pir.set_insertion_point_after(grad_defining_op)
 
         new_gradient_merge_var = main_block.add_kwarg(
             param.name + "@GRAD@MERGE", grad.type()
@@ -313,7 +313,16 @@ def _pir_append_gradient_merge_backward_op(
             new_gradient_merge_var, grad
         )
         new_gradient_merge_var_add.get_defining_op().op_role = (
-            gard_defining_op.op_role
+            grad_defining_op.op_role
+        )
+
+        new_gradient_merge_var_add.get_defining_op().dist_attr = (
+            paddle.base.libpaddle.pir.create_op_dist_attribute(
+                grad_defining_op.dist_attr.process_mesh,
+                grad_defining_op.dist_attr.operands(),
+                grad_defining_op.dist_attr.results(),
+                grad_defining_op.dist_attr.chunk_id,
+            )
         )
 
         opt_ops_use_grad = [
@@ -350,7 +359,9 @@ def _pir_append_gradient_merge_backward_op(
 
         set_value_op = new_gradient_merge_var_zero.get_defining_op()
         set_value_op.op_role = int(OpRole.Optimize)
-        set_value.get_defining_op().op_role = int(OpRole.Optimize)
+        for id in range(1, set_value_op.num_operands()):
+            op_input = set_value_op.operand_source(id)
+            op_input.get_defining_op().op_role = int(OpRole.Optimize)
 
         # step3: Construct new_params_grads and grad_to_gradient_merge
         new_params_grads.append((param, new_gradient_merge_var))

@@ -37,10 +37,19 @@ class OneDNNPlacementPattern : public pir::OpRewritePattern<OpType> {
       OpType op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
     std::string target_op_name = op->name();
-    if (target_op_name == "pd_op.cast" || target_op_name == "pd_op.cast_") {
+    if (target_op_name == "pd_op.scale" || target_op_name == "pd_op.scale_" ||
+        target_op_name == "pd_op.cast" || target_op_name == "pd_op.cast_") {
       auto input_type = pir::GetDataTypeFromValue(op->operand_source(0));
       if (!(pir::isa<pir::Float32Type>(input_type) ||
             pir::isa<pir::BFloat16Type>(input_type)))
+        return false;
+    }
+    if (target_op_name == "pd_op.slice") {
+      auto input_type = pir::GetDataTypeFromValue(op->operand_source(0));
+      if (!(pir::isa<pir::Float32Type>(input_type) ||
+            pir::isa<pir::BFloat16Type>(input_type) ||
+            pir::isa<pir::UInt8Type>(input_type) ||
+            pir::isa<pir::Int8Type>(input_type)))
         return false;
     }
     target_op_name.replace(0, 5, "onednn_op");
