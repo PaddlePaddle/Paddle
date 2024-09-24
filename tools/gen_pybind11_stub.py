@@ -329,7 +329,9 @@ def check_remove_syntax_error(filename, limit=1000):
         filename: xxx.pyi
         limit: check limit, or raise error
     """
-    pattern_check = re.compile(rf"File.*{filename}.*line (?P<lineno>\d+)")
+    pattern_check = re.compile(
+        rf"File.*{re.escape(filename)}.*line (?P<lineno>\d+)"
+    )
 
     while limit:
         limit -= 1
