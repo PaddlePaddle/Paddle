@@ -2808,6 +2808,104 @@ void atan_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void logcumsumexp_grad(const Tensor& x,
+                       const Tensor& out,
+                       const Tensor& out_grad,
+                       int axis,
+                       bool flatten,
+                       bool exclusive,
+                       bool reverse,
+                       Tensor* x_grad) {
+  if (x_grad) {
+    reverse = !reverse;
+    Tensor tmp, lowest, x_grad_tmp;
+    Tensor x_cast = x;
+    Tensor out_cast = out;
+    Tensor out_grad_cast = out_grad;
+    bool need_cast = is_half_dtype(x.dtype());
+
+    if (need_cast) {
+      x_cast = cast<T>(x, DataType::FLOAT32);
+      out_cast = cast<T>(out, DataType::FLOAT32);
+      out_grad_cast = cast<T>(out_grad, DataType::FLOAT32);
+    }
+    const Tensor out_grad_log = log<T>(abs<T>(out_grad_cast));
+    auto out_grad_dtype = out_grad_cast.dtype();
+
+    if (has_dynamic_shape(x_cast.shape()) ||
+        has_dynamic_shape(out_grad_cast.shape())) {
+      const Tensor x_shape = shape<T>(x_cast);
+      const Tensor out_grad_shape = shape<T>(out_grad_cast);
+      const Tensor reshape_x = backend::reshape<T>(x_cast, out_grad_shape);
+
+      if (out_grad_dtype == DataType::FLOAT32) {
+        lowest =
+            backend::full_with_tensor<T>(out_grad_shape,
+                                         std::numeric_limits<float>::lowest(),
+                                         out_grad_dtype);
+      } else if (out_grad_dtype == DataType::FLOAT64) {
+        lowest =
+            backend::full_with_tensor<T>(out_grad_shape,
+                                         std::numeric_limits<double>::lowest(),
+                                         out_grad_dtype);
+      }
+      const Tensor zero =
+          backend::full_with_tensor<T>(out_grad_shape, 0.0, out_grad_dtype);
+
+      // compute positive
+      Tensor out_grad_pos =
+          where<T>(out_grad_cast > zero, out_grad_log, lowest);
+      tmp = out_grad_pos - out_cast;
+      out_grad_pos = logcumsumexp<T>(tmp, axis, flatten, exclusive, reverse);
+      out_grad_pos = exp<T>(out_grad_pos + reshape_x);
+
+      // compute negative
+      Tensor out_grad_neg =
+          where<T>(out_grad_cast < zero, out_grad_log, lowest);
+      tmp = out_grad_neg - out_cast;
+      out_grad_neg = logcumsumexp<T>(tmp, axis, flatten, exclusive, reverse);
+      out_grad_neg = exp<T>(out_grad_neg + reshape_x);
+
+      x_grad_tmp = backend::reshape<T>(out_grad_pos - out_grad_neg, x_shape);
+    } else {
+      const Tensor reshape_x = reshape<T>(x_cast, out_grad_cast.shape());
+      if (out_grad_dtype == DataType::FLOAT32) {
+        lowest = full<T>(out_grad_cast.shape(),
+                         std::numeric_limits<float>::lowest(),
+                         out_grad_dtype);
+      } else if (out_grad_dtype == DataType::FLOAT64) {
+        lowest = full<T>(out_grad_cast.shape(),
+                         std::numeric_limits<double>::lowest(),
+                         out_grad_dtype);
+      }
+      const Tensor zero = full<T>(out_grad_cast.shape(), 0.0, out_grad_dtype);
+
+      // compute positive
+      Tensor out_grad_pos =
+          where<T>(out_grad_cast > zero, out_grad_log, lowest);
+      tmp = out_grad_pos - out_cast;
+      out_grad_pos = logcumsumexp<T>(tmp, axis, flatten, exclusive, reverse);
+      out_grad_pos = exp<T>(out_grad_pos + reshape_x);
+
+      // compute negative
+      Tensor out_grad_neg =
+          where<T>(out_grad_cast < zero, out_grad_log, lowest);
+      tmp = out_grad_neg - out_cast;
+      out_grad_neg = logcumsumexp<T>(tmp, axis, flatten, exclusive, reverse);
+      out_grad_neg = exp<T>(out_grad_neg + reshape_x);
+
+      x_grad_tmp = reshape<T>(out_grad_pos - out_grad_neg, x_cast.shape());
+    }
+
+    if (need_cast) {
+      set_output<T>(cast<T>(x_grad_tmp, x.dtype()), x_grad);
+    } else {
+      set_output<T>(x_grad_tmp, x_grad);
+    }
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
