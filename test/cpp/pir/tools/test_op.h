@@ -341,3 +341,61 @@ IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp3)
 IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultTypeTraitOp1)
 IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultTypeTraitOp2)
 IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultTypeTraitOp3)
+
+namespace test1 {
+// Define case op1.
+class Operation1 : public pir::Op<Operation1> {
+ public:
+  using Op::Op;
+  static const char *name() { return "test1.operation1"; }
+  static constexpr uint32_t attributes_num = 2;
+  static const char *attributes_name[attributes_num];
+  static void Build(pir::Builder &builder,              // NOLINT
+                    pir::OperationArgument &argument);  // NOLINT
+  void VerifySig() const;
+};
+
+// Define op2.
+class Operation2 : public pir::Op<Operation2> {
+ public:
+  using Op::Op;
+  static const char *name() { return "test1.operation2"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,              // NOLINT
+                    pir::OperationArgument &argument);  // NOLINT
+  void VerifySig() const {}
+  static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
+};
+
+// Define op3.
+class Operation3 : public pir::Op<Operation3> {
+ public:
+  using Op::Op;
+  static const char *name() { return "test1.operation3"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value l_operand,
+                    pir::Value r_operand);
+  void VerifySig() const {}
+  static void InferShape() { VLOG(2) << "This is op3's InferShape interface."; }
+};
+
+// Define op4.
+class Operation4 : public pir::Op<Operation4> {
+ public:
+  using Op::Op;
+  static const char *name() { return "test1.operation4"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,              // NOLINT
+                    pir::OperationArgument &argument);  // NOLINT
+  void VerifySig() const {}
+};
+}  // namespace test1
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test1::Operation1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test1::Operation2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test1::Operation3)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test1::Operation4)

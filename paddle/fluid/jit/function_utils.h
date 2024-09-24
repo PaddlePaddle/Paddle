@@ -18,10 +18,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/jit/function_schema.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
-
-#include "paddle/fluid/jit/function_schema.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 
@@ -56,13 +56,20 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
 
 void RemoveFeedFetch(framework::ProgramDesc *program_desc);
 
-void RemoveFeedFetch(pir::Program *program);
-
 template <typename T>
 std::shared_ptr<T> MakeEngine(const std::shared_ptr<FunctionInfo> &info,
                               const std::shared_ptr<VariableMap> &params_dict,
                               const phi::Place &place) {
   return std::make_shared<T>(info, params_dict, place);
+}
+
+template <typename T>
+std::shared_ptr<T> MakePirEngine(
+    const std::shared_ptr<PirFunctionInfo> &info,
+    const std::shared_ptr<VariableMap> &params_dict,
+    const phi::Place &place,
+    const std::shared_ptr<pir::Program> &prog) {
+  return std::make_shared<T>(info, params_dict, place, prog);
 }
 
 }  // namespace utils

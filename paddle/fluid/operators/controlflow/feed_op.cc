@@ -75,28 +75,6 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-void FeedSparseCooTensorKernel(const Context& dev_ctx,
-                               const phi::ExtendedTensor& x,
-                               int col,
-                               phi::SparseCooTensor* out) {
-  PADDLE_ENFORCE_NOT_NULL(
-      out,
-      common::errors::NotFound(
-          "Output cannot be found in scope for operator 'Feed'"));
-  const auto& feed_item = CheckAndGetFeedItem(x, col);
-  const auto& in_tensor = paddle::get<phi::SparseCooTensor>(feed_item);
-  const auto& place = dev_ctx.GetPlace();
-  if (phi::is_same_place(in_tensor.place(), place)) {
-    *out = in_tensor;
-  } else {
-    phi::DenseTensor indices, values;
-    framework::TensorCopy(in_tensor.indices(), place, dev_ctx, &indices);
-    framework::TensorCopy(in_tensor.values(), place, dev_ctx, &values);
-    out->SetMember(indices, values, in_tensor.meta());
-  }
-}
-
-template <typename Context>
 void FeedStringsKernel(const Context& dev_ctx UNUSED,
                        const phi::ExtendedTensor& x,
                        int col,
@@ -217,26 +195,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    feed_sparse_coo_tensor,
-    CPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::CPUContext>) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    feed_sparse_coo_tensor,
-    GPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::GPUContext>) {}
-#elif defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    feed_sparse_coo_tensor,
-    XPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::XPUContext>) {}
-#endif
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(
     feed_dense_tensor, ALL_LAYOUT, paddle::operators::FeedDenseTensorKernel) {}

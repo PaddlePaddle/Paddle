@@ -23,7 +23,7 @@ from paddle.base import backward, core, framework, program_guard
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.base.framework import _apply_pass, get_flags
+from paddle.base.framework import get_flags
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -893,28 +893,28 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
-                _apply_pass(
-                    forward_program,
-                    empty_startup_program,
-                    "buffer_shared_inplace_pass",
-                    attrs,
-                    attr_types,
-                )
+            # if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
+            #     _apply_pass(
+            #         forward_program,
+            #         empty_startup_program,
+            #         "buffer_shared_inplace_pass",
+            #         attrs,
+            #         attr_types,
+            #     )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
-                _apply_pass(
-                    backward_program,
-                    empty_startup_program,
-                    "buffer_shared_inplace_pass",
-                    attrs,
-                    attr_types,
-                )
+            # if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
+            #     _apply_pass(
+            #         backward_program,
+            #         empty_startup_program,
+            #         "buffer_shared_inplace_pass",
+            #         attrs,
+            #         attr_types,
+            #     )
 
     @LazyInitialized
     def _inout_var_names(self):

@@ -109,6 +109,4 @@ void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
   }
 }
 
-void RemoveFeedFetch(pir::Program *program) {}
-
 }  // namespace paddle::jit::utils

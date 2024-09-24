@@ -31,8 +31,9 @@ class InferencePassTest(unittest.TestCase):
         paddle.enable_static()
         super().__init__(methodName)
         paddle.enable_static()
-        self.main_program = base.Program()
-        self.startup_program = base.Program()
+        with paddle.pir_utils.OldIrGuard():
+            self.main_program = base.Program()
+            self.startup_program = base.Program()
         self.feeds = None
         self.fetch_list = None
 
@@ -92,14 +93,15 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return PaddlePaddle outputs.
         '''
-        with base.scope_guard(scope):
-            outs = executor.run(
-                program=program,
-                feed=self.feeds,
-                fetch_list=self.fetch_list,
-                return_numpy=False,
-            )
-        return outs
+        with paddle.pir_utils.OldIrGuard():
+            with base.scope_guard(scope):
+                outs = executor.run(
+                    program=program,
+                    feed=self.feeds,
+                    fetch_list=self.fetch_list,
+                    return_numpy=False,
+                )
+            return outs
 
     def _get_inference_outs(self, config):
         '''
@@ -206,22 +208,25 @@ class InferencePassTest(unittest.TestCase):
         '''
         place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
         executor = base.Executor(place)
-        scope = base.Scope()
-        device = "GPU" if use_gpu else "CPU"
-        with base.scope_guard(scope):
-            executor.run(self.startup_program)
-        self._save_models(
-            self.path,
-            list(self.feeds.keys()),
-            self.fetch_list,
-            executor,
-            self.main_program,
-            scope,
-        )
-        paddle_outs = self._get_paddle_outs(executor, self.main_program, scope)
-        inference_outs = self._get_inference_outs(
-            self._get_analysis_config(use_gpu=use_gpu)
-        )
+        with paddle.pir_utils.OldIrGuard():
+            scope = base.Scope()
+            device = "GPU" if use_gpu else "CPU"
+            with base.scope_guard(scope):
+                executor.run(self.startup_program)
+            self._save_models(
+                self.path,
+                list(self.feeds.keys()),
+                self.fetch_list,
+                executor,
+                self.main_program,
+                scope,
+            )
+            paddle_outs = self._get_paddle_outs(
+                executor, self.main_program, scope
+            )
+            inference_outs = self._get_inference_outs(
+                self._get_analysis_config(use_gpu=use_gpu)
+            )
 
         # Check whether the results calculated on CPU and on GPU are the same.
         self.assertTrue(

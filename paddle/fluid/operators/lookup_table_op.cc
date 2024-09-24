@@ -12,17 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/lookup_table_op.h"
-
 #include <memory>
 
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/phi/common/bfloat16.h"
 
 namespace paddle {
 namespace operators {
+
+constexpr int64_t kNoPadding = -1;
 
 class LookupTableOp : public framework::OperatorWithKernel {
  public:
@@ -233,17 +234,6 @@ REGISTER_OPERATOR(lookup_table_grad,
                   ops::LookupTableOpGrad,
                   ops::LookupTableGradOpNoBufferVarsInferer,
                   ops::LookupTableOpGradVarTypeInference);
-
-REGISTER_OP_CPU_KERNEL(lookup_table,
-                       ops::LookupTableKernel<float>,
-                       ops::LookupTableKernel<double>,
-                       ops::LookupTableKernel<int8_t>,
-                       ops::LookupTableKernel<int16_t>,
-                       ops::LookupTableKernel<phi::dtype::bfloat16>);
-REGISTER_OP_CPU_KERNEL(lookup_table_grad,
-                       ops::LookupTableGradKernel<float>,
-                       ops::LookupTableGradKernel<double>,
-                       ops::LookupTableGradKernel<phi::dtype::bfloat16>);
 
 /* ==========================  register checkpoint ===========================*/
 

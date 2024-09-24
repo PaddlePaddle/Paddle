@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.auto_parallel.static.pir_pass import fold_reshard_pass
+from paddle.distributed.auto_parallel.static.pir_pass import ReshardPasses
 
 paddle.enable_static()
 
@@ -45,7 +45,7 @@ class TestFoldReshardPass(unittest.TestCase):
             if op.name() == "dist_op.reshard":
                 reshard_op_num += 1
         self.assertEqual(reshard_op_num, 2)
-        fold_reshard_pass(main_program)
+        ReshardPasses.fold_reshard_pass(main_program)
         reshard_op_num = 0
         for op in main_program.global_block().ops:
             if op.name() == "dist_op.reshard":

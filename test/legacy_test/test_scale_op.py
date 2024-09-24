@@ -24,7 +24,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestScaleOp(OpTest):
@@ -154,7 +153,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
 
@@ -231,7 +230,6 @@ class TestScaleApiStatic(unittest.TestCase):
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
-    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
@@ -272,7 +270,6 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -310,7 +307,6 @@ class TestScaleTripleGradCheck(unittest.TestCase):
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.

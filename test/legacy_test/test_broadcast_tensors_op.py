@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 random.seed(2021)
 
@@ -258,7 +257,7 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
         self.dtype = 'float32'
 
     def test_api(self):
-        @test_with_pir_api
+
         def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()

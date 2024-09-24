@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
@@ -459,17 +458,7 @@ void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
 
-  // set runtime_ctx and infershape_ctx_
-  if (instr_node->OpBase()->Type() == "cinn_launch" ||
-      instr_node->OpBase()->Type() == "cinn_instruction_run") {  // OP use scope
-                                                                 // in kernel
-    Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                         : var_scope_.GetMutableScope();
-    instr_node->ResetContextWithScope(
-        ins_map, outs_map, *local_scope, instr_node->OpBase()->Type());
-  } else {
-    instr_node->ResetContext(ins_map, outs_map, instr_node->OpBase()->Type());
-  }
+  instr_node->ResetContext(ins_map, outs_map, instr_node->OpBase()->Type());
 }
 
 void ProgramInterpreter::BuildInplace() {
@@ -986,9 +975,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
     // TODO(xiongkun03) Does operator base support inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
-      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
-      auto* out =
-          paddle::framework::details::GetMutableTensorFromVar(pair.second);
+      const auto& in = GetTensorFromVar(pair.first);
+      auto* out = GetMutableTensorFromVar(pair.second);
       if (in.dims() == out->dims()) {
         out->ShareBufferWith(in);
       }
