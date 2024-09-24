@@ -28,8 +28,8 @@ from paddle.distributed.communication.reduce import (
     is_avg_reduce_op_supported,
 )
 from paddle.framework.recall_error import (
-    LOSS_NAN_ERROR,
     SHARDING_PAD_NON_ZERO_ERROR,
+    check_naninf,
 )
 
 from ...utils import timer_helper as timer
@@ -348,10 +348,10 @@ class DygraphShardingOptimizer:
                         os.getenv('FLAGS_pp_check_naninf', '0')
                     )
                     if need_check:
-                        naninf = paddle.isfinite(g_var).all()
-                        if not naninf.item():
+                        err_msg = check_naninf(g_var)
+                        if err_msg is not None:
                             raise ValueError(
-                                f"{LOSS_NAN_ERROR}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
+                                f"{err_msg}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
                             )
 
                     paddle.distributed.reduce(
