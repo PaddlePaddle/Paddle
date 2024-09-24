@@ -84,6 +84,14 @@ struct GpuLaunchConfig {
     return thread_per_block.x * thread_per_block.y * thread_per_block.z;
   }
 
+  static bool IsEmptyDim3(const dim3& dim) {
+    return dim.x == 0 || dim.y == 0 || dim.z == 0;
+  }
+
+  bool IsEmpty() const {
+    return IsEmptyDim3(block_per_grid) || IsEmptyDim3(thread_per_block);
+  }
+
   int compute_capability = 0;
   dim3 thread_per_block = dim3(1, 1, 1);
   dim3 block_per_grid = dim3(1, 1, 1);
