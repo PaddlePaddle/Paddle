@@ -568,7 +568,7 @@ Expr DyScheduleImpl::SampleCategorical(
 
   PADDLE_ENFORCE_EQ(candidates.size(),
                     probs.size(),
-                    phi::error::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SampleCategorical>.\n"
                         "[Error info] vector<int> params(candidates) and "
