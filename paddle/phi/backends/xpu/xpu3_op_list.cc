@@ -48,6 +48,8 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::INT32,
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16})},
+      {"arg_min",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"argsort_grad",
        XPUKernelSet({phi::DataType::INT32,
                      phi::DataType::INT64,
