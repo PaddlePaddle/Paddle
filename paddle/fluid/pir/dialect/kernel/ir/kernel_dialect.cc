@@ -216,14 +216,12 @@ void OneDNNKernelDialect::PrintAttribute(pir::Attribute attr,
 
 pir::OpPrintFn OneDNNKernelDialect::PrintOperation(
     const pir::Operation &op) const {
-  if (const_cast<pir::Operation *>(op)->dyn_cast<PhiKernelOp>() ||
-      const_cast<pir::Operation *>(op)->dyn_cast<LegacyKernelOp>()) {
+  if (op.dyn_cast<PhiKernelOp>() || op.dyn_cast<LegacyKernelOp>()) {
     return [](const pir::Operation &op, pir::IrPrinter &printer) {
       auto &os = printer.os;
       printer.PrintOpResult(op);
       os << " =";
-      if (auto phi_kernel_op =
-              const_cast<pir::Operation *>(op)->dyn_cast<PhiKernelOp>()) {
+      if (auto phi_kernel_op = op.dyn_cast<PhiKernelOp>()) {
         std::string kernel_name = phi_kernel_op.kernel_name();
         if (op.attributes().count("is_inplace") != 0 &&
             op.attributes()
