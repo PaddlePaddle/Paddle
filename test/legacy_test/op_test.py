@@ -3077,11 +3077,6 @@ class OpTest(unittest.TestCase):
 
                 def err_msg():
                     offset = np.argmax(diff_mat > max_relative_error)
-                    if name == "Input":
-                        for i in range(len(a.flatten())):
-                            print(f"{self.dtype} a[{i}]: {a.flatten()[i]}")
-                        for i in range(len(b.flatten())):
-                            print(f"{self.dtype} b[{i}]: {b.flatten()[i]}")
                     return (
                         "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
                         "the first error element is %d, expected %e, but got %e."

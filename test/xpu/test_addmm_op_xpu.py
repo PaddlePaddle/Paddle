@@ -18,13 +18,12 @@ import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
+    get_xpu_op_support_types,
 )
-from op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
-
-paddle.enable_static()
 
 
 class XPUTestAddMMOp(XPUOpTestWrapper):
@@ -53,7 +52,9 @@ class XPUTestAddMMOp(XPUOpTestWrapper):
                 dot_result = np.dot(self.x_fp32, self.y_fp32)
                 self.outputs = {
                     'Out': convert_float_to_uint16(
-                        self.beta * self.input_fp32 + self.alpha * dot_result
+                        self.beta
+                        * np.broadcast_to(self.input_fp32, dot_result.shape)
+                        + self.alpha * dot_result
                     )
                 }
             else:
@@ -64,7 +65,9 @@ class XPUTestAddMMOp(XPUOpTestWrapper):
                 self.y = np.random.random(self.y_shape).astype(self.dtype)
                 dot_result = np.dot(self.x, self.y)
                 self.outputs = {
-                    'Out': self.beta * self.input + self.alpha * dot_result
+                    'Out': self.beta
+                    * np.broadcast_to(self.input, dot_result.shape)
+                    + self.alpha * dot_result
                 }
             self.inputs = {
                 'Input': self.input,
@@ -80,9 +83,7 @@ class XPUTestAddMMOp(XPUOpTestWrapper):
             self.input_shape = [10, 10]
             self.x_shape = [10, 10]
             self.y_shape = [10, 10]
-            # self.alpha = 1.0
-            # self.beta = 1.0
-            self.alpha = 0.0
+            self.alpha = 1.0
             self.beta = 1.0
 
         def test_check_output(self):
@@ -96,9 +97,8 @@ class XPUTestAddMMOp(XPUOpTestWrapper):
             ):
                 return
             place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ['Input', 'X', 'Y'], 'Out')
+            self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
-    '''
     class TestAddMMOp2(TestAddMMOp):
         """
         case 2
@@ -170,11 +170,120 @@ class XPUTestAddMMOp(XPUOpTestWrapper):
             self.y_shape = [15, 13]
             self.alpha = 0.0
             self.beta = 0.0
-    '''
+
+    class TestAddmmInputGradCheck(unittest.TestCase):
+        def test_check_input_grad(self):
+            self.init_case()
+
+            input_np = np.random.random(self.input_shape).astype(np.float32)
+            x_np = np.random.random(self.x_shape).astype(np.float32)
+            y_np = np.random.random(self.y_shape).astype(np.float32)
+
+            input_cpu = paddle.to_tensor(
+                input_np, paddle.float32, paddle.CPUPlace(), stop_gradient=False
+            )
+            x_cpu = paddle.to_tensor(
+                x_np, paddle.float32, paddle.CPUPlace(), stop_gradient=False
+            )
+            y_cpu = paddle.to_tensor(
+                y_np, paddle.float32, paddle.CPUPlace(), stop_gradient=False
+            )
+            out = paddle.addmm(
+                input_cpu, x_cpu, y_cpu, beta=self.beta, alpha=self.alpha
+            )
+            out.backward()
+
+            atol = 0.001
+            rtol = 1e-5
+            test_dtype = [paddle.float32, paddle.float16, paddle.bfloat16]
+            for test_dtype in test_dtype:
+                input_xpu = paddle.to_tensor(
+                    input_np,
+                    test_dtype,
+                    paddle.XPUPlace(0),
+                    stop_gradient=False,
+                )
+                x_xpu = paddle.to_tensor(
+                    x_np, test_dtype, paddle.XPUPlace(0), stop_gradient=False
+                )
+                y_xpu = paddle.to_tensor(
+                    y_np, test_dtype, paddle.XPUPlace(0), stop_gradient=False
+                )
+                if test_dtype == paddle.bfloat16:
+                    input_np_bf16 = convert_float_to_uint16(input_np)
+                    x_np_bf16 = convert_float_to_uint16(x_np)
+                    y_np_bf16 = convert_float_to_uint16(y_np)
+                    input_xpu = paddle.to_tensor(
+                        input_np_bf16,
+                        test_dtype,
+                        paddle.XPUPlace(0),
+                        stop_gradient=False,
+                    )
+                    x_xpu = paddle.to_tensor(
+                        x_np_bf16,
+                        test_dtype,
+                        paddle.XPUPlace(0),
+                        stop_gradient=False,
+                    )
+                    y_xpu = paddle.to_tensor(
+                        y_np_bf16,
+                        test_dtype,
+                        paddle.device.XPUPlace(0),
+                        stop_gradient=False,
+                    )
+                out_xpu = paddle.addmm(
+                    input_xpu, x_xpu, y_xpu, beta=self.beta, alpha=self.alpha
+                )
+                out_xpu.backward()
+
+                if test_dtype == paddle.bfloat16:
+                    np.testing.assert_allclose(
+                        input_cpu.grad.numpy(),
+                        convert_uint16_to_float(input_xpu.grad.numpy()),
+                        rtol=rtol,
+                        atol=atol,
+                    )
+                else:
+                    np.testing.assert_allclose(
+                        input_cpu.grad.numpy(),
+                        input_xpu.grad.numpy(),
+                        rtol=rtol,
+                        atol=atol,
+                    )
+
+        def init_case(self):
+            self.input_shape = [11, 11]
+            self.x_shape = [11, 13]
+            self.y_shape = [13, 11]
+            self.alpha = 1.0
+            self.beta = 0.0
+
+    class TestAddmmInputGradCheck1(TestAddmmInputGradCheck):
+        def init_case(self):
+            self.input_shape = [10, 10]
+            self.x_shape = [10, 10]
+            self.y_shape = [10, 10]
+            self.alpha = 0.0
+            self.beta = 1.0
+
+    class TestAddmmInputGradCheck2(TestAddmmInputGradCheck):
+        def init_case(self):
+            self.input_shape = [10, 10]
+            self.x_shape = [10, 10]
+            self.y_shape = [10, 10]
+            self.alpha = 0.0
+            self.beta = 0.0
+
+    class TestAddmmInputGradCheck3(TestAddmmInputGradCheck):
+        def init_case(self):
+            self.input_shape = [10, 10]
+            self.x_shape = [10, 10]
+            self.y_shape = [10, 10]
+            self.alpha = 1.0
+            self.beta = 1.0
 
 
-# support_types = get_xpu_op_support_types('addmm')
-support_types = ['float32']
+support_types = get_xpu_op_support_types('addmm')
 for stype in support_types:
     create_test_class(globals(), XPUTestAddMMOp, stype)
 

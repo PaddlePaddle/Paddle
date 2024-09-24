@@ -30,9 +30,9 @@ void AddmmKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
-  //phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
+  const XPUType* input_ptr = reinterpret_cast<const XPUType*>(input.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
 
   auto input_dims = input.dims();
@@ -57,32 +57,41 @@ void AddmmKernel(const Context& dev_ctx,
                         "but received shape: [%s]",
                         input_dims));
 
-  XpuFcInfo fc_info;
-  GetFCInfo(x_dims, y_dims, false, false, &fc_info);
-  xpu::Context* xpu_ctx = dev_ctx.x_context();
-  MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
-
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  T* tmp = RAII_GUARD.alloc_l3_or_gm<T>(input.numel());
-  int r = xpu::scale(dev_ctx.x_context(),
-                     reinterpret_cast<const XPUType*>(input.data<T>()),
-                     reinterpret_cast<XPUType*>(tmp),
-                     input.numel(),
-                     true,
-                     beta,
-                     0.f);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
-  auto out_dims = out->dims();
-  auto out_dims_vec = common::vectorize<int64_t>(out_dims);
-  auto input_dims_vec = common::vectorize<int64_t>(input_dims);
-  r = xpu::broadcast_add(
-    dev_ctx.x_context(),
-    out_ptr,
-    reinterpret_cast<XPUType*>(tmp),
-    out_ptr,
-    out_dims_vec,
-    input_dims_vec);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+  int r;
+  if (alpha == 0.f) {
+    if (beta == 0.f) {
+      r = xpu::constant(
+        dev_ctx.x_context(), out_ptr, out->numel(), static_cast<XPUType>(0.0f));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    }
+    else {
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      T* beta_xpu = RAII_GUARD.alloc_l3_or_gm<T>(1);
+      r = xpu::constant(
+        dev_ctx.x_context(),
+        reinterpret_cast<XPUType*>(beta_xpu),
+        out->numel(),
+        static_cast<XPUType>(beta));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      auto input_dims_vec = common::vectorize<int64_t>(input.dims());
+      auto out_dims_vec = common::vectorize<int64_t>(out->dims());
+      r = xpu::broadcast_mul<XPUType>(
+        dev_ctx.x_context(),
+        input_ptr,
+        reinterpret_cast<XPUType*>(beta_xpu),
+        out_ptr,
+        input_dims_vec,
+        out_dims_vec);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
+    }
+  }
+  else {
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+    XpuFcInfo fc_info;
+    GetFCInfo(x_dims, y_dims, false, false, &fc_info);
+    xpu::Context* xpu_ctx = dev_ctx.x_context();
+    MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
+  }
 }
 }  // namespace phi
 
