@@ -118,20 +118,21 @@ PD_REGISTER_KERNEL(flatten,
                    int,
                    int16_t,
                    int8_t,
-                   uint8_t,
-                   bool) {}
+                   uint8_t) {}
 
 PD_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlattenWithXShapeKernel,
+                   double,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
-                   int8_t,
-                   int16_t,
+                   int64_t,
                    int,
-                   int64_t) {}
+                   int16_t,
+                   int8_t,
+                   uint8_t) {}
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

@@ -77,8 +77,7 @@ PD_REGISTER_KERNEL(flatten_grad,
                    int,
                    int16_t,
                    int8_t,
-                   uint8_t,
-                   bool) {}
+                   uint8_t) {}
 
 #endif
 
