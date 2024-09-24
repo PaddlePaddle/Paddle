@@ -6263,20 +6263,6 @@ def masked_fill_(
     """
     Inplace version of ``masked_fill`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_masked_fill`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> x = paddle.ones((3, 3), dtype="float32")
-            >>> mask = paddle.to_tensor([[True, False, False]])
-            >>> out = paddle.masked_fill_(x, mask, 2)
-            >>> print(out)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [[2., 1., 1.],
-                    [2., 1., 1.],
-                    [2., 1., 1.]])
     """
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
@@ -6715,29 +6701,26 @@ def index_add_(
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_index_add`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> paddle.device.set_device('gpu')
-
-            >>> input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
-            >>> index = paddle.to_tensor([0, 2], dtype="int32")
-            >>> value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
-            >>> inplace_res = paddle.index_add_(input_tensor, index, 1, value)
-            >>> print(inplace_res)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            [[2., 1., 2.],
-             [2., 1., 2.],
-             [2., 1., 2.]])
     """
     return _C_ops.index_add_(x, index, value, axis)
 
 
 @inplace_apis_in_dygraph_only
 def index_put_(
+    x: Tensor,
+    indices: Sequence[Tensor],
+    value: Tensor,
+    accumulate: bool = False,
+    name: str | None = None,
+) -> Tensor:
+    """
+    Inplace version of ``index_put`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_put`.
+    """
+    return _C_ops.index_put_(x, indices, value, accumulate)
+
+
+def index_put(
     x: Tensor,
     indices: Sequence[Tensor],
     value: Tensor,
@@ -6759,43 +6742,6 @@ def index_put_(
 
     Returns:
         Tensor, same dimension and dtype with x.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.zeros([3, 3])
-            >>> value = paddle.ones([3])
-            >>> ix1 = paddle.to_tensor([0,1,2])
-            >>> ix2 = paddle.to_tensor([1,2,1])
-            >>> indices=(ix1,ix2)
-
-            >>> out = paddle.index_put_(x,indices,value)
-            >>> print(x)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 1., 0.],
-             [0., 0., 1.],
-             [0., 1., 0.]])
-            >>> print(out)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 1., 0.],
-             [0., 0., 1.],
-             [0., 1., 0.]])
-    """
-    return _C_ops.index_put_(x, indices, value, accumulate)
-
-
-def index_put(
-    x: Tensor,
-    indices: Sequence[Tensor],
-    value: Tensor,
-    accumulate: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Outplace version of ``index_put_`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_index_put`.
 
     Examples:
         .. code-block:: python
@@ -7162,8 +7108,19 @@ def index_fill(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
     """
-    Outplace version of ``index_fill_`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_index_fill_`.
+    Fill the elements of the input tensor with value by the specific axis and index.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        index (Tensor): The 1-D Tensor containing the indices to index.
+            The data type of ``index`` must be int32 or int64.
+        axis (int): The dimension along which to index.
+        value (int|float): The tensor used to fill with.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimension and dtype with x.
+
 
     Examples:
         .. code-block:: python
@@ -7193,38 +7150,8 @@ def index_fill_(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
     """
-    Fill the elements of the input tensor with value by the specific axis and index.
-
-    Args:
-        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
-        index (Tensor): The 1-D Tensor containing the indices to index.
-            The data type of ``index`` must be int32 or int64.
-        axis (int): The dimension along which to index.
-        value (int|float): The tensor used to fill with.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, same dimension and dtype with x.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> input_tensor = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
-            >>> index = paddle.to_tensor([0, 2], dtype="int32")
-            >>> value = -1
-            >>> res = paddle.index_fill_(input_tensor, index, 0, value)
-            >>> print(input_tensor)
-            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                   [[-1, -1, -1],
-                    [ 4,  5,  6],
-                    [-1, -1, -1]])
-            >>> print(res)
-            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                   [[-1, -1, -1],
-                    [ 4,  5,  6],
-                    [-1, -1, -1]])
-
+    Inplace version of ``index_fill`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_fill`.
     """
     return _index_fill_impl(x, index, axis, value, True)
 

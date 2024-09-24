@@ -24,6 +24,7 @@ from test_attribute_var import UnittestBase
 from utils import static_guard
 
 import paddle
+import paddle.distributed as dist
 from paddle.base import core
 from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
@@ -71,12 +72,14 @@ class TestPadOp(OpTest):
             check_prim=True,
             check_pir=True,
             check_prim_pir=True,
+            check_auto_parallel=self.check_auto_parallel,
         )
 
     def initTestCase(self):
         self.shape = (16, 16)
         self.paddings = [(0, 1), (2, 3)]
         self.pad_value = 0.0
+        self.check_auto_parallel = False
 
 
 class TestCase1(TestPadOp):
@@ -84,6 +87,7 @@ class TestCase1(TestPadOp):
         self.shape = (2, 3, 4, 5)
         self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
         self.pad_value = 0.5
+        self.check_auto_parallel = False
 
 
 class TestCase2(TestPadOp):
@@ -91,6 +95,7 @@ class TestCase2(TestPadOp):
         self.shape = (5, 5, 5)
         self.paddings = [(0, 0), (0, 0), (1, 2)]
         self.pad_value = 1.0
+        self.check_auto_parallel = False
 
 
 class TestCase3(TestPadOp):
@@ -98,6 +103,31 @@ class TestCase3(TestPadOp):
         self.shape = 100
         self.paddings = [(0, 1)]
         self.pad_value = 0.9
+        self.check_auto_parallel = False
+
+
+class TestCase4(TestPadOp):
+    def initTestCase(self):
+        self.shape = (10, 10)
+        self.paddings = [(0, 1), (2, 3)]
+        self.pad_value = 1.0
+
+        self.check_auto_parallel = True
+        self.placements = {
+            'X': [dist.Replicate()],
+        }
+
+
+class TestCase5(TestPadOp):
+    def initTestCase(self):
+        self.shape = (10, 10)
+        self.paddings = [(0, 0), (2, 3)]
+        self.pad_value = 1.0
+
+        self.check_auto_parallel = True
+        self.placements = {
+            'X': [dist.Shard(0)],
+        }
 
 
 # ----------------Pad Fp16----------------
@@ -129,6 +159,8 @@ create_test_fp16(TestPadOp)
 create_test_fp16(TestCase1)
 create_test_fp16(TestCase2)
 create_test_fp16(TestCase3)
+create_test_fp16(TestCase4)
+create_test_fp16(TestCase5)
 
 
 class TestPadOpError(unittest.TestCase):
