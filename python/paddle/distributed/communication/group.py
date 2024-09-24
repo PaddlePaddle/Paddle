@@ -255,7 +255,7 @@ def _sync_calc_stream(tensor):
 
 def _sync_comm_stream(tensor, ring_id=0):
     if framework.in_dynamic_mode():
-        return paddle._legacy_C_ops.c_sync_comm_stream(
+        return paddle._legacy_C_ops.sync_comm_stream(
             [tensor], [tensor], 'ring_id', ring_id
         )
     else:
