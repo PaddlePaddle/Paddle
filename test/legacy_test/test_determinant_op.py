@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -86,7 +85,6 @@ class TestDeterminantAPI(unittest.TestCase):
         self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -147,7 +145,6 @@ class TestSlogDeterminantAPI(unittest.TestCase):
         self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

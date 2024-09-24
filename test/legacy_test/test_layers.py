@@ -25,7 +25,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core, dygraph
-from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -237,7 +236,6 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
-    @test_with_pir_api
     def test_SyncBatchNorm(self):
         if core.is_compiled_with_cuda():
             with self.static_graph():
@@ -998,7 +996,6 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
-    @test_with_pir_api
     def test_affine_grid(self):
         with self.static_graph():
             data = paddle.static.data(
@@ -1018,7 +1015,6 @@ class TestBook(LayerTest):
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
 
-    @test_with_pir_api
     def test_stridedslice(self):
         axes = [0, 1, 2]
         starts = [1, 0, 2]

@@ -19,13 +19,12 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestBroadcastToError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -82,7 +81,6 @@ class TestBroadcastToAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
             np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
-    @test_with_pir_api
     def test_api_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
