@@ -1543,7 +1543,7 @@ bool FlashAttnOpInferSymbolicShape(
 //   return true;
 // }
 
-bool FlashMaskAttentionOpInferSymbolicShape(
+bool FlashmaskAttentionOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &q =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
