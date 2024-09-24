@@ -13,7 +13,6 @@
 #include <iostream>
 
 /// Multi-block mmha kernel can only be selected when CUDA >= 11.7
-/// 我们这里没有处理这个宏
 #if (CUDART_VERSION >= 11070)
 #define ENABLE_MULTI_BLOCK_OPTION
 #endif
@@ -195,6 +194,11 @@ __global__ void masked_multihead_attention_kernel(
   const unsigned bhi = bi * num_heads + hi;
   const unsigned bhi_kv = bi * num_heads_kv + hi_kv;
 
+  /// 所有beam相关的东西都是直接copy来的，没更新，未经测试...
+  // real batch id
+  const int bbi = bi / params.beam_width;
+  const int bbhi = bbi * params.beam_width * num_heads + hi;
+
   float qk_max = -FLT_MAX;
   float qk = 0.0F;
   T *q_bias_base = nullptr;
@@ -205,7 +209,7 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   auto const qk_vec_idx = tid * QK_VEC_SIZE;
-  auto const is_valid_qk_vec = qk_vec_idx < Dh; 
+  auto const is_valid_qk_vec = qk_vec_idx < Dh;
   //// 加载当前q k 并作位置编码 +bias（1505-1729）
   Qk_vec q, k;
   zero(q);
@@ -221,7 +225,7 @@ __global__ void masked_multihead_attention_kernel(
     // k = *reinterpret_cast<Qk_vec const *>(&params.k[k_offset]);
   }
 
-  if(tid < QK_VECS_PER_Dh_MAX){
+  if (tid < QK_VECS_PER_Dh_MAX) {
     /// 如下的bias和位置编码是直接copy来的，没更新...
     int qkv_base_offset = bi * (num_heads + 2 * num_heads_kv) * Dh + hi * Dh;
     int qk_offset = qkv_base_offset + qk_vec_idx;
@@ -256,12 +260,14 @@ __global__ void masked_multihead_attention_kernel(
         Qk_vec_RoPE cos_emb, sin_emb;
         zero(cos_emb);
         zero(sin_emb);
-        cos_emb = (IS_Dh_MAX || is_valid_qk_vec) ? *reinterpret_cast<const Qk_vec_RoPE *>(
-                                        &cos_base[rotary_offset])
-                                  : cos_emb;
-        sin_emb = (IS_Dh_MAX || is_valid_qk_vec) ? *reinterpret_cast<const Qk_vec_RoPE *>(
-                                        &sin_base[rotary_offset])
-                                  : sin_emb;
+        cos_emb = (IS_Dh_MAX || is_valid_qk_vec)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &cos_base[rotary_offset])
+                      : cos_emb;
+        sin_emb = (IS_Dh_MAX || is_valid_qk_vec)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &sin_base[rotary_offset])
+                      : sin_emb;
         apply_rotary_embedding(q, k, cos_emb, sin_emb);
       }
     } else {
@@ -278,8 +284,7 @@ __global__ void masked_multihead_attention_kernel(
                        (tid + stride) % (stride_all_lastdim);
         int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
         int q_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
-        int k_right_bias_offset =
-            hi_kv * Dh + right_id * QK_VEC_SIZE;
+        int k_right_bias_offset = hi_kv * Dh + right_id * QK_VEC_SIZE;
         Qk_vec q_right;
         zero(q_right);
         // q_right =
@@ -296,10 +301,8 @@ __global__ void masked_multihead_attention_kernel(
         //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_right_offset])
         //         : k_right;
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-          load_func.template load<Qk_vec>(k_right,
-                                          num_heads * Dh +
-                                              qk_right_offset - hi * Dh +
-                                              hi_kv * Dh);
+          load_func.template load<Qk_vec>(
+              k_right, num_heads * Dh + qk_right_offset - hi * Dh + hi_kv * Dh);
         }
 
         if (params.add_qkv_bias) {
@@ -322,15 +325,17 @@ __global__ void masked_multihead_attention_kernel(
 
         Qk_vec_RoPE cos_emb;
         zero(cos_emb);
-        cos_emb = (IS_Dh_MAX || is_valid_qk_vec) ? *reinterpret_cast<const Qk_vec_RoPE *>(
-                                        &cos_base[rotary_offset])
-                                  : cos_emb;
+        cos_emb = (IS_Dh_MAX || is_valid_qk_vec)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &cos_base[rotary_offset])
+                      : cos_emb;
 
         Qk_vec_RoPE sin_emb;
         zero(sin_emb);
-        sin_emb = (IS_Dh_MAX || is_valid_qk_vec) ? *reinterpret_cast<const Qk_vec_RoPE *>(
-                                        &sin_base[rotary_offset])
-                                  : sin_emb;
+        sin_emb = (IS_Dh_MAX || is_valid_qk_vec)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &sin_base[rotary_offset])
+                      : sin_emb;
         float alpha = (tid % stride_all_lastdim) < stride
                           ? static_cast<float>(-1)
                           : static_cast<float>(1);
@@ -422,6 +427,12 @@ __global__ void masked_multihead_attention_kernel(
   //                  k_idx.y]
   T *k_cache = &params.cache_kv[bhi_kv * params.max_seq_length * Dh];
 
+  T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh];
+  const int *beam_offsets =
+      params.beam_cache_offset
+          ? &params.beam_cache_offset[bi * params.max_seq_length]
+          : nullptr;
+
   for (int ti = k_idx.x; ti < ti_end; ti += UNROLLED_K_PER_ITER) {
     const int time_now = start_seq + ti;
     K_vec k_vec_cache[K_LOOP_UNROLL][K_VECS_PER_THREAD];
@@ -447,8 +458,17 @@ __global__ void masked_multihead_attention_kernel(
                 K_ELTS_PER_CHUNK +
             local_idx2;
 
-        k_vec_cache[k_loop][k_vec_i] =
-            *reinterpret_cast<K_vec const *>(&k_cache[cache_k_local_off]);
+        const int beam_offset = beam_offsets
+                                    ? beam_offsets[time_now] * num_heads *
+                                          params.max_seq_length * Dh
+                                    : 0;
+        if (beam_offset) {
+          k_vec_cache[k_loop][k_vec_i] = *reinterpret_cast<K_vec const *>(
+              &k_cache_batch[beam_offset + cache_k_local_off]);
+        } else {
+          k_vec_cache[k_loop][k_vec_i] =
+              *reinterpret_cast<K_vec const *>(&k_cache[cache_k_local_off]);
+        }
       }
     }
 
@@ -475,7 +495,7 @@ __global__ void masked_multihead_attention_kernel(
           auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
           T mask =
               params.attn_mask[mask_bhi * (params.timestep + 1) + time_now];
-          qk += static_cast<float>(mask);
+          qk_ += static_cast<float>(mask);
         }
         // Calculate the max for softmax.
         qk_max = fmaxf(qk_max, qk_);
@@ -580,6 +600,9 @@ __global__ void masked_multihead_attention_kernel(
   T *v_cache =
       &params.cache_kv[(params.cache_batch_size * num_heads_kv + bhi_kv) *
                        params.max_seq_length * Dh];
+  T *v_cache_batch = &params.cache_kv[params.batch_size * num_heads *
+                                          params.max_seq_length * Dh +
+                                      bbhi * params.max_seq_length * Dh + vi];
 
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
   using V_vec_acum = typename V_vec_acum_fp32_<V_vec>::Type;
@@ -596,8 +619,19 @@ __global__ void masked_multihead_attention_kernel(
       for (int v_loop = 0; v_loop < V_LOOP_UNROLL; v_loop++) {
         const int local_time_now = ti + (v_loop * V_PER_ITER);
         const int time_now = min(start_seq + local_time_now, end_seq - 1);
-        v_vec_cache[v_loop] =
+        const int beam_offset =
+          beam_offsets
+              ? beam_offsets[local_time_now] * num_heads * params.max_seq_length * Dh
+              : 0;
+        if(beam_offset){
+          v_vec_cache[v_loop] =
+            *reinterpret_cast<V_vec const *>(&v_cache[beam_offset + time_now * Dh + vi]);
+        }
+        else{
+          v_vec_cache[v_loop] =
             *reinterpret_cast<V_vec const *>(&v_cache[time_now * Dh + vi]);
+        }
+        
       }
 
       for (int v_loop = 0; v_loop < V_LOOP_UNROLL; v_loop++) {
@@ -1472,7 +1506,7 @@ void DispatchWithDtype(const Context &dev_ctx,
     /// TODO:有木有别的paddle实现, 像Alloc这种感觉。
     phi::backends::gpu::GpuMemsetAsync(
         params.block_counter, 0, block_counter_sz, dev_ctx.stream());
-    
+
     /*
     // 实际上一个 [batch_size, num_heads]确定的case，可以只分配一次Semaphore
     // 就不能在当前文件下分配了，参见如下trtllm的方法。
@@ -1504,9 +1538,9 @@ void DispatchWithDtype(const Context &dev_ctx,
     UniqPtrWNullCopy<int[], Deleter> mMultiBlockSemaphores = {};
     int * ptr;
     size_t block_counter_size = batch_size * num_heads;
-    check_cuda_error(cudaMalloc((void**) (&ptr), sizeof(int) * block_counter_size)); 
-    check_cuda_error(cudaMemset((void*) (ptr), 0,sizeof(int) * block_counter_size));
-    mMultiBlockSemaphores.reset(ptr);
+    check_cuda_error(cudaMalloc((void**) (&ptr), sizeof(int) *
+    block_counter_size)); check_cuda_error(cudaMemset((void*) (ptr),
+    0,sizeof(int) * block_counter_size)); mMultiBlockSemaphores.reset(ptr);
     params.block_counter = mMultiBlockSemaphores.get();
     */
 
