@@ -292,7 +292,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
           "ScheduleBlockRealize!\n"
           "[Error info] The Expr of current schedule is: %s.",
           primitive.c_str(),
-          module_expr_.GetExprs().ToString().c_str()));
+          module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
       block_target.As<ir::ScheduleBlockRealize>(),
@@ -303,7 +303,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
           "ScheduleBlockRealize!\n"
           "[Error info] The Expr of current schedule is: %s.",
           primitive.c_str(),
-          module_expr_.GetExprs().ToString().c_str()));
+          module_expr_.GetExprs()));
 
   auto exprs = this->GetModule().GetExprs();
 
@@ -316,7 +316,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
           "[Error info] Size of exprs of current module must be 1!\n"
           "[Error info] The Expr of current schedule is: %s.",
           primitive.c_str(),
-          module_expr_.GetExprs().ToString().c_str()));
+          module_expr_.GetExprs()));
 
   auto expr = exprs[0];
   auto vars = block.As<ir::ScheduleBlockRealize>()
@@ -340,7 +340,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
             "'block' and Expr parameter 'block_target' must be defined!\n"
             "[Error info] The Expr of current schedule is: %s.",
             primitive.c_str(),
-            module_expr_.GetExprs().ToString().c_str()));
+            module_expr_.GetExprs()));
 
     if (vars[i]->upper_bound.is_constant() &&
         vars_target[i]->upper_bound.is_constant() &&
@@ -389,7 +389,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                         "there is no loop var in the new_iter_values!\n"
                         "[Error info] The Expr of current schedule is: %s.",
                         primitive.c_str(),
-                        module_expr_.GetExprs().ToString().c_str()));
+                        module_expr_.GetExprs()));
 
   std::vector<Expr> used_target_loops;
   auto expr_copy = ir::ir_utils::IRCopy(expr);
@@ -411,7 +411,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                           "Exprs[0] of module_exprs must be 1!\n"
                           "[Error info] The Expr of current schedule is: %s.",
                           primitive.c_str(),
-                          module_expr_.GetExprs().ToString().c_str()));
+                          module_expr_.GetExprs()));
     used_target_loops.push_back(*find_loop_var.begin());
     VLOG(3) << "used_target_loops push_back " << used_target_loops.back();
   }
@@ -493,7 +493,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                           "partial_loop should be 1!\n"
                           "[Error info] The Expr of current schedule is: %s.",
                           primitive.c_str(),
-                          module_expr_.GetExprs().ToString().c_str()));
+                          module_expr_.GetExprs()));
 
     Expr sch_block = (*find_schedule_block.begin());
     sch_block.As<ir::ScheduleBlockRealize>()->iter_values = new_iter_values;
@@ -510,7 +510,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
           "which uses vars in the new_iter_values in Expr[0] of module_expr!\n"
           "[Error info] The Expr of current schedule is: %s.",
           primitive.c_str(),
-          module_expr_.GetExprs().ToString().c_str()));
+          module_expr_.GetExprs()));
 
   Expr res;
   if (used_target_loops.size() == 1) {
@@ -541,7 +541,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                         "there is no loop in Expr parameter 'block'!\n"
                         "[Error info] The Expr of current schedule is: %s.",
                         primitive.c_str(),
-                        module_expr_.GetExprs().ToString().c_str()));
+                        module_expr_.GetExprs()));
 
   this->Replace(all_loops[0], res);
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
@@ -601,7 +601,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
           "[Error info] Expr parameter 'loop' should be a For loop.\n"
           "[Error info] The Expr of current schedule is: %s.",
           primitive.c_str(),
-          module_expr_.GetExprs().ToString().c_str()));
+          module_expr_.GetExprs()));
 
   // 检查 n 是否大于等于 2
   PADDLE_ENFORCE_GE(n,
@@ -614,7 +614,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                         "[Error info] The Expr of current schedule is: %s.",
                         primitive.c_str(),
                         n,
-                        module_expr_.GetExprs().ToString().c_str()));
+                        module_expr_.GetExprs()));
 
   // 检查 max_innermost_factor 是否大于等于 1
   PADDLE_ENFORCE_GE(max_innermost_factor,
@@ -627,7 +627,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                         "[Error info] The Expr of current schedule is: %s.",
                         primitive.c_str(),
                         max_innermost_factor,
-                        module_expr_.GetExprs().ToString().c_str()));
+                        module_expr_.GetExprs()));
 
   // 检查 For 循环的起始值是否为 0
   PADDLE_ENFORCE_EQ(cinn::common::is_zero(loop.As<ir::For>()->min),
@@ -638,7 +638,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                         "[Error info] The For loop should start from 0.\n"
                         "[Error info] The Expr of current schedule is: %s.",
                         primitive.c_str(),
-                        module_expr_.GetExprs().ToString().c_str()));
+                        module_expr_.GetExprs()));
 
   int loop_extent = GetLoopExtent(loop);
   std::vector<int> innermost_factors;
@@ -660,7 +660,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                         primitive.c_str(),
                         loop_extent,
                         max_innermost_factor,
-                        module_expr_.GetExprs().ToString().c_str()));
+                        module_expr_.GetExprs()));
 
   int innermost_factor = innermost_factors[utils::SampleUniformInt(
       0, innermost_factors.size(), rand_seed)];
