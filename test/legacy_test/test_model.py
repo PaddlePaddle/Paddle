@@ -1138,6 +1138,7 @@ class TestModelWithLRScheduler(unittest.TestCase):
 class TestRaiseError(unittest.TestCase):
     def test_input_without_name(self):
         net = MyModel()
+        print("*")
         inputs = [InputSpec([None, 10], 'float32')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
