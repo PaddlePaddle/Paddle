@@ -1893,6 +1893,7 @@ class TestSqrtComp_ZeroDim(TestSqrtComp):
     def init_shape(self):
         self.shape = []
 
+
 class TestSqrtCompComplex64(TestSqrtComp):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -1901,6 +1902,7 @@ class TestSqrtCompComplex64(TestSqrtComp):
 class TestSqrtCompComplex128(TestSqrtComp):
     def init_dtype(self):
         self.dtype = np.complex128
+
 
 class TestRsqrt(TestActivation):
     def setUp(self):
@@ -5870,6 +5872,7 @@ create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
 
+
 def create_test_act_complex64_class(
     parent,
     atol=1e-5,
@@ -5889,7 +5892,7 @@ def create_test_act_complex64_class(
                 setattr(self, k, v)
 
         def init_dtype(self):
-            self.dtype = np.complex64 
+            self.dtype = np.complex64
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
@@ -5921,7 +5924,15 @@ def create_test_act_complex64_class(
     TestActComplex.__name__ = cls_name
     globals()[cls_name] = TestActComplex
 
-create_test_act_complex64_class(TestSqrtCompComplex64)
+
+create_test_act_complex64_class(
+    TestSqrtCompComplex64,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
+)
+
 
 def create_test_act_complex128_class(
     parent,
@@ -5974,7 +5985,14 @@ def create_test_act_complex128_class(
     TestActComplex.__name__ = cls_name
     globals()[cls_name] = TestActComplex
 
-create_test_act_complex128_class(TestSqrtCompComplex128)
+
+create_test_act_complex128_class(
+    TestSqrtCompComplex128,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
+)
 
 if __name__ == "__main__":
     unittest.main()
