@@ -13,7 +13,7 @@
 #include <iostream>
 
 /// Multi-block mmha kernel can only be selected when CUDA >= 11.7
-/// 我们这里没有处理这个宏
+// 如果 cuda<11.7 可能目前的配置(如，THREADS_PER_BLOCK=256)性能也不好。
 #if (CUDART_VERSION >= 11070)
 #define ENABLE_MULTI_BLOCK_OPTION
 #endif
@@ -142,10 +142,6 @@ __global__ void masked_multihead_attention_kernel(
       is_last_block_static = true;
       end_seq = real_time_step;
     }
-  }
-  else{
-    // seq维能切 但 CUDA<11.7 的case
-    if (c_tile > 0) return; 
   }
 
   const unsigned curr_seq_section = end_seq - start_seq;
@@ -1019,6 +1015,9 @@ void getGrid(Masked_multihead_attention_params<T> &params,
              LoadFunc load_func,
              StoreFunc store_func) {
   params.seq_len_tile = 1;
+#ifndef ENABLE_MULTI_BLOCK_OPTION
+  return;
+#endif 
   int const kernel_total_blocks = params.num_heads * params.batch_size;
   // Don't tune the block size if batch*head is large enough
   // THDS_PER_BLOCK(256) * 4 = 1024
@@ -1485,8 +1484,12 @@ void DispatchWithDtype(const Context &dev_ctx,
 
   // 这样初始化会造成什么影响？
   params.timesteps_per_block = div_up(timestep + 1, min_num_seq_len_tiles);
+  params.dynamic_block_size = 256;
 
-  bool const multi_block_mode = max_num_seq_len_tiles > 1;
+  bool multi_block_mode = max_num_seq_len_tiles > 1;
+#ifndef ENABLE_MULTI_BLOCK_OPTION
+  multi_block_mode = false;
+#endif 
   params.multi_block_mode = multi_block_mode;
 
   if (multi_block_mode) {
@@ -1520,9 +1523,10 @@ void DispatchWithDtype(const Context &dev_ctx,
     phi::backends::gpu::GpuMemsetAsync(
         params.block_counter, 0, block_counter_sz, dev_ctx.stream());
     
-    /*
-    // 实际上一个 [batch_size, num_heads]确定的case，可以只分配一次Semaphore
+    
+    ///TODO: 实际上一个 [batch_size, num_heads]确定的case，可以只分配一次Semaphore
     // 就不能在当前文件下分配了，参见如下trtllm的方法。
+    /*
     template <typename T, typename Del = std::default_delete<T>>
     class UniqPtrWNullCopy : public std::unique_ptr<T, Del>
     {
