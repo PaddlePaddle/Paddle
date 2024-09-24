@@ -234,7 +234,9 @@ class BaseTestCases:
     class BaseOpTest(OpTest):
         def setUp(self):
             self.op_type = "logcumsumexp"
+            self.prim_op_type = "prim"
             self.python_api = logcumsumexp_wrapper
+            self.public_python_api = logcumsumexp_wrapper
             input, attrs = self.input_and_attrs()
             self.inputs = {'X': input}
             self.attrs = attrs
@@ -257,6 +259,7 @@ class BaseTestCases:
                     )
                 ],
                 check_pir=True,
+                check_prim_pir=True,
             )
 
         def input_and_attrs(self):
@@ -334,8 +337,10 @@ class TestLogcumsumexpFP16(unittest.TestCase):
 class TestLogcumsumexpBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'logcumsumexp'
+        self.prim_op_type = 'prim'
         self.dtype = np.uint16
         self.python_api = logcumsumexp_wrapper
+        self.public_python_api = logcumsumexp_wrapper
         x = np.arange(100, dtype=np.float64).reshape(10, 10)
         output = np_logcumsumexp(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
@@ -371,6 +376,7 @@ class TestLogcumsumexpBF16Op(OpTest):
             numeric_grad_delta=0.5,
             max_relative_error=0.5,
             check_pir=True,
+            check_prim_pir=True,
         )
 
 

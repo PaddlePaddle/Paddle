@@ -123,6 +123,7 @@ OTHER_PRIM_VJP_OPS = [
     'topk_grad',
     'unsqueeze_grad',
     'where_grad',
+    'logcumsumexp_grad',
 ]
 
 # whole vjp list of primitive op vjp
