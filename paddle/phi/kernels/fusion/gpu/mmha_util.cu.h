@@ -4180,18 +4180,14 @@ inline __device__ __host__ constexpr unsigned getThreadsPerValue() {
   return getDhMax(Dh) * sizeof(T) / 16;
 }
 
-inline __device__ __host__ constexpr unsigned gcd(unsigned a, unsigned b) {
-	if(b == 0) return a;
-	return gcd(b, a % b);
-}
-
-template <unsigned Dh>
+template <typename T, unsigned Dh>
 inline __device__ __host__ constexpr unsigned getThreadsPerKey() {
-  /// 我们希望 Dh和DhMax 都是 K_ELTS_PER_CHUNK 的整数倍
-  /// 我们希望 threads_per_key应该是2的幂 且属于[1,2,4] 即4的公约数
-  // 即Dh * sizeof(T) 应该是 16B * threads_per_key的整数倍
-  // 如果 Dh=48 4和6的最大公约数就是2
-  return gcd(4u, Dh / 8u);
+  constexpr unsigned threads = (unsigned) (getDhMax(Dh) * sizeof(T) / 16u);
+    if ((threads & (threads - 1)) != 0)
+    {
+        assert(false); // Not a power of two.
+    }
+    return const_min(32u, threads);
 }
 
 template <typename T, typename T_VEC, unsigned VECS_PER_CHUNK>

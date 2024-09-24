@@ -43,7 +43,7 @@ struct Masked_multihead_attention_params {
   T *qkv_bias;
 
   // [2, B, num_head, max_seq_len, dim_head]
-  // k [B, num_head, dim_head/chunk_eles, max_seq_len, chunk_eles]
+  // k [B, num_head, max_seq_len, dim_head]
   // v [B, num_head, max_seq_len, dim_head]
   T *cache_kv;
 
@@ -89,16 +89,14 @@ struct Masked_multihead_attention_params {
   mutable bool multi_block_mode;
 };
 
-/// 因为加入了K_LOOP_UNROLL,
-/// 我(YKTian)把加载cacheK的思路转为一个thread做一个LDG.128
-/// 加载cacheV的思路是一个thread做一个LDG.128
+/// 因为加入了K_LOOP_UNROLL, 把加载cacheK的思路转为一个thread做一个LDG.128
 template <typename T,
           unsigned Dh,
           unsigned THREADS_PER_BLOCK,
           typename LoadFunc,
           typename StoreFunc,
           bool DO_MULTI_BLOCK = false,
-          unsigned THREADS_PER_KEY = getThreadsPerKey<Dh>(),
+          unsigned THREADS_PER_KEY = getThreadsPerKey<T, Dh>(),
           unsigned THREADS_PER_VALUE = getThreadsPerValue<T, Dh>(),
           unsigned K_LOOP_UNROLL = 4,
           unsigned V_LOOP_UNROLL = 8>
@@ -152,8 +150,6 @@ __global__ void masked_multihead_attention_kernel(
   constexpr bool IS_Dh_MAX = Dh == Dh_MAX;
   static_assert(Dh_MAX >= WARP_SIZE);
   static_assert(Dh_MAX >= Dh);
-  // THREADS_PER_KEY in {1, 2, 4}
-  static_assert(THREADS_PER_KEY <= 4);
   static_assert(Dh_MAX % THREADS_PER_KEY == 0);
 
   extern __shared__ char smem_[];
@@ -396,16 +392,14 @@ __global__ void masked_multihead_attention_kernel(
   __syncthreads();
 
   //// q dot cacheK （1841-1961-2216）
-  /// cacheK [B, num_head, dim_head/chunk_eles, max_seq_len, chunk_eles]
+  /// cacheK [B, num_head, max_seq_len, dim_head]
   // 这里让一个thread直接LDG.128，修改原因是想配合批量LDGs
-  // 与trtllm的实现不同且未经测试，不晓得改的好不好。
   using K_vec = typename V_vec_<T, K_VEC_SIZE>::Type;  // 16B
   static_assert(Dh_MAX % K_VEC_SIZE == 0);
   const bool is_leader = trtllm_Qk_dot<T, THREADS_PER_KEY>::is_leader(tid);
 
   /// 一个chunk是 处理同一个key的多个线程 一次取的元素的集合
   constexpr unsigned K_ELTS_PER_CHUNK{THREADS_PER_KEY * K_VEC_SIZE};
-  static_assert(Dh % K_ELTS_PER_CHUNK == 0);
   // {chunk_id, inner_chunk_id(elt_id)}
   // {tid/THREADS_PER_KEY, (tid % THREADS_PER_KEY) * K_VEC_SIZE}
   auto const k_idx = chunk_index<T, K_vec, THREADS_PER_KEY>(tid);
@@ -432,10 +426,8 @@ __global__ void masked_multihead_attention_kernel(
   auto const ti_end =
       div_up(curr_seq_section, UNROLLED_K_PER_WARP) * UNROLLED_K_PER_WARP;
 
-  // 从这个指针开始 加载 [dim_head/chunk_eles, max_seq_len, chunk_eles]
-  //                  [k_vec_i, start_seq + k_loop * K_PER_ITER + k_idx.x,
-  //                  k_idx.y]
-  // 这里同样和trtllm不同，沿用了源paddle的存储方式，为了合并内存事务
+  // 从这个指针开始 加载 [max_seq_len, dim_head]
+  // [start_seq + k_loop * K_PER_ITER + k_idx.x, k_idx.y]
   T *k_cache = &params.cache_kv[bhi_kv * params.max_seq_length * Dh];
 
   T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh];
@@ -453,20 +445,13 @@ __global__ void masked_multihead_attention_kernel(
       for (int k_vec_i = 0; k_vec_i < K_VECS_PER_THREAD; ++k_vec_i) {
         /// Make sure we read data within the bound.
         // Dh OOB values will be handled by zero_q.
-        const int local_idx0 = min((Dh / K_ELTS_PER_CHUNK) - 1, k_vec_i);
-        const int local_idx2 =
-            k_vec_i > local_idx0 ? (THREADS_PER_KEY - 1) * K_VEC_SIZE : k_idx.y;
-
+        const int jj = min(Dh - K_VEC_SIZE, k_idx.y + k_vec_i * K_ELTS_PER_CHUNK );
         // Seq OOB values will be masked out when storing back to smem.
-        const int local_idx1 = min(end_seq - 1, time_now + k_loop * K_PER_ITER);
-
-        const int cache_k_local_off =
-            (local_idx0 * params.max_seq_length + local_idx1) *
-                K_ELTS_PER_CHUNK +
-            local_idx2;
+        int valid_time_now = min(end_seq - 1, time_now + k_loop * K_PER_ITER);
+        const int cache_k_local_off = valid_time_now * Dh + jj;
 
         const int beam_offset = beam_offsets
-                                    ? beam_offsets[local_idx1] * num_heads *
+                                    ? beam_offsets[valid_time_now] * num_heads *
                                           params.max_seq_length * Dh
                                     : 0;
         if (beam_offset) {
@@ -540,18 +525,9 @@ __global__ void masked_multihead_attention_kernel(
 
   __syncthreads();
 
-  // cache_k [B, num_head, dim_head/chunk_eles, max_seq_len, chunk_eles]
-  // Get the c_tile_id that handles the current timestep.
-  const int QK_VECS_PER_CHUNK = K_ELTS_PER_CHUNK / QK_VEC_SIZE;
-  // {tid/QK_VECS_PER_CHUNK, (tid % QK_VECS_PER_CHUNK) * QK_VEC_SIZE}
-  auto const curr_k_idx = chunk_index<T, Qk_vec, QK_VECS_PER_CHUNK>(tid);
-  const int curr_ko = curr_k_idx.x;  // tid / QK_VECS_PER_CHUNK;
-  const int curr_ki = curr_k_idx.y;  // (tid % QK_VECS_PER_CHUNK) * QK_VEC_SIZE;
-
+  // cache_k [B, num_head, max_seq_len, dim_head]
   if (is_last_block_static && (hi == hi_kv * qhead_per_kv) && is_valid_qk_vec) {
-    int curr_k_off = bhi_kv * params.max_seq_length * Dh +
-                     curr_ko * params.max_seq_length * K_ELTS_PER_CHUNK +
-                     real_time_step * K_ELTS_PER_CHUNK + curr_ki;
+    int curr_k_off = bhi_kv * params.max_seq_length * Dh + real_time_step * Dh + qk_vec_idx;
     *reinterpret_cast<Qk_vec *>(&params.cache_kv[curr_k_off]) = k;
   }
 
