@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 # some invalid attr can NOT be parsed.
-# to avoid sytax error, we can only do plain replacement.
+# to avoid syntax error, we can only do plain replacement.
 # e.g. {'a': 'b'}, do replace 'a' -> 'b' .
 BAD_ATTR = {
     # python/paddle/_typing/libs/libpaddle/cinn/ir.pyi
@@ -322,11 +322,16 @@ def insert_import_modules(filename: str):
 
 def post_process(output_dir: str):
     for root, _, files in os.walk(output_dir):
-        if files:
-            for f in files:
-                if f.endswith('.pyi'):
-                    replace_bad_attr(str(Path(root) / f))
-                    insert_import_modules(str(Path(root) / f))
+        if not files:
+            continue
+
+        for f in files:
+            # only patch stub files: *.pyi
+            if not f.endswith('.pyi'):
+                continue
+
+            replace_bad_attr(str(Path(root) / f))
+            insert_import_modules(str(Path(root) / f))
 
 
 def parse_args():

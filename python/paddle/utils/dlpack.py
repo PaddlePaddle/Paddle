@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import enum
 import warnings
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import paddle
 
@@ -25,6 +25,7 @@ from ..base.data_feeder import check_type
 from ..base.framework import in_dygraph_mode
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     from typing_extensions import CapsuleType
 
     from paddle import Tensor
@@ -116,7 +117,9 @@ def to_dlpack(x: Tensor) -> CapsuleType:
     return x._to_dlpack()
 
 
-def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
+def from_dlpack(
+    dlpack: SupportDLPack | CapsuleType | npt.NDArray[Any],
+) -> Tensor:
     """
     Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
     the tensor from given dlpack.
@@ -167,6 +170,7 @@ def from_dlpack(dlpack: SupportDLPack | CapsuleType) -> Tensor:
             :name: code-paddle-from-numpy
 
             >>> # Directly from external tensor that implements '__dlpack__' and '__dlpack_device__' methods
+            >>> import paddle
             >>> import numpy as np
             >>> x = np.array([[0.2, 0.3, 0.5, 0.9],
             ...              [0.1, 0.2, 0.6, 0.7]])
