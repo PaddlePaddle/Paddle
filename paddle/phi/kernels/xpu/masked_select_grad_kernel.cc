@@ -58,6 +58,7 @@ PD_REGISTER_KERNEL(masked_select_grad,
                    phi::MaskedSelectGradKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    bool,
                    int64_t) {}
