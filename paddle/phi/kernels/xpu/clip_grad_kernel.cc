@@ -40,5 +40,12 @@ void ClipGradKernel(const Context& ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    clip_grad, XPU, ALL_LAYOUT, phi::ClipGradKernel, float, int64_t, int) {}
+PD_REGISTER_KERNEL(clip_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ClipGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int64_t,
+                   int) {}

@@ -113,5 +113,10 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(max_grad, XPU, ALL_LAYOUT, phi::ReduceMaxGradKernel, float) {
-}
+PD_REGISTER_KERNEL(max_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ReduceMaxGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

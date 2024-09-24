@@ -47,6 +47,8 @@ PD_REGISTER_KERNEL(arange_tensor,
                    ALL_LAYOUT,
                    phi::ArangeTensorKernel,
                    float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
