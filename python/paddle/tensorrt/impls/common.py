@@ -24,12 +24,9 @@ from paddle.tensorrt.register import converter_registry
 def nearest_interp_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
-    intput_shape_size = len(input_shape)
+    input_shape_size = len(input_shape)
     scale_factor = paddle_op.attrs().get("scale")
     align_corners = paddle_op.attrs().get("align_corners")
-    interp_method = paddle_op.attrs().get("interp_method")
-    interp_method = paddle_op.attrs().get("align_mode")
-    data_format = paddle_op.attrs().get("data_format")
     out_h = paddle_op.attrs().get("out_h")
     out_w = paddle_op.attrs().get("out_w")
     out_d = paddle_op.attrs().get("out_d")
@@ -45,7 +42,7 @@ def nearest_interp_converter(network, paddle_op, inputs):
             size = [out_h, out_w]
             scale_factor = [out_h / input_shape[2], out_w / input_shape[3]]
     else:
-        if intput_shape_size == 5:
+        if input_shape_size == 5:
             if align_corners:
                 size = [
                     floor(input_shape[2] * scale_factor[0]),
@@ -59,7 +56,7 @@ def nearest_interp_converter(network, paddle_op, inputs):
                     round(input_shape[4] * scale_factor[2]),
                 ]
 
-        elif intput_shape_size == 4:
+        elif input_shape_size == 4:
             if align_corners:
                 size = [
                     floor(input_shape[2] * scale_factor[0]),
@@ -75,12 +72,12 @@ def nearest_interp_converter(network, paddle_op, inputs):
     if network.has_implicit_batch_dimension:
         if size is not None:
             if not isinstance(size, Sequence):
-                layer.shape = [input_shape[0]] + [size] * intput_shape_size
+                layer.shape = [input_shape[0]] + [size] * input_shape_size
             else:
                 layer.shape = [input_shape[0], *list(size)]
         if scale_factor is not None:
             if not isinstance(scale_factor, Sequence):
-                layer.scales = [1] + [scale_factor] * intput_shape_size
+                layer.scales = [1] + [scale_factor] * input_shape_size
             else:
                 layer.scales = [1, *list(scale_factor)]
     else:
@@ -88,12 +85,12 @@ def nearest_interp_converter(network, paddle_op, inputs):
             if not isinstance(size, Sequence):
                 layer.shape = [input_shape[0], input_shape[1]] + [
                     size
-                ] * intput_shape_size
+                ] * input_shape_size
             else:
                 layer.shape = [input_shape[0], input_shape[1], *list(size)]
         if scale_factor is not None:
             if not isinstance(scale_factor, Sequence):
-                layer.scales = [1, 1] + [scale_factor] * intput_shape_size
+                layer.scales = [1, 1] + [scale_factor] * input_shape_size
             else:
                 layer.scales = [1, 1, *list(scale_factor)]
     if (align_corners is not None) and align_corners:
