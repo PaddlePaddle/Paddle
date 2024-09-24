@@ -232,7 +232,7 @@ pir::OpPrintFn OneDNNKernelDialect::PrintOperation(
         }
         os << " \"" << kernel_name << "(phi_kernel)\"";
       } else {
-        auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
+        auto legacy_kernel_op = op.dyn_cast<LegacyKernelOp>();
         std::string kernel_name = legacy_kernel_op.kernel_name();
         if (op.attributes().count("is_inplace") != 0 &&
             op.attributes()
