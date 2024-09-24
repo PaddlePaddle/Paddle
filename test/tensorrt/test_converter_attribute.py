@@ -20,7 +20,7 @@ from tensorrt_test_base import TensorRTBaseTest
 import paddle
 
 
-class TestAddTRTPattern(TensorRTBaseTest):
+class TestShapeTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.shape
         self.api_args = {
