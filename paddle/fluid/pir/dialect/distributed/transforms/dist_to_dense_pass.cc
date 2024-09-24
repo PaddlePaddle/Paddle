@@ -142,9 +142,14 @@ void ProcessDistBlock(pir::Block* block) {
     //     common::errors::PreconditionNotMet("The op [%s] has not
     //     op_dist_attr.",
     //                                        op_item->name()));
+
+    int64_t chunk_id = -1;
     if (op_item->HasAttribute(kAttrOpDistAttr)) {
+      chunk_id = op_item->attribute<OperationDistAttribute>(kAttrOpDistAttr)
+                     .chunk_id();
       op_item->erase_attribute(kAttrOpDistAttr);
     }
+    op_item->set_attribute("chunk_id", pir::Int64Attribute::get(ctx, chunk_id));
 
     // TODO(2024-Q2) Handle other special dist op in future.
   }

@@ -373,6 +373,25 @@ class TestNAdamAPI(unittest.TestCase):
             )
 
 
+class TestNAdamAPIWeightDecay(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        nadam = paddle.optimizer.NAdam(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+
+        for _ in range(2):
+            out = linear(a)
+            out.backward()
+            nadam.step()
+            nadam.clear_gradients()
+
+
 class TestNAdamAPIGroup(TestNAdamAPI):
     def test_nadam_dygraph(self):
         paddle.disable_static()

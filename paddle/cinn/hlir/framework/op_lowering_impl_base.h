@@ -41,11 +41,7 @@ class OpLowererImplBase {
   OpLowererImplBase() = default;
   ~OpLowererImplBase() = default;
 
-  virtual BucketLoweredFuncsWrapper BucketLower(
-      const T& group,
-      bool apply_op_schedule = false,
-      bool apply_group_schedule = true,
-      bool apply_pass = true) = 0;
+  virtual BucketLoweredFuncsWrapper BucketLower(const T& group) = 0;
 };
 
 }  // namespace framework

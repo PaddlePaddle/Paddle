@@ -19,58 +19,49 @@ from get_program import (
     get_dummy_program,
 )
 
-import paddle
-from paddle.tensorrt.converter import PaddleToTensorRTConverter
+from paddle.tensorrt.export import (
+    Input,
+    TensorRTConfig,
+    convert_to_trt,
+)
 from paddle.tensorrt.util import (
-    run_pir_pass,
-    warmup_shape_infer,
+    predict_program,
 )
 
 
 class TestConverterDummy(unittest.TestCase):
     def test_paddle_to_tensorrt_conversion_dummy(self):
         program, scope, param_dict = get_dummy_program()
-        input_data = np.random.randn(1, 64).astype('float32')
-        input_data_max_shape = np.random.randn(8, 64).astype('float32')
 
-        with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(program):
-                executor = paddle.static.Executor()
-                output_var = program.list_vars()[-1]
-                # Run the program with input_data
-                for _ in range(1):
-                    output_original = executor.run(
-                        program,
-                        feed={"input": input_data},
-                        fetch_list=[output_var],
-                    )
-
-        program = warmup_shape_infer(
-            program,
-            min_shape_feed={"input": input_data},
-            max_shape_feed={"input": input_data_max_shape},
+        # Set input
+        input_config = Input(
+            min_input_shape=(1, 64),
+            optim_input_shape=(4, 64),
+            max_input_shape=(8, 64),
+            input_data_type='float32',
         )
-        # Apply PIR pass to the program
-        program_with_pir = run_pir_pass(program, partition_mode=True)
+        _, input_optim_data, _ = input_config.generate_input_data()
+        # Create a TensorRTConfig with inputs as a required field.
+        trt_config = TensorRTConfig(inputs=[input_config])
 
-        # Convert the program to TensorRT
-        converter = PaddleToTensorRTConverter(program_with_pir, scope)
-        converter.convert_program_to_trt()
-        output_var = program_with_pir.list_vars()[-1]
+        output_var = program.list_vars()[-1]
 
-        with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(program_with_pir):
-                executor = paddle.static.Executor()
-                for _ in range(5):
-                    output_converted = executor.run(
-                        program_with_pir,
-                        feed={"input": input_data},
-                        fetch_list=[output_var],
-                    )
+        # get original results(for tests only)
+        output_expected = predict_program(
+            program, {"input": input_optim_data}, [output_var]
+        )
+        # get tensorrt_engine_op(converted_program)
+        program_with_trt = convert_to_trt(program, trt_config, scope)
+        output_var = program_with_trt.list_vars()[-1]
 
-        # Check that the results are close to each other within a tolerance of 1e-3
+        # run inference(converted_program)
+        output_converted = predict_program(
+            program_with_trt, {"input": input_optim_data}, [output_var]
+        )
+
+        # Check that the results are close to each other within a tolerance of 1e-2
         np.testing.assert_allclose(
-            output_original[0],
+            output_expected[0],
             output_converted[0],
             rtol=1e-2,
             atol=1e-2,

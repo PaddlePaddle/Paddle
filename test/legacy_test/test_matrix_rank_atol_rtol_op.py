@@ -41,7 +41,7 @@ def np_matrix_rank_atol_rtol(x, atol=None, rtol=None, hermitian=False):
     sv_max = sv.max(axis=-1)
     if use_default_tol:
         rtol_T = np.finfo(x.dtype).eps * max(x.shape[-2], x.shape[-1]) * sv_max
-        rtol_default = np.full(rtol.shape, rtol_T, x.dtype)
+        rtol_default = np.full(x.shape[:-2], rtol_T, x.dtype)
         rtol = np.where(atol == 0.0, rtol_default, rtol * sv_max)
     else:
         rtol = rtol * sv_max
@@ -162,6 +162,17 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
             )
             rank_pd = paddle.linalg.matrix_rank(
                 x_pd, hermitian=True, atol=0.015, rtol=None
+            )
+            np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
+
+            # atol: float, rtol: None
+            x_np = np.ones([3, 4, 5, 5])
+            x_pd = paddle.to_tensor(x_np)
+            rank_np = np_matrix_rank_atol_rtol(
+                x_np, atol=0.5, rtol=None, hermitian=True
+            )
+            rank_pd = paddle.linalg.matrix_rank(
+                x_pd, hermitian=True, atol=0.5, rtol=None
             )
             np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
@@ -299,6 +310,26 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
                 )
                 rank_pd = paddle.linalg.matrix_rank(
                     x_pd, hermitian=True, atol=None, rtol=1.1
+                )
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    feed={"X": x_np},
+                    fetch_list=[rank_pd],
+                )
+                np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
+
+        for place in places:
+            # atol: float, rtol: None
+            with static.program_guard(static.Program(), static.Program()):
+                x_np = np.ones([3, 4, 5, 5])
+                x_pd = paddle.static.data(
+                    name="X", shape=x_np.shape, dtype='float64'
+                )
+                rank_np = np_matrix_rank_atol_rtol(
+                    x_np, atol=0.5, rtol=None, hermitian=True
+                )
+                rank_pd = paddle.linalg.matrix_rank(
+                    x_pd, hermitian=True, atol=0.5, rtol=None
                 )
                 exe = base.Executor(place)
                 fetches = exe.run(

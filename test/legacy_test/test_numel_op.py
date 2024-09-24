@@ -71,6 +71,18 @@ class TestNumelOp2FP16(TestNumelOp):
         self.shape = (0,)
 
 
+class TestNumelOp1int8(TestNumelOp):
+    def init(self):
+        self.dtype = np.int8
+        self.shape = (11, 66)
+
+
+class TestNumelOp2int8(TestNumelOp):
+    def init(self):
+        self.dtype = np.int8
+        self.shape = (0,)
+
+
 class TestNumelOpComplex(TestNumelOp):
     def setUp(self):
         self.op_type = "size"
