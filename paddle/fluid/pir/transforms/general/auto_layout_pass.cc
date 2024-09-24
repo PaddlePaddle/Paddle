@@ -89,6 +89,7 @@ class AutoLayoutPass : public pir::Pass {
           infer_meta_interface.InferMeta(input_values, &p_attribute_map);
       for (size_t i = 0; i < output_types.size(); ++i) {
         op->result(i).set_type(output_types[i]);
+        pir::SetNewLayoutForValue(op->result(i), common::DataLayout::NHWC);
       }
     } else {
       InferMetaSpecificOp();

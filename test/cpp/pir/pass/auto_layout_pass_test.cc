@@ -61,7 +61,6 @@ TEST(auto_layout_pass, pass_test) {
   }
 
   auto program = pir::IrParser(ctx, ss).ParseProgram();
-  pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
 
   pir::PassManager auto_layout_pm(::pir::IrContext::Instance(), 3);
   auto_layout_pm.AddPass(pir::CreateAutoLayoutPass());
