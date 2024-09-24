@@ -589,27 +589,6 @@ void PushStopGradient(const pir::Value& value, std::vector<bool>* arr) {
   }
 }
 
-void PushStopGradient(const std::vector<pir::Value>& values,
-                      std::vector<bool>* arr) {
-  for (auto& value : values) {
-    PushStopGradient(value, arr);
-  }
-}
-
-void PushStopGradient(const paddle::optional<pir::Value>& value,
-                      std::vector<bool>* arr) {
-  if (value.get_ptr() != nullptr) {
-    PushStopGradient(*value.get_ptr(), arr);
-  }
-}
-
-void PushStopGradient(const paddle::optional<std::vector<pir::Value>>& values,
-                      std::vector<bool>* arr) {
-  if (values.get_ptr() != nullptr) {
-    PushStopGradient(*values.get_ptr(), arr);
-  }
-}
-
 std::vector<std::vector<bool>> ConstructStopGradient(pir::Operation* op) {
   std::vector<std::vector<bool>> stop_gradients(op->results().size());
   for (size_t i = 0; i < op->results().size(); i++) {
