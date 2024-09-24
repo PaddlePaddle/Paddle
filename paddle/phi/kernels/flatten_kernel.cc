@@ -115,7 +115,8 @@ PD_REGISTER_KERNEL(flatten,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
