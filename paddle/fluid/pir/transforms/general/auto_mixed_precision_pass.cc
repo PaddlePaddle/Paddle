@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -136,7 +137,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
         paddle::dialect::SumOp::name(),
         paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
         paddle::dialect::CrossEntropyWithSoftmax_Op::name(),
-        "pd_op.array_to_tensor",
+        paddle::dialect::ArrayToTensorOp::name(),
     });
   }
 
@@ -167,7 +168,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
         auto backend = ConvertPlaceToBackend(place_);
         support_low_precision =
             OpSupportPrecision(op_type, backend, precision_mode_);
-        if (op_name == "pd_op.scale" && !OpHasFloatResult(op)) {
+        if (op->isa<paddle::dialect::ScaleOp>() && !OpHasFloatResult(op)) {
           support_low_precision = false;
           op_should_not_handle_.insert(op);
         }
@@ -676,8 +677,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
             DoInsertCastOp(op, operand, phi_dtype, builder);
           }
         } else if (IsOperandHasDenseTensorVectorType(operand)) {
-          LOG(INFO) << "IsOperandHasDenseTensorVectorType(operand)";
-          LOG(INFO) << operand.source().defining_op()->name();
           auto defining_op_ = operand.source().defining_op();
           if (defining_op_->isa<pir::CombineOp>()) {
             auto input_num = defining_op_->num_operands();
@@ -688,7 +687,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
                   operand_phi_dtype != phi::DataType::FLOAT32) {
                 DoInsertCastOp(
                     defining_op_, operand, phi::DataType::FLOAT32, builder);
-                LOG(INFO) << "DoInsertCastOp";
               }
             }
             std::vector<pir::Type> inputs_type(input_num);
