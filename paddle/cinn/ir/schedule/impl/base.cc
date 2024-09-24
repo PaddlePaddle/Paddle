@@ -578,7 +578,6 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SamplePerfectTile";
 
-  // 检查 loop 是否为 For 循环
   PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
       phi::errors::InvalidArgument(
@@ -588,7 +587,6 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
           "[Error info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
-  // 检查 n 是否大于等于 2
   PADDLE_ENFORCE_GE(n,
                     2,
                     phi::errors::InvalidArgument(
@@ -600,7 +598,6 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                         n,
                         module_expr_.GetExprs()));
 
-  // 检查 max_innermost_factor 是否大于等于 1
   PADDLE_ENFORCE_GE(max_innermost_factor,
                     1,
                     phi::errors::InvalidArgument(
@@ -612,7 +609,6 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
                         max_innermost_factor,
                         module_expr_.GetExprs()));
 
-  // 检查 For 循环的起始值是否为 0
   PADDLE_ENFORCE_EQ(cinn::common::is_zero(loop.As<ir::For>()->min),
                     true,
                     phi::errors::InvalidArgument(
@@ -652,6 +648,15 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
   }
   result_expr.push_back(Expr(innermost_factor));
   return result_expr;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
+}
+
+Expr DyScheduleImpl::AddUnitLoop(const Expr& block) const {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "AddUnitLoop";
+  std::ostringstream os;
+  auto exprs = module_expr_.GetExprs();
+  return analyzer::AddUnitLoop(exprs, block);
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
