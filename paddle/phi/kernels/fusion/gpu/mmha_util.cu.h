@@ -3947,6 +3947,8 @@ inline __device__ void hmma_fp32(float4& c, uint4 const& a, uint4 b) {
   hmma_fp32(c, a.w, b.w);
 }
 
+// q和k索引一致的thread(fp32对角线)拿到的结果是需要的结果，其他的忽略掉。
+// 1688的索引可以参考图示：https://zhuanlan.zhihu.com/p/555339335
 template <typename K_vec, int THREADS_PER_KEY, int N>
 inline __device__ float trtllm_qk_hmma_dot_(const K_vec (&q)[N],
                                             const K_vec (&k)[N]) {
@@ -4187,7 +4189,7 @@ template <unsigned Dh>
 inline __device__ __host__ constexpr unsigned getThreadsPerKey() {
   /// 我们希望 Dh和DhMax 都是 K_ELTS_PER_CHUNK 的整数倍
   /// 我们希望 threads_per_key应该是2的幂 且属于[1,2,4] 即4的公约数
-  // Dh * sizeof(T) 应该是 16B * threads_per_key的整数倍
+  // 即Dh * sizeof(T) 应该是 16B * threads_per_key的整数倍
   // 如果 Dh=48 4和6的最大公约数就是2
   return gcd(4u, Dh / 8u);
 }
