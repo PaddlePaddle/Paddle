@@ -39,6 +39,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.cumprod",
     "pd_op.cumsum",
     "pd_op.divide",
+    "pd_op.dot",
     "pd_op.dropout",
     "pd_op.elementwise_pow",
     "pd_op.erf",

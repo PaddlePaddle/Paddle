@@ -26,7 +26,9 @@ from paddle.pir_utils import test_with_pir_api
 class DotOp(OpTest):
     def setUp(self):
         self.op_type = "dot"
+        self.prim_op_type = "prim"
         self.python_api = paddle.dot
+        self.public_python_api = paddle.dot
         self.init_dtype()
         self.init_input_output()
 
@@ -41,39 +43,92 @@ class DotOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        if core.is_compiled_with_rocm():
-            self.check_grad(
-                ['X', 'Y'],
-                'Out',
-                user_defined_grads=[self.inputs['Y'], self.inputs['X']],
-                check_pir=True,
-            )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            if core.is_compiled_with_rocm():
+                self.check_grad(
+                    ['X', 'Y'],
+                    'Out',
+                    user_defined_grads=[self.inputs['Y'], self.inputs['X']],
+                    check_pir=True,
+                )
+            else:
+                self.check_grad(['X', 'Y'], 'Out', check_pir=True)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+            if core.is_compiled_with_rocm():
+                self.check_grad(
+                    ['X', 'Y'],
+                    'Out',
+                    user_defined_grads=[self.inputs['Y'], self.inputs['X']],
+                    check_pir=True,
+                )
+            else:
+                self.check_grad(
+                    ['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
+                )
 
     def test_check_grad_ignore_x(self):
-        if core.is_compiled_with_rocm():
-            self.check_grad(
-                ['Y'],
-                'Out',
-                no_grad_set=set("X"),
-                user_defined_grads=[self.inputs['X']],
-                check_pir=True,
-            )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            if core.is_compiled_with_rocm():
+                self.check_grad(
+                    ['Y'],
+                    'Out',
+                    no_grad_set=set("X"),
+                    user_defined_grads=[self.inputs['X']],
+                    check_pir=True,
+                )
+            else:
+                self.check_grad(
+                    ['Y'], 'Out', no_grad_set=set("X"), check_pir=True
+                )
         else:
-            self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
+            if core.is_compiled_with_rocm():
+                self.check_grad(
+                    ['Y'],
+                    'Out',
+                    no_grad_set=set("X"),
+                    user_defined_grads=[self.inputs['X']],
+                    check_pir=True,
+                )
+            else:
+                self.check_grad(
+                    ['Y'],
+                    'Out',
+                    no_grad_set=set("X"),
+                    check_pir=True,
+                    check_prim_pir=True,
+                )
 
     def test_check_grad_ignore_y(self):
-        if core.is_compiled_with_rocm():
-            self.check_grad(
-                ['X'],
-                'Out',
-                no_grad_set=set('Y'),
-                user_defined_grads=[self.inputs['Y']],
-                check_pir=True,
-            )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            if core.is_compiled_with_rocm():
+                self.check_grad(
+                    ['X'],
+                    'Out',
+                    no_grad_set=set('Y'),
+                    user_defined_grads=[self.inputs['Y']],
+                    check_pir=True,
+                )
+            else:
+                self.check_grad(
+                    ['X'], 'Out', no_grad_set=set('Y'), check_pir=True
+                )
         else:
-            self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
+            if core.is_compiled_with_rocm():
+                self.check_grad(
+                    ['X'],
+                    'Out',
+                    no_grad_set=set('Y'),
+                    user_defined_grads=[self.inputs['Y']],
+                    check_pir=True,
+                )
+            else:
+                self.check_grad(
+                    ['X'],
+                    'Out',
+                    no_grad_set=set('Y'),
+                    check_pir=True,
+                    check_prim_pir=True,
+                )
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [121]).astype(self.dtype)
@@ -97,13 +152,25 @@ class DotOpBatch(DotOp):
         self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True)
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestDotOpError(unittest.TestCase):
