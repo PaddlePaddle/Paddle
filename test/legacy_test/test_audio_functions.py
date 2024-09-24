@@ -223,6 +223,8 @@ class TestAudioFuncitons(unittest.TestCase):
             "cosine",
             "tukey",
             "taylor",
+            "nuttall",
+            "bartlett"
         ],
         [1, 512],
     )
@@ -258,6 +260,14 @@ class TestAudioFuncitons(unittest.TestCase):
         )
         np.testing.assert_array_almost_equal(
             window_scipy_exp, window_paddle_exp.numpy(), decimal=5
+        )
+
+        window_scipy_kaiser = signal.windows.kaiser(n_fft, beta=14.0)
+        window_paddle_kaiser = paddle.audio.functional.get_window(
+            ('kaiser', 14.0), n_fft
+        )
+        np.testing.assert_array_almost_equal(
+            window_scipy_kaiser, window_paddle_kaiser.numpy(), decimal=5
         )
         try:
             window_paddle = paddle.audio.functional.get_window("hann", -1)
