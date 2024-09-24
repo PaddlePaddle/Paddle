@@ -17,6 +17,7 @@ import warnings
 
 import paddle
 import paddle.distributed as dist
+from paddle.base.core import TensorDistAttr
 from paddle.distributed.auto_parallel.static.converter import Converter
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.static import global_scope
@@ -104,8 +105,11 @@ class AutoParallelCEmbeddingPass(PassBase):
                             param.numpy(), dist_attr
                         )
                         scope_param.set(sliced_param, place)
-                        param.get_tensor()._clear()
-                        concrete_program.parameters[0][index] = None
+                        var_dist_attr = TensorDistAttr()
+                        var_dist_attr.process_mesh = dist_attr_w.process_mesh
+                        var_dist_attr.dims_mapping = dist_attr_w.dims_mapping
+                        tmp = paddle.base.core.reshard(param, var_dist_attr)
+                        param.get_tensor()._share_data_with(tmp.get_tensor())
 
                 # replace embedding with c_embedding
                 paddle.pir.set_insertion_point(op)
