@@ -342,15 +342,7 @@ class ParameterDict(Layer):
             ...
             ...     def forward(self, x):
             ...         for i, (key, p) in enumerate(self.params):
-            ...             tmp = self._helper.create_variable_for_type_inference('float32')
-            ...             self._helper.append_op(
-            ...                 type="mul",
-            ...                 inputs={"X": x,
-            ...                         "Y": p},
-            ...                 outputs={"Out": tmp},
-            ...                 attrs={"x_num_col_dims": 1,
-            ...                         "y_num_col_dims": 1})
-            ...             x = tmp
+            ...             x = paddle.multiply(x, p)
             ...         return x
             ...
             >>> x = paddle.uniform(shape=[5, 2], dtype='float32')

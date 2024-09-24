@@ -18,7 +18,7 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops, base
+from paddle import base
 
 
 class MyLayer(paddle.nn.Layer):
@@ -40,7 +40,7 @@ class MyLayer(paddle.nn.Layer):
 
     def forward(self, x):
         for i, (key, _) in enumerate(self.params):
-            x = _legacy_C_ops.mul(x, self.params[key])
+            x = paddle.matmul(x, self.params[key])
         return x
 
 
