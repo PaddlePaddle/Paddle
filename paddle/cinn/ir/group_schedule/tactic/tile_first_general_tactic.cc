@@ -115,6 +115,8 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
       }
     }
   }
+
+  map_rf_block_.clear();
 }
 
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
