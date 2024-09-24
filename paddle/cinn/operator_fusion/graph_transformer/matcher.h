@@ -71,6 +71,31 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+struct CanFuseTrivialAndReduce {
+  bool operator()(PatternGraph graph,  // NOLINT
+                  const PatternNodePtr& upstream,
+                  const PatternNodePtr& downstream) {
+    PatternNodePtr reduce_node;
+    if (upstream->fusion_iters().reduce_iter_nums &&
+        !downstream->fusion_iters().reduce_iter_nums) {
+      reduce_node = upstream;
+    } else if (!upstream->fusion_iters().reduce_iter_nums &&
+               downstream->fusion_iters().reduce_iter_nums) {
+      reduce_node = downstream;
+    } else {
+      return true;
+    }
+    auto reduce_dims_product =
+        graph.iters_fusion_policy()->iters_manager()->GetReduceDimsProduct(
+            reduce_node->fusion_iters());
+    if (reduce_dims_product.isa<std::int64_t>()) {
+      return reduce_dims_product.dyn_cast<std::int64_t>() <= 1024 * 10;
+    } else {
+      return true;
+    }
+  }
+};
+
 struct CanFuseItersPermutationMatcher {
   bool operator()(PatternGraph graph,  // NOLINT
                   const PatternNodePtr& upstream,
@@ -85,7 +110,8 @@ struct CanFuseItersPermutationMatcher {
            (graph.iters_fusion_policy()->CanFuseSource2Target(downstream,
                                                               upstream) ||
             graph.iters_fusion_policy()->CanFuseSource2Target(upstream,
-                                                              downstream));
+                                                              downstream)) &&
+           CanFuseTrivialAndReduce()(graph, upstream, downstream);
   }
 };
 
@@ -98,8 +124,8 @@ struct LiftToAnchorPatternMatcher {
     // TODO(huangjiyi): Support anchor value is reduce output.
     // bool reduce_tree_with_single_reduce =
     //     StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
-    //     std::get<ReduceTreePattern>(node->stmt_pattern()).childs().size() ==
-    //     0;
+    //     std::get<ReduceTreePattern>(node->stmt_pattern()).childs().size()
+    //     == 0;
     return not_reduce_tree /* || reduce_tree_with_single_reduce */;
   }
 };
@@ -109,8 +135,8 @@ struct RecomputeNodeMatcher {
     const auto can_recompute_fn = [](const PatternNodePtr& node) -> bool {
       // Current Algorithm:
       // An node can be recomputed if:
-      // 1. It didn't go through any pattern merging during prior fusions, which
-      // means it only has one output value.
+      // 1. It didn't go through any pattern merging during prior fusions,
+      // which means it only has one output value.
       // 2. It only contains trivial ops.
       if (node->fusion_iters().output_values.size() > 1) {
         return false;

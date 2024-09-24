@@ -60,6 +60,14 @@ struct FusionItersManager {
                        "Can not find iter %s in iter2dimexpr_.", iter));
     return iter2dimexpr_[iter];
   }
+  symbol::DimExpr GetReduceDimsProduct(const FusionItersSignature& sig) {
+    symbol::DimExpr result = 1;
+    for (size_t i = 0; i < sig.reduce_iter_nums; i++) {
+      result =
+          result * GetIterSymbol(sig.loop_iters[sig.loop_iters.size() - i - 1]);
+    }
+    return result;
+  }
 
  private:
   void StoreIter2DimExprForValue(const pir::Value& value);
