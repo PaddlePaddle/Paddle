@@ -17,6 +17,8 @@ import tempfile
 
 import numpy as np
 
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
