@@ -14,7 +14,7 @@
 
 import unittest
 
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import Dy2StTestBase, test_ast_only, test_pir_only
 
 import paddle
 from paddle.base import core
@@ -49,57 +49,53 @@ class TestPartiaProgramLayerHook(Dy2StTestBase):
 class TestPrimHook(Dy2StTestBase):
     def setUp(self):
         core._set_prim_all_enabled(True)
-        with paddle.pir_utils.IrGuard():
-            paddle.disable_static()
 
-            def f():
-                return paddle.nn.functional.dropout(paddle.rand((1,)))
+        def f():
+            return paddle.nn.functional.dropout(paddle.rand((1,)))
 
-            concrete_program, partial_program_layer = paddle.jit.to_static(
-                f, full_graph=True
-            ).get_concrete_program()
-            self._hook = program_translator.PirPrimHooker(
-                concrete_program.main_program, None
-            )
-            self.partial_program_layer = partial_program_layer
+        concrete_program, partial_program_layer = paddle.jit.to_static(
+            f, full_graph=True
+        ).get_concrete_program()
+        self._hook = program_translator.PirPrimHooker(
+            concrete_program.main_program, None
+        )
+        self.partial_program_layer = partial_program_layer
 
     def tearDown(self):
         core._set_prim_all_enabled(False)
 
     @test_ast_only
+    @test_pir_only
     def test_before_append_backward(self):
-        with paddle.pir_utils.IrGuard():
-            program = self.partial_program_layer.program
+        program = self.partial_program_layer.program
 
-            self._hook.before_append_backward(
-                program.forward_program,
-                program.out_values,
-            )
-            self.assertNotIn(
-                'dropout',
-                tuple(
-                    op.name()
-                    for op in program.forward_program.global_block().ops
-                ),
-            )
+        self._hook.before_append_backward(
+            program.forward_program,
+            program.out_values,
+        )
+        self.assertNotIn(
+            'pd_op.dropout',
+            tuple(
+                op.name() for op in program.forward_program.global_block().ops
+            ),
+        )
 
     @test_ast_only
     def test_after_append_backward(self):
-        with paddle.pir_utils.IrGuard():
-            program_ = self.partial_program_layer.train_program
-            train_program = program_.program
+        program_ = self.partial_program_layer.train_program
+        train_program = program_.program
 
-            (
-                program,
-                forward_end_idx,
-                targets,
-            ) = self._hook.after_append_backward(
-                train_program, None, program_.out_values, None, 0, 0
-            )
-            self.assertNotIn(
-                'pd_op.dropout_grad',
-                tuple(op.name() for op in train_program.global_block().ops),
-            )
+        (
+            program,
+            forward_end_idx,
+            targets,
+        ) = self._hook.after_append_backward(
+            train_program, None, program_.out_values, None, 0, 0
+        )
+        self.assertNotIn(
+            'pd_op.dropout_grad',
+            tuple(op.name() for op in train_program.global_block().ops),
+        )
 
 
 if __name__ == '__main__':
