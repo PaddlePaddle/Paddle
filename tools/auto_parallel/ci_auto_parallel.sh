@@ -20,6 +20,7 @@ export paddle_dir=/workspace/Paddle
 mkdir -p /workspace/case_logs
 export log_path=/workspace/case_logs
 export case_list=()
+export FLAGS_enable_pir_api=0
 
 install_paddle(){
     echo -e "\033[31m ---- Install paddlepaddle-gpu  \033"
