@@ -329,7 +329,7 @@ def check_remove_syntax_error(filename, limit=1000):
         filename: xxx.pyi
         limit: check limit, or raise error
     """
-    pattern_check = re.compile(rf"File.*{filename}.*line.*(?P<lineno>\d+)")
+    pattern_check = re.compile(rf"File.*{filename}.*line (?P<lineno>\d+)")
 
     while limit:
         limit -= 1
@@ -391,8 +391,13 @@ def post_process(output_dir: str):
                 continue
 
             filename = str(Path(root) / f)
+            # insert modules
+            insert_import_modules(filename)
+
             replace_bad_attr(filename)
             check_remove_syntax_error(filename)
+
+            # insert moduels if necessary
             insert_import_modules(filename)
 
 
