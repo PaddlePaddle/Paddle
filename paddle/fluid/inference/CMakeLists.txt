@@ -118,7 +118,7 @@ endif()
 cc_library(
   paddle_inference_shared SHARED
   SRCS ${SHARED_INFERENCE_SRCS}
-  DEPS ${SHARED_INFERENCE_DEPS})
+  DEPS ${SHARED_INFERENCE_DEPS} op_dialect)
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_inference_shared ${os_dependency_modules})

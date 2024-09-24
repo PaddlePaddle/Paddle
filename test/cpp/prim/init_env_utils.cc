@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "test/cpp/prim/init_env_utils.h"
+#include "paddle/fluid/pir/dialect/static_tensor_operants.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/phi/api/include/operants_manager.h"
-#include "paddle/phi/core/static_tensor_operants.h"
 
 namespace paddle {
 namespace prim {

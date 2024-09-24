@@ -292,7 +292,8 @@ set(op_dialect_srcs
 if(WITH_ONEDNN)
   set(op_dialect_srcs
       ${op_dialect_srcs} ${onednn_op_source_file} ${op_onednn_info_file}
-      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
+      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc
+      ${CMAKE_CURRENT_SOURCE_DIR}/static_tensor_operants.cc)
 endif()
 
 file(GLOB_RECURSE dist_dialect_srcs
