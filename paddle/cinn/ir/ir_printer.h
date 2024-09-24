@@ -68,6 +68,9 @@ struct IrPrinter : public IRVisitorRequireReImpl<void> {
 #define __(op__) virtual void Visit(const intrinsics::op__ *x);
   INTRINSIC_KIND_FOR_EACH(__)
 #undef __
+  void Visit(const IterMark *x);
+  void Visit(const IterSum *x);
+  void Visit(const IterSplit *x);
 
  protected:
   std::string str_;

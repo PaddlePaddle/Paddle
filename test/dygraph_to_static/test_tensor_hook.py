@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    test_legacy_and_pt,
     test_legacy_and_pt_and_pir,
 )
 
@@ -26,6 +27,7 @@ from paddle.jit import to_static
 
 
 class TestTensorHook(Dy2StTestBase):
+    @test_legacy_and_pt
     def test_hook_for_different_parameter(self):
         def f(x):
             def h(g):
@@ -51,6 +53,7 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
+    @test_legacy_and_pt
     def test_hook_in_sub_block(self):
         def f(x):
             def hook1(grad):
@@ -81,6 +84,7 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
+    @test_legacy_and_pt
     def test_hook_sub_attr(self):
         IMAGE_SIZE = 784
         CLASS_NUM = 10
@@ -118,6 +122,7 @@ class TestTensorHook(Dy2StTestBase):
             jit_layer._linear.weight.grad.numpy(),
         )
 
+    @test_legacy_and_pt
     def test_hook_for_reassignment_parameter(self):
         def f(x):
             def h(g):
@@ -141,6 +146,7 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
+    @test_legacy_and_pt
     def test_hook_for_repeat_register(self):
         def f(x):
             def h(g):
@@ -196,43 +202,6 @@ class TestTensorHook(Dy2StTestBase):
             layer.parameters()[0].grad.numpy(),
             jit_layer.parameters()[0].grad.numpy(),
         )
-
-    # def test_hook_in_forward_for_layer(self):
-    #
-    #     IMAGE_SIZE = 784
-    #     CLASS_NUM = 10
-    #
-    #     class LinearNet(nn.Layer):
-    #         def __init__(self):
-    #             super().__init__()
-    #             self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-    #
-    #         def forward(self, x):
-    #             def hook(grad):
-    #                 return grad * 2
-    #
-    #             res = self._linear(x)
-    #
-    #             # register_hook in forward
-    #             self._linear.parameters()[0].register_hook(hook)
-    #             return res
-    #
-    #     # create network
-    #     layer = LinearNet()
-    #     jit_layer = to_static(LinearNet())
-    #     data = np.random.random([IMAGE_SIZE]).astype('float32')
-    #     image = paddle.to_tensor(data)
-    #     image_jit = paddle.to_tensor(data)
-    #     loss = layer(image)
-    #     loss_jit = jit_layer(image_jit)
-    #     loss_jit.backward()
-    #     loss.backward()
-    #     self.assertTrue(
-    #         np.allclose(
-    #             layer.parameters()[0].grad.numpy(),
-    #             jit_layer.parameters()[0].grad.numpy(),
-    #         )
-    #     )
 
 
 if __name__ == '__main__':

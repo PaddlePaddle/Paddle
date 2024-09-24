@@ -142,9 +142,9 @@ set(PYBIND_SRCS
     xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
-    eval_frame_tools.cc
-    cpython_internals.c
-    eval_frame.c
+    sot/eval_frame_tools.cc
+    sot/cpython_internals.c
+    sot/eval_frame.c
     op_callstack_utils.cc
     python_callable_registry.cc)
 

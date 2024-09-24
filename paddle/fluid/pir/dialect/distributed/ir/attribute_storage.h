@@ -122,11 +122,14 @@ class OperationDistAttrStorage : public pir::AttributeStorage {
   ///
   using ParamKey = std::tuple<ProcessMeshAttribute,
                               std::vector<pir::Attribute>,
-                              std::vector<pir::Attribute>>;
-  OperationDistAttrStorage(ParamKey&& param)  // NOLINT
+                              std::vector<pir::Attribute>,
+                              int64_t>;
+
+  explicit OperationDistAttrStorage(ParamKey&& param)
       : mesh_attr(std::get<0>(param)),
         operands(std::get<1>(param)),
-        results(std::get<2>(param)) {}
+        results(std::get<2>(param)),
+        chunk_id(std::get<3>(param)) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
@@ -149,6 +152,7 @@ class OperationDistAttrStorage : public pir::AttributeStorage {
       auto tmp_value = std::hash<pir::Attribute>()(iter);
       hash_value = pir::detail::hash_combine(hash_value, tmp_value);
     }
+    hash_value = pir::detail::hash_combine(hash_value, std::get<3>(key));
     return hash_value;
   }
 
@@ -157,12 +161,13 @@ class OperationDistAttrStorage : public pir::AttributeStorage {
   ///
   bool operator==(const ParamKey& key) const {
     return mesh_attr == std::get<0>(key) && operands == std::get<1>(key) &&
-           results == std::get<2>(key);
+           results == std::get<2>(key) && chunk_id == std::get<3>(key);
   }
 
   ProcessMeshAttribute mesh_attr;
   std::vector<pir::Attribute> operands;
   std::vector<pir::Attribute> results;
+  int64_t chunk_id;
 };
 
 }  // namespace dialect

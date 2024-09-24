@@ -196,7 +196,12 @@ def _convert_tensor_arrray_if_necessary(setterhelper, push_pop_names):
 
     def maybe_to_tensor_array(v):
         if isinstance(v, list):
-            return paddle.tensor.create_array("float32", initialized_list=v)
+            dtype = (
+                paddle.base.libpaddle.DataType.UNDEFINED
+                if use_pir_api()
+                else "float32"
+            )
+            return paddle.tensor.create_array(dtype, initialized_list=v)
         else:
             return v
 
@@ -442,8 +447,12 @@ def _run_paddle_cond(
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
     from paddle.jit.dy2static.program_translator import ProgramTranslator
+    from paddle.jit.pir_dy2static.parameter_recorder import _global_inplace_map
 
-    inplace_map = ProgramTranslator.get_instance()._inplace_map
+    if use_pir_api():
+        inplace_map = _global_inplace_map
+    else:
+        inplace_map = ProgramTranslator.get_instance()._inplace_map
     union_name = None
     # TODO(@xiongkun) lambda can have push_pop_names, which will cause error.
     if return_name_ids is None and push_pop_names is None:

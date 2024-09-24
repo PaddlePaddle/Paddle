@@ -19,7 +19,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_default_and_pir,
-    test_legacy_and_pt_and_pir,
     test_pir_only,
 )
 from test_resnet import ResNetHelper
@@ -90,7 +89,6 @@ class TestResnetWithPass(Dy2StTestBase):
 
 
 class TestError(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_type_error(self):
         def foo(x):
             out = x + 1

@@ -20,7 +20,6 @@ from dygraph_to_static_utils import (
     static_guard,
     test_ast_only,
     test_legacy_and_pt,
-    test_legacy_and_pt_and_pir,
     test_pir_only,
 )
 
@@ -68,7 +67,6 @@ class TestLen(Dy2StTestBase):
         return out
 
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_len(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)

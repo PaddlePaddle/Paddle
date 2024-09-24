@@ -23,7 +23,7 @@ import re
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Generator, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import yaml
 from pybind11_stubgen import (
@@ -39,6 +39,9 @@ from pybind11_stubgen.structs import (
     InvalidExpression,
     Value,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 # some invalid attr from pybind11.
 # ref:

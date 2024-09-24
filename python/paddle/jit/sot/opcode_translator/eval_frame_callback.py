@@ -15,13 +15,10 @@
 from __future__ import annotations
 
 import dis
-from functools import partial
 from typing import TYPE_CHECKING
 
-from paddle.base.dygraph.base import sot_simulation_mode_guard
-
 from ..profiler import EventGuard
-from ..utils import log_do, log_format
+from ..utils import log_do, log_enabled, log_format
 from .executor.executor_cache import OpcodeExecutorCache
 
 if TYPE_CHECKING:
@@ -58,31 +55,38 @@ def eval_frame_callback(frame, **kwargs) -> CustomCode:
     with EventGuard(
         f"eval_frame_callback: {frame.f_code.co_name}", event_level=2
     ):
-        log_format(
-            2, "[eval_frame_callback] start to translate: {}\n", frame.f_code
-        )
-        log_do(4, partial(print_locals, frame))
+        # A quick way to check if the log is enabled
+        need_log = log_enabled(1)
+        if need_log:
+            log_format(
+                2,
+                "[eval_frame_callback] start to translate: {}\n",
+                frame.f_code,
+            )
+            log_do(4, lambda: print_locals(frame))
 
-        log_format(
-            3, "[eval_frame_callback] OriginCode: {}\n", frame.f_code.co_name
-        )
-        log_do(3, lambda: dis.dis(frame.f_code))
-
-        with sot_simulation_mode_guard(True):
-            custom_code = OpcodeExecutorCache()(frame, **kwargs)
-
-        if custom_code.code is None:
             log_format(
                 3,
-                "[eval_frame_callback] NewCode (same as origin code): {}\n",
+                "[eval_frame_callback] OriginCode: {}\n",
                 frame.f_code.co_name,
             )
-        else:
-            log_format(
-                3,
-                "[eval_frame_callback] NewCode: {}\n",
-                custom_code.code.co_name,
-            )
-            log_do(3, lambda: dis.dis(custom_code.code))
+            log_do(3, lambda: dis.dis(frame.f_code))
+
+        custom_code = OpcodeExecutorCache()(frame, **kwargs)
+
+        if need_log:
+            if custom_code.code is None:
+                log_format(
+                    3,
+                    "[eval_frame_callback] NewCode (same as origin code): {}\n",
+                    frame.f_code.co_name,
+                )
+            else:
+                log_format(
+                    3,
+                    "[eval_frame_callback] NewCode: {}\n",
+                    custom_code.code.co_name,
+                )
+                log_do(3, lambda: dis.dis(custom_code.code))
 
         return custom_code
