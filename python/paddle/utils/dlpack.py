@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import enum
 import warnings
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol, TypeVar
 
 import paddle
 
@@ -25,23 +25,29 @@ from ..base.data_feeder import check_type
 from ..base.framework import in_dygraph_mode
 
 if TYPE_CHECKING:
-    import numpy.typing as npt
     from typing_extensions import CapsuleType
 
     from paddle import Tensor
+
 
 __all__ = [
     'to_dlpack',
     'from_dlpack',
 ]
 
+_T_contra = TypeVar("_T_contra", contravariant=True)
 
-class SupportDLPack(Protocol):
-    def __dlpack__(self) -> CapsuleType:
-        pass
 
-    def __dlpack_device__(self) -> tuple[enum.IntEnum, int]:
-        pass
+class SupportDLPack(Protocol[_T_contra]):
+    """
+    ref:
+        https://github.com/numpy/numpy/blob/7e6e48ca7aacae9994d18a3dadbabd2b91c32151/numpy/__init__.pyi#L3068-L3077
+        https://github.com/numpy/numpy/blob/7e6e48ca7aacae9994d18a3dadbabd2b91c32151/numpy/__init__.pyi#L4730-L4731
+    """
+
+    def __dlpack__(self, *, stream: None | _T_contra = ...) -> CapsuleType: ...
+
+    def __dlpack_device__(self) -> tuple[int, Literal[0]]: ...
 
 
 class DLDeviceType(enum.IntEnum):
@@ -118,7 +124,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
 
 def from_dlpack(
-    dlpack: SupportDLPack | CapsuleType | npt.NDArray[Any],
+    dlpack: SupportDLPack | CapsuleType,
 ) -> Tensor:
     """
     Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
