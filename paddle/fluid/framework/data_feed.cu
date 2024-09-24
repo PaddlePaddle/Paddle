@@ -2406,12 +2406,12 @@ int InsertTable(int gpu_id,
   uint64_t h_uniq_node_num = 0;
   uint64_t *d_uniq_node_num_ptr =
       reinterpret_cast<uint64_t *>((*d_uniq_node_num)->ptr());
-  cudaMemcpyAsync(&h_uniq_node_num,
-                  d_uniq_node_num_ptr,
-                  sizeof(uint64_t),
-                  cudaMemcpyDeviceToHost,
-                  stream);
-  cudaStreamSynchronize(stream);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&h_uniq_node_num,
+                                             d_uniq_node_num_ptr,
+                                             sizeof(uint64_t),
+                                             cudaMemcpyDeviceToHost,
+                                             stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 
   if (conf.gpu_graph_training) {
     VLOG(2) << "table capacity: " << conf.train_table_cap << ", "
@@ -2431,7 +2431,8 @@ int InsertTable(int gpu_id,
                                             stream);
         *copy_unique_len_ptr += copy_len;
         table->clear(stream);
-        cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream);
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream));
       }
     }
   } else {
@@ -2447,7 +2448,8 @@ int InsertTable(int gpu_id,
                                           stream);
       *copy_unique_len_ptr += copy_len;
       table->clear(stream);
-      cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream));
     }
   }
 
@@ -3073,9 +3075,11 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
     h_walk = new uint64_t[conf.buf_size];
   }
   ///////
-  cudaMemsetAsync(walk, 0, conf.buf_size * sizeof(uint64_t), stream);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(walk, 0, conf.buf_size * sizeof(uint64_t), stream));
   if (conf.need_walk_ntype) {
-    cudaMemsetAsync(walk_ntype, 0, conf.buf_size * sizeof(uint8_t), stream);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+        walk_ntype, 0, conf.buf_size * sizeof(uint8_t), stream));
   }
   int sample_times = 0;
   int i = 0;
@@ -3473,7 +3477,8 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
         sizeof(uint64_t) * 2,
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
     uint64_t *d_buf_ptr = reinterpret_cast<uint64_t *>(d_buf->ptr());
-    cudaMemsetAsync(d_buf_ptr, 0, sizeof(uint64_t) * 2, stream);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemsetAsync(d_buf_ptr, 0, sizeof(uint64_t) * 2, stream));
     uint64_t *d_zero_key_ptr = d_buf_ptr;
     uint32_t *d_zero_rank_ptr = reinterpret_cast<uint32_t *>(d_buf_ptr + 1);
     uint64_t key_num = 1;
@@ -3512,7 +3517,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
                     thrust::device_pointer_cast(d_random_row_col_shift),
                     RandInt(0, conf.walk_len));
 
-  cudaStreamSynchronize(stream);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   *shuffle_seed_ptr = engine();
 
   if (conf.debug_mode) {
