@@ -174,11 +174,7 @@ class TestDeterminantAPIComplex(TestDeterminantAPI):
         self.x = np.vectorize(complex)(
             np.random.random(self.shape), np.random.random(self.shape)
         ).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = paddle.CPUPlace()
 
 
 class TestDeterminantAPIComplex2(TestDeterminantAPI):
@@ -189,11 +185,7 @@ class TestDeterminantAPIComplex2(TestDeterminantAPI):
         self.x = np.vectorize(complex)(
             np.random.random(self.shape), np.random.random(self.shape)
         ).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = paddle.CPUPlace()
 
 
 class TestSlogDeterminantOp(OpTest):

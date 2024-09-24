@@ -122,7 +122,7 @@ __global__ void GetDetFromLUComplex(const T* lu_data,
         out_idx *= negative;
       }
     }
-    out_data[idx] = static_cast<T>(out_idx);
+    out_data[idx] = out_idx;
   }
 }
 
@@ -133,6 +133,7 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
                   int64_t n,
                   int64_t batch_size,
                   DenseTensor* output) {
+#ifndef PADDLE_WITH_HIP
     phi::Allocator::AllocationPtr tmp_gpu_mat_data;
     const phi::dtype::complex<T>* gpu_mat = a.data<phi::dtype::complex<T>>();
     // Copy all elements of input matrix A to a temporary memory space to
@@ -187,6 +188,29 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
     dim3 num_blocks((batch_size + block_size - 1) / block_size);
     GetDetFromLUComplex<phi::dtype::complex<T>><<<num_blocks, dim_block>>>(
         gpu_mat, pivot_data, n, batch_size, out_data);
+#else
+    using MatrixType =
+        Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
+    std::vector<phi::dtype::complex<T>> input_vec;
+    std::vector<phi::dtype::complex<T>> output_vec;
+    phi::TensorToVector(a, dev_ctx, &input_vec);
+    for (int64_t i = 0; i < batch_size; ++i) {  // maybe can be parallel
+      auto begin_iter = input_vec.begin() + i * n * n;
+      auto end_iter = input_vec.begin() + (i + 1) * n * n;
+      std::vector<phi::dtype::complex<T>> sub_vec(
+          begin_iter,
+          end_iter);  // get every square matrix data
+      MatrixType matrix(n, n);
+      for (int64_t i = 0; i < n; ++i) {
+        for (int64_t j = 0; j < n; ++j) {
+          matrix(i, j) = static_cast<std::complex<T>>(sub_vec[n * i + j]);
+        }
+      }
+      output_vec.push_back(
+          static_cast<phi::dtype::complex<T>>(matrix.determinant()));
+    }
+    phi::TensorFromVector(output_vec, dev_ctx, output);
+#endif
   }
 };
 
