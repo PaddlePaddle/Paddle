@@ -2574,7 +2574,6 @@ class Model:
             verbose=verbose,
             metrics=self._metrics_name(),
         )
-        print("cbks", cbks)
 
         if any(isinstance(k, EarlyStopping) for k in cbks) and not do_eval:
             warnings.warn("EarlyStopping needs validation data.")
