@@ -25,7 +25,6 @@ from paddle.base import (
     Executor,
     core,
 )
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestPad3dOp(OpTest):
@@ -598,7 +597,6 @@ class TestPadAPI(unittest.TestCase):
 
         return out
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result_1(place=place)

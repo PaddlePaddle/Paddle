@@ -110,7 +110,7 @@ class TestCaseWithPirApiDecoratorDiagnostic(Diagnostic):
         super().__init__(
             start,
             end,
-            'Test case should use @test_pt_and_pir instead of @test_with_pir_api',
+            'Test case should use @test_pt_and_pir instead of ',
         )
 
 
@@ -200,7 +200,7 @@ class TestBaseChecker(Checker):
         self.generic_visit(node)
 
     def check_test_case(self, node: ast.FunctionDef):
-        # Check if the test case use @test_with_pir_api
+        # Check if the test case use
         for decorator in node.decorator_list:
             decorator_str = ast_to_source_code(decorator).strip()
             if TestBaseChecker.REGEX_TEST_WITH_PIR_API.match(decorator_str):

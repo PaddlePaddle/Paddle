@@ -20,7 +20,6 @@ from op_test import convert_uint16_to_float
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
@@ -67,12 +66,10 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
             self.prog, feed={'x': self.ids}, fetch_list=['emb_weight', self.emb]
         )
 
-    @test_with_pir_api
     def test_embedding_weights(self):
         result = convert_uint16_to_float(self.result[0])
         np.testing.assert_array_equal(self.w_fp32, result)
 
-    @test_with_pir_api
     def test_lookup_results(self):
         lookup_result = convert_uint16_to_float(self.result[1])
         lookup_ref = test_lookup_table_bf16_op._lookup(
