@@ -30,8 +30,8 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
                              const DistMetaTensor& x,
-                             int padding_idx,
-                             bool sparse) {
+                             int64_t start_index,
+                             int64_t vocab_size) {
   // Step0: Verify input args based on c_embedding logic
   auto x_shape = common::vectorize(x.dims());
   auto weight_shape = common::vectorize(weight.dims());
@@ -67,14 +67,11 @@ SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
   // determine parallel mode
   int64_t weight_row_axis_mapping = weight_dims_mapping[0];
 
-  VLOG(6) << "CEmbeddingSPMDRule InferForward Inputs: "
+  VLOG(4) << "CEmbeddingSPMDRule InferForward Inputs: "
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
           << str_join(x_dims_mapping) << "]; Weight shape: ["
           << str_join(weight_shape) << "], weight_dims_mapping: ["
-          << str_join(weight_dims_mapping) << "]; padding_idx: "
-          << "[" << padding_idx << "]; "
-          << "sparse: "
-          << "[" << (sparse ? "true" : "false") << "]; ";
+          << str_join(weight_dims_mapping) << "]; ";
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghilmnopqrstuvwxyz";
@@ -123,14 +120,13 @@ SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
           << "]\n Out dims_mapping: [" << str_join(out_dims_mapping)
           << "], partial_on_dims: [" << str_join(partial_on_dims) << "]\n\n";
 
-  return {{x_dist_attr_dst, weight_dist_attr_dst}, {out_dist_attr}};
+  return {{weight_dist_attr_dst, x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
                                  const DistMetaTensor& x,
                                  const DistMetaTensor& out_grad,
-                                 int64_t padding_idx,
-                                 bool sparse) {
+                                 int64_t start_index) {
   PADDLE_ENFORCE_EQ(out_grad.dims().size(),
                     out_grad.dist_attr().dims_mapping().size(),
                     common::errors::InvalidArgument(
@@ -138,12 +134,6 @@ SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
                         "dims_mapping size [%d] are not matched.",
                         out_grad.dims(),
                         out_grad.dist_attr().dims_mapping().size()));
-
-  if (sparse) {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "CEmbeddingGradInferSpmd does't support sparse currently."));
-  }
-
   // Propagate sharding info using composite operators.
   // The whole mathematical expression of CEmbeddingGrad is:
   // w_grad = einsum('...j, ...k->jk', onehot(x, j), out_grad)
@@ -213,7 +203,7 @@ SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
   out_grad_dst = DistMetaTensor(out_grad_dst.dims(), out_grad_dst_dist_attr);
   w_grad = DistMetaTensor(w_grad.dims(), w_grad_dist_attr);
 
-  VLOG(6) << "CEmbeddingGradInferSpmd:\n"
+  VLOG(4) << "CEmbeddingGradInferSpmd:\n"
           << "Input x shape: [" << str_join(phi::vectorize(x.dims()))
           << "], src_dims_mapping: [" << str_join(x.dist_attr().dims_mapping())
           << "], dst_dims_mapping: ["

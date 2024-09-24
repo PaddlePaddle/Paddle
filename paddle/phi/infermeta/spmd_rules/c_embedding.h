@@ -22,13 +22,12 @@ namespace distributed {
 
 SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
                              const DistMetaTensor& x,
-                             int padding_idx,
-                             bool sparse = false);
+                             int64_t start_index,
+                             int64_t vocab_size);
 
 SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
                                  const DistMetaTensor& x,
                                  const DistMetaTensor& out_grad,
-                                 int64_t padding_idx,
-                                 bool sparse = false);
+                                 int64_t start_index);
 }  // namespace distributed
 }  // namespace phi
