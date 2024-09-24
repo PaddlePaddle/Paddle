@@ -14,8 +14,6 @@
 
 import unittest
 
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only, test_pir_only
-
 import paddle
 from paddle.base import core
 from paddle.jit.dy2static import (
@@ -24,29 +22,26 @@ from paddle.jit.dy2static import (
 )
 
 
-class TestPartiaProgramLayerHook(Dy2StTestBase):
+class TestPartiaProgramLayerHook(unittest.TestCase):
     def setUp(self):
         self._hook = pir_partial_program.PartialProgramLayerHook()
 
-    @test_ast_only
     def test_before_append_backward(self):
         self.assertEqual(
             self._hook.before_append_backward(None, None), (None, None)
         )
 
-    @test_ast_only
     def test_after_append_backward(self):
         self.assertEqual(
             self._hook.after_append_backward(None, None, None, None, 0, 0),
             (None, 0, None),
         )
 
-    @test_ast_only
     def test_after_infer(self):
         self.assertIsNone(self._hook.after_infer(None))
 
 
-class TestPrimHook(Dy2StTestBase):
+class TestPrimHook(unittest.TestCase):
     def setUp(self):
         core._set_prim_all_enabled(True)
 
@@ -64,8 +59,6 @@ class TestPrimHook(Dy2StTestBase):
     def tearDown(self):
         core._set_prim_all_enabled(False)
 
-    @test_ast_only
-    @test_pir_only
     def test_before_append_backward(self):
         program = self.partial_program_layer.program
 
@@ -80,7 +73,6 @@ class TestPrimHook(Dy2StTestBase):
             ),
         )
 
-    @test_ast_only
     def test_after_append_backward(self):
         program_ = self.partial_program_layer.train_program
         train_program = program_.program
