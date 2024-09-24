@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import functools
 import keyword
 import logging
@@ -22,6 +23,7 @@ import os
 import re
 import shutil
 import tempfile
+import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict
 
@@ -50,7 +52,7 @@ BAD_ATTR = {
     # python/paddle/_typing/libs/libpaddle/cinn/ir.pyi
     'cinn::ir::_paddle.Tensor_': 'typing.Any',
     # python/paddle/_typing/libs/libpaddle/cinn/common.pyi
-    'None: typing.ClassVar[Type.cpp_type_t]': '# None: typing.ClassVar[Type.cpp_type_t]',
+    'None: typing.ClassVar[Type.cpp_type_t]': 'None_: typing.ClassVar[Type.cpp_type_t]',
 }
 
 # add some import modules
@@ -58,6 +60,7 @@ BAD_ATTR = {
 # we insert 'b' after 'from __future__ import annotations'.
 # 'a' should be converted to ' a.'
 EXTRA_IMPORTS = {
+    'paddle': 'import paddle',
     'typing': 'import typing',
     'typing_extensions': 'import typing_extensions',
     'pybind11_stubgen': 'import pybind11_stubgen',
@@ -320,7 +323,64 @@ def insert_import_modules(filename: str):
         f.write(stub_file)
 
 
+def check_remove_syntax_error(filename, limit=1000):
+    """
+    Args:
+        filename: xxx.pyi
+        limit: check limit, or raise error
+    """
+    pattern_check = re.compile(rf"File.*{filename}.*line.*(?P<lineno>\d+)")
+
+    while limit:
+        limit -= 1
+
+        # read file and check syntax error
+        err = ""
+        source = ""
+        source_lines = []
+        with open(filename, "r", encoding="utf-8") as f:
+            source_lines = f.readlines()
+            source = "".join(source_lines)
+
+            is_valid = True
+
+            try:
+                ast.parse(source, filename)
+            except SyntaxError:
+                is_valid = False
+                err = traceback.format_exc()
+
+            if is_valid:
+                break
+            else:
+                if limit <= 0:
+                    print(f">>> Syntax error detected in file: {filename}")
+
+        print(f">>> Syntax error: find syntax error in file: {filename}")
+
+        # find the line with syntax error
+        match_obj = pattern_check.search(err)
+        if match_obj is not None:
+            line_no = int(match_obj.group("lineno"))
+            print(
+                f">>> Syntax error: remove the error line {line_no}, and continue to check ..."
+            )
+            del source_lines[line_no - 1]
+        else:
+            print(">>> Syntax error: no match obj, just continue ...")
+            break
+
+        # write new lines
+        with open(filename, "w", encoding="utf-8") as f:
+            f.writelines(source_lines)
+
+
 def post_process(output_dir: str):
+    """
+    1. replace some bad attr
+    2. check and remove syntax error lines
+    3. insert some import modules. This should be the last process.
+    """
     for root, _, files in os.walk(output_dir):
         if not files:
             continue
@@ -330,8 +390,10 @@ def post_process(output_dir: str):
             if not f.endswith('.pyi'):
                 continue
 
-            replace_bad_attr(str(Path(root) / f))
-            insert_import_modules(str(Path(root) / f))
+            filename = str(Path(root) / f)
+            replace_bad_attr(filename)
+            check_remove_syntax_error(filename)
+            insert_import_modules(filename)
 
 
 def parse_args():
@@ -432,7 +494,7 @@ def generate_stub_file(
 
         shutil.move(str(source_path), output_dir)
 
-    # post process: replace some bad attr, insert some import modules
+    # post process
     post_process(output_dir)
 
 
