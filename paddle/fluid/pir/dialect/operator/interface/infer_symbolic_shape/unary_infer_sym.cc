@@ -1438,9 +1438,21 @@ bool FrobeniusNormOpInferSymbolicShape(
   bool keepdim = op->attribute<pir::BoolAttribute>("keep_dim").data();
   bool reduce_all = op->attribute<pir::BoolAttribute>("reduce_all").data();
 
-  const auto &axis = details::GetVectorAttr(op, "axis");
+  std::vector<int64_t> axis;
+  if (paddle::dialect::details::GetAxisFromOpInput(
+          op->operand_source(1), infer_context, &axis)) {
+    if (axis.size() == 0) {
+      reduce_all = true;
+    }
 
-  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+    return details::ReduceInferDim(
+        op, infer_context, axis, keepdim, reduce_all);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+        "support FullIntArrayOp's result or constant DimExpr now."));
+  }
+  return false;
 }
 
 bool FoldOpInferSymbolicShape(pir::Operation *op,
@@ -1766,7 +1778,6 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
 
-  const auto &attributes = op->attributes();
   std::vector<int64_t> axis;
   if (paddle::dialect::details::GetAxisFromOpInput(
           op->operand_source(1), infer_context, &axis)) {
@@ -1779,6 +1790,7 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
         "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
         "support FullIntArrayOp's result or constant DimExpr now."));
   }
+  return false;
 }
 
 bool ModeOpInferSymbolicShape(pir::Operation *op,
@@ -2003,6 +2015,7 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
         "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
         "support FullIntArrayOp's result or constant DimExpr now."));
   }
+  return false;
 }
 
 bool MeanAllOpInferSymbolicShape(
@@ -2759,6 +2772,7 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
         "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
         "support FullIntArrayOp's result or constant DimExpr now."));
   }
+  return false;
 }
 
 bool QrOpInferSymbolicShape(pir::Operation *op,
@@ -3334,7 +3348,7 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
         "support FullIntArrayOp's result or constant DimExpr now."));
   }
 
-  return true;
+  return false;
 }
 
 bool SvdOpInferSymbolicShape(pir::Operation *op,
