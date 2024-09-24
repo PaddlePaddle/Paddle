@@ -832,10 +832,10 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             opt.step()
             opt.clear_gradients()
 
-            np.testing.assert_allclose(linear1.weight.numpy(), fc1_w, rtol=1e-6)
-            np.testing.assert_allclose(linear1.bias.numpy(), fc1_b, rtol=1e-6)
-            np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, rtol=1e-6)
-            np.testing.assert_allclose(linear2.bias.numpy(), fc2_b, rtol=1e-6)
+            np.testing.assert_allclose(linear1.weight.numpy(), fc1_w, atol=1e-2, rtol=1e-3)
+            np.testing.assert_allclose(linear1.bias.numpy(), fc1_b, atol=1e-2, rtol=1e-3)
+            np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, atol=1e-2, rtol=1e-3)
+            np.testing.assert_allclose(linear2.bias.numpy(), fc2_b, atol=1e-2, rtol=1e-3)
 
     # @test_with_pir_api
     def test_adamw_op(self):

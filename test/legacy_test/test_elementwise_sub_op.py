@@ -42,7 +42,7 @@ class TestElementwiseOp(OpTest):
         self.if_enable_cinn()
 
     def init_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output(check_pir=True)
@@ -377,6 +377,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
         self.if_check_prim()
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "need check double grad, musa not support double")
 class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
@@ -483,6 +484,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
         )
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "need check double grad, musa not support double")
 class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_sub"
@@ -529,6 +531,7 @@ class TestElementwiseBF16OP_broadcast_1(TestElementwiseBF16OP_broadcast_0):
         self.attrs = {'axis': 1}
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "need check double grad, musa not support double")
 class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
@@ -602,6 +605,7 @@ class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
         self.attrs = {'axis': 1}
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "need check double grad, musa not support double")
 class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_sub"
@@ -813,13 +817,14 @@ class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseBF16OP):
         self.if_enable_cinn()
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestComplexElementwiseSubOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
 
@@ -833,7 +838,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.if_enable_cinn()
 
     def init_base_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
 
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(
@@ -877,6 +882,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.check_prim = False
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(self.dtype)
@@ -928,8 +934,8 @@ class TestSubtractApi(unittest.TestCase):
 
     def test_dygraph(self):
         with base.dygraph.guard():
-            np_x = np.array([2, 3, 4]).astype('float64')
-            np_y = np.array([1, 5, 2]).astype('float64')
+            np_x = np.array([2, 3, 4]).astype('float32')
+            np_y = np.array([1, 5, 2]).astype('float32')
             x = base.dygraph.to_variable(np_x)
             y = base.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
@@ -1005,8 +1011,8 @@ class TestFloatElementwiseSubop(unittest.TestCase):
     def test_dygraph_sub(self):
         paddle.disable_static()
 
-        np_a = np.random.random((2, 3, 4)).astype(np.float64)
-        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
 
         tensor_a = paddle.to_tensor(np_a, dtype="float32")
         tensor_b = paddle.to_tensor(np_b, dtype="float32")

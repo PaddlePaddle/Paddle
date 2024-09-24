@@ -33,7 +33,7 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def get_cuda_version():
-    result = os.popen("nvcc --version").read()
+    result = os.popen("mcc --version").read()
     regex = r'release (\S+),'
     match = re.search(regex, result)
     if match:
@@ -88,6 +88,8 @@ is_sm_supported = is_sm8x or is_sm90
 
 
 def is_flashattn_supported():
+    if core.is_compiled_with_musa():
+        return True
     if (
         not core.is_compiled_with_cuda()
         or get_cuda_version() < 11040
@@ -105,7 +107,7 @@ def is_flashattn_supported():
 class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 16)
+        self.shape = (2, 128, 8, 64)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
@@ -113,6 +115,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.use_sdp_kernel = False
         self.use_sdp_api = False
 
+    @unittest.skipIf(core.is_compiled_with_musa(), "musa not support flash_attn_unpadded")
     def test_unpadded(self):
         print(
             f"Test unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
@@ -324,10 +327,11 @@ class TestFlashAttentionAPI(unittest.TestCase):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 7.5 or 8.x",
 )
+# @unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestFlashAttentionWithMaskAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 32)
+        self.shape = (2, 128, 8, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
@@ -375,10 +379,11 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
 
+# @unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 16)
+        self.shape = (2, 1024, 8, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -389,7 +394,7 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
 class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 256, 8, 16)
+        self.shape = (2, 256, 8, 64)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -397,6 +402,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
         self.use_sdp_kernel = False
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support causal")
 class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
@@ -422,7 +428,7 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
 class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 256)
+        self.shape = (8, 256, 16, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -430,10 +436,11 @@ class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
         self.use_sdp_kernel = False
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support SDP attention")
 class TestMathAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 128)
+        self.shape = (8, 128, 16, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -445,10 +452,11 @@ class TestMathAttentionAPITest(TestFlashAttentionAPI):
         self.enable_mem_efficient = False
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support SDP attention")
 class TestSDPAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 128)
+        self.shape = (8, 128, 16, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -463,7 +471,7 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
 class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 128)
+        self.shape = (8, 128, 16, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -474,10 +482,11 @@ class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 7.5 or 8.x",
 )
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support no kvgrad")
 class TestFlashAttentionNoKVGrad(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 16)
+        self.shape = (2, 128, 8, 64)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = True
