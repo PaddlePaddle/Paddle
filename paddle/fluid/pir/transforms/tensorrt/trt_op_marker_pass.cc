@@ -1388,6 +1388,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
     ps.Add(std::make_unique<ArgmaxOpPattern>(context));
     ps.Add(std::make_unique<MaxOpPattern>(context));
+    ps.Add(std::make_unique<NearestInterpOpPattern>(context));
     return ps;
   }
 };
