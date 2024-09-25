@@ -1593,42 +1593,21 @@ bool FusedFeedforwardOpInferSymbolicShape(
       op->attribute<pir::BoolAttribute>("pre_layer_norm").data();
 
   if (pre_layer_norm) {
-    if (paddle::dialect::details::IsFakeValue(op->result(8)) ||
-        op->result(8)
-                .type()
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .dims()
-                .size() == 0) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(8));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(8))) {
       infer_context->SetShapeOrDataForValue(
           op->result(8),
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(x_shape)});
     }
 
-    if (paddle::dialect::details::IsFakeValue(op->result(3)) ||
-        op->result(3)
-                .type()
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .dims()
-                .size() == 0) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(3));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(3))) {
       infer_context->SetShapeOrDataForValue(
           op->result(3),
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(mean_dim)});
     }
 
-    if (paddle::dialect::details::IsFakeValue(op->result(4)) ||
-        op->result(4)
-                .type()
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .dims()
-                .size() == 0) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(4));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(4))) {
       infer_context->SetShapeOrDataForValue(
           op->result(4),
           symbol::ShapeOrDataDimExprs{
@@ -1636,28 +1615,14 @@ bool FusedFeedforwardOpInferSymbolicShape(
     }
 
   } else {
-    if (paddle::dialect::details::IsFakeValue(op->result(5)) ||
-        op->result(5)
-                .type()
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .dims()
-                .size() == 0) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(5));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(5))) {
       infer_context->SetShapeOrDataForValue(
           op->result(5),
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(mean_dim)});
     }
 
-    if (paddle::dialect::details::IsFakeValue(op->result(6)) ||
-        op->result(6)
-                .type()
-                .dyn_cast<paddle::dialect::DenseTensorType>()
-                .dims()
-                .size() == 0) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(6));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(6))) {
       infer_context->SetShapeOrDataForValue(
           op->result(6),
           symbol::ShapeOrDataDimExprs{
