@@ -35,6 +35,12 @@ class Place;
 class CPUPlace;
 }  // namespace phi
 
+namespace paddle {
+namespace drr {
+class OperationFactory;
+}  // namespace drr
+}  // namespace paddle
+
 namespace pir {
 
 class Operation;
