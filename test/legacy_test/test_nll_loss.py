@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def nll_loss_1d(
@@ -101,7 +100,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -140,7 +138,6 @@ class TestNLLLoss(unittest.TestCase):
         )
         expected = nll_loss_1d(input_np, label_np, reduction='sum')[0]
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -199,7 +196,6 @@ class TestNLLLoss(unittest.TestCase):
 
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -280,7 +276,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -335,7 +330,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -390,7 +384,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -446,7 +439,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         # place = base.CPUPlace()
-        @test_with_pir_api
+
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -495,7 +488,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -546,7 +538,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         # place = base.CPUPlace()
-        @test_with_pir_api
+
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -599,7 +591,6 @@ class TestNLLLoss(unittest.TestCase):
         expected = nll_loss_2d(input_np, label_np, weight=weight_np)[0]
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -659,7 +650,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -722,7 +712,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -780,7 +769,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -850,7 +838,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -923,7 +910,6 @@ class TestNLLLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -990,7 +976,6 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
         place = base.CPUPlace()
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -1246,7 +1231,7 @@ class TestNLLLossName(unittest.TestCase):
 
 
 class TestNLLLossInvalidArgs(unittest.TestCase):
-    @test_with_pir_api
+
     def test_x_dim_value_error(self):
         def test_x_dim_lt_2():
             # place = paddle.CPUPlace()
@@ -1317,7 +1302,6 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         self.assertRaises(ValueError, test_x_dim_imperative_lt_2)
 
-    @test_with_pir_api
     def test_reduction_value_error(self):
         def test_NLLLoss_reduction_not_sum_mean_none():
             # place = paddle.CPUPlace()

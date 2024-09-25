@@ -25,7 +25,6 @@ import paddle
 from paddle import base
 from paddle.base import framework
 from paddle.framework.io_utils import get_value, is_pir_fetch_var, set_value
-from paddle.pir_utils import test_with_pir_api
 
 IMAGE_SIZE = 784
 
@@ -74,7 +73,6 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             # set var_load to scope
             set_value(var, var_load)
 
-    @test_with_pir_api
     def test_replace_save_load_vars(self):
         paddle.enable_static()
         with new_program_scope():
@@ -144,7 +142,6 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
                     np.testing.assert_array_equal(new_t, base_t)
 
-    @test_with_pir_api
     def test_save_load_lod_tensor(self):
         paddle.enable_static()
         OUTPUT_NUM = 32
@@ -242,7 +239,6 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             paddle.framework.io._load_lod_tensor(1)
 
-    @test_with_pir_api
     def test_save_load_selected_rows(self):
         paddle.enable_static()
         place = (

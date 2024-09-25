@@ -32,7 +32,6 @@ from paddle.nn.functional.flash_attention import (
     flashmask_attention,
     scaled_dot_product_attention,
 )
-from paddle.pir_utils import test_with_pir_api
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -214,7 +213,6 @@ class TestFlashAttentionAPI(unittest.TestCase):
 
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_all(self):
         print(
             f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
