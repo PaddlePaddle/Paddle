@@ -4232,12 +4232,10 @@ def chunk(
     Here are some examples to explain it.
 
         - 1. Given a 3-D tensor x with a shape [3, 3, 3], if we split the first dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [1, 3, 3].
-
         - 2. Given a 3-D tensor x with a shape [3, 3, 3], if we split the second dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [3, 1, 3].
-
         - 3. Given a 3-D tensor x with a shape [3, 3, 3], if we split the third dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [3, 3, 1].
 
-    The following figure illustrates the first example -- a 3D tensor of shape [3, 3, 3], if we split the first dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [1, 3, 3], during which the order and values of the elements in the tensor remain unchanged. The elements in the two subdiagrams correspond to each other, clearly demonstrating how the reshape API works.
+    The following figure illustrates the first example.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/chunk.png
         :width: 800
