@@ -2063,7 +2063,7 @@ bool InstanceNormOpInferSymbolicShape(
   symbol::DimExpr N = x_shape[0];
   symbol::DimExpr C = x_shape[1];
 
-  if (!isFakeValue(op->operand_source(1))) {
+  if (!paddle::dialect::details::IsFakeValue(op->operand_source(1))) {
     const auto &scale_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     const std::vector<symbol::DimExpr> &scale_shape =
@@ -2086,7 +2086,7 @@ bool InstanceNormOpInferSymbolicShape(
     }
   }
 
-  if (!isFakeValue(op->operand_source(2))) {
+  if (!paddle::dialect::details::IsFakeValue(op->operand_source(2))) {
     const auto &bias_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
     const std::vector<symbol::DimExpr> &bias_shape = bias_shape_or_data.shape();
@@ -2112,7 +2112,7 @@ bool InstanceNormOpInferSymbolicShape(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
-  if (isFakeValue(op->result(1))) {
+  if (paddle::dialect::details::IsFakeValue(op->result(1))) {
     infer_context->SetSymbolForValueByStaticShape(op->result(1));
   } else {
     std::vector<symbol::DimExpr> sq_shape = {N * C};
@@ -2122,7 +2122,7 @@ bool InstanceNormOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(sq_shape)});
   }
 
-  if (isFakeValue(op->result(2))) {
+  if (paddle::dialect::details::IsFakeValue(op->result(2))) {
     infer_context->SetSymbolForValueByStaticShape(op->result(2));
   } else {
     std::vector<symbol::DimExpr> sq_shape = {N * C};
@@ -3169,7 +3169,7 @@ bool RankAttentionOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
-  if (isFakeValue(op->result(0))) {
+  if (paddle::dialect::details::isFakeValue(op->result(0))) {
     infer_context->SetSymbolForValueByStaticShape(op->result(0));
   } else {
     std::vector<symbol::DimExpr> x_help_shape = {x_shape[0],
@@ -3180,7 +3180,7 @@ bool RankAttentionOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(x_help_shape)});
   }
 
-  if (isFakeValue(op->result(2))) {
+  if (paddle::dialect::details::IsFakeValue(op->result(2))) {
     infer_context->SetSymbolForValueByStaticShape(op->result(2));
   } else {
     std::vector<symbol::DimExpr> ins_rank_shape = {x_shape[0], 1};
