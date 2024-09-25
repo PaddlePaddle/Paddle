@@ -448,6 +448,14 @@ PD_REGISTER_SPMD_RULE(
     not_equal,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    greater_than,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    less_than,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(swiglu,
                       PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmdReverse));
@@ -654,6 +662,12 @@ PD_REGISTER_SPMD_RULE(scatter,
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmdReverse));
 
+// scatter_nd_add
+PD_REGISTER_SPMD_RULE(
+    scatter_nd_add,
+    PD_INFER_SPMD(phi::distributed::ScatterNdAddInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ScatterNdAddInferSpmdReverse));
+
 // gather
 PD_REGISTER_SPMD_RULE(
     gather,
@@ -689,6 +703,11 @@ PD_REGISTER_SPMD_RULE(
     logsumexp,
     PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmd),
     PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmdReverse));
+
+// pad
+PD_REGISTER_SPMD_RULE(pad,
+                      PD_INFER_SPMD(phi::distributed::PadInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::PadGradInferSpmd));
 
 }  // namespace distributed
 }  // namespace phi
