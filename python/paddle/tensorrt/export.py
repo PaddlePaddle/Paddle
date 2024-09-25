@@ -217,12 +217,12 @@ def convert_to_trt(program, trt_config, scope):
             max_shape_feed[feed_name[i]] = max_data
 
             # run warmup for collecting shape
-            program = warmup_shape_infer(
-                program,
-                min_shape_feed=min_shape_feed,
-                max_shape_feed=max_shape_feed,
-                scope=scope,
-            )
+        program = warmup_shape_infer(
+            program,
+            min_shape_feed=min_shape_feed,
+            max_shape_feed=max_shape_feed,
+            scope=scope,
+        )
 
         # run pir pass (including trt_op_marker_pass)
         program_with_pir = run_pir_pass(program, partition_mode=False)
