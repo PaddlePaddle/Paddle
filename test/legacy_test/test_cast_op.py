@@ -306,6 +306,20 @@ class TestCastInplaceContinuous(unittest.TestCase):
 
         run(paddle.CPUPlace())
 
+    def test_api_pir(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
+            target = x.cast("int64")
+            x.cast_(paddle.int64)
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+            target = x.cast("float32")
+            x.cast_(paddle.float32)
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+
+        paddle.set_flags({"FLAGS_enable_pir_api": True})
+        run(paddle.CPUPlace())
+
 
 if __name__ == '__main__':
     unittest.main()

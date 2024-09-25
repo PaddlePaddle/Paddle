@@ -3471,6 +3471,7 @@
   output : Tensor(out)
   infer_meta :
     func : NonZeroInferMeta
+    spmd_rule: NonZeroInferSpmd
   kernel :
     func : nonzero
     data_type: condition
