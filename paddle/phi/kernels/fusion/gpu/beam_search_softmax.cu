@@ -447,7 +447,7 @@ __launch_bounds__(THREADBLOCK_SIZE, 1) __global__
   }
 }
 
-//<<<(batch_size * beam_group_size, voc_parts), 128>>>
+// <<<(batch_size * beam_group_size, voc_parts), 128>>>
 template <typename T, int K, int THREADBLOCK_SIZE, int PACKED_TOP_KMD_SIZE>
 __global__ void beam_search_softmax_topk_stage1(BeamSearchParams<T> params,
                                                 const int beam_width,
@@ -662,7 +662,8 @@ __launch_bounds__(THREADBLOCK_SIZE) __global__
     float d_total_log = logf(total_md.d);
 
     for (int i = 0; i < K; ++i) {
-      float val = (float)buf_smem_kv[i].value - total_md.m - d_total_log;
+      float val =
+          static_cast<float>(buf_smem_kv[i].value) - total_md.m - d_total_log;
       tmp_ids[group_beam_batch_id * K + i] = buf_smem_kv[i].key;
       tmp_vals[group_beam_batch_id * K + i] = val + cum_scores[beam_batch_id];
     }
@@ -684,12 +685,12 @@ __launch_bounds__(THREADBLOCK_SIZE) __global__
         <<<batch_size * beam_group_size,                                     \
            N_VOCAB_PART,                                                     \
            IS_FAST_KERNEL * nShareMemory,                                    \
-           stream>>>(params.tmp_ids,                                         \
-                     params.tmp_vals,                                        \
-                     params.tmp_buffer,                                      \
-                     params.cum_scores,                                      \
-                     params.beam_finished,                                   \
-                     params.seq_lens,                                        \
+           stream>>>(params->tmp_ids,                                        \
+                     params->tmp_vals,                                       \
+                     params->tmp_buffer,                                     \
+                     params->cum_scores,                                     \
+                     params->beam_finished,                                  \
+                     params->seq_lens,                                       \
                      beam_width,                                             \
                      beam_group_idx,                                         \
                      vocab_size,                                             \
@@ -699,7 +700,7 @@ __launch_bounds__(THREADBLOCK_SIZE) __global__
 
 template <typename T, int K>
 __inline__ void beamSearchSoftmaxTopkStage2FastKernelLauncher(
-    BeamSearchParams<T> &params,
+    BeamSearchParams<T> *params,
     const int batch_size,
     const int beam_width,
     const int beam_group_idx,
@@ -848,7 +849,7 @@ __global__ void beam_search_softmax_topk_stage2(BeamSearchParams<T> params,
 }
 
 template <typename T, int K>
-void invokeBeamSearchSoftmaxTopKStage2(BeamSearchParams<T> &params,
+void invokeBeamSearchSoftmaxTopKStage2(BeamSearchParams<T> *params,
                                        const int batch_size,
                                        const int beam_width,
                                        const int beam_group_idx,
@@ -861,7 +862,7 @@ void invokeBeamSearchSoftmaxTopKStage2(BeamSearchParams<T> &params,
   if (voc_parts <= 32) {
     beam_search_softmax_topk_stage2<T, K, 32>
         <<<batch_size * beam_group_size, 32, smem_stage2_size, stream>>>(
-            params,
+            *params,
             beam_width,
             beam_group_idx,
             voc_parts,
@@ -872,7 +873,7 @@ void invokeBeamSearchSoftmaxTopKStage2(BeamSearchParams<T> &params,
   if (voc_parts <= 64) {
     beam_search_softmax_topk_stage2<T, K, 64>
         <<<batch_size * beam_group_size, 64, smem_stage2_size, stream>>>(
-            params,
+            *params,
             beam_width,
             beam_group_idx,
             voc_parts,
@@ -883,7 +884,7 @@ void invokeBeamSearchSoftmaxTopKStage2(BeamSearchParams<T> &params,
   if (voc_parts <= 128) {
     beam_search_softmax_topk_stage2<T, K, 128>
         <<<batch_size * beam_group_size, 128, smem_stage2_size, stream>>>(
-            params,
+            *params,
             beam_width,
             beam_group_idx,
             voc_parts,
@@ -894,7 +895,7 @@ void invokeBeamSearchSoftmaxTopKStage2(BeamSearchParams<T> &params,
   if (voc_parts <= 256) {
     beam_search_softmax_topk_stage2<T, K, 256>
         <<<batch_size * beam_group_size, 256, smem_stage2_size, stream>>>(
-            params,
+            *params,
             beam_width,
             beam_group_idx,
             voc_parts,
@@ -1036,26 +1037,26 @@ __global__ void batch_topk(BeamSearchParams<T> params,
 
 template <typename T, typename Context, int K, bool GROUP>
 void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
-                               BeamSearchParams<T> &params,
+                               BeamSearchParams<T> *params,
                                int beam_group_idx,
                                gpuStream_t stream) {
-  const int batch_size = params.batch_size;
-  const int beam_width = params.beam_width;
+  const int batch_size = params->batch_size;
+  const int beam_width = params->beam_width;
   const int beam_group_size = K / 2;
-  const int vocab_size = params.vocab_size;
-  const bool fuse_softmax = params.fuse_softmax;
-  const int voc_parts = params.voc_parts;
+  const int vocab_size = params->vocab_size;
+  const bool fuse_softmax = params->fuse_softmax;
+  const int voc_parts = params->voc_parts;
   constexpr int dev_id = 0;
 
   // only in group_beam_search
   if (beam_width > beam_group_size && beam_group_idx != 0) {
     apply_group_diversity_penalty<T, K>
         <<<batch_size, beam_group_size, 0, stream>>>(
-            params, batch_size, beam_width, beam_group_idx, vocab_size);
+            *params, batch_size, beam_width, beam_group_idx, vocab_size);
   }
 
   // == Step1 == : stage1
-  if (params.use_fast_kernel) {
+  if (params->use_fast_kernel) {
     constexpr int block_size =
         (K < 16) ? ((K < 8) ? kBlockSizeForSmallBeamWidth : 128) : 64;
     const int vocab_chunk_size = (vocab_size + voc_parts - 1) / voc_parts;
@@ -1071,11 +1072,11 @@ void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
 
     dim3 grid(batch_size * beam_group_size, voc_parts);
     beam_search_softmax_topk_stage1_fast<T, K, block_size>
-        <<<grid, block_size, dyn_smem_size, stream>>>(params.logits,
-                                                      params.tmp_buffer,
-                                                      params.end_ids,
-                                                      params.beam_finished,
-                                                      params.seq_lens,
+        <<<grid, block_size, dyn_smem_size, stream>>>(params->logits,
+                                                      params->tmp_buffer,
+                                                      params->end_ids,
+                                                      params->beam_finished,
+                                                      params->seq_lens,
                                                       beam_width,
                                                       beam_group_idx,
                                                       vocab_size,
@@ -1105,7 +1106,7 @@ void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
       // （bs, bm, voc_parts, 2 * K + 2）
       beam_search_softmax_topk_stage1<T, K, block_size, 2 * K + 2>
           <<<grid, block_size, 0, stream>>>(
-              params, beam_width, beam_group_idx, vocab_size, fuse_softmax);
+              *params, beam_width, beam_group_idx, vocab_size, fuse_softmax);
     } else {
 #ifdef PADDLE_WITH_CUDA
       cudaFuncSetAttribute(
@@ -1123,29 +1124,30 @@ void invokeTopKSoftMaxLauncher(const Context &dev_ctx,
       // （bs, bm, voc_parts, 2 * K）
       beam_search_softmax_topk_stage1<T, K, block_size, 2 * K>
           <<<grid, block_size, 0, stream>>>(
-              params, beam_width, beam_group_idx, vocab_size, fuse_softmax);
+              *params, beam_width, beam_group_idx, vocab_size, fuse_softmax);
     }
   }
 
-  beamSearchSoftmaxTopkStage2FastKernelLauncher<T, K>(params,
-                                                      batch_size,
-                                                      beam_width,
-                                                      beam_group_idx,
-                                                      vocab_size,
-                                                      voc_parts,
-                                                      params.max_smem_per_block,
-                                                      stream);
+  beamSearchSoftmaxTopkStage2FastKernelLauncher<T, K>(
+      params,
+      batch_size,
+      beam_width,
+      beam_group_idx,
+      vocab_size,
+      voc_parts,
+      params->max_smem_per_block,
+      stream);
 
   batch_topk<T, K, 32, GROUP><<<batch_size, 32, 0, stream>>>(
-      params, beam_width, beam_group_idx, params.dec_stride);
+      *params, beam_width, beam_group_idx, params->dec_stride);
 }
 
 template <typename T, typename Context, bool GROUP>
 void invokeTopkSoftMax(const Context &dev_ctx,
-                       BeamSearchParams<T> &params,
+                       BeamSearchParams<T> *params,
                        int beam_group_idx,
                        gpuStream_t stream) {
-  switch (params.beam_group_size) {
+  switch (params->beam_group_size) {
     CASE_K(1);
     CASE_K(2);
     CASE_K(3);
@@ -1165,12 +1167,12 @@ void invokeTopkSoftMax(const Context &dev_ctx,
     default:
       PADDLE_THROW(errors::InvalidArgument(
           "Beam_group_size/Beam_width must <= 16, but get %d",
-          params.beam_group_size));
+          params->beam_group_size));
   }
 }
 
 template <typename T, int K>
-void ComputeVocParts(BeamSearchParams<T> &params) {
+void ComputeVocParts(BeamSearchParams<T> *params) {
   int dev_id = 0;
   const int block_size =
       (K < 16) ? ((K < 8) ? kBlockSizeForSmallBeamWidth : 128) : 64;
@@ -1193,7 +1195,7 @@ void ComputeVocParts(BeamSearchParams<T> &params) {
   const int static_smem = attr.sharedSizeBytes;
   const int max_dyn_smem_per_block = max_smem_per_block - static_smem;
 
-  if (sizeof(T) * params.vocab_size >
+  if (sizeof(T) * params->vocab_size >
       max_dyn_smem_per_block * kMaxVocabPartForStage1FastKernel) {
     VLOG(1) << "Vocab size is too large. Back to old kernel.";
   }
@@ -1211,32 +1213,32 @@ void ComputeVocParts(BeamSearchParams<T> &params) {
        --n_block) {
     int dyn_smem_size = max_smem_per_sm / n_block - extra_smem;
     dyn_smem_size -= dyn_smem_size % sizeof(T);
-    voc_parts = ceilDiv(sizeof(T) * params.vocab_size, dyn_smem_size);
+    voc_parts = ceilDiv(sizeof(T) * params->vocab_size, dyn_smem_size);
     VLOG(1) << "n_block: " << n_block << ". dyn_smem_size:" << dyn_smem_size
             << ". voc_parts: " << voc_parts;
   }
 
-  if (!params.fuse_softmax || voc_parts > kMaxVocabPartForStage1FastKernel) {
-    params.use_fast_kernel = false;
+  if (!params->fuse_softmax || voc_parts > kMaxVocabPartForStage1FastKernel) {
+    params->use_fast_kernel = false;
     VLOG(1) << "Vocab size is too big for shared-memory. Falling back to the "
                "old algorithm";
     int sm_count;
     cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev_id);
     const int max_act_blocks_per_sm = 4;
     const int max_act_blocks_per_wave = sm_count * max_act_blocks_per_sm;
-    const int gridx = params.batch_size * K / 2;
+    const int gridx = params->batch_size * K / 2;
     const int max_part_num = (max_act_blocks_per_wave + gridx - 1) / gridx;
     voc_parts = min(128, max_part_num);
   }
-  params.voc_parts = voc_parts;
-  params.max_smem_per_block = max_smem_per_block;
-  VLOG(1) << "BeamSearch Pre-compute. voc_parts: " << params.voc_parts
-          << ". use_fast_kernel: " << params.use_fast_kernel;
+  params->voc_parts = voc_parts;
+  params->max_smem_per_block = max_smem_per_block;
+  VLOG(1) << "BeamSearch Pre-compute. voc_parts: " << params->voc_parts
+          << ". use_fast_kernel: " << params->use_fast_kernel;
 }
 
 template <typename T>
-void DispatchComputeVocParts(BeamSearchParams<T> &params) {
-  switch (params.beam_group_size) {
+void DispatchComputeVocParts(BeamSearchParams<T> *params) {
+  switch (params->beam_group_size) {
     DISPATCH_COMPUTE_PARTS_K(1);
     DISPATCH_COMPUTE_PARTS_K(2);
     DISPATCH_COMPUTE_PARTS_K(3);
@@ -1256,7 +1258,7 @@ void DispatchComputeVocParts(BeamSearchParams<T> &params) {
     default:
       PADDLE_THROW(errors::InvalidArgument(
           "Beam_group_size/Beam_width must <= 16, but get %d",
-          params.beam_group_size));
+          params->beam_group_size));
   }
 }
 
@@ -1341,15 +1343,15 @@ __global__ void update_stop_flags(BeamSearchParams<T> params) {
 }
 
 template <typename T>
-void updateBeamSearchParams(BeamSearchParams<T> &params, cudaStream_t stream) {
+void updateBeamSearchParams(BeamSearchParams<T> *params, cudaStream_t stream) {
   const dim3 block(32);
-  const dim3 grid((params.max_seq_len + block.x - 1) / block.x,
-                  params.batch_size * params.beam_width);
+  const dim3 grid((params->max_seq_len + block.x - 1) / block.x,
+                  params->batch_size * params->beam_width);
 
-  update_beam_search_params_kernel<<<grid, block, 0, stream>>>(params);
+  update_beam_search_params_kernel<<<grid, block, 0, stream>>>(*params);
 
-  const dim3 grid_2(params.batch_size);
-  update_stop_flags<<<grid_2, 1, 0, stream>>>(params);
+  const dim3 grid_2(params->batch_size);
+  update_stop_flags<<<grid_2, 1, 0, stream>>>(*params);
 }
 
 /*****
@@ -1482,7 +1484,7 @@ void BeamSearchSoftmaxKernel(const Context &dev_ctx,
   params.tmp_ids = tmp_topk_id.data<int>();
   params.tmp_vals = tmp_topk_val.data<T>();
 
-  DispatchComputeVocParts<T>(params);
+  DispatchComputeVocParts<T>(&params);
   // allocate workspace
   const int tmp_id_val_size =
       batch_size * beam_group_size * beam_group_size * 2;
@@ -1505,13 +1507,13 @@ void BeamSearchSoftmaxKernel(const Context &dev_ctx,
        ++beam_group_idx) {
     if (beam_group_num_scalar == 1) {
       invokeTopkSoftMax<T, Context, false>(
-          dev_ctx, params, beam_group_idx, dev_ctx.stream());
+          dev_ctx, &params, beam_group_idx, dev_ctx.stream());
     } else {
       invokeTopkSoftMax<T, Context, true>(
-          dev_ctx, params, beam_group_idx, dev_ctx.stream());
+          dev_ctx, &params, beam_group_idx, dev_ctx.stream());
     }
   }
-  updateBeamSearchParams<T>(params, dev_ctx.stream());
+  updateBeamSearchParams<T>(&params, dev_ctx.stream());
 }
 
 }  // namespace fusion
