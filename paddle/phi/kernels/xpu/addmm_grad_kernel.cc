@@ -60,7 +60,7 @@ void AddmmGradKernel(const Context& dev_ctx,
                               input_grad_ptr,
                               input_grad->numel(),
                               true,
-                              (float)out_grad.dims()[0],
+                              static_cast<float>(out_grad.dims()[0]),
                               0.f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
