@@ -94,7 +94,6 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
                                 const std::string& memory_type) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "CacheWrite";
-  std::ostringstream sos;
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
@@ -150,10 +149,19 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
       },
       true);
 
-  if (!info.write_tensor->buffer.defined()) {
-    os << "The buffer of current write_tensor is not defined!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      info.write_tensor->buffer.defined(),
+      true,
+      phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] The buffer of current write_tensor is not "
+              "defined!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   // Replace buffer
   auto all_tensors =
@@ -168,11 +176,16 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
       i.as_tensor()->Bind(info.read_tensor->buffer);
     }
   }
-
-  if (find_cache_block.size() != 1U) {
-    sos << "Size of find_cache_block is not 1!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      find_cache_block.size(), 1U, phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] Size of find_cache_block is not 1!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   return *find_cache_block.begin();
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
