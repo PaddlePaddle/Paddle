@@ -94,7 +94,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
                               rand_coeff_cpu.size() * sizeof(float));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "do_host2device");
   int heuristic_threshold = FLAGS_xpu_top_p_sampling_heuristic_threshold;
-  // if ((!FLAGS_xpu_top_p_sampling_use_fp16) ||
+
   if ((!FLAGS_xpu_top_p_sampling_use_fp16) ||
       std::is_same<T, phi::dtype::float16>::value) {
     r = xpu::faster_top_p_sampling<XPUType, int>(dev_ctx.x_context(),
