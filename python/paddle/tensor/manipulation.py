@@ -293,7 +293,7 @@ def cast_(x: Tensor, dtype: DTypeLike) -> Tensor:
     Please refer to :ref:`api_paddle_cast`.
     """
     if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast_(x, dtype)
 
