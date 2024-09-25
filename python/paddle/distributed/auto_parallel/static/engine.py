@@ -332,6 +332,8 @@ class Engine:
 
         self.enable_job_schedule_profiler = False
 
+        self.fused_ffn_qkv = None
+
     # get dist input spec from shard dataloader
     def _prepare_data_spec_from_dataloader(self, dataloader):
         inputs_spec = []
