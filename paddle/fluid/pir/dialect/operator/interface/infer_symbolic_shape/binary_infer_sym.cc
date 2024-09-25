@@ -1350,23 +1350,25 @@ bool MatmulWithFlattenOpInferSymbolicShape(
           y_dims,
           y_num_col_dims));
 
-  auto flatten_to_2d = [](const std::vector<symbol::DimExpr> &dims,
-                          int num_col_dims) {
-    symbol::DimExprBuilder builder;
-    symbol::DimExpr product_0 = builder.constant(1);
-    for (int i = 0; i < num_col_dims; ++i) {
-      product_0 = product_0 * dims[i];
+  auto slice = [](const std::vector<symbol::DimExpr>& dims, int begin, int end) {
+    std::vector<symbol::DimExpr> slice_dims;
+    slice_dims.reserve(end - begin);
+    for (int i = begin; i < end; ++i) {
+      slice_dims.push_back(dims[i]);
     }
-    symbol::DimExpr product_1 = builder.constant(1);
-    for (int i = num_col_dims; i < dims.size(); ++i) {
-      product_1 = product_1 * dims[i];
-    }
-    return std::vector<symbol::DimExpr>{product_0, product_1};
+    return slice_dims;
   };
-  auto x_mat_dims = flatten_to_2d(x_dims, x_num_col_dims);
-  auto y_mat_dims = flatten_to_2d(y_dims, y_num_col_dims);
+  auto x_mat_dims = slice(x_dims,x_num_col_dims, x_dims.size());
+  auto y_mat_dims = slice(y_dims,0,y_num_col_dims);
+  
+  PADDLE_ENFORCE_EQ(x_mat_dims.size(), y_mat_dims.size() , common::errors::InvalidArgument(
+          "The second dimension of input x_mat_dims should be equal to the first dimension of input y_mat_dims. But received X's shape = [%s], Y's shape = [%s].",
+          x_mat_dims.size(), y_mat_dims.size()));
 
-  infer_context->AddEqualCstr(x_mat_dims[1], y_mat_dims[0]);
+  for(size_t i = 0; i < x_mat_dims.size(); ++i) {
+    infer_context->AddEqualCstr(x_mat_dims[i], y_mat_dims[i]);
+  }
+
   std::vector<symbol::DimExpr> output_dims;
   output_dims.reserve(
       static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
