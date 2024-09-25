@@ -1350,22 +1350,28 @@ bool MatmulWithFlattenOpInferSymbolicShape(
           y_dims,
           y_num_col_dims));
 
-  auto slice = [](const std::vector<symbol::DimExpr>& dims, int begin, int end) {
-    std::vector<symbol::DimExpr> slice_dims;
-    slice_dims.reserve(end - begin);
-    for (int i = begin; i < end; ++i) {
-      slice_dims.push_back(dims[i]);
-    }
-    return slice_dims;
-  };
-  auto x_mat_dims = slice(x_dims,x_num_col_dims, x_dims.size());
-  auto y_mat_dims = slice(y_dims,0,y_num_col_dims);
-  
-  PADDLE_ENFORCE_EQ(x_mat_dims.size(), y_mat_dims.size() , common::errors::InvalidArgument(
-          "The second dimension of input x_mat_dims should be equal to the first dimension of input y_mat_dims. But received X's shape = [%s], Y's shape = [%s].",
-          x_mat_dims.size(), y_mat_dims.size()));
+  auto slice =
+      [](const std::vector<symbol::DimExpr> &dims, int begin, int end) {
+        std::vector<symbol::DimExpr> slice_dims;
+        slice_dims.reserve(end - begin);
+        for (int i = begin; i < end; ++i) {
+          slice_dims.push_back(dims[i]);
+        }
+        return slice_dims;
+      };
+  auto x_mat_dims = slice(x_dims, x_num_col_dims, x_dims.size());
+  auto y_mat_dims = slice(y_dims, 0, y_num_col_dims);
 
-  for(size_t i = 0; i < x_mat_dims.size(); ++i) {
+  PADDLE_ENFORCE_EQ(x_mat_dims.size(),
+                    y_mat_dims.size(),
+                    common::errors::InvalidArgument(
+                        "The second dimension of input x_mat_dims should be "
+                        "equal to the first dimension of input y_mat_dims. But "
+                        "received X's shape = [%s], Y's shape = [%s].",
+                        x_mat_dims.size(),
+                        y_mat_dims.size()));
+
+  for (size_t i = 0; i < x_mat_dims.size(); ++i) {
     infer_context->AddEqualCstr(x_mat_dims[i], y_mat_dims[i]);
   }
 
