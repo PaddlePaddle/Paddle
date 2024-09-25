@@ -1965,13 +1965,6 @@ def roll(
         :align: center
         :alt: legend of roll API
 
-    - When `axis = None`, the tensor is flattened into a 1D array, then rolled, and finally reshaped back to its original form.
-    - When `axis=0`, the tensor is rolled along the 0th axis.
-    - When `axis=1`, the tensor is rolled along the 1st axis.
-
-    The rolling operation varies depending on the value of the `axis` parameter. The image illustrates how each element changes
-    position under different rolling operations.
-
     Returns:
         Tensor, A Tensor with same data type as `x`.
 
