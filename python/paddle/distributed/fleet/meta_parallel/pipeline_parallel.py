@@ -132,7 +132,7 @@ class FakeMicroDataset:
             assert (
                 len(inputs) == self._acc_steps
             ), "length of data should be %d, but it is %d" % (
-                self.accumulate_steps,
+                self._acc_steps,
                 len(inputs),
             )
             return inputs[micro_step].detach()
