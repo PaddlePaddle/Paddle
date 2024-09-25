@@ -45,13 +45,12 @@ void AddmmKernel(const Context& dev_ctx,
           "Variable 'input' of AddmmOp must be 1-dimensional or 2-dimensional, "
           "but received shape: [%s]",
           input_dims));
-  PADDLE_ENFORCE_EQ(
-      x_dims.size() == 2,
-      true,
-      common::errors::InvalidArgument(
-          "Variable 'x' of AddmmOp must be 2-dimensional, "
-          "but received shape: [%s]",
-          input_dims));
+  PADDLE_ENFORCE_EQ(x_dims.size() == 2,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Variable 'x' of AddmmOp must be 2-dimensional, "
+                        "but received shape: [%s]",
+                        input_dims));
   PADDLE_ENFORCE_EQ(y_dims.size() == 2,
                     true,
                     common::errors::InvalidArgument(
