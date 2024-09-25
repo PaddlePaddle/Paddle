@@ -1315,12 +1315,76 @@ bool MarginCrossEntropyOpInferSymbolicShape(
   return true;
 }
 
-// bool MatmulWithFlattenOpInferSymbolicShape(pir::Operation *op,
-//                                            pir::InferSymbolicShapeContext
-//                                            *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MatmulWithFlattenOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> y_dims = y_shape_or_data.shape();
+
+  int x_num_col_dims =
+      op->attribute<pir::Int32Attribute>("x_num_col_dims").data();
+  int y_num_col_dims =
+      op->attribute<pir::Int32Attribute>("y_num_col_dims").data();
+
+  PADDLE_ENFORCE_GT(
+      x_dims.size(),
+      x_num_col_dims,
+      common::errors::InvalidArgument(
+          "The input tensor X's dimensions of MulOp "
+          "should be larger than x_num_col_dims. But received X's "
+          "dimensions = %d, X's shape = [%s], x_num_col_dims = %d.",
+          x_dims.size(),
+          x_dims,
+          x_num_col_dims));
+  PADDLE_ENFORCE_GT(
+      y_dims.size(),
+      y_num_col_dims,
+      common::errors::InvalidArgument(
+          "The input tensor Y's dimensions of MulOp "
+          "should be larger than y_num_col_dims. But received Y's "
+          "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
+          y_dims.size(),
+          y_dims,
+          y_num_col_dims));
+
+  auto flatten_to_2d = [](const std::vector<symbol::DimExpr> &dims,
+                          int num_col_dims) {
+    symbol::DimExprBuilder builder;
+    symbol::DimExpr product_0 = builder.constant(1);
+    for (int i = 0; i < num_col_dims; ++i) {
+      product_0 = product_0 * dims[i];
+    }
+    symbol::DimExpr product_1 = builder.constant(1);
+    for (int i = num_col_dims; i < dims.size(); ++i) {
+      product_1 = product_1 * dims[i];
+    }
+    return std::vector<symbol::DimExpr>{product_0, product_1};
+  };
+  auto x_mat_dims = flatten_to_2d(x_dims, x_num_col_dims);
+  auto y_mat_dims = flatten_to_2d(y_dims, y_num_col_dims);
+
+  infer_context->AddEqualCstr(x_mat_dims[1], y_mat_dims[0]);
+  std::vector<symbol::DimExpr> output_dims;
+  output_dims.reserve(
+      static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
+
+  for (int i = 0; i < x_num_col_dims; ++i) {
+    output_dims.push_back(x_dims[i]);
+  }
+  for (int i = y_num_col_dims; i < y_dims.size(); ++i) {
+    output_dims.push_back(y_dims[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  return true;
+}
 
 bool MvOpInferSymbolicShape(pir::Operation *op,
                             pir::InferSymbolicShapeContext *infer_context) {
