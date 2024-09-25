@@ -23,6 +23,7 @@ from paddle.base.framework import auto_complete_op_role
 from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.passes.pass_base import PassContext, new_pass
+from paddle.distributed.passes.pass_utils import infer_chunk_id
 
 from .mix_to_dist_pass import dist_skip_op_list
 from .process_group import get_process_group
@@ -30,6 +31,7 @@ from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
     copy_dist_attr_with_new_member,
     copy_op_attr_with_new_member,
+    copy_process_mesh_with_new_member,
 )
 from .reshard_funcs.reshard_func_register import register_reshard_funcs
 from .utils import (
@@ -148,11 +150,19 @@ def apply_partition_pass(program):
             result.update_dist_attr(result_attr)
 
             with auto_complete_op_role(program, ref_op_role):
+                prev_op = prev_var.get_defining_op()
+
                 # reshard output to assign out input
                 reshard_var_1 = paddle._C_ops.reshard_v2(
                     result, prev_var.dist_attr()
                 )
-                paddle.assign(reshard_var_1, prev_var)
+                assign_out = paddle._C_ops.assign_out_(reshard_var_1, prev_var)
+                assign_out.get_defining_op().dist_attr = (
+                    copy_op_attr_with_new_member(
+                        assign_out.get_defining_op().dist_attr,
+                        new_chunk_id=prev_op.dist_attr.chunk_id,
+                    )
+                )
 
             if old_dist_attr == result.dist_attr():
                 continue
@@ -687,7 +697,7 @@ def _get_seg_struct_names(ops, seg_method):
     seg_op_mesh = collections.OrderedDict()
 
     for i in range(fwd_start_op_index, fwd_end_op_index + 1):
-        if ops[i].name() == "builtin.combine":
+        if ops[i].name() in dist_skip_op_list:
             continue
 
         struct_name = _extract_seg_method(ops[i], seg_method)
@@ -821,7 +831,7 @@ def _set_process_mesh_and_chunk_id(op, process_mesh, chunk_id, set_mesh):
     )
 
 
-def complete_chunk_id(dist_program, pipeline_strategy):
+def complete_chunk_id(dist_program, startup_program, pipeline_strategy):
     if not pipeline_strategy.enable:
         return
 
@@ -960,10 +970,19 @@ def complete_chunk_id(dist_program, pipeline_strategy):
             new_dst_dist_attr = copy_dist_attr_with_new_member(
                 dst_dist_attr, new_process_mesh=dst_process_mesh
             )
+            new_process_ids = (
+                src_process_mesh.process_ids + dst_process_mesh.process_ids
+            )
+            new_process_mesh = copy_process_mesh_with_new_member(
+                op.dist_attr.process_mesh,
+                new_process_ids=new_process_ids,
+            )
+
             op.dist_attr = copy_op_attr_with_new_member(
                 op_dist_attr,
                 new_operands=[new_src_dist_attr],
                 new_results=[new_dst_dist_attr],
+                new_process_mesh=new_process_mesh,
             )
         elif reshard_func_name == "SameStatusReshardFunction":
             op.result(0).replace_all_uses_with(var)
@@ -975,6 +994,14 @@ def complete_chunk_id(dist_program, pipeline_strategy):
 
     # Step6: add reshard op between pipeline chunks
     apply_partition_pass(dist_program)
+
+    for op in startup_program.global_block().ops:
+        if op.name() == "builtin.set_parameter":
+            param_name = op.str_attr("parameter_name")
+            startup_param = op.operand_source(0)
+            param = dist_program.get_parameter_value_by_name(param_name)
+            if param.dist_attr():
+                startup_param.update_dist_attr(param.dist_attr())
 
 
 def check_chunk_id(dist_program):
@@ -994,18 +1021,19 @@ def check_chunk_id(dist_program):
                     all_used_ops = op.result(0).all_used_ops()
                     for used_op in all_used_ops:
                         if used_op.dist_attr.chunk_id != -1:
-                            op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
-                                op.dist_attr.process_mesh,
-                                op.dist_attr.operands(),
-                                op.dist_attr.results(),
-                                used_op.dist_attr.chunk_id,
+                            op.dist_attr = copy_op_attr_with_new_member(
+                                op.dist_attr,
+                                new_chunk_id=used_op.dist_attr.chunk_id,
                             )
                             break
-                    if op.dist_attr.chunk_id == -1:
-                        raise ValueError(
-                            f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
-                        )
+
                 else:
-                    raise ValueError(
-                        f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                    op_chunk_id = infer_chunk_id(idx, all_ops)
+                    op.dist_attr = copy_op_attr_with_new_member(
+                        op.dist_attr, new_chunk_id=op_chunk_id
                     )
+
+            if op.dist_attr.chunk_id == -1:
+                raise ValueError(
+                    f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                )
