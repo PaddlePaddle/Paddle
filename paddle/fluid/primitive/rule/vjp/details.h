@@ -929,7 +929,7 @@ void layer_norm_grad(const Tensor& x,
                      Tensor* bias_grad) {
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
-
+  Tensor x_cast, x_sub_mean_mul_sqrt_var_1, out_grad_cast;
   if (has_dynamic_shape(x.shape())) {
     auto x_dims = shape<T>(x);
     Tensor one_tensor = full<T>({1}, 1, x_dims.dtype());
@@ -941,8 +941,8 @@ void layer_norm_grad(const Tensor& x,
       shape_2 = shape_2 * get_slice<T>(x_dims, i);
     }
 
-    auto x_cast = backend::reshape<T>(x, concat<T>({shape_1, shape_2}));
-    auto out_grad_cast =
+    x_cast = backend::reshape<T>(x, concat<T>({shape_1, shape_2}));
+    out_grad_cast =
         backend::reshape<T>(out_grad, concat<T>({shape_1, shape_2}));
     auto mean_ = backend::reshape<T>(mean, concat<T>({shape_1, one_tensor}));
     auto variance_ =
@@ -969,7 +969,7 @@ void layer_norm_grad(const Tensor& x,
         (full_scalar<T>(1.0, variance_.dtype()) /
          (variance_ + full_scalar<T>(epsilon, variance_.dtype())));  // M,1
     auto sqrt_var_1 = sqrt<T>(tmp);                                  // M,1
-    auto x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
+    x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
 
     if (x_grad) {
       auto out_grad_scale = out_grad_cast;  // M,N
@@ -999,38 +999,6 @@ void layer_norm_grad(const Tensor& x,
       set_output<T>(x_grad_tmp, x_grad);
     }
 
-    if (scale_grad) {
-      if (scale_ptr) {
-        auto scale_grad_tmp =
-            (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
-                .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-        scale_grad_tmp =
-            backend::reshape<T>(scale_grad_tmp, shape<T>(*scale_ptr));
-        if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
-            scale_ptr->dtype() == phi::DataType::BFLOAT16) {
-          scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
-        }
-        set_output<T>(scale_grad_tmp, scale_grad);
-      } else {
-        scale_grad = nullptr;
-      }
-    }
-
-    if (bias_grad) {
-      if (bias_ptr) {
-        auto bias_grad_tmp =
-            out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-        bias_grad_tmp = backend::reshape<T>(bias_grad_tmp, shape<T>(*bias_ptr));
-        if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
-            bias_ptr->dtype() == phi::DataType::BFLOAT16) {
-          bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
-        }
-        set_output<T>(bias_grad_tmp, bias_grad);
-      } else {
-        bias_grad = nullptr;
-      }
-    }
-
   } else {
     auto x_dims = x.dims();
     auto shape_1 = 1;  // front part
@@ -1042,8 +1010,8 @@ void layer_norm_grad(const Tensor& x,
       shape_2 *= x_dims[i];
     }
 
-    auto x_cast = reshape<T>(x, std::vector<int64_t>({shape_1, shape_2}));
-    auto out_grad_cast =
+    x_cast = reshape<T>(x, std::vector<int64_t>({shape_1, shape_2}));
+    out_grad_cast =
         reshape<T>(out_grad, std::vector<int64_t>({shape_1, shape_2}));
     auto mean_ = reshape<T>(mean, std::vector<int64_t>({shape_1, 1}));
     auto variance_ = reshape<T>(variance, std::vector<int64_t>({shape_1, 1}));
@@ -1066,7 +1034,7 @@ void layer_norm_grad(const Tensor& x,
     auto x_sub_mean = x_cast - mean_;          // M,N
     auto tmp = (1.0 / (variance_ + epsilon));  // M,1
     auto sqrt_var_1 = sqrt<T>(tmp);            // M,1
-    auto x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
+    x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
 
     if (x_grad) {
       auto out_grad_scale = out_grad_cast;  // M,N
@@ -1094,21 +1062,6 @@ void layer_norm_grad(const Tensor& x,
       set_output<T>(x_grad_tmp, x_grad);
     }
 
-    if (scale_grad) {
-      if (scale_ptr) {
-        auto scale_grad_tmp =
-            (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
-                .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-        scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
-        if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
-            scale_ptr->dtype() == phi::DataType::BFLOAT16) {
-          scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
-        }
-        set_output<T>(scale_grad_tmp, scale_grad);
-      } else {
-        scale_grad = nullptr;
-      }
-    }
 
     if (bias_grad) {
       if (bias_ptr) {
@@ -1123,6 +1076,47 @@ void layer_norm_grad(const Tensor& x,
       } else {
         bias_grad = nullptr;
       }
+    }
+  }
+
+  if (scale_grad) {
+    if (scale_ptr) {
+      auto scale_grad_tmp =
+          (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
+              .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+      if (has_dynamic_shape(scale_ptr->shape())) {
+        scale_grad_tmp =
+            backend::reshape<T>(scale_grad_tmp, shape<T>(*scale_ptr));
+      } else {
+        scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
+      }
+
+      if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
+          scale_ptr->dtype() == phi::DataType::BFLOAT16) {
+        scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
+      }
+      set_output<T>(scale_grad_tmp, scale_grad);
+    } else {
+      scale_grad = nullptr;
+    }
+  }
+
+  if (bias_grad) {
+    if (bias_ptr) {
+      auto bias_grad_tmp =
+          out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+      if(has_dynamic_shape(bias_ptr->shape())) {
+        bias_grad_tmp = backend::reshape<T>(bias_grad_tmp, shape<T>(*bias_ptr));
+      } else {
+        bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
+      }
+      if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
+          bias_ptr->dtype() == phi::DataType::BFLOAT16) {
+        bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
+      }
+      set_output<T>(bias_grad_tmp, bias_grad);
+    } else {
+      bias_grad = nullptr;
     }
   }
 }
