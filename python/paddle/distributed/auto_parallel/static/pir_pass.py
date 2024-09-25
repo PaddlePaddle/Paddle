@@ -1388,7 +1388,6 @@ def fuse_attention_ffn_qkv_pass(
                     reshape_q.result(0).shape[-1],
                 ],
             )
-            out_q.get_defining_op().copy_attrs_from(reshape_q)
 
         reshape_q.result(0).replace_all_uses_with(out_q)
         reshape_k.result(0).replace_all_uses_with(out_k)
