@@ -607,7 +607,7 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
   }
   VLOG(4) << "GetAllForIters : " << expr
           << "\n var is : " << utils::Join(vars, ",");
-  return vars;
+  return AppendBound(vars, expr);
 }
 
 }  // namespace trivial_fusion_detail
@@ -779,9 +779,8 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
   }
 
   if (group_info->reduce_var_name.empty()) {
-    trivial_fusion_detail::TrivialOp op =
-        trivial_fusion_detail::TrivialOp(*(op_compute_bodies.begin()));
-    std::vector<ir::Var> iters = GetOutputIters(op);
+    ir::Expr op_body = *(op_compute_bodies.begin());
+    std::vector<ir::Var> iters = GetAllForIters(op_body);
     std::transform(iters.begin(),
                    iters.end(),
                    std::back_inserter(group_info->loop_ranges),
