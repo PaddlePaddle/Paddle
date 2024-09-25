@@ -495,86 +495,12 @@ class StaticPIRGraphAdapter:
 
         converted_state = dict(state)
         for var in optim:
-            if var.name in ["@LR_DECAY_COUNTER@", "global_step"]:
-                # When using learning rate scheduler, dygraph would name the
-                # global step var as "global_step" to save, while static-graph
-                # would has a state var named as "@LR_DECAY_COUNTER@".
-                # NOTE: dygraph saved global_step is 1 larger than that in
-                # static-graph, since the time of global_step to increase is
-                # different.
-                state_val = (
-                    (np.array(converted_state.pop("global_step")) - 1)
-                    if "global_step" in converted_state
-                    else converted_state.pop("@LR_DECAY_COUNTER@", None)
-                )
-                if state_val is not None:
-                    converted_state[var.name] = state_val
-            elif var.name.startswith("learning_rate_"):
+            if var.name.startswith("learning_rate_"):
                 # When using static learning rate, static-graph would make it
                 # a persistable var named 'unique_name.generate("learning_rate")',
                 # However, dygraph wouldn't save it.
                 if var.name not in state:
                     continue
-            else:
-                # moment and other accumulators
-                if var.name not in converted_state:
-                    # try to convert from dygraph name
-                    opt_name = self.model._optimizer._name
-                    opt_cls_name = self.model._optimizer.__class__.__name__
-                    opt_unq_name = None
-                    for name in self.model._optimizer._accumulators.keys():
-                        accum_name = (
-                            name
-                            if opt_name is None
-                            else name[len(opt_name) + 1 :]
-                        )
-                        for (
-                            param_name,
-                            state_var,
-                        ) in self.model._optimizer._accumulators[name].items():
-                            if opt_unq_name is None:
-                                # can not infer out the exact unique(opt_name),
-                                # thus try to extract rather than generate
-                                for state_key in sorted(
-                                    state.keys(),
-                                    key=lambda x: len(x),
-                                    reverse=True,
-                                ):
-                                    prefix = (
-                                        param_name
-                                        + "_"
-                                        + (
-                                            opt_cls_name
-                                            if opt_name is None
-                                            else opt_name
-                                        )
-                                        + "_"
-                                    )
-                                    if state_key.startswith(prefix):
-                                        prefix_offset = state_key[
-                                            len(prefix) :
-                                        ].find("_") + len(prefix)
-                                        opt_unq_name = state_key[
-                                            len(
-                                                param_name + "_"
-                                            ) : prefix_offset
-                                        ]
-                                        # TODO: assert
-                                        # assert opt_unq_name is None
-                                    # gen(param.name + "_" + gen(opt_name) + "_" + accum_name)
-                                    # always end with "_0" since the unique optimizer._name
-                            dy_state_name = (
-                                param_name
-                                + "_"
-                                + opt_unq_name
-                                + "_"
-                                + accum_name
-                                + "_0"
-                            )
-                            converted_state[state_var.name] = (
-                                converted_state.pop(dy_state_name)
-                            )
-
             assert (
                 var.name in converted_state
             ), f"variable [{var.name}] is not in optimizer state file"
@@ -669,23 +595,6 @@ class StaticPIRGraphAdapter:
             return
 
         prog = self._orig_prog.clone()
-
-        # NOTE: When defining learning rate scheduling in static-graph, ops to
-        # increase the global step var and calculate learning rate would be
-        # prepended into _orig_prog. test program marked by `_orig_prog.clone`
-        # also would include these ops. Thus must prune these ops in test
-        # program, otherwise the global step would be changed in test.
-
-        if (
-            mode == 'train'
-            and self.model._optimizer
-            and self.model._optimizer._learning_rate_map
-        ):
-            # HACK workaround learning rate map issue
-            lr_value = self.model._optimizer._learning_rate_map[prog]
-
-            new_lr_value = lr_value
-            self.model._optimizer._learning_rate_map[prog] = new_lr_value
 
         losses = []
         metrics = []

@@ -1120,7 +1120,6 @@ def _dynamic_decode_pir_declarative(
         (outputs, next_states, next_inputs, next_finished) = decoder.step(
             step_idx, inputs, states, **kwargs
         )
-        print("outputs_arrays", outputs)
 
         if not decoder.tracks_own_finished:
             # BeamSearchDecoder would track it own finished, since beams would
