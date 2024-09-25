@@ -303,11 +303,11 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   bool has_minus_one = false;
   int product = 1;
   int idx = -1;
-  std::ostringstream os;
   for (auto& i : factors) {
     idx++;
     PADDLE_ENFORCE_EQ(
         i != 0 && i >= -1, true, phi::errors::InvalidArgument([&]() {
+          std::ostringstream os;
           os << "[IRScheduleError] An Error occurred in the schedule primitive "
                 "<"
              << primitive << ">.\n"
@@ -320,6 +320,7 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
         }()));
     PADDLE_ENFORCE_EQ(i == -1 && has_minus_one, false, phi::errors
                       : InvalidArgument([&]() {
+                        std::ostringstream os;
                         os << "[IRScheduleError] An Error occurred in the "
                               "schedule primitive <"
                            << primitive << ">.\n"
@@ -340,6 +341,7 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   if (!has_minus_one) {
     PADDLE_ENFORCE_GE(
         product, total_extent, phi::errors::PreconditionNotMet([&]() {
+          std::ostringstream os;
           os << "[IRScheduleError] An Error occurred in the schedule primitive "
                 "<"
              << primitive << ">.\n"
