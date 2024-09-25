@@ -27,8 +27,12 @@ namespace paddle {
 InitPhi::InitPhi() { paddle::framework::InitMemoryMethod(); }
 
 void InitOperants() {
+  VLOG(0) << "paddle::OperantsManager::Instance().static_operants.get(): "
+          << paddle::OperantsManager::Instance().static_operants.get();
   paddle::OperantsManager::Instance().static_operants =
       std::make_unique<paddle::prim::StaticTensorOperants>();
+  VLOG(0) << "paddle::OperantsManager::Instance().static_operants.get(): "
+          << paddle::OperantsManager::Instance().static_operants.get();
 }
 
 }  // namespace paddle
