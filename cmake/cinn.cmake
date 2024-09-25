@@ -167,6 +167,7 @@ cinn_cc_library(
   tile_config_proto
   absl
   isl
+  python
   ginac
   op_fusion
   cinn_op_dialect

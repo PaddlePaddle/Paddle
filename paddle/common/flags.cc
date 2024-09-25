@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits.h>
+
 #include "paddle/common/flags.h"
 
 namespace phi {
@@ -28,9 +30,34 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
 
 }  // namespace phi
 
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
+                         false,
+                         "Whether to print the message of gpu memory usage "
+                         "at exit, mainly used for UT and CI.");
+
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
+                         true,
+                         "Whether to print the message of gpu memory usage "
+                         "MB as a unit of measurement.");
+PHI_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
+                           ULLONG_MAX,
+                           "Amount of reserved memory in bytes to hold onto "
+                           "before trying to release memory back to the OS");
+
 PHI_DEFINE_EXPORTED_int32(inner_op_parallelism,
                           0,
                           "number of threads for inner op");
+
+PHI_DEFINE_EXPORTED_bool(
+    enable_unused_var_check,
+    false,
+    "Checking whether operator contains unused inputs, "
+    "especially for grad operator. It should be in unittest.");
+
+PHI_DEFINE_EXPORTED_uint64(dygraph_debug,
+                           0,
+                           "Debug level of dygraph. This flag is not "
+                           "open to users");
 
 /**
  * NOTE(paddle-dev): This file is designed to define all public FLAGS.

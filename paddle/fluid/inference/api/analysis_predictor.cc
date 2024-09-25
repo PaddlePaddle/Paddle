@@ -505,12 +505,16 @@ bool AnalysisPredictor::Init(
 
   // Get the feed_target_names and fetch_target_names
 
+  std::cerr << "feed fech\n";
   PrepareFeedFetch();
+  std::cerr << "fin feed fech\n";
 
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
     return true;
   }
+
+  std::cerr << "fin exect\n";
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(inference): Now only gpu with external stream support private
@@ -548,9 +552,14 @@ bool AnalysisPredictor::Init(
   }
 #endif
 
+  std::cerr << "fin resource\n";
+
   TryShrinkMemory();
+  std::cerr << "fin shrink memory\n";
 
   inference::DisplayMemoryInfo(place_, "Init predictor");
+
+  std::cerr << "fin memory info\n";
   return true;
 }
 
@@ -1657,6 +1666,7 @@ void AnalysisPredictor::MkldnnPostReset() {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
+  std::cerr << "begin to run 1\n";
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
@@ -1728,6 +1738,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 
 bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
                             std::vector<paddle::Tensor> *outputs) {
+  std::cerr << "begin to run 1\n";
   inference::DisplayMemoryInfo(place_, "before run");
   if (private_context_) {
     phi::DeviceContextPool::SetDeviceContexts(&device_contexts_);
@@ -3668,10 +3679,14 @@ std::map<std::string, DataType> Predictor::GetOutputTypes() {
   return predictor_->GetOutputTypes();
 }
 
-bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
+bool Predictor::Run() {
+  std::cerr << "begin to run 3\n";
+  return predictor_->ZeroCopyRun();
+}
 
 bool Predictor::Run(const std::vector<paddle::Tensor> &inputs,
                     std::vector<paddle::Tensor> *outputs) {
+  std::cerr << "begin to run 6\n";
   return predictor_->Run(inputs, outputs);
 }
 

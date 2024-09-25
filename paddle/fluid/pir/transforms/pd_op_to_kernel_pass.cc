@@ -3391,6 +3391,7 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   if (FLAGS_print_ir) {
     std::cout << "IR after lowering = " << *program << std::endl;
   }
+  // std::cout << "IR after lowering = " << *program << std::endl;
 
   return program;
 }

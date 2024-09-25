@@ -136,6 +136,8 @@ ir::Expr CopyedReplaceExpr(const Expr& source,
   VLOG(4) << "Replace From : " << cinn::utils::Join(replaced, " ");
   VLOG(4) << "Replace To   : " << cinn::utils::Join(candidates, " ");
 
+  VLOG(1) << "replaced.size(): " << replaced.size();
+  VLOG(1) << "candidates.size(): " << candidates.size();
   PADDLE_ENFORCE_EQ(
       replaced.size(),
       candidates.size(),
@@ -151,7 +153,9 @@ ir::Expr CopyedReplaceExpr(const Expr& source,
       continue;
     replacing_map[replaced[i]] = candidates[i];
   }
+  VLOG(1) << "22222222";
   ir::MappingVarToExprMutator mapper(replacing_map);
+  VLOG(1) << "22222222";
   mapper(&copyed_source);
   VLOG(4) << "CopyedReplaceExpr Result: " << copyed_source;
   return copyed_source;

@@ -533,8 +533,24 @@ bool GenerateShapeOp::InferSymbolicShape(
     return dim_exprs;
   }();
 
-  std::vector<symbol::DimExpr> shape{
-      std::int64_t(substituted_dim_exprs.size())};
+  // std::vector<symbol::DimExpr> shape{
+  //     std::int64_t(substituted_dim_exprs.size())};
+
+  const auto& out_dims = this->out().type().dyn_cast<DenseTensorType>().dims();
+  if (out_dims.size() == 0) {
+    PADDLE_ENFORCE_EQ(substituted_dim_exprs.size(), 1UL);
+  } else {
+    PADDLE_ENFORCE_EQ(::common::product(out_dims),
+                      substituted_dim_exprs.size());
+  }
+  const auto shape = [&] {
+    std::vector<symbol::DimExpr> result;
+    for (int i = 0; i < out_dims.size(); ++i) {
+      result.emplace_back(out_dims.at(i));
+    }
+    return result;
+  }();
+
   symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
       symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
 

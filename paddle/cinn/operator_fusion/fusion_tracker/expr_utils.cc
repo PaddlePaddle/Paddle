@@ -179,10 +179,6 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
           << "\npadding vector: " << utils::Join(padding_vec, ", ");
   const auto& vars_in_expr = AppendBound(GetAllForIters(expr), expr);
   // get the all vars.
-  auto GenNextName = []() {
-    counter += 1;
-    return "expand_var_" + std::to_string(counter);
-  };
   std::vector<ir::Var> vars;
   int pointer = 0;
   for (int i = 0; i < vars_in_expr.size() + padding_vec.size(); i++) {
