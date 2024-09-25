@@ -1894,7 +1894,7 @@ class TestSqrtComp_ZeroDim(TestSqrtComp):
         self.shape = []
 
 
-class TestSqrt_Complex64(TestSqrt):
+class TestSqrt_Complex64(TestSqrtComp):
     def init_dtype(self):
         self.dtype = np.complex64
 
