@@ -229,10 +229,6 @@ class ReshardPasses:
 
     @staticmethod
     def reshard_op_pass(dist_program, params_grads=[]):
-        # {grad.id: grad}
-        sharded_grad = {}
-        grad_ids = [grad.id for _, grad in params_grads if grad is not None]
-
         for op in dist_program.global_block().ops:
             if op.name() == 'dist_op.reshard':
                 var = op.operand_source(0)
@@ -268,26 +264,9 @@ class ReshardPasses:
 
                 if out_value is not None:
                     op.result(0).replace_all_uses_with(out_value)
-                    if var.id in grad_ids:
-                        if var.get_defining_op().has_attr(
-                            "replace_all_uses_with_reshard_var"
-                        ):
-                            sharded_grad[var.id] = out_value
 
                 if op.result(0).use_empty():
                     op.erase()
-
-                if out_value is not None and var.use_empty():
-                    if var.id in grad_ids:
-                        sharded_grad[var.id] = out_value
-
-        # update params_grads with sharded grad
-        for idx, (param, grad) in enumerate(params_grads):
-            if grad is None:
-                continue
-
-            if grad.id in sharded_grad:
-                params_grads[idx] = (param, sharded_grad[grad.id])
 
     @staticmethod
     def apply_reshard_pass(dist_program, params_grads=[]):
