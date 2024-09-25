@@ -1062,7 +1062,6 @@ void layer_norm_grad(const Tensor& x,
       set_output<T>(x_grad_tmp, x_grad);
     }
 
-
     if (bias_grad) {
       if (bias_ptr) {
         auto bias_grad_tmp =
@@ -1105,7 +1104,7 @@ void layer_norm_grad(const Tensor& x,
     if (bias_ptr) {
       auto bias_grad_tmp =
           out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-      if(has_dynamic_shape(bias_ptr->shape())) {
+      if (has_dynamic_shape(bias_ptr->shape())) {
         bias_grad_tmp = backend::reshape<T>(bias_grad_tmp, shape<T>(*bias_ptr));
       } else {
         bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
