@@ -32,10 +32,11 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     out_d = paddle_op.attrs().get("out_d")
     scale_attr = paddle_op.attrs().get("scale")
 
+    # Parse TensorRT version
     trt_major, trt_minor, trt_patch = trt.__version__.split(".")
     trt_version_float = float(f"{trt_major}.{trt_minor}")
 
-    # 创建 Resize 层
+    # Create Resize layer
     resize_layer = network.add_resize(input_tensor)
     if align_mode == 0:
         if trt_version_float >= 8.6:
@@ -55,12 +56,14 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     scale_h = -1.0
     scale_w = -1.0
 
+    # Determine scale factors
     if scale_attr and len(scale_attr) > 1:
         scale_h = scale_attr[0]
         scale_w = scale_attr[1]
     elif len(scale_attr) == 1:
         scale_h = scale_w = scale_attr[0]
 
+    # Determine axes based on data format
     if data_format == "NCHW":
         h_axis = 2
         w_axis = 3
@@ -68,7 +71,7 @@ def bilinear_interp_converter(network, paddle_op, inputs):
         h_axis = 1
         w_axis = 2
 
-    # 获取输入张量的形状（动态形状）
+    # Get input tensor's shape (dynamic shape)
     input_shape_tensor = network.add_shape(input_tensor).get_output(0)
 
     if scale_w > 0 and scale_h > 0:
