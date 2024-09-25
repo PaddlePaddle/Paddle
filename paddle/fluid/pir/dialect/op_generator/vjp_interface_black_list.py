@@ -31,4 +31,5 @@ vjp_interface_black_list = [
     'silu_grad',
     'exp_grad',
     'abs_double_grad',
+    'where_grad',
 ]

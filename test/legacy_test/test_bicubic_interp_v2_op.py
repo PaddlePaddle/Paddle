@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.nn.functional import interpolate
-from paddle.pir_utils import test_with_pir_api
 
 
 def create_test_case0(self):
@@ -587,7 +586,7 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case(self):
         np.random.seed(200)
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")

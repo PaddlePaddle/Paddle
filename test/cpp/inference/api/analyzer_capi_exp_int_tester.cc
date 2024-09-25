@@ -36,26 +36,22 @@ void predictor_run() {
   PD_ConfigDisableGpu(config);
   PD_ConfigSetCpuMathLibraryNumThreads(config, 10);
   PD_ConfigSwitchIrDebug(config, TRUE);
-  PD_ConfigSetModelDir(config, model_dir.c_str());
+  PD_ConfigSetModel(config,
+                    (model_dir + "/inference.pdmodel").c_str(),
+                    (model_dir + "/inference.pdiparams").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   LOG(INFO) << "The inputs' size is: " << input_names->size;
-  EXPECT_EQ(input_names->size, 2u);
+  EXPECT_EQ(input_names->size, 1u);
   PD_IOInfos* in_infos = PD_PredictorGetInputInfos(predictor);
-  EXPECT_EQ(in_infos->size, 2u);
+  EXPECT_EQ(in_infos->size, 1u);
   PD_IOInfos* out_infos = PD_PredictorGetOutputInfos(predictor);
 
   std::array<int32_t, 4> shape_0 = {1, 3, 224, 224};
   std::array<float, 1 * 3 * 224 * 224> data_0 = {0};
-  PD_Tensor* input_0 = PD_PredictorGetInputHandle(predictor, "image");
+  PD_Tensor* input_0 = PD_PredictorGetInputHandle(predictor, "x");
   PD_TensorReshape(input_0, 4, shape_0.data());
   PD_TensorCopyFromCpuFloat(input_0, data_0.data());
-  std::array<int32_t, 2> shape_1 = {1, 1};
-  std::array<int64_t, 1> data_1 = {0};
-  PD_Tensor* input_1 = PD_PredictorGetInputHandle(predictor, "label");
-  PD_TensorReshape(input_1, 2, shape_1.data());
-  PD_TensorCopyFromCpuInt64(input_1, data_1.data());
-
   LOG(INFO) << "Run Inference in CAPI encapsulation. ";
   EXPECT_TRUE(PD_PredictorRun(predictor));
 
@@ -83,7 +79,6 @@ void predictor_run() {
   PD_PredictorClearIntermediateTensor(predictor);
   PD_PredictorTryShrinkMemory(predictor);
   PD_OneDimArrayCstrDestroy(output_names);
-  PD_TensorDestroy(input_1);
   PD_TensorDestroy(input_0);
   PD_OneDimArrayCstrDestroy(input_names);
   PD_IOInfosDestroy(in_infos);

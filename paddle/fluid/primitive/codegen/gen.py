@@ -96,6 +96,7 @@ OTHER_PRIM_VJP_OPS = [
     'atan_grad',
     'atan2_grad',
     'cumsum_grad',
+    'cumprod_grad',
     'sum_grad',
     'cast_grad',
     'reshape_grad',
@@ -121,12 +122,14 @@ OTHER_PRIM_VJP_OPS = [
     'topk_grad',
     'unsqueeze_grad',
     'where_grad',
+    'logcumsumexp_grad',
 ]
 
 # whole vjp list of primitive op vjp
 PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
+    'bce_loss_grad',
     'batch_norm_grad',
     'dropout_grad',
     'gelu_grad',

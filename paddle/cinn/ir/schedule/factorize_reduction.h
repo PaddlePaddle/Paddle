@@ -33,7 +33,7 @@ namespace ir {
 Tensor CreateRFTensor(const Tensor& original_tensor,
                       const Expr& rf_loop,
                       int rf_axis) {
-  std::string name = original_tensor->name + "_rf";
+  std::string name = common::UniqName(original_tensor->name + "_rf");
   std::vector<Expr> new_shape = original_tensor->shape;
   new_shape.insert(new_shape.begin() + rf_axis, rf_loop.As<For>()->extent);
   Tensor rf_tensor = _Tensor_::Make(name,
@@ -262,7 +262,7 @@ class RFBlockCreater : public ReduceBlockCreater {
  private:
   void CreateRFIter() override {
     std::string loop_var_name = rf_loop_.As<ir::For>()->loop_var->name;
-    std::string rf_var_name = "v" + loop_var_name;
+    std::string rf_var_name = common::UniqName("v" + loop_var_name);
     rf_var_ = Var(rf_loop_.As<ir::For>()->min,
                   rf_loop_.As<ir::For>()->extent,
                   rf_var_name,
@@ -335,7 +335,7 @@ class RFBlockCreater : public ReduceBlockCreater {
       if (loop_var2block_iters_.count(loop_var) == 0) {
         Var new_iter_var(loop.As<ir::For>()->min,
                          loop.As<ir::For>()->extent,
-                         "v" + loop_var->name,
+                         common::UniqName("v" + loop_var->name),
                          /* is_reduce = */ true);
         new_iter_vars_.push_back(new_iter_var);
         new_iter_values_.emplace_back(loop_var);
@@ -406,7 +406,7 @@ class RBBlockCreater : public ReduceBlockCreater {
  private:
   void CreateRFIter() override {
     std::string loop_var_name = rf_loop_.As<ir::For>()->loop_var->name;
-    std::string rf_var_name = "v" + loop_var_name;
+    std::string rf_var_name = common::UniqName("v" + loop_var_name);
     rf_var_ = Var(rf_loop_.As<ir::For>()->min,
                   rf_loop_.As<ir::For>()->extent,
                   rf_var_name,

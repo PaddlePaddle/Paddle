@@ -16,19 +16,38 @@ import unittest
 
 import numpy as np
 from test_prim_sub_graph_backward_dynamic_shape import (
+    TestPrimBaseWithGrad,
     TestPrimTwoWithGrad,
 )
 
 import paddle
 
 
+def unsqueeze_net(x):
+    return paddle.unsqueeze(x, axis=[1, 2])
+
+
 def where_net(x, y):
     return paddle.where(x > y, x, y)
+
+
+class TestPrimUnsqueezeWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.unsqueeze_grad"
+        self.dtype = "float32"
+        self.x_shape = [20, 30, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = unsqueeze_net
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimWhereWithGrad1(TestPrimTwoWithGrad):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.where_grad"
         self.dtype = "float32"
         self.x_shape = [30, 30, 40]
         self.init_x_shape = [None, None, 40]
@@ -44,6 +63,7 @@ class TestPrimWhereWithGrad1(TestPrimTwoWithGrad):
 class TestPrimWhereWithGrad2(TestPrimTwoWithGrad):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.where_grad"
         self.dtype = "float32"
         self.x_shape = [30, 30, 40]
         self.init_x_shape = [None, None, 40]
@@ -59,6 +79,7 @@ class TestPrimWhereWithGrad2(TestPrimTwoWithGrad):
 class TestPrimWhereWithGrad3(TestPrimTwoWithGrad):
     def setUp(self):
         np.random.seed(2023)
+        self.op_name = "pd_op.where_grad"
         self.dtype = "float32"
         self.x_shape = [30, 30, 40]
         self.init_x_shape = [30, 30, 40]

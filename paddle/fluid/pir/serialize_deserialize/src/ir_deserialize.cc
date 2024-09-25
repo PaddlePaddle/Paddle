@@ -93,6 +93,30 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
 
   Json& ops_json = block_json->at(BLOCKOPS);
   if (!ops_json.empty()) {
+    // get value id for op_pair io patch
+    VLOG(6) << "Begin to read value num ...";
+    int64_t max_value_id = 0;
+    for (auto& op_json : ops_json) {
+      if (op_json.at(ID).template get<std::string>() == PARAMETEROP) {
+        int64_t id = op_json.at(OPRESULTS).at(VALUE_ID).template get<int64_t>();
+        max_value_id = std::max(max_value_id, id);
+        continue;
+      }
+      Json& operands_json = op_json.at(OPOPERANDS);
+      for (auto& operand_json : operands_json) {
+        int64_t id = operand_json.at(VALUE_ID).template get<int64_t>();
+        max_value_id = std::max(max_value_id, id);
+      }
+      Json& opresults_json = op_json.at(OPRESULTS);
+      for (auto& opresult_json : opresults_json) {
+        int64_t id = opresult_json.at(VALUE_ID).template get<int64_t>();
+        max_value_id = std::max(max_value_id, id);
+      }
+    }
+    max_value_id += id_value_map.size();
+    VLOG(6) << "max_value_id: " << max_value_id;
+    // Apply op_pair io patch
+    patch_builder->ApplyOpPairPatches(&max_value_id);
     for (auto& op_json : ops_json) {
       block->push_back(ReadOp(&op_json));
     }
@@ -214,6 +238,16 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
     VLOG(8) << " get attr_patch:  " << attr_patch;
     patch_builder->ApplyOpPatches(op_name, op_json, op_patch);
     VLOG(8) << op_name << " has been patched: " << *op_json;
+    // Apply patch to op name
+    // This happens when changing an op into another dialect
+    if (op_patch.contains("NEW_NAME")) {
+      std::string new_name =
+          op_patch.at("NEW_NAME").template get<std::string>();
+      VLOG(8) << "change op name from " << op_name << " to " << new_name;
+      op_name = new_name;
+      op_json->at(ID) = op_name;
+      VLOG(8) << "op_json after changing name: " << *op_json;
+    }
   }
   GetDecompressOpName(&op_name);
   VLOG(4) << "Read op_name = " << op_name << ".";
@@ -299,13 +333,23 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
     Json* opresult_attrs_json,
     const std::unordered_map<std::string, Json>& attr_patch) {
   pir::AttributeMap attributes;
+  // Add new attribute from patch
+  if (attr_patch.count("A_ADD")) {
+    for (auto& attr_json : attr_patch.at("A_ADD")) {
+      attrs_json->insert(attrs_json->end(), attr_json);
+    }
+    VLOG(8) << "attr has been added: " << *attrs_json;
+  }
   for (auto& attr_json : *attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
     if (attr_patch.count(attr_name)) {
       Json patch = attr_patch.at(attr_name);
+      VLOG(8) << attr_name << " has patch: " << patch;
       patch_builder->ApplyAttrPatches(attr_name, &attr_json, patch);
       VLOG(8) << attr_name << " has been patched: " << attr_json;
     }
+    // Get attr_name again after patch
+    attr_name = attr_json.at(NAME).template get<std::string>();
     if (attr_json.contains(ATTR_TYPE)) {
       attributes.insert({attr_name, ReadAttribute(&attr_json)});
     } else {
@@ -313,6 +357,13 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
     }
   }
   VLOG(6) << "Finish Read pir::AttributeMap.";
+  // Add new opresult attribute from patch
+  if (attr_patch.count("OA_ADD")) {
+    for (auto& attr_json : attr_patch.at("OA_ADD")) {
+      opresult_attrs_json->insert(opresult_attrs_json->end(), attr_json);
+    }
+    VLOG(8) << "opresult attr has been added: " << *opresult_attrs_json;
+  }
   for (auto& attr_json : *opresult_attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
     VLOG(8) << attr_name << " patch: " << attr_patch;
@@ -323,6 +374,8 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
       patch_builder->ApplyAttrPatches(attr_name, &attr_json, patch);
       VLOG(8) << attr_name << " has been patched: " << attr_json;
     }
+    // Get attr_name again after patch
+    attr_name = attr_json.at(NAME).template get<std::string>();
     if (attr_json.contains(ATTR_TYPE)) {
       attributes.insert({attr_name, ReadAttribute(&attr_json)});
     } else {

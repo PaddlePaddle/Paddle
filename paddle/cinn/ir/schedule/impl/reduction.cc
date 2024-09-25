@@ -59,11 +59,17 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   std::ostringstream os;
   // Get child block of the rf_loop and check.
   std::vector<Expr> blocks = GetChildBlocks(rf_loop);
-  if (blocks.size() != 1) {
-    os << "The rf_loop is required to have only one child block, but got "
-       << blocks.size() << "!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), this->module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      blocks.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An Error occurred in the schedule primite <%s>.\n"
+          "[Error info] The rf_loop is required to have only one child block, "
+          "but got %d!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          primitive,
+          blocks.size(),
+          module_expr_.GetExprs()));
   Expr original_block = blocks.at(0);
   Expr root_block = GetRootBlock(original_block);
   // TODO(BiynXu): Add CheckReductionBlock()
@@ -71,10 +77,17 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   // Collect the loops of the block.
   // Construct a map from loop var names to corresponding loops.
   std::vector<Expr> original_loops = this->GetLoops(original_block);
-  if (original_loops.size() <= 0) {
-    os << "The size of original_loops should be great than 0!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), this->module_expr_);
-  }
+  PADDLE_ENFORCE_GT(
+      original_loops.size(),
+      0,
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An Error occurred in the schedule primite <%s>.\n"
+          "[Error info] The size of original_loops should be great than 0, but "
+          "got %d!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          primitive,
+          original_loops.size(),
+          module_expr_.GetExprs()));
   VLOG(3) << "before FactorizeReduction, original computational body of the "
              "reduction is:\n"
           << original_loops[0];
