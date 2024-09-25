@@ -195,8 +195,8 @@ class XPUTestAddMMOp(XPUOpTestWrapper):
 
             atol = 0.001
             rtol = 1e-5
-            test_dtype = [paddle.float32, paddle.float16, paddle.bfloat16]
-            for test_dtype in test_dtype:
+            test_dtypes = [paddle.float32, paddle.float16, paddle.bfloat16]
+            for test_dtype in test_dtypes:
                 input_xpu = paddle.to_tensor(
                     input_np,
                     test_dtype,

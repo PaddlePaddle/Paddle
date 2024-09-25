@@ -38,18 +38,20 @@ void AddmmKernel(const Context& dev_ctx,
   auto input_dims = input.dims();
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  PADDLE_ENFORCE_EQ(input_dims.size() == 2 || input_dims.size() == 1,
-                    true,
-                    common::errors::InvalidArgument(
-                        "Variable 'input' of AddmmOp must be 1-dimensional or 2-dimensional, "
-                        "but received shape: [%s]",
-                        input_dims));
-  PADDLE_ENFORCE_EQ(x_dims.size() == 2,
-                    true,
-                    common::errors::InvalidArgument(
-                        "Variable 'x' of AddmmOp must be 2-dimensional, "
-                        "but received shape: [%s]",
-                        input_dims));
+  PADDLE_ENFORCE_EQ(
+      input_dims.size() == 2 || input_dims.size() == 1,
+      true,
+      common::errors::InvalidArgument(
+          "Variable 'input' of AddmmOp must be 1-dimensional or 2-dimensional, "
+          "but received shape: [%s]",
+          input_dims));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() == 2,
+      true,
+      common::errors::InvalidArgument(
+          "Variable 'x' of AddmmOp must be 2-dimensional, "
+          "but received shape: [%s]",
+          input_dims));
   PADDLE_ENFORCE_EQ(y_dims.size() == 2,
                     true,
                     common::errors::InvalidArgument(
@@ -60,37 +62,36 @@ void AddmmKernel(const Context& dev_ctx,
   int r;
   if (alpha == 0.f) {
     if (beta == 0.f) {
-      r = xpu::constant(
-        dev_ctx.x_context(), out_ptr, out->numel(), static_cast<XPUType>(0.0f));
+      r = xpu::constant(dev_ctx.x_context(),
+                        out_ptr,
+                        out->numel(),
+                        static_cast<XPUType>(0.0f));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-    }
-    else {
+    } else {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       T* beta_xpu = RAII_GUARD.alloc_l3_or_gm<T>(1);
-      r = xpu::constant(
-        dev_ctx.x_context(),
-        reinterpret_cast<XPUType*>(beta_xpu),
-        out->numel(),
-        static_cast<XPUType>(beta));
+      r = xpu::constant(dev_ctx.x_context(),
+                        reinterpret_cast<XPUType*>(beta_xpu),
+                        out->numel(),
+                        static_cast<XPUType>(beta));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       auto input_dims_vec = common::vectorize<int64_t>(input.dims());
       auto out_dims_vec = common::vectorize<int64_t>(out->dims());
-      r = xpu::broadcast_mul<XPUType>(
-        dev_ctx.x_context(),
-        input_ptr,
-        reinterpret_cast<XPUType*>(beta_xpu),
-        out_ptr,
-        input_dims_vec,
-        out_dims_vec);
+      r = xpu::broadcast_mul<XPUType>(dev_ctx.x_context(),
+                                      input_ptr,
+                                      reinterpret_cast<XPUType*>(beta_xpu),
+                                      out_ptr,
+                                      input_dims_vec,
+                                      out_dims_vec);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
     }
-  }
-  else {
+  } else {
     phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
     XpuFcInfo fc_info;
     GetFCInfo(x_dims, y_dims, false, false, &fc_info);
     xpu::Context* xpu_ctx = dev_ctx.x_context();
-    MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
+    MatMulXPUFunction<XPUType>(
+        xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
   }
 }
 }  // namespace phi

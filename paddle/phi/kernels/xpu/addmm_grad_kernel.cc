@@ -41,7 +41,8 @@ void AddmmGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(y_grad);
   }
 
-  const XPUType* out_grad_ptr = reinterpret_cast<const XPUType*>(out_grad.data<T>());
+  const XPUType* out_grad_ptr =
+      reinterpret_cast<const XPUType*>(out_grad.data<T>());
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
 
@@ -54,8 +55,13 @@ void AddmmGradKernel(const Context& dev_ctx,
     r = xpu::constant(xpu_ctx, input_grad_ptr, input.numel(), (XPUType)(beta));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     if (input_grad->dims().size() == 1 && out_grad.dims()[0] > 1) {
-      r = xpu::scale<XPUType>(
-          xpu_ctx, input_grad_ptr, input_grad_ptr, input_grad->numel(), true, (float)out_grad.dims()[0], 0.f);
+      r = xpu::scale<XPUType>(xpu_ctx,
+                              input_grad_ptr,
+                              input_grad_ptr,
+                              input_grad->numel(),
+                              true,
+                              (float)out_grad.dims()[0],
+                              0.f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
@@ -71,14 +77,14 @@ void AddmmGradKernel(const Context& dev_ctx,
   XPUType* c_2 = reinterpret_cast<XPUType*>(y_grad->data<T>());
 
   if (x_grad && info_forward.is_x_need_broadcast) {
-    c_1 = RAII_GUARD.alloc_l3_or_gm<XPUType>(
-        info_forward.bs * info_forward.m * info_forward.k);
+    c_1 = RAII_GUARD.alloc_l3_or_gm<XPUType>(info_forward.bs * info_forward.m *
+                                             info_forward.k);
     PADDLE_ENFORCE_XDNN_NOT_NULL(c_1);
   }
 
   if (y_grad && info_forward.is_y_need_broadcast) {
-    c_2 = RAII_GUARD.alloc_l3_or_gm<XPUType>(
-        info_forward.bs * info_forward.k * info_forward.n);
+    c_2 = RAII_GUARD.alloc_l3_or_gm<XPUType>(info_forward.bs * info_forward.k *
+                                             info_forward.n);
     PADDLE_ENFORCE_XDNN_NOT_NULL(c_2);
   }
 

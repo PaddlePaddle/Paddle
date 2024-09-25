@@ -335,7 +335,8 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
 
   std::tie(info_dx, info_dw1, a_1, b_1, a_2, b_2) = fc_info;
 
-  phi::MatMulXPUFunction<XPUTypeT>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT>(
+      xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f, 0.f, true);
 
   phi::MatMulXPUFunction<XPUTypeT>(
       xpu_ctx, a_2, b_2, c_2, info_dw1, 1.0f, 0.f, true);

@@ -626,7 +626,7 @@ static void MatMulXPUFunction(
                        ldx,                              // int stride_a,
                        y_data,                           // const TW* w,
                        ldy,                              // int stride_b,
-                       beta,                              // float beta,
+                       beta,                             // float beta,
                        reinterpret_cast<XPUType*>(out),  // TY* y,
                        ldout,                            // int stride_c,
                        max_x,   // const float* x_maxptr,
