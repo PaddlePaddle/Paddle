@@ -726,8 +726,15 @@ class Engine:
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
-        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
+        if self._strategy.mp_optimization.replace_with_parallel_cross_entropy:
+            auto_parallel_replace_with_parallel_cross_entropy_pass = new_pass(
+                "replace_with_parallel_cross_entropy", {}
+            )
+            auto_parallel_replace_with_parallel_cross_entropy_pass.apply(
+                [dist_program], [startup_program]
+            )
 
+        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
         if (
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"
