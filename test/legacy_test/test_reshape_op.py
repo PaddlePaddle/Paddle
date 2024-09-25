@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -423,7 +422,6 @@ class TestReshapeAPI(unittest.TestCase):
     def _executed_api(self):
         self.reshape = paddle.reshape
 
-    @test_with_pir_api
     def _test_api(self):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
@@ -459,7 +457,6 @@ class TestReshapeAPI(unittest.TestCase):
         np.testing.assert_array_equal(res_3, input.reshape([5, 10]))
         np.testing.assert_array_equal(res_4, input.reshape(shape))
 
-    @test_with_pir_api
     def _test_static_dtype(self):
         places = [paddle.CPUPlace()] + (
             [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
@@ -566,7 +563,6 @@ class TestReshapeOpError(unittest.TestCase):
         self.data = paddle.static.data
         self.reshape = paddle.reshape
 
-    @test_with_pir_api
     def _test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -614,7 +610,6 @@ class TestReshapeOpError(unittest.TestCase):
             self.assertRaises(AssertionError, test_shape_3)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_paddle_api_error(self):
         self._set_paddle_api()
         self._test_errors()
@@ -705,7 +700,6 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static(self):
         main_prog = base.Program()
         with base.program_guard(main_prog, base.Program()):

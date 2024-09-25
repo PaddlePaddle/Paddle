@@ -883,8 +883,9 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
       if (mkldnn_data_type != "bfloat16") {
         return false;
       }
+      // For fused_matmul, it name residual_data as residual_param
       const std::vector<std::string> permitted_input_names = {
-          "x", "y", "input", "residual_param"};
+          "x", "y", "input", "residual_param", "residual_data"};
       auto op_info =
           pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(

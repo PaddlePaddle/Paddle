@@ -2313,15 +2313,38 @@ def get_pp_degree(dist_context):
     if len(dist_context.process_meshes) < 2:
         return 0, []
 
-    process_ids = set()
-    process_meshes = copy.deepcopy(dist_context.process_meshes)
+    sub_process_meshes = get_sub_process_mesh(dist_context.process_meshes)
+    return len(sub_process_meshes), sub_process_meshes
 
-    for pm in process_meshes:
+
+def get_sub_process_mesh_by_program(dist_program):
+    all_ops = dist_program.global_block().ops
+    process_meshes = []
+
+    for op in all_ops:
+        if "pd_op" in op.name():
+            process_mesh = op.dist_attr.process_mesh
+            if process_mesh not in process_meshes:
+                process_meshes.append(process_mesh)
+
+    sub_process_meshes = get_sub_process_mesh(process_meshes)
+    sub_process_meshes = sorted(
+        sub_process_meshes, key=lambda x: x.process_ids[0]
+    )
+
+    return sub_process_meshes
+
+
+def get_sub_process_mesh(process_meshes):
+    process_ids = set()
+    sub_process_meshes = copy.deepcopy(process_meshes)
+
+    for pm in sub_process_meshes:
         process_ids |= set(pm.process_ids)
 
     global_pm_idx = []
     has_sub_pm = False
-    for idx, pm in enumerate(process_meshes):
+    for idx, pm in enumerate(sub_process_meshes):
         if len(set(pm.process_ids)) == len(process_ids):
             global_pm_idx.append(idx)
         elif set(pm.process_ids) < process_ids:
@@ -2329,9 +2352,9 @@ def get_pp_degree(dist_context):
 
     if has_sub_pm:
         for idx in reversed(global_pm_idx):
-            process_meshes.pop(idx)
+            sub_process_meshes.pop(idx)
 
-    return len(process_meshes), process_meshes
+    return sub_process_meshes
 
 
 def get_pp_stage(dist_context, rank):
@@ -2345,9 +2368,28 @@ def get_pp_stage(dist_context, rank):
 
 def get_pp_stage_by_pp_degree(pp_degree):
     cur_rank = paddle.distributed.get_rank()
+    return get_pp_stage_by_rank(cur_rank, pp_degree)
+
+
+def get_pp_stage_by_process_mesh(process_mesh, pp_degree):
+    pp_stage_for_process_mesh = None
+    for rank in process_mesh.process_ids:
+        pp_stage = get_pp_stage_by_rank(rank, pp_degree)
+        if pp_stage_for_process_mesh is not None:
+            if pp_stage != pp_stage_for_process_mesh:
+                return None
+            assert (
+                pp_stage == pp_stage_for_process_mesh
+            ), f"Can't get pp_stage by process_mesh with different pp_stage {pp_stage} and {pp_stage_for_process_mesh}"
+        pp_stage_for_process_mesh = pp_stage
+
+    return pp_stage_for_process_mesh
+
+
+def get_pp_stage_by_rank(rank, pp_degree):
     word_size = paddle.distributed.get_world_size()
     pp_group_size = word_size // pp_degree
-    pp_stage = cur_rank // pp_group_size
+    pp_stage = rank // pp_group_size
     return pp_stage
 
 

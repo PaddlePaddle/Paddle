@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestNumelOp(OpTest):
@@ -160,7 +159,7 @@ class TestNumelOp1BF16(TestNumelOpBF16):
 
 
 class TestNumelAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_numel_static(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -200,7 +199,6 @@ class TestNumelAPI(unittest.TestCase):
         np.testing.assert_array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_error(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
