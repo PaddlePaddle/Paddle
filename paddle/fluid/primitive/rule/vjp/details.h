@@ -1061,21 +1061,6 @@ void layer_norm_grad(const Tensor& x,
       }
       set_output<T>(x_grad_tmp, x_grad);
     }
-
-    if (bias_grad) {
-      if (bias_ptr) {
-        auto bias_grad_tmp =
-            out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
-        bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
-        if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
-            bias_ptr->dtype() == phi::DataType::BFLOAT16) {
-          bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
-        }
-        set_output<T>(bias_grad_tmp, bias_grad);
-      } else {
-        bias_grad = nullptr;
-      }
-    }
   }
 
   if (scale_grad) {
