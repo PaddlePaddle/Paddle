@@ -225,6 +225,23 @@ struct NonSinkNodeMatcher {
   }
 };
 
+struct NotAllElementWiseDownstreamMatcher {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    size_t count = 0;
+    for (const auto& downsteram : node->downstream()) {
+      if (StmtPatternGraphMatcher<TrivialPattern>()(graph, downsteram)) {
+        auto ops = std::get<TrivialPattern>(downsteram->stmt_pattern()).ops();
+        bool is_elementwise =
+            std::all_of(ops.begin(), ops.end(), [](pir::Operation* op) {
+              return GetOpPatternKind(op) == hlir::framework::kElementWise;
+            });
+        count += is_elementwise;
+      }
+    }
+    return (count < node->downstream().size());
+  }
+};
+
 struct IsOutputNodeMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     bool res = IsAnyFirstInSecond(node->sink_op()->results(), graph.outputs());
