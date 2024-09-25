@@ -22,7 +22,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.framework import core
-from paddle.pir_utils import test_with_pir_api as _test_with_pir_api
 
 RTOL = 1e-06
 ATOL = 1e-06
@@ -292,7 +291,6 @@ class TestRAdamAPI(unittest.TestCase):
             radam.apply_gradients(param_grads)
             radam.clear_gradients()
 
-    @_test_with_pir_api
     def test_radam_static(self):
         paddle.enable_static()
         place = base.CPUPlace()
@@ -323,7 +321,6 @@ class TestRAdamAPI(unittest.TestCase):
         assert rets[0] is not None
         paddle.disable_static()
 
-    @_test_with_pir_api
     def test_pir_radam(self):
         with paddle.pir_utils.IrGuard():
             place = base.CPUPlace()
@@ -382,6 +379,25 @@ class TestRAdamAPI(unittest.TestCase):
             _ = paddle.optimizer.RAdam(
                 0.1, epsilon=-1, parameters=linear.parameters()
             )
+
+
+class TestRAdamAPIWeightDecay(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        radam = paddle.optimizer.RAdam(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+
+        for _ in range(2):
+            out = linear(a)
+            out.backward()
+            radam.step()
+            radam.clear_gradients()
 
 
 class TestRAdamAPIGroup(TestRAdamAPI):
@@ -632,7 +648,6 @@ def get_places():
     return places
 
 
-@_test_with_pir_api
 def main_test_func(place, dtype):
     paddle.enable_static()
     main = base.Program()

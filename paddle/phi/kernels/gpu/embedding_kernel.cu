@@ -122,7 +122,7 @@ void EmbeddingKernel(const Context &ctx,
     functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "emebdding input only support int16, int32 and int64"));
+        "embedding input only support int16, int32 and int64"));
   }
 }
 

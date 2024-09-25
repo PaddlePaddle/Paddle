@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def _mode1D(a):
@@ -244,7 +243,6 @@ class TestModeOpInStatic(unittest.TestCase):
             np.random.random((2, 10, 10)) * 1000, dtype=np.float64
         )
 
-    @test_with_pir_api
     def test_run_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(

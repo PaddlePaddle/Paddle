@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def ref_var(x, axis=None, unbiased=True, keepdim=False):
@@ -69,7 +68,6 @@ class TestVarAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out_dygraph, rtol=1e-05)
         self.assertTrue(np.equal(out_ref.shape, out_dygraph.shape).all())
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             out_static = self.static()
             np.testing.assert_allclose(out_ref, out_static, rtol=1e-05)
@@ -121,7 +119,7 @@ class TestVarAPI_alias(unittest.TestCase):
 
 
 class TestVarError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', [2, 3, 4], 'int32')

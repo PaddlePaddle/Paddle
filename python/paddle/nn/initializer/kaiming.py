@@ -116,8 +116,9 @@ class MSRAInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initializers
-        if var.dtype == core.VarDesc.VarType.FP16 or (
-            var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
+        origin_dtype = var.dtype
+        if origin_dtype == core.VarDesc.VarType.FP16 or (
+            origin_dtype == core.VarDesc.VarType.BF16 and not self._uniform
         ):
             out_dtype = core.VarDesc.VarType.FP32
             out_var = block.create_var(
@@ -130,13 +131,13 @@ class MSRAInitializer(Initializer):
                 persistable=False,
             )
         elif (
-            var.dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
+            origin_dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
             and not self._uniform
         ):
             out_dtype = core.DataType.FLOAT32
             out_var = var
         else:
-            out_dtype = var.dtype
+            out_dtype = origin_dtype
             out_var = var
 
         if in_dygraph_mode():
@@ -159,10 +160,16 @@ class MSRAInitializer(Initializer):
                     out_var.shape, 0.0, std, self._seed, out_dtype, place
                 )
 
-            if var.dtype == core.VarDesc.VarType.FP16 or (
-                var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
+            if origin_dtype == core.VarDesc.VarType.FP16 or (
+                origin_dtype
+                in [
+                    core.VarDesc.VarType.BF16,
+                    core.DataType.FLOAT16,
+                    core.DataType.BFLOAT16,
+                ]
+                and not self._uniform
             ):
-                var_tmp = _C_ops.cast(out_var, var.dtype)
+                var_tmp = _C_ops.cast(out_var, origin_dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -188,10 +195,10 @@ class MSRAInitializer(Initializer):
                 )
 
             if (
-                var.dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
+                origin_dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
                 and not self._uniform
             ):
-                return _C_ops.cast(out_var, var.dtype)
+                return _C_ops.cast(out_var, origin_dtype)
 
             return out_var
         else:
@@ -228,14 +235,17 @@ class MSRAInitializer(Initializer):
                     stop_gradient=True,
                 )
 
-            if var.dtype == core.VarDesc.VarType.FP16 or (
-                var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
+            if origin_dtype == core.VarDesc.VarType.FP16 or (
+                origin_dtype == core.VarDesc.VarType.BF16 and not self._uniform
             ):
                 block.append_op(
                     type="cast",
                     inputs={"X": out_var},
                     outputs={"Out": var},
-                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                    attrs={
+                        "in_dtype": out_var.dtype,
+                        "out_dtype": origin_dtype,
+                    },
                 )
 
             var.op = op

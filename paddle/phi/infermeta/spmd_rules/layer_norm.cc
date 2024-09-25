@@ -445,5 +445,32 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
       {x_grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr});
 }
 
+SpmdInfo FastLnInferSpmd(const DistMetaTensor& x,
+                         const DistMetaTensor& scale,
+                         const DistMetaTensor& bias,
+                         float epsilon) {
+  int begin_norm_axis = x.dims().size() - 1;
+  VLOG(4) << "FastLnInferSpmd call LayerNormInferSpmd with begin_norm_axis="
+          << begin_norm_axis;
+  return LayerNormInferSpmd(x, scale, bias, epsilon, begin_norm_axis);
+}
+
+SpmdInfo FastLnGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& scale,
+                             const DistMetaTensor& mean,
+                             const DistMetaTensor& invvar,
+                             const DistMetaTensor& y_grad,
+                             float epsilon) {
+  int begin_norm_axis = x.dims().size() - 1;
+  const DistMetaTensor& bias(scale);  // bias is not used in FastLnGrad
+  VLOG(4)
+      << "FastLnGradInferSpmd call LayerNormGradInferSpmd with begin_norm_axis="
+      << begin_norm_axis << ", the input 'bias' will be ignored.";
+  SpmdInfo spmd_info = LayerNormGradInferSpmd(
+      x, scale, bias, mean, invvar, y_grad, epsilon, begin_norm_axis);
+  spmd_info.first.erase(spmd_info.first.begin() + 2);  // remove bias_dist_attr
+  return spmd_info;
+}
+
 }  // namespace distributed
 }  // namespace phi

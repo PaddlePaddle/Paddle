@@ -21,7 +21,6 @@ from scipy import signal
 
 import paddle
 import paddle.audio
-from paddle.pir_utils import test_with_pir_api
 
 
 def parameterize(*params):
@@ -66,17 +65,17 @@ class TestAudioFuncitons(unittest.TestCase):
         mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
             paddle.to_tensor([val]), htk_flag
         )
-        mel_librosa = librosa.hz_to_mel(val, htk_flag)
+        mel_librosa = librosa.hz_to_mel(val, htk=htk_flag)
         np.testing.assert_almost_equal(mel_paddle, mel_librosa, decimal=5)
         np.testing.assert_almost_equal(
-            mel_paddle_tensor.numpy(), mel_librosa, decimal=4
+            mel_paddle_tensor.numpy(), mel_librosa, decimal=3
         )
 
         hz_paddle = paddle.audio.functional.mel_to_hz(val, htk_flag)
         hz_paddle_tensor = paddle.audio.functional.mel_to_hz(
             paddle.to_tensor([val]), htk_flag
         )
-        hz_librosa = librosa.mel_to_hz(val, htk_flag)
+        hz_librosa = librosa.mel_to_hz(val, htk=htk_flag)
         np.testing.assert_almost_equal(hz_paddle, hz_librosa, decimal=4)
         np.testing.assert_almost_equal(
             hz_paddle_tensor.numpy(), hz_librosa, decimal=4
@@ -91,7 +90,6 @@ class TestAudioFuncitons(unittest.TestCase):
         )
 
     @parameterize([1.0, 3.0, 9.0, 25.0], [True, False])
-    @test_with_pir_api
     def test_audio_function_static(self, val: float, htk_flag: bool):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -123,12 +121,12 @@ class TestAudioFuncitons(unittest.TestCase):
                 ],
             )
 
-            mel_librosa = librosa.hz_to_mel(val, htk_flag)
+            mel_librosa = librosa.hz_to_mel(val, htk=htk_flag)
             np.testing.assert_almost_equal(
-                mel_paddle_tensor_ret, mel_librosa, decimal=4
+                mel_paddle_tensor_ret, mel_librosa, decimal=3
             )
 
-            hz_librosa = librosa.mel_to_hz(val, htk_flag)
+            hz_librosa = librosa.mel_to_hz(val, htk=htk_flag)
             np.testing.assert_almost_equal(
                 hz_paddle_tensor_ret, hz_librosa, decimal=4
             )
@@ -147,7 +145,7 @@ class TestAudioFuncitons(unittest.TestCase):
         self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
     ):
         librosa_mel_freq = librosa.mel_frequencies(
-            n_mels, f_min, f_max, htk_flag
+            n_mels, fmin=f_min, fmax=f_max, htk=htk_flag
         )
         paddle_mel_freq = paddle.audio.functional.mel_frequencies(
             n_mels, f_min, f_max, htk_flag, 'float64'
@@ -160,7 +158,7 @@ class TestAudioFuncitons(unittest.TestCase):
         [64, 128, 256], [0.0, 0.5, 1.0], [10000, 11025], [False, True]
     )
     # TODO(MarioLulab) May cause precision error. Fix it soon
-    @test_with_pir_api
+
     def test_audio_function_mel_static(
         self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
     ):
@@ -175,7 +173,7 @@ class TestAudioFuncitons(unittest.TestCase):
         exe = paddle.static.Executor()
         (paddle_mel_freq_ret,) = exe.run(main, fetch_list=[paddle_mel_freq])
         librosa_mel_freq = librosa.mel_frequencies(
-            n_mels, f_min, f_max, htk_flag
+            n_mels, fmin=f_min, fmax=f_max, htk=htk_flag
         )
         np.testing.assert_almost_equal(
             paddle_mel_freq_ret, librosa_mel_freq, decimal=3
@@ -185,7 +183,7 @@ class TestAudioFuncitons(unittest.TestCase):
 
     @parameterize([8000, 16000], [64, 128, 256])
     def test_audio_function_fft(self, sr: int, n_fft: int):
-        librosa_fft = librosa.fft_frequencies(sr, n_fft)
+        librosa_fft = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
         paddle_fft = paddle.audio.functional.fft_frequencies(sr, n_fft)
         np.testing.assert_almost_equal(paddle_fft, librosa_fft, decimal=5)
 

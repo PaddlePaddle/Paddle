@@ -19,7 +19,11 @@ from typing import TYPE_CHECKING, Literal
 from typing_extensions import TypeAlias
 
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -293,7 +297,7 @@ def block_multihead_attention(
             [128, 512]
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.block_multihead_attention_(
             qkv,
             key_cache,

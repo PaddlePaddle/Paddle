@@ -971,6 +971,19 @@ void GradSameWithXInferMeta(const MetaTensor& x,
   dx->share_lod(x);
 }
 
+void LodResetGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& out_grad,
+                           const std::vector<int>& target_lod,
+                           bool append,
+                           MetaTensor* x_grad,
+                           MetaConfig config) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x.dims());
+    x_grad->share_lod(x);
+    x_grad->set_dtype(x.dtype());
+  }
+}
+
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,
                      const MetaTensor& pivots,

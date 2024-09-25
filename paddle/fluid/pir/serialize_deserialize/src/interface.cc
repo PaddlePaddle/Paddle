@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include <stdio.h>
-#include <filesystem>
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
@@ -85,9 +84,18 @@ bool ReadModule(const std::string& file_path,
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
     if (file_version != (uint64_t)pir_version) {
       builder.SetFileVersion(file_version);
+      // Set max_version to the max version number of release pir plus 1.
+      auto max_version = GetMaxReleasePirVersion() + 1;
+      // If pir_version_ is not 0, we will build patch from file_version_ to
+      // pir_version_; If pir_version_ is 0, we will first build patch from
+      // file_version_ to max_version, and then add 0.yaml to the end.
+      auto version = pir_version == 0 ? max_version : pir_version;
+      VLOG(6) << "file_version: " << file_version
+              << ", pir_version: " << pir_version
+              << ", final_version: " << version;
       std::filesystem::path patch_path = std::filesystem::path(PATCH_PATH);
       VLOG(8) << "Patch path: " << patch_path;
-      builder.BuildPatch(patch_path.string());
+      builder.BuildPatch(patch_path.string(), version, max_version);
     }
   } else {
     PADDLE_THROW(common::errors::InvalidArgument("Invalid model file."));

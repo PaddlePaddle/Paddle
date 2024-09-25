@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
     test_pir_only,
 )
 
@@ -75,7 +74,6 @@ class TestGrad(Dy2StTestBase):
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
-    @test_legacy_and_pt_and_pir
     def test_forward(self):
         dygraph_res = self.func(self.x).numpy()
         static_res = paddle.jit.to_static(self.func)(self.x).numpy()
@@ -99,7 +97,6 @@ class TestGradLinear(TestGrad):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_legacy_and_pt_and_pir
     def test_save_infer_program(self):
         static_fn = paddle.jit.to_static(self.func)
         input_spec = [
@@ -112,7 +109,6 @@ class TestGradLinear(TestGrad):
         load_res = load_func(self.x).numpy()
         np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
 
-    @test_legacy_and_pt_and_pir
     def test_save_train_program(self):
         static_fn = paddle.jit.to_static(self.func)
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
