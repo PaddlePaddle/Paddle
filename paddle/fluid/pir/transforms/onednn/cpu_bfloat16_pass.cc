@@ -947,19 +947,19 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
       res_op({&res.Tensor("quantize_out_0"),
               &res.Tensor("quantize_1"),
               &res.Tensor("quantize_2")},
-             {{&res.Tensor("out")}});
+             {&res.Tensor("out")});
 
     } else if (index_ == 1) {
       res_op({&res.Tensor("quantize_0"),
               &res.Tensor("quantize_out_1"),
               &res.Tensor("quantize_2")},
-             {{&res.Tensor("out")}});
+             {&res.Tensor("out")});
 
     } else if (index_ == 2) {
       res_op({&res.Tensor("quantize_0"),
               &res.Tensor("quantize_1"),
               &res.Tensor("quantize_out_2")},
-             {{&res.Tensor("out")}});
+             {&res.Tensor("out")});
     }
   }
 };
@@ -1123,7 +1123,7 @@ class CpuBfloat16FusionGruPattern : public paddle::drr::DrrPatternBase {
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(index) {}
 
   std::string name() const override {
-    return index_ + "CpuBfloat16FusionGruPattern";
+    return "CpuBfloat16FusionGruPattern" + std::to_string(index_);
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -1294,7 +1294,7 @@ class CpuBfloat16FusionGruDequantPattern : public paddle::drr::DrrPatternBase {
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(index) {}
 
   std::string name() const override {
-    return index_ + "CpuBfloat16FusionGruDequantPattern";
+    return "CpuBfloat16FusionGruDequantPattern" + std::to_string(index_);
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -1485,7 +1485,7 @@ class CpuBfloat16LayerNormOpPattern : public paddle::drr::DrrPatternBase {
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(index) {}
 
   std::string name() const override {
-    return index_ + "CpuBfloat16LayerNormOpPattern";
+    return "CpuBfloat16LayerNormOpPattern" + std::to_string(index_);
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -1606,7 +1606,7 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(index) {}
 
   std::string name() const override {
-    return index_ + "CpuBfloat16LayerNormDequantPattern";
+    return "CpuBfloat16LayerNormDequantPattern" + std::to_string(index_);
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -1869,28 +1869,28 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
               &res.Tensor("quantize_1"),
               &res.Tensor("quantize_2"),
               &res.Tensor("quantize_3")},
-             {{&res.Tensor("out")}});
+             {&res.Tensor("out")});
 
     } else if (index_ == 1) {
       res_op({&res.Tensor("quantize_0"),
               &res.Tensor("quantize_out_1"),
               &res.Tensor("quantize_2"),
               &res.Tensor("quantize_3")},
-             {{&res.Tensor("out")}});
+             {&res.Tensor("out")});
 
     } else if (index_ == 2) {
       res_op({&res.Tensor("quantize_0"),
               &res.Tensor("quantize_1"),
               &res.Tensor("quantize_out_2"),
               &res.Tensor("quantize_3")},
-             {{&res.Tensor("out")}});
+             {&res.Tensor("out")});
 
     } else if (index_ == 3) {
       res_op({&res.Tensor("quantize_0"),
               &res.Tensor("quantize_1"),
               &res.Tensor("quantize_2"),
               &res.Tensor("quantize_out_3")},
-             {{&res.Tensor("out")}});
+             {&res.Tensor("out")});
     }
   }
 };
