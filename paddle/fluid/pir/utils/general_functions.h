@@ -49,6 +49,7 @@ class Value;
 
 using Variable = paddle::framework::Variable;
 using Scope = paddle::framework::Scope;
+using OperationFactory = paddle::drr::OperationFactory;
 
 /**
  * @brief Copy a DenseTensor to another.
