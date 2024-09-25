@@ -29,7 +29,6 @@ from paddle.distributed.io import (
     load_inference_model_distributed,
     save_persistables,
 )
-from paddle.pir_utils import test_with_pir_api
 from paddle.static.io import load_inference_model, save_inference_model
 
 paddle.enable_static()
@@ -162,7 +161,7 @@ class TestBook(unittest.TestCase):
 
 
 class TestSaveInferenceModel(unittest.TestCase):
-    @test_with_pir_api
+
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model2")
@@ -190,7 +189,6 @@ class TestSaveInferenceModel(unittest.TestCase):
         )
         root_path.cleanup()
 
-    @test_with_pir_api
     def test_save_inference_model_with_auc(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model4")
@@ -226,7 +224,7 @@ class TestSaveInferenceModel(unittest.TestCase):
 
 
 class TestInstance(unittest.TestCase):
-    # @test_with_pir_api
+    #
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model3")
@@ -265,7 +263,7 @@ class TestInstance(unittest.TestCase):
 
 
 class TestSaveInferenceModelNew(unittest.TestCase):
-    # @test_with_pir_api
+    #
     def test_save_and_load_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model5")
@@ -501,7 +499,6 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             None,
         )
 
-    @test_with_pir_api
     def test_normalize_program(self):
         init_program = paddle.static.default_startup_program()
         program = paddle.static.default_main_program()

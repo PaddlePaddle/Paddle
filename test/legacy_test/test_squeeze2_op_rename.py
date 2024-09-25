@@ -22,7 +22,6 @@ import paddle
 paddle.enable_static()
 
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSqueeze2AxesTensor(UnittestBase):
@@ -30,7 +29,6 @@ class TestSqueeze2AxesTensor(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'squeeze_tensor')
 
-    @test_with_pir_api
     def test_static(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -68,7 +66,6 @@ class TestSqueeze2AxesTensorList(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'squeeze_tensor')
 
-    @test_with_pir_api
     def test_static(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()

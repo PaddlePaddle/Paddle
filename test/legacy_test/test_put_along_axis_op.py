@@ -21,7 +21,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.framework import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -684,7 +683,6 @@ class TestPutAlongAxisAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
 
@@ -954,7 +952,6 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             run(place)
             run_inplace(place)
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
 
