@@ -232,6 +232,26 @@ class TestAudioFuncitons(unittest.TestCase):
         )
 
     @parameterize([1, 512])
+    def test_bartlett_kaiser_nuttall_window(self, n_fft: int):
+        window_scipy_bartlett = signal.get_window('bartlett', n_fft)
+        window_paddle_bartlett = paddle.audio.functional.get_window('bartlett', n_fft)
+        np.testing.assert_array_almost_equal(
+            window_scipy_bartlett, window_paddle_bartlett.numpy(), decimal=5
+        )
+
+        window_scipy_kaiser = signal.get_window('kaiser', 14.0, n_fft)
+        window_paddle_kaiser = paddle.audio.functional.get_window(('kaiser', 14.0), n_fft)
+        np.testing.assert_array_almost_equal(
+            window_scipy_kaiser, window_paddle_kaiser.numpy(), decimal=5
+        )
+
+        window_scipy_nuttall = signal.get_window('nuttall', n_fft)
+        window_paddle_nuttall = paddle.audio.functional.get_window('nuttall', n_fft)
+        np.testing.assert_array_almost_equal(
+            window_scipy_nuttall, window_paddle_nuttall.numpy(), decimal=5
+        )
+
+    @parameterize([1, 512])
     def test_gaussian_window_and_exception(self, n_fft: int):
         window_scipy_gaussain = signal.windows.gaussian(n_fft, std=7)
         window_paddle_gaussian = paddle.audio.functional.get_window(
