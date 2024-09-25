@@ -21,7 +21,6 @@ import paddle
 import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import fleet
-from paddle.framework import _current_expected_place
 from paddle.io import DataLoader
 
 BATCH_SIZE = 1
@@ -129,18 +128,6 @@ class TestSimpleNetForSemiAutoParallel:
         dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
         loss_list = []
         dist_model.train()
-        if self._in_pir_mode:
-            mode = "train"
-            dist_model._engine._has_prepared[mode] = True
-            dist_model._mode = mode
-            dist_model._engine._mode = mode
-            paddle.disable_static()
-            dist_model._engine._initialize(mode)
-            dist_model._engine._executor = paddle.static.Executor(
-                _current_expected_place()
-            )
-            dist_model._engine._init_comm()
-
         for epoch in range(5):
             for batch_id, data in enumerate(dist_loader()):
                 image, label = data
