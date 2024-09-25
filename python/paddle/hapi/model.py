@@ -650,29 +650,6 @@ class StaticPIRGraphAdapter:
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
         metrics = []
         for metric, state in zip(self.model._metrics, metric_states):
-            # cut off padding size
-            if (
-                self.mode != 'train'
-                and self.model._test_dataloader is not None
-                and isinstance(self.model._test_dataloader, DataLoader)
-                and self._nranks > 1
-            ):
-                total_size = len(self.model._test_dataloader.dataset)
-                # TODO: fixme if have better way to get batch size
-                samples = state[0].shape[0]
-                current_count = self._merge_count.get(self.mode + '_total', 0)
-                if current_count + samples >= total_size:
-                    state = [
-                        s[: int(total_size - current_count), ...] for s in state
-                    ]
-                    self._merge_count[self.mode + '_total'] = 0
-                    self._merge_count[self.mode + '_batch'] = int(
-                        total_size - current_count
-                    )
-                else:
-                    self._merge_count[self.mode + '_total'] += samples
-                    self._merge_count[self.mode + '_batch'] = samples
-
             metrics.append(metric.update(*state))
 
         if num_loss and len(metrics):
@@ -707,8 +684,6 @@ class StaticPIRGraphAdapter:
             # HACK workaround learning rate map issue
             lr_value = self.model._optimizer._learning_rate_map[prog]
 
-            # new_lr_value = prog.global_block().vars[lr_value.name]
-            # TODO(zbt) how to handle new_lr_value
             new_lr_value = lr_value
             self.model._optimizer._learning_rate_map[prog] = new_lr_value
 
@@ -737,22 +712,9 @@ class StaticPIRGraphAdapter:
                 opt_param = []
                 for key, value in prog_param.items():
                     opt_param.append(value)
-                self.model._optimizer.change_parameter_hapi(opt_param)
 
-                if self._nranks > 1:
-                    role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-                    fleet.init(role)
-                    dist_strategy = fleet.DistributedStrategy()
-                    if self._amp_level != 'O0':
-                        dist_strategy.amp = True
-                        dist_strategy.amp_configs = self._amp_configs.copy()
-                        dist_strategy.amp_configs.update(self._amp_custom_lists)
-                        dist_strategy.amp_configs['use_pure_fp16'] = (
-                            self._amp_level == 'O2'
-                        )
-                    self.model._optimizer = fleet.distributed_optimizer(
-                        self.model._optimizer, strategy=dist_strategy
-                    )
+                self.model._optimizer._parameter_list = list(opt_param)
+
                 if self._amp_level != "O0" and core.is_compiled_with_cuda:
                     self.model.network, self.model._optimizer = (
                         paddle.amp.decorate(
@@ -770,11 +732,6 @@ class StaticPIRGraphAdapter:
                         if mode != 'test' and self.model._loss:
                             losses = self.model._loss(*(outputs + labels))
 
-                        if self._nranks > 1 and mode != 'train':
-                            outputs = [_all_gather(o) for o in outputs]
-                            if mode != 'test':
-                                labels = [_all_gather(l) for l in labels]
-
                         if mode != 'test':
                             for metric in self.model._metrics:
                                 metrics.append(
@@ -785,11 +742,6 @@ class StaticPIRGraphAdapter:
 
                     if mode != 'test' and self.model._loss:
                         losses = self.model._loss(*(outputs + labels))
-
-                    if self._nranks > 1 and mode != 'train':
-                        outputs = [_all_gather(o) for o in outputs]
-                        if mode != 'test':
-                            labels = [_all_gather(l) for l in labels]
 
                     if mode != 'test':
                         for metric in self.model._metrics:
@@ -805,11 +757,6 @@ class StaticPIRGraphAdapter:
 
                 if mode != 'test' and self.model._loss:
                     losses = self.model._loss(*(outputs + labels))
-
-                if self._nranks > 1 and mode != 'train':
-                    outputs = [_all_gather(o) for o in outputs]
-                    if mode != 'test':
-                        labels = [_all_gather(l) for l in labels]
 
                 if mode != 'test':
                     for metric in self.model._metrics:
@@ -834,22 +781,12 @@ class StaticPIRGraphAdapter:
         }
 
     def _initialize(self, prog, mode):
-        compiled_prog = self._compiled_progs.get(mode, None)
-        if compiled_prog is not None:
-            return compiled_prog
-
         assert (
             self.model._place is not None
         ), "device is not set, please call `model.prepare()` first"
 
         place = self.model._place
 
-        # if self._executor is None:
-        #     self._executor = base.Executor(place)
-
-        # XXX *ALL WEIGHTS* should be initialized upon model construction
-        # even if `forward()` may run different code path for different mode
-        # therefore startup program only needs to run once
         if self._executor is None:
             self._executor = base.Executor(place)
             self._executor.run(self._startup_prog)

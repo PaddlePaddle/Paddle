@@ -208,16 +208,6 @@ class IR_API alignas(8) Operation final
   ///
   bool use_empty();
 
-  void set_is_test_attr() {
-    for (auto p : attributes_) {
-      if (p.first == "is_test") {
-        this->set_attribute(
-            "is_test",
-            pir::BoolAttribute::get(pir::IrContext::Instance(), true));
-      }
-    }
-  }
-
   template <typename T>
   T dyn_cast() {
     return CastUtil<T>::call(this);

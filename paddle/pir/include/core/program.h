@@ -71,12 +71,6 @@ class IR_API Program {
     parameters_ = parameters;
   }
 
-  void set_is_test_attr() {
-    for (auto& op : *block()) {
-      op.set_is_test_attr();
-    }
-  }
-
   uint64_t id() const { return id_; }
 
  private:

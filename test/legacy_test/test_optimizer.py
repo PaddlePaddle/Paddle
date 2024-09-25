@@ -164,6 +164,12 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
             np.testing.assert_array_equal(out_use_state_dict, out_no_state_dict)
 
 
+class TestOptimizerError(unittest.TestCase):
+    def test_error(self):
+        with self.assertRaises(ValueError):
+            opt = paddle.optimizer.Adagrad(learning_rate=0.01)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
