@@ -155,3 +155,21 @@ def add_elementwise_layer(network, paddle_op, inputs, op_type):
     )
     layer = network.add_elementwise(lhs_val, rhs_val, op_type)
     return layer.get_output(0)
+
+
+# Create and add 1D constant layer
+def add_1D_constant_layer(network, data, dtype=np.int32):
+    constant_data = np.array([data], dtype=dtype)
+    constant_layer = network.add_constant(constant_data.shape, constant_data)
+    return constant_layer.get_output(0)
+
+
+# Get element tensor of 1D shape tensor
+def get_shape_tensor_element(network, x, index):
+    assert index >= 0, (
+        "The index should be greater or equal than 0, but got %d" % index
+    )
+    gather_layer = network.add_gather(
+        input=x, indices=add_1D_constant_layer(network, index), axis=0
+    )
+    return gather_layer.get_output(0)
