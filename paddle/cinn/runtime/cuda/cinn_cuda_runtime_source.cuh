@@ -463,7 +463,8 @@ __device__ inline bool cinn_any(const bool left, const bool right) { return left
 #define CINN_WARP_SHUFFLE_INTERNAL_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                \
   __device__ inline DTYPE cinn_warp_shuffle_##REDUCE_TYPE##_internal(const DTYPE value) { \
     DTYPE tmp_val     = value, shfl_res;                                                  \
-    unsigned int mask = __activemask();                                                   \
+    unsigned int tmp_mask = ((unsigned long)1 << (blockDim.x < 32 ? blockDim.x : 32)) - 1;\
+    unsigned int mask = __activemask() & tmp_mask;                                        \
     unsigned int lane = __popc(mask);                                                     \
     if (lane < 32) {                                                                      \
       CINN_SHUFFLE_FUNCTION(16, cinn_##REDUCE_TYPE, (DTYPE)(INITIAL_VALUE))               \
