@@ -2705,6 +2705,55 @@ set -x
     fi
 }
 
+
+function hybrid_paddlex() {
+    # PaddleX test
+    git clone --depth=1000 https://gitee.com/paddlepaddle/PaddleX.git
+    cd PaddleX
+    pip install -e .
+    paddlex --install PaddleClas
+    paddlex --install PaddleSeg
+    wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
+    tar -xf ./dataset/cls_flowers_examples.tar -C ./dataset/
+    wget https://paddle-model-ecology.bj.bcebos.com/paddlex/data/seg_optic_examples.tar -P ./dataset
+    tar -xf ./dataset/seg_optic_examples.tar -C ./dataset/
+
+    # train Reset50
+    echo "Start Reset50"
+    export DEVICE=($(echo $HIP_VISIBLE_DEVICES | tr "," "\n"))
+    python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
+    -o Global.mode=train \
+    -o Global.dataset_dir=./dataset/cls_flowers_examples \
+    -o Global.output=resnet50_output \
+    -o Global.device="gpu:${HIP_VISIBLE_DEVICES}"
+
+    # inference Reset50
+    python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
+    -o Global.mode=predict \
+    -o Predict.model_dir="./resnet50_output/best_model" \
+    -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
+    -o Global.device="gpu:${DEVICE[0]}"
+    echo "End Reset50"
+
+    echo "Start DeepLabv3+"
+    # train DeepLabv3+
+    python main.py -c paddlex/configs/semantic_segmentation/Deeplabv3_Plus-R50.yaml \
+    -o Global.mode=train \
+    -o Global.dataset_dir=./dataset/seg_optic_examples \
+    -o Global.output=deeplabv3p_output \
+    -o Global.device="gpu:${HIP_VISIBLE_DEVICES}"
+
+    # inference DeepLabv3+
+    python main.py -c paddlex/configs/semantic_segmentation/Deeplabv3_Plus-R50.yaml \
+    -o Global.mode=predict \
+    -o Predict.model_dir="./deeplabv3p_output/best_model/model/" \
+    -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_semantic_segmentation_001.jpg" \
+    -o Global.device="gpu:${DEVICE[0]}"
+    echo "End DeepLabv3+"
+
+}
+
+
 function parallel_fa_unit() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
