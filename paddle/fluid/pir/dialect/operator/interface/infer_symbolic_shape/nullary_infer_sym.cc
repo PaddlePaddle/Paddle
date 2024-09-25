@@ -428,12 +428,57 @@ bool ReadFileOpInferSymbolicShape(
   return true;
 }
 
-// bool RecvV2OpInferSymbolicShape(pir::Operation *op,
-//                                 pir::InferSymbolicShapeContext
-//                                 *infer_context) {
-//   // pass
-//   return true;
-// }
+bool RecvV2OpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const int ring_id = op->attribute<pir::Int32Attribute>("ring_id").data();
+  const bool dynamic_shape =
+      op->attribute<pir::BoolAttribute>("dynamic_shape").data();
+  const int peer = op->attribute<pir::Int32Attribute>("peer").data();
+
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for recv_v2 op must be non-negative.", peer));
+
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      errors::InvalidArgument(
+          "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
+
+  const std::vector<int> out_shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "out_shape");
+  if (!dynamic_shape) {
+    PADDLE_ENFORCE_GE(outshape.size(),
+                      1,
+                      errors::InvalidArgument(
+                          "The size of the output shape must be greater than 0 "
+                          "but the value given is %d.",
+                          outshape.size()));
+
+    std::vector<symbol::DimExpr> output_shape;
+    for (size_t i = 0; i < out_shape.size(); ++i) {
+      PADDLE_ENFORCE_GE(out_shape[i],
+                        1,
+                        errors::InvalidArgument(
+                            "The shape attribute for recv_v2 must be set "
+                            "explicitly, but the %dth element is %d which "
+                            "is less than 1. Or dynamic_shape should be set to "
+                            "True for both send_v2 and recv_v2.",
+                            i,
+                            out_shape[i]));
+      output_shape.push_back(symbol::DimExpr(out_shape[i]));
+    }
+
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(output_shape)});
+  }
+
+  return true;
+}
 
 bool SeedOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
