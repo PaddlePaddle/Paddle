@@ -287,13 +287,13 @@ set(op_dialect_srcs
     ${bwd_sparse_op_source_file}
     ${api_source_file}
     ${api_source_file}
-    ${cache_grad_op_symbol_shape_file})
+    ${cache_grad_op_symbol_shape_file}
+    ${CMAKE_CURRENT_SOURCE_DIR}/static_tensor_operants.cc)
 
 if(WITH_ONEDNN)
   set(op_dialect_srcs
       ${op_dialect_srcs} ${onednn_op_source_file} ${op_onednn_info_file}
-      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc
-      ${CMAKE_CURRENT_SOURCE_DIR}/static_tensor_operants.cc)
+      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
 endif()
 
 file(GLOB_RECURSE dist_dialect_srcs

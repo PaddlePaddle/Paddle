@@ -419,4 +419,5 @@ Tensor StaticTensorOperants::sum(const Tensor& x,
 }
 
 }  // namespace prim
+
 }  // namespace paddle
