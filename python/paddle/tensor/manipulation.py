@@ -796,6 +796,14 @@ def crop(
                              [[3, 4, 5],
                               [6, 7, 8]]]
 
+    The image below demonstrates the scenario in Case 2—where a 3D tensor with shape [2,3,4] is cropped into a 3D tensor with shape [2,2,3], while maintaining the order and values of the elements within the tensor unchanged.
+    By comparing the two, you can clearly see the correspondence of elements before and after the tensor's shape changes.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/crop.png
+       :width: 500
+       :alt: Illustration of Case 2
+       :align: center
+
     Parameters:
         x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
         shape (list|tuple|Tensor, optional): The output shape is specified
