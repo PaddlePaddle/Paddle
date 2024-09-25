@@ -1001,7 +1001,9 @@ def _complete_grad_op_chunk_id(block, state):
 
     def infer_dist_skip_op_chunk_id(op):
         if op.name() == "builtin.split":
-            op_chunk_id = op.operand_source(0).get_defining_op().dist_attr.chunk_id
+            op_chunk_id = (
+                op.operand_source(0).get_defining_op().dist_attr.chunk_id
+            )
         elif op.name() == "builtin.combine":
             op_chunk_id = op.result(0).get_defining_op().dist_attr.chunk_id
         else:
@@ -1038,11 +1040,13 @@ def _complete_grad_op_chunk_id(block, state):
         for bwd_op in state.op_to_opgrad[op]:
             if bwd_op.dist_attr is None:
                 continue
-            bwd_op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
-                bwd_op.dist_attr.process_mesh,
-                bwd_op.dist_attr.operands(),
-                bwd_op.dist_attr.results(),
-                op_chunk_id,
+            bwd_op.dist_attr = (
+                paddle.base.libpaddle.pir.create_op_dist_attribute(
+                    bwd_op.dist_attr.process_mesh,
+                    bwd_op.dist_attr.operands(),
+                    bwd_op.dist_attr.results(),
+                    op_chunk_id,
+                )
             )
 
 
