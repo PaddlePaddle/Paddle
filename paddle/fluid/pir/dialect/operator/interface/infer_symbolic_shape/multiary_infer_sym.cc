@@ -679,8 +679,6 @@ bool BoxCoderOpInferSymbolicShape(
   const std::string &code_type =
       op->attribute<pir::StrAttribute>("code_type").AsString();
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
-  const std::vector<float> &variance =
-      paddle::dialect::details::GetVectorAttr<float>(op, "variance");
 
   PADDLE_ENFORCE_EQ(prior_box_shape.size(),
                     2,
@@ -690,7 +688,7 @@ bool BoxCoderOpInferSymbolicShape(
                         prior_box_shape.size()));
   infer_context->AddEqualCstr(prior_box_shape[1], symbol::DimExpr{4});
 
-  if (op->operand_source(1)) {
+  if (!paddle::dialect::details::IsFakeValue(op->operand_source(1))) {
     const symbol::ShapeOrDataDimExprs &prior_box_var_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     const std::vector<symbol::DimExpr> &prior_box_var_shape =
