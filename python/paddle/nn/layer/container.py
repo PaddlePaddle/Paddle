@@ -342,7 +342,7 @@ class ParameterDict(Layer):
             ...
             ...     def forward(self, x):
             ...         for i, (key, p) in enumerate(self.params):
-            ...             x = paddle.multiply(x, p)
+            ...             x = paddle.matmul(x, p)
             ...         return x
             ...
             >>> x = paddle.uniform(shape=[5, 2], dtype='float32')
