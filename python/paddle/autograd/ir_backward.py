@@ -997,6 +997,18 @@ def create_backward_prune_set(
 
 
 def _complete_grad_op_chunk_id(block, state):
+    dist_skip_op_list = ["builtin.split", "builtin.combine"]
+
+    def infer_dist_skip_op_chunk_id(op):
+        if op.name() == "builtin.split":
+            op_chunk_id = op.operand_source(0).get_defining_op().dist_attr.chunk_id
+        elif op.name() == "builtin.combine":
+            op_chunk_id = op.result(0).get_defining_op().dist_attr.chunk_id
+        else:
+            # TODO(luchang): need to support more ops such as pd_op.pylayer and so on
+            op_chunk_id = -1
+        return op_chunk_id
+
     is_dist_program = False
     for op in block.ops:
         if op.dist_attr is not None:
@@ -1012,32 +1024,25 @@ def _complete_grad_op_chunk_id(block, state):
 
         if op.dist_attr is None:
             op_chunk_id = -1
-            if op.name() == "builtin.split":
-                op_chunk_id = (
-                    op.operand_source(0).get_defining_op().dist_attr.chunk_id
-                )
-            elif op.name() == "builtin.combine":
-                op_chunk_id = op.result(0).get_defining_op().dist_attr.chunk_id
-            else:
-                # TODO(luchang): need to support more ops such as pd_op.pylayer and so on
-                pass
+            if op.name() in dist_skip_op_list:
+                op_chunk_id = infer_dist_skip_op_chunk_id(op)
         else:
             op_chunk_id = op.dist_attr.chunk_id
             if op_chunk_id == -1 and op.name() == "dist_op.reshard":
-                op_chunk_id = (
-                    op.operand_source(0).get_defining_op().dist_attr.chunk_id
-                )
+                prev_op = op.operand_source(0).get_defining_op()
+                if prev_op.name() in dist_skip_op_list:
+                    op_chunk_id = infer_dist_skip_op_chunk_id(prev_op)
+                else:
+                    op_chunk_id = prev_op.dist_attr.chunk_id
 
         for bwd_op in state.op_to_opgrad[op]:
             if bwd_op.dist_attr is None:
                 continue
-            bwd_op.dist_attr = (
-                paddle.base.libpaddle.pir.create_op_dist_attribute(
-                    bwd_op.dist_attr.process_mesh,
-                    bwd_op.dist_attr.operands(),
-                    bwd_op.dist_attr.results(),
-                    op_chunk_id,
-                )
+            bwd_op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+                bwd_op.dist_attr.process_mesh,
+                bwd_op.dist_attr.operands(),
+                bwd_op.dist_attr.results(),
+                op_chunk_id,
             )
 
 
