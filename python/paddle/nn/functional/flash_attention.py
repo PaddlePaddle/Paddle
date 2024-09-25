@@ -28,7 +28,7 @@ g_enable_mem_efficient = None
 
 
 def _is_hopper_device():
-    if strtobool(os.getenv('PADDLE_DISABLE_CUDNN_FA', '0')):
+    if strtobool(os.getenv('PADDLE_DISABLE_CUDNN_FA', '1')):
         return False
 
     # 获取指定设备的属性
