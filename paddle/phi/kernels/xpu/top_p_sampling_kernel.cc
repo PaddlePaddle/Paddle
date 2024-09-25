@@ -22,11 +22,11 @@
 
 #include "paddle/common/flags.h"
 
-PD_DEFINE_bool(xpu_top_p_sampling_use_fp16,
-               false,
-               "use fp16 to improve the inference performance of "
-               "top_p_sampling xpu kernel");
-PD_DEFINE_int32(
+PHI_DEFINE_EXPORTED_bool(xpu_top_p_sampling_use_fp16,
+                         false,
+                         "use fp16 to improve the inference performance of "
+                         "top_p_sampling xpu kernel");
+PHI_DEFINE_EXPORTED_bool(
     xpu_top_p_sampling_heuristic_threshold,
     20,
     "threshold of heuristic method used for xpu_top_p_sampling, default 20; if "
