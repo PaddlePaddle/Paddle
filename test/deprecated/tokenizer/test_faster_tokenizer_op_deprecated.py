@@ -199,6 +199,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         self.text_pairs_tensor = to_string_tensor(self.text_pairs, "text_pairs")
 
     def test_padding(self):
+        paddle.disable_static()
         self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = True
