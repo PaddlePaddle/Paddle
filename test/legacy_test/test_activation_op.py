@@ -1893,14 +1893,53 @@ class TestSqrtComp_ZeroDim(TestSqrtComp):
     def init_shape(self):
         self.shape = []
 
-class TestSqrtCompComplex64(TestSqrtComp):
+
+class TestSqrt_Complex64(TestSqrt):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
-class TestSqrtCompComplex128(TestSqrtComp):
+    def test_api_complex(self):
+        with dynamic_guard():
+            for device in devices:
+                if device == 'cpu' or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                    x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                    y = paddle.sqrt(x)
+                    x_expect = np.sqrt(np_x)
+                    np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+
+    def test_grad_grad(self):
+        with dynamic_guard():
+            x_numpy = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
+
+            expected_ddx = -0.5 * np.power(x_numpy, -1.5)
+
+            x = paddle.to_tensor(x_numpy, stop_gradient=False)
+            y = paddle.sqrt(x)
+            dx = paddle.grad(
+                outputs=[y], inputs=[x], create_graph=True, retain_graph=True
+            )[0]
+            ddx = paddle.grad(outputs=[dx], inputs=[x], retain_graph=True)[0]
+            np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
+
+
+class TestSqrt_Complex128(TestSqrt_Complex64):
     def init_dtype(self):
         self.dtype = np.complex128
+
 
 class TestRsqrt(TestActivation):
     def setUp(self):
@@ -5869,112 +5908,6 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
-
-def create_test_act_complex64_class(
-    parent,
-    atol=1e-5,
-    grad_check=True,
-    check_dygraph=True,
-    check_prim=False,
-    enable_cinn=False,
-    check_pir=False,
-    check_prim_pir=False,
-    grad_atol=1e-4,
-    **kwargs,
-):
-    class TestActComplex(parent):
-        def setUp(self):
-            super().setUp()
-            for k, v in kwargs.items():
-                setattr(self, k, v)
-
-        def init_dtype(self):
-            self.dtype = np.complex64 
-
-        def test_check_output(self):
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place,
-                atol=atol,
-                check_dygraph=check_dygraph,
-                check_prim=check_prim,
-                check_pir=check_pir,
-                check_prim_pir=check_prim_pir,
-                check_pir_onednn=self.check_pir_onednn,
-            )
-
-        def test_check_grad(self):
-            place = core.CUDAPlace(0)
-            if grad_check:
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                    max_relative_error=grad_atol,
-                    check_dygraph=check_dygraph,
-                    check_prim=check_prim,
-                    check_pir=check_pir,
-                    check_prim_pir=check_prim_pir,
-                )
-
-    cls_name = "{}_{}".format(parent.__name__, "Complex64OP")
-    TestActComplex.__name__ = cls_name
-    globals()[cls_name] = TestActComplex
-
-create_test_act_complex64_class(TestSqrtCompComplex64)
-
-def create_test_act_complex128_class(
-    parent,
-    atol=1e-5,
-    grad_check=True,
-    check_dygraph=True,
-    check_prim=False,
-    enable_cinn=False,
-    check_pir=False,
-    check_prim_pir=False,
-    grad_atol=1e-4,
-    **kwargs,
-):
-    class TestActComplex(parent):
-        def setUp(self):
-            super().setUp()
-            for k, v in kwargs.items():
-                setattr(self, k, v)
-
-        def init_dtype(self):
-            self.dtype = np.complex128
-
-        def test_check_output(self):
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place,
-                atol=atol,
-                check_dygraph=check_dygraph,
-                check_prim=check_prim,
-                check_pir=check_pir,
-                check_prim_pir=check_prim_pir,
-                check_pir_onednn=self.check_pir_onednn,
-            )
-
-        def test_check_grad(self):
-            place = core.CUDAPlace(0)
-            if grad_check:
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                    max_relative_error=grad_atol,
-                    check_dygraph=check_dygraph,
-                    check_prim=check_prim,
-                    check_pir=check_pir,
-                    check_prim_pir=check_prim_pir,
-                )
-
-    cls_name = "{}_{}".format(parent.__name__, "Complex1280P")
-    TestActComplex.__name__ = cls_name
-    globals()[cls_name] = TestActComplex
-
-create_test_act_complex128_class(TestSqrtCompComplex128)
 
 if __name__ == "__main__":
     unittest.main()
