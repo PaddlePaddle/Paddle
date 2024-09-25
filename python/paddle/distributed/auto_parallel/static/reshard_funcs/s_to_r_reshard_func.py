@@ -16,7 +16,12 @@
 import paddle
 
 from ..process_group import new_process_group
-from .base_reshard_func import ReshardFunction, is_replicated, is_shard
+from .base_reshard_func import (
+    ReshardFunction,
+    copy_op_attr_with_new_member,
+    is_replicated,
+    is_shard,
+)
 from .same_status_reshard_func import SameStatusReshardFunction
 
 
@@ -75,9 +80,16 @@ class SToRReshardFunction(ReshardFunction):
             share_data_op = dst_value.get_defining_op()
             # set dist type and dist attr
             dst_value.set_type(dst_type)
+
+            chunk_id = -1
+            if src_value.get_defining_op().dist_attr:
+                chunk_id = src_value.get_defining_op().dist_attr.chunk_id
             share_data_op.dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
-                    src_dist_attr.process_mesh, [src_dist_attr], [dst_dist_attr]
+                    src_dist_attr.process_mesh,
+                    [src_dist_attr],
+                    [dst_dist_attr],
+                    chunk_id,
                 )
             )
             return dst_value
@@ -220,6 +232,9 @@ class SToRReshardFunction(ReshardFunction):
     ):
         src_mesh = src_dist_attr.process_mesh
         num_of_process = len(src_mesh.process_ids)
+        chunk_id = -1
+        if src_value.get_defining_op().dist_attr:
+            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
 
         group = new_process_group(sorted(src_mesh.process_ids))
         allgather_value = paddle._C_ops.all_gather(
@@ -236,7 +251,7 @@ class SToRReshardFunction(ReshardFunction):
         )
         allgather_value.get_defining_op().dist_attr = (
             paddle.base.libpaddle.pir.create_op_dist_attribute(
-                src_mesh, [src_dist_attr], [new_dist_attr]
+                src_mesh, [src_dist_attr], [new_dist_attr], chunk_id
             )
         )
 
@@ -247,6 +262,9 @@ class SToRReshardFunction(ReshardFunction):
             )
             builtin_split_op = split_values[0].get_defining_op()
             pd_splite_op = builtin_split_op.operand_source(0).get_defining_op()
+            pd_splite_op.dist_attr = copy_op_attr_with_new_member(
+                pd_splite_op.dist_attr, new_chunk_id=chunk_id
+            )
 
             # fix the split_with_num dist attribtue.
             new_inner_types = []
@@ -270,13 +288,24 @@ class SToRReshardFunction(ReshardFunction):
                     ],
                     split_axis,
                 )
+                split_op = tmp_split_values.get_defining_op()
+                split_op.dist_attr = copy_op_attr_with_new_member(
+                    split_op.dist_attr, new_chunk_id=chunk_id
+                )
                 split_values[-1] = tmp_split_values[0]
                 concat_value = paddle._C_ops.concat(split_values, split_axis)
+                concat_op = concat_value.get_defining_op()
+                concat_op.dist_attr = copy_op_attr_with_new_member(
+                    concat_op.dist_attr, new_chunk_id=chunk_id
+                )
                 return concat_value
             else:
                 concat_value = paddle._C_ops.concat(split_values, split_axis)
                 # fold builtin.split op and builtin.combine op
                 concat_op = concat_value.get_defining_op()
+                concat_op.dist_attr = copy_op_attr_with_new_member(
+                    concat_op.dist_attr, new_chunk_id=chunk_id
+                )
                 builtin_combine_op = concat_op.operand_source(
                     0
                 ).get_defining_op()
@@ -284,6 +313,7 @@ class SToRReshardFunction(ReshardFunction):
                 builtin_combine_op.erase()
                 builtin_split_op.erase()
                 return concat_value
+
         return allgather_value
 
 

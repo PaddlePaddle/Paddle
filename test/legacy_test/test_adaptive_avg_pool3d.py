@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -134,7 +133,6 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
             x=self.x_np, output_size=[None, 3, None], pool_type="avg"
         )
 
-    @test_with_pir_api
     def test_static_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -267,7 +265,6 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             x=self.x_np, output_size=[None, 3, None], pool_type="avg"
         )
 
-    @test_with_pir_api
     def test_static_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]

@@ -40,22 +40,6 @@ static constexpr bool CanInplaceAct() {
          GradFunctor::FwdDeps() == ActBwdOpFwdDeps::kNoDeps;
 }
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)           \
-  class OP_NAME##OpMaker                                            \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {        \
-   public:                                                          \
-    void Make() override {                                          \
-      AddInput("X",                                                 \
-               "Input of " #OP_NAME                                 \
-               " operator, an N-D Tensor, with data type float32, " \
-               "float64 or float16.");                              \
-      AddOutput("Out",                                              \
-                "Output of " #OP_NAME                               \
-                " operator, a Tensor with shape same as input.");   \
-      AddComment(OP_COMMENT);                                       \
-    }                                                               \
-  }
-
 template <ActBwdOpFwdDeps kDepValue, typename T>
 class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -82,22 +66,6 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
   }
 };
-// class HardSwishCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-//  public:
-//   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
-//  protected:
-//   void Apply() override {
-//     paddle::Tensor x = this->GetSingleForwardInput("X");
-//     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-//     paddle::Tensor dx = this->GetSingleInputGrad("X");
-//     auto* dx_ptr = this->GetOutputPtr(&dx);
-//     std::string dx_name = this->GetOutputName(dx);
-//     VLOG(6) << "Running hardswish_grad composite func";
-//     prim::hardswish_grad<prim::DescTensor>(x, out_grad, dx_ptr);
-//     this->RecoverOutputName(dx, dx_name);
-//   }
-// };
 
 phi::KernelKey GetKernelType(const framework::ExecutionContext& ctx,
                              const framework::OperatorWithKernel& oper,
@@ -322,17 +290,6 @@ DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
 
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 
-#define DEFINE_ACTIVATION_CPU_KERNEL(op_name, functor, grad_functor)           \
-  template <typename T, typename DeviceContext>                                \
-  class op_name##Kernel : public ActivationKernel<DeviceContext, functor<T>> { \
-  };                                                                           \
-                                                                               \
-  template <typename T, typename DeviceContext>                                \
-  class op_name##GradKernel                                                    \
-      : public ActivationGradKernel<DeviceContext, grad_functor<T>> {};
-
-DEFINE_ACTIVATION_CPU_KERNEL(SoftRelu, SoftReluFunctor, SoftReluGradFunctor)
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -353,25 +310,6 @@ namespace ops = paddle::operators;
                        void>::type);                                        \
   REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                     \
                     ops::ActivationOpGrad,                                  \
-                    ops::ActivationGradOpInplaceInferer);
-
-#define REGISTER_ACTIVATION_OP_WITH_COMP(                              \
-    KERNEL_TYPE, OP_NAME, functor, grad_functor)                       \
-  REGISTER_OPERATOR(                                                   \
-      KERNEL_TYPE,                                                     \
-      ops::ActivationOp,                                               \
-      ops::OP_NAME##OpMaker,                                           \
-      ops::ActivationOpInferVarType,                                   \
-      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
-                                 paddle::framework::OpDesc>,           \
-      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
-                                 paddle::imperative::OpBase>,          \
-      ops::OP_NAME##CompositeGradOpMaker,                              \
-      std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(), \
-                       ops::ActFwdInplaceInferer,                      \
-                       void>::type);                                   \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                \
-                    ops::ActivationOpGrad,                             \
                     ops::ActivationGradOpInplaceInferer);
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);

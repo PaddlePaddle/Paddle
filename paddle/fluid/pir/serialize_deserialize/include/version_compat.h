@@ -16,6 +16,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/pir/include/core/dll_decl.h"
@@ -33,7 +34,9 @@ class PatchBuilder {
   PatchBuilder& operator=(const PatchBuilder&) = delete;
   PatchBuilder& operator=(PatchBuilder&&);
 
-  void IR_API BuildPatch(const std::string& path);
+  void IR_API BuildPatch(const std::string& path,
+                         uint64_t pir_version,
+                         uint64_t max_version);
   /* If file_version != pir_vefrsion, set file_version for finding patch yamls.
    */
   void SetFileVersion(const uint64_t version) { file_version_ = version; }
@@ -51,6 +54,7 @@ class PatchBuilder {
   Json GetJsonTypePatch(const std::string& name) { return type_patches_[name]; }
   Json GetJsonAttrPatch(const std::string& name) { return attr_patches_[name]; }
   std::unordered_map<std::string, Json> GetOpAttrPatchMap(const Json op_patch);
+  void ApplyOpPairPatches(int64_t* id);
   void ApplyOpPatches(const std::string& op_name, Json* json, Json patch);
   void ApplyTypePatches(const std::string& type_name, Json* json, Json patch);
   void ApplyAttrPatches(const std::string& attr_name, Json* json, Json patch);
@@ -61,6 +65,7 @@ class PatchBuilder {
  private:
   uint64_t file_version_;
   uint64_t pir_version_;
+  std::unordered_set<Json> op_pair_patches_;
   std::unordered_map<std::string, Json> op_patches_;
   std::unordered_map<std::string, Json> type_patches_;
   std::unordered_map<std::string, Json> attr_patches_;

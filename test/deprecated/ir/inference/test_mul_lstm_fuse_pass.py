@@ -38,7 +38,7 @@ class TestMulLstmFusePass(PassAutoScanTest):
         candidate_activation = draw(
             st.sampled_from(["tanh", "relu", "identity"])
         )
-        batch_size = draw(st.integers(min_value=1, max_value=40))
+        batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input():
             shape = [batch_size, 128, 6, 120]

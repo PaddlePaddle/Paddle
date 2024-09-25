@@ -91,7 +91,7 @@ class RAdam(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        weight_decay (float|Tensor|WeightDecayRegularizer|None, optional): The weight decay coefficient, it can be float or Tensor.
+        weight_decay (int|float|Tensor|WeightDecayRegularizer|None, optional): The weight decay coefficient, it can be int, float or Tensor.
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies

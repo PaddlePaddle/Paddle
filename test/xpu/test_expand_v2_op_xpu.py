@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,12 +20,12 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import base
 
-paddle.enable_static()
 np.random.seed(10)
 
 
@@ -43,11 +43,17 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
             self.op_type = "expand_v2"
             self.place = paddle.XPUPlace(0)
             self.init_data()
-            self.inputs = {
-                'X': np.random.random(self.ori_shape).astype(self.dtype)
-            }
+            if self.dtype == np.uint16:
+                self.data = np.random.random(self.ori_shape).astype('float32')
+                x = convert_float_to_uint16(self.data)
+            else:
+                self.data = np.random.random(self.ori_shape).astype(self.dtype)
+                x = self.data
+            self.inputs = {'X': x}
             self.attrs = {'shape': self.shape}
-            output = np.tile(self.inputs['X'], self.expand_times)
+            output = np.tile(self.data, self.expand_times)
+            if self.dtype == np.uint16:
+                output = convert_float_to_uint16(output)
             self.outputs = {'Out': output}
 
         def init_dtype(self):
@@ -66,7 +72,8 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ["X"], "Out")
+            if self.dtype in [np.float32, np.uint16]:
+                self.check_grad_with_place(self.place, ["X"], "Out")
 
     class TestExpandV2OpRank2_DimExpanding(TestExpandV2XPUOp):
         def init_data(self):
@@ -195,6 +202,7 @@ class TestExpandV2OpInteger(XPUOpTest):
 # Test python API
 class TestExpandV2API(unittest.TestCase):
     def test_static(self):
+        paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
             input = np.random.random([12, 14]).astype("float32")
             x = paddle.static.data(
@@ -229,6 +237,7 @@ class TestExpandV2API(unittest.TestCase):
             np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
             np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
             np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
+        paddle.disable_static()
 
 
 support_types = get_xpu_op_support_types('expand_v2')

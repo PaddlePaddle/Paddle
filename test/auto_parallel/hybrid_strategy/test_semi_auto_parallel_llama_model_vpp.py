@@ -16,7 +16,11 @@ import sys
 import unittest
 
 sys.path.append("../../")
+import os
+
 import collective.test_communication_api_base as test_base
+
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 
 class TestSemiAutoParallelLlama3DVPP(test_base.CommunicationTestDistBase):

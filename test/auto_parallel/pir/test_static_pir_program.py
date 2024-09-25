@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
+from paddle.base.libpaddle.pir import apply_dist2dense_pass
 from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
     apply_mix2dist_pass,
 )
@@ -227,6 +228,67 @@ class TestBuildFakeProgram(unittest.TestCase):
 
         self.assertEqual(input2_shape.dist_attr().process_mesh, mesh)
         self.assertEqual(input2_shape.dist_attr().dims_mapping, [-1])
+
+    def test_build_with_apply_dist2dense_pass(self):
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program):
+                mesh = dist.ProcessMesh([0, 1], dim_names=['dp'])
+                input1 = paddle.randint(low=0, high=1000, shape=[8, 4])
+                output1 = dist.shard_tensor(input1, mesh, [dist.Shard(0)])
+
+                input2 = paddle.randn([4, 8])
+                output2 = dist.shard_tensor(input2, mesh, [dist.Shard(1)])
+
+                self.assertTrue(input1.is_dense_tensor_type())
+                self.assertTrue(input2.is_dense_tensor_type())
+
+        self.assertTrue(main_program.num_ops() == 6)
+
+        self.assertFalse(input1.use_empty())
+        self.assertFalse(input2.use_empty())
+
+        self.assertTrue(output1.use_empty())
+        self.assertTrue(output2.use_empty())
+
+        self.assertFalse(input1.get_defining_op().has_attr("op_dist_attr"))
+        self.assertFalse(input2.get_defining_op().has_attr("op_dist_attr"))
+
+        # check dist type
+        self.assertTrue(output1.is_dist_dense_tensor_type())
+        self.assertTrue(output2.is_dist_dense_tensor_type())
+
+        # run apply_mix2dist_pass and apply_dist2dense_pass
+        apply_mix2dist_pass(main_program)
+        apply_dist2dense_pass(main_program)
+
+        # after apply_mix2dist_pass, the program changed
+        # and after apply_dist2dense_pass, the operator in program do not have dist_attr
+        self.assertTrue(main_program.num_ops() == 4)
+
+        self.assertTrue(input1.is_dense_tensor_type())
+        self.assertTrue(input2.is_dense_tensor_type())
+
+        self.assertFalse(input1.get_defining_op().has_attr("op_dist_attr"))
+        self.assertFalse(input2.get_defining_op().has_attr("op_dist_attr"))
+
+        # check shape attribute of full_int_array op
+        input1_shape = input1.get_defining_op().operand_source(0)
+        input1_shape_op = input1_shape.get_defining_op()
+        self.assertFalse(input1_shape_op.has_attr("op_dist_attr"))
+        input1_shape_op_attr = input1_shape_op.attrs()
+        self.assertEqual(input1_shape_op_attr['value'], [4, 4])
+
+        input2_shape = input2.get_defining_op().operand_source(0)
+        input2_shape_op = input2_shape.get_defining_op()
+        self.assertFalse(input2_shape_op.has_attr("op_dist_attr"))
+        input2_shape_op_attr = input2_shape_op.attrs()
+        self.assertEqual(input2_shape_op_attr['value'], [4, 4])
+
+        # check shape of input1 and input2
+        self.assertEqual(input1.shape, [4, 4])
+        self.assertEqual(input2.shape, [4, 4])
 
 
 if __name__ == "__main__":

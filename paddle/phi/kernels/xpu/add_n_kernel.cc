@@ -160,11 +160,17 @@ void AddNArrayKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    add_n, XPU, ALL_LAYOUT, phi::AddNKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(add_n,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AddNKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(add_n_array,
                    XPU,
                    ALL_LAYOUT,
                    phi::AddNArrayKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

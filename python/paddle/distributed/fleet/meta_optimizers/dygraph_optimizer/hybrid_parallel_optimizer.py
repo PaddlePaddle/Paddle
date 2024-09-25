@@ -28,6 +28,7 @@ from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm, clip
 
 from ...base.topology import ParallelMode
+from ...utils import timer_helper as timer
 from ...utils.hybrid_parallel_util import (
     fused_allreduce_gradients,
     unwrap_optimizer,
@@ -39,10 +40,11 @@ __all__ = []
 
 
 class HybridParallelClipGrad:
-    def __init__(self, clip, hcg):
+    def __init__(self, clip, hcg, timers=None):
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = True
+        self._timers = timers
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         sync_rotate_logger().info("Starting to calculate global norm.")
@@ -99,6 +101,8 @@ class HybridParallelClipGrad:
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
+        if self._timers:
+            self._timers("dygraph-clip").start()
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
@@ -200,9 +204,13 @@ class HybridParallelClipGrad:
             + global_norm_not_dist_fp32
         )
 
-        return self._comm_and_clip(
+        result = self._comm_and_clip(
             params_grads, global_norm_var_dist, global_norm_var_not_dist
         )
+        if self._timers:
+            self._timers("dygraph-clip").stop()
+
+        return result
 
     def _comm_and_clip(
         self, params_grads, global_norm_var_dist, global_norm_var_not_dist
@@ -270,6 +278,16 @@ class HybridParallelOptimizer:
                 else DygraphShardingOptimizer
             )
             optimizer = ShardingOptimizer(optimizer, hcg)
+
+        self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]
+
+        if self._enable_timer:
+            if not timer.is_timer_initialized():
+                timer.set_timers()
+            self._timers = timer.get_timers()
+        else:
+            self._timers = None
+
         self._inner_opt = optimizer
         self._strategy = strategy
         self._hcg = hcg
@@ -319,11 +337,11 @@ class HybridParallelOptimizer:
                 > 0
             ):
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg
+                    inner_opt._grad_clip, hcg, self._timers
                 )
             else:
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg
+                    inner_opt._grad_clip, hcg, self._timers
                 )
                 if inner_opt._parameter_list and isinstance(
                     inner_opt._parameter_list[0], dict
@@ -331,7 +349,7 @@ class HybridParallelOptimizer:
                     for item in inner_opt._param_groups:
                         if "grad_clip" in item.keys():
                             item["grad_clip"] = HybridParallelClipGrad(
-                                inner_opt._grad_clip, hcg
+                                inner_opt._grad_clip, hcg, self._timers
                             )
 
     def _set_all_gather_overlap_forward(

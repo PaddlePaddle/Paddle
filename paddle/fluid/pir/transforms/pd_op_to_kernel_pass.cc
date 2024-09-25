@@ -1180,6 +1180,22 @@ phi::KernelKey GetKernelKey(
     return {backend, phi::DataLayout::ANY, dtype};
   }
 
+  if (op->isa<CreateArrayOp>()) {
+    VLOG(6) << "CreateArrayOp doesn't need a kernel";
+    auto backend = paddle::experimental::ParseBackend(place);
+    auto dtype = op->result(0)
+                     .type()
+                     .dyn_cast<paddle::dialect::DenseTensorArrayType>()
+                     .dtype();
+
+    phi::KernelKey res(
+        backend, phi::DataLayout::ANY, TransToPhiDataType(dtype));
+    if (NeedFallBackCpu(op, kernel_fn_str, res)) {
+      res.set_backend(phi::Backend::CPU);
+    }
+    return res;
+  }
+
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_dtype = phi::DataType::UNDEFINED;

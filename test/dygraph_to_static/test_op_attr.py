@@ -14,7 +14,11 @@
 
 import unittest
 
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_pt_only,
+)
 
 import paddle
 from paddle.static import InputSpec
@@ -78,6 +82,7 @@ class CheckOpAttr(Dy2StTestBase):
         }
 
     @test_ast_only
+    @test_pt_only
     def test_set_op_attrs(self):
         net = NetWithOpAttr(self.in_num, self.out_num)
         # set attrs
@@ -120,6 +125,7 @@ class CheckOpAttr(Dy2StTestBase):
                             self.assertEqual(op_val, expect_val)
 
     @test_ast_only
+    @test_pt_only
     def test_set_op_attrs_with_sub_block(self):
         net = NetWithOpAttr(self.in_num, self.out_num)
         # set attrs
@@ -140,6 +146,7 @@ class CheckOpAttr(Dy2StTestBase):
         self.assertEqual(len(net.linear._forward_pre_hooks), 0)
         self.assertEqual(len(net.linear._forward_post_hooks), 0)
 
+    @test_pt_only
     def test_type_error(self):
         net = NetWithOpAttr(self.in_num, self.out_num)
         # attrs should be dict

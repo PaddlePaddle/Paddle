@@ -16,7 +16,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -148,7 +147,6 @@ class TestViterbiAPI(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], self.scores, rtol=1e-5)
             np.testing.assert_allclose(fetches[1], self.path)
 
-    @test_with_pir_api
     def test_static_net(self):
         for place in self.places:
             self.check_static_result(place)

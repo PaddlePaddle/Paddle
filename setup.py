@@ -444,7 +444,8 @@ def get_cinn_version() -> str:
 def get_cuda_archs() -> list[int]:
     compiled_cuda_archs = env_dict.get("COMPILED_CUDA_ARCHS")
     if isinstance(compiled_cuda_archs, str):
-        return [int(arch) for arch in compiled_cuda_archs.split()]
+        compiled_cuda_archs = re.findall(r'\d+', compiled_cuda_archs)
+        return [int(arch) for arch in compiled_cuda_archs]
     else:
         return []
 
@@ -1721,6 +1722,12 @@ def get_headers():
         + list(  # serialize and deserialize interface headers
             find_files(
                 'op_yaml_info_util.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'op_yaml_info_parser.h',
                 paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
             )
         )

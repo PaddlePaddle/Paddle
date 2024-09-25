@@ -21,7 +21,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestDiagEmbedOp(OpTest):
@@ -52,7 +51,7 @@ class TestDiagEmbedOpCase1(TestDiagEmbedOp):
 
 
 class TestDiagEmbedAPICase(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case1(self):
         paddle.enable_static()
         main = paddle.static.Program()

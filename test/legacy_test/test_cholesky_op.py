@@ -24,7 +24,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import _as_list
-from paddle.pir_utils import test_with_pir_api
 
 
 @skip_check_grad_ci(
@@ -78,7 +77,6 @@ class TestCholeskyOp(OpTest):
         for p in places:
             self.func(p)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # use small size since Jacobian gradients is time consuming
@@ -189,7 +187,6 @@ class TestCholeskySingularAPI(unittest.TestCase):
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place, with_out=False):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

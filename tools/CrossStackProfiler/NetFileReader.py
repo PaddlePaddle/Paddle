@@ -111,10 +111,10 @@ class netFileReader(FileReader):
             )
 
         traceInfo = {}
-        isFistProcess = True
+        isFirstProcess = True
         for t in processPool:
-            if isFistProcess:
-                isFistProcess = False
+            if isFirstProcess:
+                isFirstProcess = False
                 traceInfo["traceEvents"] = q.get()["traceEvents"]
             else:
                 traceInfo["traceEvents"].extend(q.get()["traceEvents"])
