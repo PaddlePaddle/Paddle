@@ -18,20 +18,21 @@
 
 namespace phi {
 namespace fusion {
-#define LAUNCH_XPU_FUSED_ROPE_GRAD(XPUType, SinCosType)                 \
-  XPUFusedRopeImpl<XPUType, SinCosType, Context>(dev_ctx,               \
-                                                 dout_q,                \
-                                                 dout_k,                \
-                                                 dout_v,                \
-                                                 sin,                   \
-                                                 cos,                   \
-                                                 position_ids,          \
-                                                 use_neox_rotary_style, \
-                                                 time_major,            \
-                                                 rotary_emb_base,       \
-                                                 dq,                    \
-                                                 dk,                    \
-                                                 dv);
+#define LAUNCH_XPU_FUSED_ROPE_GRAD(T, SCT)                 \
+  XPUFusedRopeImpl<T, SCT, Context>(dev_ctx,               \
+                                    dout_q,                \
+                                    dout_k,                \
+                                    dout_v,                \
+                                    sin,                   \
+                                    cos,                   \
+                                    position_ids,          \
+                                    use_neox_rotary_style, \
+                                    time_major,            \
+                                    true,                  \
+                                    rotary_emb_base,       \
+                                    dq,                    \
+                                    dk,                    \
+                                    dv);
 
 template <typename T, typename Context>
 void FusedRopeGradKernel(const Context& dev_ctx,
@@ -47,20 +48,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  if (dout_q.numel() <= 0) {
-    return;
+  dev_ctx.template Alloc<T>(dq);
+  if (dout_k) {
+    dev_ctx.template Alloc<T>(dk);
   }
-  int64_t batch_size = dout_q.dims()[0];
-  int64_t seq_len = dout_q.dims()[1];
-  int64_t num_heads = dout_q.dims()[2];
-  int64_t head_dim = dout_q.dims()[3];
-  PADDLE_ENFORCE_EQ(head_dim % 2,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The head_dim of input must be a multiple of 2."));
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  dev_ctx.template Alloc<T>(dq) if (dout_k) { dev_ctx.template Alloc<T>(dk); }
   if (dout_v) {
     dev_ctx.template Alloc<T>(dv);
   }
@@ -73,17 +64,17 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                           sin->dims(),
                           cos->dims()));
     if (sin->dtype() == phi::DataType::FLOAT32) {
-      LAUNCH_XPU_FUSED_ROPE_GRAD(XPUType, float);
+      LAUNCH_XPU_FUSED_ROPE_GRAD(T, float);
     } else {
       PADDLE_ENFORCE_EQ(
-          phi::CppTypeToDtype<T>::Type(),
+          phi::CppTypeToDataType<T>::Type(),
           sin->dtype(),
           common::errors::InvalidArgument(
               "The embedding dtype and sin/cos dtype mismatched."));
-      LAUNCH_XPU_FUSED_ROPE_GRAD(XPUType, XPUType);
+      LAUNCH_XPU_FUSED_ROPE_GRAD(T, T);
     }
   } else {
-    LAUNCH_XPU_FUSED_ROPE_GRAD(XPUType, float);
+    LAUNCH_XPU_FUSED_ROPE_GRAD(T, float);
   }
 }
 }  // namespace fusion
