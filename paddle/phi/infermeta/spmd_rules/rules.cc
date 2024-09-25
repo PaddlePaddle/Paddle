@@ -709,5 +709,9 @@ PD_REGISTER_SPMD_RULE(pad,
                       PD_INFER_SPMD(phi::distributed::PadInferSpmd),
                       PD_INFER_SPMD(phi::distributed::PadGradInferSpmd));
 
+// nonzero
+PD_REGISTER_SPMD_RULE(nonzero,
+                      PD_INFER_SPMD(phi::distributed::NonZeroInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::NonZeroInferSpmdReverse));
 }  // namespace distributed
 }  // namespace phi
