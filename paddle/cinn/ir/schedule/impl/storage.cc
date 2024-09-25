@@ -94,6 +94,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
                                 const std::string& memory_type) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "CacheWrite";
+  std::ostringstream sos;
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
@@ -169,7 +170,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
   }
 
   if (find_cache_block.size() != 1U) {
-    os << "Size of find_cache_block is not 1!\n";
+    sos << "Size of find_cache_block is not 1!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 
