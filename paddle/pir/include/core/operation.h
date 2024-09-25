@@ -20,14 +20,12 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/pir/include/core/block.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/ir_mapping.h"
 #include "paddle/pir/include/core/iterator.h"
 #include "paddle/pir/include/core/op_info.h"
 #include "paddle/pir/include/core/operation_utils.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/visitors.h"
-
 namespace pir {
 class OpBase;
 class Program;
