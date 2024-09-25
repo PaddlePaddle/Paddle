@@ -23,11 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-PHI_DEFINE_EXPORTED_bool(
-    enable_unused_var_check,
-    false,
-    "Checking whether operator contains unused inputs, "
-    "especially for grad operator. It should be in unittest.");
+// PADDLE_DEFINE_EXPORTED_bool(
+//     enable_unused_var_check,
+//     false,
+//     "Checking whether operator contains unused inputs, "
+//     "especially for grad operator. It should be in unittest.");
+COMMON_DECLARE_bool(enable_unused_var_check);
 
 namespace paddle {
 namespace framework {

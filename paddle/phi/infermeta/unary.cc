@@ -3704,8 +3704,13 @@ void ReduceInferMetaBase(const MetaTensor& x,
                          bool reduce_all,
                          MetaTensor* out) {
   DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+
+  DataType out_dtype = x.dtype();
+  if (out_dtype == DataType::BOOL || out_dtype == DataType::INT32) {
+    out_dtype = DataType::INT64;
+  }
   out->set_dims(out_dim);
-  out->set_dtype(x.dtype());
+  out->set_dtype(out_dtype);
   out->set_layout(x.layout());
 }
 

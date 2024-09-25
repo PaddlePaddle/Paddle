@@ -4,6 +4,11 @@ cc_library(
   DEPS proto_desc_base)
 
 cc_library(
+  dy_static_tensor_operants SHARED
+  SRCS static_tensor_operants.cc
+  DEPS static_prim_api primitive_backend_static_experimental phi)
+
+cc_library(
   static_tensor_operants
   SRCS static_tensor_operants.cc
   DEPS static_prim_api primitive_backend_static_experimental)
