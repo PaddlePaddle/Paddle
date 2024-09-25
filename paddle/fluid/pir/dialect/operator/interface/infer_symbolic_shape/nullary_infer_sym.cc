@@ -438,30 +438,30 @@ bool RecvV2OpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_GE(
       peer,
       0,
-      errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The peer (%d) for recv_v2 op must be non-negative.", peer));
 
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
-      errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
 
   const std::vector<int> out_shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "out_shape");
   if (!dynamic_shape) {
-    PADDLE_ENFORCE_GE(outshape.size(),
+    PADDLE_ENFORCE_GE(out_shape.size(),
                       1,
-                      errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of the output shape must be greater than 0 "
                           "but the value given is %d.",
-                          outshape.size()));
+                          out_shape.size()));
 
     std::vector<symbol::DimExpr> output_shape;
     for (size_t i = 0; i < out_shape.size(); ++i) {
       PADDLE_ENFORCE_GE(out_shape[i],
                         1,
-                        errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The shape attribute for recv_v2 must be set "
                             "explicitly, but the %dth element is %d which "
                             "is less than 1. Or dynamic_shape should be set to "
