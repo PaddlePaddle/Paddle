@@ -41,10 +41,10 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
                                const std::string& memory_type) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "CacheRead";
-  std::ostringstream os;
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
@@ -59,6 +59,7 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] The read_expr is not a Load!\n"
@@ -93,10 +94,10 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
                                 const std::string& memory_type) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "CacheWrite";
-  std::ostringstream os;
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
@@ -111,6 +112,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       write_expr.As<ir::Store>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] The write_expr is not a Store!\n"
@@ -178,12 +180,12 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
 void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SyncThreads";
-  std::ostringstream os;
 
   PADDLE_ENFORCE_EQ(
       ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>(),
       true,
       phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] Expr param(ir_node) should be a "
@@ -206,9 +208,9 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
                                bool fixed) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SetBuffer";
-  std::ostringstream os;
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
@@ -222,6 +224,7 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
 
   PADDLE_ENFORCE_EQ(
       find_tensor.size(), 1U, phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] One block should only have one Store node!(except "
