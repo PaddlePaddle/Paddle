@@ -448,6 +448,14 @@ PD_REGISTER_SPMD_RULE(
     not_equal,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    greater_than,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    less_than,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(swiglu,
                       PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmdReverse));
