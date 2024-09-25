@@ -13,7 +13,6 @@
 # limitations under the License.
 import unittest
 
-import numpy as np
 from scipy import signal
 
 import paddle
