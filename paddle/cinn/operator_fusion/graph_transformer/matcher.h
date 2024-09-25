@@ -110,8 +110,8 @@ struct CanFuseItersPermutationMatcher {
            (graph.iters_fusion_policy()->CanFuseSource2Target(downstream,
                                                               upstream) ||
             graph.iters_fusion_policy()->CanFuseSource2Target(upstream,
-                                                              downstream)) &&
-           CanFuseTrivialAndReduce()(graph, upstream, downstream);
+                                                              downstream));
+    //  && CanFuseTrivialAndReduce()(graph, upstream, downstream);
   }
 };
 

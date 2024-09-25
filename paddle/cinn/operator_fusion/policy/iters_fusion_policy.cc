@@ -15,6 +15,10 @@
 #include "paddle/cinn/operator_fusion/policy/iters_fusion_policy.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 
+COMMON_DECLARE_bool(enable_append_iters_in_fusion);
+COMMON_DECLARE_bool(enable_reuse_iters_in_fusion);
+COMMON_DECLARE_bool(enable_transpose_iters_in_fusion);
+
 namespace cinn::fusion {
 
 bool ItersFusionPolicy::CanFuseSource2Target(const PatternNodePtr& source,
@@ -82,6 +86,11 @@ std::optional<ItersTransform> ItersFusionPolicy::GetReuseItersTransform(
       GatherFirstNotInSecond(target_iters, shared_iters);
 
   if (!source_unique_iters.empty() && !target_unique_iters.empty()) {
+    if (!FLAGS_enable_reuse_iters_in_fusion) {
+      VLOG(4) << "Can not reuse iters in fusion, because of FLAGS_enable_"
+                 "reuse_iters_in_fusion is false.";
+      return std::nullopt;
+    }
     std::unordered_map<std::string, std::string> reuse_target_to_source;
     for (const auto& source_iter : source_unique_iters) {
       for (const auto& target_iter : target_unique_iters) {
@@ -140,6 +149,10 @@ ItersFusionPolicy::SearchTransformRouteFromReduce2Reduce(
     if (source_flatten_iters == target_flatten_iters &&
         source_reduce_iters == target_reduce_iters) {
       return route;
+    } else if (!FLAGS_enable_transpose_iters_in_fusion) {
+      VLOG(4) << "Can not transpose iters in fusion, because of FLAGS_"
+                 "enable_transpose_iters_in_fusion is false.";
+      return std::nullopt;
     } else if (source_flatten_iters != target_flatten_iters &&
                source_reduce_iters == target_reduce_iters) {
       const auto flatten_perm =
@@ -194,11 +207,25 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
     } else {
       return std::nullopt;
     }
+  } else if (!squeezed_source.reduce_iter_nums && target.reduce_iter_nums) {
+    // Trivial -> Reduce ItersTransform
+    // Can fuse with non fake reduce dims or small inner reduce loop
+    auto [target_flatten_iters, _UNUSED] = SplitReduceIters(target);
+    if (!AllFirstInSecond(squeezed_source.loop_iters, target_flatten_iters)) {
+      const auto reduce_dims_product =
+          iters_manager_->GetReduceDimsProduct(target);
+      if (reduce_dims_product.isa<std::int64_t>() &&
+          reduce_dims_product.dyn_cast<std::int64_t>() > 1024 * 16) {
+        VLOG(4) << "Can not fuse trivial to reduce with large reduce dims: "
+                << reduce_dims_product.dyn_cast<std::int64_t>();
+        return std::nullopt;
+      }
+    }
   } else if (squeezed_source.reduce_iter_nums && !target.reduce_iter_nums) {
     VLOG(4) << "Can not transform iters from Reduce to Trivial.";
     return std::nullopt;
   }
-  // else: Search Trivial -> Reduce ItersTransform
+  // else: Search Trivial -> Trivial ItersTransform
 
   auto source_iters = squeezed_source.loop_iters;
   const auto target_iters = target.loop_iters;
@@ -246,6 +273,11 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
   // if exist iters in target can not find in source
   FusionIters appended_source_iters = reused_source_iters;
   if (!reused_target_unique_iters.empty()) {
+    if (!FLAGS_enable_append_iters_in_fusion) {
+      VLOG(4) << "Can not append iters in fusion, because of FLAGS_enable_"
+                 "append_iters_in_fusion is false.";
+      return std::nullopt;
+    }
     std::vector<int32_t> append_axis;
     std::vector<symbol::DimExpr> append_symbols;
     for (const auto& iter : reused_target_unique_iters) {
@@ -274,6 +306,11 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
   // 4. Apply TransposeItersTransform
   // if source iters after reuse and append are not equal to target
   if (appended_source_iters != target_iters) {
+    if (!FLAGS_enable_transpose_iters_in_fusion) {
+      VLOG(4) << "Can not transpose iters in fusion, because of FLAGS_enable_"
+                 "transpose_iters_in_fusion is false.";
+      return std::nullopt;
+    }
     const auto perm =
         GetTransposePerm<int32_t>(appended_source_iters, target_iters);
     iters_transforms.push_back(TransposeItersTransform(perm));
