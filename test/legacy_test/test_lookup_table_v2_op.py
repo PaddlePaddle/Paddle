@@ -20,11 +20,10 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
-    @test_with_pir_api
+
     def test_main(self):
         dtypes = ['uint8', 'int8', 'int16', 'int32', 'int64']
         if paddle.in_dynamic_mode():

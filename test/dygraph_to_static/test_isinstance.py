@@ -29,7 +29,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -86,21 +85,18 @@ def train(model, to_static):
 
 
 class TestIsinstance(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_isinstance_simple_return_layer(self):
         model_creator = lambda: paddle.jit.to_static(
             IsInstanceLayer(SimpleReturnLayer())
         )
         self._test_model(model_creator)
 
-    @test_legacy_and_pt_and_pir
     def test_isinstance_add_attr_layer(self):
         model_creator = lambda: paddle.jit.to_static(
             IsInstanceLayer(AddAttrLayer())
         )
         self._test_model(model_creator)
 
-    @test_legacy_and_pt_and_pir
     def test_sequential_layer(self):
         def model_creator():
             layers = []

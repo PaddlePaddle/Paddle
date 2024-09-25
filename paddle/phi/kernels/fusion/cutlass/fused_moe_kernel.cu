@@ -34,9 +34,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_cutlass_kernel.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_gemm_kernels.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe/default_moe_fc_traits.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe/fused_moe_helper.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe/linear_combination_ft_gelu.h"
 
 #pragma GCC diagnostic pop
 

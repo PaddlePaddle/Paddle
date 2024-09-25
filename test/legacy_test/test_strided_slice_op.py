@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -565,7 +564,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
 
 # Test python API
 class TestStridedSliceAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_static_api(self):
         paddle.enable_static()
         place = base.CPUPlace()

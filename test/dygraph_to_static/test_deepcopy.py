@@ -16,7 +16,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
+from dygraph_to_static_utils import Dy2StTestBase
 from test_rollback import Net, foo
 
 import paddle
@@ -24,7 +24,6 @@ from paddle.jit.dy2static.program_translator import StaticFunction
 
 
 class TestDeepCopy(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_net(self):
         net = Net()
         net = paddle.jit.to_static(net)
@@ -40,7 +39,6 @@ class TestDeepCopy(Dy2StTestBase):
         self.assertTrue(id(copy_net), id(copy_net.forward.__self__))
         np.testing.assert_array_equal(src_out.numpy(), copy_out.numpy())
 
-    @test_legacy_and_pt_and_pir
     def test_func(self):
         st_foo = paddle.jit.to_static(foo)
         x = paddle.randn([3, 4])

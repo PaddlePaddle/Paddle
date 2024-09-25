@@ -25,6 +25,7 @@ if(WITH_ROCM)
     APPEND
     HIP_SRCS
     rocblas.cc
+    hipblasLt.cc
     miopen.cc
     hiprand.cc
     hipfft.cc

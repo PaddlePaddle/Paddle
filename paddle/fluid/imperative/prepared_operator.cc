@@ -197,7 +197,7 @@ PreparedOp PrepareImpl(
 // 2. Whether this op has specific implementation;
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if (!op.DnnFallback() && !paddle::platform::in_mkldnn_white_list(op.Type()) &&
+  if (!op.DnnFallback() && !paddle::platform::in_onednn_white_list(op.Type()) &&
       op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.dtype())) {
     expected_kernel_key.set_backend(phi::Backend::ONEDNN);
     expected_kernel_key.set_layout(phi::DataLayout::ONEDNN);

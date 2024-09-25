@@ -11,6 +11,7 @@ set(dist_ENVS http_proxy="" https_proxy="")
 ###### start ######
 list(REMOVE_ITEM TEST_OPS test_imperative_base)
 ###### end ######
+list(REMOVE_ITEM TEST_OPS test_fleet_util)
 
 file(
   GLOB DIST_TEST_OPS
@@ -74,7 +75,6 @@ if(NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
-list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
@@ -109,7 +109,7 @@ endif()
 if(NOT WITH_DISTRIBUTE OR WIN32)
   # DISTRIBUTE related
   list(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_fleet_metric)
+  list(REMOVE_ITEM TEST_OPS test_fleet_metric_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_ps)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
   list(REMOVE_ITEM TEST_OPS test_delete_c_identity_op_pass)
@@ -125,7 +125,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
@@ -134,7 +133,7 @@ list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fs_interface)
-  list(REMOVE_ITEM TEST_OPS test_fleet_metric)
+  list(REMOVE_ITEM TEST_OPS test_fleet_metric_deprecated)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
@@ -467,22 +466,19 @@ if((NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
+list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo_deprecated)
+list(REMOVE_ITEM TEST_OPS test_dist_fleet_geo_deprecated)
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
   list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
-  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
-  py_test_modules(test_fuse_dot_product_attention_pass MODULES
-                  test_fuse_dot_product_attention_pass)
   py_test_modules(test_fused_dot_product_attention_op MODULES
                   test_fused_dot_product_attention_op)
-  py_test_modules(test_fused_dot_product_attention_op_static MODULES
-                  test_fused_dot_product_attention_op_static)
 endif()
 
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
@@ -631,7 +627,6 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
                                                                       120)
-set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 
 if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_part2_op_deprecated

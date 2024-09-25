@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.pir_pass import (
-    apply_reshard_pass,
+    ReshardPasses,
 )
 from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -62,8 +62,8 @@ class TestReshardSToRCrossMesh:
                 reshard_tensor = paddle._pir_ops.reshard(
                     input_tensor, self._out_mesh, [dist.Replicate()]
                 )
-            set_all_ops_op_role(main_program, OpRole.Forward)
-            apply_reshard_pass(main_program)
+            set_all_ops_op_role(main_program.global_block(), OpRole.Forward)
+            ReshardPasses.apply_reshard_pass(main_program)
 
         ops = [op.name() for op in main_program.global_block().ops]
         if self._shard == 0:

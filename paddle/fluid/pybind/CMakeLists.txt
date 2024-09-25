@@ -142,9 +142,9 @@ set(PYBIND_SRCS
     xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
-    eval_frame_tools.cc
-    cpython_internals.c
-    eval_frame.c
+    sot/eval_frame_tools.cc
+    sot/cpython_internals.c
+    sot/eval_frame.c
     op_callstack_utils.cc
     python_callable_registry.cc)
 
@@ -166,7 +166,22 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 if(WITH_PYTHON)
-  set(PYBIND_DEPS ${PYBIND_DEPS} eager_reducer)
+  set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
+  if(WITH_NCCL OR WITH_RCCL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
+  endif()
+  if(WITH_XPU_BKCL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
+  endif()
+  if(WITH_GLOO)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_gloo)
+  endif()
+  if(WITH_MPI)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_mpi)
+  endif()
+  if(WITH_CUSTOM_DEVICE)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_custom)
+  endif()
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
     set_source_files_properties(
@@ -174,6 +189,7 @@ if(WITH_PYTHON)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
+set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
 
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)

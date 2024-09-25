@@ -19,5 +19,3 @@ else()
   endforeach()
   add_subdirectory(pir)
 endif()
-
-add_subdirectory(inference)

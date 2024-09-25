@@ -187,8 +187,12 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                                             "trainable",
                                             "op_callstack" /*no need*/};
   std::vector<std::string> DistAttrsNameList = GetOpDistAttr();
+  std::vector<std::string> QuantAttrsNameList = GetOpQuantAttr();
   AttrsNameList.insert(
       AttrsNameList.end(), DistAttrsNameList.begin(), DistAttrsNameList.end());
+  AttrsNameList.insert(AttrsNameList.end(),
+                       QuantAttrsNameList.begin(),
+                       QuantAttrsNameList.end());
   for (auto attr : op.attributes()) {
     auto attr_name = attr.first;
     auto it = std::find(AttrsNameList.begin(), AttrsNameList.end(), attr_name);
@@ -240,6 +244,15 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
     }
   }
   op_json[DIST_ATTRS] = dist_attrs_json;
+
+  Json quant_attrs_json = Json::array();
+  for (auto key : GetOpQuantAttr()) {
+    if (op.attributes().count(key) > 0) {
+      quant_attrs_json.emplace_back(
+          WriteAttribute(key, op.attributes().at(key)));
+    }
+  }
+  op_json[QUANT_ATTRS] = quant_attrs_json;
 
   Json other_attrs_json = Json::array();
   OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
@@ -329,6 +342,11 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
       }
     }
     for (auto key : GetOpDistAttr()) {
+      if (attr_map.count(key) > 0) {
+        attrs_json.emplace_back(WriteAttribute(key, attr_map.at(key)));
+      }
+    }
+    for (auto key : GetOpQuantAttr()) {
       if (attr_map.count(key) > 0) {
         attrs_json.emplace_back(WriteAttribute(key, attr_map.at(key)));
       }

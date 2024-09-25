@@ -23,7 +23,6 @@ from .fused_dot_product_attention import (
     fused_dot_product_attention,  # noqa: F401
 )
 from .fused_dropout_add import fused_dropout_add
-from .fused_ec_moe import fused_ec_moe
 from .fused_gate_attention import fused_gate_attention  # noqa: F401
 from .fused_layer_norm import fused_layer_norm
 from .fused_matmul_bias import (
@@ -54,7 +53,6 @@ __all__ = [
     'fused_linear',
     'fused_linear_activation',
     'fused_bias_dropout_residual_layer_norm',
-    'fused_ec_moe',
     'fused_moe',
     'fused_dropout_add',
     'fused_rotary_position_embedding',

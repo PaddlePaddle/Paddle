@@ -1579,7 +1579,7 @@ bool OperatorWithKernel::SupportsKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+  if (!this->DnnFallback() && !paddle::platform::in_onednn_white_list(type_) &&
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
@@ -1855,7 +1855,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
       if (!this->DnnFallback() &&
-          !paddle::platform::in_mkldnn_white_list(type_) &&
+          !paddle::platform::in_onednn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
@@ -2187,7 +2187,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+  if (!this->DnnFallback() && !paddle::platform::in_onednn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
