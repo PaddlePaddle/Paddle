@@ -706,7 +706,7 @@ class Engine:
         startup_program = self._startup_progs[mode]
 
         # TODO(zhangbo) Open fused_ffn/fused_attention_qkv pass
-        if os.getenv("FLAGS_enable_fused_ffn_qkv_v2") in [
+        if os.getenv("FLAGS_enable_fused_ffn_qkv_pass") in [
             'True',
             'true',
             '1',
