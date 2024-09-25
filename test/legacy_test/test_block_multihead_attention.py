@@ -40,13 +40,7 @@ is_sm9x = (
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 
-is_sm7x = (
-    core.is_compiled_with_cuda()
-    and paddle.device.cuda.get_device_capability()[0] == 7
-    and paddle.device.cuda.get_device_capability()[1] >= 0
-)
-
-is_sm_supported = is_sm8x or is_sm9x or is_sm7x
+is_sm_supported = is_sm8x or is_sm9x
 
 
 def get_cuda_version():
