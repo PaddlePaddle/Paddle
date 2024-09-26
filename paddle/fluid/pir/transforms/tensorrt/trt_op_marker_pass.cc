@@ -88,6 +88,13 @@ class Pool2dOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
+    paddle::dialect::FullIntArrayOp full_int_array_op =
+        pir::GetDefiningOpForInput(op, 1)
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    if (!full_int_array_op) {
+      VLOG(3) << "Cannot find FullIntArrayOp";
+      return false;
+    }
     auto padding_attr = op->attribute<pir::ArrayAttribute>("paddings");
     std::vector<int32_t> paddings;
     for (const auto &attr : padding_attr.AsVector()) {
@@ -121,28 +128,19 @@ class Pool2dOpPattern
           if (!op->attribute<pir::BoolAttribute>("global_pooling").data()) {
             if (op->HasAttribute("exclusive")) {
               if (op->attribute<pir::BoolAttribute>("exclusive").data()) {
-                paddle::dialect::FullIntArrayOp full_int_array_op =
-                    pir::GetDefiningOpForInput(op, 1)
-                        ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-                if (!full_int_array_op) {
-                  VLOG(3) << "Cannot find FullIntArrayOp";
-                  return false;
-                } else {
-                  auto attr_value =
-                      full_int_array_op->attribute<pir::ArrayAttribute>(
-                          "value");
-                  std::vector<int64_t> kernel_size;
-                  for (const auto &attr : attr_value.AsVector()) {
-                    kernel_size.push_back(
-                        attr.dyn_cast<pir::Int64Attribute>().data());
-                  }
-                  for (size_t i = 0; i < kernel_size.size(); ++i) {
-                    if (kernel_size[i] <= paddings[i]) {
-                      VLOG(3) << "the padding size should be less than the "
-                                 "filter size "
-                                 "for exclusive-counting pooling.";
-                      return false;
-                    }
+                auto attr_value =
+                    full_int_array_op->attribute<pir::ArrayAttribute>("value");
+                std::vector<int64_t> kernel_size;
+                for (const auto &attr : attr_value.AsVector()) {
+                  kernel_size.push_back(
+                      attr.dyn_cast<pir::Int64Attribute>().data());
+                }
+                for (size_t i = 0; i < kernel_size.size(); ++i) {
+                  if (kernel_size[i] <= paddings[i]) {
+                    VLOG(3) << "the padding size should be less than the "
+                               "filter size "
+                               "for exclusive-counting pooling.";
+                    return false;
                   }
                 }
               }
