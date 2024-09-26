@@ -314,6 +314,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         )
 
     def test_no_padding(self):
+        paddle.disable_static()
         self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = False
@@ -374,6 +375,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         )
 
     def test_is_split_into_words(self):
+        paddle.disable_static()
         self.init_data()
         self.is_split_into_words = True
 
@@ -397,6 +399,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         )
 
     def test_inference(self):
+        paddle.disable_static()
         self.init_data()
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path, exist_ok=True)
