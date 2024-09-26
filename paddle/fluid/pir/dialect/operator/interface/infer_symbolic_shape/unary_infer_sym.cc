@@ -1438,9 +1438,21 @@ bool FrobeniusNormOpInferSymbolicShape(
   bool keepdim = op->attribute<pir::BoolAttribute>("keep_dim").data();
   bool reduce_all = op->attribute<pir::BoolAttribute>("reduce_all").data();
 
-  const auto &axis = details::GetVectorAttr(op, "axis");
+  std::vector<int64_t> axis;
+  if (paddle::dialect::details::GetAxisFromOpInput(
+          op->operand_source(1), infer_context, &axis)) {
+    if (axis.size() == 0) {
+      reduce_all = true;
+    }
 
-  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+    return details::ReduceInferDim(
+        op, infer_context, axis, keepdim, reduce_all);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+        "support FullIntArrayOp's result or constant DimExpr now."));
+  }
+  return false;
 }
 
 bool FoldOpInferSymbolicShape(pir::Operation *op,
@@ -1766,32 +1778,19 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
 
-  const auto &attributes = op->attributes();
   std::vector<int64_t> axis;
-  if (attributes.find("axis") != attributes.end()) {
-    axis = details::GetVectorAttr<int64_t>(op, "axis");
-  } else if (op->operand_source(1)) {
-    const auto &shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    std::vector<symbol::DimExpr> axis_expr;
-    if (shape_or_data.data().has_value()) {
-      axis_expr = shape_or_data.data().value();
-    } else {
-      axis_expr = shape_or_data.shape();
-    }
-    for (const auto &axis_i : axis_expr) {
-      if (axis_i.isa<int64_t>()) {
-        axis.emplace_back(axis_i.dyn_cast<int64_t>());
-      } else {
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "The type of axis must be int64, please check."));
-      }
-    }
+  if (paddle::dialect::details::GetAxisFromOpInput(
+          op->operand_source(1), infer_context, &axis)) {
+    bool reduce_all = axis.size() == 0;
+
+    return details::ReduceInferDim(
+        op, infer_context, axis, keepdim, reduce_all);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+        "support FullIntArrayOp's result or constant DimExpr now."));
   }
-
-  bool reduce_all = axis.size() == 0 ? true : false;
-
-  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+  return false;
 }
 
 bool ModeOpInferSymbolicShape(pir::Operation *op,
@@ -2004,18 +2003,19 @@ bool MaxPool3dWithIndexOpInferSymbolicShape(
 bool MeanOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
-
-  const auto &attributes = op->attributes();
   std::vector<int64_t> axis;
-  if (attributes.find("axis") != attributes.end()) {
-    axis = op->attribute<paddle::dialect::IntArrayAttribute>("axis")
-               .data()
-               .GetData();
+  if (paddle::dialect::details::GetAxisFromOpInput(
+          op->operand_source(1), infer_context, &axis)) {
+    bool reduce_all = axis.size() == 0;
+
+    return details::ReduceInferDim(
+        op, infer_context, axis, keepdim, reduce_all);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+        "support FullIntArrayOp's result or constant DimExpr now."));
   }
-
-  bool reduce_all = axis.size() == 0 ? true : false;
-
-  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+  return false;
 }
 
 bool MeanAllOpInferSymbolicShape(
@@ -2136,7 +2136,7 @@ bool MultinomialOpInferSymbolicShape(
   } else if (op->operand_source(1)) {
     const auto &num_samples_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    const auto &data_vec = details::GetOrCreateExprVecFromData(
+    const auto &data_vec = paddle::dialect::details::GetOrCreateExprVecFromData(
         num_samples_shape_or_data, infer_context);
     out_dims[x_rank - 1] = data_vec[0];
   }
@@ -2725,7 +2725,7 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
   const auto &kernel_size_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const auto &kernel_size =
-      details::GetExprVecFromData(kernel_size_shape_or_data);
+      paddle::dialect::details::GetExprVecFromData(kernel_size_shape_or_data);
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));
@@ -2758,9 +2758,21 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
   bool keepdim = GetBoolAttr(op, "keepdim");
   bool reduce_all = GetBoolAttr(op, "reduce_all");
 
-  const auto &axis = details::GetVectorAttr(op, "axis");
+  std::vector<int64_t> axis;
+  if (paddle::dialect::details::GetAxisFromOpInput(
+          op->operand_source(1), infer_context, &axis)) {
+    if (axis.size() == 0) {
+      reduce_all = true;
+    }
 
-  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+    return paddle::dialect::details::ReduceInferDim(
+        op, infer_context, axis, keepdim, reduce_all);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+        "support FullIntArrayOp's result or constant DimExpr now."));
+  }
+  return false;
 }
 
 bool QrOpInferSymbolicShape(pir::Operation *op,
@@ -2911,8 +2923,8 @@ bool ReshapeOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> out_dims = [&] {
     const auto &original_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-    ExprVec target_shape =
-        details::GetOrCreateExprVecFromData(shape_dim_expr, infer_context);
+    ExprVec target_shape = paddle::dialect::details::GetOrCreateExprVecFromData(
+        shape_dim_expr, infer_context);
 
     // replace '0' with original shape
     for (size_t i = 0; i < target_shape.size(); i++) {
@@ -3322,26 +3334,21 @@ bool SplitWithNumOpInferSymbolicShape(
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
-  bool reduce_all = false;
 
-  auto axis_gen_op = op->operand_source(1).defining_op();
-  if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-    std::vector<int64_t> axis = details::GetVectorAttr(
-        axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
-    if (axis.size() == 0) {
-      reduce_all = true;
-    }
+  std::vector<int64_t> axis;
+  if (paddle::dialect::details::GetAxisFromOpInput(
+          op->operand_source(1), infer_context, &axis)) {
+    bool reduce_all = (axis.size() == 0);
+
     return details::ReduceInferDim(
         op, infer_context, axis, keepdim, reduce_all);
   } else {
-    // TODO(lanxianghit): deal with other source: pir::VectorType,
-    // paddle::dialect::DenseTensorType
-    PADDLE_THROW(
-        common::errors::Unimplemented("SumOpInferSymbolicShape: 'axis' only "
-                                      "support FullIntArrayOp's result now."));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+        "support FullIntArrayOp's result or constant DimExpr now."));
   }
 
-  return true;
+  return false;
 }
 
 bool SvdOpInferSymbolicShape(pir::Operation *op,

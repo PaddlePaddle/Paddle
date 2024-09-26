@@ -29,7 +29,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn.functional import avg_pool2d, lp_pool2d, max_pool2d
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestPool2D_API(unittest.TestCase):
@@ -772,7 +771,6 @@ class TestPool2D_API(unittest.TestCase):
             result = lp_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-    @test_with_pir_api
     def test_pool2d_static(self):
         paddle.enable_static()
         for place in self.places:

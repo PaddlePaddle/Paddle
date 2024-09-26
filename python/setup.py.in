@@ -822,10 +822,6 @@ packages=['paddle',
           'paddle.decomposition',
           'paddle._typing',
           'paddle._typing.libs',
-          'paddle._typing.libs.libpaddle',
-          'paddle._typing.libs.libpaddle.pir',
-          'paddle._typing.libs.libpaddle.eager',
-          'paddle._typing.libs.libpaddle.eager.ops',
         ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -1134,7 +1130,8 @@ headers = (
     list(find_files('interface.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/serialize_deserialize/include'))+
     list(find_files('dense_tensor.inl','@PADDLE_SOURCE_DIR@/paddle/phi/core'))+
     list(find_files('op_yaml_info.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface'))+
-    list(find_files('op_yaml_info_util.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/')))
+    list(find_files('op_yaml_info_util.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
+    list(find_files('op_yaml_info_parser.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/')))
 jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
 for f in jit_layer_headers:
     headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))
@@ -1342,28 +1339,49 @@ if '${WITH_CPP_DIST}' == 'ON':
     paddle_lib_test_dir = '${PADDLE_LIB_TEST_DIR}'
     install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir)
 
+
 # type hints
-def extend_type_hints_package_data(package_data):
+def get_typing_libs_packages(paddle_binary_dir):
+    """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
+    e.g.
+        'paddle._typing.libs.libpaddle.cinn'
+        'paddle._typing.libs.libpaddle.pir'
+        'paddle._typing.libs.libpaddle.eager'
+        'paddle._typing.libs.libpaddle.eager.ops'
+    """
+    base_dir = Path(paddle_binary_dir) / 'python'
+    libs_dir = base_dir / 'paddle' / '_typing' / 'libs' / 'libpaddle'
+    return [
+        '.'.join(str(Path(root).relative_to(base_dir)).split(os.sep))
+        for root, _, _ in os.walk(libs_dir)
+    ]
+
+
+def extend_type_hints_package_data(packages, package_data, paddle_binary_dir):
+    typing_libs_packages = get_typing_libs_packages(paddle_binary_dir)
+
+    # update packages
+    packages += typing_libs_packages
+
+    # update package_data
     type_hints_files = {
-        'paddle': ['py.typed','*.pyi'],
+        'paddle': ['py.typed', '*.pyi'],
         'paddle.framework': ['*.pyi'],
         'paddle.base': ['*.pyi'],
         'paddle.tensor': ['tensor.pyi'],
         'paddle._typing': ['*.pyi'],
-        'paddle._typing.libs': ['*.pyi','*.md'],
-        'paddle._typing.libs.libpaddle': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.pir': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.eager': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.eager.ops': ['*.pyi'],
+        'paddle._typing.libs': ['*.pyi', '*.md'],
     }
+
+    for libpaddle_module in typing_libs_packages:
+        type_hints_files[libpaddle_module] = ['*.pyi']
+
     for pkg, files in type_hints_files.items():
         if pkg not in package_data:
             package_data[pkg] = []
         package_data[pkg] += files
 
-    return package_data
-
-package_data = extend_type_hints_package_data(package_data)
+    return packages, package_data
 
 
 def generate_stub_files(paddle_binary_dir, paddle_source_dir):
@@ -1430,6 +1448,8 @@ if os.getenv("SKIP_STUB_GEN", '').lower() not in [
     '1',
 ]:
     generate_stub_files('${PADDLE_BINARY_DIR}', '${PADDLE_SOURCE_DIR}')
+
+packages, package_data = extend_type_hints_package_data(packages, package_data, '${PADDLE_BINARY_DIR}')
 
 
 with redirect_stdout():
