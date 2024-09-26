@@ -1780,8 +1780,8 @@ bool ReindexGraphOpInferSymbolicShape(
   GraphReindexShapeCheck(neighbors_shape, "Neighbors");
   GraphReindexShapeCheck(count_shape, "Count");
 
-  if (!paddle.pybind.IsFakeValue(op->operand(3)) &&
-      !paddle.pybind.IsFakeValue(op->operand(4))) {
+  if (!paddle::pybind::IsFakeValue(op->operand(3)) &&
+      !paddle::pybind::IsFakeValue(op->operand(4))) {
     GraphReindexShapeCheck(hashtable_value_shape, "HashTable_Value");
     GraphReindexShapeCheck(hashtable_index_shape, "HashTable_Index");
   }
