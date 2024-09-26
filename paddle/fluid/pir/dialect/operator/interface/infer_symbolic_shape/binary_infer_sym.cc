@@ -1379,10 +1379,10 @@ bool MatmulWithFlattenOpInferSymbolicShape(
   output_dims.reserve(
       static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
 
-  for (size_t i = 0; i < x_num_col_dims; ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(x_num_col_dims); ++i) {
     output_dims.push_back(x_dims[i]);
   }
-  for (size_t i = y_num_col_dims; i < y_dims.size(); ++i) {
+  for (size_t i = static_cast<size_t>(y_num_col_dims); i < y_dims.size(); ++i) {
     output_dims.push_back(y_dims[i]);
   }
 
