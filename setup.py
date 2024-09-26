@@ -1748,6 +1748,12 @@ def get_headers():
                 paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
             )
         )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'utils.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
     )
 
     jit_layer_headers = [
