@@ -853,6 +853,12 @@ void BindOperation(py::module *m) {
              }
              return attrs_dict;
            })
+      .def("copy_attrs_from",
+           [](Operation &self, Operation &other) {
+             for (auto &pair : other.attributes()) {
+               self.set_attribute(pair.first, pair.second);
+             }
+           })
       .def("set_execution_stream",
            [](Operation &self, const std::string &exe_stream) {
              self.set_attribute(

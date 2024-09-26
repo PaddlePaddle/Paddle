@@ -1462,7 +1462,7 @@ void dispatch_mbmmha_impl_headsize(
       break;
     default:
       PADDLE_THROW(
-          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+          errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
 }
 

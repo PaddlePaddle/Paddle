@@ -2935,7 +2935,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
 
                 >>> # get the number of elements of the Variable
-                >>> y = x.size() # type: ignore
+                >>> y = x.size
 
         """
 
