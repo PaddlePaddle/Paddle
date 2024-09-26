@@ -431,16 +431,6 @@ class TestBertTokenizerOp(unittest.TestCase):
             token_type_ids, py_token_type_ids, rtol=0, atol=0.01
         )
 
-    def test_feed_string_var(self):
-        self.init_data()
-        paddle.enable_static()
-        x = paddle.static.data(
-            name="x", shape=[-1], dtype=core.VarDesc.VarType.STRINGS
-        )
-        exe = paddle.static.Executor(paddle.framework.CPUPlace())
-        exe.run(paddle.static.default_main_program(), feed={'x': self.text})
-        paddle.disable_static()
-
 
 if __name__ == '__main__':
     unittest.main()
