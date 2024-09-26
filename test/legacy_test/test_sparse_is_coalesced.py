@@ -29,13 +29,6 @@ def is_coalesced_naive(x):
     return duplicated_len == remove_duplicated_len
 
 
-def is_coalesced_naive_static(indices):
-    indices = list(zip(*indices))
-    duplicated_len = len(indices)
-    remove_duplicated_len = len(set(indices))
-    return duplicated_len == remove_duplicated_len
-
-
 class TestSparseIsCoalescedAPI(unittest.TestCase):
     def setUp(self):
         self.dtype = "float32"
@@ -68,7 +61,7 @@ class TestSparseIsCoalescedAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestSparseIsCoalescedAPI1(unittest.TestCase):
+class TestSparseIsCoalescedAPI1(TestSparseIsCoalescedAPI):
     def setUp(self):
         self.dtype = "float64"
         coo_indices = [[0, 0, 1, 2], [0, 1, 1, 2]]
@@ -87,7 +80,7 @@ class TestSparseIsCoalescedAPI1(unittest.TestCase):
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
 
 
-class TestSparseIsCoalescedAPI2(unittest.TestCase):
+class TestSparseIsCoalescedAPI2(TestSparseIsCoalescedAPI):
     def setUp(self):
         coo_indices = [[0, 0, 1, 2], [0, 1, 1, 2], [0, 1, 1, 2]]
         coo_values = [1.0, 2.0, 3.0, 4.0]
@@ -106,7 +99,7 @@ class TestSparseIsCoalescedAPI2(unittest.TestCase):
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
 
 
-class TestSparseIsCoalescedAPI3(unittest.TestCase):
+class TestSparseIsCoalescedAPI3(TestSparseIsCoalescedAPI):
     def setUp(self):
         coo_indices = [[0, 0, 1, 2], [0, 2, 0, 2], [0, 1, 1, 0]]
         coo_values = [1.0, 2.0, 3.0, 4.0]
@@ -125,7 +118,7 @@ class TestSparseIsCoalescedAPI3(unittest.TestCase):
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
 
 
-class TestSparseIsCoalescedAPI4(unittest.TestCase):
+class TestSparseIsCoalescedAPI4(TestSparseIsCoalescedAPI):
     def setUp(self):
         coo_indices = [[0, 0, 0, 1], [0, 0, 1, 2]]
         coo_values = [1.0, 2.0, 3.0, 4.0]
@@ -144,7 +137,7 @@ class TestSparseIsCoalescedAPI4(unittest.TestCase):
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
 
 
-class TestSparseIsCoalescedAPI5(unittest.TestCase):
+class TestSparseIsCoalescedAPI5(TestSparseIsCoalescedAPI):
     def setUp(self):
         coo_indices = [[0, 0, 0, 1], [0, 0, 1, 2]]
         coo_values = [1.0, 2.0, 3.0, 4.0]
@@ -163,7 +156,7 @@ class TestSparseIsCoalescedAPI5(unittest.TestCase):
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
 
 
-class TestSparseIsCoalescedAPI6(unittest.TestCase):
+class TestSparseIsCoalescedAPI6(TestSparseIsCoalescedAPI):
     def setUp(self):
         coo_indices = [[0, 0, 0, 1], [0, 0, 1, 2]]
         coo_values = [1.0, 2.0, 3.0, 4.0]
@@ -182,7 +175,7 @@ class TestSparseIsCoalescedAPI6(unittest.TestCase):
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
 
 
-class TestSparseIsCoalescedAPI7(unittest.TestCase):
+class TestSparseIsCoalescedAPI7(TestSparseIsCoalescedAPI):
     def setUp(self):
         coo_indices = [[0, 0, 1, 2], [0, 1, 1, 2], [0, 1, 1, 2]]
         coo_values = [1.0, 0.0, 0.0, 1.0]
@@ -201,7 +194,7 @@ class TestSparseIsCoalescedAPI7(unittest.TestCase):
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
 
 
-class TestSparseIsCoalescedAPI8(unittest.TestCase):
+class TestSparseIsCoalescedAPI8(TestSparseIsCoalescedAPI):
     def setUp(self):
         coo_indices = [[0, 0, 1, 2], [0, 1, 1, 2], [0, 1, 1, 2]]
         coo_values = [1.0, 2.0, 3.0, 4.0]
@@ -220,7 +213,7 @@ class TestSparseIsCoalescedAPI8(unittest.TestCase):
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
 
 
-class TestSparseIsCoalescedAPI9(unittest.TestCase):
+class TestSparseIsCoalescedAPI9(TestSparseIsCoalescedAPI):
     def setUp(self):
         coo_indices = [[0, 0, 1, 2], [0, 1, 1, 2], [1, 0, 1, 2]]
         coo_values = [1.0, 2.0, 3.0, 4.0]
@@ -244,7 +237,7 @@ class TestSparseIsCoalescedAPI9(unittest.TestCase):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the float16",
 )
-class TestSparseIsCoalescedFP16API(unittest.TestCase):
+class TestSparseIsCoalescedFP16API(TestSparseIsCoalescedAPI):
     def setUp(self):
         self.dtype = "float16"
         coo_indices = [[0, 0, 0, 1], [0, 0, 1, 2]]
