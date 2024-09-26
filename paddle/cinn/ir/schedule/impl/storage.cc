@@ -41,21 +41,32 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
                                const std::string& memory_type) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "CacheRead";
-  std::ostringstream os;
 
-  if (!block.As<ScheduleBlockRealize>()) {
-    os << "Expr param(block) is not a ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   auto root = GetRootBlock(block);
   ChangeBodyToBlock::Change(&root);
   Expr read_expr = GetNthAccessExpr(block, read_buffer_index, false);
 
-  if (!read_expr.As<ir::Load>()) {
-    os << "The read_expr is not a Load!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] The read_expr is not a Load!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   auto tensor_indices = read_expr.As<ir::Load>()->indices;
   CacheBlockInfo info;
@@ -83,21 +94,32 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
                                 const std::string& memory_type) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "CacheWrite";
-  std::ostringstream os;
 
-  if (!block.As<ScheduleBlockRealize>()) {
-    os << "Expr param(block) is not a ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   auto root = GetRootBlock(block);
   ChangeBodyToBlock::Change(&root);
   Expr write_expr = GetNthAccessExpr(block, write_buffer_index, true);
 
-  if (!write_expr.As<ir::Store>()) {
-    os << "The write_expr is not a Store!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      write_expr.As<ir::Store>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] The write_expr is not a Store!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   Tensor write_tensor = write_expr.As<ir::Store>()->tensor.as_tensor_ref();
   auto tensor_indices = write_expr.As<ir::Store>()->indices;
@@ -127,10 +149,19 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
       },
       true);
 
-  if (!info.write_tensor->buffer.defined()) {
-    os << "The buffer of current write_tensor is not defined!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      info.write_tensor->buffer.defined(),
+      true,
+      phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] The buffer of current write_tensor is not "
+              "defined!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   // Replace buffer
   auto all_tensors =
@@ -145,11 +176,16 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
       i.as_tensor()->Bind(info.read_tensor->buffer);
     }
   }
-
-  if (find_cache_block.size() != 1U) {
-    os << "Size of find_cache_block is not 1!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      find_cache_block.size(), 1U, phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] Size of find_cache_block is not 1!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   return *find_cache_block.begin();
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
@@ -158,12 +194,20 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
 void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SyncThreads";
-  std::ostringstream os;
 
-  if (!(ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>())) {
-    os << "Expr param(ir_node) should be a ScheduleBlockRealize or For!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>(),
+      true,
+      phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] Expr param(ir_node) should be a "
+              "ScheduleBlockRealize or For!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   auto root = GetRootBlock(ir_node);
   ChangeBodyToBlock::Change(&root);
@@ -178,19 +222,31 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
                                bool fixed) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SetBuffer";
-  std::ostringstream os;
-  if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block) is not a ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
 
-  if (find_tensor.size() != 1U) {
-    os << "One block should only have one Store node!(except for root block)\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      find_tensor.size(), 1U, phi::errors::InvalidArgument([&]() {
+        std::ostringstream os;
+        os << "[IRScheduleError] An error occurred in the schedule primitive <"
+           << primitive << ">.\n"
+           << "[Error info] One block should only have one Store node!(except "
+              "for root block)\n"
+           << "[Error info] The Expr of current schedule is "
+           << module_expr_.GetExprs() << ".";
+        return os.str();
+      }()));
 
   auto& tensor = (*find_tensor.begin()).As<ir::Store>()->tensor;
   tensor.as_tensor_ref()->WithBuffer(

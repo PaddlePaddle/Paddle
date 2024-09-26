@@ -1609,10 +1609,13 @@ bool FusedGemmEpilogueOpInferSymbolicShape(
                                         ShapeOrData{TensorExprs(out_shape)});
 
   // process reserve space
-  if (paddle::dialect::details::IsFakeValue(op->result(1))) {
-    infer_context->SetShapeOrDataForValue(op->result(0),
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
+    infer_context->SetShapeOrDataForValue(op->result(1),
                                           ShapeOrData{TensorExprs(out_shape)});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(1));
   }
+
   return true;
 }
 
