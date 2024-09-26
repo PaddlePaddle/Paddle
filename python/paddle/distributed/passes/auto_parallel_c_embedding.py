@@ -21,7 +21,6 @@ from paddle.base.core import TensorDistAttr
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
-    TensorDistAttr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import core
