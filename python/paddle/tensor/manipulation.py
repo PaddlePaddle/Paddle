@@ -293,7 +293,7 @@ def cast_(x: Tensor, dtype: DTypeLike) -> Tensor:
     Please refer to :ref:`api_paddle_cast`.
     """
     if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast_(x, dtype)
 
@@ -2386,6 +2386,13 @@ def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     """
     Stacks all the input tensors ``x`` along vertical axis.
     All tensors must be of the same dtype.
+
+    The image below illustrates how ``vstack`` works.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/vstack.png
+        :width: 500
+        :alt: legend of vstack API
+        :align: center
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same

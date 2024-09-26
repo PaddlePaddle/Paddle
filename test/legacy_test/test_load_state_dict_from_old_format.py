@@ -26,7 +26,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def convolutional_neural_network(img):
@@ -215,7 +214,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         for var_name, value in orig_dict.items():
             np.testing.assert_array_equal(value, load_dict[var_name])
 
-    @test_with_pir_api
     def test_load_default(self):
         with paddle.base.unique_name.guard():
             self.save_dirname = os.path.join(
@@ -228,7 +226,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             new_load_param_dict = paddle.load(self.save_dirname)
             self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
-    @test_with_pir_api
     def test_load_with_model_filename(self):
         with paddle.base.unique_name.guard():
             self.save_dirname = os.path.join(
@@ -244,7 +241,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             )
             self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
-    @test_with_pir_api
     def test_load_with_param_filename(self):
         with paddle.base.unique_name.guard():
             self.save_dirname = os.path.join(
@@ -260,7 +256,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             )
             self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
-    @test_with_pir_api
     def test_load_with_model_and_param_filename(self):
         with paddle.base.unique_name.guard():
             self.save_dirname = os.path.join(

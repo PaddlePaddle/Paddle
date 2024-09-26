@@ -91,6 +91,7 @@ BINARY_PRIM_VJP_OPS = [
     'reduce_as_grad',
     'fmax_grad',
     'fmin_grad',
+    'dot_grad',
 ]
 
 OTHER_PRIM_VJP_OPS = [
