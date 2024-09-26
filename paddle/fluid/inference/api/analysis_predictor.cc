@@ -962,15 +962,18 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       config_.deleted_passes_.end()) {
     basic_pass_pm.AddPass(std::move(common_subexpression_elimination_pass));
   }
-  auto auto_mixed_precision_pass = 
-      ::pir::CreateAutoMixedPrecisionPass();
-  if (std::find(config_.deleted_passes_.begin(),
-                config_.deleted_passes_.end(),
-                auto_mixed_precision_pass->name()) ==
-      config_.deleted_passes_.end()) {
-    auto_mixed_precision_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
-    auto_mixed_precision_pass->SetNotOwned("__mixed_precision_mode__", new phi::DataType(paddle::ConvertPrecision(config_.mixed_precision_mode_)));
-    basic_pass_pm.AddPass(std::move(auto_mixed_precision_pass));
+  if (config_.enable_gpu_mixed_) {
+    auto auto_mixed_precision_pass = ::pir::CreateAutoMixedPrecisionPass();
+    if (std::find(config_.deleted_passes_.begin(),
+                  config_.deleted_passes_.end(),
+                  auto_mixed_precision_pass->name()) ==
+        config_.deleted_passes_.end()) {
+      auto_mixed_precision_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+      auto_mixed_precision_pass->Set("__mixed_precision_mode__",
+                                     new phi::DataType(paddle::ConvertPrecision(
+                                         config_.mixed_precision_mode_)));
+      basic_pass_pm.AddPass(std::move(auto_mixed_precision_pass));
+    }
   }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
@@ -2239,9 +2242,7 @@ void AnalysisPredictor::PrepareArgument() {
         pass_builder->AppendPass("simplify_with_basic_ops_pass");
         pass_builder->AppendPass("is_test_pass");
         pass_builder->AppendPass("constant_folding_pass");
-      }
-      // pass_builder->AppendPass("auto_mixed_precision_pass");
-      if (!config_.new_ir_enabled()) {
+        pass_builder->AppendPass("auto_mixed_precision_pass");
         pass_builder->AppendPass("inplace_op_var_pass");
       }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
