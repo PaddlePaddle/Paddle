@@ -211,7 +211,7 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
 
 class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
  public:
-  explicit ConstantLikeTrait(Operation *op)
+  explicit ConstantLikeTrait(const Operation *op)
       : OpTraitBase<ConstantLikeTrait>(op) {}
 };
 
