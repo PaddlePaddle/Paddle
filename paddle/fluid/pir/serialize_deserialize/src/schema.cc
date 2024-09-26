@@ -56,8 +56,8 @@ DialectIdMap::DialectIdMap() {
   insert(paddle::dialect::CustomOpDialect::name(), "3");
   insert(paddle::dialect::DistDialect::name(), "4");
   // TestDialect for test use
-  insert(test::TestDialect::name(), "5");
-  insert(test1::Test1Dialect::name(), "6");
+  insert(test::TestDialect::name(), "-1");
+  insert(test1::Test1Dialect::name(), "-2");
 }
 void DialectIdMap::insert(const std::string& key, const std::string& value) {
   CompressDialect[key] = value;
@@ -88,40 +88,4 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
   }
   return "";
 }
-
-uint64_t GetPirVersion() {
-  VLOG(8) << "Get PIR Version: ";
-  std::filesystem::path patch_path = std::filesystem::path(PATCH_PATH);
-  VLOG(8) << "Patch path: " << patch_path;
-  int version = 0;
-  for (auto& v : std::filesystem::directory_iterator(patch_path)) {
-    std::string filename = v.path().filename().string();
-    std::string extension_name = v.path().extension().string();
-    // 0.yaml for develop version
-    if (filename == "0.yaml") {
-      VLOG(8) << "Develop version: " << version;
-      return 0;
-    } else if (extension_name == ".yaml") {
-      version = stoi(filename) > version ? stoi(filename) : version;
-    }
-  }
-  VLOG(8) << "PIR version: " << version;
-  return version;
-}
-uint64_t GetMaxReleasePirVersion() {
-  std::filesystem::path patch_path = std::filesystem::path(PATCH_PATH);
-  VLOG(8) << "Patch path: " << patch_path;
-  int version = 0;
-  for (auto& v : std::filesystem::directory_iterator(patch_path)) {
-    std::string filename = v.path().filename().string();
-    std::string extension_name = v.path().extension().string();
-    VLOG(8) << filename;
-    if (extension_name == ".yaml") {
-      version = stoi(filename) > version ? stoi(filename) : version;
-    }
-  }
-  VLOG(8) << "Max Release PIR version: " << version;
-  return version;
-}
-
 }  // namespace pir
