@@ -264,6 +264,34 @@
     param: [x, y, out_grad, transpose_x, transpose_y, alpha]
     data_type: out_grad
 
+- backward_op : legacy_reshape_grad
+  forward : legacy_reshape (Tensor x, IntArray shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GradSameWithXInferMeta
+    param : [x, out_grad]
+    spmd_rule: ReshapeGradInferSpmd
+    local_shape : x_grad
+  kernel :
+    func : reshape_grad
+    param : [x, out_grad]
+    data_type: out_grad
+    backend: out_grad
+    layout: out_grad
+  no_need_buffer : x
+
+- backward_op : lod_reset_grad
+  forward: lod_reset(Tensor x, Tensor y, int[] target_lod={}, bool append=false) -> Tensor(out)
+  args: (Tensor x, Tensor out_grad, int[] target_lod={}, bool append=false)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: LodResetGradInferMeta
+  kernel:
+    func: lod_reset_grad
+  no_need_buffer: x
+  inplace: (out_grad -> x_grad)
+
 - backward_op : lookup_table_grad
   forward : lookup_table (Tensor w, Tensor ids, bool is_sparse = false, bool is_distributed = false,
     int64_t padding_idx = -1, bool remote_prefetch = false, str entry_config
