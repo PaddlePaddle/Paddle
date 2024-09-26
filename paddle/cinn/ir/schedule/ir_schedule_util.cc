@@ -326,9 +326,9 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
              << primitive << ">.\n"
              << "[Error info] The params in factors of Split "
                 "should not be less than -1 or "
-             << "have more than one -1!\n";
-          << "[Expr info] The Expr of current schedule is "
-          << module_expr.GetExprs() << ".";
+             << "have more than one -1!\n"
+             << "[Expr info] The Expr of current schedule is "
+             << module_expr.GetExprs() << ".";
           return os.str();
         }()));
     if (i == -1) {
