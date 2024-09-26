@@ -123,7 +123,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         # config.enable_memory_optim()
         config.enable_new_executor()
         config.enable_new_ir()
-        config.switch_ir_debug(True, ['add_shadow_output_after_dead_parameter_pass'])
+        config.switch_ir_debug(
+            True, ['add_shadow_output_after_dead_parameter_pass']
+        )
         predictor = create_predictor(config)
         return predictor
 
