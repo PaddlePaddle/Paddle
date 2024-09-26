@@ -55,14 +55,14 @@ void FusedRopeKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out_v);
   }
 
-  if (sin.get_ptr() && cos.get_ptr()) {
-    PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
-                      cos.get_ptr()->dims(),
+  if (sin && cos) {
+    PADDLE_ENFORCE_EQ(sin->dims(),
+                      cos->dims(),
                       common::errors::InvalidArgument(
                           "The dims of sin and cos must be the same. But "
                           "received sin's dims is {%s}, cos's dims is {%s}.",
-                          sin.get_ptr()->dims(),
-                          cos.get_ptr()->dims()));
+                          sin->dims(),
+                          cos->dims()));
     // For user provided sin/cos, we use the dtype as is.
     if (sin->dtype() == phi::DataType::FLOAT32) {
       LAUNCH_XPU_FUSED_ROPE(T, float);

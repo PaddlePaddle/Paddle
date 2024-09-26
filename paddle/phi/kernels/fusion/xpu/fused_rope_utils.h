@@ -50,7 +50,7 @@ void GetSinCosByPassValue(const Context& dev_ctx,
                           "The num_heads of sin and cos must be 1."));
   }
   int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
-  if (position_ids.get_ptr()) {
+  if (position_ids) {
     PADDLE_ENFORCE_EQ(
         (sin_cos_dims[dims_size - 1] == head_dim &&
          sin_cos_dims[sin_seq_len_dim] >= seq_len),
@@ -60,7 +60,7 @@ void GetSinCosByPassValue(const Context& dev_ctx,
             "this of q. The head_dim of sin and cos must be the same as this "
             "of q."));
 
-    auto position_ids_dims = position_ids.get_ptr()->dims();
+    auto position_ids_dims = position_ids->dims();
     PADDLE_ENFORCE_EQ(position_ids_dims.size(),
                       2,
                       common::errors::InvalidArgument(
@@ -215,7 +215,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
                       int64_t seq_len,
                       int64_t head_dim,
                       float rotary_emb_base) {
-  if (sin.get_ptr() && cos.get_ptr()) {
+  if (sin && cos) {
     GetSinCosByPassValue<XPUType, XPUSCType, Context>(dev_ctx,
                                                       sin,
                                                       cos,

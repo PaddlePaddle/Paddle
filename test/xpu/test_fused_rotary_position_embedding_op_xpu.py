@@ -198,25 +198,42 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
 
         return fw, bw
 
+    def check_forward_backward(
+        self, ref_fwd, fused_fwd, ref_bwd=None, fused_bwd=None
+    ):
+        for i in range(len(ref_fwd)):
+            ref_fwd_np = ref_fwd[i].numpy()
+            fused_fwd_np = fused_fwd[i].numpy()
+            if ref_bwd is not None:
+                ref_bwd_np = ref_bwd[i].numpy()
+                fused_bwd_np = fused_bwd[i].numpy()
+            if self.dtype == "bfloat16":
+                ref_fwd_np = convert_uint16_to_float(ref_fwd_np)
+                fused_fwd_np = convert_uint16_to_float(fused_fwd_np)
+                if ref_bwd is not None:
+                    ref_bwd_np = convert_uint16_to_float(ref_bwd_np)
+                    fused_bwd_np = convert_uint16_to_float(fused_bwd_np)
+            np.testing.assert_allclose(
+                ref_fwd_np, fused_fwd_np, rtol=self.rtol, atol=self.atol
+            )
+            if ref_bwd is not None:
+                np.testing.assert_allclose(
+                    ref_bwd_np, fused_bwd_np, rtol=self.rtol, atol=self.atol
+                )
+
     def test_fused_rope(self):
         paddle.set_device('xpu')
         p_fw, p_bw = self.get_forward_backward(
             ref_rotary_position_embedding,
             seed=self.seed,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding,
             seed=self.seed,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
-        for i in range(len(p_fw)):
-            np.testing.assert_allclose(
-                p_fw[i].numpy(), f_fw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                p_bw[i].numpy(), f_bw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
     def test_fused_rope_without_sin_cos(self):
         paddle.set_device('xpu')
@@ -232,13 +249,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
             with_sin_cos=False,
             use_neox_rotary_style=True,
         )
-        for i in range(len(p_fw)):
-            np.testing.assert_allclose(
-                p_fw[i].numpy(), f_fw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                p_bw[i].numpy(), f_bw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
     def test_fused_rope_rotate_half(self):
         paddle.set_device('xpu')
@@ -252,13 +263,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
             seed=self.seed,
             use_neox_rotary_style=False,
         )
-        for i in range(len(p_fw)):
-            np.testing.assert_allclose(
-                p_fw[i].numpy(), f_fw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                p_bw[i].numpy(), f_bw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
     def test_fused_rope_position_ids(self):
         paddle.set_device('xpu')
@@ -277,13 +282,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
             position_ids=position_ids,
             use_neox_rotary_style=False,
         )
-        for i in range(len(p_fw)):
-            np.testing.assert_allclose(
-                p_fw[i].numpy(), f_fw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                p_bw[i].numpy(), f_bw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
     def test_static(self):
         paddle.set_device('xpu')
@@ -293,7 +292,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
         p_fw, p_bw = self.get_forward_backward(
             ref_rotary_position_embedding,
             seed=self.seed,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
 
         paddle.enable_static()
@@ -325,7 +324,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
                 sin,
                 cos,
                 position_ids=None,
-                use_neox_rotary_style=False,
+                use_neox_rotary_style=True,
             )
 
             exe = paddle.static.Executor()
@@ -342,11 +341,16 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
                 feed=feed,
                 fetch_list=[out_q, out_k, out_v],
             )
-
             for i in range(3):
+                ref_fwd_np = p_fw[i].numpy()
+                fused_fwd_np = outs[i]
+                if self.dtype == "bfloat16":
+                    ref_fwd_np = convert_uint16_to_float(ref_fwd_np)
+                    fused_fwd_np = convert_uint16_to_float(fused_fwd_np)
                 np.testing.assert_allclose(
-                    p_fw[i].numpy(), outs[i], rtol=self.rtol, atol=self.atol
+                    ref_fwd_np, fused_fwd_np, rtol=self.rtol, atol=self.atol
                 )
+
         paddle.disable_static()
 
 
@@ -360,11 +364,21 @@ class XPUTestFusedRotaryPositionEmbeddingFp16_1(
         self.dtype = "float16"
 
 
-class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
-    def setUp(self):
+class XPUTestFusedRotaryPositionEmbeddingBf16_1(
+    XPUTestFusedRotaryPositionEmbedding
+):
+    def init_case(self):
         self.shape_q = [2, 8, 2, 16]
         self.shape_k = [2, 8, 2, 16]
         self.shape_v = [2, 8, 2, 16]
+        self.dtype = "bfloat16"
+
+
+class XPUTestFusedRotaryPositionEmbeddingBf16_2(unittest.TestCase):
+    def setUp(self):
+        self.shape_q = [2, 2048, 16, 128]
+        self.shape_k = [2, 2048, 16, 128]
+        self.shape_v = [2, 2048, 16, 128]
 
     def test_api(self):
         paddle.disable_static()
@@ -397,7 +411,7 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
             sin_bf16,
             cos_bf16,
             position_ids=position_ids,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
 
         grad_out_q_bf16 = paddle.uniform(self.shape_q, "bfloat16", -1.0, 1.0)
@@ -416,7 +430,7 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
             sin_fp32,
             cos_fp32,
             position_ids=position_ids,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
 
         grad_out_q_fp32 = paddle.to_tensor(grad_out_q_bf16, dtype="float32")
@@ -437,15 +451,6 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
             np.testing.assert_allclose(
                 grad_fp32_val.numpy(), grad_bf16_val, rtol=1e-2, atol=1e-2
             )
-
-
-class XPUTestFusedRotaryPositionEmbeddingBf16_2(
-    XPUTestFusedRotaryPositionEmbeddingBf16_1
-):
-    def setUp(self):
-        self.shape_q = [2, 2048, 16, 128]
-        self.shape_k = [2, 2048, 16, 128]
-        self.shape_v = [2, 2048, 16, 128]
 
 
 class XPUTestFusedRotaryPositionEmbeddingGQA(
