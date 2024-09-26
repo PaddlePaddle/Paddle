@@ -27,10 +27,10 @@ class AddShadowOutputAfterDeadParameterPattern
   bool MatchAndRewrite(
       pir::ParameterOp op,
       pir::PatternRewriter& rewriter) const override {  // NOLINT
-    if (!op.use_empty()) {
+    if (!op->use_empty()) {
       return false;
     }
-    rewriter.Build<pir::ShadowOutputOp>(op.result(0), op.param_name());
+    rewriter.Build<pir::ShadowOutputOp>(op->result(0), op.param_name());
     return true;
   }
 };
