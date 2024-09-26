@@ -1250,7 +1250,71 @@ class MeanOpPattern : public pir::OpRewritePattern<paddle::dialect::MeanOp> {
     return true;
   }
 };
-
+class NearestInterpOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::NearestInterpOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::NearestInterpOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::NearestInterpOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (op->HasAttribute("data_format")) {
+      auto data_format =
+          op->attribute<pir::StrAttribute>("data_format").AsString();
+      if (!(data_format == "NCHW" || data_format == "NHWC")) {
+        VLOG(3) << "The nearest_interp is only support NCHW or NHWC ";
+        return false;
+      }
+    } else {
+      VLOG(3) << "The data_format attribute does not exist";
+      return false;
+    }
+#if IS_TRT_VERSION_GE(8200)
+    pir::Value size_tensor = op.operand_source(2);
+    if (size_tensor != nullptr) {
+      auto size_tensor_type =
+          size_tensor.type().dyn_cast<paddle::dialect::DenseTensorType>();
+      auto size_tensor_size = size_tensor_type.dims().size();
+      if (size_tensor_size == 2) return true;
+    }
+#endif
+    if (op->HasAttribute("interp_method")) {
+      auto interp_method =
+          op->attribute<pir::StrAttribute>("interp_method").AsString();
+      if (interp_method != "nearest") {
+        VLOG(3) << "The interp_method of nearest_interp is not nearest";
+        return false;
+      }
+    } else {
+      VLOG(3) << "The interp_method attribute does not exist";
+      return false;
+    }
+    auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
+    int out_h = op->attribute<pir::Int32Attribute>("out_h").data();
+    int out_w = op->attribute<pir::Int32Attribute>("out_w").data();
+    std::vector<int32_t> scale;
+    for (const auto &attr : scale_attr.AsVector()) {
+      scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+    }
+    if (!(out_h > 0 && out_w > 0)) {
+      if (scale.size() < 2) {
+        VLOG(3) << "scale size must be greater than 2 if out_h or out_w is "
+                   "not set.";
+        return false;
+      }
+      if (scale[0] <= 0.f || scale[1] <= 0.f) {
+        VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
+                   "not set.";
+        return false;
+      }
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1323,6 +1387,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
     ps.Add(std::make_unique<ArgmaxOpPattern>(context));
     ps.Add(std::make_unique<MaxOpPattern>(context));
+    ps.Add(std::make_unique<NearestInterpOpPattern>(context));
     return ps;
   }
 };
