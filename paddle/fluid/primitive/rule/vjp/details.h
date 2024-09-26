@@ -2809,6 +2809,38 @@ void atan_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void dot_grad(const Tensor& x,
+              const Tensor& y,
+              const Tensor& out_grad,
+              Tensor* x_grad,
+              Tensor* y_grad) {
+  const int64_t out_grad_dim_size = out_grad.dims().size();
+  Tensor out_grad_ = out_grad;
+
+  if (has_dynamic_shape(x.shape()) || has_dynamic_shape(y.shape())) {
+    auto out_grad_shape =
+        get_unsqueeze_dims<T>(shape<T>(out_grad_), {out_grad_dim_size});
+    out_grad_ = backend::reshape<T>(out_grad_, out_grad_shape);
+    out_grad_ = backend::expand_with_tensor<T>(out_grad_, shape<T>(x));
+  } else {
+    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, {out_grad_dim_size});
+    out_grad_ =
+        expand<T>(reshape<T>(out_grad_, out_grad_shape), IntArray(x_dim));
+  }
+
+  if (x_grad) {
+    Tensor x_grad_tmp = out_grad_ * y;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (y_grad) {
+    Tensor y_grad_tmp = out_grad_ * x;
+    set_output<T>(y_grad_tmp, y_grad);
+  }
+}
+
+template <typename T>
 void logcumsumexp_grad(const Tensor& x,
                        const Tensor& out,
                        const Tensor& out_grad,
