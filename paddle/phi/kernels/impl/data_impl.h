@@ -33,9 +33,13 @@ void ShadowFeedKernel(const Context& ctx,
     case 0:  // CPUPlace
       target_place = CPUPlace();
       break;
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case 1:  // CUDAPlace
       target_place = GPUPlace(backends::gpu::GetCurrentDeviceId());
+      break;
+#elif defined(PADDLE_WITH_XPU)
+    case 1:  // XPUPlace
+      target_place = XPUPlace(backends::xpu::GetXPUCurrentDeviceId());
       break;
 #endif
     default:
