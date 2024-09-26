@@ -133,13 +133,16 @@ void AddmmKernel(const Context& dev_ctx,
         0,
         nullptr,
     };
-    r = xblas::fc_fusion<XPUType, XPUType, XPUType, XPUType, float, float, XPUType, float, float>(dev_ctx.x_context(),
-                                                            t_x,
-                                                            t_y,
-                                                            t_input,
-                                                            t_out,
-                                                            desc,
-                                                            epilogue);
+    r = xblas::fc_fusion<XPUType,
+                         XPUType,
+                         XPUType,
+                         XPUType,
+                         float,
+                         float,
+                         XPUType,
+                         float,
+                         float>(
+        dev_ctx.x_context(), t_x, t_y, t_input, t_out, desc, epilogue);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
   }
 }
