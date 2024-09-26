@@ -14,12 +14,19 @@
 
 import paddle
 
-from .base_reshard_func import ReshardFunction
+from .base_reshard_func import (
+    ReshardFunction,
+    is_replicated,
+)
+from .nd_mesh_reshard_func import NdMeshReshardFunction
 
 
 class GlobaleToSubMeshFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
-        if 0 in src_dist_attr.dims_mapping or 0 in src_dist_attr.partial_status:
+
+        # NOTE we could allow the src_dist_attr is not replicated and reshard it as replicated before go through the global_to_sub logic
+        # but the dst_dist_attr should be replicated otherwise there will be un-defined result when change the mesh.
+        if not is_replicated(dst_dist_attr):
             return False
         in_mesh = src_dist_attr.process_mesh
         out_mesh = dst_dist_attr.process_mesh
@@ -32,6 +39,29 @@ class GlobaleToSubMeshFunction(ReshardFunction):
             return out_mesh in sub_meshes
 
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
+
+        # reshard operand as replicated before change the mesh.
+        if not is_replicated(src_dist_attr):
+            tmp_dist_attr = (
+                paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                    src_dist_attr.process_mesh,
+                    [-1] * len(src_dist_attr.dims_mapping),
+                    {},
+                )
+            )
+            tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                src_value.type(), tmp_dist_attr
+            )
+
+            pre_reshard_func = NdMeshReshardFunction()
+            src_value = pre_reshard_func.reshard(
+                src_dist_attr,
+                tmp_dist_attr,
+                src_value,
+                tmp_dst_type,
+            )
+            src_dist_attr = tmp_dist_attr
+
         if src_value.has_one_use():
             src_value.update_dist_attr(dst_dist_attr)
             prev_op = src_value.get_defining_op()
