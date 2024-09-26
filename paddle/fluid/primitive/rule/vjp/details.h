@@ -2884,6 +2884,79 @@ void logcumsumexp_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void logsumexp_grad(const Tensor& x,
+                    const Tensor& out_grad,
+                    const IntArray& axis,
+                    bool keepdim,
+                    bool reduce_all,
+                    Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  reduce_all = false;
+
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+
+  auto x_grad_tmp = Tensor();
+
+  if (x_dim_size == 1) {
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+  } else {
+    if (!keepdim) {
+      auto axis_ = std::vector<int64_t>();
+      if (reduce_all) {
+        for (int64_t i = 0; i < x_dim_size; i++) {
+          axis_.push_back(i);
+        }
+      } else {
+        axis_ = axis.GetData();
+        for (int64_t i = 0; i < axis_size; i++) {
+          if (axis[i] < 0) {
+            axis_[i] = axis[i] + x_dim_size;
+          }
+        }
+      }
+
+      // 计算 exp(x)
+      auto exp_x = exp<T>(x);
+      auto sum_exp_x = sum<T>(exp_x, axis, x.dtype(), true);
+      auto softmax = exp_x / backend::expand<T>(sum_exp_x, x.shape());
+
+      // 处理 out_grad
+      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+      auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+      x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim)) * softmax;
+      // x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * softmax;
+    } else {
+      auto exp_x = exp<T>(x);
+      auto sum_exp_x = sum<T>(exp_x, axis, x.dtype(), true);
+      auto softmax = exp_x / backend::expand<T>(sum_exp_x, x.shape());
+      x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * softmax;
+    }
+  }
+
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
+void trunc_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+
+  Tensor zero_tensor = full<T>(x.dims(), 0.0, x.dtype());
+  set_output<T>(zero_tensor, x_grad);
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
