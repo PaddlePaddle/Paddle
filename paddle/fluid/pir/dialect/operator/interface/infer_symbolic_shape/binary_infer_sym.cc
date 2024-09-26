@@ -2046,6 +2046,45 @@ bool IndexPut_OpInferSymbolicShape(
   return IndexPutOpInferSymbolicShape(op, infer_context);
 }
 
+bool LogLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &input_shape_or_data =
+                                        infer_context->GetShapeOrDataForValue(
+                                            op->operand_source(0)),
+
+                                    &label_shape_or_data =
+                                        infer_context->GetShapeOrDataForValue(
+                                            op->operand_source(1));
+
+  const auto &input_shape = input_shape_or_data.shape();
+  const auto &label_shape = label_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      input_shape.size() == 2 && label_shape.size() == 2,
+      true,
+      common::errors::InvalidArgument(
+          "The rank of input and label should both be 2, but received: "
+          "input: %d, label: %d\n",
+          input_shape.size(),
+          label_shape.size()));
+
+  for (int i = 0; i < 2; i++) {
+    infer_context->AddEqualCstr(input_shape[i], label_shape[i]);
+  }
+
+  symbol::DimExpr one_dim = symbol::DimExpr{1};
+
+  infer_context->AddEqualCstr(input_shape[1], one_dim);
+  infer_context->AddEqualCstr(label_shape[1], one_dim);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(input_shape)});
+
+  return true;
+}
+
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {

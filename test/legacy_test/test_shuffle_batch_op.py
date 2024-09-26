@@ -21,7 +21,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestShuffleBatchOpBase(OpTest):
@@ -98,7 +97,6 @@ class TestShuffleBatchAPI(unittest.TestCase):
     def tearDown(self):
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_seed_without_tensor(self):
         def api_run(seed, place=paddle.CPUPlace()):
             main_prog, startup_prog = (
@@ -117,7 +115,6 @@ class TestShuffleBatchAPI(unittest.TestCase):
             api_run(None, place=place)
             api_run(1, place=place)
 
-    @test_with_pir_api
     def test_seed_with_tensor(self):
         def api_run(place=paddle.CPUPlace()):
             main_prog, startup_prog = (

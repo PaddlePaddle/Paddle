@@ -298,6 +298,8 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
             if var.dtype != paddle.bool:
                 var_ = paddle.scale(var, 1.0)
                 uniq_fetch_vars.append(var_)
+            else:
+                uniq_fetch_vars.append(var)
             fetch_vars = uniq_fetch_vars
 
     # serialize program
