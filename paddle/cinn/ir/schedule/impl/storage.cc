@@ -48,7 +48,7 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
@@ -63,7 +63,7 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] The read_expr is not a Load!\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
@@ -101,7 +101,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
@@ -116,7 +116,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] The write_expr is not a Store!\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
@@ -158,7 +158,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
            << primitive << ">.\n"
            << "[Error info] The buffer of current write_tensor is not "
               "defined!\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
@@ -182,7 +182,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] Size of find_cache_block is not 1!\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
@@ -204,7 +204,7 @@ void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
            << primitive << ">.\n"
            << "[Error info] Expr param(ir_node) should be a "
               "ScheduleBlockRealize or For!\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
@@ -228,7 +228,7 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
            << "[Error info] Expr param(block) is not a ScheduleBlockRealize!\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
@@ -243,7 +243,7 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
            << primitive << ">.\n"
            << "[Error info] One block should only have one Store node!(except "
               "for root block)\n"
-           << "[Error info] The Expr of current schedule is "
+           << "[Expr info] The Expr of current schedule is "
            << module_expr_.GetExprs() << ".";
         return os.str();
       }()));
