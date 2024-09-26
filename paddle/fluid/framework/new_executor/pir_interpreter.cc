@@ -1900,7 +1900,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
         instr_node->Run();
       }
 
-      if (FLAGS_benchmark) {
+      if (FLAGS_benchmark || execution_config_.sync_after_op_launch) {
         instr_node->DeviceContext().Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
