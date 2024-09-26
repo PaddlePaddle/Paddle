@@ -21,7 +21,6 @@ import paddle
 from paddle.base import core
 from paddle.tensorrt.converter import PaddleToTensorRTConverter
 from paddle.tensorrt.util import (
-    # mark_buitlin_op,
     run_pir_pass,
     warmup_shape_infer,
 )
@@ -44,25 +43,21 @@ class TensorRTBaseTest(unittest.TestCase):
             )
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-
         with paddle.static.program_guard(main_program, startup_program):
             api_args = copy.deepcopy(self.api_args)
-            dynamic_inputs = self.program_config.get("dynamic_input_name", set())
-
             for feed_name in self.program_config["feed_list"]:
                 if isinstance(self.api_args[feed_name], dict):
                     new_list_args = []
-                    for sub_arg_name, sub_arg_value in self.api_args[feed_name].items():
-                        if dynamic_inputs:
-                            if feed_name in dynamic_inputs:
-                                input_shape_without_dynamic_dim = sub_arg_value.shape[1:]
-                                input_dynamic_shape = [-1] + list(input_shape_without_dynamic_dim)
-                            else:
-                                input_dynamic_shape = sub_arg_value.shape
-                        else:
-                            input_shape_without_dynamic_dim = sub_arg_value.shape[1:]
-                            input_dynamic_shape = [-1] + list(input_shape_without_dynamic_dim)
-
+                    for sub_arg_name, sub_arg_value in self.api_args[
+                        feed_name
+                    ].items():
+                        input_shape_without_dynamic_dim = sub_arg_value.shape[
+                            1:
+                        ]
+                        input_dynamic_shape = [-1]
+                        input_dynamic_shape.extend(
+                            input_shape_without_dynamic_dim
+                        )
                         input_dtype = sub_arg_value.dtype
                         input_data = paddle.static.data(
                             name=sub_arg_name,
@@ -72,46 +67,36 @@ class TensorRTBaseTest(unittest.TestCase):
                         new_list_args.append(input_data)
                     api_args[feed_name] = new_list_args
                 else:
-                    if dynamic_inputs:
-                        if feed_name in dynamic_inputs:
-                            input_shape_without_dynamic_dim = self.api_args[feed_name].shape[1:]
-                            input_dynamic_shape = [-1] + list(input_shape_without_dynamic_dim)
-                        else:
-                            input_dynamic_shape = self.api_args[feed_name].shape
+                    if (
+                        feed_name in self.min_shape.keys()
+                        and feed_name in self.max_shape.keys()
+                    ):
+                        # dynamic shape condition
+                        input_shape_without_dynamic_dim = self.api_args[
+                            feed_name
+                        ].shape[1:]
+                        input_shape = [-1]
+                        input_shape.extend(input_shape_without_dynamic_dim)
                     else:
-                        input_shape_without_dynamic_dim = self.api_args[feed_name].shape[1:]
-                        input_dynamic_shape = [-1] + list(input_shape_without_dynamic_dim)
+                        input_shape = self.api_args[feed_name].shape
 
                     input_dtype = self.api_args[feed_name].dtype
-                    print("else的feed_name",feed_name)
-                                  
                     input_data = paddle.static.data(
                         name=feed_name,
-                        shape=input_dynamic_shape,
+                        shape=input_shape,
                         dtype=input_dtype,
                     )
                     api_args[feed_name] = input_data
-
-            # 这里确保 starts 和 ends 已正确初始化
-            print("Debugging starts and ends:")
-            print(f"starts: {api_args['starts']}")
-            print(f"ends: {api_args['ends']}")
-
             actual_args = []
             for name, value in api_args.items():
                 actual_args.append(value)
-
             output = self.python_api(*actual_args)
             fetch_list = []
             if isinstance(output, tuple):
                 fetch_list = [out for out in list(output) if out is not None]
             else:
                 fetch_list.append(output)
-
         return main_program, startup_program, fetch_list
-
-
-
 
     def run_program(self, main_program, fetch_list):
         place = (
@@ -134,9 +119,6 @@ class TensorRTBaseTest(unittest.TestCase):
 
     def prepare_feed(self):
         for arg_name, arg_value in self.api_args.items():
-            # 检查输入是否为 numpy 数组
-            if isinstance(arg_value, np.ndarray):
-                self.api_args[arg_name] = arg_value.astype(self.api_args[arg_name].dtype)
             # deal with condition that input is a list tensor
             if (
                 isinstance(self.api_args[arg_name], list)
@@ -164,15 +146,20 @@ class TensorRTBaseTest(unittest.TestCase):
             # init all parameter
             exe.run(startup_program)
             fetch_num = len(fetch_list)
-            if isinstance(fetch_list[0], list):
-                fetch_index = [i for i, v in enumerate(fetch_list)]
-            else:
-                fetch_index = [v.index() for v in fetch_list]
+            fetch_index = [v.index() for v in fetch_list]
             output_expected = self.run_program(main_program, fetch_list)
 
             min_shape_data = dict()  # noqa: C408
             max_shape_data = dict()  # noqa: C408
             for feed_name in self.program_config["feed_list"]:
+                if (
+                    feed_name not in self.min_shape.keys()
+                    and feed_name not in self.max_shape.keys()
+                ):
+                    min_shape_data[feed_name] = self.api_args[feed_name]
+                    max_shape_data[feed_name] = self.api_args[feed_name]
+                    continue
+
                 if isinstance(self.api_args[feed_name], dict):
                     for i in range(len(self.min_shape[feed_name])):
                         sub_feed_name = feed_name + str(i)
@@ -205,9 +192,6 @@ class TensorRTBaseTest(unittest.TestCase):
 
             # run pir pass(including some fusion pass and trt_op_marker_pass)
             main_program = run_pir_pass(main_program, partition_mode=False)
-
-            # Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
-            # mark_buitlin_op(main_program)
 
             # run trt_sub_graph_extract_pass()
             program_with_trt = run_pir_pass(main_program, partition_mode=True)

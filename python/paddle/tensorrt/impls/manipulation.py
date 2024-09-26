@@ -17,9 +17,15 @@ import numpy as np
 import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
+    add_1D_constant_layer,
     get_axes_for_reduce_op,
     get_positive_dim,
+    get_shape_tensor_element,
     has_dynamic_shape,
+    trt_max,
+    trt_min,
+    trt_sub,
+    trt_sum,
 )
 from paddle.tensorrt.register import converter_registry
 
@@ -215,92 +221,106 @@ def slice_converter(network, paddle_op, inputs):
 
     axes = paddle_op.attrs()["axes"]
     decrease_axis = paddle_op.attrs().get("decrease_axis")
-    
-    starts_op =paddle_op.operands()[1].source().get_defining_op()
-    ends_op =paddle_op.operands()[2].source().get_defining_op()
-    if starts_op.name() =="pd_op.full_int_array":
-        starts=starts_op.attrs()["value"]
-    else:
-        starts=inputs[1]
-        ends=inputs[2]
-        
-    starts = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
-    ends = paddle_op.operands()[2].source().get_defining_op().attrs()["value"]
 
+    starts_op = paddle_op.operands()[1].source().get_defining_op()
+    ends_op = paddle_op.operands()[2].source().get_defining_op()
     input_shape_tensor = network.add_shape(input_tensor).get_output(0)
     input_rank = len(input_tensor.shape)
 
-    # Create start, size, stride tensors
-    start = []
-    size = []
-    stride = [1] * input_rank  # Default to 1
-
+    starts_tensor = []
+    ends_tensor = []
     for i in range(input_rank):
-        if i in axes:
-            idx = axes.index(i)
-            start_idx = starts[idx]
-            end_idx = ends[idx]
+        starts_tensor.append(add_1D_constant_layer(network, 0))
+        ends_tensor.append(
+            get_shape_tensor_element(network, input_shape_tensor, i)
+        )
 
-            # Get the size of the current dimension
-            dim_size = network.add_slice(
-                input_shape_tensor, [i], [1], [1]
-            ).get_output(0)
-
-            if start_idx < 0:
-                start_i = network.add_elementwise(
-                    dim_size,
-                    network.add_constant(
-                        [1], np.array([start_idx], dtype=np.int32)
-                    ).get_output(0),
-                    trt.ElementWiseOperation.SUM,
-                ).get_output(0)
-            else:
-                start_i = network.add_constant(
-                    [1], np.array([start_idx], dtype=np.int32)
-                ).get_output(0)
-
-            if end_idx < 0:
-                end_i = network.add_elementwise(
-                    dim_size,
-                    network.add_constant(
-                        [1], np.array([end_idx], dtype=np.int32)
-                    ).get_output(0),
-                    trt.ElementWiseOperation.SUM,
-                ).get_output(0)
-            else:
-                end_i = network.add_constant(
-                    [1], np.array([end_idx], dtype=np.int32)
-                ).get_output(0)
-
-            size_i = network.add_elementwise(
-                end_i, start_i, trt.ElementWiseOperation.SUB
-            ).get_output(0)
-            start.append(start_i)
-            size.append(size_i)
-        else:
-            # For unsliced dimensions, start is 0 and size is the dimension's size
-            start.append(
-                network.add_constant(
-                    [1], np.array([0], dtype=np.int32)
-                ).get_output(0)
-            )
-            size.append(
-                network.add_slice(input_shape_tensor, [i], [1], [1]).get_output(
-                    0
+    if starts_op.name() == "pd_op.full_int_array":
+        starts = starts_op.attrs()["value"]
+        assert len(starts) == len(
+            axes
+        ), "The size of this starts: %d must be equal to the axes: %d." % (
+            len(starts),
+            len(axes),
+        )
+        for idx in axes:
+            if starts[idx] < 0:
+                starts_tensor[axes[idx]] = trt_max(
+                    network,
+                    trt_sum(
+                        network,
+                        add_1D_constant_layer(network, starts[idx]),
+                        get_shape_tensor_element(
+                            network, input_shape_tensor, axes[idx]
+                        ),
+                    ),
+                    add_1D_constant_layer(network, 0),
                 )
+            else:
+                starts_tensor[axes[idx]] = trt_min(
+                    network,
+                    add_1D_constant_layer(network, starts[idx]),
+                    get_shape_tensor_element(
+                        network, input_shape_tensor, axes[idx]
+                    ),
+                )
+    else:
+        starts = inputs[1]
+        for idx in axes:
+            starts_tensor[axes[idx]] = get_shape_tensor_element(
+                network, starts, idx
             )
 
-    start_tensor = network.add_concatenation(start)
-    start_tensor.axis = 0
-    size_tensor = network.add_concatenation(size)
-    size_tensor.axis = 0
+    if ends_op.name() == "pd_op.full_int_array":
+        ends = ends_op.attrs()["value"]
+        assert len(ends) == len(
+            axes
+        ), "The size of this ends: %d must be equal to the axes: %d." % (
+            len(ends),
+            len(axes),
+        )
+        for idx in axes:
+            if ends[idx] < 0:
+                ends_tensor[axes[idx]] = trt_max(
+                    network,
+                    trt_sum(
+                        network,
+                        add_1D_constant_layer(network, ends[idx]),
+                        get_shape_tensor_element(
+                            network, input_shape_tensor, axes[idx]
+                        ),
+                    ),
+                    add_1D_constant_layer(network, 0),
+                )
+            else:
+                ends_tensor[axes[idx]] = trt_min(
+                    network,
+                    add_1D_constant_layer(network, ends[idx]),
+                    get_shape_tensor_element(
+                        network, input_shape_tensor, axes[idx]
+                    ),
+                )
+    else:
+        ends = inputs[2]
+        for idx in axes:
+            ends_tensor[axes[idx]] = get_shape_tensor_element(
+                network, ends, idx
+            )
+
+    start_tensor_layer = network.add_concatenation(starts_tensor)
+    start_tensor_layer.axis = 0
+    start_tensor = start_tensor_layer.get_output(0)
+    end_tensor_layer = network.add_concatenation(ends_tensor)
+    end_tensor_layer.axis = 0
+    end_tensor = end_tensor_layer.get_output(0)
+    size_tensor = trt_sub(network, end_tensor, start_tensor)
 
     # Create Slice layer
     slice_layer = network.add_slice(
         input_tensor, [0] * input_rank, [0] * input_rank, [1] * input_rank
     )
-    slice_layer.set_input(1, start_tensor.get_output(0))
-    slice_layer.set_input(2, size_tensor.get_output(0))
+    slice_layer.set_input(1, start_tensor)
+    slice_layer.set_input(2, size_tensor)
 
     output_tensor = slice_layer.get_output(0)
 

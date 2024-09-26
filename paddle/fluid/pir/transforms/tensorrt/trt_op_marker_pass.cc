@@ -637,37 +637,45 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
     }
 
     auto axes_attr = op->attribute<pir::ArrayAttribute>("axes");
-
     std::vector<int64_t> axes;
     for (const auto &attr : axes_attr.AsVector()) {
       axes.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
     }
 
-    paddle::dialect::FullIntArrayOp full_int_array_op_start =
-        pir::GetDefiningOpForInput(op, 1)
-            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    auto starts_attr =
-        full_int_array_op_start->attribute<pir::ArrayAttribute>("value");
-    std::vector<int64_t> starts;
-    for (const auto &attr : starts_attr.AsVector()) {
-      starts.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
-    }
-    paddle::dialect::FullIntArrayOp full_int_array_op_end =
-        pir::GetDefiningOpForInput(op, 2)
-            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-
-    auto ends_attr =
-        full_int_array_op_end->attribute<pir::ArrayAttribute>("value");
-    std::vector<int64_t> ends;
-    for (const auto &attr : ends_attr.AsVector()) {
-      ends.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+    size_t starts_size = axes.size();
+    size_t ends_size = axes.size();
+    if (pir::GetDefiningOpForInput(op, 1)
+            ->isa<paddle::dialect::FullIntArrayOp>()) {
+      paddle::dialect::FullIntArrayOp full_int_array_op_start =
+          pir::GetDefiningOpForInput(op, 1)
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+      auto starts_attr =
+          full_int_array_op_start->attribute<pir::ArrayAttribute>("value");
+      std::vector<int64_t> starts;
+      for (const auto &attr : starts_attr.AsVector()) {
+        starts.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+      }
+      starts_size = starts.size();
     }
 
-    if (axes.size() != starts.size() || axes.size() != ends.size()) {
+    if (pir::GetDefiningOpForInput(op, 2)
+            ->isa<paddle::dialect::FullIntArrayOp>()) {
+      paddle::dialect::FullIntArrayOp full_int_array_op_end =
+          pir::GetDefiningOpForInput(op, 2)
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+      auto ends_attr =
+          full_int_array_op_end->attribute<pir::ArrayAttribute>("value");
+      std::vector<int64_t> ends;
+      for (const auto &attr : ends_attr.AsVector()) {
+        ends.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+      }
+      ends_size = ends.size();
+    }
+    if (starts_size != axes.size() || ends_size != axes.size()) {
       VLOG(3) << "The size of axes and starts are not equal. "
                  "Axes size: "
-              << axes.size() << ", Starts size: " << starts.size()
-              << ", Ends size: " << ends.size();
+              << axes.size() << ", Starts size: " << starts_size
+              << ", Ends size: " << ends_size;
       return false;
     }
 
