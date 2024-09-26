@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
 
