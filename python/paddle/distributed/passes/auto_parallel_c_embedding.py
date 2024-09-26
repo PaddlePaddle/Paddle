@@ -18,9 +18,13 @@ import warnings
 import paddle
 import paddle.distributed as dist
 from paddle.base.core import TensorDistAttr
-from paddle.distributed.auto_parallel.static.converter import Converter
+from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    DistTensorSpec,
+    TensorDistAttr,
+)
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.static import global_scope
+from paddle.framework import core
 
 from .pass_base import PassBase, register_pass
 
@@ -31,25 +35,12 @@ class AutoParallelCEmbeddingPass(PassBase):
         super().__init__()
 
     def _check_self(self):
-        main_program = self.get_attr("dist_program")
-        ops = main_program.global_block().ops
-        for i, op in enumerate(ops):
-            if op.name() == 'pd_op.embedding':
-                placements = op.operand(1).source().placements
-                dim_map, partial_status = (
-                    dist.auto_parallel.placement_type.to_dim_map(
-                        placements, op.operand(1).source().ndim
-                    )
-                )
-                if dim_map[1] == -1 or dim_map[1] in partial_status:
-                    warnings.warn(
-                        "The c_embedding pass is only applicable to column-wise parallel `embedding` kernel."
-                    )
-                    return False
-                else:
-                    return True
+        hcg = fleet.get_hybrid_communicate_group()
+        mp_size = hcg.get_model_parallel_world_size()
+        if mp_size > 1:
+            return True
         warnings.warn(
-            "The c_embedding pass is only applicable to column-wise parallel `embedding` kernel."
+            "The c_embedding pass is only applicable to tnesor parallel."
         )
         return False
 
@@ -60,6 +51,7 @@ class AutoParallelCEmbeddingPass(PassBase):
         concrete_program = self.get_attr("concrete_program")
         ops = main_program.global_block().ops
         for i, op in enumerate(ops):
+            hcg = fleet.get_hybrid_communicate_group()
             if op.name() == 'pd_op.embedding':
                 # weight
                 placements = op.operand(1).source().placements
@@ -68,8 +60,16 @@ class AutoParallelCEmbeddingPass(PassBase):
                         placements, op.operand(1).source().ndim
                     )
                 )
-                mp_axis = dim_map[1]
-                dim_map = [mp_axis, -1]
+                mp_rank = hcg.get_model_parallel_rank()
+                mp_size = hcg.get_model_parallel_world_size()
+                mp_group = hcg.get_model_parallel_group()
+                mp_id = hcg._get_model_parallel_id()
+                mp_src_rank = hcg.get_model_parallel_group_src_rank()
+                mp_axis = -1
+                dim_map = [-1, -1]
+                if mp_size > 1:
+                    mp_axis = 1
+                    dim_map = [1, -1]
                 dist_attr_w = (
                     paddle.base.libpaddle.pir.create_tensor_dist_attribute(
                         op.operand(1).source().process_mesh,
@@ -87,24 +87,6 @@ class AutoParallelCEmbeddingPass(PassBase):
                 pattern = re.compile(r'embedding_.*\.w_0\.dist')
                 for index, param in enumerate(dy_params):
                     if pattern.match(param.name):
-                        dist_attr = {
-                            "dims_mapping": dist_attr_w.dims_mapping,
-                            "process_shape": dist_attr_w.process_mesh.shape,
-                            "process_group": dist_attr_w.process_mesh.process_ids,
-                        }
-                        place = paddle.framework.CUDAPlace(
-                            paddle.distributed.ParallelEnv().dev_id
-                        )
-                        scope_param = (
-                            global_scope().var(param.name).get_tensor()
-                        )
-                        scope_param._share_data_with(
-                            param.get_tensor().get_tensor()
-                        )
-                        sliced_param = Converter.slice_with_dist_attr(
-                            param.numpy(), dist_attr
-                        )
-                        scope_param.set(sliced_param, place)
                         var_dist_attr = TensorDistAttr()
                         var_dist_attr.process_mesh = dist_attr_w.process_mesh
                         var_dist_attr.dims_mapping = dist_attr_w.dims_mapping
@@ -114,10 +96,10 @@ class AutoParallelCEmbeddingPass(PassBase):
                 # replace embedding with c_embedding
                 paddle.pir.set_insertion_point(op)
                 num_embeddings = op.operand(1).source().type().shape[0]
-                world_size = paddle.distributed.get_world_size()
-                rank = paddle.distributed.get_rank()
-                per_part_size = num_embeddings // world_size
-                vocab_start_index = rank * per_part_size
+                mp_size = hcg.get_model_parallel_world_size()
+                mp_rank = hcg.get_model_parallel_rank()
+                per_part_size = num_embeddings // mp_size
+                vocab_start_index = mp_rank * per_part_size
                 t_op = paddle._C_ops.c_embedding(
                     op.operand(1).source(),
                     op.operand(0).source(),
@@ -130,50 +112,15 @@ class AutoParallelCEmbeddingPass(PassBase):
                 op.erase()
 
                 # update dims_mapping before c_embedding
+                placements = new_op.operand(0).source().placements
                 stack = [new_op.operand(0).source().get_defining_op()]
                 while stack:
                     op = stack.pop()
-                    if op.dist_attr is None:
-                        continue
-                    change = False
                     operands, results = [], []
-                    if op.num_operands() > 0:
-                        for operand, operand_dist in zip(
-                            op.operands_source(), op.dist_attr.operands()
-                        ):
-                            placements = operand.placements
-                            placements_dist = (
-                                operand_dist.as_tensor_dist_attr().placements
-                            )
-                            if placements != placements_dist:
-                                dim_map, partial_status = (
-                                    dist.auto_parallel.placement_type.to_dim_map(
-                                        placements, operand.ndim
-                                    )
-                                )
-                                dist_attr_new = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                                    operand.process_mesh,
-                                    dim_map,
-                                    partial_status,
-                                )
-                                dist_type = (
-                                    paddle.base.libpaddle.pir.cvt_to_dist_type(
-                                        operand.type(), dist_attr_new
-                                    )
-                                )
-                                operand.set_type(dist_type)
-                                operands.append(dist_attr_new)
-                                change = True
-                                stack.append(operand.get_defining_op())
-                            else:
-                                operands.append(
-                                    operand_dist.as_tensor_dist_attr()
-                                )
                     if op.num_results() > 0:
                         for result, result_dist in zip(
                             op.results(), op.dist_attr.results()
                         ):
-                            placements = result.placements
                             placements_dist = (
                                 result_dist.as_tensor_dist_attr().placements
                             )
@@ -195,39 +142,36 @@ class AutoParallelCEmbeddingPass(PassBase):
                                 )
                                 result.set_type(dist_type)
                                 results.append(dist_attr_new)
-                                change = True
-
-                            else:
-                                results.append(
-                                    result_dist.as_tensor_dist_attr()
+                                sub_name = op.name().split('.')[1]
+                                if op.num_operands() > 0:
+                                    operands.append(dist_attr_new)
+                                    next_op = (
+                                        op.operand(0).source().get_defining_op()
+                                    )
+                                    stack.append(next_op)
+                                process_mesh = (
+                                    op.results()[0].process_mesh
+                                    if op.num_results() > 0
+                                    else op.operand(0).source().process_mesh
                                 )
-                    if change:
-                        process_mesh = (
-                            op.results()[0].process_mesh
-                            if op.num_results() > 0
-                            else op.operand(0).source().process_mesh
-                        )
-                        op.dist_attr = (
-                            paddle.base.libpaddle.pir.create_op_dist_attribute(
-                                process_mesh,
-                                operands,
-                                results,
-                            )
-                        )
-
+                                op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+                                    process_mesh,
+                                    operands,
+                                    results,
+                                )
                 # update dims_mapping after c_embedding
-                stack = list(new_op.results()[0].all_used_ops())
+                placements = new_op.result(0).placements
+                pre_id = new_op.id()
+                stack = list(new_op.result(0).all_used_ops())
                 while stack:
                     op = stack.pop()
-                    if op.dist_attr is None:
-                        continue
-                    change = False
                     operands, results = [], []
                     if op.num_operands() > 0:
                         for operand, operand_dist in zip(
                             op.operands_source(), op.dist_attr.operands()
                         ):
-                            placements = operand.placements
+                            if operand.get_defining_op().id() != pre_id:
+                                continue
                             placements_dist = (
                                 operand_dist.as_tensor_dist_attr().placements
                             )
@@ -249,55 +193,87 @@ class AutoParallelCEmbeddingPass(PassBase):
                                 )
                                 operand.set_type(dist_type)
                                 operands.append(dist_attr_new)
-                                change = True
-                            else:
-                                operands.append(
-                                    operand_dist.as_tensor_dist_attr()
-                                )
-                    if op.num_results() > 0:
-                        for result, result_dist in zip(
-                            op.results(), op.dist_attr.results()
-                        ):
-                            placements = result.placements
-                            placements_dist = (
-                                result_dist.as_tensor_dist_attr().placements
-                            )
-                            if placements != placements_dist:
-                                dim_map, partial_status = (
-                                    dist.auto_parallel.placement_type.to_dim_map(
-                                        placements, result.ndim
+                                sub_name = op.name().split('.')[1]
+                                if sub_name == 'reshard':
+                                    placements_out0 = op.results()[0].placements
+                                    dim_map_out0, partial_status_out0 = (
+                                        dist.auto_parallel.placement_type.to_dim_map(
+                                            placements_out0,
+                                            op.results()[0].ndim,
+                                        )
                                     )
-                                )
-                                dist_attr_new = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                                    result.process_mesh,
-                                    dim_map,
-                                    partial_status,
-                                )
-                                dist_type = (
-                                    paddle.base.libpaddle.pir.cvt_to_dist_type(
-                                        result.type(), dist_attr_new
+                                    dist_attr_out0 = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                                        op.results()[0].process_mesh,
+                                        dim_map_out0,
+                                        partial_status_out0,
                                     )
-                                )
-                                result.set_type(dist_type)
-                                results.append(dist_attr_new)
-                                change = True
-                                for next_op in result.all_used_ops():
+                                    results.append(dist_attr_out0)
+                                elif core.contains_spmd_rule(sub_name):
+                                    rule = core.get_phi_spmd_rule(sub_name)
+                                    tensor_dist_attr = TensorDistAttr()
+                                    tensor_dist_attr.dims_mapping = dim_map
+                                    partial_dims = []
+                                    for i, p in enumerate(placements):
+                                        if isinstance(p, dist.Partial):
+                                            partial_dims.append(i)
+                                    if len(partial_dims) > 0:
+                                        tensor_dist_attr._set_partial_dims(
+                                            partial_dims
+                                        )
+                                    tensor_dist_attr.process_mesh = (
+                                        operand.process_mesh
+                                    )
+                                    inputs = DistTensorSpec(
+                                        operand.shape, tensor_dist_attr
+                                    )
+                                    attr_names = op.get_attr_names()
+                                    input_specs = []
+                                    input_specs.append(inputs)
+                                    for attr_name in attr_names:
+                                        input_specs.append(
+                                            op.attrs()[attr_name]
+                                        )
+                                    infered_dist_attrs = rule.infer_forward(
+                                        *input_specs
+                                    )
+                                    dims_mapping_new_out = infered_dist_attrs[
+                                        1
+                                    ][0].dims_mapping
+                                    partial_status = {}
+                                    if infered_dist_attrs[1][0]._is_partial():
+                                        partial_dims = infered_dist_attrs[1][
+                                            0
+                                        ]._partial_dims()
+                                        for i in partial_dims:
+                                            partial_status[i] = (
+                                                paddle.base.core.ReduceType.kRedSum
+                                            )
+                                    dist_attr_new_out = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                                        operand.process_mesh,
+                                        dims_mapping_new_out,
+                                        partial_status,
+                                    )
+                                    dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                                        op.result(0).type(), dist_attr_new_out
+                                    )
+                                    op.result(0).set_type(dist_type)
+                                    results.append(dist_attr_new_out)
+                                    next_op = op.results()[0].all_used_ops()[0]
                                     stack.append(next_op)
-                            else:
-                                results.append(
-                                    result_dist.as_tensor_dist_attr()
-                                )
+                                    pre_id = op.id()
+                                else:
+                                    results.append(dist_attr_new)
+                                    next_op = op.results()[0].all_used_ops()[0]
+                                    stack.append(next_op)
+                                    pre_id = op.id()
 
-                    if change:
-                        process_mesh = (
-                            op.results()[0].process_mesh
-                            if op.num_results() > 0
-                            else op.operand(0).source().process_mesh
-                        )
-                        op.dist_attr = (
-                            paddle.base.libpaddle.pir.create_op_dist_attribute(
-                                process_mesh,
-                                operands,
-                                results,
-                            )
-                        )
+                                process_mesh = (
+                                    op.results()[0].process_mesh
+                                    if op.num_results() > 0
+                                    else op.operand(0).source().process_mesh
+                                )
+                                op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+                                    process_mesh,
+                                    operands,
+                                    results,
+                                )
