@@ -130,6 +130,8 @@ class TestMutator : public ir::IRMutator<> {
         minus_op->v() = new_value;
       } else if (auto not_op = op->As<Not>()) {
         not_op->v() = new_value;
+      } else if (auto store_op = op->As<Store>()) {
+        store_op->value = new_value;
       } else {
         std::cerr << "not support op " << op->node_type() << std::endl;
         throw std::runtime_error("not support op");
@@ -251,6 +253,17 @@ class TestMutator : public ir::IRMutator<> {
     path_list_.push_back(std::make_pair(*expr, is_related));
   }
 
+  void Visit(const ScheduleBlockRealize *op, Expr *expr) override {
+    auto *node = expr->As<ScheduleBlockRealize>();
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            ::common::errors::InvalidArgument(
+                                "Node is null. Ensure that the node is "
+                                "properly initialized and not null."));
+
+    IRVisitorRequireReImpl<void, T>::Visit(&node->schedule_block,
+                                           &node->schedule_block);
+  }
+
   std::unordered_map<Expr, std::vector<Expr *>> expr_map_;
 
   std::vector<std::pair<Expr, IndexRelated>> path_list_;
@@ -292,6 +305,39 @@ class ForLoopCSETest : public ir::IRMutator<> {
  public:
   void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
 
+  void insert_new_node() {
+    std::cerr << "begin to insert\n";
+    std::cerr << "insert size " << insert_node_list.size() << std::endl;
+    for (size_t i = 0; i < insert_node_list.size(); ++i) {
+      if (auto block_op = insert_node_list[i].parent_expr.As<ir::Block>()) {
+        auto &op_list = block_op->stmts;
+        std::cerr << "op list size  " << op_list.size() << std::endl;
+
+        int match_index = -1;
+        for (size_t k = 0; k < op_list.size(); ++k) {
+          if (op_list[k].get() == insert_node_list[i].base_expr.get()) {
+            match_index = k;
+            break;
+          }
+        }
+        if (match_index == -1) {
+          std::cerr << "can not match expr  " << insert_node_list[i].base_expr
+                    << std::endl;
+          throw std::runtime_error("can not match base expr");
+        }
+
+        for (auto &e : insert_node_list[i].new_insert_expr) {
+          std::cerr << "begin to insert !! " << e << std::endl;
+          op_list.insert(op_list.begin() + match_index, e);
+        }
+      } else {
+        std::cerr << "not support " << insert_node_list[i].parent_expr
+                  << std::endl;
+        throw std::runtime_error("only support id block");
+      }
+    }
+  }
+
  private:
   void Visit(const ir::IfThenElse *op, Expr *expr) override {
     // std::cerr << "for body " << op->body << std::endl;
@@ -326,10 +372,17 @@ class ForLoopCSETest : public ir::IRMutator<> {
       auto unrelated_expr_list = test_mutator_1.get_un_related_expr();
 
       for (size_t i = 0; i < unrelated_expr_list.size(); ++i) {
-        Var idx("t_i_" + std::to_string(i), unrelated_expr_list[i].type());
+        Var idx("t_i_" + std::to_string(insert_idx++),
+                unrelated_expr_list[i].type());
         std::cerr << "EEEE " << unrelated_expr_list[i] << std::endl;
 
-        // test_mutator_1.replace_all_user( unrelated_expr_list[i], idx);
+        auto outer_expr = ir::Let::Make(idx, unrelated_expr_list[i]);
+
+        std::cerr << "outer expr " << outer_expr << std::endl;
+
+        InsertNode insert_node(inner_stack.top(), *expr, {outer_expr});
+        insert_node_list.push_back(insert_node);
+        test_mutator_1.replace_all_user(unrelated_expr_list[i], idx);
       }
 
       std::cerr << "insert stack\n\n" << inner_stack.top() << std::endl;
@@ -337,6 +390,10 @@ class ForLoopCSETest : public ir::IRMutator<> {
   }
 
   std::stack<Expr> inner_stack;
+
+  std::vector<InsertNode> insert_node_list;
+
+  int insert_idx{0};
 };
 
 }  // namespace
@@ -345,6 +402,8 @@ void ForCSEOptimize(Expr *expr) {
   ForLoopCSETest for_loop_ces_test;
 
   for_loop_ces_test(expr);
+
+  for_loop_ces_test.insert_new_node();
 
   std::cerr << "!!!!!!!!! ~~~~~~~~~~~~~~~~~~~\n" << *expr << std::endl;
 }
