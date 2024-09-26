@@ -380,6 +380,9 @@ class ForLoopCSETest : public ir::IRMutator<> {
 
         std::cerr << "outer expr " << outer_expr << std::endl;
 
+        // TODO(phlrain): Add check current For Expr is in inner_stack.top()
+        // Expr
+
         InsertNode insert_node(inner_stack.top(), *expr, {outer_expr});
         insert_node_list.push_back(insert_node);
         test_mutator_1.replace_all_user(unrelated_expr_list[i], idx);
