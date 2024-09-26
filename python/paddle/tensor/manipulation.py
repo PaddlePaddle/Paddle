@@ -305,78 +305,83 @@ def slice(
     ends: Sequence[int | Tensor] | Tensor,
 ) -> Tensor:
     """
-    This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
-    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
-    end dimension for each axis in the list of axes and Slice uses this information
-    to slice the input data tensor. If a negative value is passed to
-    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
-    axis :math:`i-1` (here 0 is the initial position).
-    If the value passed to ``starts`` or ``ends`` is greater than n
-    (the number of elements in this dimension), it represents n.
-    For slicing to the end of a dimension with unknown size, it is recommended
-    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` and ``ends``.
-    Following examples will explain how slice works:
+        This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
+        https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+        Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+        end dimension for each axis in the list of axes and Slice uses this information
+        to slice the input data tensor. If a negative value is passed to
+        ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
+        axis :math:`i-1` (here 0 is the initial position).
+        If the value passed to ``starts`` or ``ends`` is greater than n
+        (the number of elements in this dimension), it represents n.
+        For slicing to the end of a dimension with unknown size, it is recommended
+        to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` and ``ends``.
+        Following examples will explain how slice works:
 
-    .. code-block:: text
+        .. code-block:: text
 
-        Case1:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                axes = [0, 1]
-                starts = [1, 0]
-                ends = [2, 3]
-            Then:
-                result = [ [5, 6, 7], ]
+            Case1:
+                Given:
+                    data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                    axes = [0, 1]
+                    starts = [1, 0]
+                    ends = [2, 3]
+                Then:
+                    result = [ [5, 6, 7], ]
 
-        Case2:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                axes = [0, 1]
-                starts = [0, 1]
-                ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
-            Then:
-                result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
+            Case2:
+                Given:
+                    data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                    axes = [0, 1]
+                    starts = [0, 1]
+                    ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
+                Then:
+                    result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
 
-    The following figure illustrates the first case -- a 2D tensor of shape [2, 4] is transformed into a 2D tensor of shape [1, 3] through a slicing operation.
+    <<<<<<< HEAD
+        The following figure illustrates the first case -- a 2D tensor of shape [2, 4] is transformed into a 2D tensor of shape [1, 3] through a slicing operation.
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/slice.png
-        :width: 500
-        :alt: legend of slice API
-        :align: center
+    =======
+        The following figure illustrates the first case -- a 2D tensor of shape [2, 4] is transformed into a 2D tensor of shape [1, 3] through a slicing operation.
 
-    Args:
-        input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
-        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
-        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, each element of
-                it should be integer or 0-D int Tensor with shape []. If ``starts`` is an Tensor, it should be an 1-D Tensor.
-                It represents starting indices of corresponding axis in ``axes``.
-        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, each element of
-                it should be integer or 0-D int Tensor with shape []. If ``ends`` is an Tensor, it should be an 1-D Tensor .
-                It represents ending indices of corresponding axis in ``axes``.
+    >>>>>>> 5f88b9bd2385443762747a9743de235e21eb4bfd
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/slice.png
+            :width: 500
+            :alt: legend of slice API
+            :align: center
 
-    Returns:
-        Tensor, A ``Tensor``. The data type is same as ``input``.
+        Args:
+            input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
+            axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
+            starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, each element of
+                    it should be integer or 0-D int Tensor with shape []. If ``starts`` is an Tensor, it should be an 1-D Tensor.
+                    It represents starting indices of corresponding axis in ``axes``.
+            ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, each element of
+                    it should be integer or 0-D int Tensor with shape []. If ``ends`` is an Tensor, it should be an 1-D Tensor .
+                    It represents ending indices of corresponding axis in ``axes``.
 
-    Examples:
-        .. code-block:: python
+        Returns:
+            Tensor, A ``Tensor``. The data type is same as ``input``.
 
-            >>> import paddle
+        Examples:
+            .. code-block:: python
 
-            >>> input = paddle.rand(shape=[4, 5, 6], dtype='float32')
-            >>> # example 1:
-            >>> # attr starts is a list which doesn't contain tensor.
-            >>> axes = [0, 1, 2]
-            >>> starts = [-3, 0, 2]
-            >>> ends = [3, 2, 4]
-            >>> sliced_1 = paddle.slice(input, axes=axes, starts=starts, ends=ends)
-            >>> # sliced_1 is input[1:3, 0:2, 2:4].
+                >>> import paddle
 
-            >>> # example 2:
-            >>> # attr starts is a list which contain tensor.
-            >>> minus_3 = paddle.full([1], -3, "int32")
-            >>> sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
-            >>> # sliced_2 is input[1:3, 0:2, 2:4].
+                >>> input = paddle.rand(shape=[4, 5, 6], dtype='float32')
+                >>> # example 1:
+                >>> # attr starts is a list which doesn't contain tensor.
+                >>> axes = [0, 1, 2]
+                >>> starts = [-3, 0, 2]
+                >>> ends = [3, 2, 4]
+                >>> sliced_1 = paddle.slice(input, axes=axes, starts=starts, ends=ends)
+                >>> # sliced_1 is input[1:3, 0:2, 2:4].
+
+                >>> # example 2:
+                >>> # attr starts is a list which contain tensor.
+                >>> minus_3 = paddle.full([1], -3, "int32")
+                >>> sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
+                >>> # sliced_2 is input[1:3, 0:2, 2:4].
     """
     if isinstance(axes, (list, tuple)):
         axes = list(axes)
