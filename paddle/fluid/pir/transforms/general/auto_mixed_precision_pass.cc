@@ -138,6 +138,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
         paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
         paddle::dialect::CrossEntropyWithSoftmax_Op::name(),
         paddle::dialect::ArrayToTensorOp::name(),
+        "pd_op.fused_bias_residual_layernorm",
     });
   }
 
