@@ -30,6 +30,7 @@ class AddShadowOutputAfterDeadParameterPattern
     if (!op->use_empty()) {
       return false;
     }
+    rewriter.SetInsertionPointToBlockEnd(op->GetParent());
     rewriter.Build<pir::ShadowOutputOp>(op->result(0), op.param_name());
     return true;
   }
