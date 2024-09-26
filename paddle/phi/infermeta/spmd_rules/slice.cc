@@ -264,6 +264,16 @@ SpmdInfo SliceInferSpmdDynamic(const DistMetaTensor& input,
   return SliceInferSpmdBase(input, axes, decrease_axis, {}, {}, {});
 }
 
+SpmdInfo TensorSliceInferSpmd(const DistMetaTensor& input,
+                              int64_t begin_idx,
+                              int64_t end_idx) {
+  auto input_dist_attr_src = input.dist_attr();
+  std::vector<int64_t> input_dims_mapping = input_dist_attr_src.dims_mapping();
+  input_dims_mapping[0] = -1;
+  input_dist_attr_src.set_dims_mapping(input_dims_mapping);
+  return {{input_dist_attr_src}, {input_dist_attr_src}};
+}
+
 SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
                             const DistMetaTensor& out_grad,
                             const std::vector<int64_t>& axes,

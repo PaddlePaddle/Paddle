@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -108,6 +109,8 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     if (var.is_dense_tensor()) {
       var_size =
           std::dynamic_pointer_cast<phi::DenseTensor>(var.impl())->numel();
+    } else if (dialect::IrTensor::classof(var.impl().get())) {
+      var_size = var.numel();
     } else {
       VLOG(3) << "var " << var.name()
               << " is not tensor or selected_rows, so skip it";

@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/amp_ops.h"
 #include "paddle/phi/infermeta/spmd_rules/argmax.h"
 #include "paddle/phi/infermeta/spmd_rules/cast.h"
+#include "paddle/phi/infermeta/spmd_rules/coalesce.h"
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/conv2d.h"
 #include "paddle/phi/infermeta/spmd_rules/cross_entropy_with_softmax.h"

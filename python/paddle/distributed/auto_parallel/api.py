@@ -67,6 +67,7 @@ from .placement_type import (
     to_placements,
 )
 from .random import determinate_rng, rng_state
+from .sharding import ShardingStage1Optimizer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -1640,6 +1641,7 @@ def shard_optimizer(
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
 
     """
+    return ShardingStage1Optimizer(optimizer, shard_fn)
     return _ShardOptimizer(optimizer, shard_fn)
 
 
