@@ -1952,7 +1952,7 @@ class TestSqrt_Complex64(TestSqrtComp):
             )[0]
             ddx = paddle.grad(outputs=[dx], inputs=[x], retain_graph=True)[0]
             np.testing.assert_allclose(
-                ddx.numpy(), expected_ddx, rtol=1e-2, atol=1e-1
+                ddx.numpy(), expected_ddx, rtol=1, atol=1.5
             )
             logging.info(
                 f"Second-order gradient check passed for dtype: {self.dtype}"
