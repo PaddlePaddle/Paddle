@@ -21,7 +21,6 @@ from distribution import config
 
 import paddle
 from paddle.distribution import transform, variable
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2022)
 paddle.seed(2022)
@@ -1159,7 +1158,6 @@ class TestReshapeTransform(unittest.TestCase):
     def test_codomain(self):
         self.assertTrue(isinstance(self._t._codomain, variable.Independent))
 
-    @test_with_pir_api
     def test_forward(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()
@@ -1180,7 +1178,6 @@ class TestReshapeTransform(unittest.TestCase):
             atol=config.ATOL.get(str(expected.dtype)),
         )
 
-    @test_with_pir_api
     def test_inverse(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()
@@ -1202,7 +1199,6 @@ class TestReshapeTransform(unittest.TestCase):
             atol=config.ATOL.get(str(expected.dtype)),
         )
 
-    @test_with_pir_api
     def test_forward_log_det_jacobian(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()
@@ -1246,7 +1242,6 @@ class TestSigmoidTransform(unittest.TestCase):
     @param.param_func(
         ((np.ones((5, 10)), 1 / (1 + np.exp(-np.ones((5, 10))))),)
     )
-    @test_with_pir_api
     def test_forward(self, input, expected):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', input.shape, input.dtype)
@@ -1269,7 +1264,6 @@ class TestSigmoidTransform(unittest.TestCase):
     @param.param_func(
         ((np.ones(10), np.log(np.ones(10)) - np.log1p(-np.ones(10))),)
     )
-    @test_with_pir_api
     def test_inverse(self, input, expected):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', input.shape, input.dtype)
@@ -1297,7 +1291,6 @@ class TestSigmoidTransform(unittest.TestCase):
             ),
         )
     )
-    @test_with_pir_api
     def test_forward_log_det_jacobian(self, input, expected):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', input.shape, input.dtype)
@@ -1326,7 +1319,6 @@ class TestSigmoidTransform(unittest.TestCase):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
 
     @param.param_func([(np.array(1.0), np.array(1.0))])
-    @test_with_pir_api
     def test_zerodim(self, input, expected):
         shape = ()
         if paddle.framework.in_pir_mode():
@@ -1356,7 +1348,6 @@ class TestStickBreakingTransform(unittest.TestCase):
         self.assertTrue(isinstance(self._t._codomain, variable.Variable))
 
     @param.param_func(((np.random.random(10),),))
-    @test_with_pir_api
     def test_forward(self, input):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', input.shape, input.dtype)
@@ -1386,7 +1377,6 @@ class TestStickBreakingTransform(unittest.TestCase):
         self.assertEqual(self._t.inverse_shape(shape), expected_shape)
 
     @param.param_func(((np.random.random(10),),))
-    @test_with_pir_api
     def test_forward_log_det_jacobian(self, input):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', input.shape, input.dtype)
@@ -1428,7 +1418,6 @@ class TestStackTransform(unittest.TestCase):
             (np.array([[-5.0, 6.0, 7.0, 8.0]]),),
         ]
     )
-    @test_with_pir_api
     def test_forward(self, input):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', input.shape, input.dtype)
@@ -1453,7 +1442,6 @@ class TestStackTransform(unittest.TestCase):
             ),
         ]
     )
-    @test_with_pir_api
     def test_inverse(self, input):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', input.shape, input.dtype)
@@ -1471,7 +1459,6 @@ class TestStackTransform(unittest.TestCase):
     @param.param_func(
         [(np.array([[1.0, 2.0, 3.0]]),), (np.array([[6.0, 7.0, 8.0]]),)]
     )
-    @test_with_pir_api
     def test_forward_log_det_jacobian(self, input):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', input.shape, input.dtype)
@@ -1504,12 +1491,10 @@ class TestStackTransform(unittest.TestCase):
             ([paddle.distribution.ExpTransform()], 'axis', TypeError),
         ]
     )
-    @test_with_pir_api
     def test_init_exception(self, transforms, axis, exc):
         with self.assertRaises(exc):
             paddle.distribution.StackTransform(transforms, axis)
 
-    @test_with_pir_api
     def test_transforms(self):
         self.assertIsInstance((self._t.transforms), typing.Sequence)
 

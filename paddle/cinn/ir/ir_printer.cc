@@ -124,7 +124,11 @@ void IrPrinter::Visit(const FloatImm *x) {
   std::ostringstream ss;
   if (x->type().is_float16()) {
     if (std::isinf(x->value)) {
-      ss << "cinn::common::raw_uint16_to_float16(0x7c00)";
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "cinn::common::raw_uint16_to_float16(0x7c00)";
+      } else {
+        ss << "cinn::common::raw_uint16_to_float16(0xfc00)";
+      }
     } else if (std::isnan(x->value)) {
       ss << "cinn::common::raw_uint16_to_float16(0x7e00)";
     } else {
@@ -134,7 +138,11 @@ void IrPrinter::Visit(const FloatImm *x) {
     }
   } else if (x->type().is_bfloat16()) {
     if (std::isinf(x->value)) {
-      ss << "cinn::common::raw_uint16_to_bfloat16(0x7F80)";
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "cinn::common::raw_uint16_to_bfloat16(0x7F80)";
+      } else {
+        ss << "cinn::common::raw_uint16_to_bfloat16(0xFF80)";
+      }
     } else if (std::isnan(x->value)) {
       ss << "cinn::common::raw_uint16_to_bfloat16(0x7FC0)";
     } else {

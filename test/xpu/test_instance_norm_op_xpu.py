@@ -25,7 +25,6 @@ from op_test_xpu import XPUOpTest
 import paddle
 from paddle import base
 from paddle.base import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -174,7 +173,6 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = True
             self.dtype = self.in_type
 
-        @test_with_pir_api
         def test_errors(self):
             with program_guard(Program(), Program()):
                 # the input of instance_norm must be Variable.

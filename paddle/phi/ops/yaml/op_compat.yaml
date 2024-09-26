@@ -2206,6 +2206,21 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : legacy_reshape (reshape)
+  backward : legacy_reshape_grad (reshape_grad)
+  inputs:
+    x : X
+  outputs:
+    out : Out
+    xshape: XShape
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : ShapeTensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
+
 - op : lerp
   backward : lerp_grad
   inputs :
@@ -2246,6 +2261,13 @@
   inputs :
     {start : Start, stop : Stop, number : Num}
   outputs :
+    out : Out
+
+- op : lod_reset
+  backward : lod_reset_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
     out : Out
 
 - op : log

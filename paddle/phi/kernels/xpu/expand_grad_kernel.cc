@@ -52,5 +52,10 @@ void ExpandGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(expand_grad, XPU, ALL_LAYOUT, phi::ExpandGradKernel, float) {
-}
+PD_REGISTER_KERNEL(expand_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ExpandGradKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
