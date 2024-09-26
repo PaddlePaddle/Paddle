@@ -261,7 +261,7 @@ SET_NULL_TYPE_TEMPLATE = """
     }}"""
 
 COMBINE_OP_TEMPLATE = """
-    auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
+    auto {op_name} = builtin_combine({in_name}).defining_op<pir::CombineOp>();"""
 
 SPLIT_OP_TEMPLATE = """
     auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({in_name});"""
