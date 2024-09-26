@@ -31,26 +31,12 @@ void AddmmGradKernel(const Context& dev_ctx,
                      DenseTensor* y_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  if (input_grad) {
-    dev_ctx.template Alloc<T>(input_grad);
-  }
-  if (x_grad) {
-    dev_ctx.template Alloc<T>(x_grad);
-  }
-  if (y_grad) {
-    dev_ctx.template Alloc<T>(y_grad);
-  }
-
-  const XPUType* out_grad_ptr =
-      reinterpret_cast<const XPUType*>(out_grad.data<T>());
-  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
-  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
-
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
   int r;
 
   if (input_grad) {
+    dev_ctx.template Alloc<T>(input_grad);
     XPUType* input_grad_ptr = reinterpret_cast<XPUType*>(input_grad->data<T>());
     r = xpu::constant(xpu_ctx, input_grad_ptr, input.numel(), (XPUType)(beta));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
@@ -65,6 +51,17 @@ void AddmmGradKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
+  if (x_grad) {
+    dev_ctx.template Alloc<T>(x_grad);
+  }
+  if (y_grad) {
+    dev_ctx.template Alloc<T>(y_grad);
+  }
+
+  const XPUType* out_grad_ptr =
+      reinterpret_cast<const XPUType*>(out_grad.data<T>());
+  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
+  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
 
   XpuFcInfo info_forward;
   GetFCInfo(x.dims(), y.dims(), false, false, &info_forward);

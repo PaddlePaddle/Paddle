@@ -16,6 +16,9 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "xblas/cublasLt.h"
+
+namespace xblas = baidu::xpu::xblas;
 
 namespace phi {
 
@@ -28,12 +31,6 @@ void AddmmKernel(const Context& dev_ctx,
                  float alpha,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
-  dev_ctx.template Alloc<T>(out);
-  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
-  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
-  const XPUType* input_ptr = reinterpret_cast<const XPUType*>(input.data<T>());
-  XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
 
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -57,6 +54,12 @@ void AddmmKernel(const Context& dev_ctx,
                         "Variable 'y' of AddmmOp must be 2-dimensional, "
                         "but received shape: [%s]",
                         input_dims));
+
+  dev_ctx.template Alloc<T>(out);
+  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
+  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
+  const XPUType* input_ptr = reinterpret_cast<const XPUType*>(input.data<T>());
+  XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
 
   int r;
   if (alpha == 0.f) {
@@ -85,12 +88,59 @@ void AddmmKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
     }
   } else {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
-    XpuFcInfo fc_info;
-    GetFCInfo(x_dims, y_dims, false, false, &fc_info);
-    xpu::Context* xpu_ctx = dev_ctx.x_context();
-    MatMulXPUFunction<XPUType>(
-        xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
+    xblas::FcFusionTensor<const XPUType> t_input{
+        input_ptr,
+        nullptr,
+        input.dims()[0],
+        input.dims()[1],
+        input.dims()[1],
+        false,
+    };
+    xblas::FcFusionTensor<const XPUType> t_x{
+        x_ptr,
+        nullptr,
+        x.dims()[0],
+        x.dims()[1],
+        x.dims()[1],
+        false,
+    };
+    xblas::FcFusionTensor<const XPUType> t_y{
+        y_ptr,
+        nullptr,
+        y.dims()[0],
+        y.dims()[1],
+        y.dims()[1],
+        false,
+    };
+    xblas::FcFusionTensor<XPUType> t_out{
+        out_ptr,
+        nullptr,
+        out->dims()[0],
+        out->dims()[1],
+        out->dims()[1],
+        false,
+    };
+    xblas::FcFusionDesc<float, float, XPUType> desc{
+        alpha,
+        beta,
+    };
+    xblas::FcFusionEpilogue<float, float> epilogue{
+        xdnn::Activation_t::LINEAR,
+        nullptr,
+        nullptr,
+        nullptr,
+        0,
+        0,
+        nullptr,
+    };
+    r = xblas::fc_fusion<XPUType, XPUType, XPUType, XPUType, float, float, XPUType, float, float>(dev_ctx.x_context(),
+                                                            t_x,
+                                                            t_y,
+                                                            t_input,
+                                                            t_out,
+                                                            desc,
+                                                            epilogue);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
   }
 }
 }  // namespace phi
