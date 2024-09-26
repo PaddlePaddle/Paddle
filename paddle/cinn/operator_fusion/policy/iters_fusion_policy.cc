@@ -208,19 +208,20 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
       return std::nullopt;
     }
   } else if (!squeezed_source.reduce_iter_nums && target.reduce_iter_nums) {
-    // Trivial -> Reduce ItersTransform
-    // Can fuse with non fake reduce dims or small inner reduce loop
-    auto [target_flatten_iters, _UNUSED] = SplitReduceIters(target);
-    if (!AllFirstInSecond(squeezed_source.loop_iters, target_flatten_iters)) {
-      const auto reduce_dims_product =
-          iters_manager_->GetReduceDimsProduct(target);
-      if (reduce_dims_product.isa<std::int64_t>() &&
-          reduce_dims_product.dyn_cast<std::int64_t>() > 1024 * 16) {
-        VLOG(4) << "Can not fuse trivial to reduce with large reduce dims: "
-                << reduce_dims_product.dyn_cast<std::int64_t>();
-        return std::nullopt;
-      }
-    }
+    // // Trivial -> Reduce ItersTransform
+    // // Can fuse with non fake reduce dims or small inner reduce loop
+    // auto [target_flatten_iters, _UNUSED] = SplitReduceIters(target);
+    // if (!AllFirstInSecond(squeezed_source.loop_iters, target_flatten_iters))
+    // {
+    //   const auto reduce_dims_product =
+    //       iters_manager_->GetReduceDimsProduct(target);
+    //   if (reduce_dims_product.isa<std::int64_t>() &&
+    //       reduce_dims_product.dyn_cast<std::int64_t>() > 1024 * 16) {
+    //     VLOG(4) << "Can not fuse trivial to reduce with large reduce dims: "
+    //             << reduce_dims_product.dyn_cast<std::int64_t>();
+    //     return std::nullopt;
+    //   }
+    // }
   } else if (squeezed_source.reduce_iter_nums && !target.reduce_iter_nums) {
     VLOG(4) << "Can not transform iters from Reduce to Trivial.";
     return std::nullopt;
