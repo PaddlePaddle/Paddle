@@ -3169,7 +3169,7 @@ bool RankAttentionOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
-  if (paddle::dialect::details::isFakeValue(op->result(0))) {
+  if (paddle::dialect::details::IsFakeValue(op->result(0))) {
     infer_context->SetSymbolForValueByStaticShape(op->result(0));
   } else {
     std::vector<symbol::DimExpr> x_help_shape = {x_shape[0],
