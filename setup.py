@@ -1197,7 +1197,29 @@ def get_cinn_config_jsons():
     return json_path_list
 
 
-def extend_type_hints_package_data(package_data):
+def get_typing_libs_packages(paddle_binary_dir):
+    """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
+    e.g.
+        'paddle._typing.libs.libpaddle.cinn'
+        'paddle._typing.libs.libpaddle.pir'
+        'paddle._typing.libs.libpaddle.eager'
+        'paddle._typing.libs.libpaddle.eager.ops'
+    """
+    base_dir = Path(paddle_binary_dir) / 'python'
+    libs_dir = base_dir / 'paddle' / '_typing' / 'libs' / 'libpaddle'
+    return [
+        '.'.join(str(Path(root).relative_to(base_dir)).split(os.sep))
+        for root, _, _ in os.walk(libs_dir)
+    ]
+
+
+def extend_type_hints_package_data(packages, package_data, paddle_binary_dir):
+    typing_libs_packages = get_typing_libs_packages(paddle_binary_dir)
+
+    # update packages
+    packages += typing_libs_packages
+
+    # update package_data
     type_hints_files = {
         'paddle': ['py.typed', '*.pyi'],
         'paddle.framework': ['*.pyi'],
@@ -1205,17 +1227,17 @@ def extend_type_hints_package_data(package_data):
         'paddle.tensor': ['tensor.pyi'],
         'paddle._typing': ['*.pyi'],
         'paddle._typing.libs': ['*.pyi', '*.md'],
-        'paddle._typing.libs.libpaddle': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.pir': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.eager': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.eager.ops': ['*.pyi'],
     }
+
+    for libpaddle_module in typing_libs_packages:
+        type_hints_files[libpaddle_module] = ['*.pyi']
+
     for pkg, files in type_hints_files.items():
         if pkg not in package_data:
             package_data[pkg] = []
         package_data[pkg] += files
 
-    return package_data
+    return packages, package_data
 
 
 def get_package_data_and_package_dir():
@@ -1588,9 +1610,6 @@ def get_package_data_and_package_dir():
     elif sys.platform == 'darwin':
         ext_modules = []
 
-    # type hints
-    package_data = extend_type_hints_package_data(package_data)
-
     return package_data, package_dir, ext_modules
 
 
@@ -1720,6 +1739,12 @@ def get_headers():
         + list(  # serialize and deserialize interface headers
             find_files(
                 'op_yaml_info_util.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'op_yaml_info_parser.h',
                 paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
             )
         )
@@ -1952,10 +1977,6 @@ def get_setup_parameters():
         'paddle.decomposition',
         'paddle._typing',
         'paddle._typing.libs',
-        'paddle._typing.libs.libpaddle',
-        'paddle._typing.libs.libpaddle.pir',
-        'paddle._typing.libs.libpaddle.eager',
-        'paddle._typing.libs.libpaddle.eager.ops',
     ]
 
     paddle_bins = ''
@@ -2229,6 +2250,10 @@ def main():
         '1',
     ]:
         generate_stub_files(paddle_binary_dir, paddle_source_dir)
+    # package stub files
+    packages, package_data = extend_type_hints_package_data(
+        packages, package_data, paddle_binary_dir
+    )
 
     setup(
         name=package_name,

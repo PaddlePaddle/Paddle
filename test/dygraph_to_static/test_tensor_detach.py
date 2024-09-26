@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -32,7 +31,6 @@ def detach_fn(x, y):
 
 
 class TestDetach(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_detach(self):
         static_fn = paddle.jit.to_static(detach_fn)
         x = paddle.ones([], 'float32')

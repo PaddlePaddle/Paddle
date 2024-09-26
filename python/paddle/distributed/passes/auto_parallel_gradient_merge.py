@@ -301,8 +301,8 @@ def _pir_append_gradient_merge_backward_op(
 
         # step2: Accumulate persistable gradient variables in main_program
         # NOTE(zhaoyingli): inplace operation must be 'a = a + b', cannot be 'a = b + a'
-        gard_defining_op = grad.get_defining_op()
-        paddle.pir.set_insertion_point_after(gard_defining_op)
+        grad_defining_op = grad.get_defining_op()
+        paddle.pir.set_insertion_point_after(grad_defining_op)
 
         new_gradient_merge_var = main_block.add_kwarg(
             param.name + "@GRAD@MERGE", grad.type()
@@ -313,7 +313,16 @@ def _pir_append_gradient_merge_backward_op(
             new_gradient_merge_var, grad
         )
         new_gradient_merge_var_add.get_defining_op().op_role = (
-            gard_defining_op.op_role
+            grad_defining_op.op_role
+        )
+
+        new_gradient_merge_var_add.get_defining_op().dist_attr = (
+            paddle.base.libpaddle.pir.create_op_dist_attribute(
+                grad_defining_op.dist_attr.process_mesh,
+                grad_defining_op.dist_attr.operands(),
+                grad_defining_op.dist_attr.results(),
+                grad_defining_op.dist_attr.chunk_id,
+            )
         )
 
         opt_ops_use_grad = [
@@ -331,13 +340,18 @@ def _pir_append_gradient_merge_backward_op(
                 paddle.pir.set_insertion_point_after(opt_op)
                 allreduce_sum_out = opt_op.result(0)
 
-                scale = paddle.full([], 0.5)
                 scale_out = paddle._C_ops.scale_(
-                    allreduce_sum_out, scale, 0.0, False
+                    allreduce_sum_out, 0.5, 0.0, False
                 )
 
-                scale.get_defining_op().op_role = int(OpRole.Optimize)
-                scale_out.get_defining_op().op_role = int(OpRole.Optimize)
+                scale_op = scale_out.get_defining_op()
+                scale_op.op_role = int(OpRole.Optimize)
+
+                full_op = scale_op.operand_source(1).get_defining_op()
+                assert (
+                    full_op.name() == "pd_op.full"
+                ), f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
+                full_op.op_role = int(OpRole.Optimize)
 
         # reset gradient merge var to zero after finishing optimization
         paddle.pir.set_insertion_point_to_block_end(main_block)
@@ -350,7 +364,9 @@ def _pir_append_gradient_merge_backward_op(
 
         set_value_op = new_gradient_merge_var_zero.get_defining_op()
         set_value_op.op_role = int(OpRole.Optimize)
-        set_value.get_defining_op().op_role = int(OpRole.Optimize)
+        for id in range(1, set_value_op.num_operands()):
+            op_input = set_value_op.operand_source(id)
+            op_input.get_defining_op().op_role = int(OpRole.Optimize)
 
         # step3: Construct new_params_grads and grad_to_gradient_merge
         new_params_grads.append((param, new_gradient_merge_var))
@@ -669,10 +685,16 @@ def _pir_parse_program(
                 paddle.pir.set_insertion_point_after(op)
                 break
         for _, new_grad in new_params_to_grads:
-            scale = paddle.full([], 1.0 / k_steps)
-            new_grad = paddle._C_ops.scale_(new_grad, scale, 0.0, False)
-            new_grad.get_defining_op().op_role = int(OpRole.Optimize)
-            scale.get_defining_op().op_role = int(OpRole.Optimize)
+            new_grad = paddle._C_ops.scale_(new_grad, 1.0 / k_steps, 0.0, False)
+
+            scale_op = new_grad.get_defining_op()
+            scale_op.op_role = int(OpRole.Optimize)
+
+            full_op = scale_op.operand_source(1).get_defining_op()
+            assert (
+                full_op.name() == "pd_op.full"
+            ), f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
+            full_op.op_role = int(OpRole.Optimize)
 
 
 @register_pass("auto_parallel_gradient_merge_pass")

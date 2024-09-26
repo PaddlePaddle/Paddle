@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -181,7 +180,6 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def check_api(self, axis=-1):
         ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
 
@@ -201,7 +199,6 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_check_api(self):
         for axis in [-1, 1]:
             self.check_api(axis)
@@ -217,7 +214,6 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def check_api(self, axis=-1, dtype=None):
         x = self.x.copy()
         if dtype is not None:
@@ -236,13 +232,11 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_check_api(self):
         for axis in [-1, 1]:
             self.check_api(axis)
         self.check_api(-1, 'float64')
 
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name='X1', shape=[100], dtype='int32')
