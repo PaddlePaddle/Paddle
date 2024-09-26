@@ -293,7 +293,7 @@ def cast_(x: Tensor, dtype: DTypeLike) -> Tensor:
     Please refer to :ref:`api_paddle_cast`.
     """
     if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast_(x, dtype)
 
@@ -337,6 +337,13 @@ def slice(
                 ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
             Then:
                 result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
+
+    The following figure illustrates the first case -- a 2D tensor of shape [2, 4] is transformed into a 2D tensor of shape [1, 3] through a slicing operation.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/slice.png
+        :width: 500
+        :alt: legend of slice API
+        :align: center
 
     Args:
         input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
@@ -1637,6 +1644,13 @@ def flip(
     """
     Reverse the order of a n-D tensor along given axis in axis.
 
+    The image below illustrates how ``flip`` works.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/flip.png
+        :width: 500
+        :alt: legend of flip API
+        :align: center
+
     Args:
         x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
@@ -2386,6 +2400,13 @@ def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     """
     Stacks all the input tensors ``x`` along vertical axis.
     All tensors must be of the same dtype.
+
+    The image below illustrates how ``vstack`` works.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/vstack.png
+        :width: 500
+        :alt: legend of vstack API
+        :align: center
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
