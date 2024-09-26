@@ -338,7 +338,7 @@ def slice(
             Then:
                 result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
 
-    The following figure illustrates the first example -- a 2D tensor of shape [2, 4] is transformed into a 2D tensor of shape [1, 3] through a slicing operation. The start and end indices for slicing are specified along both axis 0 and axis 1. The elements in the two subdiagrams correspond to each other, clearly demonstrating how the slice API works.
+    The following figure illustrates the first case -- a 2D tensor of shape [2, 4] is transformed into a 2D tensor of shape [1, 3] through a slicing operation.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/slice.png
         :width: 500
