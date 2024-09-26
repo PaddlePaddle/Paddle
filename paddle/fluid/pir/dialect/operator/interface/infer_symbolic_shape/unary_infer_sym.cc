@@ -1713,7 +1713,7 @@ bool LrnOpInferSymbolicShape(pir::Operation *op,
 
 bool LogSoftmaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return UnchangedCheckAxisInferSymbolicShape(op, infer_context);
+  return UnchangedCheckAxisInferSymbolicShape(op, infer_context, "axis");
 }
 
 bool LuOpInferSymbolicShape(pir::Operation *op,
@@ -3874,7 +3874,7 @@ bool UnbindOpInferSymbolicShape(pir::Operation *op,
 bool UnchangedCheckAxisInferSymbolicShape(
     pir::Operation *op,
     pir::InferSymbolicShapeContext *infer_context,
-    const std::string &axisAttrName = "axis") {
+    const std::string &axisAttrName) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();

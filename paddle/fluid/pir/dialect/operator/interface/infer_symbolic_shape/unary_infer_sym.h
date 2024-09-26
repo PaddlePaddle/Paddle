@@ -162,4 +162,9 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unfold)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unstack)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(WeightQuantize)
 
+bool UnchangedCheckAxisInferSymbolicShape(
+    pir::Operation *op,
+    pir::InferSymbolicShapeContext *infer_context,
+    const std::string &axisAttrName);
+
 }  // namespace paddle::dialect
