@@ -123,15 +123,18 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   float* pos_seq_data = RAII_GUARD.alloc_l3_or_gm<float>(seq_len);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(pos_seq_data);
   int ret =
       xpu::range<float>(dev_ctx.x_context(), pos_seq_data, 0.0f, 1.0f, seq_len);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
   float* freqs_data = RAII_GUARD.alloc_l3_or_gm<float>(head_dim / 2);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(freqs_data);
   ret = xpu::range<float>(
       dev_ctx.x_context(), freqs_data, 0.0f, 2.0f / head_dim, head_dim / 2);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
 
   float* rotary_base_xpu_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(rotary_base_xpu_data);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      rotary_base_xpu_data,
                      phi::CPUPlace(),
@@ -150,8 +153,11 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
 
   int64_t half_rotary_len = seq_len * head_dim / 2;
   float* indices_half_data = RAII_GUARD.alloc_l3_or_gm<float>(half_rotary_len);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(indices_half_data);
   float* sin_fp32_half_data = RAII_GUARD.alloc_l3_or_gm<float>(half_rotary_len);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(sin_fp32_half_data);
   float* cos_fp32_half_data = RAII_GUARD.alloc_l3_or_gm<float>(half_rotary_len);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(cos_fp32_half_data);
 
   ret = xpu::broadcast_mul<float>(dev_ctx.x_context(),
                                   pos_seq_data,
@@ -190,6 +196,8 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
     sin_half_data = reinterpret_cast<XPUSCType*>(sin_fp32_half_data);
     cos_half_data = reinterpret_cast<XPUSCType*>(cos_fp32_half_data);
   }
+  PADDLE_ENFORCE_XDNN_NOT_NULL(sin_half_data);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(cos_half_data);
   ret = xpu::broadcast<XPUSCType>(dev_ctx.x_context(),
                                   sin_half_data,
                                   sin_data,
@@ -445,7 +453,9 @@ void XPUFusedRopeImpl(const Context& dev_ctx,
 
   int64_t sin_cos_len = batch_size * seq_len * head_dim;
   auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(sin_cos_len);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(sin_data);
   auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(sin_cos_len);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(cos_data);
   XPUGetSinCosData<XPUType, XPUSCType, Context>(dev_ctx,
                                                 sin,
                                                 cos,
