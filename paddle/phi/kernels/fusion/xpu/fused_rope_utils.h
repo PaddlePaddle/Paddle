@@ -127,89 +127,103 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
   int ret =
       xpu::range<float>(dev_ctx.x_context(), pos_seq_data, 0.0f, 1.0f, seq_len);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
-  float* freqs_data = RAII_GUARD.alloc_l3_or_gm<float>(head_dim / 2);
-  PADDLE_ENFORCE_XDNN_NOT_NULL(freqs_data);
-  ret = xpu::range<float>(
-      dev_ctx.x_context(), freqs_data, 0.0f, 2.0f / head_dim, head_dim / 2);
+  float* freqs_half_data = RAII_GUARD.alloc_l3_or_gm<float>(head_dim / 2);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(freqs_half_data);
+  ret = xpu::range<float>(dev_ctx.x_context(),
+                          freqs_half_data,
+                          0.0f,
+                          2.0f / head_dim,
+                          head_dim / 2);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
 
   float* rotary_base_xpu_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
   PADDLE_ENFORCE_XDNN_NOT_NULL(rotary_base_xpu_data);
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     rotary_base_xpu_data,
-                     phi::CPUPlace(),
-                     &rotary_emb_base,
-                     sizeof(float));
+  ret = xpu::constant<float>(
+      dev_ctx.x_context(), rotary_base_xpu_data, 1, rotary_emb_base);
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
   ret = xpu::broadcast_pow<float>(dev_ctx.x_context(),
                                   rotary_base_xpu_data,
-                                  freqs_data,
-                                  freqs_data,
+                                  freqs_half_data,
+                                  freqs_half_data,
                                   {1},
                                   {head_dim / 2});
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast_pow");
   ret = xpu::reciprocal<float>(
-      dev_ctx.x_context(), freqs_data, freqs_data, head_dim / 2);
+      dev_ctx.x_context(), freqs_half_data, freqs_half_data, head_dim / 2);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reciprocal");
-
-  int64_t half_rotary_len = seq_len * head_dim / 2;
-  float* indices_half_data = RAII_GUARD.alloc_l3_or_gm<float>(half_rotary_len);
-  PADDLE_ENFORCE_XDNN_NOT_NULL(indices_half_data);
-  float* sin_fp32_half_data = RAII_GUARD.alloc_l3_or_gm<float>(half_rotary_len);
-  PADDLE_ENFORCE_XDNN_NOT_NULL(sin_fp32_half_data);
-  float* cos_fp32_half_data = RAII_GUARD.alloc_l3_or_gm<float>(half_rotary_len);
-  PADDLE_ENFORCE_XDNN_NOT_NULL(cos_fp32_half_data);
+  float* freqs_data = RAII_GUARD.alloc_l3_or_gm<float>(head_dim);
+  ret = xpu::broadcast<float>(dev_ctx.x_context(),
+                              freqs_half_data,
+                              freqs_data,
+                              {head_dim / 2, 1},
+                              {head_dim / 2, 2});
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
+  int64_t rotary_len = seq_len * head_dim;
+  float* indices_data = RAII_GUARD.alloc_l3_or_gm<float>(rotary_len);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(indices_data);
 
   ret = xpu::broadcast_mul<float>(dev_ctx.x_context(),
                                   pos_seq_data,
                                   freqs_data,
-                                  indices_half_data,
+                                  indices_data,
                                   {seq_len, 1},
-                                  {1, head_dim / 2});
+                                  {1, head_dim});
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast_mul");
-  ret = xpu::sin<float>(dev_ctx.x_context(),
-                        indices_half_data,
-                        sin_fp32_half_data,
-                        half_rotary_len);
+
+  float* sin_fp32_data = nullptr;
+  float* cos_fp32_data = nullptr;
+  XPUSCType* sin_part_data = nullptr;
+  XPUSCType* cos_part_data = nullptr;
+  bool need_cast = !std::is_same<XPUSCType, float>::value;
+  bool need_broadcast = batch_size > 1;
+  if (need_broadcast) {
+    sin_part_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(rotary_len);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(sin_part_data);
+    cos_part_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(rotary_len);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(cos_part_data);
+  } else {
+    sin_part_data = sin_data;
+    cos_part_data = cos_data;
+  }
+  if (need_cast) {
+    sin_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(rotary_len);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(sin_fp32_data);
+    cos_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(rotary_len);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(cos_fp32_data);
+  } else {
+    sin_fp32_data = reinterpret_cast<float*>(sin_part_data);
+    cos_fp32_data = reinterpret_cast<float*>(cos_part_data);
+  }
+  ret = xpu::sin<float>(
+      dev_ctx.x_context(), indices_data, sin_fp32_data, rotary_len);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sin");
-  ret = xpu::cos<float>(dev_ctx.x_context(),
-                        indices_half_data,
-                        cos_fp32_half_data,
-                        half_rotary_len);
+  ret = xpu::cos<float>(
+      dev_ctx.x_context(), indices_data, cos_fp32_data, rotary_len);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cos");
 
-  XPUSCType* sin_half_data = nullptr;
-  XPUSCType* cos_half_data = nullptr;
-  if (!std::is_same<XPUSCType, float>::value) {
-    sin_half_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(half_rotary_len);
-    cos_half_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(half_rotary_len);
-    ret = xpu::cast<float, XPUSCType>(dev_ctx.x_context(),
-                                      sin_fp32_half_data,
-                                      sin_half_data,
-                                      half_rotary_len);
+  if (need_cast) {
+    ret = xpu::cast<float, XPUSCType>(
+        dev_ctx.x_context(), sin_fp32_data, sin_part_data, rotary_len);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
-    ret = xpu::cast<float, XPUSCType>(dev_ctx.x_context(),
-                                      cos_fp32_half_data,
-                                      cos_half_data,
-                                      half_rotary_len);
+    ret = xpu::cast<float, XPUSCType>(
+        dev_ctx.x_context(), cos_fp32_data, cos_part_data, rotary_len);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
-  } else {
-    sin_half_data = reinterpret_cast<XPUSCType*>(sin_fp32_half_data);
-    cos_half_data = reinterpret_cast<XPUSCType*>(cos_fp32_half_data);
   }
-  PADDLE_ENFORCE_XDNN_NOT_NULL(sin_half_data);
-  PADDLE_ENFORCE_XDNN_NOT_NULL(cos_half_data);
-  ret = xpu::broadcast<XPUSCType>(dev_ctx.x_context(),
-                                  sin_half_data,
-                                  sin_data,
-                                  {1, seq_len, head_dim / 2},
-                                  {batch_size, seq_len, head_dim});
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
-  ret = xpu::broadcast<XPUSCType>(dev_ctx.x_context(),
-                                  cos_half_data,
-                                  cos_data,
-                                  {1, seq_len, head_dim / 2},
-                                  {batch_size, seq_len, head_dim});
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
+
+  if (need_broadcast) {
+    ret = xpu::broadcast<XPUSCType>(dev_ctx.x_context(),
+                                    sin_part_data,
+                                    sin_data,
+                                    {1, seq_len, head_dim},
+                                    {batch_size, seq_len, head_dim});
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
+    ret = xpu::broadcast<XPUSCType>(dev_ctx.x_context(),
+                                    cos_part_data,
+                                    cos_data,
+                                    {1, seq_len, head_dim},
+                                    {batch_size, seq_len, head_dim});
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
+  }
 }
 
 template <typename XPUType, typename XPUSCType, typename Context>

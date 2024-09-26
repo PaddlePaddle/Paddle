@@ -62,7 +62,7 @@ def get_sin_cos_tensor(seq_len, head_dim, dtype="float32"):
 
     indices = 1 / (10000 ** (indices / head_dim))
     sinusoid_inp = pos_seq.unsqueeze(1) * indices.unsqueeze(0)
-    sinusoid_inp = paddle.concat([sinusoid_inp, sinusoid_inp], axis=-1)
+    sinusoid_inp = paddle.stack([sinusoid_inp, sinusoid_inp], axis=-1)
     sin = paddle.sin(sinusoid_inp)
     cos = paddle.cos(sinusoid_inp)
     sin = sin.astype(dtype).reshape([1, seq_len, 1, head_dim])
