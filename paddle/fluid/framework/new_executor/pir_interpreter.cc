@@ -1950,9 +1950,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     const std::vector<std::string> op_callstack_attr =
         interpreter::GetInstructionCallStack(op->name(), op->attributes());
     framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
-    LOG(WARNING) << " OP id:" << instr_node->Id() << " " << instr_node->Name()
-                 << " raises an EnforceNotMet exception "
-                 << common::demangle(typeid(ex).name());
+    LOG(WARNING)
+        << " OP id:"
+        << op->attribute("origin_id").dyn_cast<pir::Int64Attribute>().data()
+        << " " << instr_node->Name() << " raises an EnforceNotMet exception "
+        << common::demangle(typeid(ex).name());
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
