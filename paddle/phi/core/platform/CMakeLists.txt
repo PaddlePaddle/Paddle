@@ -29,4 +29,6 @@ list(APPEND DEVICE_SRCS cuda_graph_with_memory_pool.cc)
 list(APPEND DEVICE_SRCS device_context.cc gen_comm_id_helper.cc)
 list(APPEND DEVICE_SRCS profiler/utils.cc profiler/cpu_utilization.cc)
 
+list(APPEND DEVICE_SRCS cpu_helper.cc denormal.cc monitor.cc timer.cc)
+
 collect_srcs(core_srcs SRCS ${DEVICE_SRCS})
