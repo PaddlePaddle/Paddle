@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/monitor.h"
+#include "paddle/phi/core/platform/monitor.h"
 
 DEFINE_INT_STATUS(STAT_total_feasign_num_in_mem)
 DEFINE_INT_STATUS(STAT_epoch_finish)

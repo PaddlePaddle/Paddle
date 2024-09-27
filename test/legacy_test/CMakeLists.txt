@@ -35,9 +35,6 @@ list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
 list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
-list(REMOVE_ITEM TEST_OPS test_model)
-list(REMOVE_ITEM TEST_OPS test_callback_early_stop)
-
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
@@ -881,7 +878,12 @@ set_tests_properties(test_dataloader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
+set_tests_properties(test_model PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+
+if(APPLE)
+  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
+endif()
 
 set_tests_properties(test_dataset_cifar PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_movielens PROPERTIES TIMEOUT 120)
