@@ -2908,8 +2908,13 @@ void logsumexp_grad(const Tensor& x,
 
   auto x_grad_tmp = Tensor();
 
+  // 计算 exp(x)
+  auto exp_x = exp<T>(x);
+  auto sum_exp_x = sum<T>(exp_x, axis, x.dtype(), true);
+  auto softmax = exp_x / backend::expand<T>(sum_exp_x, x.shape());
+
   if (x_dim_size == 1) {
-    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * softmax;
   } else {
     if (!keepdim) {
       auto axis_ = std::vector<int64_t>();
@@ -2926,20 +2931,12 @@ void logsumexp_grad(const Tensor& x,
         }
       }
 
-      // 计算 exp(x)
-      auto exp_x = exp<T>(x);
-      auto sum_exp_x = sum<T>(exp_x, axis, x.dtype(), true);
-      auto softmax = exp_x / backend::expand<T>(sum_exp_x, x.shape());
-
       // 处理 out_grad
       auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
       auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
       x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim)) * softmax;
       // x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * softmax;
     } else {
-      auto exp_x = exp<T>(x);
-      auto sum_exp_x = sum<T>(exp_x, axis, x.dtype(), true);
-      auto softmax = exp_x / backend::expand<T>(sum_exp_x, x.shape());
       x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * softmax;
     }
   }
