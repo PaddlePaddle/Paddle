@@ -45,25 +45,6 @@ void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
-Tensor ConverToMT(const Tensor& x) {
-  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
-                   x.dtype() == phi::DataType::BFLOAT16;
-  if (need_cast) {
-    return cast<T>(x, phi::DataType::FLOAT32);
-  }
-  return x;
-}
-
-template <typename T>
-Tensor ConverToOrig(const Tensor& out, phi::DataType input_dtype) {
-  bool need_cast = out.dtype() != input_dtype;
-  if (need_cast) {
-    return cast<T>(out, input_dtype);
-  }
-  return out;
-}
-
-template <typename T>
 void bce_loss_grad(const Tensor& input,
                    const Tensor& label,
                    const Tensor& out_grad,
