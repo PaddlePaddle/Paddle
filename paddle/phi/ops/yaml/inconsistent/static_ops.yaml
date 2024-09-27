@@ -789,7 +789,7 @@
     func : recv_v2
     param : [ring_id, dynamic_shape, peer, out_shape, dtype, use_calc_stream]
     data_type : dtype
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : remainder
   args : (Tensor x, Tensor y)
@@ -977,6 +977,17 @@
     support_trans_dtype : x, y
   backward : subtract_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : sync_comm_stream
+  args : (Tensor[] x, int ring_id = 0)
+  output : Tensor[](out){x.size()}
+  infer_meta :
+    func : UnchangedVectorInferMeta
+    param : [x]
+  kernel :
+    func : sync_comm_stream
+    data_type : DataType::FLOAT32
+  inplace: (x -> out)
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
