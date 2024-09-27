@@ -67,8 +67,12 @@ class TensorRTBaseTest(unittest.TestCase):
                         new_list_args.append(input_data)
                     api_args[feed_name] = new_list_args
                 else:
+                    empty_min_max_shape = (
+                        self.min_shape is None or self.max_shape is None
+                    )
                     if (
-                        feed_name in self.min_shape.keys()
+                        not empty_min_max_shape
+                        and feed_name in self.min_shape.keys()
                         and feed_name in self.max_shape.keys()
                     ):
                         # dynamic shape condition

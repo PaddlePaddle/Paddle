@@ -211,6 +211,8 @@ class PaddleToTensorRTConverter:
         # Set TRT min/opt/max input shape and the value of shape tensor
         for value in origin_input_value:
             trt_input = value_to_trt_tensor[value.id]
+            if isinstance(trt_input, trt.Weights):
+                continue
             input_name = trt_input.name
             if input_name != "":
                 _logger.info(
