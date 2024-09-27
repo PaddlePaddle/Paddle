@@ -215,116 +215,6 @@ class CSplitOpCustomDeviceKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class CEmbeddingOpCustomDeviceKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* ids_t = ctx.Input<phi::DenseTensor>("Ids");
-    auto* table_t = ctx.Input<phi::DenseTensor>("W");
-    auto* output_t = ctx.Output<phi::DenseTensor>("Out");
-    auto out_dims = output_t->dims();
-    auto start_index = ctx.Attr<int64_t>("start_index");
-
-    auto K = ids_t->numel();
-    auto N = table_t->dims()[0];
-    auto D = table_t->dims()[1];
-    auto index_type = ids_t->dtype();
-    if (index_type == phi::DataType::INT32 ||
-        index_type == phi::DataType::INT64) {
-      auto x_tmp = std::make_shared<phi::DenseTensor>();
-      x_tmp->ShareDataWith(*ids_t).Resize({K});
-      auto w_tmp = std::make_shared<phi::DenseTensor>();
-      w_tmp->ShareDataWith(*table_t).Resize({N, D});
-      paddle::Tensor x_tensor(x_tmp), w_tensor(w_tmp);
-      auto start_index_tensor = paddle::experimental::full_like(
-          x_tensor, start_index, x_tensor.dtype(), x_tensor.place());
-      auto end_index_tensor = paddle::experimental::full_like(
-          x_tensor, start_index + N, x_tensor.dtype(), x_tensor.place());
-      auto ids_mask_tensor = paddle::experimental::logical_and(
-          x_tensor.greater_equal(start_index_tensor),
-          x_tensor.less_than(end_index_tensor));
-      auto ids_tensor = (x_tensor - start_index_tensor)
-                            .multiply(paddle::experimental::cast(
-                                ids_mask_tensor, x_tensor.dtype()));
-      auto out_tensor =
-          paddle::experimental::reshape(
-              paddle::experimental::cast(ids_mask_tensor, w_tensor.dtype()),
-              {K, 1})
-              .multiply(paddle::experimental::reshape(
-                  paddle::experimental::embedding(
-                      ids_tensor, w_tensor, -1, false),
-                  {K, D}));
-      output_t
-          ->ShareDataWith(
-              *reinterpret_cast<phi::DenseTensor*>(out_tensor.impl().get()))
-          .Resize(out_dims);
-    } else {
-      PADDLE_THROW(common::errors::Unavailable(
-          "CustomDevice c_embedding ids only support int32 or int64."));
-    }
-  }
-};
-
-template <typename DeviceContext, typename T>
-class CEmbeddingGradOpCustomDeviceKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto start_index = ctx.Attr<int64_t>("start_index");
-    auto ids_t = ctx.Input<phi::DenseTensor>("Ids");
-    auto d_output_t =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto table_t = ctx.Input<phi::DenseTensor>("W");
-    auto table_grad_t =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
-    table_grad_t->Resize(table_t->dims());
-    auto& dev_ctx = ctx.template device_context<phi::CustomContext>();
-
-    auto K = ids_t->numel();
-    auto N = table_t->dims()[0];
-    auto D = table_t->dims()[1];
-    const auto& index_type = ids_t->dtype();
-    if (index_type == phi::DataType::INT32 ||
-        index_type == phi::DataType::INT64) {
-      auto x_tmp = std::make_shared<phi::DenseTensor>();
-      x_tmp->ShareDataWith(*ids_t).Resize({K});
-      auto w_tmp = std::make_shared<phi::DenseTensor>();
-      w_tmp->set_meta(table_t->meta());
-      dev_ctx.Alloc(w_tmp.get(), w_tmp->dtype());
-      auto out_grad_tmp = std::make_shared<phi::DenseTensor>();
-      out_grad_tmp->ShareDataWith(*d_output_t).Resize({K, D});
-      paddle::Tensor x_tensor(x_tmp), w_tensor(w_tmp),
-          out_grad_tensor(out_grad_tmp);
-      auto start_index_tensor = paddle::experimental::full_like(
-          x_tensor, start_index, x_tensor.dtype(), x_tensor.place());
-      auto end_index_tensor = paddle::experimental::full_like(
-          x_tensor, start_index + N, x_tensor.dtype(), x_tensor.place());
-      auto ids_mask_tensor = paddle::experimental::logical_and(
-          x_tensor.greater_equal(start_index_tensor),
-          x_tensor.less_than(end_index_tensor));
-      auto real_ids_tensor = (x_tensor - start_index_tensor)
-                                 .multiply(paddle::experimental::cast(
-                                     ids_mask_tensor, x_tensor.dtype()));
-      auto out_grad_tensor_mul_mask =
-          paddle::experimental::reshape(out_grad_tensor, {K, D})
-              .multiply(paddle::experimental::reshape(
-                  paddle::experimental::cast(ids_mask_tensor, table_t->dtype()),
-                  {K, 1}));
-      paddle::Tensor table_grad_tensor;
-      paddle::experimental::embedding_grad(real_ids_tensor,
-                                           w_tensor,
-                                           out_grad_tensor_mul_mask,
-                                           -1,
-                                           false,
-                                           &table_grad_tensor);
-      table_grad_t->ShareDataWith(
-          *reinterpret_cast<phi::DenseTensor*>(table_grad_tensor.impl().get()));
-    } else {
-      PADDLE_THROW(common::errors::Unavailable(
-          "CustomDevice c_embedding ids only support int32 or int64."));
-    }
-  }
-};
-
-template <typename DeviceContext, typename T>
 class CSoftmaxWithCrossEntropyOpCustomDeviceKernel
     : public framework::OpKernel<T> {
  public:
@@ -1350,21 +1240,6 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
                                                     phi::dtype::float16>,
       paddle::operators::CSplitOpCustomDeviceKernel<phi::CustomContext,
                                                     phi::dtype::bfloat16>);
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      c_embedding,
-      device_type,
-      paddle::operators::CEmbeddingOpCustomDeviceKernel<phi::CustomContext,
-                                                        float>,
-      paddle::operators::CEmbeddingOpCustomDeviceKernel<phi::CustomContext,
-                                                        phi::dtype::float16>);
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      c_embedding_grad,
-      device_type,
-      paddle::operators::CEmbeddingGradOpCustomDeviceKernel<phi::CustomContext,
-                                                            float>,
-      paddle::operators::CEmbeddingGradOpCustomDeviceKernel<
-          phi::CustomContext,
-          phi::dtype::float16>);
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_softmax_with_cross_entropy,
