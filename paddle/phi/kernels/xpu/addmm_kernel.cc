@@ -87,6 +87,7 @@ void AddmmKernel(const Context& dev_ctx,
                                       out_dims_vec);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
     }
+#ifdef PADDLE_WITH_XPU_XRE5
   } else {
     xblas::FcFusionTensor<const XPUType> t_input{
         input_ptr,
@@ -144,6 +145,14 @@ void AddmmKernel(const Context& dev_ctx,
                          float>(
         dev_ctx.x_context(), t_x, t_y, t_input, t_out, desc, epilogue);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
+#else
+  } else {
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+    phi::XpuFcInfo fc_info;
+    phi::GetFCInfo(x_dims, y_dims, false, false, &fc_info);
+    phi::MatMulXPUFunction<XPUType>(
+        dev_ctx.x_context(), x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
+#endif
   }
 }
 }  // namespace phi
