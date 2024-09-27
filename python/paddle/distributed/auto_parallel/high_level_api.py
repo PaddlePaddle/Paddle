@@ -77,16 +77,23 @@ def record_program_ops_pre_hook(layer, inputs):
 def reshard_all_outputs(layer, inputs, outputs):
     if hasattr(layer, "next_mesh"):
         next_mesh = layer.__getattr__("next_mesh")
-        new_outputs = []
-        for output in outputs:
-            if paddle.is_tensor(output):
-                new_output = dist.reshard(
-                    output, next_mesh, [dist.Shard(0), dist.Replicate()]
-                )
-                new_outputs.append(new_output)
-            else:
-                new_outputs.append(output)
-        return inputs, new_outputs
+        print(f"outputs are {outputs}")
+        if type(outputs) is tuple:
+            new_outputs = []
+            for output in outputs:
+                if paddle.is_tensor(output):
+                    new_output = dist.reshard(
+                        output, next_mesh, [dist.Shard(0), dist.Replicate()]
+                    )
+                    new_outputs.append(new_output)
+                else:
+                    new_outputs.append(output)
+            return new_outputs
+        else:
+            new_output = dist.reshard(
+                outputs, next_mesh, [dist.Shard(0), dist.Replicate()]
+            )
+            return new_output
 
 
 def record_program_ops_post_hook(layer, inputs, outputs):
@@ -117,8 +124,6 @@ def get_layer_pp_info(mesh, num_hidden_layers, layer_index):
     if "pp" in mesh.dim_names:
         pp_degree = mesh.get_dim_size("pp")
         layer_per_stage = math.ceil(num_hidden_layers / pp_degree)
-        # input_need_reshard = layer_index % layer_per_stage == 0
-        # return layer_index // layer_per_stage, input_need_reshard
         return layer_index // layer_per_stage
     else:
         # return None, False
@@ -154,6 +159,7 @@ def to_distributed(model, mesh, config):
     )
     pir_program = static_func.concrete_program.main_program
     print(f"convert to pir program: {pir_program}")
+
     # record pir_program ops_to_ids
     op_to_id = {}
     for idx, op in enumerate(pir_program.global_block().ops):
@@ -296,15 +302,18 @@ def to_distributed(model, mesh, config):
         assert (
             num_decoder_blocks == num_hidden_layers
         ), "decoder pattern layers matched are incomplete"
+
+        pp_degree = mesh.get_dim_size("pp")
+        num_blocks_per_stage = num_decoder_blocks // pp_degree
         for i in range(num_decoder_blocks):
-            # pp_stage_id = get_layer_pp_info(mesh, num_decoder_blocks, i)
-            # local_mesh = GLOBAL_MESH[pp_stage_id]
-            # for layer in decoder_leaf_layers[i]:
-            #     layer.__setattr__("pp_stage_id", pp_stage_id)
-            #     layer.__setattr__("local_mesh", local_mesh)
             pp_stage_id = get_layer_pp_info(mesh, num_decoder_blocks, i)
             num_stages = len(GLOBAL_MESH)
-            next_mesh = GLOBAL_MESH[(pp_stage_id + 1) % num_stages]
+            if (i + 1) % num_blocks_per_stage == 0:
+                print("need to reshard to next mesh")
+                next_mesh = GLOBAL_MESH[(pp_stage_id + 1) % num_stages]
+            else:
+                next_mesh = GLOBAL_MESH[pp_stage_id]
+            print(f"for decoder layer {i}, next mesh is {next_mesh}")
             last_leaf_layer_of_decoder = decoder_leaf_layers[i][-1]
             last_leaf_layer_of_decoder.__setattr__("next_mesh", next_mesh)
             post_hook_helper = (
