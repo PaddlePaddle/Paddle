@@ -148,6 +148,7 @@ type_patches:
   add_definitions(-DDEVELOP_VERSION=1)
   add_definitions(-DRELEASE_VERSION=1)
   ```
+
   ```tree
   ├─patch
   │  ├─0.yaml
