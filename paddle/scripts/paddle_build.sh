@@ -2725,7 +2725,7 @@ function hybrid_paddlex() {
     -o Global.mode=train \
     -o Global.dataset_dir=./dataset/cls_flowers_examples \
     -o Global.output=resnet50_output \
-    -o Global.device="gpu:${HIP_VISIBLE_DEVICES}"
+    -o Global.device="gpu:0,1"
 
     # inference Reset50
     python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
@@ -2741,7 +2741,7 @@ function hybrid_paddlex() {
     -o Global.mode=train \
     -o Global.dataset_dir=./dataset/seg_optic_examples \
     -o Global.output=deeplabv3p_output \
-    -o Global.device="gpu:${HIP_VISIBLE_DEVICES}"
+    -o Global.device="gpu:0,1"
 
     # inference DeepLabv3+
     python main.py -c paddlex/configs/semantic_segmentation/Deeplabv3_Plus-R50.yaml \
