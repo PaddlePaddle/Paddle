@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/denormal.h"
+#include "paddle/phi/core/platform/denormal.h"
 
 #include <tuple>
 #include <utility>
