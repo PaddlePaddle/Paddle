@@ -68,10 +68,10 @@ def llama_init():
 
 # create mesh
 # mesh = dist.ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7], dim_names=["x"])
-mesh = dist.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "mp"])
-# mesh = dist.ProcessMesh(
-#     [[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dim_names=["pp", "dp", "mp"]
-# )
+# mesh = dist.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "mp"])
+mesh = dist.ProcessMesh(
+    [[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dim_names=["pp", "dp", "mp"]
+)
 
 model_config, model = llama_init()
 print(f"llama config is {model_config}")
@@ -102,6 +102,13 @@ dist_model = to_distributed(model, mesh, dist_config)
 dist_model.train()
 for batch_id, (input_seq, label) in enumerate(dist_loader()):
     # dynamic
+    local_mesh = mesh
+    if "pp" in mesh.dim_names:
+        local_mesh = mesh.get_mesh_with_dim("pp", 0)
+    input_seq = dist.reshard(
+        input_seq, local_mesh, [dist.Shard(0), dist.Replicate()]
+    )
+    label = dist.reshard(label, local_mesh, [dist.Shard(0), dist.Replicate()])
     print(f"input_seq is {input_seq}, labels is {label}")
     (loss, logits) = dist_model(input_ids=input_seq, labels=label)
     print(f"batch: {batch_id}, loss is {loss}")

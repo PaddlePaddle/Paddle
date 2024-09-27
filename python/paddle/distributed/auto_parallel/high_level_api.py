@@ -53,6 +53,42 @@ def record_program_ops_pre_hook(layer, inputs):
             )
 
 
+# def reshard_all_inputs(layer, inputs):
+#     """
+#     A pre-hook to mark op numbers before enter layer.forward.
+#     """
+#     if hasattr(layer, "pp_stage_id") and hasattr(layer, "local_mesh"):
+#         stage_id = layer.__getattr__("pp_stage_id")
+#         local_mesh = layer.__getattr__("local_mesh")
+#         print(f"layer name is {layer._full_name}, stage id is {stage_id}, and corresponding local_mesh is {local_mesh}")
+#         new_inputs = []
+#         for input in inputs:
+#             if paddle.is_tensor(input):
+#                 new_input = dist.reshard(input, mesh, [dist.Replicate(), dist.Replicate()])
+#                 new_inputs.append(new_input)
+#             else:
+#                 new_inputs.append(input)
+#         return new_inputs
+#     else:
+#         print(f"layer name is {layer._full_name} has no pp stage and local mesh")
+#         return inputs
+
+
+def reshard_all_outputs(layer, inputs, outputs):
+    if hasattr(layer, "next_mesh"):
+        next_mesh = layer.__getattr__("next_mesh")
+        new_outputs = []
+        for output in outputs:
+            if paddle.is_tensor(output):
+                new_output = dist.reshard(
+                    output, next_mesh, [dist.Shard(0), dist.Replicate()]
+                )
+                new_outputs.append(new_output)
+            else:
+                new_outputs.append(output)
+        return inputs, new_outputs
+
+
 def record_program_ops_post_hook(layer, inputs, outputs):
     """
     A post-hook to mark op numbers after enter layer.forward, and record corresponding ops of the layer.
@@ -91,6 +127,12 @@ def get_layer_pp_info(mesh, num_hidden_layers, layer_index):
 
 # mesh, config: input_spec
 def to_distributed(model, mesh, config):
+    paddle.distributed.init_parallel_env()
+
+    leaf_layers = []
+    for layer in model.sublayers():
+        if not layer.sublayers():
+            leaf_layers.append(layer)
 
     # # # step1: register pre-hooks and post-hooks, thus recording corresponding static ops in following paddle.jit.to_static
     for layer in model.sublayers():
@@ -118,20 +160,22 @@ def to_distributed(model, mesh, config):
         op_to_id[op] = idx
 
     # # # step3: get the mapping [dynamic-layers : static ops]
-    layer_to_ops = {}
     ops_id_to_layer = {}
+    op_id_to_layer = {}
     for layer in model.sublayers():
         layer_ops = layer._op_recorder.ops
-        layer_to_ops[layer._full_name] = layer_ops
         ops_id = []
         for op in layer_ops:
             assert op in op_to_id.keys(), f"{op.name} is not in pir program"
-            ops_id.append(op_to_id[op])
+            op_id = op_to_id[op]
+            op_id_to_layer[op_id] = layer
+            ops_id.append(op_id)
         ops_id_to_layer[tuple(ops_id)] = layer
 
     # # # # step4: pattern recogincation
     results = match_all_patterns(pir_program)
     print(f"match patterns based on pir program is: {results}")
+    # breakpoint()
 
     # # # # step5: mark pir programs ops dist infos
     matched_programs = {}
@@ -163,12 +207,24 @@ def to_distributed(model, mesh, config):
         matched_programs[pattern_name] = processed_patterns
         print(f"matched program and ops dist infos are {matched_programs}")
 
+    # # # #: shard model
     DECODER_LAYER_NAME = 'decoder_layer'
     num_hidden_layers = len(matched_programs[DECODER_LAYER_NAME])
     print(f"num_hidden_layers by pattern matching is {num_hidden_layers}")
     assert (
         num_hidden_layers == config.num_hidden_layers
     ), "num_hidden_layers by pattern matching is not compatible with configuration"
+
+    GLOBAL_MESH = []
+    if "pp" in mesh.dim_names:
+        pp_degree = mesh.get_dim_size("pp")
+        for i in range(pp_degree):
+            local_mesh = mesh.get_mesh_with_dim("pp", i)
+            GLOBAL_MESH.append(local_mesh)
+    # print(f"GLOBAL MESH is {GLOBAL_MESH}")
+    # for local_mesh in GLOBAL_MESH:
+    #     print(local_mesh)
+    # breakpoint()
 
     # # # # step6-0: SHARD PATRAMETERS, get dynamic layer dist infos
     for pattern_name, processed_patterns in matched_programs.items():
@@ -195,14 +251,8 @@ def to_distributed(model, mesh, config):
                     # shard layers
                     # print(f"sharding info is {dist_infos.print_dist_infos()}")
                     mesh_num_dims = len(local_mesh.shape)
-                    print(
-                        f"local mesh shape is {local_mesh.shape}, num_dims is {mesh_num_dims}"
-                    )
                     # breakpoint()
                     sharding_info = dist_infos.get_dist_info(mesh_num_dims)
-                    print(
-                        f"shard layer {dynamic_layer._full_name}, sharding info is {sharding_info}"
-                    )
                     dynamic_layer.weight = dist.shard_tensor(
                         dynamic_layer.weight, local_mesh, sharding_info[0]
                     )
@@ -210,7 +260,71 @@ def to_distributed(model, mesh, config):
                         dynamic_layer.bias = dist.shard_tensor(
                             dynamic_layer.bias, local_mesh, sharding_info[1]
                         )
+
     # # # # step6-0: SHARD INPUTS
+    name_to_layers = {}
+    name_to_leaf_layers = {}
+    for pattern_name, patterns in results.items():
+        pattern_program = _PIR_PATTERNS[pattern_name].pir_program
+        print(f"pattern_program is {pattern_program}")
+        patterns_layers = []
+        patterns_leaf_layers = []
+        for idx, pattern in enumerate(patterns):
+            pattern_layers = []
+            pattern_leaf_layers = []
+            for pattern_program_id, pir_program_id in pattern.items():
+                if pir_program_id in op_id_to_layer.keys():
+                    layer = op_id_to_layer[pir_program_id]
+                    if layer not in pattern_layers:
+                        pattern_layers.append(layer)
+                    if (
+                        layer not in pattern_leaf_layers
+                        and layer in leaf_layers
+                    ):
+                        pattern_leaf_layers.append(layer)
+            patterns_layers.append(pattern_layers)
+            patterns_leaf_layers.append(pattern_leaf_layers)
+        name_to_layers[pattern_name] = patterns_layers
+        name_to_leaf_layers[pattern_name] = patterns_leaf_layers
+    # print(f"pattern corresponding layers is {name_to_layers}")
+    # print(f"pattern corresponding leaf layers are {name_to_leaf_layers}")
+
+    if "pp" in mesh.dim_names:
+        decoder_leaf_layers = name_to_leaf_layers[DECODER_LAYER_NAME]
+        print(f"decoder block corresponding layers are {decoder_leaf_layers}")
+        num_decoder_blocks = len(decoder_leaf_layers)
+        assert (
+            num_decoder_blocks == num_hidden_layers
+        ), "decoder pattern layers matched are incomplete"
+        for i in range(num_decoder_blocks):
+            # pp_stage_id = get_layer_pp_info(mesh, num_decoder_blocks, i)
+            # local_mesh = GLOBAL_MESH[pp_stage_id]
+            # for layer in decoder_leaf_layers[i]:
+            #     layer.__setattr__("pp_stage_id", pp_stage_id)
+            #     layer.__setattr__("local_mesh", local_mesh)
+            pp_stage_id = get_layer_pp_info(mesh, num_decoder_blocks, i)
+            num_stages = len(GLOBAL_MESH)
+            next_mesh = GLOBAL_MESH[(pp_stage_id + 1) % num_stages]
+            last_leaf_layer_of_decoder = decoder_leaf_layers[i][-1]
+            last_leaf_layer_of_decoder.__setattr__("next_mesh", next_mesh)
+            post_hook_helper = (
+                last_leaf_layer_of_decoder.register_forward_post_hook(
+                    reshard_all_outputs
+                )
+            )
+
+    # for layer in model.sublayers():
+    #     if hasattr(layer, "pp_stage_id"):
+    #         stage_id = layer.__getattr__("pp_stage_id")
+    #         print(f"layer name is {layer._full_name}, and corresponding pp stage id is {stage_id}")
+    #     else:
+    #         print(f"layer name is {layer._full_name} has no attr pp stage id and local mesh")
+
+    #     if hasattr(layer, "local_mesh"):
+    #         local_mesh = layer.__getattr__("local_mesh")
+    #         print(f"layer name is {layer._full_name}, and corresponding local_mesh is {local_mesh}")
+    #     else:
+    #         print(f"layer name is {layer._full_name} has no attr local mesh")
 
     # # # # step7: clean layer_op recorder hooks
     for layer in model.sublayers():
