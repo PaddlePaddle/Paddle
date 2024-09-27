@@ -91,8 +91,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
                                            OpCompatibleType::definite_not};
   op_compatible_map_["match_matrix_tensor"] = {"1.6.0",
                                                OpCompatibleType::definite_not};
-  op_compatible_map_["multiclass_nms2"] = {"1.6.0",
-                                           OpCompatibleType::definite_not};
   op_compatible_map_["one_hot_v2"] = {"1.6.0", OpCompatibleType::definite_not};
   op_compatible_map_["pull_box_sparse"] = {"1.6.0",
                                            OpCompatibleType::definite_not};
@@ -133,8 +131,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
       "1.6.0", OpCompatibleType::possible};
   op_compatible_map_["edit_distance"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["fc"] = {"1.6.0", OpCompatibleType::possible};
-  op_compatible_map_["fused_embedding_seq_pool"] = {"1.6.0",
-                                                    OpCompatibleType::possible};
   op_compatible_map_["group_norm"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["hash"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["leaky_relu"] = {"1.6.0", OpCompatibleType::possible};
