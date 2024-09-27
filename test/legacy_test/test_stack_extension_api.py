@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 RTOL = 1e-5
 ATOL = 1e-8
@@ -78,7 +77,6 @@ def generate_data(shape, count=1, dtype='int32'):
 class BaseTest(unittest.TestCase):
     """Test in each `PLACES` and in `static/dygraph`"""
 
-    @test_with_pir_api
     def _test_static_api(
         self,
         func_paddle,

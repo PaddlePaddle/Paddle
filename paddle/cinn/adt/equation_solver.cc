@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <typeinfo>
 #include <unordered_map>
 #include <variant>
 
@@ -33,7 +34,11 @@ std::unordered_map<Variable, Value> InferValuesImpl(
     IndexExprInferContext* ctx) {
   const auto& [out_iter, in_iter] = id.tuple();
   Variable in_variable{in_iter.value()};
-  CHECK(ctx->HasValue(in_variable));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasValue(in_variable),
+      true,
+      phi::errors::NotFound("The param id's out_iter must contain "
+                            "its in_iter's value"));
   return {{out_iter.value(), ctx->GetValue(in_variable)}};
 }
 
@@ -41,7 +46,11 @@ std::unordered_map<Variable, Value> InferValuesImpl(
     const Identity<tOut<Index>, tIn<Index>>& id, IndexExprInferContext* ctx) {
   const auto& [out_index, in_index] = id.tuple();
   Variable in_variable{in_index.value()};
-  CHECK(ctx->HasValue(in_variable));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasValue(in_variable),
+      true,
+      phi::errors::NotFound("The param id's out_iter must contain "
+                            "its in_iter's value"));
   return {{out_index.value(), ctx->GetValue(in_variable)}};
 }
 
@@ -203,13 +212,30 @@ std::unordered_map<Variable, Value> InferValuesImpl(
           in_msg_out_indexes.value()->size()));
   for (std::size_t i = 0; i < out_msg_in_indexes.value()->size(); ++i) {
     const auto& value = ctx->GetValue(in_msg_in_indexes.value()->at(i));
-    CHECK(ret.emplace(out_msg_in_indexes.value()->at(i), value).second);
+    PADDLE_ENFORCE_EQ(
+        ret.emplace(out_msg_in_indexes.value()->at(i), value).second,
+        true,
+        phi::errors::AlreadyExists([&]() {
+          std::ostringstream oss;
+          oss << "Failed to insert the variable '"
+              << "out_msg_in_indexes.value()->at(" << i
+              << ")' into the map: key already exists.";
+          return oss.str();
+        }()));
   }
   for (std::size_t i = 0; i < out_msg_out_indexes.value()->size(); ++i) {
     const auto& value = ctx->GetValue(in_msg_out_indexes.value()->at(i));
     const auto& out_index = out_msg_out_indexes.value()->at(i);
     if (out_index.has_value()) {
-      CHECK(ret.emplace(out_index.value(), value).second);
+      PADDLE_ENFORCE_EQ(ret.emplace(out_index.value(), value).second,
+                        true,
+                        phi::errors::AlreadyExists([&]() {
+                          std::ostringstream oss;
+                          oss << "Failed to insert the variable '"
+                              << "out_index.value()"
+                              << "' into the map: key already exists.";
+                          return oss.str();
+                        }()));
     }
   }
   return ret;
@@ -265,6 +291,12 @@ tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
       });
 }
 
+std::string GetFunctionName(const Function* function) {
+  return std::visit(
+      [](auto&& arg) -> std::string { return typeid(arg).name(); },
+      function->variant());
+}
+
 void SolveEquations(
     const EquationGraphTopoWalker<Variable, const Function*>& walker,
     const std::vector<Variable>& starts,
@@ -273,7 +305,14 @@ void SolveEquations(
       starts.begin(), starts.end(), [&](const Function* function) {
         tValueInferSuccess<bool> has_unique_value =
             MergeInferedValuesIntoCtx(function, ctx);
-        CHECK(has_unique_value.value());
+        PADDLE_ENFORCE_EQ(
+            has_unique_value.value(), true, phi::errors::InvalidArgument([&]() {
+              std::ostringstream oss;
+              oss << "Failed to merge inferred values into the context for "
+                     "function '"
+                  << GetFunctionName(function) << "'.";
+              return oss.str();
+            }()));
       });
 }
 
