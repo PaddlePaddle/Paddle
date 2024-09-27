@@ -1590,10 +1590,10 @@ void TestKernelVBroadcast() {
 // -----------------------
 
 TEST_CPU_KERNEL(Adam);
+TEST_CPU_KERNEL(AdamW);
 
 // -----------------------
 
-// TEST_CPU_KERNEL(AdamW);
 // TEST_CPU_KERNEL(Sgd);
 // TEST_CPU_KERNEL(VBroadcast);
 
