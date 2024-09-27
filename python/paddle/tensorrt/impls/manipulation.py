@@ -218,7 +218,6 @@ def squeeze_converter(network, paddle_op, inputs):
 def slice_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
-
     axes = paddle_op.attrs()["axes"]
     decrease_axis = paddle_op.attrs().get("decrease_axis")
 
