@@ -1112,6 +1112,59 @@ struct ScaleOpTranscriber : public OpTranscriber {
       (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
     }
   }
+
+  // std::vector<pir::Value> GenerateOperationInput(
+  //     pir::IrContext* ctx,
+  //     TranslationContext* param_map,
+  //     const OpDesc& op_desc,
+  //     const std::string& normalized_op_name,
+  //     const OpInputInfoList& input_infos,
+  //     pir::Block* block) override {
+  //   auto x_names = op_desc.Input("X", true);
+  //   PADDLE_ENFORCE_EQ(
+  //       x_names.size(),
+  //       1UL,
+  //       common::errors::InvalidArgument(
+  //           "Expected op[%s]'s input X has only 1 variable, but got %d",
+  //           op_desc.Type(),
+  //           x_names.size()));
+  //   auto x_name = x_names[0];
+  //   PADDLE_ENFORCE_GT(param_map->count(x_name),
+  //                     0UL,
+  //                     common::errors::InvalidArgument(
+  //                         "Expected op[%s]'s input %s has been parsed",
+  //                         op_desc.Type(),
+  //                         x_name));
+  //   auto x_defining_info = param_map->at(x_name);
+  //   if (x_defining_info.generated_by_vector) {
+  //     InsertSliceOperationForTarget(
+  //         ctx, param_map, block, x_defining_info, x_name);
+  //     x_defining_info = param_map->at(x_name);
+  //   }
+  //   pir::Value x_value = x_defining_info.value;
+  //   PADDLE_ENFORCE_NE(
+  //       x_value,
+  //       nullptr,
+  //       common::errors::PreconditionNotMet(
+  //           "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
+  //   pir::Type x_type = x_value.type();
+  //   PADDLE_ENFORCE_EQ(
+  //       x_type.isa<dialect::DenseTensorType>(),
+  //       true,
+  //       common::errors::InvalidArgument(
+  //           "Expected op[%s]'s input %s is DenseTensor but got %s",
+  //           op_desc.Type(),
+  //           x_name,
+  //           x_type));
+
+  //   pir::Builder builder(ctx, block);
+  //   float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("scale"));
+
+  //   dialect::FullOp full_op = builder.Build<dialect::FullOp>(
+  //       common::vectorize({1}), scale, phi::DataType::FLOAT32, phi::CPUPlace());
+  //   return {x_value, full_op->result(0)};
+  // }
+
 };
 
 struct DropoutOpTranscriber : public OpTranscriber {
@@ -3028,6 +3081,26 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
 };
 
 struct SetValueOpTranscriber : public OpTranscriber {
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SetValueOp::name();
+    // check In/Out var names(Input/Out), if in_name == out_name: ->
+    // pd_op.set_value_
+    auto in_name = op_desc.Input("Input")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    if (in_name == out_name) {
+      target_op_name += "_";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Op set_value should have corresponding OpInfo "
+          "pd_op.set_value or pd_op.set_value_"));
+    }
+
+    return op_info;
+  }
+
   pir::Value GetAttributeAsInput(pir::IrContext* ctx,
                                  pir::Block* block,
                                  const OpDesc& op_desc,
@@ -3060,11 +3133,18 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     std::string target_op_name = dialect::SetValueWithTensorOp::name();
+    // check In/Out var names(Input/Out), if in_name == out_name: ->
+    // pd_op.set_value_with_tensor_
+    auto in_name = op_desc.Input("Input")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    if (in_name == out_name) {
+      target_op_name += "_";
+    }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Op set_value should have corresponding OpInfo "
-          "pd_op.set_value_with_tensor"));
+          "pd_op.set_value_with_tensor or pd_op.set_value_with_tensor_"));
     }
 
     return op_info;
@@ -3902,6 +3982,117 @@ struct WithXShapeAndAxisGradOpTranscriber : public OpTranscriber {
   }
 };
 
+struct CumSumTranscriber : public OpTranscriber {
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    auto x_names = op_desc.Input("X", true);
+    PADDLE_ENFORCE_EQ(
+        x_names.size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "Expected op[%s]'s input X has only 1 variable, but got %d",
+            op_desc.Type(),
+            x_names.size()));
+    auto x_name = x_names[0];
+    PADDLE_ENFORCE_GT(param_map->count(x_name),
+                      0UL,
+                      common::errors::InvalidArgument(
+                          "Expected op[%s]'s input %s has been parsed",
+                          op_desc.Type(),
+                          x_name));
+    auto x_defining_info = param_map->at(x_name);
+    if (x_defining_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, block, x_defining_info, x_name);
+      x_defining_info = param_map->at(x_name);
+    }
+    pir::Value x_value = x_defining_info.value;
+    PADDLE_ENFORCE_NE(
+        x_value,
+        nullptr,
+        common::errors::PreconditionNotMet(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
+    pir::Type x_type = x_value.type();
+    PADDLE_ENFORCE_EQ(
+        x_type.isa<dialect::DenseTensorType>(),
+        true,
+        common::errors::InvalidArgument(
+            "Expected op[%s]'s input %s is DenseTensor but got %s",
+            op_desc.Type(),
+            x_name,
+            x_type));
+
+    pir::Builder builder(ctx, block);
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+
+    dialect::FullOp full_op = builder.Build<dialect::FullOp>(
+        common::vectorize({1}), axis, phi::DataType::INT64, phi::CPUPlace());
+    return {x_value, full_op->result(0)};
+  }
+};
+
+struct ReduceSumTranscriber : public OpTranscriber {
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    auto x_names = op_desc.Input("X", true);
+    PADDLE_ENFORCE_EQ(
+        x_names.size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "Expected op[%s]'s input X has only 1 variable, but got %d",
+            op_desc.Type(),
+            x_names.size()));
+    auto x_name = x_names[0];
+    PADDLE_ENFORCE_GT(param_map->count(x_name),
+                      0UL,
+                      common::errors::InvalidArgument(
+                          "Expected op[%s]'s input %s has been parsed",
+                          op_desc.Type(),
+                          x_name));
+    auto x_defining_info = param_map->at(x_name);
+    if (x_defining_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, block, x_defining_info, x_name);
+      x_defining_info = param_map->at(x_name);
+    }
+    pir::Value x_value = x_defining_info.value;
+    PADDLE_ENFORCE_NE(
+        x_value,
+        nullptr,
+        common::errors::PreconditionNotMet(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
+    pir::Type x_type = x_value.type();
+    PADDLE_ENFORCE_EQ(
+        x_type.isa<dialect::DenseTensorType>(),
+        true,
+        common::errors::InvalidArgument(
+            "Expected op[%s]'s input %s is DenseTensor but got %s",
+            op_desc.Type(),
+            x_name,
+            x_type));
+
+    pir::Builder builder(ctx, block);
+    auto axis_attr = op_desc.GetAttr("dim");
+    // val.size() might be 0
+    std::vector<int> val = PADDLE_GET_CONST(std::vector<int>, axis_attr);
+    std::vector<int64_t> val_int64(val.begin(), val.end());
+    dialect::FullIntArrayOp full_op = builder.Build<dialect::FullIntArrayOp>(
+        val_int64, phi::DataType::INT64, phi::CPUPlace());
+
+    return {x_value, full_op->result(0)};
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -4012,6 +4203,9 @@ OpTranslator::OpTranslator() {
       WithXShapeAndAxisGradOpTranscriber<dialect::SqueezeGradOp>();
   special_handlers["unsqueeze2_grad"] =
       WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
+
+  special_handlers["cumsum"] = CumSumTranscriber();
+  special_handlers["reduce_sum"] = ReduceSumTranscriber();
 }
 }  // namespace translator
 }  // namespace paddle
