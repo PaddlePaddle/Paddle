@@ -2246,5 +2246,52 @@ class TestStridedBuffer(unittest.TestCase):
         np.testing.assert_allclose(layer(x).numpy(), loaded_layer(x).numpy())
 
 
+class LayerWithUnusedBuffer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear = paddle.nn.Linear(7, 10)
+        self.register_buffer("buffer", paddle.randn([5, 1]))
+
+    def forward(self, x):
+        return self.linear(x)
+
+
+class TestLayerWithUnusedBuffer(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def check_program_has_buffer(self, program, buffer_shape):
+        for op in program.global_block().ops:
+            if (
+                op.name() == "builtin.parameter"
+                and op.result(0).shape == buffer_shape
+            ):
+                return True
+        return False
+
+    def test_layer_with_unused_buffer(self):
+        layer = LayerWithUnusedBuffer()
+        save_dir = os.path.join(
+            self.temp_dir.name, "test_layer_with_unused_buffer"
+        )
+        path = save_dir + "/model"
+        paddle.jit.save(
+            layer=layer,
+            path=path,
+            input_spec=[InputSpec([5, 7], dtype="float32")],
+        )
+
+        loaded_layer = paddle.jit.load(path)
+        x = paddle.rand([5, 7]).astype('float32')
+        self.assertTrue(
+            self.check_program_has_buffer(
+                loaded_layer.program(), layer.buffer.shape
+            )
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
