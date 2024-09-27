@@ -18,6 +18,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "xblas/cublasLt.h"
 
+#ifndef PADDLE_WITH_XPU_XRE5
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
+#endif
+
 namespace xblas = baidu::xpu::xblas;
 
 namespace phi {
@@ -147,10 +151,10 @@ void AddmmKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
 #else
   } else {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
-    phi::XpuFcInfo fc_info;
-    phi::GetFCInfo(x_dims, y_dims, false, false, &fc_info);
-    phi::MatMulXPUFunction<XPUType>(
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+    XpuFcInfo fc_info;
+    GetFCInfo(x_dims, y_dims, false, false, &fc_info);
+    MatMulXPUFunction<XPUType>(
         dev_ctx.x_context(), x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
 #endif
   }
