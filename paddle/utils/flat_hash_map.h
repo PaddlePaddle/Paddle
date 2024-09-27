@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copy from https://github.com/skarupke/flat_hash_map
 // Modify the following points:
 // 1. modify namespace ska to namespace paddle

@@ -1,3 +1,4 @@
+#2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 #if(WITH_GPU)
 #  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
 #                                                  VERSION_GREATER 12.0)

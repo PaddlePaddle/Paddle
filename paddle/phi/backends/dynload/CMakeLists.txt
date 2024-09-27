@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 set(DYNLOAD_COMMON_SRCS dynamic_loader.cc port.cc warpctc.cc warprnnt.cc
                         lapack.cc)
 if(WITH_ASCEND_CL)

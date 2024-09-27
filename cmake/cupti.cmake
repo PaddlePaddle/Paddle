@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 if(NOT WITH_GPU AND NOT WITH_ROCM)
   return()
 endif()

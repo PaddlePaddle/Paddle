@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 export MACA_PATH=${1}
 export CUCC_PATH=${MACA_PATH}/tools/cu-bridge
 export CUDA_PATH=/usr/local/cuda
