@@ -42,7 +42,9 @@ from .impls.others import *  # noqa: F403
 from .impls.pooling import *  # noqa: F403
 from .impls.search import *  # noqa: F403
 from .impls.stat import *  # noqa: F403
+from .impls.common import *  # noqa: F403
 from .register import converter_registry
+
 from .util import map_dtype
 
 version = trt.__version__
