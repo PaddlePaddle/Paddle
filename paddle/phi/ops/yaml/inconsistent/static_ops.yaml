@@ -533,6 +533,14 @@
   args : (Tensor[] x)
   output : Tensor(out)
 
+- op : lod_array_length
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : LodArrayLengthInferMeta
+  kernel :
+    func : lod_array_length
+
 - op : lod_reset
   args: (Tensor x, Tensor y, int[] target_lod={}, bool append=false)
   output: Tensor(out)

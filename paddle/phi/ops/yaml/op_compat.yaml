@@ -2263,6 +2263,12 @@
   outputs :
     out : Out
 
+- op : lod_array_length
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
 - op : lod_reset
   backward : lod_reset_grad
   inputs:

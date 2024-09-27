@@ -387,6 +387,7 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaTensor* out,
                        MetaTensor* indices,
                        MetaConfig = MetaConfig());
+void LodArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out);
 
