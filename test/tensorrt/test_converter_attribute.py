@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-os.environ["WITH_DISTRIBUTE"] = "ON"
-
 import unittest
+
+import numpy as np
+from tensorrt_test_base import TensorRTBaseTest
+
+import paddle
+
+
+class TestShapeTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.shape
+        self.api_args = {
+            "x": np.random.randn(2, 3).astype(np.float32),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3]}
+        self.max_shape = {"x": [5, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
 
 if __name__ == '__main__':
     unittest.main()

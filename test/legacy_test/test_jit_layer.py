@@ -22,7 +22,6 @@ import numpy as np
 import paddle
 from paddle.base.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
-from paddle.pir_utils import test_with_dygraph_pir
 from paddle.static import InputSpec
 
 sys.path.append("../dygraph_to_static")
@@ -87,7 +86,6 @@ class TestMultiLoad(unittest.TestCase):
             )
             np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
 
-    @test_with_dygraph_pir
     def test_multi_jit_load(self):
         x = paddle.full([2, 4], 2)
         model = Net()
@@ -141,7 +139,6 @@ class TestMKLOutput(unittest.TestCase):
                 out = paddle.unsqueeze(out[0], 0)
                 np.testing.assert_equal(out.shape, [1, 498, 80])
 
-    @test_with_dygraph_pir
     def test_mkl_jit_output(self):
         with _dygraph_place_guard(place=paddle.CPUPlace()):
             net = SaveLinear()
