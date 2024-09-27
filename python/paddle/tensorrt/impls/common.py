@@ -20,7 +20,6 @@ from paddle.tensorrt.register import converter_registry
 
 @converter_registry.register("pd_op.bilinear_interp", trt_version="8.x")
 def bilinear_interp_converter(network, paddle_op, inputs):
-
     input_tensor = inputs[0]
     input_shape = paddle_op.operands()[0].source().shape
     data_format = paddle_op.attrs().get("data_format")
@@ -121,7 +120,122 @@ def bilinear_interp_converter(network, paddle_op, inputs):
                 output_itensors
             ).get_output(0)
             resize_layer.set_input(1, output_size_tensor)
-    else:
+    else: 
         resize_layer.scales = scales
 
     return resize_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.nearest_interp", trt_version="8.x")
+def nearest_interp_converter(network, paddle_op, inputs):
+    input_tensor=inputs[0]
+    input_shape = paddle_op.operands()[0].source().shape
+    data_format = paddle_op.attrs().get("data_format")
+    interp_method = paddle_op.attrs().get("interp_method")
+    align_corners = paddle_op.attrs().get("align_corners")
+    out_h = paddle_op.attrs().get("out_h")
+    out_w = paddle_op.attrs().get("out_w")
+    out_d = paddle_op.attrs().get("out_d")
+    scale_attr = paddle_op.attrs().get("scale")
+    
+     # Parse TensorRT version
+    trt_major, trt_minor, trt_patch = trt.__version__.split(".")
+    trt_version_float = float(f"{trt_major}.{trt_minor}")
+
+    # Create Resize layer
+    resize_layer = network.add_resize(input_tensor)
+    
+    if trt_version_float >= 8.6:
+        if align_corners:
+            resize_layer.coordinate_transformation = (
+                trt.ResizeCoordinateTransformation.ALIGN_CORNERS
+            )
+    else:
+        resize_layer.resize_mode=trt.InterpolationMode.NEAREST
+    
+    in_dim =input_tensor.shape
+    scale_h=1.0
+    scale_w=1.0
+    
+    if out_h>0 and out_w>0:
+        if scale_attr is not None and len(scale_attr) > 0:
+            raise ValueError("When out_h and out_w are set, scale_attr cannot be set at the same time.")
+        if data_format =="NCHW":
+            h_axis=2
+            w_axis=3
+        
+            scale_h=float(out_h)/float(in_dim[h_axis])
+            scale_w=float(out_w)/float(in_dim[w_axis])
+    else:
+        if scale_attr is not None and len(scale_attr)>=2:
+            scale_h = scale_attr[0]
+            scale_w = scale_attr[1] 
+            
+    outsize_tensor = None
+    if trt_version_float >= 8.2:
+        if len(inputs) > 2 and inputs[2] is not None:
+            size_tensor_shape=paddle_op.operands()[2].source().shape
+            if size_tensor_shape.size()>=2:
+                size_tensor=inputs[2]
+                # Extract the first two elements representing height and width
+                outsize_h =network.add_slice(size_tensor,start=[0],shape=[1],stride=[1]).get_output(0)
+                outsize_w =network.add_slice(size_tensor,start=[1],shape=[1],stride=[1]).get_output(0)
+                outsize_tensor =network.add_concatenation([outsize_h,outsize_w]).get_output(0)
+           
+    scales = [1.0] * len(input_tensor.shape)
+    if data_format == "NCHW":
+        scales[1] = 1.0
+        scales[2] = scale_h
+        scales[3] = scale_w
+    elif data_format == "NHWC":
+        scales[1] = scale_h
+        scales[2] = scale_w
+        scales[3] = 1.0
+    else:
+        raise ValueError(
+            f"Unsupported data format {data_format}, only NCHW or NHWC are supported."
+        )
+    if outsize_tensor is not None:
+        outsize_itensors=[]
+        input_shape_tensor = network.add_shape(input_tensor).get_output(0)
+        batch_dim = get_shape_tensor_element(network, input_shape_tensor, 0)
+        outsize_itensors.append(batch_dim)
+        if data_format=="NCHW":
+            channel_dim = get_shape_tensor_element(
+                    network, input_shape_tensor, 1
+                )
+            outsize_itensors.append(channel_dim)
+            outsize_itensors.append(outsize_tensor)
+        elif data_format =="NHWC":
+            channel_dim = get_shape_tensor_element(
+                    network, input_shape_tensor, 3
+                )
+            outsize_itensors.append(outsize_tensor)
+            outsize_itensors.append(channel_dim)
+        resize_layer.set_input(1, network.add_concatenation(outsize_itensors).get_output(0))
+    else:
+        resize_layer.scales=scales
+        
+    return resize_layer.get_output(0)
+            
+            
+            
+            
+
+        
+        
+        
+            
+                
+                
+        
+        
+        
+            
+        
+    
+        
+    
+    
+    
+    
