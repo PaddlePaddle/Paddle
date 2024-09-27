@@ -22,7 +22,6 @@ from op_test import OpTest
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestQrOp(OpTest):
@@ -193,7 +192,6 @@ class TestQrAPI(unittest.TestCase):
         ):
             run_qr_dygraph(tensor_shape, mode, dtype)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         np.random.seed(7)

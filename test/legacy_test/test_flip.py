@@ -23,7 +23,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestFlipOp_API(unittest.TestCase):
@@ -233,7 +232,6 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
     def flip_wrapper(self, x):
         return paddle.flip(x[0], [0, 1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -271,7 +269,6 @@ class TestFlipTripleGradCheck(unittest.TestCase):
     def flip_wrapper(self, x):
         return paddle.flip(x[0], [0, 1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
