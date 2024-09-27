@@ -63,8 +63,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
         precision_mode_(phi::DataType::FLOAT16),
         enable_low_precision_io_(false),
         context_(nullptr),
-        black_list_(),
-        white_list_(),
         op_run_low_precision_(),
         op_should_not_handle_(),
         cached_cast_ops_() {}
@@ -86,10 +84,39 @@ class AutoMixedPrecisionPass : public pir::Pass {
             "required!"
             "Use Set method to set the scope attribute."));
 
+    PADDLE_ENFORCE_EQ(
+        Has("__enable_low_precision_io__"),
+        true,
+        common::errors::InvalidArgument(
+            "Pass initialize failed."
+            "When using AutoMixedPrecisionPass, enable_low_precision_io attribute is "
+            "required!"
+            "Use Set method to set the scope attribute."));
+
+    PADDLE_ENFORCE_EQ(
+        Has("__mixed_black_list__"),
+        true,
+        common::errors::InvalidArgument(
+            "Pass initialize failed."
+            "When using AutoMixedPrecisionPass, mixed_black_list attribute is "
+            "required!"
+            "Use Set method to set the scope attribute."));
+
+    PADDLE_ENFORCE_EQ(
+        Has("__mixed_white_list__"),
+        true,
+        common::errors::InvalidArgument(
+            "Pass initialize failed."
+            "When using AutoMixedPrecisionPass, mixed_white_list attribute is "
+            "required!"
+            "Use Set method to set the scope attribute."));
+
     place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
     precision_mode_ = Get<phi::DataType>("__mixed_precision_mode__");
     context_ = context;
-    enable_low_precision_io_ = false;
+    enable_low_precision_io_ = Get<bool>("__enable_low_precision_io__");
+    black_list_ = Get<std::unordered_set<std::string>>("__mixed_black_list__");
+    white_list_ = Get<std::unordered_set<std::string>>("__mixed_white_list__");
     SetDefaultBlacklist();
     return true;
   }

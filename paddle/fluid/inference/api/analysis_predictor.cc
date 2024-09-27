@@ -972,6 +972,12 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       auto_mixed_precision_pass->Set("__mixed_precision_mode__",
                                      new phi::DataType(paddle::ConvertPrecision(
                                          config_.mixed_precision_mode_)));
+      auto_mixed_precision_pass->Set("__enable_low_precision_io__",
+                                     new bool(config_.enable_low_precision_io_));
+      auto_mixed_precision_pass->Set("__mixed_black_list__",
+                                     new std::unordered_set<std::string>(config_.mixed_black_list_));
+      auto_mixed_precision_pass->Set("__mixed_white_list__",
+                                     new std::unordered_set<std::string>(config_.mixed_white_list_));
       basic_pass_pm.AddPass(std::move(auto_mixed_precision_pass));
     }
   }
