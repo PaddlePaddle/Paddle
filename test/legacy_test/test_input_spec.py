@@ -22,7 +22,6 @@ import paddle
 from paddle.base import core
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
-from paddle.pir_utils import test_with_dygraph_pir
 from paddle.static import InputSpec
 
 
@@ -176,22 +175,18 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
     def setUpClass(cls):
         paddle.disable_static()
 
-    @test_with_dygraph_pir
     def test_non_tensor_bool(self):
         specs = [self.x_spec, False]
         self.check_result(specs, 'bool')
 
-    @test_with_dygraph_pir
     def test_non_tensor_str(self):
         specs = [self.x_spec, True, "xxx"]
         self.check_result(specs, 'str')
 
-    @test_with_dygraph_pir
     def test_non_tensor_int(self):
         specs = [self.x_spec, True, "bn", 10]
         self.check_result(specs, 'int')
 
-    @test_with_dygraph_pir
     def test_non_tensor_list(self):
         specs = [self.x_spec, False, "bn", -10, [4]]
         self.check_result(specs, 'list')
@@ -226,7 +221,6 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
 
         np.testing.assert_allclose(st_out, load_out, rtol=1e-05)
 
-    @test_with_dygraph_pir
     def test_spec_compatible(self):
         net = NetWithNonTensorSpec(self.in_num, self.out_num)
 
@@ -284,7 +278,6 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
     def setUpClass(cls):
         paddle.disable_static()
 
-    @test_with_dygraph_pir
     def test_non_tensor_with_prune(self):
         specs = [self.x_spec, self.y_spec, True]
         path = os.path.join(self.temp_dir.name, './net_non_tensor_prune_')

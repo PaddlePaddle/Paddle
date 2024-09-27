@@ -555,5 +555,47 @@ StringToDataLayoutMap() {
   return data_layout_map;
 }
 
+void SetStopGradient() {}
+
+void SetStopGradient(pir::Value* value) {
+  value->set_attribute(
+      "stop_gradient",
+      pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+}
+
+void SetStopGradient(std::vector<pir::Value>* values) {
+  for (auto& value : *values) {
+    SetStopGradient(&value);
+  }
+}
+
+void SetStopGradient(paddle::optional<pir::Value>* value) {
+  if (value->get_ptr() != nullptr) {
+    SetStopGradient(value->get_ptr());
+  }
+}
+
+void SetStopGradient(paddle::optional<std::vector<pir::Value>>* values) {
+  if (values->get_ptr() != nullptr) {
+    SetStopGradient(values->get_ptr());
+  }
+}
+
+void PushStopGradient(const pir::Value& value, std::vector<bool>* arr) {
+  if (!IsEmptyValue(value)) {
+    arr->push_back(false);
+  } else {
+    arr->push_back(true);
+  }
+}
+
+std::vector<std::vector<bool>> ConstructStopGradient(pir::Operation* op) {
+  std::vector<std::vector<bool>> stop_gradients(op->results().size());
+  for (size_t i = 0; i < op->results().size(); i++) {
+    PushStopGradient(op->result(i), &stop_gradients[i]);
+  }
+  return stop_gradients;
+}
+
 }  // namespace dialect
 }  // namespace paddle

@@ -73,6 +73,14 @@ void ProcessDistBlock(pir::Block* block) {
       auto result = op_item->result(i);
       result.set_type(CastToLocalType(result.type()));
     }
+
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto input = op_item->operand_source(i);
+      if (IsDistType(input.type())) {
+        input.set_type(CastToLocalType(input.type()));
+      }
+    }
+
     if (op_item->isa<DataOp>()) {
       auto dense_tensor_type =
           op_item->result(0).type().dyn_cast<pir::DenseTensorType>();
@@ -157,7 +165,7 @@ void ProcessDistBlock(pir::Block* block) {
 
 /* Verification:
     1. no operator has not OperatorDistAttr.
-    2. all Values (Results) are DenseTensorType.
+    2. all Values are DenseTensorType.
     3. no shard_tensor / reshard in block.
 */
 void VerifyDenseBlock(pir::Block* block) {
@@ -169,6 +177,15 @@ void VerifyDenseBlock(pir::Block* block) {
 
       PADDLE_ENFORCE_EQ(
           IsDistType(result.type()),
+          false,
+          common::errors::PreconditionNotMet(
+              "Block op [%s] still contain dist type.", op_item->name()));
+    }
+
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto input = op_item->operand_source(i);
+      PADDLE_ENFORCE_EQ(
+          IsDistType(input.type()),
           false,
           common::errors::PreconditionNotMet(
               "Block op [%s] still contain dist type.", op_item->name()));
