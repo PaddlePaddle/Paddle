@@ -760,12 +760,72 @@ bool ChannelShuffleOpInferSymbolicShape(
   return true;
 }
 
-// bool CropOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext *infer_context)
-//                               {
-//   // pass
-//   return true;
-// }
+bool CropOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> offsets;
+  std::vector<symbol::DimExpr> in_shape;
+  std::vector<symbol::DimExpr> out_dims;
+
+  if (op->HasAttribute("offsets")) {
+    std::vector<int64_t> offsets_ =
+        paddle::dialect::details::GetVectorAttr<int64_t>(op, "offsets");
+    for (const auto &i : offsets_) offsets.emplace_back(symbol::DimExpr{i});
+  } else {
+    const auto &offsets_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    offsets = details::GetOrCreateExprVecFromData(offsets_shape_or_data,
+                                                  infer_context);
+  }
+
+  if (op->HasAttribute("shape")) {
+    std::vector<int64_t> shape_ =
+        paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
+    for (const auto &i : shape_) in_shape.emplace_back(symbol::DimExpr{i});
+  } else {
+    const auto &in_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    in_shape =
+        details::GetOrCreateExprVecFromData(in_shape_or_data, infer_context);
+  }
+
+  PADDLE_ENFORCE_EQ(in_shape.size(),
+                    x_shape.size(),
+                    phi::errors::InvalidArgument(
+                        "The number of elements (%d) of attribute 'shape' for "
+                        "CropTensor must be equal to the number of "
+                        "dimensions (%d) of the input.",
+                        in_shape.size(),
+                        x_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      offsets.size(),
+      x_shape.size(),
+      phi::errors::InvalidArgument(
+          "The number of elements (%d) of attribute 'offsets' for "
+          "CropTensor must be equal to the number of "
+          "dimensions (%d) of the input.",
+          offsets.size(),
+          x_shape.size()));
+
+  for (size_t i = 0; i < in_shape.size(); ++i) {
+    if (in_shape[i].isa<int64_t>()) {
+      if (in_shape[i].Get<int64_t>() == -1) {
+        out_dims.push_back(symbol::DimExpr(x_shape[i] - offsets[i]));
+      } else {
+        out_dims.push_back(symbol::DimExpr(in_shape[i]));
+      }
+    } else {
+      out_dims.push_back(in_shape[i]);
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  return true;
+}
 
 bool DecodeJpegOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -2666,6 +2726,20 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const auto &kernel_size =
       details::GetExprVecFromData(kernel_size_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));
+  return true;
+}
+
+bool Pool3dOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<int> kernel_size_ =
+      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
+  std::vector<symbol::DimExpr> kernel_size;
+  for (size_t i = 0; i < kernel_size_.size(); ++i) {
+    kernel_size.push_back(symbol::DimExpr(kernel_size_[i]));
+  }
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));

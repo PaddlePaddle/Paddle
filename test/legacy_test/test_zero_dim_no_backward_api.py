@@ -269,6 +269,16 @@ class TestNoBackwardAPI(unittest.TestCase):
         out_d = paddle.linalg.matrix_rank(d, tol=tol_2)
         self.assertEqual(out_d.shape, [2])
 
+    def test_eye_zero_dim_input(self):
+        # use zero-dim tensor as inputs
+        num_rows = paddle.to_tensor(5, stop_gradient=False)
+        num_cols = paddle.to_tensor(4, stop_gradient=False)
+        out = paddle.eye(num_rows, num_cols)
+
+        self.assertEqual(num_cols.shape, [])
+        self.assertEqual(num_rows.shape, [])
+        self.assertEqual(out.shape, [5, 4])
+
 
 class TestNoBackwardAPIStatic(unittest.TestCase):
     def setUp(self):

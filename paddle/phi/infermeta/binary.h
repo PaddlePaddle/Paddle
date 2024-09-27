@@ -501,6 +501,10 @@ void LUUnpackInferMeta(const MetaTensor& x,
                        MetaTensor* l,
                        MetaTensor* u);
 
+void LookupTableInferMeta(const MetaTensor& w,
+                          const MetaTensor& ids,
+                          MetaTensor* out);
+
 void MarginCrossEntropyInferMeta(const MetaTensor& logits,
                                  const MetaTensor& label,
                                  bool return_softmax,

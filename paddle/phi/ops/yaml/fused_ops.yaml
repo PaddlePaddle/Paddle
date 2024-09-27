@@ -439,6 +439,17 @@
     func : fused_scale_bias_relu_conv_bn
     data_type : x
 
+- op : fused_seqpool_cvm
+  args: (Tensor[] x, Tensor cvm, str pooltype = "SUM", float pad_value = 0.0, bool
+    use_cvm = true, int cvm_offset = 2)
+  output: Tensor[] (out){x.size()}
+  infer_meta:
+    func: FusedSeqpoolCvmInferMeta
+  kernel:
+    func: fused_seqpool_cvm
+    data_type: x
+  backward: fused_seqpool_cvm_grad
+
 - op : fused_token_prune
   args: (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token
     = true, bool keep_order = false)

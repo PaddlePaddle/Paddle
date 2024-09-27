@@ -353,9 +353,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       (kernel_iter == iter->second.end() || (xpu_unsupport && !has_kp_kernel))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+  bool is_xpu_support1 = phi::backends::xpu::is_xpu_support_op(
+      TransToFluidOpName(kernel_name), kernel_key.dtype());
+  bool is_xpu_support2 =
+      phi::backends::xpu::is_xpu_support_op(kernel_name, kernel_key.dtype());
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
-      !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
-                                             kernel_key.dtype())
+      (!is_xpu_support1 && !is_xpu_support2)
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (kernel_iter == iter->second.end() &&
       kernel_key.backend() > phi::Backend::NUM_BACKENDS) {

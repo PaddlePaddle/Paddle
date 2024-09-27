@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
+import paddle
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
@@ -33,7 +34,9 @@ ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
 )
 ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
 ENV_SOT_ALLOW_DYNAMIC_SHAPE = BooleanEnvironmentVariable(
-    "SOT_ALLOW_DYNAMIC_SHAPE", False
+    "SOT_ALLOW_DYNAMIC_SHAPE",
+    # Enable SOT dynamic shape as default in PIR mode only
+    paddle.framework.use_pir_api(),
 )
 ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(

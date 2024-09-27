@@ -2767,6 +2767,39 @@ void LUUnpackInferMeta(const MetaTensor& x,
   }
 }
 
+void LookupTableInferMeta(const MetaTensor& w,
+                          const MetaTensor& ids,
+                          MetaTensor* out) {
+  const auto& table_dims = w.dims();
+  const auto& ids_dims = ids.dims();
+  int ids_rank = ids_dims.size();
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'lookup table' must be 2. "
+          "But received lookup table's dimensions = %d, "
+          "lookup table's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+  PADDLE_ENFORCE_EQ(
+      ids_dims[ids_rank - 1],
+      1,
+      phi::errors::InvalidArgument(
+          "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
+          "But received Ids's last dimensions = %d, Ids's shape = [%s].",
+          ids_dims[ids_rank - 1],
+          ids_dims));
+
+  auto output_dims =
+      common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+  output_dims.push_back(table_dims[1]);
+  out->set_dims(common::make_ddim(output_dims));
+  out->set_dtype(w.dtype());
+  out->share_lod(ids);
+}
+
 void MarginCrossEntropyInferMeta(const MetaTensor& logits,
                                  const MetaTensor& label,
                                  bool return_softmax,

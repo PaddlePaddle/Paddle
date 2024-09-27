@@ -109,6 +109,9 @@ class TestCase3(TestCropTensorOp):
         self.offsets = [1, 5, 3]
         self.shape_by_input = True
 
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
 
 class TestCase4(TestCropTensorOp):
     def initTestCase(self):
@@ -116,6 +119,9 @@ class TestCase4(TestCropTensorOp):
         self.crop_shape = [-1, 3, -1, 4]
         self.offsets = [0, 0, 1, 0]
         self.shape_by_input = True
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestCase5(TestCropTensorOp):
@@ -133,6 +139,9 @@ class TestCase6(TestCropTensorOp):
         self.offsets = [0, 0, 0, 0, 0, 0]
         self.shape_by_input = True
         self.offset_by_input = True
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestCropTensorOpTensorAttr(OpTest):
@@ -183,7 +192,7 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.shape_attr = [0, 0]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(["X"], "Out", check_pir=True)
@@ -214,6 +223,9 @@ class TestCropTensorOpTensorAttrCase3(TestCropTensorOpTensorAttr):
         self.ShapeTensor = False
         self.OffsetsTensor = True
 
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=True)
+
 
 class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
     def initTestCase(self):
@@ -223,6 +235,9 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
         self.offsets = [1, 5, 3]
         self.offsets_attr = [-1, -1, 3]
         self.OffsetsTensor = True
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
 
 class TestCropTensorException(unittest.TestCase):

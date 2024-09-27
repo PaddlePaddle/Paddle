@@ -27,6 +27,7 @@ from paddle import pir
 from paddle.autograd.backward_utils import (
     ValueSet,
     get_real_op_inputs,
+    get_real_op_outputs,
     some_in_set,
 )
 from paddle.base import (
@@ -175,7 +176,7 @@ def pir_prune_with_input(program, feed_vars, target_vars):
     # from output to input
     target_vars_ = ValueSet(target_vars)
     for i, op in reversed(list(enumerate(total_ops))):
-        if some_in_set(op.results(), target_vars_):
+        if some_in_set(get_real_op_outputs(op), target_vars_):
             for operand in get_real_op_inputs(op):
                 target_vars_.add(operand)
         else:
@@ -183,7 +184,7 @@ def pir_prune_with_input(program, feed_vars, target_vars):
 
     for i, op in reversed(list(enumerate(total_ops))):
         if not intersection_op_flags[i]:
-            if some_in_set(op.results(), ValueSet(feed_vars)):
+            if some_in_set(get_real_op_outputs(op), ValueSet(feed_vars)):
                 raise ValueError(
                     f"The feed_var create by: '{op.name()}' is not involved in the target_vars calculation"
                     f"Please remove it from feed_vars ."
