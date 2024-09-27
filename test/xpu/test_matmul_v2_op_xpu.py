@@ -395,6 +395,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = False
             self.trans_y = True
 
+<<<<<<< HEAD
     @check_run_big_shape_test()
     class TestMatMulOpLlama13B1(TestMatMulV2Op):
         def config(self):
@@ -411,6 +412,8 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = False
             self.trans_y = False
 
+=======
+>>>>>>> d13625a3349cd2427a2e12c23b7acc573e9dc583
 
 support_types = get_xpu_op_support_types('matmul_v2')
 for stype in support_types:
