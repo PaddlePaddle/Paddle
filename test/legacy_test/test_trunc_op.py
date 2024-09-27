@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -67,7 +66,6 @@ class TestTruncAPI(unittest.TestCase):
         self.x = np.random.random((20, 20)).astype(np.float32)
         self.place = paddle.CPUPlace()
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -87,7 +85,6 @@ class TestTruncAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', [20, 20], 'bool')

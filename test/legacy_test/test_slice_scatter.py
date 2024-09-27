@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.framework import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -90,7 +89,6 @@ class TestSliceScatterApi(unittest.TestCase):
         self.ends = [6]
         self.strides = [2]
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         self.init_dtype()

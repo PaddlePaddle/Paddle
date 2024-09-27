@@ -30,7 +30,7 @@ limitations under the License. */
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/timer.h"
 #endif
 
 namespace paddle {

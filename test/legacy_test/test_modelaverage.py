@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base, nn
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def get_value_by_name(name, ops):
@@ -31,7 +30,7 @@ def get_value_by_name(name, ops):
 
 
 class TestModelAverage(unittest.TestCase):
-    @test_with_pir_api
+
     def test_model_average_static(self):
         paddle.enable_static()
         place = base.CPUPlace()
