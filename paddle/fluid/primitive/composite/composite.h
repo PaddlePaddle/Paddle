@@ -1125,6 +1125,14 @@ Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
     start_axis = 0;
     end_axis = 0;
   }
+  if (start_axis < 0) {
+    start_axis += x_dim.size();
+  }
+
+  if (end_axis < 0) {
+    end_axis += x_dim.size();
+  }
+
   if (end_axis < start_axis) {
     PADDLE_THROW(common::errors::Unimplemented(
         "end_axis must be greater than or equal to start_axis."));
