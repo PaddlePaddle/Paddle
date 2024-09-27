@@ -3012,7 +3012,7 @@ void AddShadowFeedOpForDataOrFeed(
 */
 void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
                                           pir::IrContext* ctx) {
-  for (auto it = block->rbegin(); it != block->rend(); ++it) {
+  for (auto it = block->begin(); it != block->end(); ++it) {
     if (it->isa<PhiKernelOp>() &&
         (it->dyn_cast<PhiKernelOp>().op_name() == "pd_op.shadow_feed" ||
          it->dyn_cast<PhiKernelOp>().op_name() ==
