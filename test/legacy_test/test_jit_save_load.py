@@ -2272,7 +2272,7 @@ class TestLayerWithUnusedBuffer(unittest.TestCase):
                 return True
         return False
 
-    def test_strided_buffer(self):
+    def test_layer_with_unused_buffer(self):
         layer = LayerWithUnusedBuffer()
         save_dir = os.path.join(
             self.temp_dir.name, "test_layer_with_unused_buffer"
