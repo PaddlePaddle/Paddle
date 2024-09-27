@@ -116,7 +116,7 @@ void AdamWJitCode::mainCode() {
   // load mom2_max
   vmovups(ymm13 | k1, ptr[reg_mom2_max_ptr + reg_offset]);
   // compare mom2 and mom2_max
-  vmaxps(ymm13, ymm10, ymm13);
+  vmaxps(ymm13 | k1, ymm10, ymm13);
   // store mom2_max
   vmovups(ptr[reg_mom2_max_out_ptr + reg_offset] | k1, ymm13);
   // move mom2_max to mom2 to update params

@@ -26,10 +26,6 @@ from paddle.framework import core
 
 
 def adamw_step(inputs, attributes):
-    print('>>>>>> adamw_step')
-    print(inputs)
-    print(attributes)
-
     param = inputs['Param']
     grad = inputs['Grad']
     moment1 = inputs['Moment1']
@@ -95,9 +91,6 @@ def adamw_wrapper(
     lazy_mode=False,
     amsgrad=False,
 ):
-    print('>>>>>> adamw_wrapper')
-    print(amsgrad)
-
     _, _, _, _, _, _, _ = paddle._C_ops.adamw_(
         param,
         grad,
@@ -183,14 +176,6 @@ class TestAdamW(OpTest):
         }
 
     def test_check_output(self):
-
-        print(
-            '>>>>>> TestAdamW test_check_output',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
@@ -263,13 +248,6 @@ class TestAdamW2(OpTest):
         }
 
     def test_check_output(self):
-        print(
-            '>>>>>> TestAdamW2 test_check_output',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.check_output_with_place(
             no_check_set=self.no_check_set,
             place=core.CUDAPlace(0),
@@ -288,13 +266,6 @@ class TestAdamWOp(unittest.TestCase):
         self.amsgrad = False
 
     def test_adamw_op_dygraph(self):
-        print(
-            '>>>>>> TestAdamWOp test_adamw_op_dygraph',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
@@ -314,13 +285,6 @@ class TestAdamWOp(unittest.TestCase):
             adam.clear_gradients()
 
     def test_adamw_op(self):
-        print(
-            '>>>>>> TestAdamWOp test_adamw_op',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         paddle.enable_static()
         place = base.CPUPlace()
         shape = [2, 3, 8, 8]
@@ -372,13 +336,6 @@ class TestAdamWOp(unittest.TestCase):
         paddle.disable_static()
 
     def test_adamw_op_dygraph_bypassing_step(self):
-        print(
-            '>>>>>> TestAdamWOp test_adamw_op_dygraph_bypassing_step',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
@@ -398,13 +355,6 @@ class TestAdamWOp(unittest.TestCase):
             adam.clear_gradients()
 
     def test_adamw_op_coverage(self):
-        print(
-            '>>>>>> TestAdamWOp test_adamw_op_coverage',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
@@ -419,13 +369,6 @@ class TestAdamWOp(unittest.TestCase):
         assert adam.__str__() is not None
 
     def test_pir_adam_op(self):
-        print(
-            '>>>>>> TestAdamWOp test_pir_adam_op',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         with paddle.pir_utils.IrGuard():
             place = base.CPUPlace()
             shape = [2, 3, 8, 8]
@@ -468,13 +411,6 @@ class TestAdamWOp(unittest.TestCase):
             assert rets[0] is not None
 
     def test_adamw_op_invalid_input(self):
-        print(
-            '>>>>>> TestAdamWOp test_adamw_op_invalid_input',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):
@@ -502,13 +438,6 @@ class TestAdamWOp(unittest.TestCase):
 
 class TestAdamWOpAMSGrad(TestAdamWOp):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpAMSGrad setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = True
 
 
@@ -565,25 +494,11 @@ class TestAdamWOpGroup(TestAdamWOp):
 
 class TestAdamWOpGroupAMSGrad(TestAdamWOpGroup):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpGroupAMSGrad setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = True
 
 
 class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpMultiPrecisionWithMainGrad setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = False
 
     def _test_adamw_op_dygraph_place_amp_with_maingrad(
@@ -749,25 +664,11 @@ class TestAdamWOpMultiPrecisionWithMainGradAMSGrad(
     TestAdamWOpMultiPrecisionWithMainGrad
 ):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpMultiPrecisionWithMainGradAMSGrad setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = True
 
 
 class TestAdamWOpMultiPrecision(unittest.TestCase):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpMultiPrecision setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = False
 
     def _test_adamw_op_dygraph_place_amp(self, place, use_amp=False):
@@ -833,25 +734,11 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
 
 class TestAdamWOpMultiPrecisionAMSGrad(TestAdamWOpMultiPrecision):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpMultiPrecisionAMSGrad setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = True
 
 
 class TestAdamWOpError(unittest.TestCase):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpError setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = False
 
     def test_api_errors(self):
@@ -918,13 +805,6 @@ class TestAdamWOpError(unittest.TestCase):
 
 class TestAdamWOpErrorAMSGrad(TestAdamWOpError):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpErrorAMSGrad setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = True
 
 
@@ -964,13 +844,6 @@ class TestAdamWOpGroupWithLR(TestAdamWOp):
 
 class TestAdamWOpGroupWithLRAMSGrad(TestAdamWOpGroupWithLR):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpGroupWithLRAMSGrad setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         self.amsgrad = True
 
 
@@ -990,13 +863,6 @@ def simple_lr_setting(param, decay_rate, n_layers):
 )
 class TestAdamWOpLayerwiseLR(TestAdamWOp):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpLayerwiseLR setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         random.seed(2022)
         np.random.seed(2022)
         paddle.seed(2022)
@@ -1757,13 +1623,6 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
 class TestAdamWOpLayerwiseLRAMSGrad(TestAdamWOpLayerwiseLR):
     def setUp(self):
-        print(
-            '>>>>>> TestAdamWOpLayerwiseLRAMSGrad setUp',
-            self.__class__,
-            self.amsgrad,
-            paddle.get_device(),
-        )
-
         random.seed(2022)
         np.random.seed(2022)
         paddle.seed(2022)
