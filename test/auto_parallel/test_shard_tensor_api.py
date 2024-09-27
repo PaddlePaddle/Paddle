@@ -20,9 +20,10 @@ import paddle
 import paddle.distributed as dist
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.distributed import Replicate, Shard
-from paddle.distributed.auto_parallel.static.dist_context import (
-    get_default_distributed_context,
-)
+
+in_pir_mode = paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
+    "FLAGS_enable_pir_api"
+]
 
 
 class TestDistAttrBasic(unittest.TestCase):
@@ -113,15 +114,12 @@ class TestShardTensorStatic(unittest.TestCase):
             dtype='float32',
         )
         d_tensor = dist.shard_tensor(input, self.mesh, [Shard(0), Replicate()])
-
-        default_dist_context = get_default_distributed_context()
-        dist_input = default_dist_context.get_dist_tensor_for_program(input)
-        self.assertEqual(dist_input.dist_attr.process_mesh, self.mesh)
+        self.assertEqual(d_tensor.dist_attr().process_mesh, self.mesh)
 
 
 class TestShardTensorStaticDy2Static(unittest.TestCase):
     def test_dy2static(self):
-        @paddle.jit.to_static(full_graph=True)
+        @paddle.jit.to_static(full_graph=True, input_spec=[])
         def func():
             mesh = dist.ProcessMesh(
                 [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
@@ -130,16 +128,14 @@ class TestShardTensorStaticDy2Static(unittest.TestCase):
             d_tensor = dist.shard_tensor(
                 input, mesh, [Replicate(), Replicate()]
             )
-            return input, mesh
+            return d_tensor, mesh
 
-        dy_tensor, mesh = func()
+        # dy_tensor, mesh = func()
         static_tensor = func.outputs[0]  # get the inputs of static program
-
-        default_dist_context = get_default_distributed_context()
-        dist_input = default_dist_context.get_dist_tensor_for_program(
-            static_tensor
+        mesh = dist.ProcessMesh(
+            [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
         )
-        self.assertEqual(dist_input.dist_attr.process_mesh, mesh)
+        self.assertEqual(static_tensor.dist_attr().process_mesh, mesh)
 
 
 class DemoNet(paddle.nn.Layer):

@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -62,7 +61,6 @@ class DoubleDecorated:
 
 class TestFullNameDecorator(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")

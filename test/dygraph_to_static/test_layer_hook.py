@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -85,7 +84,6 @@ class TestNestLayerHook(Dy2StTestBase):
         out = net(self.x)
         return float(out)
 
-    @test_legacy_and_pt_and_pir
     def test_hook(self):
         dy_out = self.train_net(to_static=False)
         st_out = self.train_net(to_static=True)

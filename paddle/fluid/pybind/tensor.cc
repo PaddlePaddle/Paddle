@@ -71,11 +71,9 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
@@ -110,7 +108,9 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/monitor.h"
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/utils/none.h"
 
@@ -209,7 +209,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
           // parameters.
           "__array__",
           [](phi::DenseTensor &self, py::object dtype, py::object copy) {
-            return TensorToPyArray(self);
+            return TensorToPyArray(self, copy);
           },
           py::arg("dtype") = py::none(),
           py::arg("copy") = py::none())
@@ -430,20 +430,22 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> print(t.shape())
                     [5, 30]
            )DOC")
-      .def("_to_dlpack",
-           [](phi::DenseTensor &self) {
-             DLManagedTensor *dmt = framework::toDLPack(self);
-             auto capsule = pybind11::capsule(
-                 static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
-                   if (!PyCapsule_IsValid(ptr, "dltensor")) {
-                     return;
-                   }
-                   DLManagedTensor *dmt = static_cast<DLManagedTensor *>(
-                       PyCapsule_GetPointer(ptr, "dltensor"));
-                   dmt->deleter(dmt);
-                 });
-             return capsule;
-           })
+      .def(
+          "_to_dlpack",
+          [](phi::DenseTensor &self) {
+            DLManagedTensor *dlMTensor = framework::toDLPack(self);
+            auto capsule = pybind11::capsule(
+                static_cast<void *>(dlMTensor), "dltensor", [](PyObject *data) {
+                  if (!PyCapsule_IsValid(data, "dltensor")) {
+                    return;
+                  }
+                  DLManagedTensor *dlMTensor =
+                      reinterpret_cast<DLManagedTensor *>(
+                          PyCapsule_GetPointer(data, "dltensor"));
+                  dlMTensor->deleter(dlMTensor);
+                });
+            return capsule;
+          })
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)

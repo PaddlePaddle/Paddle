@@ -516,7 +516,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                                 bool trans_y,
                                 const std::string& activation,
                                 MetaTensor* out,
-                                MetaTensor* reserve_space);
+                                MetaTensor* reserve_space,
+                                MetaConfig config = MetaConfig());
 
 void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
@@ -973,6 +974,15 @@ void FCInferMeta(const MetaTensor& input,
                  const bool padding_weights,
                  MetaTensor* out);
 
+void FCOneDNNInferMeta(const MetaTensor& input,
+                       const MetaTensor& w,
+                       const MetaTensor& bias,
+                       const int in_num_col_dims,
+                       const std::string& activation_type,
+                       const bool padding_weights,
+                       const std::vector<int>& fused_reshape2_shape,
+                       MetaTensor* out);
+
 void VariableLengthMemoryEfficientAttentionInferMeta(
     const MetaTensor& query,
     const MetaTensor& key,
@@ -1151,6 +1161,27 @@ void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
                                    MetaTensor* batched_cell,
                                    MetaTensor* reordered_h0,
                                    MetaTensor* reordered_c0);
+
+void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
+                              const MetaTensor& cvm,
+                              const std::string& pooltype,
+                              float pad_value,
+                              bool use_cvm,
+                              int cvm_offset,
+                              std::vector<MetaTensor*> out,
+                              MetaConfig config = MetaConfig());
+
+void FusedSeqpoolCvmGradInferMeta(
+    const std::vector<const MetaTensor*>& x,
+    const MetaTensor& cvm,
+    const std::vector<const MetaTensor*>& out_grad,
+    const std::string& pooltype,
+    float pad_value,
+    bool use_cvm,
+    int cvm_offset,
+    std::vector<MetaTensor*> x_grad,
+    MetaTensor* cvm_grad,
+    MetaConfig config = MetaConfig());
 
 void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                   const std::string& pooltype,

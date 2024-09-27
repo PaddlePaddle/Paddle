@@ -22,7 +22,6 @@ from decorator_helper import prog_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
@@ -42,7 +41,6 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
             )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         prog = paddle.static.Program()
@@ -97,7 +95,6 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
             )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         prog = paddle.static.Program()
@@ -119,7 +116,6 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
     def instance_norm_wrapper(self, x):
         return paddle.nn.functional.instance_norm(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         prog = base.Program()
@@ -168,7 +164,6 @@ class TestInstanceNormDoubleGradEagerCheckWithParams(
         instance_norm = paddle.nn.InstanceNorm2D(3)
         return instance_norm(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         prog = paddle.static.Program()
@@ -241,7 +236,6 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
                 place=place,
             )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         prog = base.Program()
@@ -326,7 +320,6 @@ class TestBatchNormDoubleGradCheckCase4(TestBatchNormDoubleGradCheck):
         )
         return batch_norm(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         prog = base.Program()
@@ -387,7 +380,6 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
                 eps=eps,
             )
 
-    @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
         prog = base.Program()

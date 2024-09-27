@@ -77,6 +77,7 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'tolist',
         'value',
         'zero_',
+        "__cuda_array_interface__",
     ]
 )
 STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(

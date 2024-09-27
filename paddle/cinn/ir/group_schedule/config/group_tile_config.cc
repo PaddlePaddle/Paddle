@@ -90,13 +90,10 @@ int64_t Next2Power(int64_t n) {
 }
 
 std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
-    const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info) {
+    const std::shared_ptr<FusionGroupInfo>& group_info) {
   std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
       std::make_shared<ScheduleConfig::BaseInfo>();
-  base_info->reduce_tensor_names = group_info->reduce_var_names;
-  base_info->shared_var_names = group_info->shared_var_names;
-  base_info->direct_output_var_names = group_info->direct_output_var_names;
-  base_info->data_rank = group_info->data_space.size();
+  base_info->data_rank = group_info->loop_ranges.size();
   base_info->loop_strides = group_info->loop_strides;
 
   std::set<int64_t> reduce_dim_loc;
@@ -112,22 +109,23 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   base_info->reduce_numel = 1;
   for (int64_t i = 0; i < base_info->data_rank; ++i) {
     if (reduce_dim_loc.count(i)) {
-      if (group_info->data_space[i] == -1) base_info->has_dynamic_reduce = true;
-      base_info->reduce_numel *= group_info->data_space[i];
+      if (group_info->loop_ranges[i] == -1)
+        base_info->has_dynamic_reduce = true;
+      base_info->reduce_numel *= group_info->loop_ranges[i];
     } else {
-      if (group_info->data_space[i] == -1)
+      if (group_info->loop_ranges[i] == -1)
         base_info->has_dynamic_spatial = true;
-      base_info->spatial_numel *= group_info->data_space[i];
+      base_info->spatial_numel *= group_info->loop_ranges[i];
     }
   }
   base_info->is_reduce_all =
       (base_info->reduce_axis.size() == base_info->data_rank);
 
-  for (int64_t i = 0; i < group_info->data_space.size(); ++i) {
-    if (group_info->data_space[i] == 1) continue;
+  for (int64_t i = 0; i < group_info->loop_ranges.size(); ++i) {
+    if (group_info->loop_ranges[i] == 1) continue;
     std::string iter_type = reduce_dim_loc.count(i) > 0 ? "R" : "S";
     std::string static_or_dynamic =
-        group_info->data_space[i] == -1 ? "dynamic" : "static";
+        group_info->loop_ranges[i] == -1 ? "dynamic" : "static";
     if (base_info->iter_space_type.empty() ||
         base_info->iter_space_type.back().first != iter_type) {
       base_info->iter_space_type.push_back({iter_type, static_or_dynamic});
@@ -451,9 +449,8 @@ CombineBaseInfoAndConfig(
 }
 
 std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash>
-BuildScheduleConfig(
-    const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info,
-    const common::Target& target) {
+BuildScheduleConfig(const std::shared_ptr<FusionGroupInfo>& group_info,
+                    const common::Target& target) {
   std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
       InitBasicInfo(group_info);
   if (!base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {

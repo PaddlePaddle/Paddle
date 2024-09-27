@@ -178,37 +178,37 @@ inline std::vector<int64_t> ComputeOutputShape(
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
-
-  PADDLE_ENFORCE_EQ(
-      input_channels,
-      (channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1]) *
-          groups,
-      common::errors::InvalidArgument(
-          "The number of input's channels should be equal to filter's "
-          "channels "
-          "* groups for Op(Conv). But received: the input's channels is %d, "
-          "the input's shape is [%s]; the filter's channels is %d, the "
-          "filter's shape is [%s]; the groups is %d, the data_format is %s. "
-          "The error may come from wrong data_format setting.",
-          input_channels,
-          in_dims,
-          channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1],
-          filter_dims,
-          groups,
-          data_format));
-  PADDLE_ENFORCE_EQ(
-      filter_dims[0] % groups,
-      0,
-      common::errors::InvalidArgument(
-          "The number of output's channels (filter's first dimension) of "
-          "Op(Conv) should be divided by groups. But received: "
-          "the output channels is %d, the filter's shape is [%s], "
-          "the groups is %d.",
-          filter_dims[0],
-          filter_dims,
-          groups));
-
   if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        input_channels,
+        (channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1]) *
+            groups,
+        common::errors::InvalidArgument(
+            "The number of input's channels should be equal to filter's "
+            "channels "
+            "* groups for Op(Conv). But received: the input's channels is %d, "
+            "the input's shape is [%s]; the filter's channels is %d, the "
+            "filter's shape is [%s]; the groups is %d, the data_format is %s. "
+            "The error may come from wrong data_format setting.",
+            input_channels,
+            in_dims,
+            channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1],
+            filter_dims,
+            groups,
+            data_format));
+
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0] % groups,
+        0,
+        common::errors::InvalidArgument(
+            "The number of output's channels (filter's first dimension) of "
+            "Op(Conv) should be divided by groups. But received: "
+            "the output channels is %d, the filter's shape is [%s], "
+            "the groups is %d.",
+            filter_dims[0],
+            filter_dims,
+            groups));
+
     PADDLE_ENFORCE_GT(
         filter_dims[0],
         0,

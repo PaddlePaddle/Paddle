@@ -75,7 +75,7 @@ endif()
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi common phi_utils static_prim_api get_expected_kernel_func)
 
 register_operators(EXCLUDES py_func_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op run_program_op quantize_linear_op
-        save_combine_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+        save_combine_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} processgroup_comm_utils)
 
 op_library(generated_op UNITY SRCS generated_op1.cc generated_op2.cc generated_op3.cc generated_op4.cc DEPS ${OP_HEADER_DEPS})
 op_library(run_program_op DEPS executor_cache ${OP_HEADER_DEPS})
@@ -87,7 +87,7 @@ op_library(load_combine_op DEPS string_array)
 op_library(activation_op SRCS activation_op.cc DEPS ${OP_HEADER_DEPS})
 
 if (WITH_GPU OR WITH_ROCM)
-    op_library(sync_batch_norm_op DEPS phi common)
+    op_library(sync_batch_norm_op DEPS processgroup_comm_utils phi common)
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
@@ -103,6 +103,10 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_utils
 lod_tensor lod_rank_table executor static_prim_api)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} static_prim_api static_utils static_global_utils prim_utils)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} processgroup_comm_utils)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} process_group_nccl)
+endif()
 if(WITH_XPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()

@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class ApiMinimumTest(unittest.TestCase):
@@ -40,7 +39,6 @@ class ApiMinimumTest(unittest.TestCase):
         self.np_expected3 = np.minimum(self.input_a, self.input_c)
         self.np_expected4 = np.minimum(self.input_b, self.input_c)
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(

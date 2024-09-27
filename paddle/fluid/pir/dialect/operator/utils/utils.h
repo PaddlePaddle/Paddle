@@ -31,7 +31,9 @@ using VariantType = phi::Attribute;
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
 static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
-  if (dtype.isa<pir::BFloat16Type>()) {
+  if (dtype.isa<pir::UndefinedType>()) {
+    return phi::DataType::UNDEFINED;
+  } else if (dtype.isa<pir::BFloat16Type>()) {
     return phi::DataType::BFLOAT16;
   } else if (dtype.isa<pir::Float16Type>()) {
     return phi::DataType::FLOAT16;
@@ -76,6 +78,8 @@ static inline pir::Type TransToIrDataType(phi::DataType dtype,
     ctx = pir::IrContext::Instance();
   }
   switch (dtype) {
+    case phi::DataType::UNDEFINED:
+      return pir::UndefinedType::get(ctx);
     case phi::DataType::BFLOAT16:
       return pir::BFloat16Type::get(ctx);
     case phi::DataType::FLOAT16:
@@ -182,6 +186,24 @@ const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap();
 const std::unordered_map<std::string, phi::Place>& StringToPlaceMap();
 
 const std::unordered_map<std::string, phi::DataLayout>& StringToDataLayoutMap();
+
+void SetStopGradient();
+
+void SetStopGradient(pir::Value* value);
+
+void SetStopGradient(std::vector<pir::Value>* values);
+
+void SetStopGradient(paddle::optional<pir::Value>* value);
+
+void SetStopGradient(paddle::optional<std::vector<pir::Value>>* values);
+
+template <typename T, typename... Args>
+void SetStopGradient(T value, Args... args) {
+  SetStopGradient(&value);
+  SetStopGradient(args...);
+}
+
+std::vector<std::vector<bool>> ConstructStopGradient(pir::Operation* op);
 
 }  // namespace dialect
 }  // namespace paddle

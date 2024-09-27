@@ -189,13 +189,13 @@ endfunction()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_light_nas)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_while_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
+  list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1_deprecated)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
   list(REMOVE_ITEM TEST_OPS test_weight_only_linear)
   list(REMOVE_ITEM TEST_OPS test_llm_int8_linear)
   list(REMOVE_ITEM TEST_OPS test_quant_aware_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_quant_post_quant_aware)
-  list(REMOVE_ITEM TEST_OPS test_quant_aware_user_defined)
+  list(REMOVE_ITEM TEST_OPS test_quant_post_quant_aware_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_quant_aware_user_defined_deprecated)
   list(REMOVE_ITEM TEST_OPS test_quant_amp_deprecated)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 
@@ -253,11 +253,13 @@ endforeach()
 if(NOT WIN32)
   set_tests_properties(test_post_training_quantization_while_deprecated
                        PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT
-                                                                       120)
+  set_tests_properties(test_weight_quantization_mobilenetv1_deprecated
+                       PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant_aware_deprecated PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_post_quant_aware PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_aware_user_defined PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_quant_post_quant_aware_deprecated PROPERTIES TIMEOUT
+                                                                         200)
+  set_tests_properties(test_quant_aware_user_defined_deprecated
+                       PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_amp_deprecated PROPERTIES TIMEOUT 200)
 endif()
 

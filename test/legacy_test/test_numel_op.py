@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestNumelOp(OpTest):
@@ -68,6 +67,18 @@ class TestNumelOp1FP16(TestNumelOp):
 class TestNumelOp2FP16(TestNumelOp):
     def init(self):
         self.dtype = np.float16
+        self.shape = (0,)
+
+
+class TestNumelOp1int8(TestNumelOp):
+    def init(self):
+        self.dtype = np.int8
+        self.shape = (11, 66)
+
+
+class TestNumelOp2int8(TestNumelOp):
+    def init(self):
+        self.dtype = np.int8
         self.shape = (0,)
 
 
@@ -148,7 +159,7 @@ class TestNumelOp1BF16(TestNumelOpBF16):
 
 
 class TestNumelAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_numel_static(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -188,7 +199,6 @@ class TestNumelAPI(unittest.TestCase):
         np.testing.assert_array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_error(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()

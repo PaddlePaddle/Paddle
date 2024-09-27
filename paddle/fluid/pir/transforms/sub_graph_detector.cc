@@ -192,17 +192,6 @@ std::unordered_set<pir::Operation*> GetConsumerOps(
   return consumers;
 }
 
-std::unordered_set<pir::Operation*> GetConsumerOpsSimple(pir::Operation* op) {
-  std::unordered_set<pir::Operation*> consumers;
-  for (auto& result : op->results()) {
-    for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-      auto parent_op = it->owner();
-      consumers.insert(parent_op);
-    }
-  }
-  return consumers;
-}
-
 std::vector<pir::Operation*> GetConsumerOpsRecursive(
     pir::Operation* root,
     const std::unordered_map<pir::Operation*, size_t>& op2id) {
@@ -215,7 +204,7 @@ std::vector<pir::Operation*> GetConsumerOpsRecursive(
     pir::Operation* cur = queue.front();
     queue.pop_front();
     result.push_back(cur);
-    for (const auto& new_op : GetConsumerOpsSimple(cur)) {
+    for (const auto& new_op : GetConsumerOps(cur, op2id)) {
       if (visited.count(new_op)) continue;
       visited.insert(new_op);
       queue.push_back(new_op);
@@ -361,34 +350,6 @@ struct UnionFindSet {
     }
     return root2subgraph[root];
   }
-
-  std::unordered_set<SubGraphPtr> GetUpstream(const SubGraphPtr& graph) {
-    std::unordered_set<SubGraphPtr> results;
-    for (auto op : graph->op_set) {
-      auto producers = GetProducerOps(op);
-      for (auto producer : producers) {
-        results.insert(GetSetFromOp(producer));
-      }
-    }
-    if (results.count(graph)) {
-      results.erase(graph);
-    }
-    return results;
-  }
-
-  std::unordered_set<SubGraphPtr> GetDownstream(const SubGraphPtr& graph) {
-    std::unordered_set<SubGraphPtr> results;
-    for (auto op : graph->op_set) {
-      auto consumers = GetConsumerOpsSimple(op);
-      for (auto consumer : consumers) {
-        results.insert(GetSetFromOp(consumer));
-      }
-    }
-    if (results.count(graph)) {
-      results.erase(graph);
-    }
-    return results;
-  }
 };
 
 static GraphSet Intersect(const GraphSet& upstream,
@@ -483,61 +444,6 @@ struct LoopDetectionMapping {
   }
 };
 
-static GraphSet SetDifference(const GraphSet& upstream,
-                              const GraphSet& downstream) {
-  GraphSet diff_set;
-  for (auto& item : upstream) {
-    if (!downstream.count(item)) {
-      diff_set.insert(item);
-    }
-  }
-  return diff_set;
-}
-
-struct RecursiveOpGetter {
-  std::unordered_map<SubGraphPtr, GraphSet> memory{};
-  std::function<GraphSet(const SubGraphPtr&)> func;
-  explicit RecursiveOpGetter(std::function<GraphSet(const SubGraphPtr&)> f) {
-    func = f;
-  }
-  GraphSet operator()(const SubGraphPtr& graph) {
-    if (memory.count(graph)) {
-      return memory[graph];
-    }
-    memory[graph] = GraphSet();  // set empty set avoid loop.
-    GraphSet set = func(graph);
-    GraphSet copied_set = set;
-    for (const auto& g : copied_set) {
-      auto recur_set = this->operator()(g);
-      set.insert(recur_set.begin(), recur_set.end());
-    }
-    memory[graph] = set;
-    return set;
-  }
-};
-
-static GraphSet UpstreamSet(UnionFindSet& union_set,  // NOLINT
-                            const SubGraphPtr& graph) {
-  // memory search:
-  std::function<GraphSet(const SubGraphPtr&)> GetProducerGraphs =
-      [&union_set](const SubGraphPtr& graph) {
-        return union_set.GetUpstream(graph);
-      };
-  auto GetProducerOpsRecursive = RecursiveOpGetter(GetProducerGraphs);
-  return GetProducerOpsRecursive(graph);
-}
-
-static GraphSet DownstreamSet(UnionFindSet& union_set,  // NOLINT
-                              const SubGraphPtr& graph) {
-  // memory search:
-  std::function<GraphSet(const SubGraphPtr&)> GetConsumerGraphs =
-      [&union_set](const SubGraphPtr& graph) {
-        return union_set.GetDownstream(graph);
-      };
-  auto GetConsumerOpsRecursive = RecursiveOpGetter(GetConsumerGraphs);
-  return GetConsumerOpsRecursive(graph);
-}
-
 static void VLOG_LINES(const std::string& str) {
   if (!VLOG_IS_ON(4)) return;
 #ifdef PADDLE_WITH_CINN
@@ -589,21 +495,22 @@ void SubgraphDetector::DoOpFusion() {
       MergeSubGraphs(producer, op, union_find, loop_detector);
     }
   }
-  // TODO(chenxi67): Redo this part after bug issue about llama2 is fixed
-  // for (auto* op : sort_ops_) {
-  //   auto producers = GetProducerOpsReverseSort(op, op2id_);
-  //   for (auto* producer : producers) {
-  //     if (op_classifier_(*op) && !op_classifier_(*producer)) {
-  //       for (auto* consumer : GetConsumerOpsSimple(producer)) {
-  //         if (op_classifier_(*consumer) &&
-  //             consumer->GetParent() == op->GetParent()) {
-  //           MergeSubGraphs(op, consumer, union_find, loop_detector);
-  //         }
-  //       }
-  //       continue;
-  //     }
-  //   }
-  // }
+  for (auto* op : sort_ops_) {
+    auto producers = GetProducerOpsReverseSort(op, op2id_);
+    for (auto* producer : producers) {
+      if (op_classifier_(*op) && !op_classifier_(*producer)) {
+        for (auto* consumer : GetConsumerOps(producer, op2id_)) {
+          if (op_classifier_(*consumer) &&
+              consumer->GetParent() == op->GetParent()) {
+            VLOG(4) << "Start Judge sibling nodes: " << op->id() << " vs "
+                    << consumer->id();
+            MergeSubGraphs(op, consumer, union_find, loop_detector);
+          }
+        }
+      }
+    }
+  }
+
   for (const auto& op : sort_ops_) {
     subgraph_map_[op] = union_find.GetSetFromOp(op);
   }
