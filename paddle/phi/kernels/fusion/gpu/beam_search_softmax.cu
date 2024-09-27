@@ -1298,19 +1298,19 @@ __global__ void update_beam_search_params_kernel(BeamSearchParams<T> params) {
   // const int src_bb_id = batch_group_id * beam_group_size + src_beam;
 
   if (time_step < min(max_seq_len, seq_len + 1)) {
-    const uint block_tables_tgt_offset =
+    const unsigned int block_tables_tgt_offset =
         batch_group_id * beam_group_size * max_seq_len +
         beam_group_sub_id * max_seq_len + time_step;
-    const uint block_tables_src_offset =
+    const unsigned int block_tables_src_offset =
         batch_group_id * beam_group_size * max_seq_len +
         src_beam * max_seq_len + time_step;
     block_tables_out[block_tables_tgt_offset] =
         block_tables[block_tables_src_offset];
     if (time_step < min(step + 1, max_dec_len)) {
-      const uint cache_ids_tgt_offset =
+      const unsigned int cache_ids_tgt_offset =
           batch_group_id * beam_group_size * dec_stride +
           beam_group_sub_id * dec_stride + time_step;
-      const uint cache_ids_src_offset =
+      const unsigned int cache_ids_src_offset =
           batch_group_id * beam_group_size * dec_stride +
           src_beam * dec_stride + time_step;
       cache_ids_out[cache_ids_tgt_offset] =
@@ -1355,7 +1355,7 @@ void updateBeamSearchParams(BeamSearchParams<T> *params, cudaStream_t stream) {
 }
 
 /*****
-liuzichang01(Note): In order to adapt to the model structure of 5.2 without
+In order to adapt to the model structure of 5.2 without
 adding while op and without affecting the speed. Use a 'fake inplace' method
 here. Not elegant but useful ︸_︸.
 *****/

@@ -1455,26 +1455,55 @@ def top_p_sampling(
 
 
 def beam_search_softmax(
-    logits,
-    seq_lens,
-    stop_flags,
-    end_ids,
-    step_ids,
-    max_dec_lens,
-    block_tables,
-    cum_scores,
-    beam_cache_ids,
-    beam_hyps,
-    beam_hyps_score,
-    beam_finished,
-    beam_width,
-    beam_group_num,
-    length_penalty,
-    diversity_penalty,
-    fuse_softmax=True,
-    early_stop=False,
+    logits: Tensor,
+    seq_lens: Tensor,
+    stop_flags: Tensor,
+    end_ids: Tensor,
+    step_ids: Tensor,
+    max_dec_lens: Tensor,
+    block_tables: Tensor,
+    cum_scores: Tensor,
+    beam_cache_ids: Tensor,
+    beam_hyps: Tensor,
+    beam_hyps_score: Tensor,
+    beam_finished: Tensor,
+    beam_width: Tensor,
+    beam_group_num: Tensor,
+    length_penalty: Tensor,
+    diversity_penalty: Tensor,
+    fuse_softmax: bool = True,
+    early_stop: bool = False,
     name=None,
-):
+) -> tuple[Tensor, Tensor]:
+    """
+    Get the TopP scores and ids.
+
+    Args:
+        logits(Tensor): An input 2-D Tensor with type float32
+        seq_lens(Tensor): A 2-D([batch_size * beam_width, 1]) Tensor with type int64
+        stop_flags(Tensor): An input 2-D([batch_size * beam_width, 1]) Tensor with type bool
+        end_ids(Tensor): An input 2-D([batch_size * beam_width, 1]) Tensor with type int32
+        step_ids(Tensor): An input 2-D([batch_size * beam_width, 1]) Tensor with type int64
+        max_dec_lens(Tensor): An input 2-D([batch_size * beam_width, 1]) Tensor with type int64
+        block_tables(Tensor): An input 2-D([batch_size * beam_width, max_dec_len]) Tensor with type int32
+        cum_scores(Tensor): An input 2-D([batch_size * beam_width, 1]) Tensor with type float32
+        beam_cache_ids(Tensor): An input 2-D([batch_size * beam_width, max_dec_len]) Tensor with type int32
+        beam_hyps(Tensor): An input 2-D([batch_size * beam_width, max_dec_len]) Tensor with type int32
+        beam_hyps_score(Tensor): An input 2-D([batch_size * beam_width, 1]) Tensor with type float32
+        beam_finished(Tensor): An input 2-D([batch_size * beam_width, 1]) Tensor with type bool
+        beam_width(Tensor): An input 2-D([1, 1]) Tensor with type int32
+        beam_group_num(Tensor): An input 2-D([1, 1]) Tensor with type int32
+        length_penalty(Tensor): An input 2-D([batch_size, 1]) Tensor with type float32
+        diversity_penalty(Tensor): An input 2-D([batch_size, 1]) Tensor with type float32
+        fuse_softmax(bool): Whether to fuse softmax. Default is True.
+        early_stop(bool): Whether to early stop beam search. Default is False.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`.
+            Generally, no setting is required. Default: None.
+
+    Returns:
+        tuple(Tensor), return the next_tokens and parent_ids. The next_tokens data type int32. The indices data type is int32.
+    """
+
     assert (
         beam_width <= 16
     ), f"beam_width must be less than or equal to 16, but get {beam_width}."
