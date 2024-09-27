@@ -87,7 +87,11 @@ loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE)
 opt = paddle.optimizer.SGD(learning_rate=0.1, parameters=model.parameters())
 
 # # shard dataloader
-dist_loader = dist.shard_dataloader(loader, meshes=[mesh])
+first_stage_mesh = mesh.get_mesh_with_dim("pp", 0)
+last_stage_mesh = mesh.get_mesh_with_dim("pp", 1)
+dist_loader = dist.shard_dataloader(
+    loader, meshes=[first_stage_mesh, last_stage_mesh], shard_dims="dp"
+)
 # # config: input_spec
 input_seq_spec = paddle.static.InputSpec(
     [BATCH_SIZE, SEQ_LENGTH], 'float32', 'input_seq', True
@@ -102,13 +106,6 @@ dist_model = to_distributed(model, mesh, dist_config)
 dist_model.train()
 for batch_id, (input_seq, label) in enumerate(dist_loader()):
     # dynamic
-    local_mesh = mesh
-    if "pp" in mesh.dim_names:
-        local_mesh = mesh.get_mesh_with_dim("pp", 0)
-    input_seq = dist.reshard(
-        input_seq, local_mesh, [dist.Shard(0), dist.Replicate()]
-    )
-    label = dist.reshard(label, local_mesh, [dist.Shard(0), dist.Replicate()])
     print(f"input_seq is {input_seq}, labels is {label}")
     (loss, logits) = dist_model(input_ids=input_seq, labels=label)
     print(f"batch: {batch_id}, loss is {loss}")
