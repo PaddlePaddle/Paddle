@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
@@ -58,7 +57,7 @@ def logsumexp_ref_grad(x):
 class TestLogsumexp(OpTest):
     def setUp(self):
         self.op_type = 'logsumexp'
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = logsumexp_wrapper
         self.public_python_api = logsumexp_wrapper
         self.shape = [2, 3, 4, 5]
@@ -220,11 +219,21 @@ class TestLogsumexpBF16Op(TestLogsumexp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def set_attrs(self):
         pass
@@ -234,7 +243,6 @@ class TestLogsumexpBF16Op(TestLogsumexp):
 
 
 class TestLogsumexpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
@@ -267,7 +275,6 @@ class TestLogsumexpAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_api(self):
         self.api_case()
         self.api_case(2)

@@ -2886,6 +2886,7 @@ void logcumsumexp_grad(const Tensor& x,
 
 template <typename T>
 void logsumexp_grad(const Tensor& x,
+                    const Tensor& out,
                     const Tensor& out_grad,
                     const IntArray& axis,
                     bool keepdim,
@@ -2908,13 +2909,8 @@ void logsumexp_grad(const Tensor& x,
 
   auto x_grad_tmp = Tensor();
 
-  // 计算 exp(x)
-  auto exp_x = exp<T>(x);
-  auto sum_exp_x = sum<T>(exp_x, axis, x.dtype(), true);
-  auto softmax = exp_x / backend::expand<T>(sum_exp_x, x.shape());
-
   if (x_dim_size == 1) {
-    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * softmax;
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * exp<T>(x - out);
   } else {
     if (!keepdim) {
       auto axis_ = std::vector<int64_t>();
@@ -2931,13 +2927,15 @@ void logsumexp_grad(const Tensor& x,
         }
       }
 
-      // 处理 out_grad
+      auto out_shape = get_unsqueeze_dims(out, axis_);
+      auto out_ = reshape<T>(out, out_shape);
+      auto softmax = exp<T>(x - expand<T>(out_, IntArray(x_dim)));
+
       auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
       auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
       x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim)) * softmax;
-      // x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * softmax;
     } else {
-      x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * softmax;
+      x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * exp<T>(x - out);
     }
   }
 
@@ -2945,12 +2943,12 @@ void logsumexp_grad(const Tensor& x,
 }
 
 template <typename T>
-void trunc_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (!x_grad) {
     return;
   }
 
-  Tensor zero_tensor = full<T>(x.dims(), 0.0, x.dtype());
+  Tensor zero_tensor = full<T>(out_grad.shape(), 0.0, out_grad.dtype());
   set_output<T>(zero_tensor, x_grad);
 }
 
