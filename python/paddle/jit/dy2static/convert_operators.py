@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import re
+import textwrap
 import warnings
 from contextlib import contextmanager
 
@@ -255,9 +256,22 @@ def _run_py_while(cond, body, getter, setter):
     while True:
         pred = cond()
         if isinstance(pred, (Variable, Value)):
-            raise Dygraph2StaticException(
-                "python while pred change from bool to variable."
-            )
+            err_msg = """\
+                You need to use break_flag in the control flow, Python will mistakenly convert the iteration variable from bool to Tensor,
+                And Tensor has no known value on static graph, for example:
+                    >>> x = paddle.to_tensor([5, 10])
+                    >>> for _ in range(10):
+                    ...     if x.sum() > 5:
+                    ...         break
+
+                There are one common workarounds available:
+                Explicitly rewrite to the form of a control flow, for example:
+                    >>> x = paddle.to_tensor([5, 10])
+                    >>> for _ in range(paddle.to_tensor(10)):
+                    ...     if x.sum() > 5:
+                    ...         break
+            """
+            raise Dygraph2StaticException(textwrap.dedent(err_msg))
         if not pred:
             break
         body()
