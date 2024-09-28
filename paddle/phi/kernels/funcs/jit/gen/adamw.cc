@@ -118,17 +118,17 @@ void AdamWJitCode::mainCode() {
   vmovups(ptr[reg_mom1_out_ptr + reg_offset] | k1, ymm12);
   vmovups(ptr[reg_mom2_out_ptr + reg_offset] | k1, ymm10);
 
-  // make a local label: `.without_amsgrad`
-  inLocalLabel();
-  // if not amsgrad then update params
-  cmp(reg_amsgrad, 0);
-  je(".without_amsgrad", T_NEAR);
-  // load mom2_max
-  vmovups(ymm13 | k1, ptr[reg_mom2_max_ptr + reg_offset]);
-  // compare mom2 and mom2_max and save to mom2
-  vmaxps(ymm10 | k1, ymm10, ymm13);
-  // store mom2_max
-  vmovups(ptr[reg_mom2_max_out_ptr + reg_offset] | k1, ymm10);
+  // // make a local label: `.without_amsgrad`
+  // inLocalLabel();
+  // // if not amsgrad then update params
+  // cmp(reg_amsgrad, 0);
+  // je(".without_amsgrad", T_NEAR);
+  // // load mom2_max
+  // vmovups(ymm13 | k1, ptr[reg_mom2_max_ptr + reg_offset]);
+  // // compare mom2 and mom2_max and save to mom2
+  // vmaxps(ymm10 | k1, ymm10, ymm13);
+  // // store mom2_max
+  // vmovups(ptr[reg_mom2_max_out_ptr + reg_offset] | k1, ymm10);
 
   L(".without_amsgrad");
   {
@@ -147,7 +147,7 @@ void AdamWJitCode::mainCode() {
     // store p
     vmovups(ptr[reg_param_out_ptr + reg_offset] | k1, ymm10);
   }
-  outLocalLabel();
+  // outLocalLabel();
 }
 
 void AdamWJitCode::genCode() {
