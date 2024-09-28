@@ -341,7 +341,7 @@ class TestOptimBreakInFor(TestDy2staticException):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = test_optim_break_in_for
-        self.error = "python while pred change from bool to variable."
+        self.error = "You need to use break_flag in the control flow."
 
 
 class TestOptimBreakInWhile(TestContinueInWhile):
