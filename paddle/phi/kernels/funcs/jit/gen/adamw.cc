@@ -123,8 +123,8 @@ void AdamWJitCode::mainCode() {
   // if not amsgrad then update params
   cmp(reg_amsgrad, 0);
   je(".without_amsgrad", T_NEAR);
-  // // load mom2_max
-  // vmovups(ymm13 | k1, ptr[reg_mom2_max_ptr + reg_offset]);
+  // load mom2_max
+  vmovups(ymm13 | k1, ptr[reg_mom2_max_ptr + reg_offset]);
   // // compare mom2 and mom2_max and save to mom2
   // vmaxps(ymm10 | k1, ymm10, ymm13);
   // // store mom2_max
