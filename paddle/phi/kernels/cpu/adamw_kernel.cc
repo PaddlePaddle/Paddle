@@ -177,7 +177,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
     // TODO(megemini)
     std::cout << ">>>>>>>>>> AdamwDenseKernel adamw_kernel.cc chunk_size "
                  "adamw(beta1_, ..."
-              << i << std::endl;
+              << numel << " | " << i << std::endl;
 
     adamw(beta1_,
           beta2_,
@@ -208,7 +208,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
     // TODO(megemini)
     std::cout << ">>>>>>>>>> AdamwDenseKernel adamw_kernel.cc numel chunk_size "
                  "!= 0 adamw(beta1_, ..."
-              << numel << std::endl;
+              << tail_numel << " amsgrad " << amsgrad << std::endl;
 
     adamw(beta1_,
           beta2_,
