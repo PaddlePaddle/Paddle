@@ -119,7 +119,7 @@ void AdamWJitCode::mainCode() {
   vmovups(ptr[reg_mom2_out_ptr + reg_offset] | k1, ymm10);
 
   // // make a local label: `.without_amsgrad`
-  // inLocalLabel();
+  inLocalLabel();
   // // if not amsgrad then update params
   // cmp(reg_amsgrad, 0);
   // je(".without_amsgrad", T_NEAR);
@@ -147,7 +147,7 @@ void AdamWJitCode::mainCode() {
     // store p
     vmovups(ptr[reg_param_out_ptr + reg_offset] | k1, ymm10);
   }
-  // outLocalLabel();
+  outLocalLabel();
 }
 
 void AdamWJitCode::genCode() {
