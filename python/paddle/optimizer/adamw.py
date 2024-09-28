@@ -312,6 +312,9 @@ class AdamW(Optimizer):
         self._auxiliary_vars = {}
         self._already_create_accumulator = set()
 
+        # TODO(megemini)
+        print('>>>>>>> AdamW init')
+
         self._create_master_grad_states()
 
     def _set_auxiliary_var(self, key, val):
@@ -331,6 +334,9 @@ class AdamW(Optimizer):
             param_group (dict): The group of Tensors to be optimized with
             different optimization options.
         """
+        # TODO(megemini)
+        print('>>>>>>> AdamW _add_param_group')
+
         params = param_group['params']
         if isinstance(params, (Parameter, pir.core.ParameterMeta)):
             param_group['params'] = [params]
@@ -429,6 +435,9 @@ class AdamW(Optimizer):
         )
 
     def _create_accumulators(self, block, parameters):
+        # TODO(megemini)
+        print('>>>>>>> AdamW _create_accumulators')
+
         assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
@@ -454,6 +463,9 @@ class AdamW(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
+        # TODO(megemini)
+        print('>>>>>>> AdamW _append_optimize_op')
+
         assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
@@ -498,6 +510,9 @@ class AdamW(Optimizer):
 
         # create the adamw optimize op
         if in_dynamic_or_pir_mode():
+            # TODO(megemini)
+            print('>>>>>>> AdamW _append_optimize_op in_dynamic_or_pir_mode')
+
             lr_ratio_ = (
                 1.0
                 if self._lr_ratio is None
@@ -517,6 +532,11 @@ class AdamW(Optimizer):
 
             found_inf = (
                 self._get_auxiliary_var('found_inf') if in_pir_mode() else None
+            )
+
+            # TODO(megemini)
+            print(
+                '>>>>>>> AdamW _append_optimize_op in_dynamic_or_pir_mode _C_ops.adamw_'
             )
 
             _, _, _, _, _, _, _ = _C_ops.adamw_(
@@ -544,6 +564,11 @@ class AdamW(Optimizer):
             )
             return None
         else:
+            # TODO(megemini)
+            print(
+                '>>>>>>> AdamW _append_optimize_op NOT in_dynamic_or_pir_mode'
+            )
+
             inputs = {
                 "Param": [param_and_grad[0]],
                 "Grad": [param_and_grad[1]],

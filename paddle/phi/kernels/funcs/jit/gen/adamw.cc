@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/funcs/jit/gen/adamw.h"
 
 #include <cstddef>  // offsetof
+#include <iostream>
 
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
@@ -22,6 +23,9 @@
 namespace phi::jit::gen {
 
 void AdamWJitCode::loadArgs() {
+  // TODO(megemini)
+  std::cout << ">>>>>>>>>> AdamWJitCode::loadArgs" << std::endl;
+
   static constexpr int32_t one_as_float = 0x3f800000;
   static constexpr int32_t mask_all_ones = static_cast<int32_t>(0xFFFFFFFF);
   static constexpr int64_t mask_8_divisible =
@@ -61,6 +65,9 @@ void AdamWJitCode::loadArgs() {
 }
 
 void AdamWJitCode::setTailOpmask() {
+  // TODO(megemini)
+  std::cout << ">>>>>>>>>> AdamWJitCode::setTailOpmask" << std::endl;
+
   push(r13);
   push(r14);
 
@@ -81,6 +88,9 @@ void AdamWJitCode::setTailOpmask() {
 }
 
 void AdamWJitCode::mainCode() {
+  // TODO(megemini)
+  std::cout << ">>>>>>>>>> AdamWJitCode::mainCode" << std::endl;
+
   // load p
   vmovups(ymm10 | k1, ptr[reg_param_ptr + reg_offset]);
 
@@ -124,6 +134,10 @@ void AdamWJitCode::mainCode() {
 
   L(".without_amsgrad");
   {
+    // TODO(megemini)
+    std::cout << ">>>>>>>>>> AdamWJitCode::mainCode .without_amsgrad"
+              << std::endl;
+
     // sqrt(mom2) + eps
     vsqrtps(ymm10 | k1, ymm10);
     vaddps(ymm10 | k1, ymm10, ymm_eps);
@@ -139,6 +153,9 @@ void AdamWJitCode::mainCode() {
 }
 
 void AdamWJitCode::genCode() {
+  // TODO(megemini)
+  std::cout << ">>>>>>>>>> AdamWJitCode::genCode" << std::endl;
+
   static constexpr int64_t main_loop_elems_size =
       8 * sizeof(float);  // 8 floats in YMM
   static constexpr int64_t offset_increment = main_loop_elems_size;

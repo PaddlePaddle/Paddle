@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/adamw_kernel.h"
 
+#include <iostream>
 #include <vector>
 
 #include "glog/logging.h"
@@ -58,6 +59,9 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       DenseTensor* beta1_pow_out,
                       DenseTensor* beta2_pow_out,
                       DenseTensor* master_param_outs) {
+  // TODO(megemini)
+  std::cout << ">>>>>>>>>> AdamwDenseKernel adamw_kernel.cc" << std::endl;
+
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
     PADDLE_ENFORCE_EQ(
@@ -72,6 +76,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
   VLOG(3) << "Skip update" << skip_update_;
 
   if (skip_update_ || !with_decay) {
+    // TODO(megemini)
+    std::cout << ">>>>>>>>>> AdamwDenseKernel adamw_kernel.cc AdamDenseKernel "
+                 "skip_update_ || !with_decay"
+              << std::endl;
+
     AdamDenseKernel<T, Context>(dev_ctx,
                                 param,
                                 grad,
@@ -165,6 +174,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
     const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
     T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
 
+    // TODO(megemini)
+    std::cout << ">>>>>>>>>> AdamwDenseKernel adamw_kernel.cc chunk_size "
+                 "adamw(beta1_, ..."
+              << i << std::endl;
+
     adamw(beta1_,
           beta2_,
           -learning_rate_,
@@ -190,6 +204,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
     const int64_t tail_numel = numel % chunk_size;
     const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
     T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+
+    // TODO(megemini)
+    std::cout << ">>>>>>>>>> AdamwDenseKernel adamw_kernel.cc numel chunk_size "
+                 "!= 0 adamw(beta1_, ..."
+              << numel << std::endl;
 
     adamw(beta1_,
           beta2_,

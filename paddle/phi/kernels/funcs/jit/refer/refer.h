@@ -581,6 +581,9 @@ void AdamW(T beta1,
            T* mom2_max_out_ptr,
            T* param_out_ptr,
            bool amsgrad) {
+  // TODO(megemini)
+  std::cout << ">>>>>>>>>> refer.h AdamW" << std::endl;
+
   for (int i = 0; i < numel; ++i) {
     auto param_tmp = param_ptr[i] - old_lr * lr_ratio * coeff * param_ptr[i];
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
