@@ -120,9 +120,9 @@ void AdamWJitCode::mainCode() {
 
   // // make a local label: `.without_amsgrad`
   inLocalLabel();
-  // // if not amsgrad then update params
-  // cmp(reg_amsgrad, 0);
-  // je(".without_amsgrad", T_NEAR);
+  // if not amsgrad then update params
+  cmp(reg_amsgrad, 0);
+  je(".without_amsgrad", T_NEAR);
   // // load mom2_max
   // vmovups(ymm13 | k1, ptr[reg_mom2_max_ptr + reg_offset]);
   // // compare mom2 and mom2_max and save to mom2
