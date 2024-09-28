@@ -62,7 +62,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   PADDLE_ENFORCE_EQ(
       blocks.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "[IRScheduleError] An Error occurred in the schedule primite <%s>.\n"
           "[Error info] The rf_loop is required to have only one child block, "
           "but got %d!\n"
@@ -80,7 +80,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   PADDLE_ENFORCE_GT(
       original_loops.size(),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "[IRScheduleError] An Error occurred in the schedule primite <%s>.\n"
           "[Error info] The size of original_loops should be great than 0, but "
           "got %d!\n"

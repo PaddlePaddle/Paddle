@@ -43,7 +43,7 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
   std::string primitive = "CacheRead";
 
   PADDLE_ENFORCE_NOT_NULL(
-      block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+      block.As<ScheduleBlockRealize>(), common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
@@ -58,7 +58,7 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
   Expr read_expr = GetNthAccessExpr(block, read_buffer_index, false);
 
   PADDLE_ENFORCE_NOT_NULL(
-      block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+      block.As<ScheduleBlockRealize>(), common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
@@ -96,7 +96,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
   std::string primitive = "CacheWrite";
 
   PADDLE_ENFORCE_NOT_NULL(
-      block.As<ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+      block.As<ScheduleBlockRealize>(), common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
@@ -111,7 +111,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
   Expr write_expr = GetNthAccessExpr(block, write_buffer_index, true);
 
   PADDLE_ENFORCE_NOT_NULL(
-      write_expr.As<ir::Store>(), phi::errors::InvalidArgument([&]() {
+      write_expr.As<ir::Store>(), common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
@@ -152,7 +152,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
   PADDLE_ENFORCE_EQ(
       info.write_tensor->buffer.defined(),
       true,
-      phi::errors::InvalidArgument([&]() {
+      common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
@@ -177,7 +177,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
     }
   }
   PADDLE_ENFORCE_EQ(
-      find_cache_block.size(), 1U, phi::errors::InvalidArgument([&]() {
+      find_cache_block.size(), 1U, common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
@@ -198,7 +198,7 @@ void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
   PADDLE_ENFORCE_EQ(
       ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>(),
       true,
-      phi::errors::InvalidArgument([&]() {
+      common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
@@ -223,7 +223,8 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SetBuffer";
   PADDLE_ENFORCE_NOT_NULL(
-      block.As<ir::ScheduleBlockRealize>(), phi::errors::InvalidArgument([&]() {
+      block.As<ir::ScheduleBlockRealize>(),
+      common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
@@ -237,7 +238,7 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
 
   PADDLE_ENFORCE_EQ(
-      find_tensor.size(), 1U, phi::errors::InvalidArgument([&]() {
+      find_tensor.size(), 1U, common::errors::InvalidArgument([&]() {
         std::ostringstream os;
         os << "[IRScheduleError] An error occurred in the schedule primitive <"
            << primitive << ">.\n"
