@@ -52,7 +52,6 @@ class TensorRTBaseTest(unittest.TestCase):
                         feed_name
                     ].items():
 
-                        # 是dict类型的输入,并且是动态shape
                         if (
                             feed_name in self.min_shape.keys()
                             and feed_name in self.max_shape.keys()
@@ -64,7 +63,6 @@ class TensorRTBaseTest(unittest.TestCase):
                             input_dynamic_shape.extend(
                                 input_shape_without_dynamic_dim
                             )
-                        # 是dict类型的输入,是shape_tensor
                         else:
                             input_dynamic_shape = []
                             input_shape_without_dynamic_dim = (
@@ -82,11 +80,9 @@ class TensorRTBaseTest(unittest.TestCase):
                         new_list_args.append(input_data)
                     api_args[feed_name] = new_list_args
                 else:
-                    # 如果没有self.min_shape or self.max_shape,就为True
                     empty_min_max_shape = (
                         self.min_shape is None or self.max_shape is None
                     )
-                    # not empty_min_max_shape,也就是输入
                     if (
                         not empty_min_max_shape
                         and feed_name in self.min_shape.keys()
@@ -174,7 +170,6 @@ class TensorRTBaseTest(unittest.TestCase):
             min_shape_data = dict()  # noqa: C408
             max_shape_data = dict()  # noqa: C408
             for feed_name in self.program_config["feed_list"]:
-                # 处理字典形式的输入
                 if isinstance(self.api_args[feed_name], dict):
                     # shape_tensor
                     if (
@@ -188,7 +183,6 @@ class TensorRTBaseTest(unittest.TestCase):
                             max_shape_data[sub_feed_name] = sub_feed_value
                             continue
                     else:
-                        # 不是shape_tensor
                         for i in range(len(self.min_shape[feed_name])):
                             sub_feed_name = feed_name + str(i)
                             min_shape_data[sub_feed_name] = np.random.randn(
@@ -202,7 +196,6 @@ class TensorRTBaseTest(unittest.TestCase):
                                 self.api_args[feed_name][sub_feed_name].dtype
                             )
                 else:
-                    # 处理非字典形式的shape_tensor
                     if (
                         feed_name not in self.min_shape.keys()
                         and feed_name not in self.max_shape.keys()
