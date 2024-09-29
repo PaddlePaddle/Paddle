@@ -1,0 +1,7 @@
+#pragma once
+#include <map>
+#include <string>
+
+const std::map<std::string, std::string> yaml_files = {
+    @FILE_CONTENTS@
+};
