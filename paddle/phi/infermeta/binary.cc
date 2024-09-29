@@ -2150,6 +2150,7 @@ void GatherTreeMeta(const MetaTensor& ids,
                         "The shape of Input(Parents) must be same with the "
                         "shape of Input(Ids)."));
   out->set_dims(ids_dims);
+  out->set_dtype(ids.dtype());
 }
 
 void GridSampleBaseInferMeta(const MetaTensor& x,

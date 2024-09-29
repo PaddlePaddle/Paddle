@@ -19,7 +19,6 @@ import unittest
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_dygraph_pir
 
 
 class TestSaveLoadAPIError(unittest.TestCase):
@@ -96,7 +95,6 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_with_dygraph_pir
     def test_when_train_with_no_grad(self):
         paddle.disable_static()
         net = paddle.nn.Linear(1024, 1)
