@@ -55,9 +55,13 @@ Record ProcessALine(const std::string& line) {
   VLOG(3) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
-  CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
-
+  PADDLE_ENFORCE_EQ(
+      columns.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "[error info] data format error, should be <data>\t<shape>.\n"
+          "[argument info] The current size of columns is %d.",
+          columns.size()));
   Record record;
   std::vector<std::string> data_strs;
   split(columns[0], ' ', &data_strs);
@@ -89,25 +93,60 @@ void CheckOutput(const std::string& referfile,
   size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
   VLOG(3) << "predictor output numel " << numel;
   VLOG(3) << "reference output numel " << refer.data.size();
-  CHECK_EQ(numel, refer.data.size());
+  PADDLE_ENFORCE_EQ(
+      numel,
+      refer.data.size(),
+      common::errors::InvalidArgument(
+          "[error info] numel should be equal to refer.data.size().\n"
+          "[argument info] the current values are %ld and %ld.",
+          numel,
+          refer.data.size()));
+
   switch (output.dtype) {
     case PaddleDType::INT64: {
       for (size_t i = 0; i < numel; ++i) {
-        CHECK_EQ(static_cast<int64_t*>(output.data.data())[i], refer.data[i]);
+        PADDLE_ENFORCE_EQ(
+            static_cast<int64_t*>(output.data.data())[i],
+            refer.data[i],
+            common::errors::PreconditionNotMet(
+                "[error info] static_cast<int64_t*>(output.data.data())[i], "
+                "refer.data[i] should be equal.\n"
+                "[condition info] The current values are %d and %d.",
+                static_cast<int64_t*>(output.data.data())[i],
+                refer.data[i]));
       }
       break;
     }
     case PaddleDType::FLOAT32: {
       for (size_t i = 0; i < numel; ++i) {
-        CHECK_LT(
+        PADDLE_ENFORCE_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
-            threshold);
+            threshold,
+            common::errors::PreconditionNotMet([&]() {
+              std::ostringstream os;
+              os << "[error info] output.data.data())[i] - refer.data[i] "
+                    "should be less than threshold.\n"
+                 << "[condition info] The current values are "
+                 << fabs(static_cast<float*>(output.data.data())[i] -
+                         refer.data[i])
+                 << " "
+                 << "and " << threshold << ".";
+              return os.str();
+            }()));
       }
       break;
     }
     case PaddleDType::INT32: {
       for (size_t i = 0; i < numel; ++i) {
-        CHECK_EQ(static_cast<int32_t*>(output.data.data())[i], refer.data[i]);
+        PADDLE_ENFORCE_EQ(
+            static_cast<int32_t*>(output.data.data())[i],
+            refer.data[i],
+            common::errors::PreconditionNotMet(
+                "[error info] static_cast<int32_t*>(output.data.data())[i] "
+                "should be equal to refer.data[i].\n"
+                "[condition info] The current values are %d and %d.",
+                static_cast<int32_t*>(output.data.data())[i],
+                refer.data[i]));
       }
       break;
     }

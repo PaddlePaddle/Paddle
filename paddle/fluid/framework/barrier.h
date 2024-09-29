@@ -53,7 +53,13 @@ class Barrier {
   ~Barrier() {
 #ifdef _LINUX
     int ret = pthread_barrier_destroy(&_barrier);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(ret,
+                      0,
+                      common::errors::PreconditionNotMet(
+                          "[error info] the result of "
+                          "pthread_barrier_destroy(&_barrier) should be zero.\n"
+                          "[result info] The value of current result is %d.",
+                          ret));
 #endif
   }
   void reset(int count) {
@@ -128,7 +134,13 @@ class Semaphore {
   ~Semaphore() {
 #ifdef _LINUX
     int ret = sem_destroy(&_sem);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        ret,
+        0,
+        common::errors::PreconditionNotMet(
+            "[error info] the result of sem_destroy(&_sem) should be zero.\n"
+            "[result info] The value of current result is %d.",
+            ret));
 #endif
   }
   void post() {

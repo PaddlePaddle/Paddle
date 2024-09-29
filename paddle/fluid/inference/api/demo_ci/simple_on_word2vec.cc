@@ -61,9 +61,21 @@ void Main(bool use_gpu) {
     CHECK(predictor->Run(slots, &outputs));
 
     //# 4. Get output.
-    CHECK_EQ(outputs.size(), 1UL);
+    PADDLE_ENFORCE_EQ(outputs.size(),
+                      1UL,
+                      common::errors::PreconditionNotMet(
+                          "[error info] The size of outputs should be 1UL.\n"
+                          "[result info] The size of current outputs is %d.",
+                          outputs.size()));
     // Check the output buffer size and result of each tid.
-    CHECK_EQ(outputs.front().data.length(), 33168UL);
+    PADDLE_ENFORCE_EQ(
+        outputs.front().data.length(),
+        33168UL,
+        common::errors::PreconditionNotMet(
+            "[error info] The outputs.front().data.length() should be "
+            "33168UL.\n"
+            "[result info] The current outputs.front().data.length() is %d.",
+            outputs.front().data.length()));
     float result[5] = {
         0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
@@ -107,9 +119,21 @@ void MainThreads(int num_threads, bool use_gpu) {
         CHECK(predictor->Run(inputs, &outputs));
 
         // 4. Get output.
-        CHECK_EQ(outputs.size(), 1UL);
+        PADDLE_ENFORCE_EQ(outputs.size(),
+                          1UL,
+                          common::errors::PreconditionNotMet(
+                              "[error info] The outputs.size() should be 1UL.\n"
+                              "[result info] The current outputs.size() is %d.",
+                              outputs.size()));
         // Check the output buffer size and result of each tid.
-        CHECK_EQ(outputs.front().data.length(), 33168UL);
+        PADDLE_ENFORCE_EQ(outputs.front().data.length(),
+                          33168UL,
+                          common::errors::PreconditionNotMet(
+                              "[error info] The outputs.front().data.length() "
+                              "should be equal to 33168UL.\n"
+                              "[result info] The current "
+                              "outputs.front().data.length() is %d.",
+                              outputs.front().data.length()));
         float result[5] = {
             0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
         const size_t num_elements =
