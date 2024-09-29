@@ -1699,6 +1699,24 @@ std::vector<Tensor> unstack_decomp(const Tensor& x, int axis, const int num) {
   return res;
 }
 
+template <typename T>
+std::vector<Tensor> split_with_num_decomp(const Tensor& x,
+                                          int num,
+                                          const Scalar& axis) {
+  int64_t axis_int = axis.to<int64_t>();
+  if (axis_int < 0) {
+    axis_int += x.dims().size();
+  }
+  std::vector<int64_t> x_dim = x.shape();
+  if (x_dim[axis_int] < 0) {
+    return backend::split_with_num<T>(x, num, axis);
+  } else {
+    int64_t each = x_dim[axis_int] / num;
+    std::vector<int64_t> sections(num, each);
+    return split<T>(x, sections, axis);
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive

@@ -279,5 +279,52 @@ std::vector<std::vector<pir::Value>> OneHotOp::Decomp(pir::Operation* op) {
   return res;
 }
 
+std::vector<std::vector<pir::Value>> SplitWithNumOp::Decomp(
+    pir::Operation* op) {
+  VLOG(4) << "Decomp call split_with_num's decomp interface begin";
+
+  SplitWithNumOp op_obj = op->dyn_cast<SplitWithNumOp>();
+  (void)op_obj;
+
+  FLAGS_tensor_operants_mode = "static";
+
+  VLOG(6) << "Decomp Prepare inputs of split_with_num";
+
+  Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
+  Tensor axis_(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
+
+  auto* axis_define_op =
+      std::static_pointer_cast<primitive::LazyTensor>(axis_.impl())
+          ->value()
+          .defining_op();
+  if (axis_define_op->name() != "pd_op.full") {
+    return {};
+  }
+  VLOG(6) << "Decomp prepare attributes of split_with_num";
+  int num = op->attribute("num").dyn_cast<pir::Int32Attribute>().data();
+  Scalar axis = axis_define_op->attribute("value")
+                    .dyn_cast<paddle::dialect::ScalarAttribute>()
+                    .data();
+
+  VLOG(6) << "Decomp call split_with_num's forward composite rule prepare";
+
+  auto org_res = op->results();
+  std::vector<std::vector<pir::Value>> res(org_res.size());
+
+  VLOG(6) << "Decomp call split_with_num's forward composite rule begin";
+  std::vector<Tensor> op_res =
+      paddle::primitive::details::split_with_num_decomp<primitive::LazyTensor>(
+          x, num, axis);
+  VLOG(6) << "Decomp call split_with_num's forward composite rule end";
+  for (size_t idx = 0; idx < op_res.size(); idx++) {
+    res[0].push_back(
+        std::static_pointer_cast<primitive::LazyTensor>(op_res[idx].impl())
+            ->value());
+  }
+
+  VLOG(4) << "Decomp call split_with_num's decomp interface end";
+  return res;
+}
+
 }  // namespace dialect
 }  // namespace paddle
