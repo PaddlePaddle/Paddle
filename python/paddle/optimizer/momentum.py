@@ -15,10 +15,10 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.regularizer import L2Decay
 
@@ -26,6 +26,8 @@ from ..base import core, framework
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -79,8 +81,8 @@ class Momentum(Optimizer):
             represents the scale of base learning_rate. \
             The default value is None in static graph mode, at this time all parameters will be updated.
         use_nesterov(bool, optional): Enables Nesterov momentum. The default value is False.
-        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
-            It can be a float value as coeff of L2 regularization or \
+        weight_decay (int|float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
+            It can be a int or float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
@@ -164,6 +166,8 @@ class Momentum(Optimizer):
         if momentum is None:
             raise ValueError("momentum is not set")
 
+        if isinstance(weight_decay, int):
+            weight_decay = float(weight_decay)
         predicate = lambda regular: isinstance(regular, (L2Decay, float))
         if isinstance(parameters, list):
             if isinstance(parameters[0], dict):
@@ -271,7 +275,8 @@ class Momentum(Optimizer):
         )
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 

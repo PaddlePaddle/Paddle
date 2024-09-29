@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import os
 import unittest
 
 import numpy as np
@@ -60,7 +61,13 @@ class TestWeightNormalization(unittest.TestCase):
 
     def run_program(self):
         outputs = []
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -87,14 +94,18 @@ class TestWeightNormalization(unittest.TestCase):
                 lod_level_i = np.random.randint(
                     low=1,
                     high=5,
-                    size=self.batch_size
-                    if i == 0
-                    else sum(lod_level_i),  # noqa: F821
+                    size=(
+                        self.batch_size
+                        if i == 0
+                        else sum(lod_level_i)  # noqa: F821
+                    ),
                 ).tolist()
                 data_lod.append(lod_level_i)
             data_value = np.random.random(
-                size=[sum(data_lod[-1]) if data_lod else self.batch_size]
-                + data_shape
+                size=[
+                    sum(data_lod[-1]) if data_lod else self.batch_size,
+                    *data_shape,
+                ]
             ).astype('float32')
             self.data[data_name] = (data_value, data_lod)
 

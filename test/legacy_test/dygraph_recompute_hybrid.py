@@ -90,7 +90,7 @@ class Naive_fc_net(paddle.nn.Layer):
                     },
                     self.layers[i],
                     inputs,
-                    **self.recompute_kwargs
+                    **self.recompute_kwargs,
                 )
             else:
                 inputs = self.layers[i](inputs)

@@ -93,7 +93,7 @@ class IR_API Pass {
   AttrType& Get(const std::string& attr_name) const {
     PADDLE_ENFORCE_EQ(attrs_.find(attr_name) != attrs_.end(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Attribute %s not registered for pass.", attr_name));
     try {
       return *std::any_cast<AttrType*>(attrs_.at(attr_name));
@@ -151,7 +151,7 @@ class IR_API Pass {
   void SetNotOwned(const std::string& attr_name, AttrType* attr) {
     PADDLE_ENFORCE_EQ(!Has(attr_name),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Attribute %s already set in the pass.", attr_name));
     attrs_[attr_name] = attr;
   }

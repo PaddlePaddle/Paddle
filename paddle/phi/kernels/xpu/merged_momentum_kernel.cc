@@ -102,8 +102,8 @@ void MergedMomentumKernel(
       } else {
         l2_weight_decay[j] = static_cast<float>(regularization_coeff[j]);
       }
-      PADDLE_ENFORCE_EQ(params[j],
-                        params_out[j],
+      PADDLE_ENFORCE_EQ(params[j]->IsSharedBufferWith(*params_out[j]),
+                        true,
                         errors::InvalidArgument(
                             "The size of Input(Param) and Output(ParamOut) "
                             "must be the same Tensors."));

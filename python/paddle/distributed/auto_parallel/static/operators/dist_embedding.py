@@ -148,7 +148,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         stop_gradient=True,
     )
 
-    target_shape = [0] + list(Ids_var.shape[:-1])
+    target_shape = [0, *list(Ids_var.shape[:-1])]
     xshape_var = main_block.create_var(
         name=unique_name.generate_with_ignorable_key(
             ".".join(["dist_Xshape", 'tmp'])
@@ -184,7 +184,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
     set_var_dist_attr(
         ctx,
         xshape_var,
-        [-1] + list(Ids_var_dist_attr.dims_mapping),
+        [-1, *list(Ids_var_dist_attr.dims_mapping)],
         Ids_var_dist_attr.process_mesh,
         chunk_id=Ids_var_dist_attr.chunk_id,
     )
@@ -207,7 +207,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         intermediate_var_0.name, Ids_var_dist_attr.dims_mapping
     )
     new_op_dist_attr.set_output_dims_mapping(
-        xshape_var.name, [-1] + list(Ids_var_dist_attr.dims_mapping)
+        xshape_var.name, [-1, *list(Ids_var_dist_attr.dims_mapping)]
     )
     ctx.set_op_dist_attr_for_program(reshape_op, new_op_dist_attr)
 

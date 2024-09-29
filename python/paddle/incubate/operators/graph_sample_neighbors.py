@@ -12,11 +12,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, overload
+
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+
+@overload
+def graph_sample_neighbors(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    eids: Tensor | None = ...,
+    perm_buffer: Tensor | None = ...,
+    sample_size: int = ...,
+    return_eids: Literal[True] = ...,
+    flag_perm_buffer: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor, Tensor]: ...
+
+
+@overload
+def graph_sample_neighbors(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    eids: Tensor | None = ...,
+    perm_buffer: Tensor | None = ...,
+    sample_size: int = ...,
+    return_eids: Literal[False] = ...,
+    flag_perm_buffer: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+@overload
+def graph_sample_neighbors(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    eids: Tensor | None = ...,
+    perm_buffer: Tensor | None = ...,
+    sample_size: int = ...,
+    return_eids: bool = ...,
+    flag_perm_buffer: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]: ...
 
 
 @deprecated(
@@ -95,7 +144,7 @@ def graph_sample_neighbors(
             ...     colptr,
             ...     nodes,
             ...     sample_size=sample_size
-            ... )
+            ... ) # type: ignore[operator]
 
     """
 

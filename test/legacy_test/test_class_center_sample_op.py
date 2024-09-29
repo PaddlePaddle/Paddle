@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -20,7 +19,6 @@ from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def class_center_sample_numpy(label, classes_list, num_samples):
@@ -89,11 +87,7 @@ class TestClassCenterSampleOp(OpTest):
     def init_fix_seed(self):
         self.fix_seed = True
 
-    def with_new_comm(self):
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
-
     def setUp(self):
-        self.with_new_comm()
         self.initParams()
         self.init_dtype()
         self.init_fix_seed()
@@ -120,7 +114,9 @@ class TestClassCenterSampleOp(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=['SampledLocalClassCenter'], check_pir=True
+            no_check_set=['SampledLocalClassCenter'],
+            check_pir=True,
+            check_symbol_infer=False,
         )
 
 
@@ -132,11 +128,6 @@ class TestClassCenterSampleOpINT32(TestClassCenterSampleOp):
 class TestClassCenterSampleOpFixSeed(TestClassCenterSampleOp):
     def init_fix_seed(self):
         self.fix_seed = True
-
-
-class TestClassCenterSampleOpWithNewComm(TestClassCenterSampleOp):
-    def with_new_comm(self):
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
 
 class TestClassCenterSampleV2(unittest.TestCase):
@@ -163,7 +154,6 @@ class TestClassCenterSampleV2(unittest.TestCase):
             for place in self.places:
                 self.check_static_result(place=place)
 
-    @test_with_pir_api
     def check_static_result(self, place):
         with paddle_static_guard():
             main = paddle.static.Program()

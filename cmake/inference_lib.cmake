@@ -401,6 +401,11 @@ copy(
 )
 copy(
   inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/dialect/shape/interface/infer_symbolic_shape/
+)
+copy(
+  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/pass/*.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/pass/)
 copy(

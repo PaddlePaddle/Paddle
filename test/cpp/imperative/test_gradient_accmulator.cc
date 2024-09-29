@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

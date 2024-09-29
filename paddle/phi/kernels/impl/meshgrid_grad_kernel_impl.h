@@ -89,7 +89,7 @@ void MeshgridGradKernel(const Context& ctx,
       MeshgridBackward<T, Context, 6>(ctx, inputs, outputs_grad, inputs_grad);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Excepted Tensor numbers between 1 and 6, but only received d% .",
           n));
   }

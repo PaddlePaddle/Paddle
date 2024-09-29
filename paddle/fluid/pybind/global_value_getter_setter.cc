@@ -22,12 +22,11 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/macros.h"
 #include "pybind11/stl.h"
 
 // FIXME(zengjinle): these 2 flags may be removed by the linker when compiling
@@ -107,10 +106,10 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name),
         false,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
     PADDLE_ENFORCE_NOT_NULL(getter,
-                            platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "Getter of %s should not be null", name));
     var_infos_.insert({name, VarInfo(is_public, getter, default_getter)});
   }
@@ -123,21 +122,21 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name),
         false,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
 
     PADDLE_ENFORCE_EQ(
         HasSetterMethod(name),
         false,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Setter of global variable %s has been registered", name));
 
     PADDLE_ENFORCE_NOT_NULL(getter,
-                            platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "Getter of %s should not be null", name));
 
     PADDLE_ENFORCE_NOT_NULL(setter,
-                            platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "Setter of %s should not be null", name));
     var_infos_.insert(
         {name, VarInfo(is_public, getter, default_getter, setter)});
@@ -147,7 +146,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name),
         true,
-        platform::errors::NotFound("Cannot find global variable %s", name));
+        common::errors::NotFound("Cannot find global variable %s", name));
     return var_infos_.at(name).getter;
   }
 
@@ -155,7 +154,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name),
         true,
-        platform::errors::NotFound("Cannot find global variable %s", name));
+        common::errors::NotFound("Cannot find global variable %s", name));
     return var_infos_.at(name).default_getter;
   }
 
@@ -182,7 +181,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasSetterMethod(name),
         true,
-        platform::errors::NotFound("Global variable %s is not writable", name));
+        common::errors::NotFound("Global variable %s is not writable", name));
     return var_infos_.at(name).setter;
   }
 

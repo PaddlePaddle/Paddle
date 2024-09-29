@@ -21,6 +21,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn {
@@ -90,8 +91,11 @@ ir::Tensor AssignValue(
     const std::vector<T>& values,
     const cinn::common::Type& type = cinn::common::type_of<T>(),
     const std::string& output_name = "T_assign_value_out") {
-  CHECK(!values.empty())
-      << "The input of pe::AssignValue should not empty! Please check.";
+  PADDLE_ENFORCE_EQ(!values.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input of pe::AssignValue should not be empty. "
+                        "Please provide valid values."));
 
   auto out = lang::Compute(
       {ir::Expr(static_cast<int>(values.size()))},
@@ -160,6 +164,7 @@ ir::Tensor GenerateShape(
     const std::vector<ir::Tensor>& inputs,
     const cinn::dialect::SymbolBindings& symbol_bindings,
     const std::vector<symbol::DimExpr>& output_dim_exprs,
+    const std::vector<ir::Dim>& out_shape,
     const std::string& name = UniqName("T_Generate_Shape_out"));
 
 // This operator checks if all x and y satisfy the condition: |x - y| <= atol +

@@ -113,7 +113,7 @@ struct Serializer<
     size_t nbyte = value->size() * sizeof(T);
     PADDLE_ENFORCE_GE(*buffer_size,
                       nbyte,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Insufficient data in buffer, expect contains %d "
                           "byte, but actually only contains %d byte.",
                           *buffer_size,

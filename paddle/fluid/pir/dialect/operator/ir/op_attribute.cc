@@ -49,7 +49,7 @@ phi::Scalar ScalarAttribute::data() const {
   } else if (isa<pir::Complex128Attribute>()) {
     return phi::Scalar(dyn_cast<pir::Complex128Attribute>().data());
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported ir attribute when casting it into "
         "phi scalar."));
   }

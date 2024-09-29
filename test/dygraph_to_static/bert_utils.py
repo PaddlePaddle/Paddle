@@ -215,9 +215,10 @@ def prepare_batch_data(
             self_input_mask,
             mask_label,
             mask_pos,
-        ] + labels_list
+            *labels_list,
+        ]
     else:
-        return_list = [src_id, pos_id, sent_id, self_input_mask] + labels_list
+        return_list = [src_id, pos_id, sent_id, self_input_mask, *labels_list]
 
     res = return_list if len(return_list) > 1 else return_list[0]
     return res

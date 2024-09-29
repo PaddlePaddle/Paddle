@@ -153,6 +153,7 @@ class IrContextImpl {
   // TypeStorage uniquer and cache instances.
   StorageManager registed_type_storage_manager_;
   // Cache some built-in type objects.
+  UndefinedType undefined_type;
   BFloat16Type bfp16_type;
   Float16Type fp16_type;
   Float32Type fp32_type;
@@ -198,6 +199,7 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   GetOrRegisterDialect<BuiltinDialect>();
   VLOG(10) << "==============================================";
 
+  impl_->undefined_type = TypeManager::get<UndefinedType>(this);
   impl_->bfp16_type = TypeManager::get<BFloat16Type>(this);
   impl_->fp16_type = TypeManager::get<Float16Type>(this);
   impl_->fp32_type = TypeManager::get<Float32Type>(this);
@@ -327,7 +329,7 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   AbstractType *abstract_type = ctx->impl().GetAbstractType(type_id);
   PADDLE_ENFORCE_NOT_NULL(
       abstract_type,
-      phi::errors::InvalidArgument("Abstract type not found in IrContext."));
+      common::errors::InvalidArgument("Abstract type not found in IrContext."));
   return *abstract_type;
 }
 
@@ -336,9 +338,13 @@ const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
   AbstractAttribute *abstract_attribute =
       ctx->impl().GetAbstractAttribute(type_id);
   PADDLE_ENFORCE_NOT_NULL(abstract_attribute,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Abstract attribute not found in IrContext."));
   return *abstract_attribute;
+}
+
+UndefinedType UndefinedType::get(IrContext *ctx) {
+  return ctx->impl().undefined_type;
 }
 
 BFloat16Type BFloat16Type::get(IrContext *ctx) {

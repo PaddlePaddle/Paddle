@@ -173,7 +173,7 @@ class BaseModel(paddle.nn.Layer):
         )
 
     def _transpose_batch_time(self, x):
-        return paddle.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+        return paddle.transpose(x, [1, 0, *range(2, len(x.shape))])
 
     def _merge_batch_beams(self, x):
         return paddle.reshape(x, shape=(-1, x.shape[2]))
@@ -653,14 +653,14 @@ class AttentionModel(paddle.nn.Layer):
         expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)  # [batch_size, beam_size, ...]
         x = paddle.transpose(
-            x, list(range(2, len(x.shape))) + [0, 1]
+            x, [*range(2, len(x.shape)), 0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
         x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
         x = paddle.transpose(
-            x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
+            x, [len(x.shape) - 1, *range(0, len(x.shape) - 1)]
         )  # [batch_size * beam_size, ...]
         return x
 

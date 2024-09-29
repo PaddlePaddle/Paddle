@@ -76,16 +76,16 @@ class ConvBNLayer(nn.Layer):
             num_filters,
             param_attr=ParamAttr(
                 learning_rate=lr_mult,
-                regularizer=None
-                if bn_weight_decay
-                else paddle.regularizer.L2Decay(0.0),
+                regularizer=(
+                    None if bn_weight_decay else paddle.regularizer.L2Decay(0.0)
+                ),
                 initializer=Constant(1.0),
             ),
             bias_attr=ParamAttr(
                 learning_rate=lr_mult,
-                regularizer=None
-                if bn_weight_decay
-                else paddle.regularizer.L2Decay(0.0),
+                regularizer=(
+                    None if bn_weight_decay else paddle.regularizer.L2Decay(0.0)
+                ),
                 initializer=Constant(0.0),
             ),
             data_layout=data_format,
@@ -221,7 +221,7 @@ class TestFuseResUnitPass(DistPassTestBase):
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
         image = paddle.static.data(
-            shape=[batch_size] + image_shape, dtype='float32', name='image'
+            shape=[batch_size, *image_shape], dtype='float32', name='image'
         )
 
         model = ResUnitNet(self.shortcut)

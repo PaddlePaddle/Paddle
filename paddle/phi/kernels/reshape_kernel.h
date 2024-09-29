@@ -22,24 +22,25 @@ limitations under the License. */
 namespace phi {
 
 template <typename Context>
-void ReshapeInferKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const IntArray& shape,
-                        DenseTensor* out);
-
-template <typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
-                   DenseTensor* out,
-                   DenseTensor* xshape);
+                   DenseTensor* out);
+
+// FIXME(dev): Need to deprecate this kernel while
+// cleaning old IR system.
+template <typename Context>
+void ReshapeWithXShapeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const IntArray& shape,
+                             DenseTensor* out,
+                             DenseTensor* xshape);
 
 template <typename Context>
 void ReshapeStridedKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& shape,
-                          DenseTensor* out,
-                          DenseTensor* xshape);
+                          DenseTensor* out);
 
 template <typename T, typename Context>
 void Reshape(const Context& dev_ctx,
@@ -49,7 +50,7 @@ void Reshape(const Context& dev_ctx,
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape, &meta_out);
   if (x.initialized()) {
-    ReshapeInferKernel<Context>(dev_ctx, x, IntArray(shape), out);
+    ReshapeKernel<Context>(dev_ctx, x, IntArray(shape), out);
   }
 }
 

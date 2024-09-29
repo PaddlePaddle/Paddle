@@ -2406,12 +2406,12 @@ int InsertTable(int gpu_id,
   uint64_t h_uniq_node_num = 0;
   uint64_t *d_uniq_node_num_ptr =
       reinterpret_cast<uint64_t *>((*d_uniq_node_num)->ptr());
-  cudaMemcpyAsync(&h_uniq_node_num,
-                  d_uniq_node_num_ptr,
-                  sizeof(uint64_t),
-                  cudaMemcpyDeviceToHost,
-                  stream);
-  cudaStreamSynchronize(stream);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&h_uniq_node_num,
+                                             d_uniq_node_num_ptr,
+                                             sizeof(uint64_t),
+                                             cudaMemcpyDeviceToHost,
+                                             stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 
   if (conf.gpu_graph_training) {
     VLOG(2) << "table capacity: " << conf.train_table_cap << ", "
@@ -2431,7 +2431,8 @@ int InsertTable(int gpu_id,
                                             stream);
         *copy_unique_len_ptr += copy_len;
         table->clear(stream);
-        cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream);
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream));
       }
     }
   } else {
@@ -2447,7 +2448,8 @@ int InsertTable(int gpu_id,
                                           stream);
       *copy_unique_len_ptr += copy_len;
       table->clear(stream);
-      cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream));
     }
   }
 
@@ -2996,7 +2998,7 @@ int multi_node_sync_sample(int flag,
   int *stat_ptr = multi_node_sync_stat_ptr->data<int>();
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
   auto stream = comm->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
       &stat_ptr[flag], &stat_ptr[3], 1, ncclInt, op, comm->comm(), stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
                                              &stat_ptr[3],
@@ -3023,13 +3025,13 @@ int get_multi_node_global_flag(int local_flag,
       send_buff_ptr, &local_flag, sizeof(int), cudaMemcpyHostToDevice, stream);
   cudaStreamSynchronize(stream);
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
-                                                              &send_buff_ptr[1],
-                                                              1,
-                                                              ncclInt,
-                                                              op,
-                                                              comm->comm(),
-                                                              stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&send_buff_ptr[0],
+                                                         &send_buff_ptr[1],
+                                                         1,
+                                                         ncclInt,
+                                                         op,
+                                                         comm->comm(),
+                                                         stream));
   int global_flag = 0;
   cudaMemcpyAsync(&global_flag,
                   &send_buff_ptr[1],
@@ -3073,9 +3075,11 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
     h_walk = new uint64_t[conf.buf_size];
   }
   ///////
-  cudaMemsetAsync(walk, 0, conf.buf_size * sizeof(uint64_t), stream);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(walk, 0, conf.buf_size * sizeof(uint64_t), stream));
   if (conf.need_walk_ntype) {
-    cudaMemsetAsync(walk_ntype, 0, conf.buf_size * sizeof(uint8_t), stream);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+        walk_ntype, 0, conf.buf_size * sizeof(uint8_t), stream));
   }
   int sample_times = 0;
   int i = 0;
@@ -3473,7 +3477,8 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
         sizeof(uint64_t) * 2,
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
     uint64_t *d_buf_ptr = reinterpret_cast<uint64_t *>(d_buf->ptr());
-    cudaMemsetAsync(d_buf_ptr, 0, sizeof(uint64_t) * 2, stream);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemsetAsync(d_buf_ptr, 0, sizeof(uint64_t) * 2, stream));
     uint64_t *d_zero_key_ptr = d_buf_ptr;
     uint32_t *d_zero_rank_ptr = reinterpret_cast<uint32_t *>(d_buf_ptr + 1);
     uint64_t key_num = 1;
@@ -3512,7 +3517,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
                     thrust::device_pointer_cast(d_random_row_col_shift),
                     RandInt(0, conf.walk_len));
 
-  cudaStreamSynchronize(stream);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   *shuffle_seed_ptr = engine();
 
   if (conf.debug_mode) {
@@ -4259,13 +4264,13 @@ int dynamic_adjust_total_row_for_infer(int local_reach_end,
                   stream);
   cudaStreamSynchronize(stream);
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
-                                                              &send_buff_ptr[1],
-                                                              1,
-                                                              ncclInt,
-                                                              ncclProd,
-                                                              comm->comm(),
-                                                              stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&send_buff_ptr[0],
+                                                         &send_buff_ptr[1],
+                                                         1,
+                                                         ncclInt,
+                                                         ncclProd,
+                                                         comm->comm(),
+                                                         stream));
   int global_reach_end = 0;
   cudaMemcpyAsync(&global_reach_end,
                   &send_buff_ptr[1],
@@ -4784,7 +4789,7 @@ void GraphDataGenerator::AllocResource(
       PADDLE_ENFORCE_NE(
           iter,
           node_to_id.end(),
-          platform::errors::NotFound("(%s) is not found in node_to_id.", type));
+          common::errors::NotFound("(%s) is not found in node_to_id.", type));
       int node_type = iter->second;
       int type_index = type_to_index[node_type];
       VLOG(2) << "add node[" << type
@@ -4887,12 +4892,12 @@ void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
   PADDLE_ENFORCE_LE(
       dump_rate,
       10000000,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "dump_rate can't be large than 10000000. Please check the dump "
           "rate[1, 10000000]"));
   PADDLE_ENFORCE_GE(dump_rate,
                     1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "dump_rate can't be less than 1. Please check the dump "
                         "rate[1, 10000000]"));
   int err_no = 0;
@@ -5003,13 +5008,13 @@ int GraphDataGenerator::dynamic_adjust_batch_num_for_sage() {
   cudaStreamSynchronize(sample_stream_);
   auto comm =
       platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
-                                                              &send_buff_ptr[1],
-                                                              1,
-                                                              ncclInt,
-                                                              ncclMax,
-                                                              comm->comm(),
-                                                              sample_stream_));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&send_buff_ptr[0],
+                                                         &send_buff_ptr[1],
+                                                         1,
+                                                         ncclInt,
+                                                         ncclMax,
+                                                         comm->comm(),
+                                                         sample_stream_));
   int thread_max_batch_num = 0;
   cudaMemcpyAsync(&thread_max_batch_num,
                   &send_buff_ptr[1],

@@ -94,7 +94,7 @@ def reader_creator(filename, word_idx, n, data_type):
             for l in f:
                 if DataType.NGRAM == data_type:
                     assert n > -1, 'Invalid gram length'
-                    l = ['<s>'] + l.strip().split() + ['<e>']
+                    l = ['<s>', *l.strip().split(), '<e>']
                     if len(l) >= n:
                         l = [word_idx.get(w, UNK) for w in l]
                         for i in range(n, len(l) + 1):
@@ -102,8 +102,8 @@ def reader_creator(filename, word_idx, n, data_type):
                 elif DataType.SEQ == data_type:
                     l = l.strip().split()
                     l = [word_idx.get(w, UNK) for w in l]
-                    src_seq = [word_idx['<s>']] + l
-                    trg_seq = l + [word_idx['<e>']]
+                    src_seq = [word_idx['<s>'], *l]
+                    trg_seq = [*l, word_idx['<e>']]
                     if n > 0 and len(src_seq) > n:
                         continue
                     yield src_seq, trg_seq

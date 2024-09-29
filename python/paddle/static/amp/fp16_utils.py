@@ -21,6 +21,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core, framework, global_scope
+from paddle.base.framework import in_pir_mode
 from paddle.base.log_helper import get_logger
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
@@ -867,6 +868,8 @@ def _convert_to_float(place, org_array):
     framework._set_expected_place(place)
     org_tensor = paddle.to_tensor(org_array)
     fp32_array = paddle.cast(org_tensor, paddle.float32).numpy()
+    if in_pir_mode():
+        fp32_array.get_defining_op().set_bool_attr("master_grad_cast", True)
     paddle.enable_static()
     return fp32_array
 

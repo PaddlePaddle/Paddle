@@ -57,12 +57,12 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
   PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0],
                     ctx->Outputs("MeanOut")[0],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Mean and MeanOut should share the same memory"));
   PADDLE_ENFORCE_EQ(
       ctx->Inputs("Variance")[0],
       ctx->Outputs("VarianceOut")[0],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Variance and VarianceOut should share the same memory"));
 
   const auto x_dims = ctx->GetInputDim("X");
@@ -71,7 +71,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
     PADDLE_ENFORCE_EQ(
         (x_dims[i] == -1) || (x_dims[i] > 0),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
             "positive number, but received %d. Input's shape is [%s].",
             x_dims[i],
@@ -85,7 +85,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
     auto mom = ctx->Inputs("MomentumTensor");
     PADDLE_ENFORCE_EQ(mom.size(),
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The input tensor MomentumTensor's size must be 1"
                           "But received: MomentumTensor's size is [%d]",
                           mom.size()));
@@ -94,7 +94,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of input "
           "X must greater than or equal to 2. But received: the shape of input "
           "X = [%s], the dimension of input X =[%d]",
@@ -103,7 +103,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of input X "
           "must smaller than or equal to 5. But received: the shape of input X "
           "= [%s], the dimension of input X = [%d]",
@@ -121,7 +121,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
     PADDLE_ENFORCE_EQ(
         scale_dim.size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeError: the dimension of scale must equal to 1."
             "But received: the shape of scale is [%s], the dimension "
             "of scale is [%d]",
@@ -134,7 +134,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
     PADDLE_ENFORCE_EQ(
         bias_dim.size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeError: the dimension of bias must equal to 1."
             "But received: the shape of bias is [%s],the dimension "
             "of bias is [%d]",
@@ -153,14 +153,14 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   if (check) {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0],
                       C,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the shape of scale must equal to [%d]"
                           "But received: the shape of scale is [%d]",
                           C,
                           ctx->GetInputDim("Scale")[0]));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0],
                       C,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the shape of bias must equal to [%d]"
                           "But received: the shape of bias is [%d]",
                           C,
@@ -195,25 +195,25 @@ phi::KernelKey BatchNormOp::GetExpectedKernelType(
         bn_param_type,
         framework::TransToProtoVarType(
             ctx.Input<phi::DenseTensor>("Scale")->dtype()),
-        phi::errors::InvalidArgument("Scale input should be of float type"));
+        common::errors::InvalidArgument("Scale input should be of float type"));
   }
   if (ctx.HasInput("Bias")) {
     PADDLE_ENFORCE_EQ(
         bn_param_type,
         framework::TransToProtoVarType(
             ctx.Input<phi::DenseTensor>("Bias")->dtype()),
-        phi::errors::InvalidArgument("Bias input should be of float type"));
+        common::errors::InvalidArgument("Bias input should be of float type"));
   }
   PADDLE_ENFORCE_EQ(
       bn_param_type,
       framework::TransToProtoVarType(
           ctx.Input<phi::DenseTensor>("Mean")->dtype()),
-      phi::errors::InvalidArgument("Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Variance")->dtype()),
-      phi::errors::InvalidArgument("Variance input should be of float type"));
+      common::errors::InvalidArgument("Mean input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Variance")->dtype()),
+                    common::errors::InvalidArgument(
+                        "Variance input should be of float type"));
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
@@ -254,11 +254,11 @@ void BatchNormOpMaker::Make() {
         PADDLE_ENFORCE_GE(
             epsilon,
             0.0f,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "'epsilon' should be greater or equal than 0.0."));
         PADDLE_ENFORCE_LE(epsilon,
                           0.001f,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "'epsilon' should be less or equal than 0.001."));
       });
   AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
@@ -349,7 +349,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
 
   PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad),
                     true,
-                    phi::errors::NotFound(
+                    common::errors::NotFound(
                         "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
                         "or not be null at same time. But now, "
                         "has Scale@Grad=[%d], has Bias@GRAD=[%d]",
@@ -361,7 +361,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
     PADDLE_ENFORCE_EQ(
         !ctx->Attrs().Get<bool>("use_mkldnn"),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Using global stats during training is not supported "
             "in oneDNN version of batch_norm_gradient kernel now."));
   }
@@ -391,7 +391,7 @@ phi::KernelKey BatchNormGradOp::GetExpectedKernelType(
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("can't find gradient variable of Y"));
+        common::errors::InvalidArgument("can't find gradient variable of Y"));
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
@@ -399,7 +399,7 @@ phi::KernelKey BatchNormGradOp::GetExpectedKernelType(
   }
   if (t == nullptr) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("gradient variable of Y is empty"));
+        common::errors::InvalidArgument("gradient variable of Y is empty"));
   }
 
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -532,7 +532,8 @@ phi::KernelKey BatchNormDoubleGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar("DY");
   if (var == nullptr) {
-    PADDLE_THROW(phi::errors::NotFound("cannot find gradient variable of Y"));
+    PADDLE_THROW(
+        common::errors::NotFound("cannot find gradient variable of Y"));
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
@@ -540,7 +541,7 @@ phi::KernelKey BatchNormDoubleGradOp::GetExpectedKernelType(
   }
   if (t == nullptr) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("gradient variable of Y is empty"));
+        common::errors::InvalidArgument("gradient variable of Y is empty"));
   }
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                         ctx.GetPlace());

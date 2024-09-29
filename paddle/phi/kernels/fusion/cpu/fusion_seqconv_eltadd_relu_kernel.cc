@@ -41,7 +41,7 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       bias.numel(),
       w_dims[1],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "bias size should be equal to weights feature size, but received "
           "bias size is: %d, weights feature size is: %d.",
           bias.numel(),
@@ -49,7 +49,7 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x_lod.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Only support one level sequence now, but received value is: %d.",
           x_lod.size()));
 

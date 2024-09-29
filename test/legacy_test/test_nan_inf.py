@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestNanInfBase(unittest.TestCase):
@@ -87,7 +86,7 @@ class TestNanInf(TestNanInfBase):
                 expected_value,
                 f"The number of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
-        print("")
+        print()
 
     def run_check_nan_inf(self, cmd, expected_op_count=None):
         returncode, out, err = self.run_command(cmd)
@@ -180,7 +179,7 @@ class TestNanInfStack(TestNanInfBase):
         self.check_stack(" check_nan_inf_backward_stack.py")
 
     def test_static_check_stack(self):
-        if not paddle.framework.in_pir_mode() and not os.environ.get(
+        if not paddle.framework.use_pir_api() and not os.environ.get(
             "FLAGS_enable_pir_api"
         ):
             self.check_stack(" check_nan_inf_backward_static_stack.py")
@@ -206,7 +205,7 @@ class TestNanInfCheckResult(TestNanInfBase):
             out = paddle.log(x)
             sys.stdout.flush()
             if add_assert:
-                raise AssertionError()
+                raise AssertionError
         except Exception as e:
             # Cannot catch the log in CUDA kernel.
             err_str_list = (
@@ -304,7 +303,6 @@ class TestCheckNumericsAPI(TestNanInfBase):
                 debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
             )
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         shape = [8, 8]

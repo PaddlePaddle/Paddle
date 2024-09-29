@@ -1878,14 +1878,14 @@ class FractionalMaxPool2dFunctor<CPUContext, T1, T2> {
     PADDLE_ENFORCE_GE(
         input_height,
         output_height - 1 + pool_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_height [%d] is less than valid output_height [%d]",
             input_height,
             output_height - 1 + pool_height));
     PADDLE_ENFORCE_GE(
         input_width,
         output_width - 1 + pool_width,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_width [%d] is less than valid output_width [%d]",
             input_width,
             output_width - 1 + pool_width));
@@ -2038,21 +2038,21 @@ class FractionalMaxPool3dFunctor<CPUContext, T1, T2> {
     PADDLE_ENFORCE_GE(
         input_depth,
         output_depth - 1 + pool_depth,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_depth [%d] is less than valid output_depth [%d]",
             input_depth,
             output_depth - 1 + pool_depth));
     PADDLE_ENFORCE_GE(
         input_height,
         output_height - 1 + pool_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_height [%d] is less than valid output_height [%d]",
             input_height,
             output_height - 1 + pool_height));
     PADDLE_ENFORCE_GE(
         input_width,
         output_width - 1 + pool_width,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_width [%d] is less than valid output_width [%d]",
             input_width,
             output_width - 1 + pool_width));

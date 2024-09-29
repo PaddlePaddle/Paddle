@@ -21,7 +21,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core, dygraph
-from paddle.pir_utils import test_with_pir_api
 
 paddle.seed(102)
 np.random.seed(102)
@@ -52,12 +51,13 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.upper_1 = 0.33
 
         self.places = [
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
+            (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
         ]
 
-    @test_with_pir_api
     def check_static_result(self, place):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -104,7 +104,6 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         for place in self.places:
             self.check_static_result(place=place)
 
-    @test_with_pir_api
     def test_static_graph_functional(self):
         '''test_static_graph_functional'''
 
@@ -175,7 +174,6 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                     )
                 )
 
-    @test_with_pir_api
     def test_static_graph_layer(self):
         '''test_static_graph_layer'''
 
@@ -271,7 +269,6 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             )
             paddle.enable_static()
 
-    @test_with_pir_api
     def test_error_functional(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

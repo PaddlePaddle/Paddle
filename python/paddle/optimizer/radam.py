@@ -15,9 +15,9 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.base.libpaddle import DataType
 
 from ..base import core, framework
@@ -28,6 +28,8 @@ from ..base.framework import (
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -89,7 +91,7 @@ class RAdam(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        weight_decay (float|Tensor|WeightDecayRegularizer|None, optional): The weight decay coefficient, it can be float or Tensor.
+        weight_decay (int|float|Tensor|WeightDecayRegularizer|None, optional): The weight decay coefficient, it can be int, float or Tensor.
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
@@ -232,8 +234,8 @@ class RAdam(Optimizer):
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
 
     def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
@@ -259,8 +261,8 @@ class RAdam(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)

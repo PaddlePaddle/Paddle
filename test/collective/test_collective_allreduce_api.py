@@ -80,7 +80,6 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                     "nccl",
                     dtype=dtype,
                     reduce_type=red_type,
-                    need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
                 )
 
     def test_allreduce_bkcl(self):

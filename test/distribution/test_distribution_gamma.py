@@ -211,13 +211,15 @@ class TestGammaSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': ()
-                + tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
+                'expect': tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
             },
             {
                 'input': (3, 2),
-                'expect': (3, 2)
-                + tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
+                'expect': (
+                    3,
+                    2,
+                    *paddle.squeeze(self._paddle_gamma.rate).shape,
+                ),
             },
         ]
         for case in cases:
@@ -230,13 +232,15 @@ class TestGammaSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': ()
-                + tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
+                'expect': tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
             },
             {
                 'input': (3, 2),
-                'expect': (3, 2)
-                + tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
+                'expect': (
+                    3,
+                    2,
+                    *paddle.squeeze(self._paddle_gamma.rate).shape,
+                ),
             },
         ]
         for case in cases:

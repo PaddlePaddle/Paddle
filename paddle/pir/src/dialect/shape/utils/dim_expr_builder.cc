@@ -84,7 +84,7 @@ std::pair<std::vector<DimExpr>, std::vector<DimExpr>> DimExprBuilder::SplitAt(
   PADDLE_ENFORCE_EQ(
       index > 0 && index < static_cast<int>(dim_exprs.size()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Index invalid, index = %d, dim_exprs.size() = %d. Please check "
           "your inputs.",
           index,

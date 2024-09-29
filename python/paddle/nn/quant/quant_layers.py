@@ -898,9 +898,9 @@ class QuantizedColumnParallelLinear(Layer):
             quant_on_weight=True,
             channel_num=self.weight.shape[self._linear_quant_axis],
             quant_axis=self._linear_quant_axis,
-            reduce_type='max'
-            if paddle.distributed.get_world_size() > 1
-            else None,
+            reduce_type=(
+                'max' if paddle.distributed.get_world_size() > 1 else None
+            ),
         )
 
         self._fake_quant_input = _get_fake_quant_type(
@@ -999,9 +999,9 @@ class QuantizedRowParallelLinear(Layer):
             quant_on_weight=True,
             channel_num=self.weight.shape[self._linear_quant_axis],
             quant_axis=self._linear_quant_axis,
-            reduce_type='max'
-            if paddle.distributed.get_world_size() > 1
-            else None,
+            reduce_type=(
+                'max' if paddle.distributed.get_world_size() > 1 else None
+            ),
         )
 
         self._fake_quant_input = _get_fake_quant_type(
@@ -1011,9 +1011,9 @@ class QuantizedRowParallelLinear(Layer):
             quant_bits=activation_bits,
             dtype=self._dtype,
             quant_on_weight=False,
-            reduce_type='max'
-            if paddle.distributed.get_world_size() > 1
-            else None,
+            reduce_type=(
+                'max' if paddle.distributed.get_world_size() > 1 else None
+            ),
         )
 
         self._act_preprocess = (

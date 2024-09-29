@@ -201,22 +201,22 @@ class SpmdRule {
       : forward_fn_(forward_fn), backward_fn_(backward_fn) {}
 
   SpmdInfo InferForward(const InferSpmdContext& ctx) const {
-    PADDLE_ENFORCE_NE(
-        forward_fn_,
-        nullptr,
-        phi::errors::NotFound("Current SpmdRule's forward function is not "
-                              "found, Please make sure "
-                              "that you have registered the rule correctly."));
+    PADDLE_ENFORCE_NE(forward_fn_,
+                      nullptr,
+                      common::errors::NotFound(
+                          "Current SpmdRule's forward function is not "
+                          "found, Please make sure "
+                          "that you have registered the rule correctly."));
     return forward_fn_(ctx);
   }
 
   SpmdInfo InferBackward(const InferSpmdContext& ctx) const {
-    PADDLE_ENFORCE_NE(
-        backward_fn_,
-        nullptr,
-        phi::errors::NotFound("Current SpmdRule's backward function is not "
-                              "found, Please make sure "
-                              "that you have registered the rule correctly."));
+    PADDLE_ENFORCE_NE(backward_fn_,
+                      nullptr,
+                      common::errors::NotFound(
+                          "Current SpmdRule's backward function is not "
+                          "found, Please make sure "
+                          "that you have registered the rule correctly."));
     return backward_fn_(ctx);
   }
 

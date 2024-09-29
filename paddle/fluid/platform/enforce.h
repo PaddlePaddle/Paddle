@@ -61,9 +61,9 @@ limitations under the License. */
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 
 #include "paddle/phi/common/port.h"
 #include "paddle/utils/string/printf.h"
@@ -99,7 +99,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 // Note: this header for simplify HIP and CUDA type string
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #endif
 
 COMMON_DECLARE_int32(call_stack_level);
@@ -135,7 +135,7 @@ using ::common::enforce::EnforceNotMet;
     PADDLE_ENFORCE_EQ(                                                       \
         __EXPR,                                                              \
         true,                                                                \
-        phi::errors::NotFound(                                               \
+        common::errors::NotFound(                                            \
             "No %s(%s) found for %s operator.", __ROLE, __NAME, __OP_TYPE)); \
   } while (0)
 
@@ -158,12 +158,12 @@ struct EOFException : public std::exception {
     END_HANDLE_THE_ERROR                               \
   } while (0)
 
-#define PADDLE_THROW_BAD_ALLOC(...)                                      \
-  do {                                                                   \
-    HANDLE_THE_ERROR                                                     \
-    throw ::paddle::memory::allocation::BadAlloc(                        \
-        phi::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                                 \
+#define PADDLE_THROW_BAD_ALLOC(...)                                           \
+  do {                                                                        \
+    HANDLE_THE_ERROR                                                          \
+    throw ::paddle::memory::allocation::BadAlloc(                             \
+        ::common::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                      \
   } while (0)
 
 }  // namespace platform

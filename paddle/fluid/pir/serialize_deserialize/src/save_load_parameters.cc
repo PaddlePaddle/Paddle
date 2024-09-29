@@ -72,7 +72,7 @@ void SaveFunction(const phi::DenseTensor& x,
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
           file_path,
           overwrite));
@@ -80,10 +80,10 @@ void SaveFunction(const phi::DenseTensor& x,
   MkDirRecursively(DirName(file_path).c_str());
   VLOG(6) << "save func save path: " << file_path;
   std::ofstream fout(file_path, std::ios::binary);
-  PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fout),
-      true,
-      phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                    true,
+                    common::errors::Unavailable(
+                        "Cannot open %s to save variables.", file_path));
 
   auto in_dtype = x.dtype();
   auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
@@ -108,7 +108,7 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
           file_path,
           overwrite));
@@ -118,7 +118,7 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
   std::ostringstream ss;
   PADDLE_ENFORCE_GT(x.size(),
                     0UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of variables to be saved is %d, expect "
                         "it to be greater than 0.",
                         x.size()));
@@ -128,7 +128,7 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
     PADDLE_ENFORCE_EQ(
         tensor.IsInitialized(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Tensor with Index (%d) to be saved is not initialized.", i));
     auto in_dtype = tensor.dtype();
     auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
@@ -141,10 +141,10 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
   }
   MkDirRecursively(DirName(file_path).c_str());
   std::ofstream fout(file_path, std::ios::binary);
-  PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fout),
-      true,
-      phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                    true,
+                    common::errors::Unavailable(
+                        "Cannot open %s to save variables.", file_path));
   fout << ss.str();
   fout.close();
   VLOG(6) << "save combine done ";
@@ -159,19 +159,19 @@ void LoadFunction(const std::string& file_path,
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Load operator fail to open file %s, please check "
                         "whether the model file is complete or damaged.",
                         file_path));
   PADDLE_ENFORCE_NOT_NULL(out,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The variable to be loaded cannot be found."));
   const phi::DeviceContext* dev_ctx = GetDeviceContext(*out, place);
 
   if (seek != -1) {
     PADDLE_ENFORCE_GE(seek,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "seek with tensor must great than or equal to 0"));
     paddle::framework::DeserializeFromStream(fin, out, *dev_ctx, seek, shape);
   } else {
@@ -194,14 +194,14 @@ void LoadCombineFunction(const std::string& file_path,
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Load operator fail to open file %s, please check "
                         "whether the model file is complete or damaged.",
                         file_path));
 
   PADDLE_ENFORCE_GT(out->size(),
                     0UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of variables to be saved is %d, expect "
                         "it to be greater than 0.",
                         out->size()));
@@ -218,11 +218,11 @@ void LoadCombineFunction(const std::string& file_path,
     }
   }
   fin.peek();
-  PADDLE_ENFORCE_EQ(
-      fin.eof(),
-      true,
-      phi::errors::Unavailable("Not allowed to load partial data via "
-                               "load_combine_op, please use load_op instead."));
+  PADDLE_ENFORCE_EQ(fin.eof(),
+                    true,
+                    common::errors::Unavailable(
+                        "Not allowed to load partial data via "
+                        "load_combine_op, please use load_op instead."));
 }
 
 }  // namespace pir

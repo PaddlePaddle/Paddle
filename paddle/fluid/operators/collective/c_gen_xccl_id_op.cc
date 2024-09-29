@@ -18,11 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 namespace paddle::operators {
 
@@ -35,8 +35,8 @@ static void CopyXCCLIDToVar(const std::vector<phi::ccl::CCLRootId>& xccl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("Variable with name %s is not found",
-                              var_name.c_str()));
+        common::errors::NotFound("Variable with name %s is not found",
+                                 var_name.c_str()));
     auto xccl_id = var->GetMutable<phi::ccl::CCLRootId>();
     *xccl_id = xccl_ids[i];
   }

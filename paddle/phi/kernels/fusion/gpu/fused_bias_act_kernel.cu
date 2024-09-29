@@ -226,7 +226,7 @@ void ComputeImpl(const Context &dev_ctx,
     LaunchBiasAct<T, Context, ReluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
         dev_ctx, bias_data, rows, cols, load_func, store_func);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently Only Support GeGLU, SwiGLU, GeLU"));
   }
 }
@@ -446,8 +446,8 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         float quant_max_bound,
                         float quant_min_bound,
                         DenseTensor *out) {
-  int rows = x.dims()[0];
-  int cols = x.dims()[1];
+  int cols = x.dims()[x.dims().size() - 1];
+  int rows = x.numel() / cols;
   if (x.dtype() == phi::DataType::INT32) {
     if (compute_dtype == "bf16") {
       DispatchWithDtype<phi::dtype::bfloat16, Context>(
@@ -502,7 +502,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
           out,
           typename DispatchDtypeTrait<float>::FuncVersion{});
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "In the case of quantization enabled with Input(x) INT32, "
           "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
           "but get compute_dtype (%s)",

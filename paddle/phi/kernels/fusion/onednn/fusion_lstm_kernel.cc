@@ -72,17 +72,17 @@ class LSTMMKLDNNHandler
       PADDLE_ENFORCE_EQ(
           gate_activation,
           "sigmoid",
-          phi::errors::Unimplemented("oneDNN fusion_lstm supports only "
-                                     "sigmoid as a gate activation."));
+          common::errors::Unimplemented("oneDNN fusion_lstm supports only "
+                                        "sigmoid as a gate activation."));
       PADDLE_ENFORCE_EQ(
           cell_activation,
           "tanh",
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "oneDNN fusion_lstm supports only tanh as a cell activation."));
       PADDLE_ENFORCE_EQ(
           candidate_activation,
           "tanh",
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "oneDNN fusion_lstm supports only tanh a candidate activation."));
 
       // Weights for int8 kernel are of a type s8

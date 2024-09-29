@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def ref_np_signbit(x: np.ndarray):
@@ -45,7 +45,13 @@ class TestSignbitAPI(unittest.TestCase):
             'int32',
             'int64',
         ]
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -109,7 +115,6 @@ class TestSignbitAPI(unittest.TestCase):
         for place in self.place:
             run(place)
 
-    @test_with_pir_api
     def test_static(self):
         np_input1 = np.random.uniform(-10, 10, (12, 10)).astype("int8")
         np_input2 = np.random.uniform(-10, 10, (12, 10)).astype("uint8")

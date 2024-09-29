@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Modified from librosa(https://github.com/librosa/librosa)
+from __future__ import annotations
+
 import math
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import paddle
 from paddle import Tensor
 from paddle.base.framework import Variable
 from paddle.pir import Value
 
+if TYPE_CHECKING:
+    _TensorOrFloat = TypeVar("_TensorOrFloat", Tensor, float)
 
-def hz_to_mel(
-    freq: Union[Tensor, Value, Variable, float], htk: bool = False
-) -> Union[Tensor, Value, Variable, float]:
+
+def hz_to_mel(freq: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
     """Convert Hz to Mels.
 
     Args:
@@ -77,9 +80,7 @@ def hz_to_mel(
     return mels
 
 
-def mel_to_hz(
-    mel: Union[float, Tensor, Variable, Value], htk: bool = False
-) -> Union[float, Tensor, Variable, Value]:
+def mel_to_hz(mel: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
     """Convert mel bin numbers to frequencies.
 
     Args:
@@ -128,7 +129,7 @@ def mel_frequencies(
     f_max: float = 11025.0,
     htk: bool = False,
     dtype: str = 'float32',
-) -> Union[Tensor, Variable, Value]:
+) -> Tensor:
     """Compute mel frequencies.
 
     Args:
@@ -190,9 +191,9 @@ def compute_fbank_matrix(
     n_fft: int,
     n_mels: int = 64,
     f_min: float = 0.0,
-    f_max: Optional[float] = None,
+    f_max: float | None = None,
     htk: bool = False,
-    norm: Union[str, float] = 'slaney',
+    norm: Literal['slaney'] | float = 'slaney',
     dtype: str = 'float32',
 ) -> Tensor:
     """Compute fbank matrix.
@@ -259,11 +260,11 @@ def compute_fbank_matrix(
 
 
 def power_to_db(
-    spect: Union[Tensor, Variable, Value],
+    spect: Tensor,
     ref_value: float = 1.0,
     amin: float = 1e-10,
-    top_db: Optional[float] = 80.0,
-) -> Union[Tensor, Variable, Value]:
+    top_db: float | None = 80.0,
+) -> Tensor:
     """Convert a power spectrogram (amplitude squared) to decibel (dB) units. The function computes the scaling `10 * log10(x / ref)` in a numerically stable way.
 
     Args:
@@ -305,7 +306,7 @@ def power_to_db(
 def create_dct(
     n_mfcc: int,
     n_mels: int,
-    norm: Optional[str] = 'ortho',
+    norm: Literal['ortho'] | None = 'ortho',
     dtype: str = 'float32',
 ) -> Tensor:
     """Create a discrete cosine transform(DCT) matrix.

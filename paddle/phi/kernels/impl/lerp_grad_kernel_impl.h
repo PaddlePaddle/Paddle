@@ -135,14 +135,14 @@ void LerpGradKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       rank,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
           "greater than or equal to 0, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
       6,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
           "less than or equal to 6, but the value received is %d.",
           rank));

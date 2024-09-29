@@ -23,7 +23,7 @@
 #include "paddle/cinn/common/float16_bfloat16_utils.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
-
+#include "paddle/common/enforce.h"
 //! Much of the concepts are borrowed from Halide project.
 
 namespace cinn {
@@ -182,10 +182,12 @@ inline Type Float(int bits,
                   int lanes = 1,
                   Type::specific_type_t st = Type::specific_type_t::None) {
   if (bits == 16) {
-    CHECK(st == Type::specific_type_t::FP16 ||
-          st == Type::specific_type_t::BF16)
-        << "When creating a 16 bits Float, the specific_type_t must be FP16 or "
-           "BF16.";
+    PADDLE_ENFORCE_EQ((st == Type::specific_type_t::FP16 ||
+                       st == Type::specific_type_t::BF16),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "When creating a 16-bit Float, the specific_type_t "
+                          "must be FP16 or BF16."));
   }
   return Type(Type::type_t ::Float, bits, lanes, st);
 }

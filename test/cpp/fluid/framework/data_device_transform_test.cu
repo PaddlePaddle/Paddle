@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

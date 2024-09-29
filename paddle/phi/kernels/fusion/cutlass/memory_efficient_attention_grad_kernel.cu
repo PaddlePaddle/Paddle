@@ -69,7 +69,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(
         query.dims().size(),
         output_grad.dims().size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of query's dimensions "
             "should be equal to output grad. But received query's "
             "dimensions = %d, output grad's dimensions = %d.",
@@ -77,7 +77,7 @@ void MemoryEfficientAttentionGradKernel(
             output_grad.dims().size()));
     PADDLE_ENFORCE_EQ(query.dims().size(),
                       key.dims().size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of query's dimensions "
                           "should be equal to key. But received query's "
                           "dimensions = %d, key's dimensions = %d.",
@@ -85,7 +85,7 @@ void MemoryEfficientAttentionGradKernel(
                           key.dims().size()));
     PADDLE_ENFORCE_EQ(query.dims().size(),
                       value.dims().size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of query's dimensions "
                           "should be equal to value. But received query's "
                           "dimensions = %d, value's dimensions = %d.",
@@ -93,7 +93,7 @@ void MemoryEfficientAttentionGradKernel(
                           key.dims().size()));
     PADDLE_ENFORCE_EQ(query.dims().size(),
                       4,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of query's dimensions "
                           "dim size of query is illegal. Expected dimension "
                           "size=4. Received %d.",
@@ -103,7 +103,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(
         query.dims()[0],
         output_grad.dims()[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The batch size of query's dimensions "
             "should be equal to output grad. But received query's "
             "batch size = %d, output grad's batch size = %d.",
@@ -111,7 +111,7 @@ void MemoryEfficientAttentionGradKernel(
             output_grad.dims()[0]));
     PADDLE_ENFORCE_EQ(query.dims()[0],
                       key.dims()[0],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The batch size of query's dimensions "
                           "should be equal to key. But received query's "
                           "batch size = %d, key's batch size = %d.",
@@ -119,7 +119,7 @@ void MemoryEfficientAttentionGradKernel(
                           key.dims()[0]));
     PADDLE_ENFORCE_EQ(query.dims()[0],
                       value.dims()[0],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The batch size of query's dimensions "
                           "should be equal to value. But received query's "
                           "batch size = %d, value's batch size = %d.",
@@ -130,7 +130,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(
         key.dims()[1],
         value.dims()[1],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The sequence length of key"
             "should be equal to value. But received key's sequence length = "
             "%d, value's sequence length = %d.",
@@ -138,7 +138,7 @@ void MemoryEfficientAttentionGradKernel(
             value.dims()[1]));
     PADDLE_ENFORCE_EQ(query.dims()[1],
                       output_grad.dims()[1],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The sequence length of query"
                           "should be equal to output grad. But received "
                           "query's sequence length = "
@@ -150,7 +150,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(
         query.dims()[2],
         key.dims()[2],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The head number of query"
             "should be equal to key. But received query's head number = "
             "%d, key's head number = %d.",
@@ -159,7 +159,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(
         query.dims()[2],
         value.dims()[2],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The head number of query"
             "should be equal to value. But received query's head number = "
             "%d, value's head number = %d.",
@@ -167,7 +167,7 @@ void MemoryEfficientAttentionGradKernel(
             value.dims()[2]));
     PADDLE_ENFORCE_EQ(query.dims()[2],
                       output_grad.dims()[2],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The head number of query"
                           "should be equal to output grad. But received "
                           "query's head number = "
@@ -179,7 +179,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(
         query.dims()[3],
         key.dims()[3],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The head size of query"
             "should be equal to key. But received query's head size = "
             "%d, key's head size = %d.",
@@ -188,7 +188,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(
         value.dims()[3],
         output_grad.dims()[3],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The head size of value"
             "should be equal to output grad. But received value's head size = "
             "%d, output grad's head size = %d.",
@@ -196,20 +196,20 @@ void MemoryEfficientAttentionGradKernel(
             output_grad.dims()[3]));
 
     if (cu_seqlens_q) {
-      PADDLE_ENFORCE_EQ(
-          (cu_seqlens_q && bias),
-          false,
-          phi::errors::InvalidArgument("cu_seqlens_q or bias should be None"));
+      PADDLE_ENFORCE_EQ((cu_seqlens_q && bias),
+                        false,
+                        common::errors::InvalidArgument(
+                            "cu_seqlens_q or bias should be None"));
       PADDLE_ENFORCE_EQ(
           (cu_seqlens_k && cu_seqlens_q),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "cu_seqlens_q and cu_seqlens_k should be same condition"));
     } else {
       PADDLE_ENFORCE_EQ(
           (cu_seqlens_k || cu_seqlens_q),
           false,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "cu_seqlens_q and cu_seqlens_k should be same condition"));
     }
 
@@ -221,20 +221,20 @@ void MemoryEfficientAttentionGradKernel(
     if (cu_seqlens_q) {
       PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dtype(),
                         DataType::INT32,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "data type of cu_seqlens_q should be INT32"));
       PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dtype(),
                         DataType::INT32,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "data type of cu_seqlens_k should be INT32"));
-      PADDLE_ENFORCE_EQ(
-          cu_seqlens_q.get().dims().size(),
-          1,
-          phi::errors::InvalidArgument("dims of cu_seqlens_q should be one"));
-      PADDLE_ENFORCE_EQ(
-          cu_seqlens_k.get().dims().size(),
-          1,
-          phi::errors::InvalidArgument("dims of cu_seqlens_k should be one"));
+      PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dims().size(),
+                        1,
+                        common::errors::InvalidArgument(
+                            "dims of cu_seqlens_q should be one"));
+      PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dims().size(),
+                        1,
+                        common::errors::InvalidArgument(
+                            "dims of cu_seqlens_k should be one"));
       max_seqlen_q_tmp = max_seqlen_q.to<int64_t>();
       max_seqlen_k_tmp = max_seqlen_k.to<int64_t>();
       VLOG(3) << "max_seqlen_q_tmp" << max_seqlen_q_tmp;
@@ -242,32 +242,32 @@ void MemoryEfficientAttentionGradKernel(
       PADDLE_ENFORCE_EQ(
           cu_seqlens_q.get().dims()[0],
           cu_seqlens_k.get().dims()[0],
-          phi::errors::InvalidArgument("The first dimension of cu_seqlens_q"
-                                       "should be equal to cu_seqlens_q."));
+          common::errors::InvalidArgument("The first dimension of cu_seqlens_q"
+                                          "should be equal to cu_seqlens_q."));
       PADDLE_ENFORCE_EQ(
           q_dims[0],
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The batch number of query"
               "should be one. But received batch number of query = %d.",
               q_dims[0]));
       PADDLE_ENFORCE_LT(0,
                         max_seqlen_q_tmp,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The max sequence length of query"
                             "should more than zero. But received the max "
                             "sequence length of query = %d.",
                             max_seqlen_q_tmp));
       PADDLE_ENFORCE_LT(0,
                         max_seqlen_k_tmp,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The max sequence length of key"
                             "should more than zero. But received the max "
                             "sequence length of key = %d.",
                             max_seqlen_k_tmp));
       PADDLE_ENFORCE_LE(max_seqlen_q_tmp,
                         q_dims[1],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The max sequence length of query"
                             "should larger than sequence length of query. But "
                             "received the max sequence length of query = %d,"
@@ -276,7 +276,7 @@ void MemoryEfficientAttentionGradKernel(
                             q_dims[1]));
       PADDLE_ENFORCE_LE(max_seqlen_k_tmp,
                         k_dims[1],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The max sequence length of key"
                             "should larger than sequence length of key. But "
                             "received the max sequence length of key = %d,"
@@ -364,7 +364,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(
         delta.dims()[0],
         query.dims()[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The first dimension of delta"
             "should be equal to query. But received delta's first dimension = "
             "%d, query's first dimension = %d.",
@@ -372,7 +372,7 @@ void MemoryEfficientAttentionGradKernel(
             query.dims()[0]));
     PADDLE_ENFORCE_EQ(delta.dims()[1],
                       query.dims()[2],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The second dimension of delta"
                           "should be equal to third dimension query. But "
                           "received delta's second dimension = "
@@ -381,7 +381,7 @@ void MemoryEfficientAttentionGradKernel(
                           query.dims()[2]));
     PADDLE_ENFORCE_EQ(delta.dims()[2],
                       query.dims()[1],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The third dimension of delta"
                           "should be equal to second dimension query. But "
                           "received delta's third dimension = "
@@ -479,19 +479,19 @@ void MemoryEfficientAttentionGradKernel(
     p.gQKV_strideM_multiplier = 1;
     PADDLE_ENFORCE_EQ(q_dims[2] * q_dims[3],
                       DimStride(query_grad->dims(), 1),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The strideM of grad query"
                           "should be equal to the first dimension size of "
                           "query grad's stride"));
     PADDLE_ENFORCE_EQ(k_dims[2] * k_dims[3],
                       DimStride(key_grad->dims(), 1),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The strideM of grad key"
                           "should be equal to the first dimension size of key "
                           "grad's stride"));
     PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
                       DimStride(value_grad->dims(), 1),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The strideM of grad value"
                           "should be equal to the first dimension size of "
                           "value grad's stride"));
@@ -580,7 +580,7 @@ void MemoryEfficientAttentionGradKernel(
   PADDLE_ENFORCE_EQ(
       kernel_launched,
       true,
-      phi::errors::InvalidArgument("the kernel should not be launched"));
+      common::errors::InvalidArgument("the kernel should not be launched"));
 }
 
 }  // namespace cutlass_internal

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -22,7 +23,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSumOp(OpTest):
@@ -963,7 +963,7 @@ class TestAll8DOpWithKeepDim(OpTest):
 
 
 class TestAllOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -1124,7 +1124,7 @@ class TestAny8DOpWithKeepDim(OpTest):
 
 
 class TestAnyOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -1666,7 +1666,13 @@ class API_TestSumOp(unittest.TestCase):
         if np_axis is None:
             np_axis = attr_axis
 
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
@@ -1688,7 +1694,6 @@ class API_TestSumOp(unittest.TestCase):
                 rtol=1e-05,
             )
 
-    @test_with_pir_api
     def test_static(self):
         shape = [10, 10]
         axis = 1
@@ -1741,7 +1746,13 @@ class TestAllAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1795,7 +1806,6 @@ class TestAllAPI(unittest.TestCase):
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -1849,7 +1859,13 @@ class TestAnyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1903,7 +1919,6 @@ class TestAnyAPI(unittest.TestCase):
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

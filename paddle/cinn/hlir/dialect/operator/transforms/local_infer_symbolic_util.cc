@@ -18,7 +18,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include "build/paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 #include "paddle/pir/include/pass/pass.h"
 
@@ -104,7 +104,7 @@ void InitLocalShapeAnalysis(const pir::Operation& op,
 std::shared_ptr<pir::ShapeConstraintIRAnalysis> MakeOpShapeAnalysis(
     const pir::Operation* op, const DimExprs4ValueT& GraphDimExprs4Value) {
   auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>();
-  shape_analysis->Init();
+  shape_analysis->InitInferContext();
   InitLocalShapeAnalysis(*op, shape_analysis.get(), GraphDimExprs4Value);
   return shape_analysis;
 }

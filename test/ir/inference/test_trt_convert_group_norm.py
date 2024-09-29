@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -35,7 +37,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(attrs: List[Dict[str, Any]], batch):
+        def generate_input(attrs: list[dict[str, Any]], batch):
             if attrs[0]['data_layout'] == 'NCHW':
                 return np.random.random([batch, 32, 64, 64]).astype(np.float32)
             else:
@@ -101,7 +103,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 16, 16]}
             self.dynamic_shape.max_input_shape = {

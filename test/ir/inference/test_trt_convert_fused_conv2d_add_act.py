@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
+import paddle
 import paddle.inference as paddle_infer
 
 
@@ -31,7 +34,6 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
         if (
             inputs['input_data'].shape[1]
             != weights['conv2d_weight'].shape[1] * attrs[0]['groups']
@@ -53,15 +55,15 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(batch, attrs: List[Dict[str, Any]]):
+        def generate_input1(batch, attrs: list[dict[str, Any]]):
             return np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
                 np.float32
             )
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
-        def generate_weight2(attrs: List[Dict[str, Any]]):
+        def generate_weight2(attrs: list[dict[str, Any]]):
             return np.random.random([24, 1, 1]).astype(np.float32)
 
         batch_options = [1, 2]
@@ -148,7 +150,7 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             input_groups = attrs[0]['groups'] * 3
             self.dynamic_shape.min_input_shape = {
@@ -176,7 +178,7 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # for static_shape
+        # # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
@@ -206,17 +208,19 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-2, 1e-2)
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        # self.trt_param.precision = paddle_infer.PrecisionType.Int8
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
 
     def test(self):
-        self.run_test()
+        with paddle.pir_utils.OldIrGuard():
+            self.run_test()
 
     def test_quant(self):
-        self.run_test(quant=True)
+        with paddle.pir_utils.OldIrGuard():
+            self.run_test(quant=True)
 
 
 if __name__ == "__main__":

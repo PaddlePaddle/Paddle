@@ -89,7 +89,7 @@ void KthvalueKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     PADDLE_ENFORCE_EQ(k,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "the k in the kthvalue must less equal than the "
                           "elemenents number of the input X, but received %d .",
                           k));

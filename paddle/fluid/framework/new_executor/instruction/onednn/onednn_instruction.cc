@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -62,7 +62,7 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
     if (array_list.size() > 0) {
       PADDLE_ENFORCE_EQ(array_list[0].isa<pir::Int32Attribute>(),
                         true,
-                        phi::errors::Unimplemented(
+                        common::errors::Unimplemented(
                             "the 0th elementwise MUST be pir::Int32Attribute"));
       for (size_t i = 0; i < array_list.size(); ++i) {
         vec_res.push_back(array_list[i].dyn_cast<pir::Int32Attribute>().data());
@@ -75,7 +75,7 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
     if (array_list.size() > 0) {
       PADDLE_ENFORCE_EQ(array_list[0].isa<pir::Int64Attribute>(),
                         true,
-                        phi::errors::Unimplemented(
+                        common::errors::Unimplemented(
                             "the 0th elementwise MUST be pir::Int64Attribute"));
       for (size_t i = 0; i < array_list.size(); ++i) {
         vec_res.push_back(array_list[i].dyn_cast<pir::Int64Attribute>().data());
@@ -93,7 +93,7 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
         }
 
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
             attr_type_name));
       }
@@ -110,7 +110,7 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
   } else if (attr_type_name == "paddle::dialect::ScalarAttribute") {
     return attr.dyn_cast<dialect::ScalarAttribute>().data();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
         attr_type_name));
   }
@@ -140,7 +140,7 @@ void TensorNameMap(pir::Operation* op,
     PADDLE_ENFORCE_EQ(
         name2id.count(name),
         true,
-        phi::errors::NotFound("param [%s] MUST in name2id map", name));
+        common::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = name2id.at(name);
     pir::Value ptr = op->operand_source(index);
 
@@ -151,7 +151,7 @@ void TensorNameMap(pir::Operation* op,
     auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     auto in_var_name = value_exec_info.GetVarName(ptr);
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
 
     auto type = ptr.type();
@@ -170,7 +170,7 @@ void TensorNameMap(pir::Operation* op,
       }
       inputs_tensor_name_map[legacy_arg_name] = vec_tmp;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
           "pir::vector type"));
     }
@@ -189,7 +189,7 @@ void TensorNameMap(pir::Operation* op,
     auto out_var_name = value_exec_info.GetVarName(ptr);
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(out_var_name),
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", out_var_name));
 
     auto type = ptr.type();
@@ -208,7 +208,7 @@ void TensorNameMap(pir::Operation* op,
       }
       outputs_tensor_name_map[legacy_arg_name] = vec_tmp;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
           "pir::vector type"));
     }
@@ -242,7 +242,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(op_name),
@@ -429,18 +429,19 @@ void OneDNNPhiKernelInstruction::Run() {
       tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>(*input));
       auto transed_tensor = tmp_holders.back().get();
 
-      std::set<std::string> elementwise_kernels = {
-          "add", "subtract", "multiply", "divide"};
-      if (elementwise_kernels.count(kernel_name_)) {
+      std::set<std::string> elementwise_kernels = {"onednn_op.add",
+                                                   "onednn_op.subtract",
+                                                   "onednn_op.multiply",
+                                                   "onednn_op.divide"};
+
+      if (elementwise_kernels.count(phi_op_name_)) {
         if (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
                 phi::DataLayout::kNHWC &&
             !(kernel_key_.dtype() == phi::DataType::COMPLEX64 ||
               kernel_key_.dtype() == phi::DataType::COMPLEX128)) {
+          from_layout = phi::DataLayout::kNHWC;
           phi::funcs::MatchShapeToLayout(
               transed_tensor, from_layout, phi::DataLayout::ONEDNN);
-          from_layout = phi::DataLayout::kNHWC;
-        } else {
-          continue;
         }
       } else {
         //  Handle 'layout_transform' in

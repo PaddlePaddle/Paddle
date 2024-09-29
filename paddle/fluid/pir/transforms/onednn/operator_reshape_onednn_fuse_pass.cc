@@ -69,7 +69,7 @@ class FusedTransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
     op({&pat.Tensor("X")}, {&pat.Tensor("Out")});
 
     reshape({&pat.Tensor("Out"), &pat.Tensor("shape")},
-            {&pat.Tensor("ShapeOut"), &pat.Tensor("XShape")});
+            {&pat.Tensor("ShapeOut")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       int num_of_minus_ones = 0;
@@ -189,7 +189,7 @@ class FcReshapeFusePattern : public paddle::drr::DrrPatternBase {
        {&pat.Tensor("Out")});
 
     reshape({&pat.Tensor("Out"), &pat.Tensor("shape")},
-            {&pat.Tensor("ShapeOut"), &pat.Tensor("XShape")});
+            {&pat.Tensor("ShapeOut")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       int num_of_minus_ones = 0;
@@ -294,7 +294,7 @@ class TransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
     op({&pat.Tensor("X")}, {&pat.Tensor("Out")});
 
     reshape({&pat.Tensor("Out"), &pat.Tensor("shape")},
-            {&pat.Tensor("ShapeOut"), &pat.Tensor("XShape")});
+            {&pat.Tensor("ShapeOut")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       int num_of_minus_ones = 0;

@@ -26,10 +26,10 @@
 namespace phi {
 
 template <typename Context>
-void ReshapeInferKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const IntArray& shape,
-                        DenseTensor* out) {
+void ReshapeKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const IntArray& shape,
+                   DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
 
@@ -48,10 +48,10 @@ void ReshapeInferKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU
 template <>
-void ReshapeInferKernel<phi::XPUContext>(const XPUContext& dev_ctx,
-                                         const DenseTensor& x,
-                                         const IntArray& shape,
-                                         DenseTensor* out) {
+void ReshapeKernel<phi::XPUContext>(const XPUContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const IntArray& shape,
+                                    DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
 
@@ -75,21 +75,23 @@ void ReshapeInferKernel<phi::XPUContext>(const XPUContext& dev_ctx,
 #endif
 
 template <typename Context>
-void ReshapeKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const IntArray& shape,
-                   DenseTensor* out,
-                   DenseTensor* xshape UNUSED) {
-  ReshapeInferKernel(dev_ctx, x, shape, out);
+void ReshapeWithXShapeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const IntArray& shape,
+                             DenseTensor* out,
+                             DenseTensor* xshape UNUSED) {
+  ReshapeKernel(dev_ctx, x, shape, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_infer,
-                                         ALL_LAYOUT,
-                                         phi::ReshapeInferKernel) {}
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape,
                                          ALL_LAYOUT,
-                                         phi::ReshapeKernel) {
+                                         phi::ReshapeKernel) {}
+// FIXME(dev): Need to deprecate it while
+// cleaning old IR system.
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_with_xshape,
+                                         ALL_LAYOUT,
+                                         phi::ReshapeWithXShapeKernel) {
   kernel->OutputAt(1).SetBackend(phi::Backend::UNDEFINED);
 }

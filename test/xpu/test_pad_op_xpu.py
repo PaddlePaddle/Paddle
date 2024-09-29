@@ -140,7 +140,8 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
                     sgd = paddle.optimizer.SGD()
                     sgd.minimize(paddle.mean(out))
-                    self.assertTrue(self.var_prefix() in str(main_prog))
+                    if not paddle.framework.use_pir_api():
+                        self.assertTrue(self.var_prefix() in str(main_prog))
                     exe = paddle.static.Executor(paddle.XPUPlace(0))
                     exe.run(startup_prog)
                     res = exe.run(fetch_list=[feat, out])

@@ -181,7 +181,9 @@ class Flowers(Dataset[Tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
         self.data_path = data_file.replace(".tgz", "/")
         if not os.path.exists(self.data_path):
             os.mkdir(self.data_path)
-        data_tar.extractall(self.data_path)
+        jpg_path = os.path.join(self.data_path, "jpg")
+        if not os.path.exists(jpg_path):
+            data_tar.extractall(self.data_path)
 
         scio = try_import('scipy.io')
         self.labels = scio.loadmat(label_file)['labels'][0]

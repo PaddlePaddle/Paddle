@@ -1,17 +1,11 @@
-set(op_handle_srcs
-    nan_inf_utils_detail.cc
-    var_handle.cc
-    op_handle_base.cc
-    scale_loss_grad_op_handle.cc
-    share_tensor_buffer_functor.cc
-    computation_op_handle.cc
-    share_tensor_buffer_op_handle.cc
-    eager_deletion_op_handle.cc)
+set(op_handle_srcs nan_inf_utils_detail.cc var_handle.cc op_handle_base.cc
+                   computation_op_handle.cc eager_deletion_op_handle.cc)
 
 set(op_handle_deps
     pass
     operator
-    place
+    phi
+    common
     framework_proto
     node
     device_context

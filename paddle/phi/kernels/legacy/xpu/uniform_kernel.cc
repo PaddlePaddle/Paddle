@@ -53,7 +53,7 @@ void UniformRawKernel(const Context &dev_ctx,
     PADDLE_ENFORCE_GT(
         size,
         (diag_num - 1) * (diag_step + 1),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeInvalid: the diagonal's elements is equal (num-1) "
             "* (step-1) with num %d, step %d,"
             "It should be smaller than %d, but received %d",

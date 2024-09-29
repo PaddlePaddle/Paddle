@@ -11,14 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import collections
+from __future__ import annotations
+
 import os
-from typing import List, Tuple
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
+
+from typing_extensions import TypeAlias
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
 
 from .dataset import AudioClassificationDataset
+
+if TYPE_CHECKING:
+    _ModeLiteral: TypeAlias = Literal[
+        'train',
+        'dev',
+    ]
+    _FeatTypeLiteral: TypeAlias = Literal[
+        'raw',
+        'melspectrogram',
+        'mfcc',
+        'logmelspectrogram',
+        'spectrogram',
+    ]
+
 
 __all__ = []
 
@@ -47,10 +64,11 @@ class ESC50(AudioClassificationDataset):
 
         .. code-block:: python
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
             >>> mode = 'dev'
-            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,  # type: ignore[arg-type]
             ...                                         feat_type='raw')
             >>> for idx in range(5):
             ...     audio, label = esc50_dataset[idx]
@@ -63,7 +81,7 @@ class ESC50(AudioClassificationDataset):
             [220500] 36
             [220500] 19
 
-            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,  # type: ignore[arg-type]
             ...                                         feat_type='mfcc',
             ...                                         n_mfcc=40)
             >>> for idx in range(5):
@@ -79,12 +97,12 @@ class ESC50(AudioClassificationDataset):
 
     """
 
-    archive = {
+    archive: dict[str, str] = {
         'url': 'https://paddleaudio.bj.bcebos.com/datasets/ESC-50-master.zip',
         'md5': '7771e4b9d86d0945acce719c7a59305a',
     }
 
-    label_list = [
+    label_list: list[str] = [
         # Animals
         'Dog',
         'Rooster',
@@ -141,21 +159,26 @@ class ESC50(AudioClassificationDataset):
         'Fireworks',
         'Hand saw',
     ]
-    meta = os.path.join('ESC-50-master', 'meta', 'esc50.csv')
-    meta_info = collections.namedtuple(
-        'META_INFO',
-        ('filename', 'fold', 'target', 'category', 'esc10', 'src_file', 'take'),
-    )
-    audio_path = os.path.join('ESC-50-master', 'audio')
+    meta: str = os.path.join('ESC-50-master', 'meta', 'esc50.csv')
+    audio_path: str = os.path.join('ESC-50-master', 'audio')
+
+    class meta_info(NamedTuple):
+        filename: str
+        fold: str
+        target: str
+        category: str
+        esc10: str
+        src_file: str
+        take: str
 
     def __init__(
         self,
-        mode: str = 'train',
+        mode: _ModeLiteral = 'train',
         split: int = 1,
-        feat_type: str = 'raw',
-        archive=None,
-        **kwargs,
-    ):
+        feat_type: _FeatTypeLiteral = 'raw',
+        archive: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> None:
         assert split in range(
             1, 6
         ), f'The selected split should be integer, and 1 <= split <= 5, but got {split}'
@@ -166,14 +189,16 @@ class ESC50(AudioClassificationDataset):
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 
-    def _get_meta_info(self) -> List[collections.namedtuple]:
+    def _get_meta_info(self) -> list[meta_info]:
         ret = []
         with open(os.path.join(DATA_HOME, self.meta), 'r') as rf:
             for line in rf.readlines()[1:]:
                 ret.append(self.meta_info(*line.strip().split(',')))
         return ret
 
-    def _get_data(self, mode: str, split: int) -> Tuple[List[str], List[int]]:
+    def _get_data(
+        self, mode: _ModeLiteral, split: int
+    ) -> tuple[list[str], list[int]]:
         if not os.path.isdir(
             os.path.join(DATA_HOME, self.audio_path)
         ) or not os.path.isfile(os.path.join(DATA_HOME, self.meta)):

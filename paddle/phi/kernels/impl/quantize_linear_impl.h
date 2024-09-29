@@ -74,7 +74,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         scale.numel(),
         in_tmp.dims()[quant_axis],
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of first scale values must be the same with "
             "quant_axis dimension value of Input(X) when the `scale` has "
             "only one element, but %ld != %ld here.",
@@ -109,7 +109,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                             DenseTensor* out_scale) {
   PADDLE_ENFORCE_NE(in_scale.get_ptr(),
                     nullptr,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto scale = in_scale.get();
   switch (scale.dtype()) {
@@ -126,7 +126,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "In DeQuantizeLinearKernel, "
           "data type %d for scale/output is not supported ",
           scale.dtype()));
@@ -153,7 +153,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
                                DenseTensor* out_scale) {
   PADDLE_ENFORCE_NE(scale.get_ptr(),
                     nullptr,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto* in = &x;
   dev_ctx.template Alloc<float>(out);
@@ -212,7 +212,7 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
                                DenseTensor* out) {
   PADDLE_ENFORCE_NE(scale.get_ptr(),
                     nullptr,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto* in = &x;
   auto* in_scale = scale.get_ptr();

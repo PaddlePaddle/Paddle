@@ -50,16 +50,6 @@ class PReluOpConverter : public OpConverter {
       trt_w_dims.d[i] = w_dims[i];
     }
 
-    // The `element` or `channel` mode contains the batch using static shape.
-    if ((mode == "element" || mode == "channel") &&
-        !engine_->with_dynamic_shape() &&
-        (trt_w_dims.nbDims - 1 == input_dims.nbDims)) {
-      trt_w_dims.nbDims--;
-      for (int i = 0; i < trt_w_dims.nbDims; i++) {
-        trt_w_dims.d[i] = trt_w_dims.d[i + 1];
-      }
-    }
-
     nvinfer1::ITensor* alpha_tensor =
         TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_w_dims, alpha_data.get())
             ->getOutput(0);
@@ -70,45 +60,33 @@ class PReluOpConverter : public OpConverter {
       auto* reshape_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *alpha_tensor);
       int c = alpha_dims.d[0];
-      if (engine_->with_dynamic_shape()) {
-        std::vector<nvinfer1::ITensor*> itensors;
-        auto* n_tensor = Add1DConstantLayer(1);
-        auto* c_tensor = Add1DConstantLayer(c);
-        nvinfer1::ITensor* hw_tensor = nullptr;
-        nvinfer1::ITensor* shape_tensor = nullptr;
-        if (input_dims.nbDims - 2 > 0) {
-          hw_tensor = Add1DConstantLayer(
-              std::vector<int32_t>(input_dims.nbDims - 2, 1));
-        }
-        if (data_format == "NCHW") {
-          if (hw_tensor != nullptr) {
-            shape_tensor = Concat(
-                std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor, hw_tensor});
-          } else {
-            shape_tensor =
-                Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
-          }
-        } else {
-          if (hw_tensor != nullptr) {
-            shape_tensor = Concat(
-                std::vector<nvinfer1::ITensor*>{n_tensor, hw_tensor, c_tensor});
-          } else {
-            shape_tensor =
-                Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
-          }
-        }
-        reshape_layer->setInput(1, *shape_tensor);
-      } else {
-        nvinfer1::Dims reshape_dim;
-        reshape_dim.nbDims = input_dims.nbDims;
-        std::fill(reshape_dim.d, reshape_dim.d + input_dims.nbDims, 1);
-        if (data_format == "NCHW") {
-          reshape_dim.d[0] = c;
-        } else if (data_format == "NHWC") {
-          reshape_dim.d[input_dims.nbDims - 1] = c;
-        }
-        reshape_layer->setReshapeDimensions(reshape_dim);
+      std::vector<nvinfer1::ITensor*> itensors;
+      auto* n_tensor = Add1DConstantLayer(1);
+      auto* c_tensor = Add1DConstantLayer(c);
+      nvinfer1::ITensor* hw_tensor = nullptr;
+      nvinfer1::ITensor* shape_tensor = nullptr;
+      if (input_dims.nbDims - 2 > 0) {
+        hw_tensor =
+            Add1DConstantLayer(std::vector<int32_t>(input_dims.nbDims - 2, 1));
       }
+      if (data_format == "NCHW") {
+        if (hw_tensor != nullptr) {
+          shape_tensor = Concat(
+              std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor, hw_tensor});
+        } else {
+          shape_tensor =
+              Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
+        }
+      } else {
+        if (hw_tensor != nullptr) {
+          shape_tensor = Concat(
+              std::vector<nvinfer1::ITensor*>{n_tensor, hw_tensor, c_tensor});
+        } else {
+          shape_tensor =
+              Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
+        }
+      }
+      reshape_layer->setInput(1, *shape_tensor);
       real_alpha_tensor = reshape_layer->getOutput(0);
     }
 

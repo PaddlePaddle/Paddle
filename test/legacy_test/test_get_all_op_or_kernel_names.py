@@ -22,11 +22,11 @@ class TestGetAllRegisteredOpKernels(unittest.TestCase):
     def test_phi_kernels(self):
         self.assertTrue(core._get_all_register_op_kernels('phi')['sign'])
         with self.assertRaises(KeyError):
-            core._get_all_register_op_kernels('phi')['reshape']
+            core._get_all_register_op_kernels('phi')['reshape_with_xshape']
 
     # sign kernel is removed from base and added into phi
     def test_base_kernels(self):
-        self.assertTrue(core._get_all_register_op_kernels('fluid')['reshape'])
+        self.assertTrue(core._get_all_register_op_kernels('all')['reshape'])
         with self.assertRaises(KeyError):
             core._get_all_register_op_kernels('fluid')['sign']
 

@@ -44,7 +44,7 @@ TEST(Squeeze2MatmulXPUFusePass, basic) {
   PADDLE_ENFORCE_EQ(
       ops_num,
       3,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should only have 2 op nodes, but received %d.", ops_num));
 }
 
@@ -70,7 +70,7 @@ TEST(ReShape2MatmulXPUFusePass, basic) {
   PADDLE_ENFORCE_EQ(
       ops_num,
       3,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should only have 2 op nodes, but received %d.", ops_num));
 }
 
@@ -93,7 +93,7 @@ TEST(MapMatmulV2ToMatmulXPUPass, basic) {
     PADDLE_ENFORCE_EQ(
         std::abs(matmul->Op()->GetAttrIfExists<float>("alpha") - 1.f) < 1e-5f,
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "matmul_v2 is mapped to matmul by pass."));
   }
 }

@@ -12,21 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import traceback
 import unittest
 
-import astor
 import scipy
 
+import paddle
 from paddle.jit import ignore_module
 from paddle.jit.dy2static.convert_call_func import BUILTIN_LIKELY_MODULES
+
+logger = logging.getLogger(__file__)
+
+
+def logging_warning():
+    logging.warning('This is a warning message')
+    logger.warning('This is a warning message')
+
+
+class TestLoggingWarning(unittest.TestCase):
+    def test_skip_ast_convert_logging_warning(self):
+        static_logging_warning = paddle.jit.to_static(
+            logging_warning, full_graph=True
+        )
+        static_logging_warning()
 
 
 class TestIgnoreModule(unittest.TestCase):
     def test_ignore_module(self):
-        modules = [scipy, astor]
+        modules = [scipy, traceback]
         ignore_module(modules)
         self.assertEqual(
-            [scipy, astor],
+            [scipy, traceback],
             BUILTIN_LIKELY_MODULES[-2:],
             'Failed to add modules that ignore transcription',
         )

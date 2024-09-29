@@ -25,12 +25,12 @@ OpYamlInfoParser::OpYamlInfoParser(OpInfoTuple op_info_tuple, bool is_legacy_op)
 }
 
 bool OpYamlInfoParser::IsTensorAttribute(size_t index) const {
-  PADDLE_ENFORCE_LT(
-      index,
-      InputInfo().size(),
-      phi::errors::OutOfRange("Input index [%d] large than op input size [%d]",
-                              index,
-                              InputInfo().size()));
+  PADDLE_ENFORCE_LT(index,
+                    InputInfo().size(),
+                    common::errors::OutOfRange(
+                        "Input index [%d] large than op input size [%d]",
+                        index,
+                        InputInfo().size()));
 
   return InputInfo()[index].is_mutable_attribute;
 }
@@ -46,7 +46,7 @@ const std::string& OpYamlInfoParser::AttrTypeName(
   PADDLE_ENFORCE_NE(
       it,
       attr_info_.end(),
-      phi::errors::NotFound("Not found [%s] in attribute map", name));
+      common::errors::NotFound("Not found [%s] in attribute map", name));
   return it->second.type_name;
 }
 
@@ -54,14 +54,15 @@ const std::string& OpYamlInfoParser::TensorAttrTypeName(
     const std::string& name) const {
   auto it = input_info_.find(name);
 
-  PADDLE_ENFORCE_NE(it,
-                    input_info_.end(),
-                    phi::errors::NotFound("Not found [%s] in input map", name));
+  PADDLE_ENFORCE_NE(
+      it,
+      input_info_.end(),
+      common::errors::NotFound("Not found [%s] in input map", name));
 
-  PADDLE_ENFORCE_EQ(
-      it->second.is_mutable_attribute,
-      true,
-      phi::errors::PreconditionNotMet("[%s] MUST be a tensor attribute", name));
+  PADDLE_ENFORCE_EQ(it->second.is_mutable_attribute,
+                    true,
+                    common::errors::PreconditionNotMet(
+                        "[%s] MUST be a tensor attribute", name));
   return it->second.type_name;
 }
 
@@ -97,8 +98,8 @@ const std::map<std::string, uint32_t>& OpYamlInfoParser::OutputName2Id() const {
 const std::string& OpYamlInfoParser::GetInputType(uint32_t input_id) const {
   PADDLE_ENFORCE_EQ(input_id < input_name_list_.size(),
                     true,
-                    phi::errors::NotFound("Exceeding maximum input id %d",
-                                          input_name_list_.size()));
+                    common::errors::NotFound("Exceeding maximum input id %d",
+                                             input_name_list_.size()));
   std::string input_name = input_name_list_[input_id];
   auto it = input_info_.find(input_name);
   return it->second.type_name;
@@ -107,8 +108,8 @@ const std::string& OpYamlInfoParser::GetInputType(uint32_t input_id) const {
 const std::string& OpYamlInfoParser::GetOutputType(uint32_t output_id) const {
   PADDLE_ENFORCE_EQ(output_id < output_name_list_.size(),
                     true,
-                    phi::errors::NotFound("Exceeding maximum output id %d",
-                                          output_name_list_.size()));
+                    common::errors::NotFound("Exceeding maximum output id %d",
+                                             output_name_list_.size()));
   std::string output_name = output_name_list_[output_id];
   auto it = output_info_.find(output_name);
   return it->second.type_name;
@@ -136,7 +137,7 @@ const std::string& OpYamlInfoParser::InplaceName(
       return info.second;
     }
   }
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "Can not find inplace input of [%s].", out_name));
 }
 
@@ -169,7 +170,7 @@ const std::string& OpYamlInfoParser::ViewName(
       return i.second;
     }
   }
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "Can not find inplace input of [%s].", out_name));
 }
 

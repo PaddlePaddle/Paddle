@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 
 #include <algorithm>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <string>
@@ -23,9 +24,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -38,7 +39,7 @@ namespace framework {
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
                     const phi::Place& dst_place,
-                    const platform::DeviceContext& ctx,
+                    const phi::DeviceContext& ctx,
                     TENSOR* dst) {
   if (&src == dst) {
     auto src_copy = src;
@@ -85,13 +86,11 @@ void TensorCopyImpl(const TENSOR& src,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (phi::is_custom_place(src_place) &&  // NOLINT
            phi::is_cpu_place(dst_place)) {
-    auto stream =
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (phi::is_cpu_place(src_place) &&  // NOLINT
              phi::is_custom_place(dst_place)) {
-    auto stream =
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (phi::is_custom_place(src_place) &&  // NOLINT
              phi::is_custom_place(dst_place)) {
@@ -100,8 +99,7 @@ void TensorCopyImpl(const TENSOR& src,
               << dst_place;
       return;
     }
-    auto stream =
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
@@ -119,7 +117,7 @@ void TensorCopyImpl(const TENSOR& src,
     }
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -144,13 +142,13 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
-                      platform::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Source place and context place do not match, source "
                           "place is %s, context place is %s.",
                           src_gpu_place,
@@ -166,13 +164,13 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
-                      platform::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Destination place and context place do not match, "
                           "destination place is %s, context place is %s.",
                           dst_gpu_place,
@@ -188,14 +186,14 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Device context place mismatch. When copying phi::DenseTensor "
             "data from GPU memory to CUDA Pinned memory, current "
             "device context place should be GPU."));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The source GPU device and current device context do "
                           "not match. The source GPU device number is %d, but "
                           "device context GPU number is %d.",
@@ -213,14 +211,14 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Device context place mismatch. When copying phi::DenseTensor "
             "data from CUDA Pinned memory to GPU memory, current "
             "device context place should be GPU."));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The target GPU device and current device context do "
                           "not match. The target GPU device number is %d, but "
                           "device context GPU number is %d.",
@@ -238,7 +236,7 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
@@ -255,13 +253,13 @@ void TensorCopyImpl(const TENSOR& src,
         memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
       } else {
-        PADDLE_THROW(platform::errors::Unavailable(
+        PADDLE_THROW(common::errors::Unavailable(
             "Context place dose not match the source and destination place."));
       }
     }
   }
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copying from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -272,7 +270,7 @@ void TensorCopyImpl(const TENSOR& src,
                     const phi::Place& dst_place,
                     TENSOR* dst) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx = nullptr;
+  const phi::DeviceContext* dev_ctx = nullptr;
   if (phi::is_gpu_place(dst_place) || phi::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {
@@ -289,7 +287,7 @@ void TensorCopy(const phi::DenseTensor& src,
 }
 void TensorCopy(const phi::DenseTensor& src,
                 const phi::Place& dst_place,
-                const platform::DeviceContext& ctx,
+                const phi::DeviceContext& ctx,
                 phi::DenseTensor* dst) {
   TensorCopyImpl<phi::DenseTensor>(src, dst_place, ctx, dst);
   dst->set_strides(src.strides());
@@ -371,7 +369,7 @@ void TensorCopySync(const phi::DenseTensor& src,
     }
   }       // NOLINT
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -418,7 +416,7 @@ void TensorCopySync(const phi::DenseTensor& src,
         dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size, nullptr);
   }
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -441,7 +439,7 @@ void TensorCopySync(const phi::DenseTensor& src,
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -450,7 +448,7 @@ void TensorCopySync(const phi::DenseTensor& src,
 
 void TensorToStream(std::ostream& os,
                     const phi::DenseTensor& tensor,
-                    const platform::DeviceContext& dev_ctx) {
+                    const phi::DeviceContext& dev_ctx) {
   const auto ensure_contiguous = [](const phi::DenseTensor& tensor) {
     if (tensor.meta().is_contiguous()) {
       return tensor;
@@ -484,7 +482,7 @@ void TensorToStream(std::ostream& os,
     auto* data_ptr = contiguous_tensor.data();
     PADDLE_ENFORCE_LT(size,
                       (std::numeric_limits<std::streamsize>::max)(),
-                      platform::errors::ResourceExhausted(
+                      common::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));
     if (phi::is_gpu_place(contiguous_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -507,15 +505,14 @@ void TensorToStream(std::ostream& os,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
     } else if (phi::is_xpu_place(contiguous_tensor.place())) {
 #ifdef PADDLE_WITH_XPU
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& xpu_dev_ctx =
-          static_cast<const platform::XPUDeviceContext&>(dev_ctx);
+      auto& xpu_dev_ctx = static_cast<const phi::XPUContext&>(dev_ctx);
       phi::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
@@ -531,7 +528,7 @@ void TensorToStream(std::ostream& os,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
 #endif
     } else if (phi::is_custom_place(contiguous_tensor.place())) {
@@ -539,7 +536,7 @@ void TensorToStream(std::ostream& os,
       constexpr size_t kBufSize = 1024 * 1024 * 64;     // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
       auto& custom_device_context =
-          static_cast<const platform::CustomDeviceContext&>(dev_ctx);
+          static_cast<const phi::CustomContext&>(dev_ctx);
       phi::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
@@ -556,7 +553,7 @@ void TensorToStream(std::ostream& os,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "CustomPlace is not supported when not compiled with "
           "CustomDevice"));
 #endif
@@ -585,7 +582,7 @@ struct DeserializedDataFunctor {
 
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
+                      const phi::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape) {
   uint32_t version = 0;
@@ -594,7 +591,7 @@ void TensorFromStream(std::istream& is,
   PADDLE_ENFORCE_EQ(
       version,
       0U,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "tensor version %u is not supported, Only version 0 is supported",
           version));
 
@@ -608,7 +605,7 @@ void TensorFromStream(std::istream& is,
     PADDLE_ENFORCE_EQ(
         desc.ParseFromArray(buf.get(), size),
         true,
-        platform::errors::InvalidArgument("Cannot parse tensor desc"));
+        common::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
     tensor->Resize(common::make_ddim(shape));
@@ -636,10 +633,10 @@ void TensorFromStream(std::istream& is,
       }
 #else
       if (phi::is_gpu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
       } else if (phi::is_xpu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       }
 #endif
@@ -654,13 +651,13 @@ void TensorFromStream(std::istream& is,
 
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
-                      const platform::DeviceContext& dev_ctx) {
+                      const phi::DeviceContext& dev_ctx) {
   uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(
       version,
       0U,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "tensor version %u is not supported, Only version 0 is supported",
           version));
   proto::VarType::TensorDesc desc;
@@ -671,17 +668,17 @@ void TensorFromStream(std::istream& is,
     PADDLE_ENFORCE_EQ(
         is.good(),
         true,
-        platform::errors::Unavailable("Cannot read tensor desc size"));
+        common::errors::Unavailable("Cannot read tensor desc size"));
     PADDLE_ENFORCE_GE(size,
                       0,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "phi::DenseTensor desc size should >= 0"));
     std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
         desc.ParseFromArray(buf.get(), size),
         true,
-        platform::errors::InvalidArgument("Cannot parse tensor desc"));
+        common::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
     std::vector<int64_t> dims;
@@ -709,15 +706,15 @@ void TensorFromStream(std::istream& is,
       }
 #else
       if (phi::is_gpu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
       } else if (phi::is_xpu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       } else {
         PADDLE_THROW(
-            platform::errors::Unimplemented("CustomPlace is not supported when "
-                                            "not compiled with CustomDevice"));
+            common::errors::Unimplemented("CustomPlace is not supported when "
+                                          "not compiled with CustomDevice"));
       }
 #endif
     } else {
@@ -734,10 +731,10 @@ void* GetDstPtrByDLDataType(DLDataType type,
                             phi::DenseTensor* dst,
                             const phi::Place& dst_place) {
   // vector types not currently supported
-  PADDLE_ENFORCE_LE(type.lanes,
-                    1,
-                    platform::errors::Unimplemented(
-                        "Vector type is not supported currently."));
+  PADDLE_ENFORCE_LE(
+      type.lanes,
+      1,
+      common::errors::Unimplemented("Vector type is not supported currently."));
 
   switch (type.bits) {
     case 8:
@@ -745,7 +742,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
         return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
       if (type.code == kDLUInt)
         return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
@@ -758,7 +755,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
       if (type.code == kDLBfloat)
         return static_cast<void*>(
             dst->mutable_data<phi::dtype::bfloat16>(dst_place));
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
@@ -767,7 +764,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
         return static_cast<void*>(dst->mutable_data<int32_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(dst->mutable_data<float>(dst_place));
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
@@ -778,25 +775,182 @@ void* GetDstPtrByDLDataType(DLDataType type,
         return static_cast<void*>(dst->mutable_data<double>(dst_place));
       if (type.code == kDLComplex)
         return static_cast<void*>(
-            dst->mutable_data<paddle::platform::complex<float>>(dst_place));
-      PADDLE_THROW(platform::errors::Unimplemented(
+            dst->mutable_data<phi::dtype::complex<float>>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 128:
       if (type.code == kDLComplex)
         return static_cast<void*>(
-            dst->mutable_data<paddle::platform::complex<double>>(dst_place));
-      PADDLE_THROW(platform::errors::Unimplemented(
+            dst->mutable_data<phi::dtype::complex<double>>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported DLDataType.bits %d.", type.bits));
   }
 }
 
+// get Tensor data dtype from given DLDataType
+phi::DataType GetDstPtrByDLDataType(DLDataType type) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(
+      type.lanes,
+      1,
+      common::errors::Unimplemented("Vector type is not supported currently."));
+
+  switch (type.bits) {
+    case 8:
+      if (type.code == kDLBool) return phi::DataType::BOOL;
+      if (type.code == kDLInt) return phi::DataType::INT8;
+      if (type.code == kDLUInt) return phi::DataType::UINT8;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 16:
+      if (type.code == kDLInt) return phi::DataType::INT16;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT16;
+      if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 32:
+      if (type.code == kDLInt) return phi::DataType::INT32;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT32;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 64:
+      if (type.code == kDLInt) return phi::DataType::INT64;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT64;
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 128:
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX128;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported DLDataType.bits %d.", type.bits));
+  }
+}
+
+/*
+dlpack related code ref:
+https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
+and paddle/phi/api/lib/tensor_utils.cc
+*/
+using Deleter = std::function<void(void*)>;
+
+std::unordered_map<void*, std::function<void(phi::Allocation*)>> ptr_to_deleter;
+std::mutex ptr_to_deleter_mutex;  // use mutex to keep thread safe
+
+void DeleterBridge(phi::Allocation* alloc) {
+  std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
+  auto it = ptr_to_deleter.find(static_cast<void*>(alloc->ptr()));
+  if (it != ptr_to_deleter.end()) {
+    it->second(alloc);         // call the deleter
+    ptr_to_deleter.erase(it);  // remove the entry from the map safely
+  }
+}
+
+phi::DenseTensor from_blob(void* data,
+                           DLManagedTensor* src,
+                           const phi::DDim& shape,
+                           const phi::DDim& strides,
+                           phi::DataType dtype,
+                           const phi::Place& place,
+                           const Deleter& deleter) {
+  PADDLE_ENFORCE_NOT_NULL(
+      data, phi::errors::InvalidArgument("data can not be nullptr."));
+
+  auto meta = phi::DenseTensorMeta(dtype, shape, strides);
+  size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
+  phi::Allocation::DeleterFnPtr f = nullptr;
+
+  if (deleter) {
+    auto g = [deleter, src](phi::Allocation* p) {
+      if (src->manager_ctx) {
+        deleter(src);
+      }
+    };
+
+    {
+      std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
+      ptr_to_deleter[data] = g;
+    }
+
+    f = DeleterBridge;
+  }
+
+  auto alloc = std::make_shared<phi::Allocation>(data, size, f, place);
+  return phi::DenseTensor(alloc, meta);
+}
+
+phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
+  std::vector<int64_t> shape_vec;
+  std::copy(src->dl_tensor.shape,
+            src->dl_tensor.shape + src->dl_tensor.ndim,
+            std::back_inserter(shape_vec));
+
+  phi::Place place;
+  if (src->dl_tensor.device.device_type == kDLCPU) {
+    place = phi::CPUPlace();
+  } else if (src->dl_tensor.device.device_type == kDLCUDA) {
+    place = phi::GPUPlace();
+  } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
+    place = phi::GPUPinnedPlace();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented("Given Place is not supported"));
+  }
+
+  ::DLDataType type = src->dl_tensor.dtype;
+  auto dtype = GetDstPtrByDLDataType(type);
+  if (!src->dl_tensor.strides) {
+    return from_blob(
+        src->dl_tensor.data,
+        src,
+        common::make_ddim(shape_vec),
+        phi::DenseTensorMeta::calc_strides(common::make_ddim(shape_vec)),
+        dtype,
+        place,
+        std::move(deleter));
+  } else {
+    std::vector<int64_t> strides_vec;
+    std::copy(src->dl_tensor.strides,
+              src->dl_tensor.strides + src->dl_tensor.ndim,
+              std::back_inserter(strides_vec));
+    return from_blob(src->dl_tensor.data,
+                     src,
+                     common::make_ddim(shape_vec),
+                     common::make_ddim(strides_vec),
+                     dtype,
+                     place,
+                     deleter);
+  }
+}
+
+phi::DenseTensor TensorFromDLPack(DLManagedTensor* src) {
+  auto deleter = [src](void* self [[maybe_unused]]) {
+    if (src->deleter) {
+      src->deleter(src);
+    }
+  };
+  return TensorFromDLPack(src, std::move(deleter));
+}
+
+// Keep the this overloaded version of the interface unchanged.
 void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
   phi::CPUPlace dst_place = phi::CPUPlace();
   phi::CPUPlace src_place = phi::CPUPlace();
@@ -806,7 +960,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
             dl_tensor.shape + dl_tensor.ndim,
             std::back_inserter(vec));
 
-  framework::DDim vddim = common::make_ddim(vec);
+  phi::DDim vddim = common::make_ddim(vec);
 
   dst->Resize(vddim);
   ::DLDataType type = dl_tensor.dtype;
@@ -819,7 +973,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (dl_tensor.device.device_type == kDLGPU) {
+  if (dl_tensor.device.device_type == kDLCUDA) {
     phi::GPUPlace dst_place = phi::GPUPlace(dl_tensor.device.device_id);
     phi::GPUPlace src_place = phi::GPUPlace(dl_tensor.device.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
@@ -833,47 +987,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
-#endif
-}
-
-void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
-  std::vector<int64_t> vec;
-  std::copy(src->dl_tensor.shape,
-            src->dl_tensor.shape + src->dl_tensor.ndim,
-            std::back_inserter(vec));
-
-  framework::DDim vddim = common::make_ddim(vec);
-  dst->Resize(vddim);
-  ::DLDataType type = src->dl_tensor.dtype;
-
-  auto src_ptr = static_cast<const void*>(src->dl_tensor.data);
-  auto size = common::product(vddim) * type.bits / 8;
-
-  if (src->dl_tensor.device.device_type == kDLCPU) {
-    phi::CPUPlace dst_place = phi::CPUPlace();
-    phi::CPUPlace src_place = phi::CPUPlace();
-    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (src->dl_tensor.device.device_type == kDLGPU) {
-    phi::GPUPlace dst_place = phi::GPUPlace(src->dl_tensor.device.device_id);
-    phi::GPUPlace src_place = phi::GPUPlace(src->dl_tensor.device.device_id);
-    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-    auto* ctx = phi::DeviceContextPool::Instance().GetByPlace(dst_place);
-    // Fix copy by share allocation.
-    memory::Copy(dst_place,
-                 dst_ptr,
-                 src_place,
-                 src_ptr,
-                 size,
-                 reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
-  }
-#endif
-  src->deleter(const_cast<DLManagedTensor*>(src));
-#ifdef PADDLE_WITH_XPU
-  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("XPUPlace is not supported"));
 #endif
 }
 
@@ -911,9 +1025,9 @@ std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex<float>>(
+std::ostream& print_tensor<phi::dtype::complex<float>>(
     std::ostream& os, const phi::DenseTensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex<float>>();
+  auto inspect = tensor.data<phi::dtype::complex<float>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";
@@ -929,9 +1043,9 @@ std::ostream& print_tensor<paddle::platform::complex<float>>(
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex<double>>(
+std::ostream& print_tensor<phi::dtype::complex<double>>(
     std::ostream& os, const phi::DenseTensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex<double>>();
+  auto inspect = tensor.data<phi::dtype::complex<double>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";

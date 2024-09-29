@@ -210,19 +210,27 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     return inputs, kwargs
 
 
-def broadcast_mp_parameters(model, hcg):
+def broadcast_mp_parameters(model, hcg, fuse_params=True):
     model_parallel_group = hcg.get_model_parallel_group()
     src_rank = hcg.get_model_parallel_group_src_rank()
     sync_params_buffers(
-        model, model_parallel_group, src_rank, is_model_parallel=True
+        model,
+        model_parallel_group,
+        src_rank,
+        is_model_parallel=True,
+        fuse_params=fuse_params,
     )
 
 
-def broadcast_dp_parameters(model, hcg):
+def broadcast_dp_parameters(model, hcg, fuse_params=True):
     data_parallel_group = hcg.get_data_parallel_group()
     src_rank = hcg.get_data_parallel_group_src_rank()
     sync_params_buffers(
-        model, data_parallel_group, src_rank, is_model_parallel=False
+        model,
+        data_parallel_group,
+        src_rank,
+        is_model_parallel=False,
+        fuse_params=fuse_params,
     )
 
 
@@ -262,22 +270,32 @@ def fused_allreduce_gradients(parameter_list, hcg):
     fused_allreduce_gradients_with_group(parameter_list, group, scale=scale)
 
 
-def broadcast_sharding_parameters(model, hcg):
+def broadcast_sharding_parameters(model, hcg, fuse_params=True):
     # TODO TO save memory, use un-fused broadcast to avoid potential OOM
     logger.debug("sharding start init parameters sync")
     sharding_parallel_group = hcg.get_sharding_parallel_group()
     src_rank = hcg.get_sharding_parallel_group_src_rank()
     sync_params_buffers(
-        model, sharding_parallel_group, src_rank, is_model_parallel=False
+        model,
+        sharding_parallel_group,
+        src_rank,
+        is_model_parallel=False,
+        fuse_params=fuse_params,
     )
 
 
-def broadcast_sep_parameters(model, hcg):
+def broadcast_sep_parameters(model, hcg, fuse_params=True):
     # TODO TO save memory, use un-fused broadcast to avoid potential OOM
     logger.debug("sep start init parameters sync")
     sep_group = hcg.get_sep_parallel_group()
     src_rank = hcg.get_sep_parallel_group_src_rank()
-    sync_params_buffers(model, sep_group, src_rank, is_model_parallel=False)
+    sync_params_buffers(
+        model,
+        sep_group,
+        src_rank,
+        is_model_parallel=False,
+        fuse_params=fuse_params,
+    )
 
 
 def unwrap_optimizer(optimizer, optimizer_instances=()):

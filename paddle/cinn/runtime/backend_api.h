@@ -17,6 +17,7 @@
 // dependencies.
 
 #pragma once
+#include <array>
 #include <optional>
 #include <variant>
 #include "paddle/cinn/common/target.h"
@@ -114,6 +115,10 @@ class BackendAPI {
    * \brief synchronize the stream
    */
   virtual void stream_sync(void* stream) = 0;
+  virtual std::array<int, 3> get_max_grid_dims(
+      std::optional<int> device_id = std::nullopt) = 0;
+  virtual std::array<int, 3> get_max_block_dims(
+      std::optional<int> device_id = std::nullopt) = 0;
 };
 }  // namespace runtime
 }  // namespace cinn

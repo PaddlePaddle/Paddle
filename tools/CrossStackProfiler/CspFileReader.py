@@ -115,7 +115,7 @@ class FileReader:
                 f"Invalid type of key [{key}] in args dict, it should be a {type}!"
             )
 
-        exec(f"self._{key} = self._args[\"{key}\"]")
+        exec(f'self._{key} = self._args["{key}"]')
 
     def _align_ts(self, ts):
         return ts - self._minTimeStamp

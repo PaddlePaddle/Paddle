@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
 namespace phi {

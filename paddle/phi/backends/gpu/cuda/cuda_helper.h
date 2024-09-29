@@ -96,7 +96,7 @@ cudaDataType_t ToCudaDataType() {
     return CUDA_R_32I;
 #endif
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "DataType %s is unsupported for CUDA.",
         DataTypeToString(phi::CppTypeToDataType<T>::Type())));
   }

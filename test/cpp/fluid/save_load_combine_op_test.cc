@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 template <typename T, typename U>

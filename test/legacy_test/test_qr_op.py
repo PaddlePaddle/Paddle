@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import os
 import unittest
 
 import numpy as np
@@ -21,7 +22,6 @@ from op_test import OpTest
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestQrOp(OpTest):
@@ -145,7 +145,12 @@ class TestQrAPI(unittest.TestCase):
             np_q = np.zeros(np_q_shape).astype(np_dtype)
             np_r = np.zeros(np_r_shape).astype(np_dtype)
             places = []
-            places = [base.CPUPlace()]
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
@@ -187,7 +192,6 @@ class TestQrAPI(unittest.TestCase):
         ):
             run_qr_dygraph(tensor_shape, mode, dtype)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         np.random.seed(7)
@@ -212,7 +216,12 @@ class TestQrAPI(unittest.TestCase):
             np_q = np.zeros(np_q_shape).astype(np_dtype)
             np_r = np.zeros(np_r_shape).astype(np_dtype)
             places = []
-            places = [base.CPUPlace()]
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:

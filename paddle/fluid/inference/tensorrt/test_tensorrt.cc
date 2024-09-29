@@ -18,9 +18,9 @@ limitations under the License. */
 
 #include "NvInfer.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
-#include "paddle/fluid/platform/dynload/tensorrt.h"
+#include "paddle/phi/backends/dynload/tensorrt.h"
 
-namespace dy = paddle::platform::dynload;
+namespace dy = phi::dynload;
 
 class Logger : public nvinfer1::ILogger {
  public:

@@ -42,7 +42,7 @@ void Pad2dXPUKernel(const Context& dev_ctx,
                  in_dims[2] + pads[0] + pads[1],  // xw
                  in_dims[3]});
   } else {
-    PADDLE_THROW(phi::errors::External(
+    PADDLE_THROW(common::errors::External(
         "XPU is not support NCHW format in pad2d, data_format is %s",
         data_format));
   }
@@ -59,7 +59,7 @@ void Pad2dXPUKernel(const Context& dev_ctx,
   }
 
   if (mode == "circular") {
-    PADDLE_THROW(phi::errors::External(
+    PADDLE_THROW(common::errors::External(
         "XPU is not support circular padding mode in pad2d"));
   }
 
@@ -141,7 +141,7 @@ void Pad2dXPUKernel(const Context& dev_ctx,
                             (data_format == "NCHW"));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant || edge || reflect");
     } else {
-      PADDLE_THROW(phi::errors::External(
+      PADDLE_THROW(common::errors::External(
           "XPU is not support other padding mode in pad2d, mode_xpu is %s",
           mode_xpu));
     }
@@ -172,12 +172,12 @@ void Pad2dXPUKernel(const Context& dev_ctx,
                             (data_format == "NCHW"));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     } else {
-      PADDLE_THROW(phi::errors::External(
+      PADDLE_THROW(common::errors::External(
           "XPU is not support other padding mode in pad2d, mode_xpu is %s",
           mode_xpu));
     }
   } else {
-    PADDLE_THROW(phi::errors::External(
+    PADDLE_THROW(common::errors::External(
         "not support other XPU version in pad2d is %s", dev_version));
   }
 }

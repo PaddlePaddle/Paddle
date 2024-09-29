@@ -283,7 +283,7 @@ class SqueezeActivationUnsqueezeEliminationPass : public FusePassBase {
 void SqueezeActivationUnsqueezeEliminationPass::ApplyImpl(
     ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   std::vector<std::string> support_act_type{"relu",
                                             "sigmoid",
@@ -322,7 +322,7 @@ int SqueezeActivationUnsqueezeEliminationPass::ApplyImpl(
 
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
     // Judge squeeze1 && squeeze2 op shape is same or not, if axes is same, the
     // shape is same too.
     std::vector<int> squeeze_axes =
@@ -372,7 +372,7 @@ class CustomSqueezeUnsqueezeEliminationPass : public FusePassBase {
 
 void CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   std::vector<std::string> support_act_type{"relu",
                                             "sigmoid",
@@ -436,7 +436,7 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(
 
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
     std::unordered_set<const Node*> delete_nodes;
     // Judge squeeze1 && squeeze2 op shape is same or not, if axes is same, the
     // shape is same too.

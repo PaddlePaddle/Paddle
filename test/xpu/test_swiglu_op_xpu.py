@@ -133,7 +133,7 @@ class TestSwiGLUDygraph(unittest.TestCase):
         y = paddle.static.data(name='y', shape=shape, dtype=dtype)
         concated_x = paddle.static.data(
             name='concated_x',
-            shape=list(shape[:-1]) + [shape[-1] * 2],
+            shape=[*shape[:-1], shape[-1] * 2],
             dtype=dtype,
         )
         out1 = fused_swiglu_impl(x, y)
@@ -147,7 +147,7 @@ class TestSwiGLUDygraph(unittest.TestCase):
             feed={'x': x_np, 'y': y_np, 'concated_x': concated_x_np},
             fetch_list=[out1, out2],
         )
-        np.testing.assert_equal(out1, out2)
+        np.testing.assert_equal(t1, t2)
 
     def check_main(self, shape):
         self.check_dygraph(shape)

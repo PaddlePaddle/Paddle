@@ -20,7 +20,6 @@ import parameterized as param
 import paddle
 from paddle.base import core
 from paddle.incubate.nn.functional import fused_rotary_position_embedding
-from paddle.pir_utils import test_with_pir_api
 
 position_ids_list = [[7, 5, 4, 6, 3, 1, 2, 0], [3, 1, 4, 0, 7, 6, 5, 2]]
 
@@ -456,7 +455,6 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.disable_static()
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
@@ -549,7 +547,6 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             )
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_time_major(self):
         paddle.disable_static()
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
@@ -617,7 +614,11 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 shape=(1, shape_q[0], 1, shape_q[3]),
                 dtype=self.dtype,
             )
-
+            q.stop_gradient = False
+            if v is not None:
+                v.stop_gradient = False
+            if k is not None:
+                k.stop_gradient = False
             out_q, out_k, out_v = fused_rotary_position_embedding(
                 q,
                 k,
@@ -628,6 +629,8 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 use_neox_rotary_style=False,
                 time_major=True,
             )
+
+            dout = paddle.static.gradients(out_q, q)
 
         exe = paddle.static.Executor()
 

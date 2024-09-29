@@ -132,30 +132,39 @@ class TestXPUWhereAPI(unittest.TestCase):
                     exe = base.Executor(self.place)
                     exe.run(startup)
 
-                    fetch_list = [result, result.grad_name]
-                    if x_stop_gradient is False:
-                        fetch_list.append(x.grad_name)
-                    if y_stop_gradient is False:
-                        fetch_list.append(y.grad_name)
-                    out = exe.run(
-                        train_prog,
-                        feed={'cond': self.cond, 'x': self.x, 'y': self.y},
-                        fetch_list=fetch_list,
-                    )
-                    np.testing.assert_array_equal(out[0], self.out)
+                    if paddle.framework.use_pir_api():
+                        fetch_list = [result]
+                        out = exe.run(
+                            train_prog,
+                            feed={'cond': self.cond, 'x': self.x, 'y': self.y},
+                            fetch_list=fetch_list,
+                        )
+                        np.testing.assert_array_equal(out[0], self.out)
+                    else:
+                        fetch_list = [result, result.grad_name]
+                        if x_stop_gradient is False:
+                            fetch_list.append(x.grad_name)
+                        if y_stop_gradient is False:
+                            fetch_list.append(y.grad_name)
+                        out = exe.run(
+                            train_prog,
+                            feed={'cond': self.cond, 'x': self.x, 'y': self.y},
+                            fetch_list=fetch_list,
+                        )
+                        np.testing.assert_array_equal(out[0], self.out)
 
-                    if x_stop_gradient is False:
-                        np.testing.assert_array_equal(
-                            out[2], self.ref_x_backward(out[1])
-                        )
-                        if y.stop_gradient is False:
+                        if x_stop_gradient is False:
                             np.testing.assert_array_equal(
-                                out[3], self.ref_y_backward(out[1])
+                                out[2], self.ref_x_backward(out[1])
                             )
-                    elif y.stop_gradient is False:
-                        np.testing.assert_array_equal(
-                            out[2], self.ref_y_backward(out[1])
-                        )
+                            if y.stop_gradient is False:
+                                np.testing.assert_array_equal(
+                                    out[3], self.ref_y_backward(out[1])
+                                )
+                        elif y.stop_gradient is False:
+                            np.testing.assert_array_equal(
+                                out[2], self.ref_y_backward(out[1])
+                            )
 
     def test_api_broadcast(self, use_cuda=False):
         train_prog = base.Program()

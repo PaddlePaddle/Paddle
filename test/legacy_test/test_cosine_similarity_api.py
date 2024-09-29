@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -20,12 +21,17 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn, static
 from paddle.base import Executor, core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestCosineSimilarityAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -37,7 +43,6 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         cos_sim = w12 / n12
         return cos_sim
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
 

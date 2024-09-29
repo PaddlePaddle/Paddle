@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -54,8 +54,7 @@ void InitTensorsOnClient(framework::Scope* scope,
   CreateVarsOnScope(scope, place);
 
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  float* x_ptr = x_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i)
     x_ptr[i] = static_cast<float>(1.0) * static_cast<float>(i);
 }

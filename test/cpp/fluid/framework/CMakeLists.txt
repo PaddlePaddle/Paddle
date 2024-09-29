@@ -212,7 +212,7 @@ cc_test(
 cc_test(
   op_kernel_type_test
   SRCS op_kernel_type_test.cc
-  DEPS place device_context framework_proto op_kernel_type)
+  DEPS phi common device_context framework_proto op_kernel_type)
 
 cc_test(tuple_test SRCS tuple_test.cc)
 
@@ -270,5 +270,3 @@ cc_test(
   workqueue_test
   SRCS new_executor/workqueue_test.cc
   DEPS standalone_executor)
-
-add_subdirectory(ir)

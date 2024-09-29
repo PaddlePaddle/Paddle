@@ -106,14 +106,14 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdBase(const DistMetaTensor& x,
     PADDLE_ENFORCE_EQ(
         soft_label,
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Trying to shard the softmax_normalize axis of the input tensor, "
             "but the soft_label is set as True, which is not supported yet!"));
 
     PADDLE_ENFORCE_EQ(
         axis,
         x_ndim - 1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Trying to shard the softmax_normalize axis of the input tensor, "
             "but the softmax_normalize axis is not the last axis, which is not "
             "supported yet! The softmax_normalize is [%d].",
@@ -121,7 +121,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdBase(const DistMetaTensor& x,
 
     PADDLE_ENFORCE_EQ(use_softmax,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Trying to shard the softmax_normalize axis of the "
                           "input tensor, use_softmax must be set to True !"));
   }
@@ -251,7 +251,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
   PADDLE_ENFORCE_EQ(
       loss_ndim,
       loss_dims_mapping_src.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "CrossEntropyReverse, The Tensor Loss's rank [%d] and Loss's "
           "dims_mapping size [%d] are not matched.",
           loss_ndim,
@@ -259,7 +259,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
   PADDLE_ENFORCE_EQ(
       s_out_ndim,
       s_out_dims_mapping_src.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "CrossEntropyReverse, The Tensor SoftmaxOut's rank [%d] and "
           "SoftmaxOut's dims_mapping size [%d] are not matched.",
           s_out_ndim,

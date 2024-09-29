@@ -87,7 +87,7 @@ def _get_dpmp_topology(origin_topology, sharding_group):
     else:
         assert product_topology % product_dp_sharding == 0
         mp_degree = product_topology // product_dp_sharding
-        dpmp_topology = dp_sharding_topology + [mp_degree]
+        dpmp_topology = [*dp_sharding_topology, mp_degree]
 
     return dpmp_topology, sharding_axis
 

@@ -41,7 +41,7 @@ PD_DeviceContext* PD_KernelContextGetDeviceContext(PD_KernelContext* ctx) {
         &kernel_context->GetDeviceContext<phi::XPUContext>()));
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Only support Custom/CPU/GPU/XPU DeviceContext"));
   }
 }

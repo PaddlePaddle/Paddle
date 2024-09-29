@@ -49,7 +49,7 @@ class TestDeformConv2DFunctional(TestCase):
         self.weight = np.random.uniform(
             -1,
             1,
-            (self.out_channels, self.in_channels // self.groups) + filter_shape,
+            (self.out_channels, self.in_channels // self.groups, *filter_shape),
         ).astype(self.dtype)
         if not self.no_bias:
             self.bias = np.random.uniform(-1, 1, (self.out_channels,)).astype(
@@ -86,17 +86,20 @@ class TestDeformConv2DFunctional(TestCase):
         self.input_shape = (
             self.batch_size,
             self.in_channels,
-        ) + self.spatial_shape
+            *self.spatial_shape,
+        )
 
         self.offset_shape = (
             self.batch_size,
             self.deformable_groups * 2 * filter_shape[0] * filter_shape[1],
-        ) + out_shape
+            *out_shape,
+        )
 
         self.mask_shape = (
             self.batch_size,
             self.deformable_groups * filter_shape[0] * filter_shape[1],
-        ) + out_shape
+            *out_shape,
+        )
 
         self.input = np.random.uniform(-1, 1, self.input_shape).astype(
             self.dtype

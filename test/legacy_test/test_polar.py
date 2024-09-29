@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 # import torch
@@ -19,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -34,11 +34,16 @@ class TestPolarAPI(unittest.TestCase):
     def setUp(self):
         self.abs = np.array([1, 2]).astype("float64")
         self.angle = np.array([np.pi / 2, 5 * np.pi / 4]).astype("float64")
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
 

@@ -20,6 +20,9 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/var_desc.h"
 
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+COMMON_DECLARE_bool(enable_pir_api);
 namespace paddle::jit::utils {
 
 bool IsPersistable(framework::VarDesc* desc_ptr) {
@@ -31,6 +34,15 @@ bool IsPersistable(framework::VarDesc* desc_ptr) {
     return false;
   }
   return desc_ptr->Persistable();
+}
+
+bool IsPersistable(pir::Value* value_ptr) {
+  auto is_persistable =
+      value_ptr->attribute<pir::BoolAttribute>(kAttrIsPersistable);
+  if (is_persistable && is_persistable.data()) {
+    return true;
+  }
+  return false;
 }
 
 bool StartsWith(const std::string& str, const std::string& prefix) {
@@ -62,9 +74,9 @@ bool FileExists(const std::string& file_path) {
   return file.good();
 }
 
-const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
+const std::vector<std::pair<std::string, std::string>> ModelFilePaths(
     const std::string& path) {
-  std::vector<std::pair<std::string, std::string>> pdmodel_paths;
+  std::vector<std::pair<std::string, std::string>> model_paths;
   std::string format_path = path;
   ReplaceAll(&format_path, R"(\\)", "/");
   ReplaceAll(&format_path, R"(\)", "/");
@@ -80,27 +92,46 @@ const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
   struct dirent* ptr = nullptr;
 
   while ((ptr = readdir(dir)) != nullptr) {
+    std::string prefix = "";
     std::string file_name = ptr->d_name;
+    if (FLAGS_enable_pir_api) {
+      if (StartsWith(file_name, layer_name) &&
+          EndsWith(file_name, JSON_SUFFIX)) {
+        std::string prefix = file_name.substr(
+            0, file_name.length() - std::string(JSON_SUFFIX).length());
 
-    if (StartsWith(file_name, layer_name) &&
-        EndsWith(file_name, PDMODEL_SUFFIX)) {
-      std::string prefix = file_name.substr(
-          0, file_name.length() - std::string(PDMODEL_SUFFIX).length());
-
-      if (prefix == layer_name) {
-        pdmodel_paths.emplace_back(
-            std::make_pair("forward", dir_path + file_name));
-      } else {
-        std::string func_name = prefix.substr(layer_name.size() + 1);
-        pdmodel_paths.emplace_back(
-            std::make_pair(func_name, dir_path + file_name));
+        if (prefix == layer_name) {
+          model_paths.emplace_back(
+              std::make_pair("forward", dir_path + file_name));
+        } else {
+          std::string func_name = prefix.substr(layer_name.size() + 1);
+          model_paths.emplace_back(
+              std::make_pair(func_name, dir_path + file_name));
+        }
+        VLOG(3) << "func_name: " << model_paths.back().first
+                << ", path:" << dir_path + file_name;
       }
-      VLOG(3) << "func_name: " << pdmodel_paths.back().first
-              << ", path:" << dir_path + file_name;
+    } else {
+      if (StartsWith(file_name, layer_name) &&
+          EndsWith(file_name, PDMODEL_SUFFIX)) {
+        std::string prefix = file_name.substr(
+            0, file_name.length() - std::string(PDMODEL_SUFFIX).length());
+
+        if (prefix == layer_name) {
+          model_paths.emplace_back(
+              std::make_pair("forward", dir_path + file_name));
+        } else {
+          std::string func_name = prefix.substr(layer_name.size() + 1);
+          model_paths.emplace_back(
+              std::make_pair(func_name, dir_path + file_name));
+        }
+        VLOG(3) << "func_name: " << model_paths.back().first
+                << ", path:" << dir_path + file_name;
+      }
     }
   }
   closedir(dir);
-  return pdmodel_paths;
+  return model_paths;
 }
 
 void InitKernelSignatureMap() {

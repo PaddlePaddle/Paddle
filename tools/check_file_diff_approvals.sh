@@ -182,8 +182,8 @@ fi
 
 HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi/ops/yaml/ops.yaml|paddle/phi/ops/yaml/backward.yaml" || true`
 if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by zyfncg or heavyrain-lzy for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n"
-    check_approval 1 zyfncg heavyrain-lzy
+    echo_line="You must be approved by zyfncg or heavyrain-lzy for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n Recommend you obtain approval from gongshaotian or Hongqing-work, if only modified the InferSymbolicShapeInterface interfaces in the YAML file.\n"
+    check_approval 1 zyfncg heavyrain-lzy gongshaotian Hongqing-work
 fi
 
 HAS_MODIFIED_PRIMITIVE_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/primitive/primitive.yaml" || true`
@@ -254,9 +254,9 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
 fi
 
 
-HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --diff-filter=A upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
+HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --diff-filter=A upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
 if [ "${HAS_MODIFIED_ENFORCE_SYNTAX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use PADDLE_ENFORCE as a replacement,see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\n"
+    echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, CHECK, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use PADDLE_ENFORCE as a replacement,see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\n"
     check_approval 1 risemeup1 winter-wang
 fi
 
@@ -271,6 +271,12 @@ HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/padd
 if [ "${HAS_MODIFIED_PY_FLUID}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/fluid, because fluid API has been removed.\n"
     check_approval 1 zoooo0820 jeff41404
+fi
+
+HAS_MODIFIED_PADDLE_DISTRIBUTED=`git diff --name-only upstream/$BRANCH | grep "distributed/collective" || true`
+if [ "${HAS_MODIFIED_PADDLE_DISTRIBUTED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zhiqiu, ForFishes, gongweibao or sneaxiy) approval for file changes in distributed/collective. Thanks!\n"
+    check_approval 1 zhiqiu ForFishes gongweibao sneaxiy
 fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
@@ -325,6 +331,12 @@ HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY=$(git diff --name-only upstream/
 if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (SigureMo, Aurelius84, 2742195759 or gouzil) approval for file changes in test/dygraph_to_static/test_tensor_attr_consistency.py.\n"
     check_approval 1 SigureMo Aurelius84 2742195759 gouzil
+fi
+
+HAS_USED_AUTO_PARALLEL_ALIGN_MODE=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "auto_parallel_align_mode" || true`
+if [ ${HAS_USED_AUTO_PARALLEL_ALIGN_MODE} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (sneaxiy, zhiqiu, ForFishes, or From00) approval for the usage of auto-parallel align mode.\n"
+    check_approval 1 sneaxiy zhiqiu ForFishes From00
 fi
 
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
@@ -401,8 +413,8 @@ for CHANGE_FILE in ${ALL_CHANGE_YAML_FILES}; do
     fi
 done
 if [ "${BAN_COMP_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="If you need to change the key composite, you must have one RD (Charles-hit(wanghao), cyber-pioneer(chenzhuo), cxxly(chenxiaoxu)) review and approve. \nThe code that do not meet the specification are as follows:\n${BAN_COMP_MESSAGE}\n"
-    check_approval 1 Charles-hit cyber-pioneer cxxly
+    echo_line="If you need to change the key composite, you must have one RD (xiaoguoguo626807(wangruting), cubehan3(hanqiukun)) review and approve. \nThe code that do not meet the specification are as follows:\n${BAN_COMP_MESSAGE}\n"
+    check_approval 1 xiaoguoguo626807 cubehan3
 fi
 
 NEW_OP_ADDED=`git diff --name-only --diff-filter=A upstream/$BRANCH |grep -oE ".+_op..*" || true`

@@ -33,7 +33,8 @@ class EmbSeqPoolJitCode : public JitCode {
         tbl_w_(attr.table_width),
         type_(attr.pool_type) {
     if (type_ != SeqPoolType::kSum) {
-      PADDLE_THROW(phi::errors::Unimplemented("Only supports sum pool yet."));
+      PADDLE_THROW(
+          common::errors::Unimplemented("Only supports sum pool yet."));
     }
     this->genCode();
   }

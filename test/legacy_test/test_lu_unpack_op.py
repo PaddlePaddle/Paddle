@@ -14,6 +14,7 @@
 
 import copy
 import itertools
+import os
 import unittest
 
 import numpy as np
@@ -24,7 +25,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def scipy_lu_unpack(A):
@@ -79,8 +79,8 @@ def Pmat_to_perm(Pmat_org, cut):
         permmat.append(permlst)
     Pivot = (
         np.array(permmat).reshape(
-            list(shape[:-2])
-            + [
+            [
+                *shape[:-2],
                 rows,
             ]
         )
@@ -106,7 +106,7 @@ def perm_to_Pmat(perm, dim):
         ones = paddle.eye(dim)
         nmat = paddle.scatter(ones, paddle.to_tensor(idlst), ones)
         oneslst.append(nmat)
-    return np.array(oneslst).reshape(list(pshape[:-1]) + [dim, dim])
+    return np.array(oneslst).reshape([*pshape[:-1], dim, dim])
 
 
 # m > n
@@ -230,7 +230,13 @@ class TestLU_UnpackAPI(unittest.TestCase):
             n = a.shape[-1]
             min_mn = min(m, n)
 
-            places = [base.CPUPlace()]
+            places = []
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
@@ -260,7 +266,6 @@ class TestLU_UnpackAPI(unittest.TestCase):
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_unpack_dygraph(tensor_shape, dtype)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
 
@@ -274,7 +279,13 @@ class TestLU_UnpackAPI(unittest.TestCase):
             n = a.shape[-1]
             min_mn = min(m, n)
 
-            places = [base.CPUPlace()]
+            places = []
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:

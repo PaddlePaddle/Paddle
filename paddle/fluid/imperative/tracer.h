@@ -23,12 +23,12 @@
 #include <vector>
 
 #include "ThreadPool.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/utils/test_macros.h"
 
@@ -182,7 +182,6 @@ class Tracer {
   static thread_local std::string python_stack_;
   static thread_local bool enable_program_desc_tracing_;
   static thread_local bool use_layout_autotune_;
-  static thread_local bool has_grad_;
 };
 
 // To access static variable current_tracer

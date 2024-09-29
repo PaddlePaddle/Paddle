@@ -28,7 +28,7 @@ namespace pir {
 #define PIR "pir"
 void WriteModule(const pir::Program& program,
                  const std::string& file_path,
-                 const uint64_t& pir_version,
+                 uint64_t pir_version,
                  bool overwrite,
                  bool readable,
                  bool trainable) {
@@ -68,20 +68,32 @@ void WriteModule(const pir::Program& program,
 
 bool ReadModule(const std::string& file_path,
                 pir::Program* program,
-                const uint64_t& pir_version) {
+                int64_t pir_version) {
   std::ifstream f(file_path);
   Json data = Json::parse(f);
+  if (pir_version < 0) {
+    pir_version = DEVELOP_VERSION;
+    VLOG(6) << "pir_version is null, get pir_version: " << pir_version;
+  }
+
   PatchBuilder builder(pir_version);
 
   if (data.contains(BASE_CODE) && data[BASE_CODE].contains(MAGIC) &&
       data[BASE_CODE][MAGIC] == PIR) {
     uint64_t file_version =
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
-    if (file_version != pir_version) {
-      std::string cur_file = std::string(__FILE__);
-      std::string yaml_file =
-          cur_file.substr(0, cur_file.rfind('/')) + "/patch.yaml";
-      builder.BuildPatch(yaml_file);  // TODO(czy) : find file patch
+    if (file_version != (uint64_t)pir_version) {
+      builder.SetFileVersion(file_version);
+      // Set max_version to the max version number of release pir plus 1.
+      auto max_version = RELEASE_VERSION + 1;
+      // If pir_version_ is not 0, we will build patch from file_version_ to
+      // pir_version_; If pir_version_ is 0, we will first build patch from
+      // file_version_ to max_version, and then add 0.yaml to the end.
+      auto version = pir_version == 0 ? max_version : pir_version;
+      VLOG(6) << "file_version: " << file_version
+              << ", pir_version: " << pir_version
+              << ", final_version: " << version;
+      builder.BuildPatch(version, max_version);
     }
   } else {
     PADDLE_THROW(common::errors::InvalidArgument("Invalid model file."));

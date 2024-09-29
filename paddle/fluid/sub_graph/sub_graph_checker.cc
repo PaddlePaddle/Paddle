@@ -58,7 +58,7 @@ bool AllClose(const phi::DenseTensor& a,
       }
     }
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "ONLY support float32, but received %s", a.dtype()));
   }
 

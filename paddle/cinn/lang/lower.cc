@@ -253,7 +253,7 @@ ir::LoweredFunc LowerToAst(const std::string& name,
       LowerToAstVec(name, tensor_args, tensor_group, target);
   PADDLE_ENFORCE_EQ(result.size(),
                     1UL,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "LowerToAst contains not only 1 LoweredFunc, "
                         "use LowerToAstVec instead."));
   return result[0];

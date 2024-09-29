@@ -14,9 +14,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include "gtest/gtest.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/init.h"
 
 PD_DECLARE_bool(enable_unused_var_check);
@@ -459,7 +459,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* var = scope.Var("OUT1");
-  var->GetMutable<paddle::framework::LoDTensorArray>();
+  var->GetMutable<phi::TensorArray>();
 
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
@@ -491,7 +491,7 @@ class GetLoDLevelTest : public OperatorWithKernel {
     auto lod_level = ctx->GetLoDLevel("X");
     PADDLE_ENFORCE_GT(lod_level,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The LoD level Input(X) should be larger than 0."));
   }
 };

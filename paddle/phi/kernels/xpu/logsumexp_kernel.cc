@@ -11,55 +11,87 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/phi/kernels/logsumexp_kernel.h"
 
-#include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void XPULogsumexpKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const std::vector<int>& axis,
-                        bool keepdim,
-                        bool reduce_all,
-                        DenseTensor* out) {
-  auto* input = &x;
-  auto* output = out;
+void LogsumexpKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<int>& axis,
+                     bool keepdim,
+                     bool reduce_all,
+                     DenseTensor* out) {
+  auto xdim = x.dims();
+  for (int i = 0; i < xdim.size(); i++)
+    PADDLE_ENFORCE_LT(0,
+                      xdim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
 
-  const auto& input_dim_size = input->dims().size();
-  // The dims has full dim, set the reduce_all is True
-  reduce_all |= (static_cast<int>(axis.size()) == input_dim_size);
-
-  const T* input_data = input->data<T>();
-  T* output_data = dev_ctx.template Alloc<T>(output);
-
-  std::vector<int> axis_shape;
-  std::vector<int> xdims(input_dim_size);
-  for (int i = 0; i < input_dim_size; ++i) {
-    xdims[i] = input->dims()[i];
+  reduce_all = recompute_reduce_all(x, axis, reduce_all);
+  std::vector<int64_t> outdim_vec, keeped_outdim_vec;
+  std::vector<int> axis_vec;
+  int64_t compute_size = 1, other_size = 1;
+  for (auto i : axis) {
+    auto v = i >= 0 ? i : i + xdim.size();
+    axis_vec.push_back(v);
   }
-  if (reduce_all) {
-    for (int i = 0; i < input_dim_size; ++i) {
-      axis_shape.push_back(i);
-    }
-  } else {
-    for (size_t i = 0; i < axis.size(); ++i) {
-      int rdim = axis[i] < 0 ? axis[i] + input_dim_size : axis[i];
-      axis_shape.push_back(rdim);
+  if (axis.size() == 0 || reduce_all) {
+    axis_vec.clear();
+    for (int i = 0; i < xdim.size(); i++) {
+      axis_vec.push_back(i);
     }
   }
+  for (int i = 0; i < xdim.size(); i++) {
+    bool flag = false;
+    for (auto v : axis_vec) {
+      if (v == i) {
+        flag = true;
+        break;
+      }
+    }
+    if (flag) {
+      compute_size *= xdim[i];
+      keeped_outdim_vec.push_back(1);
+      if (keepdim) outdim_vec.push_back(1);
+    } else {
+      other_size *= xdim[i];
+      outdim_vec.push_back(xdim[i]);
+      keeped_outdim_vec.push_back(xdim[i]);
+    }
+  }
+  auto outdim = common::make_ddim(outdim_vec);
+  auto keeped_outdim = common::make_ddim(keeped_outdim_vec);
 
-  int r = xpu::logsumexp<T>(
-      dev_ctx.x_context(), input_data, output_data, xdims, axis_shape);
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::Error_t::SUCCESS,
-      phi::errors::External("XPU logsumexp kernel error! error value[%d %]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+  // The XPU logsumexp api does not use xmax to normalize its input, so we
+  // fallback to the non fusion impl currently.
+  DenseTensor max_x;
+  max_x.Resize(keeped_outdim);
+  MaxKernel<T, Context>(dev_ctx, x, axis_vec, true, &max_x);
+
+  DenseTensor temp_x = Subtract<T, Context>(dev_ctx, x, max_x);
+  ExpKernel<T, Context>(dev_ctx, temp_x, &temp_x);
+  SumKernel<T, Context>(dev_ctx, temp_x, axis_vec, x.dtype(), keepdim, out);
+  LogKernel<T, Context>(dev_ctx, *out, out);
+  max_x.Resize(outdim);
+  out->Resize(outdim);
+  AddKernel<T, Context>(dev_ctx, *out, max_x, out);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(logsumexp, XPU, ALL_LAYOUT, phi::XPULogsumexpKernel, float) {
-}
+PD_REGISTER_KERNEL(logsumexp,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LogsumexpKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

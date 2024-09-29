@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -184,11 +184,16 @@ class TestSearchSortedAPI(unittest.TestCase):
 
     def setUp(self):
         self.init_test_case()
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
@@ -241,7 +246,7 @@ class TestSearchSortedAPI(unittest.TestCase):
 
 
 class TestSearchSortedError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error_api(self):
         paddle.enable_static()
 
@@ -289,7 +294,6 @@ class TestSearchSortedError(unittest.TestCase):
             RuntimeError, test_searchsorted_sortedsequence_size_error
         )
 
-    @test_with_pir_api
     def test_check_type_error(self):
         def test_sortedsequence_values_type_error():
             with paddle.static.program_guard(paddle.static.Program()):

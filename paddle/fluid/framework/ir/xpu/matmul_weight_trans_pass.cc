@@ -145,7 +145,7 @@ void MatmulWeightTransPass::TransMatmulV2Weight(ir::Graph* graph) const {
 
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     auto* matmul_y_t =
         scope->GetVar(matmul_y->Name())->GetMutable<phi::DenseTensor>();
@@ -182,7 +182,7 @@ void MatmulWeightTransPass::FuseTranspose2MatmulV2(ir::Graph* graph) const {
 
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     matmul->Op()->RenameInput(matmul_y->Name(), transpose2_in->Name());
     matmul->Op()->SetAttr("trans_y", true);
@@ -202,7 +202,7 @@ void MatmulWeightTransPass::FuseTranspose2MatmulV2(ir::Graph* graph) const {
 
 void MatmulWeightTransPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   TransMatmulV2Weight(graph);

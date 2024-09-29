@@ -98,7 +98,7 @@ void SwiGLUKernelImpl(
       PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(VecSizeM, __is_combine); \
       PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(VecSizeS, __is_combine); \
       default:                                                   \
-        PADDLE_THROW(phi::errors::Unimplemented(                 \
+        PADDLE_THROW(common::errors::Unimplemented(              \
             "Unsupported vectorized size: %d !", vec_size));     \
         break;                                                   \
     }                                                            \

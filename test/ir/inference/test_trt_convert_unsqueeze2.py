@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -52,7 +54,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     for i in range(dims):
                         self.input_shape[i] = np.random.randint(1, 20)
 
-                    def generate_input1(attrs: List[Dict[str, Any]], batch):
+                    def generate_input1(attrs: list[dict[str, Any]], batch):
                         self.input_shape[0] = batch
                         return np.random.random(self.input_shape).astype(
                             np.float32
@@ -74,7 +76,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             max_shape = list(self.input_shape)
             min_shape = list(self.input_shape)

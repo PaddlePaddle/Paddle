@@ -170,7 +170,7 @@ struct OpInfoFiller<T, kOperator> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(info->creator_,
                       nullptr,
-                      platform::errors::AlreadyExists(
+                      common::errors::AlreadyExists(
                           "OpCreator of %s has been registered", op_type));
     info->creator_ = [](const std::string& type,
                         const VariableNameMap& inputs,
@@ -183,14 +183,14 @@ struct OpInfoFiller<T, kOperator> {
       PADDLE_ENFORCE_EQ(
           info->infer_shape_,
           nullptr,
-          platform::errors::AlreadyExists(
+          common::errors::AlreadyExists(
               "Duplicate InferShapeFN of %s has been registered", op_type));
 
       OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(info->creator_(
           std::string{}, VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       PADDLE_ENFORCE_NOT_NULL(
           op,
-          platform::errors::InvalidArgument("%s should have kernels", op_type));
+          common::errors::InvalidArgument("%s should have kernels", op_type));
       info->infer_shape_ = [op](InferShapeContext* ctx) {
         op->InferShape(ctx);
       };
@@ -203,11 +203,11 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(info->proto_,
                       nullptr,
-                      platform::errors::AlreadyExists(
+                      common::errors::AlreadyExists(
                           "OpProto of %s has been registered.", op_type));
     PADDLE_ENFORCE_EQ(info->checker_,
                       nullptr,
-                      platform::errors::AlreadyExists(
+                      common::errors::AlreadyExists(
                           "OpAttrChecker of %s has been registered.", op_type));
     info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
@@ -217,7 +217,7 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
     PADDLE_ENFORCE_EQ(
         info->proto_->IsInitialized(),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Fail to initialize %s's OpProto, because %s is not initialized.",
             op_type,
             info->proto_->InitializationErrorString()));
@@ -230,7 +230,7 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
     PADDLE_ENFORCE_EQ(
         info->grad_op_maker_,
         nullptr,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "GradOpDescMaker of %s has been registered", op_type));
 
     info->grad_op_maker_ =
@@ -262,7 +262,7 @@ struct OpInfoFiller<T, kGradCompOpDescMaker> {
     PADDLE_ENFORCE_EQ(
         info->grad_comp_op_maker_,
         nullptr,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "CompositeGradOpMakerBase of %s has been registered", op_type));
 
     info->grad_comp_op_maker_ =
@@ -286,7 +286,7 @@ struct OpInfoFiller<T, kGradOpBaseMaker> {
     PADDLE_ENFORCE_EQ(
         info->dygraph_grad_op_maker_,
         nullptr,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "GradOpBaseMaker of %s has been registered", op_type));
 
     info->dygraph_grad_op_maker_ =
@@ -309,7 +309,7 @@ struct OpInfoFiller<T, kVarTypeInference> {
     PADDLE_ENFORCE_EQ(
         info->infer_var_type_,
         nullptr,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "VarTypeInference of %s has been registered", op_type));
     info->infer_var_type_ = [](InferVarTypeContext* context) {
       T inference;
@@ -359,7 +359,7 @@ struct OpInfoFiller<T, kInplaceOpInference> {
     PADDLE_ENFORCE_EQ(
         info->infer_inplace_,
         nullptr,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "InplaceOpInference of %s has been registered", op_type));
     info->infer_inplace_ = [](bool use_cuda) {
       T infer;
@@ -374,7 +374,7 @@ struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
     PADDLE_ENFORCE_EQ(
         info->infer_no_need_buffer_vars_,
         nullptr,
-        platform::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "NoNeedBufferVarsInference of %s has been registered", op_type));
     info->infer_no_need_buffer_vars_.Reset(std::make_shared<T>());
   }

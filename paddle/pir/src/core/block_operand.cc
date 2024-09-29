@@ -23,7 +23,7 @@ namespace pir {
 #define CHECK_BLOCK_OPERAND_NULL_IMPL(func_name)             \
   PADDLE_ENFORCE_NOT_NULL(                                   \
       impl_,                                                 \
-      phi::errors::InvalidArgument(                          \
+      common::errors::InvalidArgument(                       \
           "impl_ pointer is null when call func:" #func_name \
           " , in class: BlockOperand."))
 

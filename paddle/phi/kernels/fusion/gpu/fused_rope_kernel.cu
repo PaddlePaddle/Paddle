@@ -52,7 +52,7 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(head_dim % 2,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The head_dim of input must be a multiple of 2."));
 
   constexpr const int vec_size = 2;
@@ -97,7 +97,7 @@ void FusedRopeKernel(const Context& dev_ctx,
   if (sin.get_ptr() && cos.get_ptr()) {
     PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
                       cos.get_ptr()->dims(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dims of sin and cos must be the same. But "
                           "received sin's dims is {%s}, cos's dims is {%s}.",
                           sin.get_ptr()->dims(),
@@ -105,18 +105,18 @@ void FusedRopeKernel(const Context& dev_ctx,
 
     auto sin_dims = sin.get_ptr()->dims();
     int dims_size = sin_dims.size();
-    PADDLE_ENFORCE_EQ(
-        (dims_size == 2 || dims_size == 4),
-        true,
-        phi::errors::InvalidArgument("The dims of sin and cos is expected to "
-                                     "be 2 or 4, but received %d.",
-                                     dims_size));
+    PADDLE_ENFORCE_EQ((dims_size == 2 || dims_size == 4),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The dims of sin and cos is expected to "
+                          "be 2 or 4, but received %d.",
+                          dims_size));
     if (dims_size == 4) {
       // sin.shape: [1, seq_len, 1, head_dim]
       PADDLE_ENFORCE_EQ(
           (sin_dims[0] == 1 && sin_dims[2] == 1),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The batch_size and num_heads of sin and cos must be 1."));
     }
     int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
@@ -126,7 +126,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           (sin_dims[dims_size - 1] == head_dim &&
            sin_dims[sin_seq_len_dim] >= seq_len),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The seq_len of sin and cos must be greater than or equal to "
               "this of q. The head_dim of sin and cos must be the same as this "
               "of q. But received sin's "
@@ -137,7 +137,7 @@ void FusedRopeKernel(const Context& dev_ctx,
       auto position_ids_dims = position_ids.get_ptr()->dims();
       PADDLE_ENFORCE_EQ(position_ids_dims.size(),
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dims of position_ids is expected to "
                             "be 2, but received %d.",
                             position_ids_dims.size()));
@@ -146,7 +146,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           (position_ids_dims[0] == batch_size &&
            position_ids_dims[1] == seq_len),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The batch_size and seq_len of position_ids must be the same as "
               "those of q. But received position_ids's "
               "shape is {%s}, q's shape is {%s}.",
@@ -159,7 +159,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           (sin_dims[dims_size - 1] == head_dim &&
            sin_dims[sin_seq_len_dim] == seq_len),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The seq_len and head_dim of sin and cos "
               "must be the same as those of q. But received sin's "
               "shape is {%s}, q's shape is {%s}.",
@@ -213,7 +213,7 @@ void FusedRopeKernel(const Context& dev_ctx,
         (inputs_num_heads[0] != inputs_num_heads[num_inputs - 1]) &&
             (inputs_num_heads[0] % inputs_num_heads[num_inputs - 1] == 0),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The MQA or GQA mode is entered, when the number of heads of qkv "
             "is not exactly the same two by two. This mode requires "
             "num_heads of q to be divisible by k,v."
@@ -225,7 +225,7 @@ void FusedRopeKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_EQ(
           inputs_num_heads[1] == inputs_num_heads[2],
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The num_heads of k must be equal to the num_heads of v when v "
               "is not none."
               "But recieved num_heads of k is %d, num_heads of v is %d",

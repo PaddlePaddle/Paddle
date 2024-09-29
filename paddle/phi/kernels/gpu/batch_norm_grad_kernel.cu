@@ -148,7 +148,7 @@ class InplaceHelper {
                   const gpuStream_t &stream) {
     PADDLE_ENFORCE_EQ(x,
                       y,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "X and Y should be inplaced in inplace mode"));
     KeBNRestoreData<<<grid2, block, 0, stream>>>(
         layout, x, scale, bias, mean, variance, epsilon, C, M, num, y);
@@ -526,7 +526,7 @@ void BatchNormGradFunctor(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       x_dims.size() >= 2 && x_dims.size() <= 5,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input's dimensions should be between 2 and 5."
           "But received: the size of input's dimensions is [%d],"
           "the dimensions of input is [%s]",
@@ -536,7 +536,7 @@ void BatchNormGradFunctor(const Context &ctx,
   PADDLE_ENFORCE_EQ((d_scale == nullptr && d_bias == nullptr) ||
                         (d_scale != nullptr && d_bias != nullptr),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Weight and bias's stop_gradient of BatchNorm must be "
                         "True or False at the same time."));
 
@@ -574,7 +574,7 @@ void BatchNormGradFunctor(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       new_scale.dims().size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of scale's dimensions must equal to 1. But received: "
           "the size of scale's dimensions is [%d], the dimensions of scale "
           "is [%s].",
@@ -583,7 +583,7 @@ void BatchNormGradFunctor(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       new_scale.dims()[0],
       C,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The first dimension of scale must equal to Channels[%d]. But "
           "received: the first dimension of scale is [%d]",
           C,
@@ -1374,7 +1374,7 @@ void BatchNormDoubleGradKernel(
     DenseTensor *y_grad_grad) {
   PADDLE_ENFORCE_EQ(is_test,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "`is_test = True` CANNOT be used in train program. If "
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));

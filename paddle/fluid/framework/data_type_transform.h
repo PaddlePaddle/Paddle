@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

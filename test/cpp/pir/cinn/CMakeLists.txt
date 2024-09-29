@@ -30,6 +30,10 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(test_tile_config_searcher SRCS tile_config_searcher_test.cc DEPS
               schedule_config_search)
 
+  paddle_test(
+    test_tile_config_searcher_pure_spatial SRCS
+    tile_config_searcher_pure_spatial_test.cc DEPS schedule_config_search)
+
   paddle_test(test_tile_config_performance SRCS tile_config_performance_test.cc
               DEPS schedule_config_search)
 
@@ -47,6 +51,7 @@ if(WITH_TESTING AND WITH_CINN)
       test_generate_shape_util_test
       merge_parallel_matmul_pass_test
       test_tile_config_searcher
+      test_tile_config_searcher_pure_spatial
       test_file_tile_config)
 
   foreach(test_name ${cinn_unit_tests})

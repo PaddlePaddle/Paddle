@@ -13,10 +13,18 @@
 # limitations under the License.
 """Parameter Server utils"""
 
+from __future__ import annotations
+
 import os
 import warnings
+from typing import TYPE_CHECKING
 
 import paddle
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distributed.fleet.base.role_maker import RoleMakerBase
+    from paddle.static import Executor, Program
 
 __all__ = []
 
@@ -26,7 +34,11 @@ class DistributedInfer:
     Utility class for distributed infer of PaddlePaddle.
     """
 
-    def __init__(self, main_program=None, startup_program=None):
+    def __init__(
+        self,
+        main_program: Program | None = None,
+        startup_program: Program | None = None,
+    ) -> None:
         if main_program:
             self.origin_main_program = main_program.clone()
         else:
@@ -43,8 +55,12 @@ class DistributedInfer:
         self.sparse_table_maps = None
 
     def init_distributed_infer_env(
-        self, exe, loss, role_maker=None, dirname=None
-    ):
+        self,
+        exe: Executor,
+        loss: Tensor,
+        role_maker: RoleMakerBase | None = None,
+        dirname: str | None = None,
+    ) -> None:
         from paddle.distributed import fleet
 
         if fleet.fleet._runtime_handle is None:
@@ -112,7 +128,7 @@ class DistributedInfer:
                 vars=need_load_vars,
             )
 
-    def get_dist_infer_program(self):
+    def get_dist_infer_program(self) -> Program:
         varname2tables = self._get_sparse_table_map()
         convert_program = self._convert_program(
             self.origin_main_program, varname2tables

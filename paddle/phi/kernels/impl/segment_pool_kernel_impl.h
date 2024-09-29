@@ -33,11 +33,11 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       num_indices,
       x.dims()[0],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Segment_ids should be the same size as dimension 0 of input X."));
   PADDLE_ENFORCE_EQ(num_indices,
                     segment_ids.dims()[0],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Segment_ids should be 1-D tensor, or it's other "
                         "dimension size is 1. Segment_ids's shape is: [%s].",
                         segment_ids.dims()));
@@ -55,7 +55,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     PADDLE_ENFORCE_GT(
         dims[0],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Segment ids must be >= 0, but got last id %d", dims[0]));
 
     out->Resize({dims});
@@ -89,7 +89,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     PADDLE_ENFORCE_GT(
         length_host,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Segment ids must be >= 0, but got last id %d", length_data[0]));
     auto dims = x.dims();
     dims[0] = static_cast<int64_t>(length_host);
@@ -133,7 +133,7 @@ void SegmentPoolKernel(const Context& dev_ctx,
     SegmentKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx, x, segment_ids, pooltype, out, summed_ids);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported index type, Expected int, int64, but got %s.",
         index_type));
   }

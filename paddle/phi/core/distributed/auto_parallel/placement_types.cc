@@ -38,7 +38,7 @@ std::vector<int64_t> DistTensorMeta::dim_mapping() const {
       PADDLE_ENFORCE_EQ(
           dim_map[shard_dim],
           -1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Tensor dim %lld is already sharded on mesh dim %lld,"
               " DistTensor operator implementation does not support things "
               "like hybrid"

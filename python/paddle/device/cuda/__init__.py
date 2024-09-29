@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, NoReturn, Union
+
+from typing_extensions import TypeAlias
 
 import paddle
 from paddle.base import core
@@ -19,6 +24,15 @@ from paddle.utils import deprecated
 
 from .streams import Event, Stream
 
+if TYPE_CHECKING:
+    from paddle import CUDAPlace
+    from paddle.base.libpaddle import _gpuDeviceProperties
+
+    _CudaPlaceLike: TypeAlias = Union[
+        CUDAPlace,
+        str,  # some string like "cpu", "gpu:0", etc.
+        int,  # some int like 0, 1, etc.
+    ]
 __all__ = [
     'Stream',
     'Event',
@@ -43,12 +57,12 @@ __all__ = [
     level=1,
     reason="current_stream in paddle.device.cuda will be removed in future",
 )
-def current_stream(device=None):
+def current_stream(device: _CudaPlaceLike | None = None) -> core.CUDAStream:
     '''
     Return the current CUDA stream by the device.
 
     Args:
-        device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from.
+        device(paddle.CUDAPlace()|int|None, optional): The device or the ID of the device which want to get stream from.
                 If device is None, the device is the current device. Default: None.
 
     Returns:
@@ -88,12 +102,12 @@ def current_stream(device=None):
     level=1,
     reason="synchronize in paddle.device.cuda will be removed in future",
 )
-def synchronize(device=None):
+def synchronize(device: _CudaPlaceLike | None = None) -> None:
     '''
     Wait for the compute on the given CUDA device to finish.
 
     Args:
-        device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
+        device(paddle.CUDAPlace()|int|None, optional): The device or the ID of the device.
                 If device is None, the device is the current device. Default: None.
 
     Examples:
@@ -125,7 +139,7 @@ def synchronize(device=None):
     return core._device_synchronize(device_id)
 
 
-def device_count():
+def device_count() -> int:
     '''
     Return the number of GPUs available.
 
@@ -150,7 +164,7 @@ def device_count():
     return num_gpus
 
 
-def empty_cache():
+def empty_cache() -> None:
     '''
     Releases idle cached memory held by the allocator so that those can be used in other GPU
     application and visible in `nvidia-smi`. In most cases you don't need to use this function,
@@ -173,7 +187,7 @@ def empty_cache():
         core.cuda_empty_cache()
 
 
-def extract_cuda_device_id(device, op_name):
+def extract_cuda_device_id(device: _CudaPlaceLike, op_name: str) -> int:
     '''
     Return the id of the given cuda device. It is just a utility that will not be exposed to users.
 
@@ -216,7 +230,7 @@ def extract_cuda_device_id(device, op_name):
     return device_id
 
 
-def max_memory_allocated(device=None):
+def max_memory_allocated(device: _CudaPlaceLike | None = None) -> int:
     '''
     Return the peak size of gpu memory that is allocated to tensor of the given device.
 
@@ -225,7 +239,7 @@ def max_memory_allocated(device=None):
         For instance, a float32 0-D Tensor with shape [] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
-        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -252,12 +266,12 @@ def max_memory_allocated(device=None):
     return core.device_memory_stat_peak_value("Allocated", device_id)
 
 
-def max_memory_reserved(device=None):
+def max_memory_reserved(device: _CudaPlaceLike | None = None) -> int:
     '''
     Return the peak size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -284,7 +298,7 @@ def max_memory_reserved(device=None):
     return core.device_memory_stat_peak_value("Reserved", device_id)
 
 
-def memory_allocated(device=None):
+def memory_allocated(device: _CudaPlaceLike | None = None) -> int:
     '''
     Return the current size of gpu memory that is allocated to tensor of the given device.
 
@@ -293,7 +307,7 @@ def memory_allocated(device=None):
         For instance, a float32 0-D Tensor with shape [] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
-        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -320,12 +334,12 @@ def memory_allocated(device=None):
     return core.device_memory_stat_current_value("Allocated", device_id)
 
 
-def memory_reserved(device=None):
+def memory_reserved(device: _CudaPlaceLike | None = None) -> int:
     '''
     Return the current size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -352,7 +366,7 @@ def memory_reserved(device=None):
     return core.device_memory_stat_current_value("Reserved", device_id)
 
 
-def _set_current_stream(stream):
+def _set_current_stream(stream: Stream) -> core.CUDAStream:
     '''
     Set the current stream.
 
@@ -380,7 +394,7 @@ def _set_current_stream(stream):
     reason="stream_guard in paddle.device.cuda will be removed in future",
 )
 @signature_safe_contextmanager
-def stream_guard(stream):
+def stream_guard(stream: Stream) -> NoReturn:
     '''
     Notes:
         This API only supports dynamic graph mode currently.
@@ -419,12 +433,14 @@ def stream_guard(stream):
             stream = _set_current_stream(pre_stream)
 
 
-def get_device_properties(device=None):
+def get_device_properties(
+    device: _CudaPlaceLike | None = None,
+) -> _gpuDeviceProperties:
     '''
     Return the properties of given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
             the string name of device like 'gpu:x' which to get the properties of the
             device from. If device is None, the device is the current device.
             Default: None.
@@ -489,12 +505,12 @@ def get_device_properties(device=None):
     return core.get_device_properties(device_id)
 
 
-def get_device_name(device=None):
+def get_device_name(device: _CudaPlaceLike | None = None) -> str:
     '''
     Return the name of the device which is got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
 
     Parameters:
-        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None (default), the device is the current device.
+        device(paddle.CUDAPlace|int|None, optional): The device or the ID of the device. If device is None (default), the device is the current device.
 
     Returns:
         str: The name of the device.
@@ -518,12 +534,14 @@ def get_device_name(device=None):
     return get_device_properties(device).name
 
 
-def get_device_capability(device=None):
+def get_device_capability(
+    device: _CudaPlaceLike | None = None,
+) -> tuple[int, int]:
     """
     Return the major and minor revision numbers defining the device's compute capability which are got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
 
     Parameters:
-        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None (default), the device is the current device.
+        device(paddle.CUDAPlace|int|None, optional): The device or the ID of the device. If device is None (default), the device is the current device.
 
     Returns:
         tuple(int,int): the major and minor revision numbers defining the device's compute capability.

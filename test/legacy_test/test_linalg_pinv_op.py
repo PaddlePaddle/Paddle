@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,7 +20,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class LinalgPinvTestCase(unittest.TestCase):
@@ -27,7 +27,13 @@ class LinalgPinvTestCase(unittest.TestCase):
         self.init_config()
         self.generate_input()
         self.generate_output()
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -62,10 +68,15 @@ class LinalgPinvTestCase(unittest.TestCase):
                 print("GOT     : \n", out)
                 raise RuntimeError("Check PINV dygraph Failed")
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
@@ -309,7 +320,6 @@ class TestDivByZero(unittest.TestCase):
         x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
         paddle.linalg.pinv(x)
 
-    @test_with_pir_api
     def test_div_by_zero(self):
         with self.assertRaises(ValueError):
             self.pinv_zero_input_dynamic()

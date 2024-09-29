@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def compare_result(actual, expected):
@@ -73,7 +72,11 @@ class TestEigvalshOp(OpTest):
 
     def test_check_output(self):
         # Vectors in posetive or negative is equivalent
-        self.check_output(no_check_set=['Eigenvectors'], check_pir=True)
+        self.check_output(
+            no_check_set=['Eigenvectors'],
+            check_pir=True,
+            check_symbol_infer=True,
+        )
 
     def test_grad(self):
         self.check_grad(["X"], ["Eigenvalues"], check_pir=True)
@@ -123,7 +126,8 @@ class TestEigvalshAPI(unittest.TestCase):
         complex_data = np.random.random(self.x_shape).astype(
             self.dtype
         ) + 1j * np.random.random(self.x_shape).astype(self.dtype)
-        self.trans_dims = list(range(len(self.x_shape) - 2)) + [
+        self.trans_dims = [
+            *range(len(self.x_shape) - 2),
             len(self.x_shape) - 1,
             len(self.x_shape) - 2,
         ]
@@ -167,7 +171,6 @@ class TestEigvalshAPI(unittest.TestCase):
             expected_w = np.linalg.eigvalsh(self.complex_symm)
             compare_result(actual_w[0], expected_w)
 
-    @test_with_pir_api
     def test_in_static_mode(self):
         paddle.enable_static()
         self.check_static_float_result()
@@ -204,7 +207,7 @@ class TestEigvalshBatchAPI(TestEigvalshAPI):
 
 
 class TestEigvalshAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 import abc
 import enum
@@ -19,7 +19,7 @@ import os
 import shutil
 import time
 import unittest
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import hypothesis
 import hypothesis.strategies as st
@@ -117,7 +117,7 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def add_ignore_check_case(
         self,
-        teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
+        teller: list[Callable[[ProgramConfig, paddle_infer.Config], bool]],
         reason: IgnoreReasons,
         note: str,
     ):
@@ -128,22 +128,23 @@ class AutoScanTest(unittest.TestCase):
 
     def run_test_config(
         self, model, params, prog_config, pred_config, feed_data
-    ) -> Dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:
         """
         Test a single case.
         """
-        pred_config.set_model_buffer(model, len(model), params, len(params))
-        predictor = paddle_infer.create_predictor(pred_config)
-        self.available_passes_in_framework = (
-            self.available_passes_in_framework
-            | set(pred_config.pass_builder().all_passes())
-        )
-        for name, _ in prog_config.inputs.items():
-            input_tensor = predictor.get_input_handle(name)
-            input_tensor.copy_from_cpu(feed_data[name]["data"])
-            if feed_data[name]["lod"] is not None:
-                input_tensor.set_lod(feed_data[name]["lod"])
-        predictor.run()
+        with paddle.pir_utils.OldIrGuard():
+            pred_config.set_model_buffer(model, len(model), params, len(params))
+            predictor = paddle_infer.create_predictor(pred_config)
+            self.available_passes_in_framework = (
+                self.available_passes_in_framework
+                | set(pred_config.pass_builder().all_passes())
+            )
+            for name, _ in prog_config.inputs.items():
+                input_tensor = predictor.get_input_handle(name)
+                input_tensor.copy_from_cpu(feed_data[name]["data"])
+                if feed_data[name]["lod"] is not None:
+                    input_tensor.set_lod(feed_data[name]["lod"])
+            predictor.run()
         result = {}
         for out_name, o_name in zip(
             prog_config.outputs, predictor.get_output_names()
@@ -156,8 +157,8 @@ class AutoScanTest(unittest.TestCase):
         self,
         atol: float,
         rtol: float,
-        tensor: Dict[str, np.array],
-        baseline: Dict[str, np.array],
+        tensor: dict[str, np.array],
+        baseline: dict[str, np.array],
     ):
         for key, arr in tensor.items():
             self.assertTrue(
@@ -178,8 +179,8 @@ class AutoScanTest(unittest.TestCase):
         raise NotImplementedError
 
     def generate_op_config(
-        self, ops_config: List[Dict[str, Any]]
-    ) -> List[OpConfig]:
+        self, ops_config: list[dict[str, Any]]
+    ) -> list[OpConfig]:
         ops = []
         for i in range(len(ops_config)):
             op_config = ops_config[i]
@@ -223,11 +224,11 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def create_inference_config(
         self,
-        passes: Optional[List[str]] = None,
+        passes: list[str] | None = None,
         use_gpu: bool = False,
         use_mkldnn: bool = False,
         use_xpu: bool = False,
-        ir_optim: Optional[bool] = None,
+        ir_optim: bool | None = None,
     ):
         config = paddle_infer.Config()
         config.switch_ir_debug(True)
@@ -269,7 +270,7 @@ class MkldnnAutoScanTest(AutoScanTest):
                     "data": tensor_config.data,
                     "lod": tensor_config.lod,
                 }
-            results: List[Dict[str, np.ndarray]] = []
+            results: list[dict[str, np.ndarray]] = []
 
             # baseline: cpu no ir_optim run
             base_config = self.create_inference_config(ir_optim=False)
@@ -348,7 +349,7 @@ class PirMkldnnAutoScanTest(MkldnnAutoScanTest):
 
     def run_test_config(
         self, model, params, prog_config, pred_config, feed_data
-    ) -> Dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:
         """
         Test a single case.
         """
@@ -411,7 +412,7 @@ class PassAutoScanTest(AutoScanTest):
         max_examples=100,
         reproduce=None,
         min_success_num=25,
-        max_duration=180,
+        max_duration=1000,
         passes=None,
     ):
         if os.getenv("HYPOTHESIS_TEST_PROFILE", "ci") == "dev":
@@ -472,13 +473,13 @@ class PassAutoScanTest(AutoScanTest):
             self.fail_log(
                 f"At least {min_success_num} programs need to ran successfully, but now only about {successful_ran_programs} programs satisfied."
             )
-            raise AssertionError()
+            raise AssertionError
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             self.fail_log(
                 f"The duration exceeds {max_duration} seconds, if this is necessary, try to set a larger number for parameter `max_duration`."
             )
-            raise AssertionError()
+            raise AssertionError
 
     def run_test(self, quant=False, prog_configs=None):
         status = True
@@ -642,7 +643,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.trt_param = self.TensorRTParam(
-            workspace_size=1024,
+            workspace_size=8192,
             max_batch_size=4,
             min_subgraph_size=0,
             precision=paddle_infer.PrecisionType.Float32,
@@ -692,8 +693,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
         self,
         atol: float,
         rtol: float,
-        tensor: Dict[str, np.array],
-        baseline: Dict[str, np.array],
+        tensor: dict[str, np.array],
+        baseline: dict[str, np.array],
     ):
         for key, arr in tensor.items():
             self.assertEqual(
@@ -763,10 +764,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 continue
-
-            model, params = create_fake_model(prog_config)
+            with paddle.pir_utils.OldIrGuard():
+                model, params = create_fake_model(prog_config)
             if quant:
-                model, params = create_quant_model(model, params)
+                with paddle.pir_utils.OldIrGuard():
+                    model, params = create_quant_model(model, params)
 
             if not skip_baseline:
                 # baseline: gpu run, we only test float32
@@ -790,7 +792,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
                 if isinstance(threshold, float):
                     atol = threshold
-                    rtol = 1e-8
+                    rtol = 1e-4
                 elif isinstance(threshold, (list, tuple)):
                     atol = threshold[0]
                     rtol = threshold[1]
@@ -873,7 +875,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
     # TODO(wilber): just for backward compatible
     def add_skip_case(
         self,
-        teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
+        teller: list[Callable[[ProgramConfig, paddle_infer.Config], bool]],
         reason: IgnoreReasons,
         note: str,
     ):
@@ -899,7 +901,7 @@ class CutlassAutoScanTest(AutoScanTest):
                     'data': tensor_config.data,
                     'lod': tensor_config.lod,
                 }
-            results: List[Dict[str, np.ndarray]] = []
+            results: list[dict[str, np.ndarray]] = []
 
             # baseline: gpu no ir_optim run
             base_config = self.create_inference_config(

@@ -26,11 +26,11 @@
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
-  }                                                                         \
-  catch (const utils::ErrorHandler& err_handler) {                          \
-    PADDLE_THROW(                                                           \
-        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)              \
+  }                                                      \
+  catch (const utils::ErrorHandler& err_handler) {       \
+    PADDLE_THROW(::common::errors::Fatal(                \
+        err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 namespace cinn {
@@ -42,14 +42,22 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "ComputeAt";
   std::ostringstream os;
-  if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block) should be a ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (!loop.As<ir::For>()) {
-    os << "Expr param(loop) should be a For node!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>(),
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<ComputeAt>.\n"
+          "[Error info] Expr param(block) should be a ScheduleBlockRealize!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
+  PADDLE_ENFORCE_NOT_NULL(
+      loop.As<ir::For>(),
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<ComputeAt>.\n"
+          "[Error info] Expr param(loop) should be a For node!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
   Expr root = this->GetRootBlock(block);
 
   VLOG(3) << "Begin ComputeAt of loop:\n" << loop << "\nat block:\n" << root;
@@ -78,16 +86,22 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SimpleComputeAt";
   std::ostringstream os;
-  if (!block.As<ScheduleBlockRealize>()) {
-    os << "Expr param(block) should be a "
-          "ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (!loop.As<For>()) {
-    os << "Expr param(loop) should be a For node!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ScheduleBlockRealize>(),
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<SimpleComputeAt>.\n"
+          "[Error info] Expr param(block) should be a ScheduleBlockRealize!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
+  PADDLE_ENFORCE_NOT_NULL(
+      loop.As<For>(),
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<SimpleComputeAt>.\n"
+          "[Error info] Expr param(loop) should be a For node!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
   std::vector<Expr> block_loops = this->GetLoops(block);
   Expr root = this->GetRootBlock(block);
   auto loops = GetLoopsOfExpr(loop, root);
@@ -117,11 +131,11 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   root = this->GetRootBlock(this_block);
   loops = GetLoopsOfExpr(this_loop, root);
 
-  PADDLE_ENFORCE_LE(
-      loops.size(),
-      block_loops.size(),
-      phi::errors::InvalidArgument("The size of loops should be less than or "
-                                   "equal to the size of block_loops."));
+  PADDLE_ENFORCE_LE(loops.size(),
+                    block_loops.size(),
+                    ::common::errors::InvalidArgument(
+                        "The size of loops should be less than or "
+                        "equal to the size of block_loops."));
 
   std::vector<Var> replaced_var;
   std::vector<Expr> substitute_expr;
@@ -132,12 +146,27 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
     VLOG(3) << i << "-th block_loop:\n" << block_loops[i];
     std::optional<bool> prove_eq = analyzer.ProveEQ(
         loops[i].As<ir::For>()->extent, block_loops[i].As<ir::For>()->extent);
-    CHECK(prove_eq.has_value() && prove_eq.value());
-    if (!prove_eq.has_value() || prove_eq.value() == false) {
-      os << "Extent of loop in Expr Param(loop) and extent of loop in Expr "
-            "Param(block) should be equal correspondingly!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
+    PADDLE_ENFORCE_EQ(
+        prove_eq.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "[IRScheduleError] An error occurred in the schedule primitive "
+            "<SimpleComputeAt>.\n"
+            "[Error info] Extent of loop in Expr Param(loop) and extent of "
+            "loop in Expr Param(block) should be equal correspondingly!\n"
+            "[Error info] The Expr of current schedule is: %s.",
+            module_expr_.GetExprs()));
+
+    PADDLE_ENFORCE_EQ(
+        prove_eq.value(),
+        true,
+        phi::errors::InvalidArgument(
+            "[IRScheduleError] An error occurred in the schedule primitive "
+            "<SimpleComputeAt>.\n"
+            "[Error info] Extent of loop in Expr Param(loop) and extent of "
+            "loop in Expr Param(block) should be equal correspondingly!\n"
+            "[Error info] The Expr of current schedule is: %s.",
+            module_expr_.GetExprs()));
     if (block_loops[i].As<ir::For>()->bind_info().valid() &&
         !loops[i].As<ir::For>()->bind_info().valid()) {
       loops[i].As<ir::For>()->set_bind_info(
@@ -226,8 +255,14 @@ void DyScheduleImpl::ReverseComputeAt(const Expr& block,
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "ReverseComputeAt";
   std::ostringstream os;
-  CHECK(block.As<ir::ScheduleBlockRealize>());
-  CHECK(loop.As<ir::For>());
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>(),
+      ::common::errors::InvalidArgument(
+          "The block argument must be of type ScheduleBlockRealize."));
+
+  PADDLE_ENFORCE_NOT_NULL(loop.As<ir::For>(),
+                          ::common::errors::InvalidArgument(
+                              "The loop argument must be of type For."));
   Expr root = this->GetRootBlock(block);
   auto producers = GetProducers(block, root);
   auto consumers = GetConsumers(block, root);
@@ -253,19 +288,31 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "ComputeInline";
   std::ostringstream os;
-  if (!schedule_block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(schedule_block) should be a ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+
+  PADDLE_ENFORCE_NOT_NULL(
+      schedule_block.As<ir::ScheduleBlockRealize>(),
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<ComputeInline>.\n"
+          "[Error info] Expr param(schedule_block) should be a "
+          "ScheduleBlockRealize!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
 
   Expr root = this->GetRootBlock(schedule_block);
   Expr store = CheckComputeInlineValidationAndGetStore(schedule_block, root);
   ComputeInliner inliner(store.As<ir::Store>()->tensor.as_tensor_ref(), store);
 
-  if (!inliner.BodyPatternAllowInline()) {
-    os << "Current IR can't meets the requirements of ComputeInline!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      inliner.BodyPatternAllowInline(),
+      true,
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<ComputeInline>.\n"
+          "[Error info] Current IR can't meets the requirements of "
+          "ComputeInline!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
 
   // Create a plan that removes the block to be inlined
   LeafBlockRemovalPlan remove_plan(
@@ -291,10 +338,17 @@ void DyScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
       inlined_store,
       inlined_load,
       target_store);
-  if (!inliner.BodyPatternAllowInline()) {
-    os << "Current IR can't meets the requirements of ReverseComputeInline!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+
+  PADDLE_ENFORCE_EQ(
+      inliner.BodyPatternAllowInline(),
+      true,
+      phi::errors::InvalidArgument(
+          "[IRScheduleError] An error occurred in the schedule primitive "
+          "<ReverseComputeInline>.\n"
+          "[Error info] Current IR can't meets the requirements of "
+          "ReverseComputeInline!\n"
+          "[Error info] The Expr of current schedule is: %s.",
+          module_expr_.GetExprs()));
   // Create a plan that removes the block to be inlined
   LeafBlockRemovalPlan remove_plan(
       schedule_block, &inliner.src_stmt, &inliner.tgt_stmt);

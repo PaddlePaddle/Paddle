@@ -95,7 +95,7 @@ TEST(var_type_traits, check_proto_type_id) {
   ASSERT_TRUE(CheckVarId<phi::SelectedRows>(proto::VarType::SELECTED_ROWS));
   ASSERT_TRUE(CheckVarId<std::vector<Scope *>>(proto::VarType::STEP_SCOPES));
   ASSERT_TRUE(CheckVarId<LoDRankTable>(proto::VarType::LOD_RANK_TABLE));
-  ASSERT_TRUE(CheckVarId<LoDTensorArray>(proto::VarType::LOD_TENSOR_ARRAY));
+  ASSERT_TRUE(CheckVarId<phi::TensorArray>(proto::VarType::LOD_TENSOR_ARRAY));
   ASSERT_TRUE(CheckVarId<phi::PlaceList>(proto::VarType::PLACE_LIST));
   ASSERT_TRUE(CheckVarId<ReaderHolder>(proto::VarType::READER));
   ASSERT_TRUE(CheckVarId<int>(proto::VarType::INT32));

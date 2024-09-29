@@ -144,7 +144,7 @@ void LSTMInferece(const bool &has_seq_length,
         workspace_size));
 #else
     // CUDNN VERSION has to >=7.2.1
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "The padded input is supported by "
         "cudnnRNNForwardInferenceEx, but it only works when "
         "the version of cudnn is larger than 7.2.1"));
@@ -400,7 +400,7 @@ void CudnnLSTMKernel(
           reserve_data,
           reserve_size));
 #else
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "The padded input is supported by "
           "cudnnRNNForwardTrainingEx, but it only works when "
           "the version of cudnn is larger than 7.2.1"));

@@ -56,7 +56,8 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
                              const std::vector<Type> &output_types,
                              pir::OpInfo op_info,
                              size_t num_regions,
-                             const std::vector<Block *> &successors) {
+                             const std::vector<Block *> &successors,
+                             bool verify) {
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -128,7 +129,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
     }
   }
   // 0. Verify
-  if (op_info) {
+  if (verify && op_info) {
     try {
       op_info.VerifySig(op);
     } catch (const common::enforce::EnforceNotMet &e) {
@@ -159,8 +160,13 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
       successors.push_back(ir_mapping.Lookup(successor(i)));
     }
   }
-  auto *new_op = Create(
-      inputs, attributes_, output_types, info_, num_regions_, successors);
+  auto *new_op = Create(inputs,
+                        attributes_,
+                        output_types,
+                        info_,
+                        num_regions_,
+                        successors,
+                        false);
   ir_mapping.Add(this, new_op);
 
   // record outputs mapping info
@@ -300,7 +306,7 @@ BlockOperand Operation::block_operand(uint32_t index) const {
   PADDLE_ENFORCE_LT(
       index,
       num_successors_,
-      phi::errors::InvalidArgument("Invalid block_operand index"));
+      common::errors::InvalidArgument("Invalid block_operand index"));
   return block_operands_ + index;
 }
 Block *Operation::successor(uint32_t index) const {
@@ -310,7 +316,7 @@ void Operation::set_successor(Block *block, unsigned index) {
   PADDLE_ENFORCE_LT(
       index,
       num_operands_,
-      phi::errors::InvalidArgument("Invalid block_operand index"));
+      common::errors::InvalidArgument("Invalid block_operand index"));
   (block_operands_ + index)->set_source(block);
 }
 
@@ -320,13 +326,13 @@ void Operation::set_successor(Block *block, unsigned index) {
 Region &Operation::region(unsigned index) {
   PADDLE_ENFORCE_LT(index,
                     num_regions_,
-                    phi::errors::InvalidArgument("invalid region index"));
+                    common::errors::InvalidArgument("invalid region index"));
   return regions_[index];
 }
 const Region &Operation::region(unsigned index) const {
   PADDLE_ENFORCE_LT(index,
                     num_regions_,
-                    phi::errors::InvalidArgument("invalid region index"));
+                    common::errors::InvalidArgument("invalid region index"));
   return regions_[index];
 }
 
@@ -354,7 +360,8 @@ void Operation::SetParent(Block *parent, const Block::Iterator &position) {
 
 void Operation::MoveTo(Block *block, Block::Iterator position) {
   PADDLE_ENFORCE_NOT_NULL(
-      parent_, phi::errors::InvalidArgument("Operation does not have parent"));
+      parent_,
+      common::errors::InvalidArgument("Operation does not have parent"));
   Operation *op = parent_->Take(this);
   block->insert(position, op);
 }
@@ -381,7 +388,7 @@ void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   PADDLE_ENFORCE_EQ(
       num_results_,
       values.size(),
-      phi::errors::InvalidArgument("the num of result should be the same."));
+      common::errors::InvalidArgument("the num of result should be the same."));
   for (uint32_t i = 0; i < num_results_; ++i) {
     result(i).ReplaceAllUsesWith(values[i]);
   }

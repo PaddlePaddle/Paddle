@@ -37,8 +37,9 @@ TEST(JobDispatcher, SequenceDispatcher) {
 TEST(parallel_run, Basic) {
   std::vector<int> results(100, -1);
   auto worker_fn = [&results](int index) {
-    PADDLE_ENFORCE_LT(
-        index, results.size(), phi::errors::InvalidArgument("invalid index!"));
+    PADDLE_ENFORCE_LT(index,
+                      results.size(),
+                      ::common::errors::InvalidArgument("invalid index!"));
     results[index] = index;
   };
   // check process every index in the extent of [0, 100) with step 1

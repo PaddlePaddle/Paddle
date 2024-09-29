@@ -18,7 +18,7 @@ import sys
 
 
 def get_all_paddle_file(rootPath):
-    """get all file in Paddle repo: paddle/fluild, python"""
+    """get all file in Paddle repo: paddle/fluid, python"""
     traverse_files = [f'{rootPath}']
     all_file_paddle = f'{rootPath}/build/all_file_paddle'
     all_file_paddle_list = []
@@ -66,7 +66,7 @@ def handle_ut_file_map(rootPath):
     all_ut = f'{rootPath}/build/all_uts_paddle'
     with open(all_ut, 'r') as f:
         all_ut_list = []
-        for ut in f.readlines():
+        for ut in f:
             ut = ut.replace('\n', '')
             all_ut_list.append(ut.strip())
         f.close()
@@ -84,7 +84,7 @@ def handle_ut_file_map(rootPath):
             filename = f'{ut_map_path}/{ut}/related_{ut}.txt'
             try:
                 f = open(filename)
-                print(f"oepn {filename} succesfully")
+                print(f"open {filename} successfully")
             except FileNotFoundError:
                 print(f"{filename} is not found.")
                 return
@@ -120,7 +120,7 @@ def handle_ut_file_map(rootPath):
             filename = f'{ut_map_path}/{ut}/notrelated_{ut}.txt'
             try:
                 f = open(filename)
-                print(f"oepn {filename} succesfully")
+                print(f"open {filename} successfully")
             except FileNotFoundError:
                 print(f"{filename} is not found.")
             lines = f.readlines()
@@ -190,7 +190,7 @@ def ut_file_map_supplement(rootPath):
 
     with open(all_uts_paddle, 'r') as f:
         all_uts_paddle_list = []
-        for ut in f.readlines():
+        for ut in f:
             all_uts_paddle_list.append(ut.strip())
         f.close()
 
@@ -204,7 +204,7 @@ def ut_file_map_supplement(rootPath):
     prec_delta_new = f"{rootPath}/build/prec_delta"
     with open(prec_delta_new, 'r') as f:
         prec_delta_new_list = []
-        for ut in f.readlines():
+        for ut in f:
             prec_delta_new_list.append(ut.strip())
         f.close()
     prec_delta_new_list.append(

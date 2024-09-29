@@ -42,7 +42,7 @@ class FakeCopyable {
   FakeCopyable(FakeCopyable&& other) : obj_(std::move(other.obj_)) {}
 
   FakeCopyable(const FakeCopyable& other) {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Never use the copy constructor of FakeCopyable."));
   }
 

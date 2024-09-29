@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
 
 namespace cinn::fusion {
 
-template <typename T>
-bool RelativeJudgePolicy<T>::IsDownstreamStmtDependReduceOp(
-    pir::Operation* reduce, const StmtPattern<T>& downstream) {
+bool RelativeJudgePolicy::IsDownstreamStmtDependReduceOp(
+    pir::Operation* reduce, const StmtPattern& downstream) {
   const auto& values = GetPatternInputValues(downstream);
   for (const auto& value : reduce->results()) {
     if (std::find(values.begin(), values.end(), value) != values.end()) {
@@ -30,11 +28,9 @@ bool RelativeJudgePolicy<T>::IsDownstreamStmtDependReduceOp(
   return false;
 }
 
-template <typename T>
-std::optional<ReducePattern<T>>
-RelativeJudgePolicy<T>::GetDownstreamFromCandidate(
-    const ReducePattern<T>& upstream,
-    const std::vector<ReducePattern<T>>& candidates) {
+std::optional<ReducePattern> RelativeJudgePolicy::GetDownstreamFromCandidate(
+    const ReducePattern& upstream,
+    const std::vector<ReducePattern>& candidates) {
   pir::Operation* reduce = upstream.GetReduceOp();
   for (const auto& candidate : candidates) {
     if (IsDownstreamStmtDependReduceOp(reduce, candidate)) {
@@ -82,9 +78,8 @@ std::pair<std::vector<DimUsage>, std::vector<DimUsage>> SplitReduceDims(
   return {reduce_dims, non_reduce_dims};
 }
 
-template <typename T>
 std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
-RelativeJudgePolicy<T>::SplitFirstIfRelatedBySecond(
+RelativeJudgePolicy::SplitFirstIfRelatedBySecond(
     const std::vector<DimUsage>& targets,
     const std::vector<DimUsage>& related_with) {
   std::vector<DimUsage> related_dims;
@@ -179,33 +174,17 @@ bool IsProductSmallerOrEqual(const std::vector<DimUsage>& first,
   return shape_analysis.IsEqual(first_product, second_product);
 }
 
-pir::Operation* FindUserOp(const std::vector<pir::Operation*>& candidates,
-                           const pir::Value& value) {
-  std::vector<pir::Operation*> results;
-  for (auto consumer_it = value.use_begin(); consumer_it != value.use_end();
-       ++consumer_it) {
-    pir::Operation* user_op = consumer_it.owner();
-    auto iter = std::find(candidates.begin(), candidates.end(), user_op);
-    if (iter != candidates.end()) {
-      results.emplace_back(*iter);
-    }
-  }
-  CHECK(results.size() == 1) << "Zero Or Multi User Op Found In Candidates!";
-  return results.front();
-}
-
-template <typename T>
-bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   const auto& upstream_tree =
-      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern());
+      std::get<ReduceTreePattern>(upstream->stmt_pattern());
   const auto& downstream_tree =
-      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern());
+      std::get<ReduceTreePattern>(downstream->stmt_pattern());
 
-  VLOG(4) << "upstream->stmt_pattern():"
-          << OpsDebugStr(GetOpsInPattern<T>(upstream_tree));
-  VLOG(4) << "downstream->stmt_pattern()"
-          << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
+  VLOG(4) << "upstream: \n" << OpsDebugStr(GetOpsInPattern(upstream_tree));
+  VLOG(4) << "upstream->childs_num: " << upstream_tree.childs().size();
+  VLOG(4) << "downstream: \n" << OpsDebugStr(GetOpsInPattern(downstream_tree));
+  VLOG(4) << "downstream->childs_num: " << downstream_tree.childs().size();
 
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
       upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
@@ -213,7 +192,7 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
   for (const auto& r_pattern : downstream_tree.childs()) {
     idx += 1;
     VLOG(4) << "downstream_tree.reduce_patterns_"
-            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern<T>(r_pattern));
+            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern(r_pattern));
   }
   if (!maybe_downstream_op.has_value()) {
     VLOG(4) << "can't find candidate from patterns. can fuse return false.";
@@ -221,7 +200,7 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
   }
   const pir::Value& reduce_out_value =
       upstream_tree.GetRootPattern().GetReduceOp()->result(0);
-  auto downstream_connect_op =
+  auto downstream_connect_ops =
       FindUserOp(downstream_tree.ops(), reduce_out_value);
   pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
@@ -230,20 +209,37 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
       SplitReduceDims(axes_info_.GetSignature(downstream_reduce_op),
                       downstream_reduce_op);
 
-  const auto& upstream_output_dims = GetValueUsage(
-      reduce_out_value, GetUsageIdx(reduce_out_value, downstream_connect_op));
+  std::vector<DimUsage> upstream_output_dims;
+  for (const auto& op : downstream_connect_ops) {
+    auto dim_usages =
+        GetValueUsage(reduce_out_value, GetUsageIdx(reduce_out_value, op));
+    upstream_output_dims.insert(
+        upstream_output_dims.end(), dim_usages.begin(), dim_usages.end());
+  }
   const auto& [related, _UNUSED] =
       SplitFirstIfRelatedBySecond(downstream_reduce_dims, upstream_output_dims);
-  auto res = (related.size() == 0);
-  VLOG(4) << "ReduceTreeGrownCanMerge: " << res;
-  return res;
+  if (related.size() > 0) {
+    return false;
+  }
+
+  auto upstream_reduce_op = upstream_tree.GetRootPattern().GetReduceOp();
+  const auto& [upstream_reduce_dims, _unused_dims] = SplitReduceDims(
+      axes_info_.GetSignature(upstream_reduce_op), upstream_reduce_op);
+  if (upstream_reduce_dims.size() != downstream_reduce_dims.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < upstream_reduce_dims.size(); ++i) {
+    if (upstream_reduce_dims[i].GetSymbolicDim() !=
+        downstream_reduce_dims[i].GetSymbolicDim()) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
-template <typename T>
-bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  VLOG(4) << "RT can fuse";
-
+bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
       SplitReduceDims(axes_info_.GetSignature(upstream->sink_op()),
                       upstream->sink_op());
@@ -259,34 +255,37 @@ bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
   const auto& downstream_free_dims = GatherVectorExcept(
       GetValueUsage(downstream->sink_op()->result(0), 0), fakes);
 
-  auto res =
-      ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
-      IsProductSmallerOrEqual(downstream_free_dims, upstream_non_reduce_dims);
+  // TODO(huangjiyi): support fusion when fake_reduce.size < reduce.size
+  bool res = ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
+             (IsProductSmallerOrEqual(downstream_free_dims,
+                                      upstream_non_reduce_dims) &&
+              (fakes.empty() || fakes.size() == upstream_reduce_dims.size()));
+
+  if (res && downstream_free_dims.empty() && !fakes.empty()) {
+    res = false;
+  }
 
   VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
   return res;
 }
 
-template <typename T>
-bool RelativeJudgePolicy<T>::CanFuse(const PatternNodePtr<T>& upstream,
-                                     const PatternNodePtr<T>& downstream) {
-  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern()) &&
-      std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern())) {
+bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
+                                  const PatternNodePtr& downstream) {
+  if (std::holds_alternative<ReduceTreePattern>(upstream->stmt_pattern()) &&
+      std::holds_alternative<TrivialPattern>(downstream->stmt_pattern())) {
     return ReducePlusTrivialCanMerge(upstream, downstream);
   }
-  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern()) &&
-      std::holds_alternative<ReduceTreePattern<T>>(
-          downstream->stmt_pattern())) {
+  if (std::holds_alternative<ReduceTreePattern>(upstream->stmt_pattern()) &&
+      std::holds_alternative<ReduceTreePattern>(downstream->stmt_pattern())) {
     return ReduceTreeGrownCanMerge(upstream, downstream);
   }
   return true;  // other case.
 }
 
-template <typename T>
-std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  if (!std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern()) &&
-      !std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern())) {
+std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+  if (!std::holds_alternative<ReduceTreePattern>(upstream->stmt_pattern()) &&
+      !std::holds_alternative<TrivialPattern>(downstream->stmt_pattern())) {
     PADDLE_THROW("Illegal Call GetFakeReduceIterIdx");
   }
 
@@ -298,8 +297,6 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
       GetValueUsage(downstream->sink_op()->result(0), 0),
       upstream_non_reduce_dims);
 
-  // CHECK(upstream_reduce_dims.size() == trivial_reorder_dims.size() ||
-  // trivial_reorder_dims.size() == 0);
   std::unordered_set<DimUsage, DimUsageHash> visited_dims;
   std::vector<size_t> result;
   for (auto& reduce_dim : upstream_reduce_dims) {
@@ -315,8 +312,5 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
   VLOG(4) << "FakeReduceIterIdx: " << cinn::utils::Join(result, ", ");
   return result;
 }
-
-template class RelativeJudgePolicy<FrontendStage>;
-template class RelativeJudgePolicy<BackendStage>;
 
 }  // namespace cinn::fusion

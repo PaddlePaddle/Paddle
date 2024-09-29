@@ -62,19 +62,19 @@ void CSplitKernel(const Context& ctx,
 
   PADDLE_ENFORCE_GE(rank,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The value of rank (%d) for c_split must be "
                         "greater than or equal to 0.",
                         rank));
   PADDLE_ENFORCE_GE(nranks,
                     2,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The value of nranks (%d) for c_split must be "
                         "greater than or equal to 2.",
                         nranks));
   PADDLE_ENFORCE_LT(rank,
                     nranks,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The value of rank (%d) for c_split must be "
                         "less than that of nranks (%d).",
                         rank,
@@ -103,7 +103,8 @@ void CSplitKernel(const Context& ctx,
 
 }  // namespace phi
 
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(c_split,
                    GPU,
                    ALL_LAYOUT,

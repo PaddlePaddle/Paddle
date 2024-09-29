@@ -94,7 +94,7 @@ void LogsumexpKernel(const Context& dev_ctx,
     int ndim = x.dims().size();
     int rdim = axis.size();
     if (ndim > 4) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported dimensions, please keep maximum dimensions of input "
           "data less than 4."));
     }

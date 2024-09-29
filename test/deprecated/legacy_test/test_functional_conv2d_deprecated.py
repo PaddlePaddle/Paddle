@@ -51,7 +51,11 @@ class TestFunctionalConv2D(TestCase):
         self.weight = np.random.uniform(
             -1,
             1,
-            (self.out_channels, self.in_channels // self.groups) + filter_shape,
+            (
+                self.out_channels,
+                self.in_channels // self.groups,
+                *filter_shape,
+            ),
         ).astype(self.dtype)
         if not self.no_bias:
             self.bias = np.random.uniform(-1, 1, (self.out_channels,)).astype(
@@ -61,13 +65,16 @@ class TestFunctionalConv2D(TestCase):
         self.channel_last = self.data_format == "NHWC"
         if self.channel_last:
             self.input_shape = (
-                (self.batch_size,) + self.spatial_shape + (self.in_channels,)
+                self.batch_size,
+                *self.spatial_shape,
+                self.in_channels,
             )
         else:
             self.input_shape = (
                 self.batch_size,
                 self.in_channels,
-            ) + self.spatial_shape
+                *self.spatial_shape,
+            )
 
         self.input = np.random.uniform(-1, 1, self.input_shape).astype(
             self.dtype
@@ -99,9 +106,11 @@ class TestFunctionalConv2D(TestCase):
                     dilation=self.dilation,
                     groups=self.groups,
                     param_attr=paddle.nn.initializer.Assign(self.weight),
-                    bias_attr=False
-                    if self.no_bias
-                    else paddle.nn.initializer.Assign(self.bias),
+                    bias_attr=(
+                        False
+                        if self.no_bias
+                        else paddle.nn.initializer.Assign(self.bias)
+                    ),
                     act=self.act,
                     data_format=self.data_format,
                 )
@@ -333,9 +342,11 @@ class TestFunctionalConv2DErrorCase12(TestCase):
                     dilation=self.dilation,
                     groups=self.groups,
                     param_attr=paddle.nn.initializer.Assign(self.filter),
-                    bias_attr=False
-                    if self.bias is None
-                    else paddle.nn.initializer.Assign(self.bias),
+                    bias_attr=(
+                        False
+                        if self.bias is None
+                        else paddle.nn.initializer.Assign(self.bias)
+                    ),
                     act=None,
                     data_format=self.data_format,
                 )

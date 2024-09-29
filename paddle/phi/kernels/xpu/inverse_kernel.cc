@@ -31,7 +31,7 @@ void InverseKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       x_dims_len,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Dimensions of input should be greater than 1, but got %d.",
           x_dims_len));
 
@@ -39,7 +39,7 @@ void InverseKernel(const Context& dev_ctx,
   int64_t batch = x_dims_len > 2 ? x.numel() / (n * n) : 1;
   PADDLE_ENFORCE_LE(n * n * sizeof(T),
                     8192,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of a single matrix (%d bytes) exceeds the "
                         "maximum numbers of bytes xpu supports (8192).",
                         n * n * sizeof(T)));

@@ -32,10 +32,10 @@ void ReduceKernel(const Context& dev_ctx,
                   int root,
                   int reduce_type,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
+  PADDLE_ENFORCE_GT(x.numel(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "Tensor need be reduced must not empty."));
 #if defined(PADDLE_WITH_GLOO)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
@@ -61,10 +61,10 @@ void ReduceKernel(const phi::CustomContext& dev_ctx,
                   int root,
                   int reduce_type,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
+  PADDLE_ENFORCE_GT(x.numel(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "Tensor need be reduced must not empty."));
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
 

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
@@ -40,6 +40,8 @@ from ...utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         DataLayout1D,
@@ -421,24 +423,22 @@ def conv1d(
         )
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
-    if num_channels < 0:
+
+    if groups == 0:
+        raise ValueError("The groups of conv1d should not be zero")
+    if num_channels % groups != 0 and (
+        in_dynamic_mode() or (num_channels != -1 and groups != -1)
+    ):
         raise ValueError(
-            f"The channel dimension of the input({x.shape}) "
-            f"should be defined. Received: {num_channels}."
-        )
-    if groups <= 0:
-        raise ValueError(
-            f"The groups of conv1d should be greater than 0. Received groups: {groups}"
-        )
-    if num_channels % groups != 0:
-        raise ValueError(
-            "the channel of input must be divisible by groups,"
+            "The channel of input must be divisible by groups,"
             f"received: the channel of input is {num_channels}, the shape of input is {x.shape}"
             f", the groups is {groups}"
         )
-    if num_filters % groups != 0:
+    if num_filters % groups != 0 and (
+        in_dynamic_mode() or (num_filters != -1 and groups != -1)
+    ):
         raise ValueError(
-            "the number of filters must be divisible by groups,"
+            "The number of filters must be divisible by groups,"
             f"received: the number of filters is {num_filters}, the shape of weight is {weight.shape}"
             f", the groups is {groups}"
         )
@@ -447,15 +447,15 @@ def conv1d(
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
 
     if len(padding) == 2:
-        padding = [0] * 2 + padding
+        padding = [0, 0, *padding]
     elif len(padding) == 1:
-        padding = [0] + padding
+        padding = [0, *padding]
     else:
         raise ValueError(
             f"The size of padding's dimension should be 1 or 2. But got padding={padding}"
         )
-    stride = [1] + convert_to_list(stride, 1, 'stride')
-    dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+    stride = [1, *convert_to_list(stride, 1, "stride")]
+    dilation = [1, *convert_to_list(dilation, 1, "dilation")]
     from ...tensor.creation import assign as paddle_assign
 
     weight = paddle_assign(weight)
@@ -664,24 +664,23 @@ def conv2d(
         )
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
-    if num_channels < 0:
+
+    if groups == 0:
+        raise ValueError("The groups of conv2d should be not be zero.")
+
+    if num_channels % groups != 0 and (
+        in_dynamic_mode() or (num_channels != -1 and groups != -1)
+    ):
         raise ValueError(
-            f"The channel dimension of the input({x.shape}) "
-            f"should be defined. Received: {num_channels}."
-        )
-    if groups <= 0:
-        raise ValueError(
-            f"The groups of conv2d should be greater than 0. Received groups: {groups}"
-        )
-    if num_channels % groups != 0:
-        raise ValueError(
-            "the channel of input must be divisible by groups,"
+            "The channel of input must be divisible by groups,"
             f"received: the channel of input is {num_channels}, the shape of input is {x.shape}"
             f", the groups is {groups}"
         )
-    if num_filters % groups != 0:
+    if num_filters % groups != 0 and (
+        in_dynamic_mode() or (num_filters != -1 and groups != -1)
+    ):
         raise ValueError(
-            "the number of filters must be divisible by groups,"
+            "The number of filters must be divisible by groups,"
             f"received: the number of filters is {num_filters}, the shape of weight is {weight.shape}"
             f", the groups is {groups}"
         )
@@ -920,16 +919,12 @@ def conv1d_transpose(
         )
 
     num_channels = x.shape[channel_dim]
-    if num_channels < 0:
-        raise ValueError(
-            f"The channel dimension of the input({x.shape}) "
-            f"should be defined. Received: {num_channels}."
-        )
-    if groups <= 0:
-        raise ValueError(
-            f"The groups of conv1d_transpose should be greater than 0. Received groups: {groups}"
-        )
-    if num_channels % groups != 0:
+
+    if groups == 0:
+        raise ValueError("The groups of conv1d_transpose should not be zero.")
+    if num_channels % groups != 0 and (
+        in_dynamic_mode() or (num_channels != -1 and groups != -1)
+    ):
         raise ValueError(
             "the channel of input must be divisible by groups,"
             f"received: the channel of input is {num_channels}, the shape of input is {x.shape}"
@@ -940,16 +935,16 @@ def conv1d_transpose(
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
 
     if len(padding) == 2:
-        padding = padding + [0] * 2
+        padding = [*padding, 0, 0]
     elif len(padding) == 1:
-        padding = padding + [0]
+        padding = [*padding, 0]
     else:
         raise ValueError(
             f"The size of padding's dimension should 1 or 2. But got padding={padding}"
         )
 
-    stride = convert_to_list(stride, 1, 'stride') + [1]
-    dilation = convert_to_list(dilation, 1, 'dilation') + [1]
+    stride = [*convert_to_list(stride, 1, "stride"), 1]
+    dilation = [*convert_to_list(dilation, 1, "dilation"), 1]
 
     if output_size is None:
         output_size = []
@@ -960,7 +955,7 @@ def conv1d_transpose(
                 'output_size'
             )
         if isinstance(output_size, (list, tuple, int)):
-            output_size = convert_to_list(output_size, 1, 'output_size') + [1]
+            output_size = [*convert_to_list(output_size, 1, 'output_size'), 1]
         else:
             raise ValueError(
                 "output_size should be int, or list, tuple of ints"
@@ -969,9 +964,10 @@ def conv1d_transpose(
     if output_padding == 0:
         output_padding = []
     else:
-        output_padding = convert_to_list(
-            output_padding, 1, 'output_padding'
-        ) + [0]
+        output_padding = [
+            *convert_to_list(output_padding, 1, 'output_padding'),
+            0,
+        ]
 
     if len(output_padding) > 0 and output_padding[0] > stride[0]:
         raise ValueError(
@@ -1198,16 +1194,12 @@ def conv2d_transpose(
             f"Input weight should be 4D tensor, but received weight with the shape of {weight.shape}"
         )
     num_channels = x.shape[channel_dim]
-    if num_channels < 0:
-        raise ValueError(
-            f"The channel dimension of the input({x.shape}) "
-            f"should be defined. Received: {num_channels}."
-        )
-    if groups <= 0:
-        raise ValueError(
-            f"The groups of conv2d_transpose should be greater than 0. Received groups: {groups}"
-        )
-    if num_channels % groups != 0:
+
+    if groups == 0:
+        raise ValueError("The groups of conv2d_transpose should not be zero.")
+    if num_channels % groups != 0 and (
+        in_dynamic_mode() or (num_channels != -1 and groups != -1)
+    ):
         raise ValueError(
             "the channel of input must be divisible by groups,"
             f"received: the channel of input is {num_channels}, the shape of input is {x.shape}"
@@ -1481,21 +1473,19 @@ def conv3d(
         )
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
-    if num_channels < 0:
-        raise ValueError(
-            f"The channel dimension of the input({x.shape}) should be defined. "
-            f"Received: {num_channels}."
-        )
-    if groups <= 0:
-        raise ValueError(
-            f"The groups of conv3d should be greater than 0. Received groups: {groups}"
-        )
-    if num_channels % groups != 0:
+
+    if groups == 0:
+        raise ValueError("The groups of conv3d should not be 0.")
+    if num_channels % groups != 0 and (
+        in_dynamic_mode() or (num_channels != -1 and groups != -1)
+    ):
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
             f"Received: number of channels({num_channels}), groups({groups})."
         )
-    if num_filters % groups != 0:
+    if num_filters % groups != 0 and (
+        in_dynamic_mode() or (num_filters != -1 and groups != -1)
+    ):
         raise ValueError(
             "The number of filters must be divisible by Attr(groups). "
             f"Received: number of filters({num_filters}), groups({groups})."
@@ -1689,17 +1679,12 @@ def conv3d_transpose(
             f"Input weight should be 5D tensor, but received weight with the shape of {weight.shape}"
         )
     num_channels = x.shape[channel_dim]
-    num_filters = weight.shape[1]
-    if num_channels < 0:
-        raise ValueError(
-            f"The channel dimension of the input({x.shape}) should be defined. "
-            f"Received: {num_channels}."
-        )
-    if groups <= 0:
-        raise ValueError(
-            f"The groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
-        )
-    if num_channels % groups != 0:
+
+    if groups == 0:
+        raise ValueError("The groups of conv3d_transpose should not be zero.")
+    if num_channels % groups != 0 and (
+        in_dynamic_mode() or (num_channels != -1 and groups != -1)
+    ):
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
             f"Received: number of channels({num_channels}), groups({groups})."

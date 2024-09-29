@@ -42,19 +42,19 @@ std::vector<T> GetVectorAttr(const ::pir::Operation* op,
   auto& attr_map = op->attributes();
   PADDLE_ENFORCE(
       attr_map.count(name),
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "attr [%s] MUST in attribute map for [%s] op", name, op->name()));
   auto& val = attr_map.at(name);
 
   PADDLE_ENFORCE(val.isa<::pir::ArrayAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 ::common::errors::PreconditionNotMet(
                      "axis Type MUST ArrayAttribute for [%s] op", op->name()));
   auto array_list = val.dyn_cast<::pir::ArrayAttribute>().AsVector();
   std::vector<T> vec_res;
   if (array_list.size() > 0) {
     PADDLE_ENFORCE_EQ(array_list[0].isa<::pir::Int64Attribute>(),
                       true,
-                      phi::errors::Unimplemented(
+                      ::common::errors::Unimplemented(
                           "the 0th elementwise MUST be ir::Int64Attribute"));
     for (size_t i = 0; i < array_list.size(); ++i) {
       vec_res.push_back(array_list[i].dyn_cast<::pir::Int64Attribute>().data());

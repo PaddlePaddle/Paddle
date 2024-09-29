@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import datetime
 import os
 import pickle
 import time
 from collections import namedtuple
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 from paddle.base import core
 from paddle.distributed.launch.context import Node
 from paddle.distributed.rpc.internal import PythonFunc, _serialize
 from paddle.distributed.utils.launch_utils import logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    _RetT = TypeVar("_RetT", covariant=True)
+
+    class _FutureWrapper(Protocol[_RetT]):
+        def wait(self) -> _RetT: ...
+
 
 WorkerInfo = namedtuple("WorkerInfo", ["name", "rank", "ip", "port"])
 
@@ -70,7 +82,12 @@ def _gen_endpoint():
     return f"{ip}:{free_port}"
 
 
-def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
+def init_rpc(
+    name: str,
+    rank: int | None = None,
+    world_size: int | None = None,
+    master_endpoint: str | None = None,
+) -> None:
     """
     init rpc.
 
@@ -140,7 +157,13 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     logger.info(f"Trainer {rank}: Init RPC done!")
 
 
-def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
+def rpc_sync(
+    to: str,
+    fn: Callable[..., _RetT],
+    args: tuple[Any, ...] | None = None,
+    kwargs: dict[str, Any] | None = None,
+    timeout: int = _DEFAULT_RPC_TIMEOUT,
+) -> _RetT:
     """
     Make a blocking RPC call to run function ``fn`` on worker ``to``. Attention: Users must use this API in a secure network environment.
 
@@ -180,7 +203,13 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     return fut.wait()
 
 
-def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
+def rpc_async(
+    to: str,
+    fn: Callable[..., _RetT],
+    args: tuple[Any, ...] | None = None,
+    kwargs: dict[str, Any] | None = None,
+    timeout: int = _DEFAULT_RPC_TIMEOUT,
+) -> _FutureWrapper[_RetT]:
     """
     Make a non-blocking RPC call to run function ``fn`` on worker ``to``. Attention: Users must use this API in a secure network environment.
 
@@ -273,7 +302,7 @@ def _barrier_never_timeout(global_rank, global_world_size):
         _barrier_store.add(barrier_prefix + str(global_rank), 1)
 
 
-def shutdown():
+def shutdown() -> None:
     """
     Perform a shutdown of the RPC agent, stop the worker and destroy the agent.
     This will block until all local and remote RPC processes reach this method
@@ -304,7 +333,7 @@ def shutdown():
     logger.info(f"Trainer {rank}: rpc shutdown!")
 
 
-def get_worker_info(name):
+def get_worker_info(name: str) -> WorkerInfo:
     """
     Get worker information by worker name.
 
@@ -334,7 +363,7 @@ def get_worker_info(name):
     return core.rpc_get_worker_info(name)
 
 
-def get_all_worker_infos():
+def get_all_worker_infos() -> list[WorkerInfo]:
     """
     Get all worker informations.
 
@@ -361,7 +390,7 @@ def get_all_worker_infos():
     return core.rpc_get_all_worker_infos()
 
 
-def get_current_worker_info():
+def get_current_worker_info() -> WorkerInfo:
     """
     Get current worker information.
 

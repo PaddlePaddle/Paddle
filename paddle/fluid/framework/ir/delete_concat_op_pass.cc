@@ -79,7 +79,7 @@ class DeleteConcatOpPass : public FusePassBase {
 
 void DeleteConcatOpPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   GraphPatternDetector gpd;
   patterns::ConcatPattern pattern(gpd.mutable_pattern(), name_scope_);

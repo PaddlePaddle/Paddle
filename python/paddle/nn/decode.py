@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
-import collections
 import warnings
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, overload
 
 import numpy as np
 
@@ -23,6 +24,13 @@ from paddle.common_ops_import import default_main_program
 from paddle.framework import in_dynamic_mode
 
 from ..base.data_feeder import convert_dtype
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from paddle import Tensor
+    from paddle.nn import Embedding, Layer, RNNCellBase
+
 
 __all__ = []
 
@@ -205,15 +213,22 @@ class BeamSearchDecoder(Decoder):
             ...
     """
 
+    cell: RNNCellBase
+    embedding_fn: Embedding | Callable[..., Any] | None
+    output_fn: Layer | Callable[..., Any] | None
+    start_token: int
+    end_token: int
+    beam_size: int
+
     def __init__(
         self,
-        cell,
-        start_token,
-        end_token,
-        beam_size,
-        embedding_fn=None,
-        output_fn=None,
-    ):
+        cell: RNNCellBase,
+        start_token: int,
+        end_token: int,
+        beam_size: int,
+        embedding_fn: Embedding | Callable[..., Any] | None = None,
+        output_fn: Layer | Callable[..., Any] | None = None,
+    ) -> None:
         """
         Constructor of BeamSearchDecoder.
 
@@ -238,7 +253,7 @@ class BeamSearchDecoder(Decoder):
         self.beam_size = beam_size
 
     @staticmethod
-    def tile_beam_merge_with_batch(x, beam_size):
+    def tile_beam_merge_with_batch(x: Tensor, beam_size: int) -> Tensor:
         r"""
         Tile the batch dimension of a tensor. Specifically, this function takes
         a tensor t shaped `[batch_size, s0, s1, ...]` composed of minibatch
@@ -261,14 +276,14 @@ class BeamSearchDecoder(Decoder):
         expand_times[1] = beam_size
         x = paddle.tile(x, expand_times)  # [batch_size, beam_size, ...]
         x = paddle.transpose(
-            x, list(range(2, len(x.shape))) + [0, 1]
+            x, [*list(range(2, len(x.shape))), 0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
         x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
         x = paddle.transpose(
-            x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
+            x, [len(x.shape) - 1, *list(range(0, len(x.shape) - 1))]
         )  # [batch_size * beam_size, ...]
         return x
 
@@ -286,7 +301,7 @@ class BeamSearchDecoder(Decoder):
                 data type is same as `x`.
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return paddle.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
+        return paddle.reshape(x, shape=[-1, self.beam_size, *list(x.shape[1:])])
 
     def _merge_batch_beams(self, x):
         r"""
@@ -302,7 +317,7 @@ class BeamSearchDecoder(Decoder):
                 data type is same as `x`.
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return paddle.reshape(x, shape=[-1] + list(x.shape[2:]))
+        return paddle.reshape(x, shape=[-1, *list(x.shape[2:])])
 
     def _expand_to_beam_size(self, x):
         r"""
@@ -387,31 +402,30 @@ class BeamSearchDecoder(Decoder):
         topk_coordinates.stop_gradient = True
         return paddle.gather_nd(x, topk_coordinates)
 
-    class OutputWrapper(
-        collections.namedtuple(
-            "OutputWrapper", ("scores", "predicted_ids", "parent_ids")
-        )
-    ):
+    class OutputWrapper(NamedTuple):
         """
         The structure for the returned value `outputs` of `decoder.step`.
         A namedtuple includes scores, predicted_ids, parent_ids as fields.
         """
 
-        pass
+        scores: Tensor
+        predicted_ids: Tensor
+        parent_ids: Tensor
 
-    class StateWrapper(
-        collections.namedtuple(
-            "StateWrapper", ("cell_states", "log_probs", "finished", "lengths")
-        )
-    ):
+    class StateWrapper(NamedTuple):
         """
         The structure for the argument `states` of `decoder.step`.
         A namedtuple includes cell_states, log_probs, finished, lengths as fields.
         """
 
-        pass
+        cell_states: Tensor
+        log_probs: Tensor
+        finished: Tensor
+        lengths: Tensor
 
-    def initialize(self, initial_cell_states):
+    def initialize(
+        self, initial_cell_states: Tensor
+    ) -> tuple[Tensor, StateWrapper, Tensor]:
         r"""
         Initialize the BeamSearchDecoder.
 
@@ -567,7 +581,9 @@ class BeamSearchDecoder(Decoder):
         )
         return beam_search_output, beam_search_state
 
-    def step(self, time, inputs, states, **kwargs):
+    def step(
+        self, time: Tensor, inputs: Tensor, states: Tensor, **kwargs: Any
+    ) -> tuple[OutputWrapper, StateWrapper, Tensor, Tensor]:
         r"""
         Perform a beam search decoding step, which uses `cell` to get probabilities,
         and follows a beam search step to calculate scores and select candidate
@@ -627,7 +643,9 @@ class BeamSearchDecoder(Decoder):
 
         return (beam_search_output, beam_search_state, next_inputs, finished)
 
-    def finalize(self, outputs, final_states, sequence_lengths):
+    def finalize(
+        self, outputs: Tensor, final_states: Tensor, sequence_lengths: Tensor
+    ) -> tuple[Tensor, Tensor]:
         r"""
         Use `gather_tree` to backtrace along the beam search tree and construct
         the full predicted sequences.
@@ -654,11 +672,14 @@ class BeamSearchDecoder(Decoder):
         predicted_ids = paddle.nn.functional.gather_tree(
             outputs.predicted_ids, outputs.parent_ids
         )
+        predicted_ids = paddle.cast(
+            predicted_ids, dtype=outputs.predicted_ids.dtype
+        )
         # TODO: use FinalBeamSearchDecoderOutput as output
         return predicted_ids, final_states
 
     @property
-    def tracks_own_finished(self):
+    def tracks_own_finished(self) -> Literal[True]:
         """
         BeamSearchDecoder reorders its beams and their finished state. Thus it
         conflicts with `dynamic_decode` function's tracking of finished states.
@@ -679,7 +700,7 @@ def _dynamic_decode_imperative(
     impute_finished=False,
     is_test=False,
     return_length=False,
-    **kwargs
+    **kwargs,
 ):
     def _maybe_copy(state, new_state, step_mask):
         # TODO: use where_op
@@ -738,9 +759,13 @@ def _dynamic_decode_imperative(
                     next_states,
                 )
         else:
-            warnings.warn(
-                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
-            ) if not hasattr(next_states, "lengths") else None
+            (
+                warnings.warn(
+                    "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+                )
+                if not hasattr(next_states, "lengths")
+                else None
+            )
             next_sequence_lengths = getattr(
                 next_states, "lengths", sequence_lengths
             )
@@ -781,7 +806,7 @@ def _dynamic_decode_imperative(
     if not output_time_major:
         final_outputs = paddle.utils.map_structure(
             lambda x: paddle.transpose(
-                x, [1, 0] + list(range(2, len(x.shape)))
+                x, [1, 0, *list(range(2, len(x.shape)))]
             ),
             final_outputs,
         )
@@ -801,7 +826,7 @@ def _dynamic_decode_declarative(
     impute_finished=False,
     is_test=False,
     return_length=False,
-    **kwargs
+    **kwargs,
 ):
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
     global_inputs, global_states, global_finished = (
@@ -858,7 +883,7 @@ def _dynamic_decode_declarative(
         return new_state
 
     def _transpose_batch_time(x):
-        return paddle.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+        return paddle.transpose(x, [1, 0, *list(range(2, len(x.shape)))])
 
     def _create_array_out_of_while(dtype):
         current_block_idx = default_main_program().current_block_idx
@@ -903,9 +928,13 @@ def _dynamic_decode_declarative(
                     next_states,
                 )
         else:
-            warnings.warn(
-                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
-            ) if not hasattr(next_states, "lengths") else None
+            (
+                warnings.warn(
+                    "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+                )
+                if not hasattr(next_states, "lengths")
+                else None
+            )
             next_sequence_lengths = getattr(
                 next_states, "lengths", sequence_lengths
             )
@@ -991,6 +1020,262 @@ def _dynamic_decode_declarative(
     )
 
 
+def _dynamic_decode_pir_declarative(
+    decoder,
+    inits=None,
+    max_step_num=None,
+    output_time_major=False,
+    impute_finished=False,
+    is_test=False,
+    return_length=False,
+    **kwargs,
+):
+    initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
+    global_inputs, global_states, global_finished = (
+        initial_inputs,
+        initial_states,
+        initial_finished,
+    )
+    global_finished.stop_gradient = True
+    step_idx = paddle.full(shape=[1], fill_value=0, dtype="int64")
+
+    cond = paddle.logical_not(paddle.all(initial_finished))
+    a = paddle.to_tensor(1)
+    b = paddle.to_tensor(5)
+    cond1 = paddle.less_than(a, b)
+
+    if max_step_num is not None:
+        max_step_num = paddle.full(
+            shape=[1], fill_value=max_step_num, dtype="int64"
+        )
+
+    while_op = paddle.static.nn.control_flow.While(cond, is_test=is_test)
+
+    sequence_lengths = paddle.cast(paddle.zeros_like(initial_finished), "int64")
+    sequence_lengths.stop_gradient = True
+
+    if is_test:
+        # for test, reuse inputs and states variables to save memory
+        inputs = paddle.utils.map_structure(lambda x: x, initial_inputs)
+        states = paddle.utils.map_structure(lambda x: x, initial_states)
+    else:
+        # inputs and states of all steps must be saved for backward and training
+        inputs_arrays = paddle.utils.map_structure(
+            lambda x: paddle.tensor.array.array_write(x, step_idx),
+            initial_inputs,
+        )
+        states_arrays = paddle.utils.map_structure(
+            lambda x: paddle.tensor.array.array_write(x, step_idx),
+            initial_states,
+        )
+
+    def _maybe_copy(state, new_state, step_mask):
+        # TODO: use where_op
+        state_dtype = state.dtype
+        if convert_dtype(state_dtype) in ["bool"]:
+            state = paddle.cast(state, dtype="float32")
+            new_state = paddle.cast(new_state, dtype="float32")
+        if step_mask.dtype != state.dtype:
+            step_mask = paddle.cast(step_mask, dtype=state.dtype)
+            # otherwise, renamed bool gradients of would be summed up leading
+            # to sum(bool) error.
+        step_mask = step_mask.unsqueeze([1])
+        step_mask.stop_gradient = True
+        new_state = paddle.multiply(state, step_mask) - paddle.multiply(
+            new_state, (step_mask - 1)
+        )
+        if convert_dtype(state_dtype) in ["bool"]:
+            new_state = paddle.cast(new_state, dtype=state_dtype)
+        return new_state
+
+    def _transpose_batch_time(x):
+        return paddle.transpose(x, [1, 0, *list(range(2, len(x.shape)))])
+
+    from paddle.pir.core import default_main_program
+
+    def _create_array_out_of_while(dtype):
+        with paddle.base.program_guard(default_main_program()):
+            prev_insertion_point = paddle.pir.get_current_insertion_point()
+            paddle.pir.set_insertion_point(
+                default_main_program().global_block().back()
+            )
+            tensor_array = paddle.tensor.array.create_array(dtype)
+            paddle.pir.set_insertion_point(prev_insertion_point)
+        return tensor_array
+
+    # While
+    with while_op.block():
+        a = paddle.increment(x=a)
+
+        paddle.assign(paddle.less_than(x=a, y=b), cond1)
+        if not is_test:
+            inputs = paddle.utils.map_structure(
+                lambda array: paddle.tensor.array.array_read(array, step_idx),
+                inputs_arrays,
+            )
+            states = paddle.utils.map_structure(
+                lambda array: paddle.tensor.array.array_read(array, step_idx),
+                states_arrays,
+            )
+        (outputs, next_states, next_inputs, next_finished) = decoder.step(
+            step_idx, inputs, states, **kwargs
+        )
+
+        if not decoder.tracks_own_finished:
+            # BeamSearchDecoder would track it own finished, since beams would
+            # be reordered and the finished status of each entry might change.
+            # Otherwise, perform logical OR which would not change the already
+            # finished.
+            next_finished = paddle.logical_or(next_finished, global_finished)
+            next_sequence_lengths = paddle.add(
+                sequence_lengths,
+                paddle.cast(
+                    paddle.logical_not(global_finished),
+                    sequence_lengths.dtype,
+                ),
+            )
+            if impute_finished:  # rectify the states for the finished.
+                next_states = paddle.utils.map_structure(
+                    lambda x, y: _maybe_copy(x, y, global_finished),
+                    states,
+                    next_states,
+                )
+        else:
+            (
+                warnings.warn(
+                    "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+                )
+                if not hasattr(next_states, "lengths")
+                else None
+            )
+            next_sequence_lengths = getattr(
+                next_states, "lengths", sequence_lengths
+            )
+
+        # # create tensor array in global block after dtype[s] of outputs can be got
+        outputs_arrays = paddle.utils.map_structure(
+            lambda x: _create_array_out_of_while(x.dtype), outputs
+        )
+
+        paddle.utils.map_structure(
+            lambda x, x_array: paddle.tensor.array.array_write(
+                x, i=step_idx, array=x_array
+            ),
+            outputs,
+            outputs_arrays,
+        )
+
+        step_idx = paddle.increment(x=step_idx, value=1.0)
+        # update the global_finished first, since it might be also in states of
+        # decoder, which otherwise would write a stale finished status to array
+        paddle.assign(next_finished, global_finished)
+        paddle.assign(next_sequence_lengths, sequence_lengths)
+        if is_test:
+            paddle.utils.map_structure(
+                paddle.assign, next_inputs, global_inputs
+            )
+            paddle.utils.map_structure(
+                paddle.assign, next_states, global_states
+            )
+        else:
+            paddle.utils.map_structure(
+                lambda x, x_array: paddle.tensor.array.array_write(
+                    x, i=step_idx, array=x_array
+                ),
+                next_inputs,
+                inputs_arrays,
+            )
+            paddle.utils.map_structure(
+                lambda x, x_array: paddle.tensor.array.array_write(
+                    x, i=step_idx, array=x_array
+                ),
+                next_states,
+                states_arrays,
+            )
+        if max_step_num is not None:
+            cond_tmp = paddle.logical_and(
+                paddle.less_equal(step_idx, max_step_num),
+                paddle.logical_not(paddle.all(global_finished)),
+            )
+            paddle.assign(cond_tmp, cond)
+        else:
+            paddle.assign(paddle.logical_not(paddle.all(global_finished)), cond)
+
+    final_outputs = paddle.utils.map_structure(
+        lambda array: paddle.tensor.manipulation.tensor_array_to_tensor(
+            array, axis=0, use_stack=True
+        )[0],
+        outputs_arrays,
+    )
+    if is_test:
+        final_states = global_states
+    else:
+        final_states = paddle.utils.map_structure(
+            lambda array: paddle.tensor.array.array_read(array, step_idx),
+            states_arrays,
+        )
+
+    try:
+        final_outputs, final_states = decoder.finalize(
+            final_outputs, final_states, sequence_lengths
+        )
+    except NotImplementedError as e:
+        pass
+
+    if not output_time_major:
+        final_outputs = paddle.utils.map_structure(
+            _transpose_batch_time, final_outputs
+        )
+
+    return (
+        (final_outputs, final_states, sequence_lengths)
+        if return_length
+        else (final_outputs, final_states)
+    )
+
+
+@overload
+def dynamic_decode(
+    decoder: Decoder,
+    inits: object | None = ...,
+    max_step_num: int | None = ...,
+    output_time_major: bool = ...,
+    impute_finished: bool = ...,
+    is_test: bool = ...,
+    return_length: Literal[False] = ...,
+    **kwargs: Any,
+) -> tuple[Tensor, BeamSearchDecoder.StateWrapper]: ...
+
+
+@overload
+def dynamic_decode(
+    decoder: Decoder,
+    inits: object | None = ...,
+    max_step_num: int | None = ...,
+    output_time_major: bool = ...,
+    impute_finished: bool = ...,
+    is_test: bool = ...,
+    return_length: Literal[True] = ...,
+    **kwargs: Any,
+) -> tuple[Tensor, BeamSearchDecoder.StateWrapper, Tensor]: ...
+
+
+@overload
+def dynamic_decode(
+    decoder: Decoder,
+    inits: object | None = ...,
+    max_step_num: int | None = ...,
+    output_time_major: bool = ...,
+    impute_finished: bool = ...,
+    is_test: bool = ...,
+    return_length: bool = ...,
+    **kwargs: Any,
+) -> (
+    tuple[Tensor, BeamSearchDecoder.StateWrapper]
+    | tuple[Tensor, BeamSearchDecoder.StateWrapper, Tensor]
+): ...
+
+
 def dynamic_decode(
     decoder,
     inits=None,
@@ -999,7 +1284,7 @@ def dynamic_decode(
     impute_finished=False,
     is_test=False,
     return_length=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
@@ -1082,7 +1367,18 @@ def dynamic_decode(
             impute_finished,
             is_test,
             return_length,
-            **kwargs
+            **kwargs,
+        )
+    elif paddle.framework.in_pir_mode():
+        return _dynamic_decode_pir_declarative(
+            decoder,
+            inits,
+            max_step_num,
+            output_time_major,
+            impute_finished,
+            is_test,
+            return_length,
+            **kwargs,
         )
     else:
         return _dynamic_decode_declarative(
@@ -1093,5 +1389,5 @@ def dynamic_decode(
             impute_finished,
             is_test,
             return_length,
-            **kwargs
+            **kwargs,
         )

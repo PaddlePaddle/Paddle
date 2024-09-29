@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -20,7 +21,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(0)
 
@@ -263,12 +263,18 @@ class TestCumprodAPI(unittest.TestCase):
         paddle.enable_static()
         self.init_dtype()
         self.x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.dtype)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
     # test static graph api.
-    @test_with_pir_api
+
     def test_static_api(self):
         paddle.enable_static()
 

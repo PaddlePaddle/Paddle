@@ -29,7 +29,7 @@ class TestPcaLowrankAPI(unittest.TestCase):
     def random_matrix(self, rows, columns, *batch_dims, **kwargs):
         dtype = kwargs.get('dtype', paddle.float64)
 
-        x = paddle.randn(batch_dims + (rows, columns), dtype=dtype)
+        x = paddle.randn((*batch_dims, rows, columns), dtype=dtype)
         if x.numel() == 0:
             return x
         u, _, vh = paddle.linalg.svd(x, full_matrices=False)
@@ -63,9 +63,9 @@ class TestPcaLowrankAPI(unittest.TestCase):
         self.assertEqual(v.shape[-2], columns)
 
         A1 = u.matmul(paddle.diag_embed(s)).matmul(self.transpose(v))
-        ones_m1 = paddle.ones(batches + (rows, 1), dtype=a.dtype)
+        ones_m1 = paddle.ones((*batches, rows, 1), dtype=a.dtype)
         c = a.sum(axis=-2) / rows
-        c = c.reshape(batches + (1, columns))
+        c = c.reshape((*batches, 1, columns))
         A2 = a - ones_m1.matmul(c)
         np.testing.assert_allclose(A1.numpy(), A2.numpy(), atol=1e-5)
 
@@ -143,7 +143,7 @@ class TestStaticPcaLowrankAPI(unittest.TestCase):
     def random_matrix(self, rows, columns, *batch_dims, **kwargs):
         dtype = kwargs.get('dtype', 'float64')
 
-        x = paddle.randn(batch_dims + (rows, columns), dtype=dtype)
+        x = paddle.randn((*batch_dims, rows, columns), dtype=dtype)
         u, _, vh = paddle.linalg.svd(x, full_matrices=False)
         k = min(rows, columns)
         s = paddle.linspace(1 / (k + 1), 1, k, dtype=dtype)
@@ -178,9 +178,9 @@ class TestStaticPcaLowrankAPI(unittest.TestCase):
             self.assertEqual(v.shape[-2], columns)
 
             A1 = u.matmul(paddle.diag_embed(s)).matmul(self.transpose(v))
-            ones_m1 = paddle.ones(batches + (rows, 1), dtype=a.dtype)
+            ones_m1 = paddle.ones((*batches, rows, 1), dtype=a.dtype)
             c = a.sum(axis=-2) / rows
-            c = c.reshape(batches + (1, columns))
+            c = c.reshape((*batches, 1, columns))
             A2 = a - ones_m1.matmul(c)
             detect_rank = (s.abs() > 1e-5).sum(axis=-1)
             left1 = actual_rank * paddle.ones(batches, dtype=paddle.int64)

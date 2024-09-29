@@ -30,6 +30,8 @@ class PirCompiler final {
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
 
+  std::shared_ptr<pir::CompilationResult> Compile(GroupCompilationContext* ctx);
+
   Target target_;
 };
 

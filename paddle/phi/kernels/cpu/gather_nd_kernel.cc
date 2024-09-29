@@ -31,14 +31,14 @@ void GatherNdKernel(const Context &ctx,
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      phi::errors::InvalidArgument("Index holds the wrong type, it holds [%s],"
-                                   "but desires to be [%s] or [%s]",
-                                   index_type,
-                                   phi::DataType::INT32,
-                                   phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s],"
+                        "but desires to be [%s] or [%s]",
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
   if (index_type == phi::DataType::INT32) {
     phi::funcs::CPUGatherNd<T, int>(ctx, x, index, out);
   } else if (index_type == phi::DataType::INT64) {

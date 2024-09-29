@@ -102,7 +102,7 @@ void LogsumexpGradKernel(const Context& dev_ctx,
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported dimensions, please keep maximum dimensions of input "
             "data less than 4."));
         break;

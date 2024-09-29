@@ -543,7 +543,7 @@ static int count_contours(polygon_node *polygon) {
 
 static void add_left(polygon_node *p, double x, double y) {
   PADDLE_ENFORCE_NOT_NULL(
-      p, phi::errors::InvalidArgument("Input polygon node is nullptr."));
+      p, common::errors::InvalidArgument("Input polygon node is nullptr."));
   vertex_node *nv = nullptr;
 
   /* Create a new vertex node and set its fields */
@@ -604,7 +604,7 @@ static void add_right(polygon_node *p, double x, double y) {
 
 static void merge_right(polygon_node *p, polygon_node *q, polygon_node *list) {
   PADDLE_ENFORCE_NOT_NULL(
-      p, phi::errors::InvalidArgument("Input polygon node is nullptr."));
+      p, common::errors::InvalidArgument("Input polygon node is nullptr."));
   polygon_node *target = nullptr;
 
   /* Label contour as external */
@@ -689,7 +689,7 @@ void add_vertex(vertex_node **t, double x, double y) {
 
 void gpc_vertex_create(edge_node *e, int p, int s, double x, double y) {
   PADDLE_ENFORCE_NOT_NULL(
-      e, phi::errors::InvalidArgument("Input edge node is nullptr."));
+      e, common::errors::InvalidArgument("Input edge node is nullptr."));
   add_vertex(&(e->outp[p]->v[s]), x, y);
   e->outp[p]->active++;
 }
@@ -724,7 +724,7 @@ static bbox *create_contour_bboxes(gpc_polygon *p) {
                    p->num_contours * static_cast<int>(sizeof(bbox)),
                    const_cast<char *>("Bounding box creation"));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(
-      box, phi::errors::ResourceExhausted("Failed to malloc box memory."));
+      box, common::errors::ResourceExhausted("Failed to malloc box memory."));
 
   /* Construct contour bounding boxes */
   for (c = 0; c < p->num_contours; c++) {
@@ -890,9 +890,9 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   gpc_malloc<int>(extended_hole,
                   (p->num_contours + 1) * static_cast<int>(sizeof(int)),
                   const_cast<char *>("contour hole addition"));  // NOLINT
-  PADDLE_ENFORCE_NOT_NULL(
-      extended_hole,
-      phi::errors::ResourceExhausted("Failed to malloc extended hole memory."));
+  PADDLE_ENFORCE_NOT_NULL(extended_hole,
+                          common::errors::ResourceExhausted(
+                              "Failed to malloc extended hole memory."));
 
   /* Create an extended contour array */
   gpc_malloc<gpc_vertex_list>(
@@ -1016,7 +1016,7 @@ void gpc_polygon_clip(gpc_op op,
                      sbt_entries * static_cast<int>(sizeof(double)),
                      const_cast<char *>("sbt creation"));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(sbt,
-                          phi::errors::ResourceExhausted(
+                          common::errors::ResourceExhausted(
                               "Failed to malloc scanbeam table memory."));
 
   build_sbt(&scanbeam, sbt, sbtree);
@@ -1061,7 +1061,7 @@ void gpc_polygon_clip(gpc_op op,
     e1 = aet;  // NOLINT
     /* Set up bundle fields of first edge */
     PADDLE_ENFORCE_NOT_NULL(
-        aet, phi::errors::InvalidArgument("Edge node AET is nullptr."));
+        aet, common::errors::InvalidArgument("Edge node AET is nullptr."));
 
     aet->bundle[ABOVE][aet->type] = (aet->top.y != yb);
     aet->bundle[ABOVE][!aet->type] = 0;
@@ -1664,7 +1664,7 @@ void gpc_tristrip_clip(gpc_op op,
                      sbt_entries * static_cast<int>(sizeof(double)),
                      const_cast<char *>("sbt creation"));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(sbt,
-                          phi::errors::ResourceExhausted(
+                          common::errors::ResourceExhausted(
                               "Failed to malloc scanbeam table memory."));
   build_sbt(&scanbeam, sbt, sbtree);
   scanbeam = 0;
@@ -1704,7 +1704,7 @@ void gpc_tristrip_clip(gpc_op op,
 
     /* Set up bundle fields of first edge */
     PADDLE_ENFORCE_NOT_NULL(
-        aet, phi::errors::InvalidArgument("Edge node AET is nullptr."));
+        aet, common::errors::InvalidArgument("Edge node AET is nullptr."));
     aet->bundle[ABOVE][aet->type] = (aet->top.y != yb);
     aet->bundle[ABOVE][!aet->type] = 0;
     aet->bstate[ABOVE] = UNBUNDLED;

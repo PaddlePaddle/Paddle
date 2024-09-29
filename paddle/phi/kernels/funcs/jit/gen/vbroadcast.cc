@@ -76,7 +76,7 @@ class VBroadcastCreator : public JitCodeCreator<int64_t> {
     PADDLE_ENFORCE_GT(
         w,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The width of VBroadcast should be larger than 0. But w is %d.",
             w));
     return make_unique<VBroadcastJitCode>(w, CodeSize(w));

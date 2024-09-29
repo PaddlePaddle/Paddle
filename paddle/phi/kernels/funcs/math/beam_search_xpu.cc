@@ -41,7 +41,7 @@ void CopyDataByCondition(const T *x, T **y, int len, const Place &place) {
     PADDLE_ENFORCE_EQ(
         r,
         xpu::Error_t::SUCCESS,
-        phi::errors::External("Copy data form xpu to cpu failed"));
+        common::errors::External("Copy data form xpu to cpu failed"));
   }
 }
 
@@ -95,14 +95,15 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
-    auto *selected_ids_data = context.template Alloc<int64_t>(selected_ids);
+    auto *selected_ids_data = context.template HostAlloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);
-    auto *selected_scores_data = context.template Alloc<float>(selected_scores);
+    auto *selected_scores_data =
+        context.template HostAlloc<float>(selected_scores);
     if (parent_idx != nullptr) {
       parent_idx->Resize({static_cast<int64_t>(num_instances)});
     }
     auto *parent_idx_data =
-        parent_idx ? context.template Alloc<int>(parent_idx) : nullptr;
+        parent_idx ? context.template HostAlloc<int>(parent_idx) : nullptr;
 
     // fill in data
     std::vector<size_t> low_level;
@@ -125,10 +126,10 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
     if (!CheckLoD(lod)) {
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("lod %s is not right in"
-                                       " beam_search, please check your code.",
-                                       LoDToString(lod)));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "lod %s is not right in"
+          " beam_search, please check your code.",
+          LoDToString(lod)));
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);

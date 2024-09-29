@@ -84,7 +84,7 @@ void MultiHeadAttentionVariableForwardKernel(
       mask_ptr                                           /* mask */
   );
   PADDLE_ENFORCE_EQ(
-      r, 0, phi::errors::InvalidArgument("xpu::qk_attention run failed"));
+      r, 0, common::errors::InvalidArgument("xpu::qk_attention run failed"));
   XPUType* out_tmp_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
       num_batches * query_seq_len * num_heads * head_size);
   r = xpu::qk_v_attention<XPUType, XPUType, XPUType, int16_t>(
@@ -98,7 +98,7 @@ void MultiHeadAttentionVariableForwardKernel(
       qkv_attn_param                                     /* mask */
   );
   PADDLE_ENFORCE_EQ(
-      r, 0, phi::errors::InvalidArgument("xpu::qk_v_attention run failed"));
+      r, 0, common::errors::InvalidArgument("xpu::qk_v_attention run failed"));
   r = xpu::transpose<XPUType>(
       ctx.x_context(),
       out_tmp_buf,
@@ -106,7 +106,7 @@ void MultiHeadAttentionVariableForwardKernel(
       {num_batches, query_seq_len, num_heads, head_size},
       {0, 2, 1, 3});
   PADDLE_ENFORCE_EQ(
-      r, 0, phi::errors::InvalidArgument("xpu::transpose run failed"));
+      r, 0, common::errors::InvalidArgument("xpu::transpose run failed"));
 }
 
 }  // namespace fusion

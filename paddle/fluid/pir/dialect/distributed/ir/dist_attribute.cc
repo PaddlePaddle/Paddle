@@ -77,13 +77,13 @@ phi::distributed::Placements TensorDistAttribute::placements() const {
     if (mesh_id >= 0) {
       auto& p = placements[mesh_id];
       if (p->is_shard()) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension cann't be mapped to two  dimension of the "
             "same tensor: {%d} and {%d}",
             i,
             dynamic_cast<phi::distributed::Shard&>(*p).get_dim()));
       } else if (p->is_partial()) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension {%d} cannot be both shard and partial!",
             mesh_id));
       }
@@ -126,11 +126,14 @@ uint32_t OperationDistAttribute::num_results() const {
   return results().size();
 }
 
+int64_t OperationDistAttribute::chunk_id() const { return storage()->chunk_id; }
+
 OperationDistAttribute OperationDistAttribute::get(
     pir::IrContext* ctx,
     ProcessMeshAttribute mesh,
     const std::vector<pir::Attribute>& operands,
-    const std::vector<pir::Attribute>& results) {
+    const std::vector<pir::Attribute>& results,
+    const int64_t& chunk_id) {
   auto check_dist_attr = [=](pir::Attribute attr) {
     auto dist_attr = attr.dyn_cast<TensorDistAttribute>();
     auto ids = mesh.process_ids();
@@ -156,7 +159,7 @@ OperationDistAttribute OperationDistAttribute::get(
       check_dist_attr(attr);
     }
   }
-  return Base::get(ctx, mesh, operands, results);
+  return Base::get(ctx, mesh, operands, results, chunk_id);
 }
 
 }  // namespace dialect

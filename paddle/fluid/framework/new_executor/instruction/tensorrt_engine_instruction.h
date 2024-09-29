@@ -16,8 +16,8 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/tensorrt/engine.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace pir {
 class Operation;
@@ -42,6 +42,7 @@ class TensorRTEngineInstruction : public InstructionBase {
   const std::string& Name() const override { return op_name_; }
 
  private:
+  std::string ReadBinaryFileToString(const std::string& filePath);
   void PrepareDynamicShape();
   void RunTrt();
   void BindInputTensor(const std::string& input_name,
@@ -58,8 +59,12 @@ class TensorRTEngineInstruction : public InstructionBase {
   std::unique_ptr<paddle::platform::TensorRTEngine> trt_engine_;  // not owned
   int64_t workspace_size_;
   bool allow_build_at_runtime_;
-  std::vector<std::string> input_names_;
-  std::vector<std::string> output_names_;
+  std::unordered_map<int, std::string>
+      input_names_;  // Only record input name that is not empty
+  int input_nums_ = 0;
+  std::unordered_map<int, std::string>
+      output_names_;  // Only record output name that is not empty
+  int output_nums_ = 0;
   std::vector<int> outputs_rank_;
   std::vector<phi::DataType> outputs_dtype_;
   std::string op_name_ = "pd_op.tensorrt_engine";

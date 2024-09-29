@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base.data_feeder import check_variable_and_dtype
@@ -24,6 +24,8 @@ from paddle.distribution import exponential_family
 from paddle.framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 

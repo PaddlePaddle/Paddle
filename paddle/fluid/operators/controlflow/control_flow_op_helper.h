@@ -96,7 +96,7 @@ static void AssignZeroToParentScope(
       PADDLE_ENFORCE_EQ(
           outside_var->IsType<phi::DenseTensor>(),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Type of outside_var %s is NOT phi::DenseTensor, which "
               "doesn't match input_var %s.",
               outside_grad_name,
@@ -105,23 +105,22 @@ static void AssignZeroToParentScope(
                                 scope,
                                 input_var->Get<phi::DenseTensor>(),
                                 outside_var->GetMutable<phi::DenseTensor>());
-    } else if (input_var->IsType<framework::LoDTensorArray>()) {
-      PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
+    } else if (input_var->IsType<phi::TensorArray>()) {
+      PADDLE_ENFORCE_EQ(outside_var->IsType<phi::TensorArray>(),
                         true,
-                        phi::errors::InvalidArgument(
-                            "Type of outside_var %s is NOT LoDTensorArray, "
+                        common::errors::InvalidArgument(
+                            "Type of outside_var %s is NOT phi::TensorArray, "
                             "which doesn't match input_var %s.",
                             outside_grad_name,
                             input_name));
-      const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
-      auto *outside_tensors =
-          outside_var->GetMutable<framework::LoDTensorArray>();
+      const auto &input_tensors = input_var->Get<phi::TensorArray>();
+      auto *outside_tensors = outside_var->GetMutable<phi::TensorArray>();
       if (outside_tensors->empty()) {
         outside_tensors->resize(input_tensors.size());
       }
       PADDLE_ENFORCE_EQ(input_tensors.size(),
                         outside_tensors->size(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "LoDTensorArray outside_var %s doen't have same "
                             "size as input_var %s.",
                             outside_grad_name,
@@ -132,7 +131,7 @@ static void AssignZeroToParentScope(
       }
     } else {
       // TODO(huihuangzheng): add support for SelectedRows
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Conditional block grad op doesn't support non-phi::DenseTensor "
           "output "
           "now."));

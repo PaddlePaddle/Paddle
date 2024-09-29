@@ -33,7 +33,7 @@ void UnStackKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       split_dim,
       outs.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Output outs's size should be equal to the split_dim, but"
           " received split_dim is:%d outs's size is:%d.",
           split_dim,

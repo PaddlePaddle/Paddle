@@ -289,6 +289,16 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
     group = p2p_op_list[0].group
     if _warn_cur_rank_not_in_group(group):
         return
+
+    need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
+    if need_check:
+        for p2p_op in p2p_op_list:
+            if p2p_op.op == _send_on_calc_stream:
+                if not paddle.isfinite(p2p_op.tensor).all().item():
+                    raise ValueError(
+                        f"CUDA error(1002). Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                    )
+
     group = _get_global_group() if group is None else group
     backend = group.backend
     tasks = []
@@ -460,6 +470,16 @@ def _batched_p2p_ops(
 def _p2p_ops_tuple_or_tensor(tensors, p2p_func, pp_rank, pp_group):
     if not isinstance(tensors, tuple):
         tensors = (tensors,)
+
+    need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
+    if need_check:
+        if p2p_func == paddle.distributed.isend:
+            for t in tensors:
+                if not paddle.isfinite(t).all().item():
+                    raise ValueError(
+                        f"CUDA error(1002). Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                    )
+
     reqs = []
     for tensor in tensors:
         reqs.append(p2p_func(tensor, pp_rank, pp_group))
@@ -784,6 +804,7 @@ class P2pHelper:
         recv_prev,
         recv_next,
         batch_p2p_comm=True,
+        skip_check_meta=False,
     ):
         # always have to send dtype info to downstream
         global _timers
@@ -791,7 +812,7 @@ class P2pHelper:
             _timers("send_forward_backward_recv_forward_backward").start()
 
         if output_tensor is not None:
-            self._send_meta(output_tensor)
+            self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
         if recv_prev:
             self._recv_meta()
 
@@ -814,6 +835,7 @@ class P2pHelper:
         recv_prev,
         batch_p2p_comm=True,
         overlap_p2p_comm=False,
+        skip_check_meta=False,
     ):
         # always have to send dtype info to downstream
         global _timers
@@ -821,7 +843,7 @@ class P2pHelper:
             _timers("send_forward_recv_forward").start()
 
         if output_tensor is not None:
-            self._send_meta(output_tensor)
+            self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
 
         if recv_prev:
             self._recv_meta()

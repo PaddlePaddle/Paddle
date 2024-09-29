@@ -22,9 +22,9 @@
 
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
-#include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/platform/device_event_base.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {

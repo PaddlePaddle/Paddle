@@ -75,7 +75,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
         *reinterpret_cast<phi::DenseTensor*>(w_grad_tensor.impl().get()));
 
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Custom Device c_embedding_grad ids only support int32 or int64."));
   }
 }

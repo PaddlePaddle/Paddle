@@ -217,7 +217,7 @@ TEST(test_layer, test_debug_string) {
   // 3. test unresolved type
   std::shared_ptr<imperative::VarBase> ut_out(
       new imperative::VarBase(false, "ut_out"));
-  ut_out->MutableVar()->GetMutable<framework::LoDTensorArray>();
+  ut_out->MutableVar()->GetMutable<phi::TensorArray>();
   std::string res_ut = test_func(ut_out);
   ASSERT_TRUE(res_ut.find("UNRESOLVED_TYPE") != std::string::npos);
 

@@ -465,6 +465,7 @@ void PowGradKernel(const Context& dev_ctx,
                    const DenseTensor& dout,
                    const Scalar& factor,
                    DenseTensor* dx) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(dx);
   const T* x_data = x.data<T>();
   const T* y_grad = dout.data<T>();
@@ -483,10 +484,12 @@ void PowGradKernel(const Context& dev_ctx,
   float pow_factor = factor.to<float>();
 
   auto xpu_context = dev_ctx.x_context();
-  // int pow_grad(Context* ctx, const T* x, const T* dy, T* dx, int len, float
-  // factor);
-  int r =
-      xpu::pow_grad(xpu_context, x_data, y_grad, x_grad, x.numel(), pow_factor);
+  int r = xpu::pow_grad(xpu_context,
+                        reinterpret_cast<const XPUType*>(x_data),
+                        reinterpret_cast<const XPUType*>(y_grad),
+                        reinterpret_cast<XPUType*>(x_grad),
+                        x.numel(),
+                        pow_factor);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "pow_grad");
 }
 
@@ -741,12 +744,29 @@ PD_REGISTER_KERNEL(hardswish_grad,
                    phi::HardSwishGradKernel,
                    float,
                    phi::dtype::float16) {}
+
 PD_REGISTER_KERNEL(sigmoid_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::SigmoidGradKernel,
                    float,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(pow_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::PowGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(rsqrt_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RsqrtGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(exp_grad, ExpGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log_grad, LogGradKernel)
@@ -759,6 +779,3 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(cos_grad, CosGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(rsqrt_grad, RsqrtGradKernel)
-
-PD_REGISTER_KERNEL(pow_grad, XPU, ALL_LAYOUT, phi::PowGradKernel, float) {}

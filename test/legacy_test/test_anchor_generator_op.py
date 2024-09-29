@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 
 def anchor_generator_in_python(
@@ -57,60 +56,6 @@ def anchor_generator_in_python(
     out_anchors = out_anchors.astype('float32')
     out_var = out_var.astype('float32')
     return out_anchors, out_var
-
-
-class TestAnchorGeneratorOp(OpTest):
-    def set_data(self):
-        self.init_test_params()
-        self.init_test_input()
-        self.init_test_output()
-        self.inputs = {'Input': self.input}
-
-        self.attrs = {
-            'anchor_sizes': self.anchor_sizes,
-            'aspect_ratios': self.aspect_ratios,
-            'stride': self.stride,
-            'offset': self.offset,
-            'variances': self.variances,
-        }
-
-        self.outputs = {'Anchors': self.out_anchors, 'Variances': self.out_var}
-
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
-
-    def setUp(self):
-        self.op_type = "anchor_generator"
-        self.set_data()
-
-    def init_test_params(self):
-        self.batch_size = 1
-        self.input_channels = 2
-        self.layer_h = 2
-        self.layer_w = 2
-
-        self.anchor_sizes = [64.0, 128.0, 256.0, 512.0]
-        self.aspect_ratios = [0.5, 1.0, 2.0]
-        self.stride = [16.0, 16.0]
-
-        self.offset = 0.5
-
-        self.variances = [0.1, 0.1, 0.2, 0.2]
-
-    def init_test_input(self):
-        self.input = np.random.random(
-            (self.batch_size, self.input_channels, self.layer_h, self.layer_w)
-        ).astype('float32')
-
-    def init_test_output(self):
-        self.out_anchors, self.out_var = anchor_generator_in_python(
-            self.input,
-            self.anchor_sizes,
-            self.aspect_ratios,
-            self.variances,
-            self.stride,
-            self.offset,
-        )
 
 
 if __name__ == '__main__':

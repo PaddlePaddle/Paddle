@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import time
 from multiprocessing import Manager, Process
@@ -38,12 +39,14 @@ def _start_kv_server(port, http_server_d, size):
     http_server.stop()
 
 
-def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
+def gloo_init_parallel_env(
+    rank_id: int, rank_num: int, server_endpoint: str
+) -> None:
     """
     Initialize parallel environment with gloo for cpu only.
 
     Args:
-        - rank_id（int, required) - the index of current rank;
+        - rank_id (int, required) - the index of current rank;
         - rank_num (int, required) - the number of ranks in this parallel env;
         - server_endpoint (str, required) - endpoint of server to init gloo context in ip:port format;
 
@@ -135,7 +138,7 @@ def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
         http_server_proc.join()
 
 
-def gloo_barrier():
+def gloo_barrier() -> None:
     """
     Call barrier function with initialized gloo context.
 
@@ -193,7 +196,7 @@ def gloo_barrier():
     _global_gloo_ctx.barrier()
 
 
-def gloo_release():
+def gloo_release() -> None:
     """
     Release the parallel environment initialized by gloo
 

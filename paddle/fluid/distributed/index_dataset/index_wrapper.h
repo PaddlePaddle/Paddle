@@ -78,7 +78,7 @@ class IndexWrapper {
   TreePtr get_tree_index(const std::string name) {
     PADDLE_ENFORCE_NE(tree_map.find(name),
                       tree_map.end(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "tree [%s] doesn't exist. Please insert it firstly "
                           "by API[\' insert_tree_index \'].",
                           name));
@@ -94,7 +94,7 @@ class IndexWrapper {
     int ret = tree->Load(tree_path);
     PADDLE_ENFORCE_EQ(ret,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Load tree[%s] from path[%s] failed. Please "
                           "check whether the file exists.",
                           name,

@@ -19,7 +19,6 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     get_numeric_gradient,
-    paddle_static_guard,
 )
 from testsuite import create_op
 
@@ -1044,90 +1043,97 @@ create_test_cudnn_channel_last_class(TestWith1x1_AsyPadding)
 
 # --------- test python API ---------------
 class TestConv3DAPI(unittest.TestCase):
+    def api_run(self):
+        input_NDHWC = paddle.static.data(
+            name="input_NDHWC",
+            shape=[2, 5, 5, 5, 3],
+            dtype="float32",
+        )
+        input_NDHWC_in_channel = 5
+
+        input_NCDHW = paddle.static.data(
+            name="input_NCDHW",
+            shape=[2, 3, 5, 5, 3],
+            dtype="float32",
+        )
+        input_NCDHW_in_channel = 3
+
+        paddle.nn.Conv3D(
+            in_channels=input_NCDHW_in_channel,
+            out_channels=3,
+            kernel_size=[3, 3, 3],
+            stride=[1, 1, 1],
+            padding=0,
+            dilation=[1, 1, 1],
+            groups=1,
+            data_format="NCDHW",
+        )(input_NCDHW)
+
+        paddle.nn.Conv3D(
+            in_channels=input_NCDHW_in_channel,
+            out_channels=3,
+            kernel_size=[3, 3, 3],
+            stride=[1, 1, 1],
+            padding=[1, 2, 1, 0, 1, 0],
+            dilation=[1, 1, 1],
+            groups=1,
+            data_format="NCDHW",
+        )(input_NCDHW)
+
+        paddle.nn.Conv3D(
+            in_channels=input_NCDHW_in_channel,
+            out_channels=3,
+            kernel_size=[3, 3, 3],
+            stride=[1, 1, 1],
+            padding=[[0, 0], [0, 0], [1, 1], [1, 1], [1, 1]],
+            dilation=[1, 1, 1],
+            groups=1,
+            data_format="NCDHW",
+        )(input_NCDHW)
+
+        paddle.nn.Conv3D(
+            in_channels=input_NDHWC_in_channel,
+            out_channels=3,
+            kernel_size=[3, 3, 3],
+            stride=[1, 1, 1],
+            padding=[[0, 0], [1, 1], [1, 1], [1, 1], [0, 0]],
+            dilation=[1, 1, 1],
+            groups=1,
+            data_format="NDHWC",
+        )(input_NDHWC)
+
+        paddle.nn.Conv3D(
+            in_channels=input_NCDHW_in_channel,
+            out_channels=3,
+            kernel_size=[3, 3, 3],
+            stride=[1, 1, 1],
+            padding="SAME",
+            dilation=[1, 1, 1],
+            groups=1,
+            data_format="NCDHW",
+        )(input_NCDHW)
+
+        paddle.nn.Conv3D(
+            in_channels=input_NCDHW_in_channel,
+            out_channels=3,
+            kernel_size=[3, 3, 3],
+            stride=[1, 1, 1],
+            padding="VALID",
+            dilation=[1, 1, 1],
+            groups=1,
+            data_format="NCDHW",
+        )(input_NCDHW)
+
     def test_api(self):
-        with paddle_static_guard():
-            input_NDHWC = paddle.static.data(
-                name="input_NDHWC",
-                shape=[2, 5, 5, 5, 3],
-                dtype="float32",
-            )
-
-            input_NCDHW = paddle.static.data(
-                name="input_NCDHW",
-                shape=[2, 3, 5, 5, 3],
-                dtype="float32",
-            )
-
-            paddle.static.nn.conv3d(
-                input=input_NDHWC,
-                num_filters=3,
-                filter_size=[3, 3, 3],
-                stride=[1, 1, 1],
-                padding=0,
-                dilation=[1, 1, 1],
-                groups=1,
-                data_format="NCDHW",
-            )
-
-            paddle.static.nn.conv3d(
-                input=input_NCDHW,
-                num_filters=3,
-                filter_size=[3, 3, 3],
-                stride=[1, 1, 1],
-                padding=[1, 2, 1, 0, 1, 0],
-                dilation=[1, 1, 1],
-                groups=1,
-                data_format="NCDHW",
-            )
-
-            paddle.static.nn.conv3d(
-                input=input_NCDHW,
-                num_filters=3,
-                filter_size=[3, 3, 3],
-                stride=[1, 1, 1],
-                padding=[[0, 0], [0, 0], [1, 1], [1, 1], [1, 1]],
-                dilation=[1, 1, 1],
-                groups=1,
-                data_format="NCDHW",
-            )
-
-            paddle.static.nn.conv3d(
-                input=input_NDHWC,
-                num_filters=3,
-                filter_size=[3, 3, 3],
-                stride=[1, 1, 1],
-                padding=[[0, 0], [1, 1], [1, 1], [1, 1], [0, 0]],
-                dilation=[1, 1, 1],
-                groups=1,
-                data_format="NDHWC",
-            )
-
-            paddle.static.nn.conv3d(
-                input=input_NCDHW,
-                num_filters=3,
-                filter_size=[3, 3, 3],
-                stride=[1, 1, 1],
-                padding="SAME",
-                dilation=[1, 1, 1],
-                groups=1,
-                data_format="NCDHW",
-            )
-
-            paddle.static.nn.conv3d(
-                input=input_NCDHW,
-                num_filters=3,
-                filter_size=[3, 3, 3],
-                stride=[1, 1, 1],
-                padding="VALID",
-                dilation=[1, 1, 1],
-                groups=1,
-                data_format="NCDHW",
-            )
+        with paddle.pir_utils.OldIrGuard():
+            self.api_run()
+        with paddle.pir_utils.IrGuard():
+            self.api_run()
 
 
 class TestConv3DAPI_Error(unittest.TestCase):
     def test_api(self):
-        with paddle_static_guard():
+        with paddle.pir_utils.OldIrGuard():
             input = paddle.static.data(
                 name="input",
                 shape=[2, 5, 5, 5, 4],
@@ -1265,6 +1271,146 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 )
 
             self.assertRaises(ValueError, run_8)
+
+
+class TestPIRConv3DAPI_Error(unittest.TestCase):
+    def test_api(self):
+        with paddle.pir_utils.IrGuard():
+            input = paddle.static.data(
+                name="input",
+                shape=[2, 5, 5, 5, 4],
+                dtype="float32",
+            )
+            input_NCDHW_in_channel = 5
+            input_NDHWC_in_channel = 4
+
+            # ValueError: cudnn
+            # def run_1():
+            #     model = paddle.nn.Conv3D(
+            #         in_channels=input_NCDHW_in_channel,
+            #         out_channels=3,
+            #         kernel_size=3,
+            #         stride=1,
+            #         padding=0,
+            #         dilation=1,
+            #         groups=1,
+            #         data_format="NCDHW",
+            #     )
+            #     model._use_cudnn = [0]
+            #     model(input)
+            #
+            # self.assertRaises(ValueError, run_1)
+
+            # ValueError: data_format
+            def run_2():
+                paddle.nn.Conv3D(
+                    in_channels=input_NCDHW_in_channel,
+                    out_channels=3,
+                    kernel_size=[3, 3, 3],
+                    stride=[1, 1, 1],
+                    padding=0,
+                    dilation=[1, 1, 1],
+                    groups=1,
+                    data_format="NCHWC",
+                )(input)
+
+            self.assertRaises(ValueError, run_2)
+
+            # ValueError: padding
+            def run_3():
+                paddle.nn.Conv3D(
+                    in_channels=input_NCDHW_in_channel,
+                    out_channels=3,
+                    kernel_size=3,
+                    stride=1,
+                    padding="SAMEE",
+                    dilation=1,
+                    groups=1,
+                    data_format="NCDHW",
+                )(input)
+
+            self.assertRaises(ValueError, run_3)
+
+            def run_4():
+                paddle.nn.Conv3D(
+                    in_channels=input_NCDHW_in_channel,
+                    out_channels=3,
+                    kernel_size=3,
+                    stride=1,
+                    padding=[[0, 1], [0, 0], [0, 1], [0, 1], [0, 1]],
+                    dilation=1,
+                    groups=1,
+                    data_format="NCDHW",
+                )(input)
+
+            self.assertRaises(ValueError, run_4)
+
+            def run_5():
+                paddle.nn.Conv3D(
+                    in_channels=input_NDHWC_in_channel,
+                    out_channels=3,
+                    kernel_size=0,
+                    stride=0,
+                    padding=[[0, 1], [0, 1], [0, 1], [0, 1], [0, 1]],
+                    dilation=1,
+                    groups=1,
+                    data_format="NDHWC",
+                )(input)
+
+            self.assertRaises(ValueError, run_5)
+
+            # ValueError: channel dimension
+            x = paddle.static.data(
+                name="x",
+                shape=[2, 5, 5, 5, -1],
+                dtype="float32",
+            )
+            x_NCDHW_in_channel = 5
+            x_NDHWC_in_channel = -1
+
+            def run_6():
+                paddle.nn.Conv3D(
+                    in_channels=x_NDHWC_in_channel,
+                    out_channels=3,
+                    kernel_size=3,
+                    stride=1,
+                    padding=0,
+                    dilation=1,
+                    groups=1,
+                    data_format="NDHWC",
+                )(x)
+
+            self.assertRaises(AssertionError, run_6)
+
+            # ValueError: groups
+            def run_7():
+                paddle.nn.Conv3D(
+                    in_channels=x_NDHWC_in_channel,
+                    out_channels=3,
+                    kernel_size=3,
+                    stride=1,
+                    padding=0,
+                    dilation=1,
+                    groups=3,
+                    data_format="NDHWC",
+                )(x)
+
+            self.assertRaises(ValueError, run_7)
+
+            # ValueError: filter num
+            def run_8():
+                paddle.nn.Conv3D(
+                    in_channels=x_NDHWC_in_channel,
+                    out_channels=0,
+                    kernel_size=0,
+                    stride=0,
+                    padding=0,
+                    dilation=0,
+                    groups=1,
+                    data_format="NDHWC",
+                )(x)
+
+            self.assertRaises(AssertionError, run_8)
 
 
 if __name__ == '__main__':

@@ -65,7 +65,7 @@ std::size_t GetOutputRankImpl(
   const auto& [sched_mesh, perm] = sched_transpose.tuple();
   PADDLE_ENFORCE_EQ(GetOutputRank(sched_mesh) == perm.value()->size(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of perm should be equal to the output rank, "
                         "but got perm size = %d, output rank = %d.",
                         perm.value()->size(),
@@ -376,8 +376,8 @@ std::tuple<ScheduleMesh, List<LoopType>> CreateOptimizedScheduleMesh(
       return policy->Optimize(loop_sizes);
     }
   }
-  PADDLE_THROW(
-      phi::errors::Fatal("Dead code, no valid schedule mesh policy found"));
+  PADDLE_THROW(::common::errors::Fatal(
+      "Dead code, no valid schedule mesh policy found"));
 }
 
 ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
@@ -385,7 +385,11 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
   const auto& origin_shape = GetOutputDimValues(sched_mesh);
   std::int64_t origin_numel = 1;
   for (const auto& dim : *origin_shape) {
-    CHECK(dim.Has<std::int64_t>());
+    PADDLE_ENFORCE_EQ(
+        dim.Has<std::int64_t>(),
+        true,
+        ::common::errors::InvalidArgument(
+            "Each dimension in 'origin_shape' must have an int64_t value."));
     origin_numel *= dim.Get<std::int64_t>();
   }
 
@@ -393,20 +397,33 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
   bool dynamic_shape = false;
   for (const auto& dim : shape) {
     if (dim < 0) {
-      CHECK(dim == -1 && !dynamic_shape);
+      PADDLE_ENFORCE_EQ(dim == -1 && !dynamic_shape,
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "Negative dimension in 'shape' must be "
+                            "-1 to represent dynamic shape. "
+                            "But received: %d",
+                            dim));
       dynamic_shape = true;
     } else {
       numel *= dim;
     }
   }
-
-  CHECK(dynamic_shape || numel == origin_numel);
+  PADDLE_ENFORCE_EQ(dynamic_shape || numel == origin_numel,
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The total number of elements must match between "
+                        "'shape' and 'origin_shape' "
+                        "unless there is a dynamic shape. "
+                        "But received: numel = %d, origin_numel = %d",
+                        numel,
+                        origin_numel));
   List<LoopSize> reshape_to{};
   for (const auto& dim : shape) {
     if (dim < 0) {
       PADDLE_ENFORCE_EQ(origin_numel % numel == 0UL,
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The origin_numel should be divisible by numel"));
       reshape_to->emplace_back(origin_numel / numel);
     } else {
@@ -429,7 +446,7 @@ ScheduleMesh MeshPadding(const ScheduleMesh& sched_mesh,
   PADDLE_ENFORCE_EQ(
       input_dims->size(),
       output_dims->size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of input_dims and output_dims should be equal, "
           "but got input_dims size = %d, output_dims size = %d.",
           input_dims->size(),
@@ -439,7 +456,7 @@ ScheduleMesh MeshPadding(const ScheduleMesh& sched_mesh,
         output_dims->at(i).Has<std::int64_t>()) {
       PADDLE_ENFORCE_LE(input_dims->at(i).Get<std::int64_t>(),
                         output_dims->at(i).Get<std::int64_t>(),
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The input_dims should be equal to output_dims, "
                             "but got input_dims not equal to output_dims = "));
     }
@@ -453,7 +470,7 @@ ScheduleMesh MeshPaddingRoundUp(
   const auto& shape = GetOutputDimValues(sched_mesh);
   PADDLE_ENFORCE_EQ(shape->size(),
                     align_sizes.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of shape and align_sizes should be equal, "
                         "but got shape size = %d, align_sizes size = %d.",
                         shape->size(),
@@ -465,7 +482,13 @@ ScheduleMesh MeshPaddingRoundUp(
       continue;
     }
     std::int64_t align_size = align_sizes.at(i).value();
-    CHECK(shape->at(i).Has<std::int64_t>());
+    PADDLE_ENFORCE_EQ(
+        shape->at(i).Has<std::int64_t>(),
+        true,
+        ::common::errors::InvalidArgument(
+            "Each dimension in 'shape' must have an int64_t value. "
+            "But the dimension at index %d does not.",
+            i));
     std::int64_t dim = shape->at(i).Get<std::int64_t>();
     std::int64_t padding_size =
         (dim + align_size - 1) / align_size * align_size;

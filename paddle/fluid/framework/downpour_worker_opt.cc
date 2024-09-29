@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/operators/isfinite_op.h"
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -437,15 +437,15 @@ void DownpourWorkerOpt::TrainFiles() {
       PADDLE_ENFORCE_EQ(
           framework::TensorContainsInf(*tensor),
           false,
-          platform::errors::InvalidArgument("The target tensor %s contains Inf "
-                                            "should check some layers output.",
-                                            var_name));
+          common::errors::InvalidArgument("The target tensor %s contains Inf "
+                                          "should check some layers output.",
+                                          var_name));
       PADDLE_ENFORCE_EQ(
           framework::TensorContainsNAN(*tensor),
           false,
-          platform::errors::InvalidArgument("The target tensor %s contains Nan "
-                                            "should check some layers output.",
-                                            var_name));
+          common::errors::InvalidArgument("The target tensor %s contains Nan "
+                                          "should check some layers output.",
+                                          var_name));
     }
 
     if (need_to_push_sparse_) {

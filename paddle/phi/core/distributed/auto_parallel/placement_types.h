@@ -50,12 +50,12 @@ class Placement {
   virtual std::string to_string() const { return ""; }
 
   virtual bool operator==(const Placement& other) const {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Equal function is not implemented yet in Placement."));
   }
 
   virtual bool operator!=(const Placement& other) const {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Not Equal function is not implemented yet in Placement."));
   }
 

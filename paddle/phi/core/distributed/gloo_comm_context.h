@@ -61,7 +61,7 @@ class GlooCommContext final : public CommContext {
   void Scatter(phi::DenseTensor* out_tensor,
                const phi::DenseTensor& in_tensor,
                int src,
-               int size,
+               int size = 0,
                uint32_t tag = 0);
 
   void Barrier();

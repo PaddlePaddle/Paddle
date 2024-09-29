@@ -354,7 +354,7 @@ class PyFileGen:
         else:
             compute_code = f"out = {api_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
-            return [compute_code] + unpack_codes
+            return [compute_code, *unpack_codes]
 
     def create_method_stmt(self, stmt):
         args, kwargs = stmt.inputs
@@ -367,7 +367,7 @@ class PyFileGen:
         else:
             compute_code = f"out = {method_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
-            return [compute_code] + unpack_codes
+            return [compute_code, *unpack_codes]
 
 
 def export(SIR, path):

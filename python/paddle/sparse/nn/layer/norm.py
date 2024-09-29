@@ -18,9 +18,9 @@ import warnings
 from typing import TYPE_CHECKING, Literal
 
 import paddle
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import no_grad
+from paddle.framework import in_dynamic_or_pir_mode, no_grad
 from paddle.nn.layer.norm import _BatchNormBase
 
 if TYPE_CHECKING:
@@ -150,7 +150,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
         data_format = 'NCHW' if self._data_format[1] == 'C' else 'NHWC'
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm_(
                 input,
                 self._mean,

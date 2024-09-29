@@ -22,11 +22,13 @@ KernelSignature FlattenOpArgumentMapping(const ArgumentMappingContext& ctx) {
         "flatten", {"X"}, {"start_axis", "stop_axis"}, {"Out", "XShape"});
   }
   if (ctx.HasOutput("XShape")) {
-    return KernelSignature(
-        "flatten", {"X"}, {"start_axis", "stop_axis"}, {"Out", "XShape"});
+    return KernelSignature("flatten_with_xshape",
+                           {"X"},
+                           {"start_axis", "stop_axis"},
+                           {"Out", "XShape"});
   } else {
     return KernelSignature(
-        "flatten_infer", {"X"}, {"start_axis", "stop_axis"}, {"Out"});
+        "flatten", {"X"}, {"start_axis", "stop_axis"}, {"Out"});
   }
 }
 
@@ -39,7 +41,7 @@ KernelSignature FlattenGradOpArgumentMapping(
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range, flatten);
-PD_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range_grad, flatten_grad);
+PD_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range, flatten_with_xshape);
 
 PD_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range,
                            phi::FlattenOpArgumentMapping);

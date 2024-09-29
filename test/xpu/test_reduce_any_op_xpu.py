@@ -62,7 +62,7 @@ class XPUTestReduceAnyOp(XPUOpTestWrapper):
             self.op_type = 'reduce_any'
             self.attrs = {
                 'use_xpu': True,
-                'dim': [1]
+                'dim': [1],
                 # 'reduce_all': True,
                 # 'keep_dim': True,
             }

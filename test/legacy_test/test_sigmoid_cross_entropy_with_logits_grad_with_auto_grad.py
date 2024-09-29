@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -25,7 +26,13 @@ class TestSigmoidCrossEntropyWithLogitsOpGradWithAutoGrad(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         paddle.seed(2023)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if base.core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
         self.batch_size = 64
@@ -56,12 +63,13 @@ class TestSigmoidCrossEntropyWithLogitsOpGradWithAutoGrad(unittest.TestCase):
 
         def fn_comp(x, label, weight):
             zeros = paddle.full((self.batch_size, self.num_classes), 0.0)
-            t1 = paddle.where(x > 0, x, zeros)
-            t2 = x * label
-            t3 = paddle.log(1 + paddle.exp(-paddle.abs(x)))
-            t4 = t1 - t2 + t3 * weight
-            t5 = paddle.full((self.batch_size, self.num_classes), -100.0)
-            out = paddle.where(label == t5, zeros, t4)
+
+            max_val = paddle.where(x < zeros, -x, zeros)
+            t1 = (1 - label) * x
+            t2 = paddle.log((-max_val).exp() + (-x - max_val).exp())
+            t3 = t1 + weight * (t2 + max_val)
+            t4 = paddle.full((self.batch_size, self.num_classes), -100.0)
+            out = paddle.where(label == t4, zeros, t3)
             loss = out.sum()
             loss.backward()
             return out, x.grad

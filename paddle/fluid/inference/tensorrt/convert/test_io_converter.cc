@@ -21,7 +21,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void IOConverterTester(const platform::DeviceContext& ctx) {
+void IOConverterTester(const phi::DeviceContext& ctx) {
   cudaStream_t stream;
   ASSERT_EQ(0, cudaStreamCreate(&stream));
 

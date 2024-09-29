@@ -83,7 +83,7 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
 class DepthwiseConvMKLDNNPass : public pir::PatternRewritePass {
  public:
   DepthwiseConvMKLDNNPass()
-      : pir::PatternRewritePass("depthwise_conv_mkldnn_pass", 2) {}
+      : pir::PatternRewritePass("depthwise_conv_onednn_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

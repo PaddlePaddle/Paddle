@@ -82,12 +82,9 @@ void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(
       out_array,
       errors::PreconditionNotMet("output tensor_array should not be nullptr"));
-  PADDLE_ENFORCE_EQ(
-      array.size(),
-      out_array->size(),
-      errors::PreconditionNotMet(
-          "input size %d != output size %d", array.size(), out_array->size()));
 
+  out_array->clear();
+  out_array->resize(array.size());
   for (size_t i = 0; i < array.size(); i++) {
     const auto& x = array[i];
     MemcpyD2HKernel<Context>(dev_ctx, x, dst_place_type, &(out_array->at(i)));

@@ -90,7 +90,7 @@ void LayerNormKernel(const Context& dev_ctx,
   auto src_tz = common::vectorize(x.dims());
   PADDLE_ENFORCE_EQ(begin_norm_axis,
                     (src_tz.size() - 1),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "MKL-DNN Layer Norm supports only last logical "
                         "axis:%d as begin_norm_axis.",
                         (src_tz.size() - 1)));

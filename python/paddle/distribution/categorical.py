@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 
@@ -26,6 +26,8 @@ from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import numpy.typing as npt
     from typing_extensions import TypeAlias
 

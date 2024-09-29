@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +50,8 @@ using phi::distributed::ProcessGroupMapFromGid;
 
 static void CheckTensorContiguous(const phi::DenseTensor& tensor) {
   if (!tensor.meta().is_contiguous()) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The tensor must be contiguous"));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The tensor must be contiguous"));
   }
 }
 
@@ -58,7 +59,7 @@ static void CheckTensorContiguous(const std::vector<phi::DenseTensor>& inputs) {
   for (const auto& tensor : inputs) {
     if (!tensor.meta().is_contiguous()) {
       PADDLE_THROW(
-          phi::errors::InvalidArgument("The tensor must be contiguous"));
+          common::errors::InvalidArgument("The tensor must be contiguous"));
     }
   }
 }

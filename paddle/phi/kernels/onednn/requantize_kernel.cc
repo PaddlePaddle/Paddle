@@ -45,17 +45,17 @@ void ReQuantOpKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NE(
       scale_in,
       0.0f,
-      phi::errors::InvalidArgument("Scale of input cannot be 0.0"));
+      common::errors::InvalidArgument("Scale of input cannot be 0.0"));
   PADDLE_ENFORCE_NE(
       scale_out,
       0.0f,
-      phi::errors::InvalidArgument("Scale of output cannot be 0.0"));
+      common::errors::InvalidArgument("Scale of output cannot be 0.0"));
   if (shift_in != 0) {
     PADDLE_ENFORCE_EQ(
         input.dtype(),
         DataType::UINT8,
-        phi::errors::Unimplemented("Requantize does not support nonzero "
-                                   "shift for signed input."));
+        common::errors::Unimplemented("Requantize does not support nonzero "
+                                      "shift for signed input."));
   }
 
   auto src_tz = common::vectorize(input.dims());

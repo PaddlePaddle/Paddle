@@ -13,8 +13,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 
 namespace paddle {
 namespace framework {

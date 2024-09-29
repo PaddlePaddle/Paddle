@@ -34,7 +34,7 @@ static int CalculateInvBNY(xpu::Context *ctx,
                            const T *y) {
   PADDLE_ENFORCE_EQ(x,
                     y,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "X and Y should be inplaced in inplace mode"));
   std::vector<int> tensor_shape_vec({N, C, M});
   std::vector<int> array_shape_vec({1, C, 1});
@@ -94,7 +94,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
   const auto *d_y = &y_grad;
   PADDLE_ENFORCE_EQ(data_layout == "NCHW" || data_layout == "NHWC",
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The 'data_layout' attribute must be NCHW or NHWC. "
                         "But received 'data_layout' is [%s].",
                         data_layout));
@@ -111,7 +111,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
   if (x_grad) {
     PADDLE_ENFORCE_NE(x_grad,
                       d_y,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
   }
 
@@ -119,7 +119,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       x_dims.size() >= 2 && x_dims.size() <= 5,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input's dimensions should be between 2 and 5. "
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
@@ -172,7 +172,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       new_scale.dims().size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of scale's dimensions must equal to 1. But received: "
           "the size of scale's dimensions is [%d], the dimensions of scale "
           "is [%s].",
@@ -181,7 +181,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       new_scale.dims()[0],
       C,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The first dimension of scale must equal to Channels[%d]. But "
           "received: the first dimension of scale is [%d]",
           C,

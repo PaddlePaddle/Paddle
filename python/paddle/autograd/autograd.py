@@ -11,11 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle.base import framework
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 def as_tensors(xs):
@@ -63,7 +68,12 @@ class Jacobian:
 
     """
 
-    def __init__(self, ys, xs, is_batched=False):
+    def __init__(
+        self,
+        ys: Tensor,
+        xs: Tensor,
+        is_batched: bool = False,
+    ) -> None:
         if not is_batched:
             if not 0 <= len(xs.shape) <= 1:
                 raise ValueError(
@@ -90,7 +100,7 @@ class Jacobian:
             self._jacobian = _JacobianBatchFirst(ys, xs)
 
     @property
-    def shape(self):
+    def shape(self) -> list[int]:
         """The shape of flattened Jacobian matrix."""
         return self._jacobian.shape
 
@@ -447,11 +457,43 @@ def _multi_index(indexes, shape):
     return tuple(positive_indexes)
 
 
+@overload
 def jacobian(
-    ys: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
-    xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
-    batch_axis: Optional[int] = None,
-) -> Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]:
+    ys: Tensor,
+    xs: Tensor,
+    batch_axis: int | None = ...,
+) -> Jacobian: ...
+
+
+@overload
+def jacobian(
+    ys: Sequence[Tensor],
+    xs: Sequence[Tensor],
+    batch_axis: int | None = ...,
+) -> tuple[tuple[Jacobian, ...], ...]: ...
+
+
+@overload
+def jacobian(
+    ys: Tensor,
+    xs: Sequence[Tensor],
+    batch_axis: int | None = ...,
+) -> tuple[Jacobian, ...]: ...
+
+
+@overload
+def jacobian(
+    ys: Sequence[Tensor],
+    xs: Tensor,
+    batch_axis: int | None = ...,
+) -> tuple[Jacobian, ...]: ...
+
+
+def jacobian(
+    ys,
+    xs,
+    batch_axis=None,
+):
     r"""
     Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
@@ -541,11 +583,27 @@ def jacobian(
     return _jacobian
 
 
+@overload
 def hessian(
-    ys: paddle.Tensor,
-    xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
-    batch_axis: Optional[int] = None,
-) -> Union[Tuple[Tuple[Hessian, ...], ...], Hessian]:
+    ys: Tensor,
+    xs: Tensor,
+    batch_axis: int | None = ...,
+) -> Hessian: ...
+
+
+@overload
+def hessian(
+    ys: Tensor,
+    xs: Sequence[Tensor],
+    batch_axis: int | None = ...,
+) -> tuple[tuple[Hessian, ...], ...]: ...
+
+
+def hessian(
+    ys,
+    xs,
+    batch_axis=None,
+):
     r"""
     Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.

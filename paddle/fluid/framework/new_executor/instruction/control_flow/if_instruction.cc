@@ -24,9 +24,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -58,9 +58,9 @@ IfInstruction::IfInstruction(size_t id,
       false_branch_inter_(nullptr),
       true_skip_gc_names_(),
       false_skip_gc_names_() {
-  PADDLE_ENFORCE(
-      op->isa<paddle::dialect::IfOp>(),
-      phi::errors::PreconditionNotMet("Cond instruction only support if op"));
+  PADDLE_ENFORCE(op->isa<paddle::dialect::IfOp>(),
+                 common::errors::PreconditionNotMet(
+                     "Cond instruction only support if op"));
   auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
   op_ = op;
 
@@ -111,14 +111,14 @@ IfInstruction::IfInstruction(size_t id,
       PADDLE_ENFORCE_EQ(
           value_exec_info->HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
     if (value.use_count() > 0) {
-      VLOG(0) << "value " << i << " use conutn != 0";
+      VLOG(6) << "value " << i << " use conutn != 0";
       is_last_op = false;
     }
   }
@@ -232,7 +232,7 @@ void IfInstruction::Run() {
           cond_tensor, phi::CPUPlace(), &cpu_cond);
       cond = cpu_cond.data<bool>()[0];
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "This version of PaddlePaddle does NOT support GPU/XPU but got "
           "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
           "WITH_XPU option."));

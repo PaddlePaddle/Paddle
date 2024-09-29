@@ -71,7 +71,7 @@ std::string ToTxtStringImpl(const adapter::DynamicTensor& tensor) {
 }
 
 std::string ToTxtStringImpl(const TempStorage& tensor) {
-  PADDLE_THROW(phi::errors::Unimplemented("Not supported yet"));
+  PADDLE_THROW(::common::errors::Unimplemented("Not supported yet"));
 }
 
 }  // namespace

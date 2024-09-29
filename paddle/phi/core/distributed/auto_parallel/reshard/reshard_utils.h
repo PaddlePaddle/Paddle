@@ -96,7 +96,7 @@ phi::DDim InferShapeForReshardFromReplicate(
                             __VA_ARGS__);                             \
           }));                                                        \
     } else {                                                          \
-      PADDLE_THROW(phi::errors::Unimplemented(                        \
+      PADDLE_THROW(common::errors::Unimplemented(                     \
           "The %s in reshard only supported on CPU and GPU for now.", \
           #fn_name));                                                 \
     }                                                                 \
@@ -112,7 +112,7 @@ phi::DDim InferShapeForReshardFromReplicate(
                             __VA_ARGS__);                                 \
           }));                                                            \
     } else {                                                              \
-      PADDLE_THROW(phi::errors::Unimplemented(                            \
+      PADDLE_THROW(common::errors::Unimplemented(                         \
           "The %s in reshard only supported on CPU for now.", #fn_name)); \
     }                                                                     \
   } while (0)
@@ -142,7 +142,7 @@ phi::DDim InferShapeForReshardFromReplicate(
               << "`without DType in Resharding on GPU.";              \
       fn_name(static_cast<const GPUContext&>(*dev_ctx), __VA_ARGS__); \
     } else {                                                          \
-      PADDLE_THROW(phi::errors::Unimplemented(                        \
+      PADDLE_THROW(common::errors::Unimplemented(                     \
           "The %s in reshard only supported on CPU and GPU for now.", \
           #fn_name));                                                 \
     }                                                                 \
@@ -155,7 +155,7 @@ phi::DDim InferShapeForReshardFromReplicate(
               << "`without DType in Resharding on CPU.";                  \
       fn_name(static_cast<const CPUContext&>(*dev_ctx), __VA_ARGS__);     \
     } else {                                                              \
-      PADDLE_THROW(phi::errors::Unimplemented(                            \
+      PADDLE_THROW(common::errors::Unimplemented(                         \
           "The %s in reshard only supported on CPU for now.", #fn_name)); \
     }                                                                     \
   } while (0)

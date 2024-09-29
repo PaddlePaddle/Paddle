@@ -31,7 +31,7 @@ namespace imperative {
 
 template <typename VarType>
 class DygraphInferShapeContext : public framework::InferShapeContext {
-  using DDim = framework::DDim;
+  using DDim = phi::DDim;
 
  public:
   DygraphInferShapeContext(
@@ -64,7 +64,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in.size(),
         1UL,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Input %s should not have more than one inputs", name));
     return in[0] != nullptr;
   }
@@ -82,7 +82,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_EQ(
         out.size(),
         1UL,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Output %s should not have more than one outputs", name));
     return out[0] != nullptr;
   }
@@ -130,7 +130,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_in_->end(),
-        platform::errors::NotFound("can not find [%s] in input", name));
+        common::errors::NotFound("can not find [%s] in input", name));
 
     vec_res.reserve(it->second.size());
     for (auto& var : it->second) {
@@ -150,7 +150,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_out_->end(),
-        platform::errors::NotFound("can not find [%s] in output", name));
+        common::errors::NotFound("can not find [%s] in output", name));
 
     vec_res.reserve(it->second.size());
     for (auto& var : it->second) {
@@ -169,7 +169,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         paddle::framework::OpInfoMap::Instance().Get(op_type_).proto_;
     PADDLE_ENFORCE_LT(idx,
                       op_proto->inputs().size(),
-                      platform::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The index should be less than the size of inputs of "
                           "operator %s, but got index is %d and size is %d",
                           op_type_,
@@ -184,7 +184,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_LT(
         idx,
         op_proto->outputs().size(),
-        platform::errors::OutOfRange(
+        common::errors::OutOfRange(
             "The index should be less than the size of outputs of "
             "operator %s, but got index is %d and size is %d",
             op_type_,
@@ -202,18 +202,18 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         in_it,
         var_map_in_->end(),
-        platform::errors::NotFound("can not found [%s] in input", in));
+        common::errors::NotFound("can not found [%s] in input", in));
     PADDLE_ENFORCE_GT(in_it->second.size(),
                       i,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Inputs %s should have %llu argument", in, i));
     PADDLE_ENFORCE_NE(
         out_it,
         var_map_out_->end(),
-        platform::errors::NotFound("can not found [%s] in input", in));
+        common::errors::NotFound("can not found [%s] in input", in));
     PADDLE_ENFORCE_GT(out_it->second.size(),
                       j,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Outputs %s should have %llu argument", out, j));
 
     framework::Variable* in_var = in_it->second[i]->MutableVar();
@@ -221,7 +221,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
     PADDLE_ENFORCE_EQ(in_var->Type(),
                       out_var->Type(),
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The type of %s and %s is not the same.", in, out));
 
     if (in_var->IsType<phi::DenseTensor>()) {
@@ -264,7 +264,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_in_->end(),
-        platform::errors::NotFound("Can not find [%s] in inputs.", name));
+        common::errors::NotFound("Can not find [%s] in inputs.", name));
     for (auto& var : it->second) {
       res.emplace_back(var->MutableVar());
     }
@@ -280,7 +280,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_out_->end(),
-        platform::errors::NotFound("Can not find [%s] in outputs.", name));
+        common::errors::NotFound("Can not find [%s] in outputs.", name));
     for (auto& var : it->second) {
       if (var) {
         res.emplace_back(var->MutableVar());
@@ -296,11 +296,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_in_->end(),
-        platform::errors::NotFound("can not find [%s] in input", name));
+        common::errors::NotFound("can not find [%s] in input", name));
     PADDLE_ENFORCE_EQ(
         it->second.size(),
         1UL,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Input(%s) should hold one element, but now it holds %d",
             name,
             it->second.size()));
@@ -314,7 +314,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_in_->end(),
-        platform::errors::NotFound("can not find [%s] in output", name));
+        common::errors::NotFound("can not find [%s] in output", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       if (it->second[i]) {
@@ -333,7 +333,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_in_->end(),
-        platform::errors::NotFound("can not find [%s] in input", name));
+        common::errors::NotFound("can not find [%s] in input", name));
     return framework::ToVarType(it->second[0]->Var().Type());
   }
 
@@ -344,7 +344,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_in_->end(),
-        platform::errors::NotFound("can not find [%s] in input", name));
+        common::errors::NotFound("can not find [%s] in input", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       if (it->second[i]) {
@@ -364,7 +364,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_out_->end(),
-        platform::errors::NotFound("can not find [%s] in output", name));
+        common::errors::NotFound("can not find [%s] in output", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       if (it->second[i]) {
@@ -382,7 +382,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_out_->end(),
-        platform::errors::NotFound("can not find [%s] in output", name));
+        common::errors::NotFound("can not find [%s] in output", name));
 
     if (it->second[0]) {
       SetDim(it->second[0]->MutableVar(), dim);
@@ -395,11 +395,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NE(
         it,
         var_map_out_->end(),
-        platform::errors::NotFound("can not find [%s] in output", name));
+        common::errors::NotFound("can not find [%s] in output", name));
 
     PADDLE_ENFORCE_EQ(dims.size(),
                       it->second.size(),
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The number of dims is expected to be equal to the "
                           "number of Outputs(%s). But received: the number of "
                           "dims = %d, the number of Outputs(%s) = %d.",
@@ -417,14 +417,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   int32_t GetLoDLevel(const std::string& in UNUSED,
                       size_t i UNUSED = 0) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "GetLoDLevel function not support in dygraph mode"));
   }
 
   void SetLoDLevel(const std::string& out UNUSED,
                    int32_t lod_level UNUSED,
                    size_t j UNUSED = 0) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "SetLoDLevel function not support in dygraph mode"));
   }
 
@@ -439,14 +439,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
  protected:
   DDim GetDim(framework::Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var,
-                            platform::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "Input variable should not be null"));
     if (var->IsType<phi::DenseTensor>()) {
       return var->Get<phi::DenseTensor>().dims();
     } else if (var->IsType<phi::SelectedRows>()) {
       return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else {
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
           "type_id is: %s.",
           framework::ToTypeName(var->Type())));
@@ -455,7 +455,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   std::vector<DDim> GetRepeatedDims(
       const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "GetRepeatedDims not support in dygraph runtime"));
   }
 
@@ -465,7 +465,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     } else if (var->IsType<phi::SelectedRows>()) {
       var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
     } else {
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Variable type_id %s, expect LoDTensor/SelectedRows."));
     }
   }
@@ -476,7 +476,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_EQ(
         length,
         dims.size(),
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Vars number [%d] should be equal with dims number [%d]",
             length,
             dims.size()));
@@ -490,7 +490,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   void SetRepeatedDims(const std::string& name UNUSED,
                        const std::vector<DDim>& dims UNUSED) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "SetRepeatedDims not support in dygraph runtime"));
   }
 

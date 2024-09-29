@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -26,6 +26,8 @@ from paddle.utils import convert_to_list
 from .. import functional as F
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         ParamAttrLike,
@@ -102,7 +104,8 @@ class _Conv3D(Layer):
         )
 
         # the sparse conv restricts the shape is [D, H, W, in_channels, out_channels]
-        filter_shape = self._kernel_size + [
+        filter_shape = [
+            *self._kernel_size,
             self._in_channels,
             self._out_channels,
         ]
@@ -233,7 +236,8 @@ class _Conv2D(Layer):
         )
 
         # the sparse conv restricts the shape is [H, W, in_channels, out_channels]
-        filter_shape = self._kernel_size + [
+        filter_shape = [
+            *self._kernel_size,
             self._in_channels,
             self._out_channels,
         ]

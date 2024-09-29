@@ -30,7 +30,11 @@ using cinn::common::bfloat16;
 using cinn::common::float16;
 
 Expr logic_and(const std::vector<Expr>& conds) {
-  CHECK(!conds.empty());
+  PADDLE_ENFORCE_EQ(
+      !conds.empty(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The input conditions vector for logic_and should not be empty."));
   auto start = ir::And::Make(conds[0], conds[1]);
   for (int i = 2; i < conds.size(); i++) {
     start = ir::And::Make(start, conds[i]);
@@ -39,7 +43,11 @@ Expr logic_and(const std::vector<Expr>& conds) {
 }
 
 Expr logic_or(const std::vector<Expr>& conds) {
-  CHECK(!conds.empty());
+  PADDLE_ENFORCE_EQ(
+      !conds.empty(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The input conditions vector for logic_or should not be empty."));
   auto start = ir::Or::Make(conds[0], conds[1]);
   for (int i = 2; i < conds.size(); i++) {
     start = ir::Or::Make(start, conds[i]);
@@ -96,17 +104,17 @@ EXTERN_CALL_IMP(Popc, popc);
 #undef EXTERN_CALL_IMP
 #undef EXTERN_CALL_IMP_NO_VEC
 
-#define EXTERN_BINARY_CALL_IMP(name__, target__)                         \
-  Expr name__(Expr a, Expr b) {                                          \
-    PADDLE_ENFORCE_EQ(                                                   \
-        a.type(),                                                        \
-        b.type(),                                                        \
-        phi::errors::InvalidArgument(#name__ "'s inputs type not equal," \
-                                             "where a:%s but b:%s.",     \
-                                     a.type(),                           \
-                                     b.type()));                         \
-    return ir::Call::Make(                                               \
-        a->type(), #target__, {a, b}, {}, ir::CallType::Extern);         \
+#define EXTERN_BINARY_CALL_IMP(name__, target__)                              \
+  Expr name__(Expr a, Expr b) {                                               \
+    PADDLE_ENFORCE_EQ(                                                        \
+        a.type(),                                                             \
+        b.type(),                                                             \
+        ::common::errors::InvalidArgument(#name__ "'s inputs type not equal," \
+                                                  "where a:%s but b:%s.",     \
+                                          a.type(),                           \
+                                          b.type()));                         \
+    return ir::Call::Make(                                                    \
+        a->type(), #target__, {a, b}, {}, ir::CallType::Extern);              \
   }
 
 EXTERN_BINARY_CALL_IMP(Remainder, mod)
@@ -123,7 +131,7 @@ Expr One(const Type& type) { return ir::One(type); }
 Expr FloorDivide(Expr a, Expr b) {
   PADDLE_ENFORCE_EQ(a.type(),
                     b.type(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "FloorDivide's inputs type not equal, where a:%s "
                         " but b:%s.",
                         a.type(),
@@ -144,12 +152,12 @@ Expr FloorDivide(Expr a, Expr b) {
 }
 
 Expr min_value(const Type& type) {
-  PADDLE_ENFORCE_EQ(
-      type.lanes(),
-      1,
-      phi::errors::InvalidArgument("The value of min type's lanes is incorrect"
-                                   "Expected value is 1, but receive %d. ",
-                                   type.lanes()));
+  PADDLE_ENFORCE_EQ(type.lanes(),
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "The value of min type's lanes is incorrect"
+                        "Expected value is 1, but receive %d. ",
+                        type.lanes()));
 #define FOR_CASE(type__)                                                     \
   if (type == type_of<type__>()) {                                           \
     return Expr(static_cast<type__>(std::numeric_limits<type__>::lowest())); \
@@ -171,12 +179,12 @@ Expr min_value(const Type& type) {
 }
 
 Expr max_value(const Type& type) {
-  PADDLE_ENFORCE_EQ(
-      type.lanes(),
-      1,
-      phi::errors::InvalidArgument("The value of max type's lanes is incorrect"
-                                   "Expected value is 1, but receive %d. ",
-                                   type.lanes()));
+  PADDLE_ENFORCE_EQ(type.lanes(),
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "The value of max type's lanes is incorrect"
+                        "Expected value is 1, but receive %d. ",
+                        type.lanes()));
 
 #define FOR_CASE(type__)                                                  \
   if (type == type_of<type__>()) {                                        \
@@ -203,7 +211,7 @@ Expr max_value(const Type& type) {
 Expr Epsilon(const Type& type) {
   PADDLE_ENFORCE_EQ(type.lanes(),
                     1,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The value of epsilon type's lanes is incorrect"
                         "Expected value is 1, but receive %d. ",
                         type.lanes()));
@@ -244,7 +252,7 @@ Expr Abs(Expr e) {
   } else {
     std::stringstream ss;
     ss << "Abs Not support data type " << type;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return e;
 }
@@ -262,7 +270,7 @@ Expr IsNan(Expr e) {
   } else {
     std::stringstream ss;
     ss << type << "is not supported for isnan op.";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     return e;
   }
 }
@@ -270,7 +278,7 @@ Expr IsNan(Expr e) {
 Expr Infinity(const Type& type) {
   PADDLE_ENFORCE_EQ(type.lanes(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The value of infinity type's lanes is incorrect"
                         "Expected value is 1, but receive %d. ",
                         type.lanes()));
@@ -285,7 +293,7 @@ Expr Infinity(const Type& type) {
   }
   std::stringstream ss;
   ss << "Cannot decide infinity for type " << type;
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   return Expr();
 }
 
@@ -302,7 +310,7 @@ Expr IsInf(Expr e) {
   } else {
     std::stringstream ss;
     ss << type << "is not supported for isinf op.";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     return e;
   }
 }

@@ -14,6 +14,7 @@
 
 import os
 
+os.environ['FLAGS_enable_pir_api'] = '0'
 import numpy as np
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')

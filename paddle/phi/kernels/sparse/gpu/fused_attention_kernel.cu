@@ -115,53 +115,56 @@ void FusedAttentionCsrKernel(
   int M = q_dim[q_rank - 2];
   int N = q_dim[q_rank - 1];
 
-  PADDLE_ENFORCE_EQ(query.dims().size(),
-                    4,
-                    phi::errors::InvalidArgument(" 'query' must be 4D Tensor"));
-  PADDLE_ENFORCE_EQ(key.dims().size(),
-                    4,
-                    phi::errors::InvalidArgument(" 'key' must be 4D Tensor"));
-  PADDLE_ENFORCE_EQ(value.dims().size(),
-                    4,
-                    phi::errors::InvalidArgument(" 'value' must be 4D Tensor"));
+  PADDLE_ENFORCE_EQ(
+      query.dims().size(),
+      4,
+      common::errors::InvalidArgument(" 'query' must be 4D Tensor"));
+  PADDLE_ENFORCE_EQ(
+      key.dims().size(),
+      4,
+      common::errors::InvalidArgument(" 'key' must be 4D Tensor"));
+  PADDLE_ENFORCE_EQ(
+      value.dims().size(),
+      4,
+      common::errors::InvalidArgument(" 'value' must be 4D Tensor"));
 
-  PADDLE_ENFORCE_EQ(
-      sparse_mask.dims().size(),
-      3,
-      phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
-                                   "[batch_size*num_heads, seq_len, seq_len]"));
-  PADDLE_ENFORCE_EQ(
-      sparse_mask.dims()[0],
-      q_dim[0] * q_dim[1],
-      phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
-                                   "[batch_size*num_heads, seq_len, seq_len]"));
-  PADDLE_ENFORCE_EQ(
-      sparse_mask.dims()[1],
-      M,
-      phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
-                                   "[batch_size*num_heads, seq_len, seq_len]"));
-  PADDLE_ENFORCE_EQ(
-      sparse_mask.dims()[2],
-      M,
-      phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
-                                   "[batch_size*num_heads, seq_len, seq_len]"));
+  PADDLE_ENFORCE_EQ(sparse_mask.dims().size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "dense shape of 'sparse_mask' must be "
+                        "[batch_size*num_heads, seq_len, seq_len]"));
+  PADDLE_ENFORCE_EQ(sparse_mask.dims()[0],
+                    q_dim[0] * q_dim[1],
+                    common::errors::InvalidArgument(
+                        "dense shape of 'sparse_mask' must be "
+                        "[batch_size*num_heads, seq_len, seq_len]"));
+  PADDLE_ENFORCE_EQ(sparse_mask.dims()[1],
+                    M,
+                    common::errors::InvalidArgument(
+                        "dense shape of 'sparse_mask' must be "
+                        "[batch_size*num_heads, seq_len, seq_len]"));
+  PADDLE_ENFORCE_EQ(sparse_mask.dims()[2],
+                    M,
+                    common::errors::InvalidArgument(
+                        "dense shape of 'sparse_mask' must be "
+                        "[batch_size*num_heads, seq_len, seq_len]"));
 
   const auto kp_mask_ptr = key_padding_mask.get_ptr();
   if (kp_mask_ptr) {
     PADDLE_ENFORCE_EQ(
         kp_mask_ptr->dims().size(),
         2,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
     PADDLE_ENFORCE_EQ(
         kp_mask_ptr->dims()[0],
         q_dim[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
     PADDLE_ENFORCE_EQ(
         kp_mask_ptr->dims()[1],
         M,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
   }
 
@@ -169,15 +172,15 @@ void FusedAttentionCsrKernel(
   if (attn_mask_ptr) {
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims().size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[0],
                       M,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[1],
                       M,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
   }
 
@@ -215,10 +218,10 @@ void FusedAttentionCsrKernel(
       common::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
   MatmulCsrDenseKernel<T, Context>(dev_ctx, *softmax, value, out);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("forward of 'sparse.nn.functional.attention' "
-                                 "use 'cusparseCsrSetStridedBatch', which is "
-                                 "completed supported from CUDA 11.8"));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "forward of 'sparse.nn.functional.attention' "
+      "use 'cusparseCsrSetStridedBatch', which is "
+      "completed supported from CUDA 11.8"));
 #endif
 }
 

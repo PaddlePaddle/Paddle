@@ -469,6 +469,20 @@ def main():
 
 
 if __name__ == '__main__':
+    if os.getenv("SKIP_CLANG_TIDY_CHECK", "").lower() in [
+        'y',
+        'yes',
+        't',
+        'true',
+        'on',
+        '1',
+    ]:
+        print(
+            "SKIP_CLANG_TIDY_CHECK is set, skip clang-tidy check.",
+            file=sys.stderr,
+        )
+        sys.exit(0)
+
     target_version = "15.0.2"
     try:
         out = subprocess.check_output(['clang-tidy', '--version'], shell=True)

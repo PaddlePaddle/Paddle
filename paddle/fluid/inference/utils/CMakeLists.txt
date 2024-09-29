@@ -5,7 +5,7 @@ cc_library(
 cc_library(
   model_utils
   SRCS model_utils.cc
-  DEPS proto_desc enforce common)
+  DEPS proto_desc phi common)
 
 cc_library(table_printer SRCS table_printer.cc)
 

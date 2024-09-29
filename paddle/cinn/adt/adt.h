@@ -283,7 +283,7 @@ struct Ok final {
   bool operator!=(const Ok&) const { return false; }
 };
 
-#define ADT_TODO() PADDLE_THROW(phi::errors::Fatal("TODO"))
+#define ADT_TODO() PADDLE_THROW(::common::errors::Fatal("TODO"))
 
 inline std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
   return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);

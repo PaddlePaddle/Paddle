@@ -189,24 +189,6 @@ for stype in support_types:
     create_test_class(globals(), XPUTestDepthwiseConv2DOp, stype)
     create_test_class(globals(), XPUTestDepthwiseConv2DOp_v2, stype)
 
-# depthwise conv2d
-
-# create_test_padding_SAME_class(TestDepthwiseConv_AsyPadding)
-# create_test_padding_SAME_class(TestDepthwiseConvWithDilation_AsyPadding)
-# create_test_padding_SAME_class(TestDepthwiseConvandFuse_AsyPadding)
-# create_test_padding_SAME_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
-
-# create_test_padding_VALID_class(TestDepthwiseConv_AsyPadding)
-# create_test_padding_VALID_class(TestDepthwiseConvWithDilation_AsyPadding)
-# create_test_padding_VALID_class(TestDepthwiseConvandFuse_AsyPadding)
-# create_test_padding_VALID_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
-
-# channel last
-
-# create_test_channel_last_class(TestDepthwiseConv_AsyPadding)
-# create_test_channel_last_class(TestDepthwiseConvWithDilation2_AsyPadding)
-# create_test_channel_last_class(TestDepthwiseConvandFuse_AsyPadding)
-# create_test_channel_last_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
 
 if __name__ == '__main__':
     unittest.main()

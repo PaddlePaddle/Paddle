@@ -13,15 +13,15 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
-#include "paddle/fluid/platform/profiler/extra_info.h"
-#include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/platform/profiler/extra_info.h"
+#include "paddle/phi/core/platform/profiler/utils.h"
 
 namespace paddle::platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
 
 static std::string DefaultFileName() {
-  auto pid = GetProcessId();
+  auto pid = phi::GetProcessId();
   return string_format(
       std::string(kDefaultFilename), pid, GetStringFormatLocalTime().c_str());
 }

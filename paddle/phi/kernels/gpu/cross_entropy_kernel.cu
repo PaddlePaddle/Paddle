@@ -1417,8 +1417,8 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         dtype,
         phi::CppTypeToDataType<T>::Type(),
-        phi::errors::InvalidArgument("The Input(Label) should be with the "
-                                     "same data type as Input(Logits)."));
+        common::errors::InvalidArgument("The Input(Label) should be with the "
+                                        "same data type as Input(Logits)."));
     CrossEntropyWithSoftmaxCUDAKernel<T, T>(dev_ctx,
                                             logits,
                                             label,

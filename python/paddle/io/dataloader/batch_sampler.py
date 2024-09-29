@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import math
 from typing import (
+    Iterable,
     Iterator,
     Sequence,
     Sized,
@@ -47,7 +48,7 @@ class BatchSampler(Sampler[Sequence[int]]):
                 :ref:`api_paddle_io_IterableDataset` or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
                 range of :attr:`dataset` length. Default None, disabled.
-        sampler (Sampler, optional): this should be a :ref:`api_paddle_io_Sample`
+        sampler (Sampler, Iterable, optional): this should be a :ref:`api_paddle_io_Sample` or Iterable
                 instance which implemented :code:`__iter__` to generate
                 sample indices. :attr:`sampler` and :attr:`dataset`
                 can not be set in the same time.  If :attr:`sampler`
@@ -105,7 +106,7 @@ class BatchSampler(Sampler[Sequence[int]]):
             [53, 17, 22, 86, 52, 3, 92, 33]
     """
 
-    sampler: Sampler[int]
+    sampler: Sampler[int] | Iterable[int]
     batch_size: int
     shuffle: bool
     drop_last: bool
@@ -113,7 +114,7 @@ class BatchSampler(Sampler[Sequence[int]]):
     def __init__(
         self,
         dataset: Sized | None = None,
-        sampler: Sampler | None = None,
+        sampler: Sampler | Iterable[int] | None = None,
         shuffle: bool = False,
         batch_size: int = 1,
         drop_last: bool = False,
@@ -123,8 +124,8 @@ class BatchSampler(Sampler[Sequence[int]]):
                 sampler is not None
             ), "either dataset or sampler should be set"
             assert isinstance(
-                sampler, Sampler
-            ), f"sampler should be a paddle.io.Sampler, but got {type(sampler)}"
+                sampler, (Sampler, Iterable)
+            ), f"sampler should be either paddle.io.Sampler or Iterable, but got {type(sampler)}"
             assert not shuffle, "shuffle should be False when sampler is set"
             self.sampler = sampler
         else:

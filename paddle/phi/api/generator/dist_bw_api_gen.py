@@ -14,6 +14,7 @@
 
 import argparse
 
+import dist_api_gen
 import yaml
 from backward_api_gen import BackwardAPI
 from dist_api_gen import DistForwardAPI
@@ -194,10 +195,14 @@ RESHARD_VECTOR_OUTPUT_TEMPLATE = """
 NONEED_TO_RESHARD_OUTPUT_TEMPLATE = """
     // API `{}` does not need to reshard output."""
 
+SET_LOCAL_SHAPE_TEMPLATE = """
+      {meta_tensor}.set_dims(phi::make_ddim(local_shape));"""
+
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     def __init__(self, backward_item_yaml):
         BackwardAPI.__init__(self, backward_item_yaml)
+        self.forward_config = backward_item_yaml['forward']
         self.init_dist_api_members()
 
     # override DistForwardAPI's method
@@ -282,6 +287,72 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             )
 
         return output_creation_code
+
+    def generate_bw_infer_local_shape_code(self) -> str:
+        arg_name = self.infer_meta['local_shape']
+        assert arg_name in self.outputs['names'], (
+            f"Auto Parallel will calculate local_shape for {arg_name} "
+            f"in {self.api}, but {arg_name} is not found in its outputs."
+        )
+
+        _, fw_inputs, fw_attrs, fw_outputs = self.parse_forward_config(
+            self.forward_config
+        )
+        # shape_type = self.attrs['attr_info'][shape_name][0]
+        # out_name = self.dist_output_args[0]
+        dist_out_name = self.dist_output_args[
+            self.outputs['names'].index(arg_name)
+        ]
+        shape_type = self.get_shape_type(fw_attrs['attr_info'])
+        return dist_api_gen.CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
+            out_name=dist_out_name,
+            out_dist_attr=(
+                "PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);"
+                if self.infer_meta['spmd_rule']
+                else f"phi::distributed::TensorDistAttr(common::vectorize({dist_out_name}->dims()))"
+            ),
+            dtype=shape_type,
+            op_name=self.kernel['func'][0],
+        )
+
+    def generate_infer_meta_code(self) -> str:
+        (
+            infer_meta_func_code,
+            input_args_code,
+            output_decl_code,
+            output_args_code,
+        ) = self.generate_infer_meta_func_and_args_code()
+
+        infer_meta_code = ""
+
+        if self.infer_meta['global_shape'] is not None:
+            for i, out_name in enumerate(self.outputs['names']):
+                if out_name == self.infer_meta[
+                    'global_shape'
+                ] and self.need_to_generate_code_for_inplace_impl(i):
+                    infer_meta_code += dist_api_gen.SET_DIMS_TEMPLATE.format(
+                        dst=self.dist_output_args[i],
+                        src=(
+                            self.dist_output_args[i] + '_tmp'
+                            if i > 0
+                            else self.dist_output_args[i]
+                        ),
+                    )
+
+        infer_meta_code = (
+            infer_meta_code
+            + dist_api_gen.INFER_META_TEMPLATE.format(
+                infer_meta_func_code, input_args_code, output_args_code
+            )
+        )
+        # TODO(GhostScreaming): kernel like reshape need calculate local_shape
+        if self.infer_meta['local_shape'] is not None:
+            infer_meta_code += self.generate_bw_infer_local_shape_code()
+            infer_meta_code += SET_LOCAL_SHAPE_TEMPLATE.format(
+                meta_tensor="meta_" + self.dense_output_args[0]
+            )
+
+        return output_decl_code + infer_meta_code
 
     # override DistForwardAPI's method
     def generate_return_code(self) -> str:

@@ -22,7 +22,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestScatterOp(OpTest):
@@ -618,7 +617,13 @@ class TestScatterBF16Op6(TestScatterOp6):
 
 class TestScatterAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
         self.executed_api()
@@ -662,7 +667,6 @@ class TestScatterAPI(unittest.TestCase):
                 True,
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

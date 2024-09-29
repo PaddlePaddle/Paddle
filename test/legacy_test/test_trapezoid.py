@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def get_ref_api():
@@ -53,7 +53,13 @@ class TestTrapezoidAPI(unittest.TestCase):
         self.set_api()
         self.set_args()
         self.get_output()
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -72,10 +78,15 @@ class TestTrapezoidAPI(unittest.TestCase):
         self.setUp()
         self.func_dygraph()
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -172,7 +183,6 @@ class TestTrapezoidError(unittest.TestCase):
     def set_api(self):
         self.paddle_api = paddle.trapezoid
 
-    @test_with_pir_api
     def test_errors(self):
         self.set_api()
         with paddle.static.program_guard(
@@ -237,7 +247,6 @@ class Testfp16Trapezoid(TestTrapezoidAPI):
         self.paddle_api = paddle.trapezoid
         self.ref_api = get_ref_api()
 
-    @test_with_pir_api
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():

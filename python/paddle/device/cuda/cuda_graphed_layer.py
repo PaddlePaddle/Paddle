@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import deque
 from enum import Enum
 
@@ -21,9 +22,57 @@ from paddle.base import log_helper
 
 from .graphs import CUDAGraph
 
+# CUDAGraphedLayer Debug tools
+enable_debug_print = bool(
+    int(os.getenv('PADDLE_DEBUG_ENABLE_CUDAGRAPH_LAYER_LOGGING', '0'))
+)
+debug_cudagraphedlayer_fallback_to_default = bool(
+    int(os.getenv('PADDLE_DEBUG_CUDAGRAPHEDLAYER_FALLBACK_TO_DEFAULT', '0'))
+)
+
 logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='[%(levelname)s] %(message)s'
 )
+
+
+def debug_print(x):
+    if not enable_debug_print:
+        return
+    logger.info(x)
+
+
+def print_tensor(
+    t,
+    name="Unnamed",
+    print_meta=True,
+    print_ptr=False,
+    print_hash=True,
+    hash=None,
+):
+    output = []
+    if name:
+        output.append(name)
+    if hash is None:
+        hash = lambda t: float((t.astype('float32') * 1000).sum())
+
+    if t is None:
+        debug_print(f"{name} is None")
+    elif isinstance(t, paddle.Tensor):
+        if print_meta:
+            output.append(f"shape = {t.shape}")
+            output.append(f"place = {t.place}")
+        if print_ptr:
+            output.append(f"ptr = {hex(t.data_ptr())}")
+        if print_hash:
+            output.append(f"hash = {hash(t)}")
+        debug_print(" | ".join(output))
+
+
+def printer(x, banner="printer"):
+    if not enable_debug_print:
+        return
+    debug_print(banner.center(100, "-"))
+    recursive_apply(print_tensor, x)
 
 
 # We need this function, for any kind of inputs with iterables
@@ -58,8 +107,13 @@ def recursive_flatten(target):
 
     def append(arg):
         if isinstance(arg, paddle.Tensor):
-            if not arg.stop_gradient:
-                ret.append(arg)
+            # [NOTE] sometimes unnecessary tensors, such as the constant `mask` tensor in the PP layer, is passed into subsequent layers.
+            # When a tensor is marked with `stop_gradient=True`, it indicates that it does not contribute to gradient calculations,
+            # suggesting it's unrelated to the main computational process.
+            # Therefore, I try to eliminate the copying of such tensors in the to optimize performance.
+            # if not arg.stop_gradient:
+            # [NOTE] However, `stop_gradient=True` propagation rules within the framework appear to be flawed, so directly eliminate stop_gradient may cause bug
+            ret.append(arg)
 
     recursive_apply(append, target)
     return ret
@@ -94,6 +148,7 @@ class CUDAGraphWithStaticInputOutput:
 
         self.has_recorded = False
 
+        self.has_preserved_inputs = False
         self.args_static = None
         self.kwargs_static = None
 
@@ -102,7 +157,21 @@ class CUDAGraphWithStaticInputOutput:
         self.outputs_static = None
 
     def preserve_or_copy(self, args, kwargs):
-        if self.args_static is None:
+        """
+        For the CUDA Graph, it is crucial that the buffer remains address-stable,
+        meaning that the buffer addresses for any inputs to the CUDA Graph should not change.
+        One solution to achieve this is to preserve all input tensors.
+
+        This function attempts to recursively flatten the input arguments and keyword arguments
+        to identify all tensors passed to the layer (though it may still miss some due to other implicit
+        ways inputs can be passed to a layer). It then preserves references to these input tensors
+        as `self.inputs_static` so that the buffer pointers can be reused later.
+
+        When this method is called subsequently, it copies the values back to the preserved input tensors
+        to ensure the buffers are reused.
+        """
+        if not self.has_preserved_inputs:
+            self.has_preserved_inputs = True
             self.args_static = args
             self.kwargs_static = kwargs
             self.inputs_static = recursive_flatten_args_kwargs(
@@ -119,6 +188,9 @@ class CUDAGraphWithStaticInputOutput:
         self.graph.capture_begin()
         self.outputs_static = f(*self.args_static, **self.kwargs_static)
         self.graph.capture_end()
+        debug_print(
+            "[CUDAGraph] Record-Replay Start (Graph is replayed for the first time)"
+        )
         self.graph.replay()
 
         self.has_recorded = True
@@ -134,6 +206,7 @@ class CUDAGraphWithStaticInputOutput:
 
         self.preserve_or_copy(args, kwargs)
 
+        debug_print("[CUDAGraph] Replay Start")
         self.graph.replay()
         return self.outputs_static
 
@@ -278,8 +351,12 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         detached_grad_inputs = recursive_flatten_args_kwargs(args, kwargs)
         inputs = (grad_inputs, detached_grad_inputs)
 
-        if context.is_warmup_step():
-            logger.debug("[CUDAGraph] Forward Step (Default)")
+        printer(detached_grad_inputs, "Forward input")
+        if (
+            context.is_warmup_step()
+            or debug_cudagraphedlayer_fallback_to_default
+        ):
+            debug_print("[CUDAGraph] Forward Step (Default)")
 
             with paddle.enable_grad():
                 y = context.layer(*args, **kwargs)
@@ -289,7 +366,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             graph = context.get_graph()
             if graph.is_record_step():
                 # In record step, record the forward pass in CUDA graph
-                logger.info("[CUDAGraph] Forward Step (Record)")
+                debug_print(f"[CUDAGraph] Forward Step (Record) id {id(graph)}")
 
                 def forward(*args, **kwargs):
                     with paddle.enable_grad():
@@ -301,14 +378,17 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
                     (CUDAGraphLayerStatus.RECORD, graph, inputs, y)
                 )
             else:
-                logger.debug(f"[CUDAGraph] Forward Step (Graph - {id(graph)})")
+                debug_print(f"[CUDAGraph] Forward Step (Graph) id {id(graph)}")
                 y = graph.forward_graph.replay(*args, **kwargs)
 
                 context.push_data(
                     (CUDAGraphLayerStatus.CUDAGRAPH, graph, None, y)
                 )
 
+        debug_print("[CUDAGraph] Forward Step End")
+
         ctx.save_for_backward(context)
+        printer(y, "Forward output")
         return detach(y)
 
     @staticmethod
@@ -322,8 +402,10 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         (status, graph, inputs, ys) = context.pop_data()
         y, dy = select_y_with_grad(ys, dys)
 
+        printer((y, dy), "Backward input")
+
         if status == CUDAGraphLayerStatus.WARMUP:
-            logger.debug("[CUDAGraph] Backward Step (Default)")
+            debug_print("[CUDAGraph] Backward Step (Default)")
 
             # In warmup step, perform standard backward operation
             y.backward(dy)
@@ -331,7 +413,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
 
             context.warmup_step()
         elif status == CUDAGraphLayerStatus.RECORD:
-            logger.info("[CUDAGraph] Backward Step (Record)")
+            debug_print(f"[CUDAGraph] Backward Step (Record) id {id(graph)}")
 
             # In record step, record the backward pass in CUDA graph
             def backward(y, dy):
@@ -347,7 +429,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
 
             context.reuse_graph(graph)
         elif status == CUDAGraphLayerStatus.CUDAGRAPH:
-            logger.debug(f"[CUDAGraph] Backward Step (Graph) - {id(graph)}")
+            debug_print(f"[CUDAGraph] Backward Step (Graph) id {id(graph)}")
 
             # In CUDA graph step, replay the recorded graph for backward pass
             args_grad = graph.backward_graph.replay(y, dy)
@@ -355,6 +437,9 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         else:
             raise RuntimeError("Unknown cuda graph status")
 
+        debug_print("[CUDAGraph] Backward Step End")
+
+        printer(args_grad, "Backward output")
         return args_grad
 
 

@@ -141,7 +141,7 @@ class TestSwiGLUDygraph(unittest.TestCase):
         y = paddle.static.data(name='y', shape=shape, dtype=dtype)
         concated_x = paddle.static.data(
             name='concated_x',
-            shape=list(shape[:-1]) + [shape[-1] * 2],
+            shape=[*shape[:-1], shape[-1] * 2],
             dtype=dtype,
         )
         out1 = fused_swiglu_impl(x, y)

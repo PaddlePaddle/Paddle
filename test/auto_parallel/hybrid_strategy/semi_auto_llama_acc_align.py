@@ -14,6 +14,8 @@
 
 import hashlib
 import os
+
+os.environ["FLAGS_enable_pir_api"] = str(1)
 import random
 from functools import reduce
 
@@ -91,11 +93,110 @@ class TestLlamaAuto:
         self.pp = int(os.getenv("pp"))
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
-        self.gradient_accumulation_steps = int(os.getenv("acc_step"))
+
+        self.strategy = dist.Strategy()
+
+        # amp config
+        amp = self.strategy._amp
+        if os.getenv("amp"):
+            amp.enbale = os.getenv("amp")
+        if os.getenv("amp_dtype"):
+            amp.dtype = os.getenv("amp_dtype")
+        if os.getenv("amp_level"):
+            amp.level = os.getenv("amp_level")
+        if os.getenv("amp_master_grad"):
+            amp.use_master_grad = os.getenv("amp_master_grad")
+        if os.getenv("scale_loss"):
+            amp.init_loss_scaling = os.getenv("scale_loss")
+        if os.getenv("amp_custom_black_list"):
+            amp.custom_black_list = os.getenv("amp_custom_black_list")
+        if os.getenv("amp_custom_white_list"):
+            amp.custom_white_list = os.getenv("amp_custom_white_list")
+
+        self.gradient_accumulation_steps = 1
+        if os.getenv("acc_step"):
+            self.gradient_accumulation_steps = int(os.getenv("acc_step"))
+
+        if self.gradient_accumulation_steps > 1:
+            self.strategy.gradient_merge.enable = True
+            self.strategy.gradient_merge.k_steps = (
+                self.gradient_accumulation_steps
+            )
+            self.strategy.gradient_merge.avg = False
+
         self.config.recompute = False
         self.config.sep_parallel_degree = 1
 
-        self.init_dist_env()
+        self.run_step = 10
+        self.run_step_dy2static = (
+            self.run_step // self.gradient_accumulation_steps
+        )
+
+    def run_llama(self, to_static=0):
+        # model
+        model = LlamaForCausalLMAuto(self.config)
+        criterion = LlamaPretrainingCriterionAuto(self.config)
+        if self.strategy._amp.enable and self.strategy._amp.level == "O2":
+            paddle.amp.decorate(
+                models=model,
+                level=self.strategy._amp.level,
+                dtype=self.strategy._amp.dtype,
+                master_grad=self.strategy._amp.use_master_grad,
+            )
+
+        # optimizer
+        lr_scheduler = paddle.optimizer.lr.LinearWarmup(
+            learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
+        )
+        optimizer = create_optimizer(model, lr_scheduler)
+        optimizer = dist.shard_optimizer(optimizer)
+
+        # dataloader
+        train_dataset = RandomDataset(self.config.seq_length)
+        train_sampler = BatchSampler(
+            train_dataset,
+            batch_size=2,
+            shuffle=True,
+            drop_last=True,
+        )
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_sampler=train_sampler,
+            num_workers=0,
+        )
+        dist_loader = dist.shard_dataloader(
+            dataloader=train_dataloader,
+            meshes=[get_mesh(0), get_mesh(1)],
+            shard_dims="dp",
+        )
+
+        if to_static:
+            model = dist.to_static(
+                model, dist_loader, criterion, optimizer, strategy=self.strategy
+            )
+        model.train()
+        md5_list = []
+        for step, inputs in enumerate(dist_loader()):
+            if step >= self.run_step:
+                break
+            input_ids, labels = inputs
+            if to_static:
+                loss = model(input_ids, labels)
+                if loss is None:
+                    numpy_array = np.array([])
+                else:
+                    numpy_array = np.array(loss)
+                array_bytes = numpy_array.tobytes()
+                md5_list.append(hashlib.md5(array_bytes).hexdigest())
+            else:
+                logits = model(input_ids)
+                loss = criterion(logits, labels)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+                md5_list.append(loss._local_value()._md5sum())
+            lr_scheduler.step()
+        return md5_list
 
     def init_dist_env(self):
         order = ["dp", "pp", "mp"]
@@ -145,32 +246,39 @@ class TestLlamaAuto:
         )
 
         tr_loss = float(0)
+        tr_loss_add = float(0)
         model.train()
         #####
         for step, inputs in enumerate(dist_loader()):
+            if step >= self.run_step:
+                break
+
             input_ids, labels = inputs
             logits = model(input_ids)
             tr_loss_step = criterion(logits, labels)
-            if self.gradient_accumulation_steps > 1:
-                tr_loss_step /= self.gradient_accumulation_steps
 
             tr_loss_step.backward()
-            tr_loss += tr_loss_step
+            tr_loss_add += tr_loss_step
 
-            if step % self.gradient_accumulation_steps == 0:
-                optimizer.step()
-                optimizer.clear_grad()
-                lr_scheduler.step()
-                tr_loss = 0
-
-            if step >= 9:
-                break
             if int(dist.get_rank()) in [2, 3, 6, 7]:
                 assert tr_loss_step._is_initialized()
             else:
                 assert not tr_loss_step._is_initialized()
 
-        return tr_loss_step._md5sum()
+            if (step + 1) % self.gradient_accumulation_steps == 0:
+                tr_loss_add /= self.gradient_accumulation_steps
+                tr_loss = tr_loss_add
+
+                optimizer.step()
+                optimizer.clear_grad()
+                lr_scheduler.step()
+
+                tr_loss_add = 0
+
+        numpy_array = np.array(tr_loss)
+        array_bytes = numpy_array.tobytes()
+        loss_md5 = hashlib.md5(array_bytes).hexdigest()
+        return loss_md5
 
     def run_dy2static(self):
         model = LlamaForCausalLMAuto(self.config)
@@ -184,7 +292,7 @@ class TestLlamaAuto:
         train_dataset = RandomDataset(self.config.seq_length)
         train_sampler = BatchSampler(
             train_dataset,
-            batch_size=2,
+            batch_size=2 * self.gradient_accumulation_steps,
             shuffle=False,
             drop_last=True,
         )
@@ -202,9 +310,10 @@ class TestLlamaAuto:
         strategy = None
         if self.gradient_accumulation_steps > 1:
             strategy = dist.Strategy()
-            strategy.pipeline.accumulate_steps = (
-                self.gradient_accumulation_steps
-            )
+
+            strategy.gradient_merge.enable = True
+            strategy.gradient_merge.k_steps = self.gradient_accumulation_steps
+            strategy.gradient_merge.avg = False
 
         dist_model = dist.to_static(
             model, dist_loader, criterion, optimizer, strategy=strategy
@@ -213,15 +322,20 @@ class TestLlamaAuto:
         dist_model.train()
         loss = None
         for step, inputs in enumerate(dist_loader()):
+            if step >= self.run_step_dy2static:
+                break
+
             input_ids, labels = inputs
             loss = dist_model(input_ids, labels)
+
             lr_scheduler.step()
-            if step >= 9:
-                break
             if int(dist.get_rank()) in [2, 3, 6, 7]:
                 assert loss is not None
             else:
                 assert loss is None
+
+        if loss is not None:
+            loss = np.average(loss)
 
         numpy_array = np.array(loss)
         array_bytes = numpy_array.tobytes()
@@ -230,11 +344,19 @@ class TestLlamaAuto:
 
     def run_test_cases(self):
         self.init_dist_env()
-        dy_loss_md5 = self.run_dynamic()
-        self.init_dist_env()
-        st_loss_md5 = self.run_dy2static()
-        if int(dist.get_rank()) in [2, 3, 6, 7]:
-            assert dy_loss_md5 == st_loss_md5
+        if self.gradient_accumulation_steps > 1:
+            dy_loss_md5 = self.run_dynamic()
+            self.init_dist_env()
+            st_loss_md5 = self.run_dy2static()
+            if int(dist.get_rank()) in [2, 3, 6, 7]:
+                assert dy_loss_md5 == st_loss_md5
+        else:
+            dy_loss_md5 = self.run_llama(to_static=0)
+            self.init_dist_env()
+            st_loss_md5 = self.run_llama(to_static=1)
+            assert len(dy_loss_md5) == len(st_loss_md5)
+            for idx in range(len(dy_loss_md5)):
+                assert dy_loss_md5[idx] == st_loss_md5[idx]
 
 
 if __name__ == '__main__':

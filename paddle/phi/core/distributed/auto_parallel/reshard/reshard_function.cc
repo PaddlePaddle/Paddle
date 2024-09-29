@@ -44,7 +44,7 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
                                    const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(dist_attr.verify_dynamic(common::vectorize(dims)),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input dist_attr [%s] and dims [%s] are improper.",
                         dist_attr.to_string(),
                         str_join(vectorize(dims))));
@@ -59,7 +59,7 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
                                    const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(dist_attr.verify_dynamic(common::vectorize(tensor->dims())),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input dist_attr [%s] and dims [%s] are improper.",
                         dist_attr.to_string(),
                         str_join(vectorize(tensor->dims()))));

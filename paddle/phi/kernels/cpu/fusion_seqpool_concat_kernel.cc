@@ -43,7 +43,7 @@ void FusionSeqPoolConcatKernel(const Context& dev_ctx,
   int w = static_cast<int>(ins[0]->numel() / x0_dims[0]);
   PADDLE_ENFORCE_EQ(y_dims[1] % w,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The output of dims[1] should be dividable of w, but "
                         "dims[1] is %d, w is %d.",
                         y_dims[1],
@@ -67,7 +67,7 @@ void FusionSeqPoolConcatKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         static_cast<int>(ins[i]->numel() / x_dims[0]),
         w,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Width of all inputs should be equal, but the width of the %d-th "
             "input %d is not equal to the previous %d",
             i,
@@ -76,7 +76,7 @@ void FusionSeqPoolConcatKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         x_lod.size(),
         bs + 1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Batchsize of all inputs should be equal, but the value of the "
             "%d-th %d is not equal to the previous %d.",
             i,

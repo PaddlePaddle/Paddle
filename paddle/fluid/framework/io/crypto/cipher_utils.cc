@@ -46,9 +46,9 @@ std::string CipherUtils::GenKeyToFile(int length, const std::string& filename) {
   PADDLE_ENFORCE_EQ(
       fout.is_open(),
       true,
-      phi::errors::Unavailable("Failed to open file : %s, "
-                               "make sure input filename is available.",
-                               filename));
+      common::errors::Unavailable("Failed to open file : %s, "
+                                  "make sure input filename is available.",
+                                  filename));
   fout.write(rng.c_str(), rng.size());  // NOLINT
   fout.close();
   return rng;
@@ -68,9 +68,9 @@ std::unordered_map<std::string, std::string> CipherUtils::LoadConfig(
   PADDLE_ENFORCE_EQ(
       fin.is_open(),
       true,
-      phi::errors::Unavailable("Failed to open file : %s, "
-                               "make sure input filename is available.",
-                               config_file));
+      common::errors::Unavailable("Failed to open file : %s, "
+                                  "make sure input filename is available.",
+                                  config_file));
   std::unordered_map<std::string, std::string> ret;
   char c = 0;
   std::string line;
@@ -84,7 +84,7 @@ std::unordered_map<std::string, std::string> CipherUtils::LoadConfig(
     std::string key;
     std::string value;
     if (!(iss >> key >> c >> value) && (c == ':')) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Parse config file error, "
           "check the format of configure in file %s.",
           config_file));

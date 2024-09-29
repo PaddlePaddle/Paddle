@@ -466,7 +466,7 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else {
       std::stringstream ss;
       ss << "Not supported memory type " << memory_type;
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
   } else {
     lang::Buffer buf(buf_type, buffer_name);
@@ -482,7 +482,7 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else {
       std::stringstream ss;
       ss << "Not supported memory type " << memory_type;
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
   }
 }

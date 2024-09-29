@@ -66,7 +66,7 @@ struct EmbeddingGradCPUFunctor {
           PADDLE_ENFORCE_LT(
               ids_data[i],
               N,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Variable value (input) of "
                   "OP(paddle.nn.functional.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
@@ -76,7 +76,7 @@ struct EmbeddingGradCPUFunctor {
           PADDLE_ENFORCE_GE(
               ids_data[i],
               0,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Variable value (input) of "
                   "OP(paddle.nn.functional.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
@@ -114,7 +114,7 @@ void EmbeddingGradKernel(const Context& ctx,
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "embedding input only support int32 and int64"));
   }
 }
@@ -162,7 +162,7 @@ struct EmbeddingSparseGradCPUFunctor {
         flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
     PADDLE_ENFORCE_EQ(d_table_value->dims(),
                       d_output_dims_2d,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: The shape of lookup_table@Grad and "
                           "output@Grad should be same. "
                           "But received lookup_table@Grad's shape = [%s], "
@@ -195,7 +195,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "embedding input only support int32 and int64"));
   }
 }

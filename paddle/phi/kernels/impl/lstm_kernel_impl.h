@@ -257,7 +257,7 @@ void LSTMGradKernel(const Context& dev_ctx,
   int frame_size = static_cast<int>(in_dims[1] / 4);
   PADDLE_ENFORCE_EQ(frame_size,
                     out_dims[1],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The second dimension of Input(hidden_grad) should be "
                         "%d, but received %d in LSTM@Grad operator.",
                         frame_size,

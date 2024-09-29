@@ -272,8 +272,8 @@ void InnerCompute(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       axis == 0 || axis == 1,
       true,
-      phi::errors::InvalidArgument("The axis of sparse_momentum_op only "
-                                   "support axis=0 or axis=1 now."));
+      common::errors::InvalidArgument("The axis of sparse_momentum_op only "
+                                      "support axis=0 or axis=1 now."));
 
   auto learning_rate = &learning_rate_in;
   auto param = &param_in;
@@ -285,13 +285,13 @@ void InnerCompute(const Context& dev_ctx,
   if (index->dims().size() == 1) {
     PADDLE_ENFORCE_GT(index->dims()[0],
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The index of sparse_momentum_op should not be empty"
                           "when the index's rank is 1."));
   } else if (index->dims().size() == 2) {
     PADDLE_ENFORCE_EQ(index->dims()[1],
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "If the index's rank of sparse_momentum_op is 2,"
                           " the second dimension should be 1."));
   }
@@ -303,7 +303,7 @@ void InnerCompute(const Context& dev_ctx,
                       (master_param_out_out != nullptr);
     PADDLE_ENFORCE_EQ(has_master,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The Input(MasterParam) and Output(MasterParamOut) "
                           "should not be null when "
                           "the attr `multi_precision` is true"));
@@ -329,13 +329,13 @@ void InnerCompute(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       param_dims.size(),
       2,
-      phi::errors::InvalidArgument("The Param's rank of sparse_momentum_op"
-                                   " must be 2 now."));
+      common::errors::InvalidArgument("The Param's rank of sparse_momentum_op"
+                                      " must be 2 now."));
   PADDLE_ENFORCE_EQ(
       grad_dims.size(),
       2,
-      phi::errors::InvalidArgument("The Grad's rank of sparse_momentum_op"
-                                   " must be 2 now."));
+      common::errors::InvalidArgument("The Grad's rank of sparse_momentum_op"
+                                      " must be 2 now."));
 
   phi::DenseTensor sorted_index, grad_index, sort_value;
   sorted_index.Resize({num_index});
@@ -392,7 +392,7 @@ void InnerCompute(const Context& dev_ctx,
       grad_index_ptr[i] = vec_tosort[i].second;
     }
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "sparse_momentum %s is not supported.", dev_ctx.GetPlace()));
   }
   using MPDType = MultiPrecisionType<T>;

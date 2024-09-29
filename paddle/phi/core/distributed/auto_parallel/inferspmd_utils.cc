@@ -56,7 +56,7 @@ AttrType InferSpmdContext::AttrAt(size_t idx) const {
   try {
     return paddle::get<AttrType>(attrs_.at(idx));
   } catch (paddle::bad_variant_access const& e) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Attribute cast error in InferSpmd Context, the input attr type is "
         "`%s`, but the expected attribute type is `%s`.",
         attrs_.at(idx).type().name(),
@@ -78,7 +78,7 @@ bool InferSpmdContext::AttrAt(size_t idx) const {
       return paddle::get<bool>(attr);
     }
   } catch (paddle::bad_variant_access const& e) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Attribute cast error in InferSpmd Context, the input attr type is "
         "`%s`, but the expected attribute type is `bool`.",
         attrs_.at(idx).type().name()));
@@ -96,7 +96,7 @@ std::vector<int> InferSpmdContext::AttrAt(size_t idx) const {
       return paddle::get<std::vector<int>>(attr);
     }
   } catch (paddle::bad_variant_access const& e) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Attribute cast error in InferSpmd Context, the input attr type is "
         "`%s`, but the expected attribute type is `std::vector<int>`.",
         attrs_.at(idx).type().name()));
@@ -117,7 +117,7 @@ std::vector<int64_t> InferSpmdContext::AttrAt(size_t idx) const {
       return PADDLE_GET_CONST(std::vector<int64_t>, attr);
     }
   } catch (paddle::bad_variant_access const& e) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Attribute cast error in InferSpmd Context, the input attr type is "
         "`%s`, but the expected attribute type is `std::vector<int64_t>`.",
         attrs_.at(idx).type().name()));
@@ -165,8 +165,8 @@ const SpmdRule& SpmdRuleFactory::GetSpmdRule(
   PADDLE_ENFORCE_NE(
       it,
       spmd_rule_map_.end(),
-      phi::errors::NotFound("`%s` Kernel's Spmd rules is not registered.",
-                            kernel_name));
+      common::errors::NotFound("`%s` Kernel's Spmd rules is not registered.",
+                               kernel_name));
   return it->second;
 }
 

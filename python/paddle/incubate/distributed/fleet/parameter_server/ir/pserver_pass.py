@@ -904,7 +904,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             names_str = ",".join(value_names)
             dims_str = ",".join([str(dim) for dim in value_dims])
             ids_name = f"kSparseIDs@{param}"
-            cached_str = ",".join(acture_names + [ids_name])
+            cached_str = ",".join([*acture_names, ids_name])
             init_attr_str = get_initializer_attrs(acture_names)
 
             meta_str = ":".join(

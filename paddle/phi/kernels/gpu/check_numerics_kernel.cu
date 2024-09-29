@@ -46,7 +46,7 @@ static void InitMultiGPUOpVarMap() {
   int dev_count = phi::backends::gpu::GetGPUDeviceCount();
   PADDLE_ENFORCE_GT(dev_count,
                     0,
-                    phi::errors::NotFound(
+                    common::errors::NotFound(
                         "cuda device must > 0, now dev_count=%d", dev_count));
 
   // https://stackoverflow.com/questions/16465633/how-can-i-use-something-like-stdvectorstdmutex
@@ -279,8 +279,8 @@ inline std::string GetHintString(const std::string& op_type,
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()),
       true,
-      phi::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
-                              multi_op_var2gpu_str_mutex().size()));
+      common::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
+                                 multi_op_var2gpu_str_mutex().size()));
   return op_var;
 }
 
@@ -312,7 +312,7 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
       auto iter = op_var2gpu_str.find(op_var);
       PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(),
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "op_var=%s should successed insert into "
                             "op_var2gpu_str, but now failed",
                             op_var));
@@ -334,7 +334,7 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
       auto iter = op_var2gpu_str.find(op_var);
       PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(),
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "op_var=%s should be in the op_var2gpu_str, but "
                             "now can't find it",
                             op_var));

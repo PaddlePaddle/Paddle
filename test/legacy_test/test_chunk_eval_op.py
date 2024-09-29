@@ -42,10 +42,9 @@ class TestChunkEvalOp(OpTest):
         for chunk in chunks:
             if self.scheme == 'IOB':
                 data[chunk.start_idx] = chunk.chunk_type * self.num_tag_types
-                data[
-                    chunk.start_idx + 1 : chunk.end_idx
-                ] = chunk.chunk_type * self.num_tag_types + (
-                    self.num_tag_types - 1
+                data[chunk.start_idx + 1 : chunk.end_idx] = (
+                    chunk.chunk_type * self.num_tag_types
+                    + (self.num_tag_types - 1)
                 )
                 data[chunk.end_idx] = (
                     chunk.chunk_type * self.num_tag_types

@@ -132,7 +132,7 @@ SparseCooTensor TransposeCoo(const Context& dev_ctx,
                              const std::vector<int>& perm) {
   PADDLE_ENFORCE_EQ(x.sparse_dim(),
                     perm.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "size of perm must be equal than the x.sparse_dim()"));
   SparseCooTensor coo;
   TransposeCooKernel<T, Context>(dev_ctx, x, perm, &coo);
@@ -146,11 +146,11 @@ SparseCsrTensor TransposeCsr(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(
       2,
       perm.size(),
-      phi::errors::InvalidArgument("size of perm must be equal to 2 or 3"));
+      common::errors::InvalidArgument("size of perm must be equal to 2 or 3"));
   PADDLE_ENFORCE_GE(
       3,
       perm.size(),
-      phi::errors::InvalidArgument("size of perm must be equal to 2 or 3"));
+      common::errors::InvalidArgument("size of perm must be equal to 2 or 3"));
   SparseCsrTensor csr;
   TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &csr);
   return csr;
@@ -214,11 +214,11 @@ SparseCsrTensor ReshapeCsr(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(
       2,
       shape.size(),
-      phi::errors::InvalidArgument("size of shape must be equal to 2 or 3"));
+      common::errors::InvalidArgument("size of shape must be equal to 2 or 3"));
   PADDLE_ENFORCE_GE(
       3,
       shape.size(),
-      phi::errors::InvalidArgument("size of shape must be equal to 2 or 3"));
+      common::errors::InvalidArgument("size of shape must be equal to 2 or 3"));
   SparseCsrTensor csr;
   ReshapeCsrKernel<T, Context>(dev_ctx, x, shape, &csr);
   return csr;

@@ -249,16 +249,16 @@ void RmspropSparseKernel(const Context &ctx,
 
   PADDLE_ENFORCE_EQ(p_tensor.IsSharedBufferWith(*param_out),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Param and ParamOut must be the same Tensor"));
   PADDLE_ENFORCE_EQ(mom_tensor.IsSharedBufferWith(*moment_out),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Moment and MomentOut must be the same Tensor"));
   PADDLE_ENFORCE_EQ(
       ms_tensor.IsSharedBufferWith(*mean_square_out),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "MeanSquare and MeanSquareOut must be the same Tensor"));
   size_t limit = static_cast<size_t>(ms_tensor.numel());
 
@@ -288,13 +288,13 @@ void RmspropSparseKernel(const Context &ctx,
       PADDLE_ENFORCE_EQ(
           mg_tensor->Holder(),
           mean_grad_out->Holder(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "MeanGrad and MeanGradOut must be the same Tensor"));
     } else {
       PADDLE_ENFORCE_EQ(
           mg_tensor,
           mean_grad_out,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "MeanGrad and MeanGradOut must be the same Tensor"));
     }
 

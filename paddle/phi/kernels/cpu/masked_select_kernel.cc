@@ -49,7 +49,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
   auto mask_dim = mask_expand.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The dim size of input and mask in OP(masked_selected) "
                         "must be equal, but got input dim:(%ld), mask dim: "
                         "(%ld). Please check input "

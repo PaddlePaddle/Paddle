@@ -37,7 +37,7 @@ void AffineGridGradCudnnKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Only support for CUDAPlace.Please switch your context from "
           "CPUPlace to CUDAPlace or update your cudnn."));
   auto handle = dev_ctx.cudnn_handle();

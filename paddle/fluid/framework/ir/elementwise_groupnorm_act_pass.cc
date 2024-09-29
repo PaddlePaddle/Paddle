@@ -97,7 +97,7 @@ void SkipGroupNormAct::operator()(PDNode *x, PDNode *y) {
 
 int SkipGroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_groupnorm_silu_fuse", graph);
 
   int found_subgraph_count = 0;

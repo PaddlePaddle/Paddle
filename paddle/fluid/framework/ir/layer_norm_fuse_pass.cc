@@ -216,14 +216,14 @@ LayerNormFusePass::LayerNormFusePass() {
 
 void LayerNormFusePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The input graph of "
                               "LayerNormFusePass should not be nullptr."));
   FusePassBase::Init(scope_name_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::LayerNorm layer_norm_pattern(gpd.mutable_pattern(), scope_name_);

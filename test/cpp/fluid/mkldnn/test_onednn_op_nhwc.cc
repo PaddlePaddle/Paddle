@@ -86,7 +86,7 @@ void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
   // Verify shape of output
   PADDLE_ENFORCE_EQ(z->dims(),
                     expected_dims,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
 }
 
@@ -154,7 +154,7 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   // Verify shape of output
   PADDLE_ENFORCE_EQ(z->dims(),
                     expected_dims,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
 }
 
@@ -209,7 +209,7 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
   // Verify shape of output
   PADDLE_ENFORCE_EQ(vzdata,
                     expected_dims,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
 }
 

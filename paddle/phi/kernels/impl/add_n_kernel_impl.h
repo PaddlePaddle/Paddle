@@ -63,7 +63,7 @@ void AddNArrayKernel(const Context& dev_ctx,
           PADDLE_ENFORCE_EQ(
               out->at(j).lod(),
               in_array->at(j).lod(),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The lod message between inputs[%d] and"
                   " outputs[%d] must be same, but now is not same.",
                   j,

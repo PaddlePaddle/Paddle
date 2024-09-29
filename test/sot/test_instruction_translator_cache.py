@@ -34,15 +34,13 @@ if TYPE_CHECKING:
     from types import FrameType
 
 
-def fake_frames() -> (
-    tuple[
-        FrameType,
-        FrameType,
-        FrameType,
-        FrameType,
-        FrameType,
-    ]
-):
+def fake_frames() -> tuple[
+    FrameType,
+    FrameType,
+    FrameType,
+    FrameType,
+    FrameType,
+]:
     def fake_inner_fn_1():
         frame = inspect.currentframe()
         assert frame is not None

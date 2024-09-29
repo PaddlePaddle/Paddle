@@ -20,6 +20,7 @@ import numpy as np
 import scipy.sparse as sp
 
 import paddle
+from paddle.base.framework import in_pir_mode
 
 paddle.set_default_dtype('float64')
 
@@ -305,6 +306,331 @@ class TestMaskedMatmul(unittest.TestCase):
         np.testing.assert_allclose(
             sp_y.grad.numpy(), dense_y.grad.numpy(), rtol=1e-05
         )
+
+
+class TestMatmulSparseDenseStatic(unittest.TestCase):
+    # x: sparse, y: dense, out: dense
+    def check_result(self, x_shape, y_shape):
+        # only support sparse_coo_tensor in static graph
+        if len(x_shape) == 3:
+            mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
+        else:
+            mask = paddle.randint(0, 2, x_shape)
+        origin_x = paddle.rand(x_shape) * mask.astype(
+            paddle.get_default_dtype()
+        )
+        origin_y = paddle.rand(y_shape)
+
+        dense_x = origin_x.detach()
+        dense_y = origin_y.detach()
+        dense_out = paddle.matmul(dense_x, dense_y)
+
+        indices_data, values_data = (
+            origin_x.detach().to_sparse_coo(len(x_shape)).indices(),
+            origin_x.detach().to_sparse_coo(len(x_shape)).values(),
+        )
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            indices = paddle.static.data(
+                name='indices',
+                shape=indices_data.shape,
+                dtype=indices_data.dtype,
+            )
+            values = paddle.static.data(
+                name='values',
+                shape=values_data.shape,
+                dtype=values_data.dtype,
+            )
+            sp_x = paddle.sparse.sparse_coo_tensor(
+                indices,
+                values,
+                shape=origin_x.shape,
+                dtype=origin_x.dtype,
+            )
+            sp_y = paddle.static.data(
+                name='sp_y',
+                shape=origin_y.shape,
+                dtype=origin_y.dtype,
+            )
+            sp_out = paddle.sparse.matmul(sp_x, sp_y)
+            exe = paddle.static.Executor()
+            fetch = exe.run(
+                feed={
+                    'indices': indices_data.numpy(),
+                    'values': values_data.numpy(),
+                    'sp_y': origin_y.detach().numpy(),
+                },
+                fetch_list=[sp_out],
+                return_numpy=False,
+            )
+            sp_out = fetch[0]
+            np.testing.assert_allclose(
+                sp_out.numpy(), dense_out.numpy(), rtol=1e-05
+            )
+            paddle.disable_static()
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        "only support cuda>=11.0",
+    )
+    def test_matmul_2d(self):
+        if in_pir_mode():
+            self.check_result([16, 12], [12, 10])
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        "only support cuda>=11.8",
+    )
+    def test_matmul_3d(self):
+        if in_pir_mode():
+            self.check_result([8, 16, 12], [8, 12, 10])
+
+
+class TestMatmulSparseSparseStatic(unittest.TestCase):
+    '''
+    only support sparse_coo_tensor in static graph
+    '''
+
+    # x: sparse, y: sparse, out: sparse
+    def check_result(self, x_shape, y_shape):
+        origin_x = paddle.rand(x_shape)
+        origin_y = paddle.rand(y_shape)
+
+        dense_x = origin_x.detach()
+        dense_y = origin_y.detach()
+        dense_out = paddle.matmul(dense_x, dense_y)
+
+        x_indices_data, x_values_data = (
+            origin_x.detach().to_sparse_coo(len(x_shape)).indices(),
+            origin_x.detach().to_sparse_coo(len(x_shape)).values(),
+        )
+        y_indices_data, y_values_data = (
+            origin_y.detach().to_sparse_coo(len(y_shape)).indices(),
+            origin_y.detach().to_sparse_coo(len(y_shape)).values(),
+        )
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x_indices = paddle.static.data(
+                name='x_indices',
+                shape=x_indices_data.shape,
+                dtype=x_indices_data.dtype,
+            )
+            x_values = paddle.static.data(
+                name='x_values',
+                shape=x_values_data.shape,
+                dtype=x_values_data.dtype,
+            )
+            sp_x = paddle.sparse.sparse_coo_tensor(
+                x_indices,
+                x_values,
+                shape=origin_x.shape,
+                dtype=origin_x.dtype,
+            )
+            y_indices = paddle.static.data(
+                name='y_indices',
+                shape=y_indices_data.shape,
+                dtype=y_indices_data.dtype,
+            )
+            y_values = paddle.static.data(
+                name='y_values',
+                shape=y_values_data.shape,
+                dtype=y_values_data.dtype,
+            )
+            sp_y = paddle.sparse.sparse_coo_tensor(
+                y_indices,
+                y_values,
+                shape=origin_y.shape,
+                dtype=origin_y.dtype,
+            )
+            sp_out = paddle.sparse.matmul(sp_x, sp_y)
+            exe = paddle.static.Executor()
+            fetch = exe.run(
+                feed={
+                    'x_indices': x_indices_data.numpy(),
+                    'x_values': x_values_data.numpy(),
+                    'y_indices': y_indices_data.numpy(),
+                    'y_values': y_values_data.numpy(),
+                },
+                fetch_list=[sp_out],
+                return_numpy=False,
+            )
+            sp_out = fetch[0]
+            np.testing.assert_allclose(
+                sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
+            )
+            paddle.disable_static()
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        "only support cuda>=11.0",
+    )
+    def test_matmul_2d(self):
+        if in_pir_mode():
+            self.check_result([16, 12], [12, 10])
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        "only support cuda>=11.0",
+    )
+    def test_matmul_3d(self):
+        if in_pir_mode():
+            self.check_result([8, 16, 12], [8, 12, 10])
+
+
+class TestMaskedMatmulStatic(unittest.TestCase):
+    '''
+    only support sparse_csr_tensor in static graph
+    '''
+
+    # x: dense, y: dense, out: sparse_csr
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11030,
+        "only support on cuda>=11.3",
+    )
+    def test_masked_matmul_2d(self):
+        if in_pir_mode():
+            np_mask = np.random.rand(10, 6) < 0.2
+
+            np_x = np.random.rand(10, 12)
+            np_y = np.random.rand(12, 6)
+
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            mask = paddle.to_tensor(np.ones([10, 6]) * np_mask).to_sparse_coo(
+                len(np_mask.shape)
+            )
+            out = paddle.sparse.masked_matmul(x, y, mask)
+
+            indices_data, values_data = (
+                mask.indices(),
+                mask.values(),
+            )
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                indices = paddle.static.data(
+                    name='indices',
+                    shape=indices_data.shape,
+                    dtype=indices_data.dtype,
+                )
+                values = paddle.static.data(
+                    name='values',
+                    shape=values_data.shape,
+                    dtype=values_data.dtype,
+                )
+                sp_mask = paddle.sparse.sparse_coo_tensor(
+                    indices,
+                    values,
+                    shape=mask.shape,
+                    dtype=mask.dtype,
+                )
+                sp_x = paddle.static.data(
+                    name='x',
+                    shape=x.shape,
+                    dtype=x.dtype,
+                )
+                sp_y = paddle.static.data(
+                    name='y',
+                    shape=y.shape,
+                    dtype=y.dtype,
+                )
+                out = paddle.sparse.masked_matmul(sp_x, sp_y, sp_mask)
+                exe = paddle.static.Executor()
+                fetch = exe.run(
+                    feed={
+                        'indices': indices_data.numpy(),
+                        'values': values_data.numpy(),
+                        'x': x.numpy(),
+                        'y': y.numpy(),
+                    },
+                    fetch_list=[out],
+                    return_numpy=False,
+                )
+                sp_out = fetch[0]
+                np.testing.assert_allclose(
+                    sp_out.to_dense().numpy(),
+                    out.to_dense().numpy(),
+                    rtol=1e-05,
+                )
+                paddle.disable_static()
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        "only support on cuda>=11.8",
+    )
+    def test_masked_matmul_3d(self):
+        if in_pir_mode():
+            paddle.set_default_dtype('float32')
+            origin_x = paddle.rand([16, 16, 12])
+            mask = paddle.randint(0, 2, [16, 12])
+            origin_x = origin_x * mask.astype('float32')
+            origin_y = paddle.rand([16, 12, 10])
+            x = origin_x.detach()
+            y = origin_y.detach()
+
+            mask = paddle.to_tensor(np.ones([16, 12]) * mask).to_sparse_coo(
+                len(mask.shape)
+            )
+            out = paddle.sparse.masked_matmul(x, y, mask)
+
+            indices_data, values_data = (
+                mask.indices(),
+                mask.values(),
+            )
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                indices = paddle.static.data(
+                    name='indices',
+                    shape=indices_data.shape,
+                    dtype=indices_data.dtype,
+                )
+                values = paddle.static.data(
+                    name='values',
+                    shape=values_data.shape,
+                    dtype=values_data.dtype,
+                )
+                sp_mask = paddle.sparse.sparse_coo_tensor(
+                    indices,
+                    values,
+                    shape=mask.shape,
+                    dtype=mask.dtype,
+                )
+                sp_x = paddle.static.data(
+                    name='x',
+                    shape=origin_x.shape,
+                    dtype=origin_x.dtype,
+                )
+                sp_y = paddle.static.data(
+                    name='y',
+                    shape=origin_y.shape,
+                    dtype=origin_y.dtype,
+                )
+                out = paddle.sparse.masked_matmul(sp_x, sp_y, sp_mask)
+                exe = paddle.static.Executor()
+                fetch = exe.run(
+                    feed={
+                        'indices': indices_data.numpy(),
+                        'values': values_data.numpy(),
+                        'x': origin_x.numpy(),
+                        'y': origin_y.numpy(),
+                    },
+                    fetch_list=[out],
+                    return_numpy=False,
+                )
+                sp_out = fetch[0]
+                np.testing.assert_allclose(
+                    sp_out.to_dense().numpy(),
+                    out.to_dense().numpy(),
+                    rtol=1e-05,
+                )
+                paddle.disable_static()
 
 
 if __name__ == "__main__":

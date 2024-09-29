@@ -15,10 +15,3 @@ if(WITH_ROCM AND NOT WIN32)
     SRCS nccl_gpu_common.cc
     DEPS device_context operator)
 endif()
-
-if(WITH_GPU OR WITH_ROCM)
-  op_library(nccl_op DEPS nccl_common)
-  set(OPERATOR_DEPS
-      ${OPERATOR_DEPS} nccl_common
-      PARENT_SCOPE)
-endif()

@@ -61,11 +61,9 @@ KernelFactory& KernelFactory::Instance() {
 }
 
 bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
-  if (deprecated_op_names.find(op_type) == deprecated_op_names.end()) {
-    if (phi::OpUtilsMap::Instance().Contains(op_type) ||
-        (kernels_.find(op_type) != kernels_.end())) {
-      return true;
-    }
+  if (phi::OpUtilsMap::Instance().Contains(op_type) ||
+      (kernels_.find(op_type) != kernels_.end())) {
+    return true;
   }
   return false;
 }
@@ -73,8 +71,7 @@ bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
 bool KernelFactory::HasStructuredKernel(const std::string& op_type) const {
   auto phi_kernel_name = phi::OpUtilsMap::Instance().GetBaseKernelName(op_type);
   auto kernel_iter = kernels_.find(phi_kernel_name);
-  if (deprecated_op_names.find(op_type) == deprecated_op_names.end() &&
-      kernel_iter != kernels_.end()) {
+  if (kernel_iter != kernels_.end()) {
     return std::any_of(kernel_iter->second.begin(),
                        kernel_iter->second.end(),
                        [](phi::KernelKeyMap::const_reference kernel_pair) {
@@ -170,10 +167,10 @@ KernelKeyMap KernelFactory::SelectKernelMap(
 bool KernelFactory::HasKernel(const std::string& kernel_name,
                               const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
-  PADDLE_ENFORCE_NE(
-      iter,
-      kernels_.end(),
-      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  PADDLE_ENFORCE_NE(iter,
+                    kernels_.end(),
+                    common::errors::NotFound(
+                        "The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
@@ -194,6 +191,46 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
 
   if (kernel_iter == iter->second.end()) {
     return false;
+  }
+
+  if (kernel_key.backend() == Backend::XPU) {
+#if defined(PADDLE_WITH_XPU_KP)
+    auto fluid_op_name = TransToFluidOpName(kernel_name);
+    bool has_kp_kernel = false;
+    VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+    bool is_xpu_kp_supported = phi::backends::xpu::is_xpu_kp_support_op(
+        fluid_op_name, kernel_key.dtype());
+    // Check in xpu_kp
+    if (is_xpu_kp_supported && FLAGS_run_kp_kernel) {
+      auto kernel_key_kp =
+          KernelKey(Backend::KPS, kernel_key.layout(), kernel_key.dtype());
+      auto kernel_iter_kp = iter->second.find(kernel_key_kp);
+      has_kp_kernel = (kernel_iter_kp != iter->second.end());
+      if (has_kp_kernel) {
+        kernel_key = kernel_key_kp;
+        kernel_iter = kernel_iter_kp;
+      }
+    }
+    // check in xpu
+    bool xpu_unsupport = !phi::backends::xpu::is_xpu_support_op(
+        fluid_op_name, kernel_key.dtype());
+    VLOG(6) << "Current KernelKey is " << kernel_key;
+    // Fall back to CPU, when FLAGS_enable_api_kernel_fallback is true and op
+    // was unregistered in xpu and kp
+    if (FLAGS_enable_api_kernel_fallback &&
+        (kernel_iter == iter->second.end() ||
+         (xpu_unsupport && !has_kp_kernel))) {
+      return false;
+    }
+#elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+    VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+    if ((FLAGS_enable_api_kernel_fallback &&
+         kernel_iter == iter->second.end()) ||
+        !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
+                                               kernel_key.dtype())) {
+      return false;
+    }
+#endif
   }
   return true;
 }
@@ -233,10 +270,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     bool use_strided_kernel) const {
   auto iter = kernels_.find(kernel_name);
 
-  PADDLE_ENFORCE_NE(
-      iter,
-      kernels_.end(),
-      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  PADDLE_ENFORCE_NE(iter,
+                    kernels_.end(),
+                    common::errors::NotFound(
+                        "The kernel `%s` is not registered.", kernel_name));
 
   if (FLAGS_use_stride_kernel && use_strided_kernel) {
     auto stride_kernel_iter = iter->second.find(
@@ -280,7 +317,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   PADDLE_ENFORCE_NE(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
       true,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The kernel with key %s of kernel `%s` is not registered. %s",
           kernel_key,
           kernel_name,
@@ -313,9 +350,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       (kernel_iter == iter->second.end() || (xpu_unsupport && !has_kp_kernel))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+  bool is_xpu_support1 = phi::backends::xpu::is_xpu_support_op(
+      TransToFluidOpName(kernel_name), kernel_key.dtype());
+  bool is_xpu_support2 =
+      phi::backends::xpu::is_xpu_support_op(kernel_name, kernel_key.dtype());
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
-      !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
-                                             kernel_key.dtype())
+      (!is_xpu_support1 && !is_xpu_support2)
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (kernel_iter == iter->second.end() &&
       kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
@@ -339,7 +379,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     PADDLE_ENFORCE_NE(
         kernel_iter,
         iter->second.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "The kernel with key %s of kernel `%s` is not registered and "
             "fail to fallback to CPU one. %s",
             kernel_key,
@@ -356,7 +396,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The kernel with key %s of kernel `%s` is not registered. %s "
           "The current value of FLAGS_enable_api_kernel_fallback(bool,"
           " default true) is false. If you want to fallback this kernel"
@@ -371,10 +411,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
     const std::string& kernel_name) const {
   auto iter = kernels_.find(kernel_name);
-  PADDLE_ENFORCE_NE(
-      iter,
-      kernels_.end(),
-      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  PADDLE_ENFORCE_NE(iter,
+                    kernels_.end(),
+                    common::errors::NotFound(
+                        "The kernel `%s` is not registered.", kernel_name));
   return iter->second.cbegin()->second.args_def();
 }
 
@@ -538,10 +578,10 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
 // }
 std::string KernelSelectionErrorMessage(const std::string& kernel_name,
                                         const KernelKey& target_key) {
-  PADDLE_ENFORCE_NE(
-      KernelFactory::Instance().kernels().find(kernel_name),
-      KernelFactory::Instance().kernels().end(),
-      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  PADDLE_ENFORCE_NE(KernelFactory::Instance().kernels().find(kernel_name),
+                    KernelFactory::Instance().kernels().end(),
+                    common::errors::NotFound(
+                        "The kernel `%s` is not registered.", kernel_name));
 
   // Init data structure
   bool support_backend = false;

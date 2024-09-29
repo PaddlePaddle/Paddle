@@ -27,9 +27,9 @@ class TestSparseLoadProgram(unittest.TestCase):
     """
 
     def setUp(self):
-        os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"
-        ] = "127.0.0.1:4001,127.0.0.1:4002"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = (
+            "127.0.0.1:4001,127.0.0.1:4002"
+        )
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["PADDLE_PORT"] = "4001"

@@ -219,7 +219,7 @@ class TestPybind(unittest.TestCase):
         pir_program = get_ir_program()
         unsqueeze_op = pir_program.global_block().ops[-1]
         results = unsqueeze_op.get_output_intermediate_status()
-        self.assertEqual(results, [False, True])
+        self.assertEqual(results, [False])
 
     def test_prog_seed(self):
         p = pir.Program()

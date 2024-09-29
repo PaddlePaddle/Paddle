@@ -61,6 +61,8 @@ class ProcessMeshAttribute : public pir::AttrBase<ProcessMeshAttribute,
                                   const std::vector<int64_t>& shape,
                                   const std::vector<int64_t>& process_ids,
                                   const std::vector<std::string>& dim_names);
+
+  static std::string name() { return "a_process_mesh"; }
 };
 
 class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
@@ -98,6 +100,8 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
                dims_mapping,
                partial_status);
   }
+
+  static std::string name() { return "a_tensor_dist"; }
 };
 
 class OperationDistAttribute : public pir::AttrBase<OperationDistAttribute,
@@ -117,17 +121,24 @@ class OperationDistAttribute : public pir::AttrBase<OperationDistAttribute,
 
   uint32_t num_results() const;
 
+  int64_t chunk_id() const;
+
   static OperationDistAttribute get(pir::IrContext* ctx,
                                     ProcessMeshAttribute mesh,
                                     const std::vector<Attribute>& operands,
-                                    const std::vector<Attribute>& results);
+                                    const std::vector<Attribute>& results,
+                                    const int64_t& chunk_id = -1);
 
   static OperationDistAttribute get(pir::IrContext* ctx,
                                     const phi::distributed::ProcessMesh& mesh,
                                     const std::vector<Attribute>& operands,
-                                    const std::vector<Attribute>& results) {
-    return get(ctx, ProcessMeshAttribute::get(ctx, mesh), operands, results);
+                                    const std::vector<Attribute>& results,
+                                    const int64_t& chunk_id = -1) {
+    return get(
+        ctx, ProcessMeshAttribute::get(ctx, mesh), operands, results, chunk_id);
   }
+
+  static std::string name() { return "a_op_dist"; }
 };
 
 }  // namespace dialect

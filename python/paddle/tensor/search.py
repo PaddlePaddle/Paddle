@@ -236,7 +236,10 @@ def argmax(
         flatten = True
         axis = 0
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
+    elif in_pir_mode():
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
         return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmax", **locals())
@@ -255,7 +258,7 @@ def argmax(
             ],
             'paddle.argmax',
         )
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
         attrs = {}
         out = helper.create_variable_for_type_inference(var_dtype)
         attrs['keepdims'] = keepdim
@@ -334,7 +337,10 @@ def argmin(
         flatten = True
         axis = 0
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
+    elif in_pir_mode():
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
         return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmin", **locals())
@@ -445,18 +451,15 @@ def index_select(
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: Literal[False] = ...) -> Tensor:
-    ...
+def nonzero(x: Tensor, as_tuple: Literal[False] = ...) -> Tensor: ...
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]:
-    ...
+def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]: ...
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]:
-    ...
+def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
 
 
 def nonzero(x: Tensor, as_tuple=False):
@@ -974,6 +977,11 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
     """
     Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
+
+    Note:
+        ``paddle.masked_select`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.

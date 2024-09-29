@@ -26,7 +26,7 @@
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle2onnx/converter.h"
 

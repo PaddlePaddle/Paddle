@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import os
 import pickle
 import re
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -28,11 +31,16 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 )
 from paddle.distributed.fleet.utils.log_util import logger
 
+if TYPE_CHECKING:
+    from paddle.nn import Layer
+
 __all__ = ["save_for_auto_inference"]
 
 
 @dygraph_only
-def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
+def save_for_auto_inference(
+    path_prefix: str, dist_model: Layer, cvt2cpu: bool = False
+) -> None:
     """
     Description：
         Save model parameters for auto parallel inference.
@@ -56,9 +64,10 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
         .. code-block:: python
 
             >>> # doctest: +SKIP('model not exist')
-            >>> dist_model = build_distributed_model()
+            >>> from paddle.incubate.distributed.utils.io import save_for_auto_inference
+            >>> dist_model = build_distributed_model()  # type: ignore[name-defined]
             >>> path_prefix = "path/to/save_infer"
-            >>> save_for_auto_inference(path_prefix, dist_model=dist_model, original_model=single_model, cvt2cpu=False)
+            >>> save_for_auto_inference(path_prefix, dist_model=dist_model, cvt2cpu=False)
 
     Outputs:
         path/to/save_infer_dist0.pdparams path/to/save_infer_dist1.pdparams path/to/save_infer_dist2.pdparams ...
@@ -167,7 +176,7 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
 
     # Why condition 'pp_rank < 0' exists?
     # Because if pp_degree = 1, pp_rank is set -1
-    pp_rank = 0 if pp_rank <= 0 else pp_rank
+    pp_rank = max(0, pp_rank)
 
     if dist.get_world_size() > 1:
         process_group = _get_all_ranks_of_pp(
@@ -183,9 +192,11 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
         attr_d = {
             "process_shape": [dp_degree, mp_degree] if hcg else [1],
             "process_group": process_group,
-            "dims_mapping": v.dims_mapping
-            if hasattr(v, "dims_mapping")
-            else [-1 for _ in v.shape],
+            "dims_mapping": (
+                v.dims_mapping
+                if hasattr(v, "dims_mapping")
+                else [-1 for _ in v.shape]
+            ),
         }
         attr_dict[k] = attr_d
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -443,7 +444,13 @@ class TestSparseAdamOp(unittest.TestCase):
                 self.assertLess((actual[i] - np_array[i]), 0.00001)
 
     def test_sparse_adam(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -801,6 +808,23 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestAdamOpV2WeightDecay(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=linear.parameters(), weight_decay=1
+        )
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+        paddle.enable_static()
+
+
 class TestAdamOpV2Group(TestAdamOpV2):
     def test_adam_op(self):
         paddle.disable_static()
@@ -918,14 +942,7 @@ class TestMultiTensorAdam(unittest.TestCase):
         optimizer = paddle.optimizer.Adam(
             multi_precision=use_amp, use_multi_tensor=use_multi_tensor
         )
-        if use_amp:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
-                use_fp16_guard=False,
-            )
+
         with paddle.static.program_guard(train_program, startup_program):
             if use_amp:
                 data = paddle.static.data(
@@ -936,14 +953,25 @@ class TestMultiTensorAdam(unittest.TestCase):
                     shape=[2, 2], name='X', dtype='float32'
                 )
             hidden_layer = paddle.nn.Linear(2, 10)
-            hidden = hidden_layer(data)
-            loss = paddle.mean(hidden)
+            if use_amp:
+                hidden_layer, optimizer = paddle.amp.decorate(
+                    models=hidden_layer,
+                    optimizers=optimizer,
+                    level='O2',
+                    master_weight=True,
+                    master_grad=True,
+                )
+                with paddle.amp.auto_cast(
+                    level='O2', dtype='float16', use_promote=True
+                ):
+                    hidden = hidden_layer(data)
+                    loss = paddle.mean(hidden)
+            else:
+                hidden = hidden_layer(data)
+                loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
         if use_amp:
-            optimizer.amp_init(
-                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
-            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')
@@ -956,7 +984,13 @@ class TestMultiTensorAdam(unittest.TestCase):
         return out
 
     def _get_places(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         return places
@@ -974,17 +1008,18 @@ class TestMultiTensorAdam(unittest.TestCase):
             np.testing.assert_allclose(
                 params_dygraph1[idx], params_dygraph2[idx], rtol=1e-05
             )
-        # test static graph mode
-        output_static1 = self._adam_optimize_static(
-            place=place, use_amp=use_amp, use_multi_tensor=True
-        )
-        output_static2 = self._adam_optimize_static(
-            place=place, use_amp=use_amp, use_multi_tensor=False
-        )
-        for idx in range(len(output_static1)):
-            np.testing.assert_allclose(
-                output_static1[idx], output_static2[idx], rtol=1e-05
+        with paddle.pir_utils.IrGuard():
+            # test static graph mode
+            output_static1 = self._adam_optimize_static(
+                place=place, use_amp=use_amp, use_multi_tensor=True
             )
+            output_static2 = self._adam_optimize_static(
+                place=place, use_amp=use_amp, use_multi_tensor=False
+            )
+            for idx in range(len(output_static1)):
+                np.testing.assert_allclose(
+                    output_static1[idx], output_static2[idx], rtol=1e-05
+                )
 
     def _check_with_param_arrt(self, place, use_amp):
         output1, params1 = self._adam_optimize_dygraph(
@@ -1033,7 +1068,7 @@ class TestMultiTensorAdam(unittest.TestCase):
     def test_pir_main(self):
         with paddle.pir_utils.IrGuard():
             for place in self._get_places():
-                use_amp_list = [False]
+                use_amp_list = [True, False]
                 for use_amp in use_amp_list:
                     self._check_with_place_amp(place, use_amp)
 

@@ -18,6 +18,10 @@
 #include <string>
 #include <vector>
 
+namespace pir {
+class Program;
+}
+
 namespace paddle {
 
 namespace framework {
@@ -55,16 +59,14 @@ class FunctionSchema {
   std::vector<Argument> input_args;
   std::vector<Argument> output_args;
 };
-
-class FunctionInfo {
+class BaseFunctionInfo {
  public:
-  FunctionInfo(const std::string& func_name,
-               const std::vector<std::string>& param_names,
-               const framework::ProgramDesc& program_desc);
+  BaseFunctionInfo(const std::string& func_name,
+                   const std::vector<std::string>& param_names);
+
+  virtual ~BaseFunctionInfo() = default;
 
   const std::string& FunctionName() const;
-
-  const framework::ProgramDesc& ProgramDesc() const;
 
   const std::vector<std::string>& ParamNames() const;
 
@@ -76,14 +78,37 @@ class FunctionInfo {
 
   void SetProgramFilePath(const std::string& path);
 
+ protected:
+  std::string func_name_;
+  std::vector<std::string> param_names_;
+  FunctionSchema schema_;
+  std::string prog_file_path_;
+};
+
+class FunctionInfo : public BaseFunctionInfo {
+ public:
+  FunctionInfo(const std::string& func_name,
+               const std::vector<std::string>& param_names,
+               const framework::ProgramDesc& program_desc);
+
+  const framework::ProgramDesc& ProgramDesc() const;
+
   void RemoveDescFeedFetch();
 
  private:
-  std::string func_name_;
-  std::vector<std::string> param_names_;
   std::shared_ptr<framework::ProgramDesc> program_desc_;
-  FunctionSchema schema_;
-  std::string prog_file_path_;
+};
+
+class PirFunctionInfo : public BaseFunctionInfo {
+ public:
+  PirFunctionInfo(const std::string& func_name,
+                  const std::vector<std::string>& param_names,
+                  std::shared_ptr<pir::Program> program);
+
+  std::shared_ptr<pir::Program> Program() const;
+
+ private:
+  std::shared_ptr<pir::Program> program_;
 };
 
 }  // namespace jit

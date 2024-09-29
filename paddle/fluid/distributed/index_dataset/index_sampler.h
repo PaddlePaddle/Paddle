@@ -68,12 +68,12 @@ class LayerWiseSampler : public IndexSampler {
     PADDLE_ENFORCE_GT(
         start_sample_layer_,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "start sampler layer = [%d], it should greater than 0.",
             start_sample_layer_));
     PADDLE_ENFORCE_LT(start_sample_layer_,
                       tree_->Height(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "start sampler layer = [%d], it should less than "
                           "max_layer, which is [%d].",
                           start_sample_layer_,

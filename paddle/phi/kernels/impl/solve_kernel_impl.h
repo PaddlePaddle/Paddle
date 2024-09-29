@@ -64,7 +64,7 @@ static std::vector<int64_t> get_broadcast_batch_portion(
     PADDLE_ENFORCE_EQ(
         (x_size == y_size || x_size == 1 || y_size == 1),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The size of tensor x (%d) must match the size of tensor y "
             "(%d) at non-singleton dimension %d.",
             x_size,
@@ -174,7 +174,7 @@ static void linalg_solve(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         x_dim[x_dim_size - 1],
         y_dim[y_dim_size - 2],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Matrix X1 with dimension greater than 2 and any matrix Y1,"
             "the matrix X1's width must be equal with matrix Y1's "
             "height. But received X's shape = [%s], X1's shape = [%s], X1's "

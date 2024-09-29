@@ -22,10 +22,10 @@
 
 #include "brpc/channel.h"
 #include "brpc/server.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/rpc/python_rpc_handler.h"
 #include "paddle/fluid/distributed/rpc/rpc.pb.h"
 #include "paddle/fluid/distributed/rpc/rpc_service.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace distributed {

@@ -46,8 +46,8 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
     default_xpu_generators.resize(num_xpu_devices);
   });
   if (device_id < 0) {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("xpu device id should be greater than 0"));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "xpu device id should be greater than 0"));
   }
 
   std::call_once(xpu_device_flags[device_id], [device_id]() {
@@ -58,7 +58,7 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
   });
   return default_xpu_generators[device_id];
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "getDefaultXPUGenerator only support in XPU place"));
 #endif
 }
@@ -77,7 +77,7 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
     default_cuda_generators.resize(num_cuda_devices);
   });
   if (device_id < 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "cuda device id should be greater than 0"));
   }
 
@@ -89,7 +89,7 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
   });
   return default_cuda_generators[device_id];
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "getDefaultCUDAGenerator only support in CUDA place"));
 #endif
 }
@@ -124,7 +124,7 @@ const std::shared_ptr<Generator>& SetRandomSeedGenerator(
   auto iter = rng_map.find(name);
   PADDLE_ENFORCE_EQ(iter == rng_map.end(),
                     true,
-                    phi::errors::AlreadyExists(
+                    common::errors::AlreadyExists(
                         "%s RandomSeedGenerator is already exist", name));
 
   auto generator = std::make_shared<Generator>(seed);
@@ -132,7 +132,7 @@ const std::shared_ptr<Generator>& SetRandomSeedGenerator(
   PADDLE_ENFORCE_EQ(
       emplace_success,
       true,
-      phi::errors::PermissionDenied(
+      common::errors::PermissionDenied(
           "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
           name));
   return rng_map[name];
@@ -142,12 +142,12 @@ const std::shared_ptr<Generator>& GetRandomSeedGenerator(
     const std::string& name) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
-  PADDLE_ENFORCE_EQ(
-      iter != rng_map.end(),
-      true,
-      phi::errors::NotFound("%s RandomSeedGenerator is not found, please "
-                            "use `set_random_seed_generator` to set rng first",
-                            name));
+  PADDLE_ENFORCE_EQ(iter != rng_map.end(),
+                    true,
+                    common::errors::NotFound(
+                        "%s RandomSeedGenerator is not found, please "
+                        "use `set_random_seed_generator` to set rng first",
+                        name));
   return iter->second;
 }
 
@@ -210,7 +210,7 @@ void Generator::SetState(const phi::Generator::GeneratorState& state) {
   if (current_index < states_.size())
     states_[current_index] = state;
   else
-    PADDLE_THROW(phi::errors::NotFound("Generator index is not found"));
+    PADDLE_THROW(common::errors::NotFound("Generator index is not found"));
   print_state_info();
 }
 
@@ -221,7 +221,7 @@ void Generator::SetStateIndex(uint64_t StateIndex) {
   if (current_index < states_.size())
     current_index = StateIndex;
   else
-    PADDLE_THROW(phi::errors::NotFound("Generator index is not found"));
+    PADDLE_THROW(common::errors::NotFound("Generator index is not found"));
 }
 
 uint64_t Generator::RegisterStateIndex(const GeneratorState& state) {
@@ -236,7 +236,7 @@ inline Generator::GeneratorState& Generator::state() {
   if (current_index < states_.size())
     return states_[current_index];
   else
-    PADDLE_THROW(phi::errors::NotFound("Generator index is not found"));
+    PADDLE_THROW(common::errors::NotFound("Generator index is not found"));
 }
 
 inline std::shared_ptr<std::mt19937_64> Generator::cpu_engine() {
@@ -279,7 +279,7 @@ std::pair<uint64_t, uint64_t> Generator::IncrementOffset(uint64_t increment) {
   print_state_info();
   return std::make_pair(state().seed, offset);
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "Increment Offset only support in CUDA place"));
 #endif
 }

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/stats.h"
 
 #include "gtest/gtest.h"
 

@@ -32,7 +32,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x.dims().size(),
       4,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           ("XPU is only support input_dims == 4 in grid_sample_grad op.")));
 
   const int64_t n = grid.dims()[0];

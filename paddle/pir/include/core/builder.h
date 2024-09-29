@@ -23,6 +23,7 @@
 
 namespace pir {
 class Type;
+class UndefinedType;
 class UInt8Type;
 class Int8Type;
 class Int16Type;
@@ -110,7 +111,8 @@ class Builder {
   /// Set the insertion point to the end of the specified block.
   void SetInsertionPointToBlockEnd(Block *block) {
     PADDLE_ENFORCE_NOT_NULL(
-        block, phi::errors::PreconditionNotMet("argument of block is nullptr"));
+        block,
+        common::errors::PreconditionNotMet("argument of block is nullptr"));
     set_insertion_point(block, block->end());
   }
 
@@ -135,6 +137,7 @@ class Builder {
   template <typename OpTy, typename... Args>
   OpTy Build(Args &&...args);
 
+  IR_API UndefinedType undefined_type();
   IR_API BoolType bool_type();
   IR_API UInt8Type uint8_type();
   IR_API Int8Type int8_type();

@@ -29,46 +29,69 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
         self.name = "TestBlhaGetMaxLenOpDynamic"
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 10
-        self.test_encoder_data = np.random.randint(1, 100, size=self.batch_size)
-        self.test_encoder_data_res = paddle.to_tensor(
-            np.max(self.test_encoder_data), "int32"
-        )
-        self.test_decoder_data = np.random.randint(1, 100, size=self.batch_size)
-        self.test_decoder_data_res = paddle.to_tensor(
-            np.max(self.test_decoder_data), "int32"
-        )
-        self.seq_lens_encoder = paddle.to_tensor(
-            self.test_encoder_data,
-            "int32",
-        )
-        self.seq_lens_decoder = paddle.to_tensor(
-            self.test_decoder_data,
-            "int32",
-        )
-        self.batch_size_tensor = paddle.ones([self.batch_size])
+        self.test_encoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+        self.test_decoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
 
     def test_dynamic_api(self):
         paddle.disable_static()
+        test_encoder_data_res = paddle.to_tensor(
+            np.max(self.test_encoder_data), "int32"
+        )
+        test_decoder_data_res = paddle.to_tensor(
+            np.max(self.test_decoder_data), "int32"
+        )
+        seq_lens_encoder = paddle.to_tensor(
+            self.test_encoder_data,
+            "int32",
+        )
+        seq_lens_decoder = paddle.to_tensor(
+            self.test_decoder_data,
+            "int32",
+        )
+        batch_size_tensor = paddle.ones([self.batch_size])
         max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
-            self.seq_lens_encoder,
-            self.seq_lens_decoder,
-            self.batch_size_tensor,
+            seq_lens_encoder,
+            seq_lens_decoder,
+            batch_size_tensor,
         )
         assert (
-            max_enc_len_this_time == self.test_encoder_data_res
-            and max_dec_len_this_time == self.test_decoder_data_res
+            max_enc_len_this_time == test_encoder_data_res
+            and max_dec_len_this_time == test_decoder_data_res
         )
 
     def test_static_api(self):
         paddle.enable_static()
-        max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
-            self.seq_lens_encoder,
-            self.seq_lens_decoder,
-            self.batch_size_tensor,
-        )
+        test_encoder_data_res = np.max(self.test_encoder_data).astype("int32")
+        test_decoder_data_res = np.max(self.test_decoder_data).astype("int32")
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            seq_lens_encoder = paddle.static.data(
+                "seq_lens_encoder", self.test_encoder_data.shape, "int32"
+            )
+            seq_lens_decoder = paddle.static.data(
+                "seq_lens_decoder", self.test_decoder_data.shape, "int32"
+            )
+            batch_size_tensor = paddle.ones([self.batch_size], "int32")
+            max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+                seq_lens_encoder,
+                seq_lens_decoder,
+                batch_size_tensor,
+            )
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            res_max_enc_len_this_time, res_max_dec_len_this_time = exe.run(
+                feed={
+                    "seq_lens_encoder": self.test_encoder_data,
+                    "seq_lens_decoder": self.test_decoder_data,
+                },
+                fetch_list=[max_enc_len_this_time, max_dec_len_this_time],
+            )
         assert (
-            max_enc_len_this_time == self.test_encoder_data_res
-            and max_dec_len_this_time == self.test_decoder_data_res
+            res_max_enc_len_this_time == test_encoder_data_res
+            and res_max_dec_len_this_time == test_decoder_data_res
         )
 
 

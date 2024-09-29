@@ -27,7 +27,7 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx UNUSED,
                               const DenseTensor& dout UNUSED,
                               SparseCsrTensor* dx UNUSED,
                               DenseTensor* dy UNUSED) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support CPU backward kernel of 'sparse.matmul' now."));
 }
 
@@ -39,7 +39,7 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx UNUSED,
                                const SparseCsrTensor& dout UNUSED,
                                DenseTensor* dx UNUSED,
                                DenseTensor* dy UNUSED) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support CPU backward kernel of 'sparse.masked_matmul' now."));
 }
 

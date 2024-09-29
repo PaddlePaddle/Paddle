@@ -44,7 +44,7 @@ framework::proto::VarType::Type VarMessageToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "VarMessageToVarType:Unsupported type %d", type));
   }
 }
@@ -91,7 +91,7 @@ void SerializeLodTensor(framework::Variable* var,
                         butil::IOBuf* iobuf) {
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   var_msg->set_type(::paddle::distributed::LOD_TENSOR);
-  const framework::LoD lod = tensor->lod();
+  const phi::LoD lod = tensor->lod();
   if (!lod.empty()) {
     var_msg->set_lod_level(lod.size());
     for (auto& each : lod) {
@@ -209,7 +209,7 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
     auto* var = scope->FindVar(msg.varname());
     PADDLE_ENFORCE_NE(var,
                       nullptr,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Not find variable %s in scope.", msg.varname()));
     if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);
@@ -231,7 +231,7 @@ void DeserializeLodTensor(framework::Variable* var,
   }
   tensor->Resize(common::make_ddim(vec_dim));
 
-  framework::LoD lod;
+  phi::LoD lod;
   for (int i = 0; i < msg.lod_level(); ++i) {
     phi::Vector<size_t> v;
     for (int j = 0; j < msg.lod(i).lod_data_size(); ++j) {

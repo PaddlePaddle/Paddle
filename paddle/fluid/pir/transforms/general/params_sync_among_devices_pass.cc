@@ -38,14 +38,14 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
     PADDLE_ENFORCE_EQ(
         Has(pir::Pass::kPlaceAttr),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
         Has(pir::Pass::kParamScopeAttr),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
@@ -60,7 +60,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "params_sync_among_devices_pass should run on module op."));
     auto& block = module_op.block();
     int64_t num_rewrites_{0};
@@ -73,8 +73,8 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         auto* param_var = scope_->FindVar(param_name);
         PADDLE_ENFORCE_NOT_NULL(
             param_var,
-            phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
-                                         param_name));
+            common::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                            param_name));
         if (param_var->IsType<phi::DenseTensor>()) {
           auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
           phi::CPUPlace cpu_place;
@@ -86,7 +86,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
           paddle::framework::TensorCopySync(temp_tensor, place_, param_tensor);
           num_rewrites_++;
         } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(common::errors::Unimplemented(
               "params_sync_among_devices_pass only support DenseTensor type of "
               "parameter var."));
         }
@@ -97,16 +97,16 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
 
   bool CanApplyOn(pir::Operation* op) const override {
     PADDLE_ENFORCE_NOT_NULL(
-        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+        scope_, common::errors::InvalidArgument("scope can not be nullptr"));
 #ifdef PADDLE_WITH_XPU
     PADDLE_ENFORCE(phi::is_xpu_place(place_) || phi::is_cpu_place(place_),
-                   phi::errors::PreconditionNotMet(
+                   common::errors::PreconditionNotMet(
                        "The Place attr in params_sync_among_devices_pass "
                        "should be cpu or xpu."));
 #endif
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE(phi::is_gpu_place(place_) || phi::is_cpu_place(place_),
-                   phi::errors::PreconditionNotMet(
+                   common::errors::PreconditionNotMet(
                        "The Place attr in params_sync_among_devices_pass "
                        "should be cpu or gpu."));
 #endif

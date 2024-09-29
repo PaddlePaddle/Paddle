@@ -90,7 +90,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     // axis are different in static/dynamic mode
-    bool with_dynamic = engine_->with_dynamic_shape();
+    bool with_dynamic = true;
     int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
     int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
 
@@ -101,8 +101,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
 
     // Priority: Input(OutSize) > attr(out_h/out_w) > attr(scale)
     nvinfer1::ITensor* outsize_tensor = nullptr;
-    if (engine_->with_dynamic_shape() &&
-        resize_inputs.find("OutSize") != resize_inputs.end()) {
+    if (resize_inputs.find("OutSize") != resize_inputs.end()) {
       if (!op_desc.Input("OutSize").empty()) {
         outsize_tensor = engine_->GetITensor(op_desc.Input("OutSize")[0]);
       }
@@ -116,9 +115,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     std::vector<float> scales;
-    if (engine_->with_dynamic_shape()) {
-      scales.push_back(1.f);
-    }
+    scales.push_back(1.f);
     if (data_layout == phi::DataLayout::kNCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
@@ -129,23 +126,19 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       scales.push_back(1.f);
     }
 
-    if (engine_->with_dynamic_shape()) {
-      if (outsize_tensor != nullptr) {
-        std::vector<nvinfer1::ITensor*> outsize_itensors;
-        auto* input_shape = Shape(input);
-        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 0));
+    if (outsize_tensor != nullptr) {
+      std::vector<nvinfer1::ITensor*> outsize_itensors;
+      auto* input_shape = Shape(input);
+      outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 0));
 
-        if (data_layout == phi::DataLayout::kNCHW) {
-          outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 1));
-          outsize_itensors.push_back(outsize_tensor);
-        } else if (data_layout == phi::DataLayout::kNHWC) {
-          outsize_itensors.push_back(outsize_tensor);
-          outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 3));
-        }
-        layer->setInput(1, *Concat(outsize_itensors));
-      } else {
-        layer->setScales(scales.data(), scales.size());
+      if (data_layout == phi::DataLayout::kNCHW) {
+        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 1));
+        outsize_itensors.push_back(outsize_tensor);
+      } else if (data_layout == phi::DataLayout::kNHWC) {
+        outsize_itensors.push_back(outsize_tensor);
+        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 3));
       }
+      layer->setInput(1, *Concat(outsize_itensors));
     } else {
       layer->setScales(scales.data(), scales.size());
     }

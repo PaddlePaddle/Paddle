@@ -23,16 +23,21 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
-
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
+
+PHI_DEFINE_EXPORTED_bool(print_kernel_run_info,
+                         false,
+                         "Whether print kernel run info.");
+
 namespace paddle {
 namespace framework {
 
@@ -110,7 +115,7 @@ PhiKernelInstruction::PhiKernelInstruction(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(op_name),
@@ -135,12 +140,13 @@ PhiKernelInstruction::PhiKernelInstruction(
                         .data();
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
+  kernel_name_ = kernel_name;
   phi_kernel_ = new phi::Kernel(kernel_result.kernel);
   PADDLE_ENFORCE_EQ(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
-  platform::DeviceContext* dev_ctx =
+  phi::DeviceContext* dev_ctx =
       ParseDeviceContext(op,
                          phi::DeviceContextPool::Instance().Get(
                              phi::TransToPhiPlace(kernel_key.backend())),
@@ -179,8 +185,37 @@ PhiKernelInstruction::PhiKernelInstruction(
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
+  if (FLAGS_print_kernel_run_info) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto place =
+        kernel_context_.GetDeviceContext<phi::DeviceContext>().GetPlace();
+    if (phi::is_gpu_place(place)) {
+      std::string use_cudnn =
+          op_->attributes()
+                      .at("kernel_key")
+                      .dyn_cast<paddle::dialect::KernelAttribute>()
+                      .data()
+                      .backend() == phi::Backend::GPUDNN
+              ? "true"
+              : "false";
+      std::cout << "run " << phi_op_name_
+                << ": thread_id=" << std::this_thread::get_id()
+                << ", backend=" << place << ", use_cudnn=" << use_cudnn
+                << ", stream="
+                << kernel_context_.GetDeviceContext<phi::GPUContext>().stream()
+                << std::endl;
+    } else {
+      std::cout << "run " << phi_op_name_
+                << ": thread_id=" << std::this_thread::get_id()
+                << ", backend=" << place << std::endl;
+    }
+#endif
+  }
   VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
+    phi::RecordEvent record_event("PhiKernelInstruction::infermeta",
+                                  phi::TracerEventType::UserDefined,
+                                  1);
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
   VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
@@ -188,7 +223,13 @@ void PhiKernelInstruction::Run() {
     ShareVarBuffer(pair.first, pair.second);
   }
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
-  (*(phi_kernel_))(&(kernel_context_));
+  {
+    phi::RecordEvent record_event(kernel_name_ + " kernel launch",
+                                  phi::TracerEventType::StaticKernelLaunch,
+                                  1);
+    (*(phi_kernel_))(&(kernel_context_));
+  }
+
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 }
 

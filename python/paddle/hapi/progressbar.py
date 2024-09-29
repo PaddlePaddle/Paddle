@@ -38,7 +38,7 @@ class ProgressBar:
         if isinstance(num, int) and num <= 0:
             raise TypeError('num should be None or integer (> 0)')
         max_width = self._get_max_width()
-        self._width = width if width <= max_width else max_width
+        self._width = min(width, max_width)
         self._total_width = 0
         self._verbose = verbose
         self.file = file

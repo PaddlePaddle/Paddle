@@ -32,7 +32,7 @@ void BipartiteMatch(const phi::DenseTensor& dist,
   PADDLE_ENFORCE_EQ(
       dist.dims().size(),
       2,
-      phi::errors::InvalidArgument("The rank of dist must be 2."));
+      common::errors::InvalidArgument("The rank of dist must be 2."));
   int64_t row = dist.dims()[0];
   int64_t col = dist.dims()[1];
   auto* dist_data = dist.data<T>();
@@ -97,7 +97,7 @@ void BipartiteMatch(const phi::DenseTensor& dist,
         PADDLE_ENFORCE_EQ(
             match_indices[max_idx],
             -1,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The match_indices must be initialized to -1 at [%d].",
                 max_idx));
         match_indices[max_idx] = max_row_idx;
@@ -141,7 +141,7 @@ void ArgMaxMatch(const phi::DenseTensor& dist,
       PADDLE_ENFORCE_EQ(
           match_indices[j],
           -1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The match_indices must be initialized to -1 at [%d].", j));
       match_indices[j] = max_row_idx;
       match_dist[j] = max_dist;
@@ -169,7 +169,7 @@ void BipartiteMatchKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         dist_mat->lod().size(),
         1UL,
-        phi::errors::InvalidArgument("Only support 1 level of LoD."));
+        common::errors::InvalidArgument("Only support 1 level of LoD."));
   }
   match_indices->Resize({n, col});
   dev_ctx.template Alloc<int>(match_indices);

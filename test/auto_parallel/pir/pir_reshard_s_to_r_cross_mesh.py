@@ -19,8 +19,10 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.pir_pass import (
-    apply_reshard_pass,
+    ReshardPasses,
 )
+from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class TestReshardSToRCrossMesh:
@@ -60,7 +62,8 @@ class TestReshardSToRCrossMesh:
                 reshard_tensor = paddle._pir_ops.reshard(
                     input_tensor, self._out_mesh, [dist.Replicate()]
                 )
-            apply_reshard_pass(main_program)
+            set_all_ops_op_role(main_program.global_block(), OpRole.Forward)
+            ReshardPasses.apply_reshard_pass(main_program)
 
         ops = [op.name() for op in main_program.global_block().ops]
         if self._shard == 0:
@@ -72,7 +75,7 @@ class TestReshardSToRCrossMesh:
                     'dist_op.shard_tensor',
                     'pd_op.send_v2',
                     'dist_op.reshard',
-                    'pd_op.c_allgather',
+                    'pd_op.all_gather',
                 ]
                 np.testing.assert_equal(
                     ops,
@@ -85,7 +88,7 @@ class TestReshardSToRCrossMesh:
                     'pd_op.data',
                     'dist_op.shard_tensor',
                     'pd_op.recv_v2',
-                    'pd_op.c_allgather',
+                    'pd_op.all_gather',
                 ]
                 np.testing.assert_equal(
                     ops,
@@ -100,7 +103,7 @@ class TestReshardSToRCrossMesh:
                     'dist_op.shard_tensor',
                     'pd_op.send_v2',
                     'dist_op.reshard',
-                    'pd_op.c_allgather',
+                    'pd_op.all_gather',
                     'pd_op.full',
                     'pd_op.split_with_num',
                     'pd_op.full',
@@ -117,7 +120,7 @@ class TestReshardSToRCrossMesh:
                     'pd_op.data',
                     'dist_op.shard_tensor',
                     'pd_op.recv_v2',
-                    'pd_op.c_allgather',
+                    'pd_op.all_gather',
                     'pd_op.full',
                     'pd_op.split_with_num',
                     'pd_op.full',
@@ -159,7 +162,7 @@ class TestReshardSToRCrossMesh:
                 elif self._shard == 1:
                     assert op_result_dist_attr.dims_mapping == [-1, 0]
                 assert op_result_dist_attr.partial_status == {}
-            elif op.name() == 'pd_op.c_allgather':
+            elif op.name() == 'pd_op.all_gather':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1

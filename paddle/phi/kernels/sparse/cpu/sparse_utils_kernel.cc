@@ -42,7 +42,7 @@ inline int64_t GetNonZeroNum(const DenseTensor& dense,
   PADDLE_ENFORCE_GE(
       dims.size(),
       sparse_dim,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "sparse_dim(%d) should be less than or equal to dense.dim(%d)",
           sparse_dim,
           dims.size()));
@@ -70,10 +70,10 @@ void DenseToCooKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_LE(sparse_dim,
                     x_dims.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "sparse_dim must be less than the size of x.dims()"));
   PADDLE_ENFORCE_GT(
-      sparse_dim, 0, phi::errors::InvalidArgument("sparse_dim must be >0"));
+      sparse_dim, 0, common::errors::InvalidArgument("sparse_dim must be >0"));
 
   int64_t non_zero_num = GetNonZeroNum<T>(x, sparse_dim);
 
@@ -177,7 +177,7 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
 

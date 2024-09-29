@@ -191,11 +191,11 @@ class TestChi2Sample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': () + np.squeeze(self.df).shape,
+                'expect': tuple(np.squeeze(self.df).shape),
             },
             {
                 'input': (2, 2),
-                'expect': (2, 2) + np.squeeze(self.df).shape,
+                'expect': (2, 2, *np.squeeze(self.df).shape),
             },
         ]
         for case in cases:

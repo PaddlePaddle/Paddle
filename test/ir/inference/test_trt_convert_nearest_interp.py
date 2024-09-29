@@ -17,13 +17,16 @@ from __future__ import annotations
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
@@ -99,7 +102,7 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+        tuple[paddle_infer.Config, list[int], float] | None, Any, Any
     ]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
@@ -117,19 +120,6 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)

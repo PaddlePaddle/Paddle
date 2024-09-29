@@ -150,7 +150,7 @@ void FcXPUKernel(const Context& ctx,
       } else if (out_dtype == DataType::FLOAT16) {
         FC_XPU_KERNEL_IMPL(float, int16_t, dtype::float16, int16_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -165,7 +165,7 @@ void FcXPUKernel(const Context& ctx,
       } else if (out_dtype == DataType::FLOAT16) {
         FC_XPU_KERNEL_IMPL(float, int8_t, dtype::float16, int8_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -175,7 +175,7 @@ void FcXPUKernel(const Context& ctx,
     } else if (w.dtype() == DataType::FLOAT32) {
       FC_XPU_KERNEL_IMPL(float, float, float, int32_t);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not support x_dtype is %s, w_dtype is %s and out_dtype is %s.",
           DataTypeToString(x.dtype()),
           DataTypeToString(w.dtype()),
@@ -193,7 +193,7 @@ void FcXPUKernel(const Context& ctx,
         FC_XPU_KERNEL_IMPL(
             phi::dtype::float16, int16_t, dtype::float16, int16_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -206,7 +206,7 @@ void FcXPUKernel(const Context& ctx,
       } else if (out_dtype == DataType::INT8) {
         FC_XPU_KERNEL_IMPL(phi::dtype::float16, int8_t, int8_t, int8_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -214,7 +214,7 @@ void FcXPUKernel(const Context& ctx,
             DataTypeToString(out_dtype)));
       }
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not support x_dtype is %s, w_dtype is %s and out_dtype is %s.",
           DataTypeToString(x.dtype()),
           DataTypeToString(w.dtype()),
@@ -232,7 +232,7 @@ void FcXPUKernel(const Context& ctx,
       } else if (out_dtype == DataType::INT8) {
         FC_XPU_KERNEL_IMPL(int8_t, int8_t, int8_t, int8_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -240,7 +240,7 @@ void FcXPUKernel(const Context& ctx,
             DataTypeToString(out_dtype)));
       }
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not support x_dtype is %s, w_dtype is %s and out_dtype is %s.",
           DataTypeToString(x.dtype()),
           DataTypeToString(w.dtype()),
@@ -249,7 +249,7 @@ void FcXPUKernel(const Context& ctx,
     return;
   }
 
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support x_dtype is %s, w_dtype is %s and out_dtype is %s.",
       DataTypeToString(x.dtype()),
       DataTypeToString(w.dtype()),

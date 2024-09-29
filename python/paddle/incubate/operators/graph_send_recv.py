@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 import numpy as np
 
 from paddle import _C_ops
@@ -29,6 +33,9 @@ from paddle.geometric.message_passing.utils import (
 )
 from paddle.utils import deprecated
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 @deprecated(
     since="2.4.0",
@@ -37,9 +44,14 @@ from paddle.utils import deprecated
     reason="graph_send_recv in paddle.incubate will be removed in future",
 )
 def graph_send_recv(
-    x, src_index, dst_index, pool_type="sum", out_size=None, name=None
-):
-    r"""
+    x: Tensor,
+    src_index: Tensor,
+    dst_index: Tensor,
+    pool_type: Literal["sum", "mean", "max", "min"] = "sum",
+    out_size: int | Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
+    """
 
     Graph Learning Send_Recv combine operator.
 
@@ -99,7 +111,7 @@ def graph_send_recv(
             >>> indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
             >>> src_index = indexes[:, 0]
             >>> dst_index = indexes[:, 1]
-            >>> out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum")
+            >>> out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum") # type: ignore[operator]
             >>> print(out)
             Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0. , 2. , 3. ],
@@ -111,7 +123,7 @@ def graph_send_recv(
             >>> src_index = indexes[:, 0]
             >>> dst_index = indexes[:, 1]
             >>> out_size = paddle.max(dst_index) + 1
-            >>> out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum", out_size=out_size)
+            >>> out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum", out_size=out_size) # type: ignore[operator]
             >>> print(out)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0. , 2. , 3. ],
@@ -121,7 +133,7 @@ def graph_send_recv(
             >>> indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
             >>> src_index = indexes[:, 0]
             >>> dst_index = indexes[:, 1]
-            >>> out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum")
+            >>> out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum") # type: ignore[operator]
             >>> print(out)
             Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0. , 2. , 3. ],

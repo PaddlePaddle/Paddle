@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import psdb  # noqa: F401
+from . import (
+    profiler as profiler,
+    psdb,  # noqa: F401
+)
 from .opcode_translator.breakpoint import (  # noqa: F401
     BM,
     add_breakpoint,

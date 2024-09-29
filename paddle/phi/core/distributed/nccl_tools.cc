@@ -40,7 +40,7 @@ ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Invalid nccl reduction. Must be ncclMin | ncclMax | "
                         "ncclProd | ncclSum | ncclAvg."));
   return it->second;
@@ -62,7 +62,8 @@ std::string NCCLDTypeToString(ncclDataType_t dtype) {
   PD_NCCL_DTYPE_TO_STR(ncclFloat32, "float32");
   PD_NCCL_DTYPE_TO_STR(ncclHalf, "float16");
   PD_NCCL_DTYPE_TO_STR(ncclFloat16, "float16");
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
   PD_NCCL_DTYPE_TO_STR(ncclBfloat16, "bfloat16");
 #endif
   PD_NCCL_DTYPE_TO_STR(ncclDouble, "float64");
@@ -78,7 +79,7 @@ std::string NCCLDTypeToString(ncclDataType_t dtype) {
   PD_NCCL_DTYPE_TO_STR(ncclUint64, "uint64");
 
 #undef PD_NCCL_DTYPE_TO_STR
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "This datatype %d in nccl is not supported.", static_cast<int>(dtype)));
 }
 

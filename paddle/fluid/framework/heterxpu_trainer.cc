@@ -28,7 +28,7 @@ limitations under the License. */
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
     (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 namespace paddle {
 namespace framework {
@@ -363,9 +363,9 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         auto dev_id = place.device;
         phi::backends::xpu::XPUDeviceGuard guard(dev_id);
         phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-        platform::DeviceContext* dev_ctx = pool.Get(place);
-        const platform::XPUDeviceContext* xpu_ctx =
-            reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
+        phi::DeviceContext* dev_ctx = pool.Get(place);
+        const phi::XPUContext* xpu_ctx =
+            reinterpret_cast<const phi::XPUContext*>(dev_ctx);
         xpu::memset(
             xpu_ctx->x_context(),
             thread_tensor->data(),
@@ -399,9 +399,9 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       auto dev_id = place.device;
       phi::backends::xpu::XPUDeviceGuard guard(dev_id);
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-      platform::DeviceContext* dev_ctx = pool.Get(place);
-      const platform::XPUDeviceContext* xpu_ctx =
-          reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
+      phi::DeviceContext* dev_ctx = pool.Get(place);
+      const phi::XPUContext* xpu_ctx =
+          reinterpret_cast<const phi::XPUContext*>(dev_ctx);
       xpu::memset(
           xpu_ctx->x_context(),
           root_tensor->data(),

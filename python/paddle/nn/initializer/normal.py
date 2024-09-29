@@ -25,6 +25,7 @@ from ...base.framework import (
     in_pir_mode,
 )
 from .initializer import Initializer
+from .lazy_init import lazy_init_helper
 
 __all__ = []
 
@@ -235,9 +236,17 @@ class TruncatedNormalInitializer(Initializer):
             The initialization op
         """
         block = self._check_block(block)
+        if lazy_init_helper().state:
+            expected = (
+                framework.Variable,
+                paddle.pir.core.ParameterMeta,
+                core.eager.Tensor,
+            )
+        else:
+            expected = (framework.Variable, paddle.pir.core.ParameterMeta)
 
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
+        assert isinstance(var, expected)
+        assert isinstance(block, (framework.Block, pir.Block))
 
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -278,6 +287,25 @@ class TruncatedNormalInitializer(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
+
+        elif in_pir_mode():
+            out_var = _C_ops.truncated_gaussian_random(
+                var.shape,
+                self._mean,
+                self._std_dev,
+                self._seed,
+                self._a,
+                self._b,
+                out_dtype,
+                _current_expected_place(),
+            )
+            if var.dtype in [
+                core.VarDesc.VarType.FP16,
+                core.VarDesc.VarType.BF16,
+            ]:
+                var_tmp = _C_ops.cast(out_var, var.dtype)
+                var_tmp._share_underline_tensor_to(var)
+            return out_var
 
         else:
             op = block.append_op(

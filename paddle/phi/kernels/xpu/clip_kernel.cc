@@ -41,10 +41,10 @@ void ClipKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(r,
                     XPU_SUCCESS,
-                    phi::errors::External("XPU API(clip_v2) return wrong "
-                                          "value[%d %s]",
-                                          r,
-                                          XPUAPIErrorMsg[r]));
+                    common::errors::External("XPU API(clip_v2) return wrong "
+                                             "value[%d %s]",
+                                             r,
+                                             XPUAPIErrorMsg[r]));
 }
 
 }  // namespace phi

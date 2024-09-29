@@ -20,9 +20,9 @@
 #include <future>
 #include <string>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/rpc/python_rpc_handler.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace py = pybind11;
 namespace paddle {
@@ -37,7 +37,7 @@ class FutureWrapper {
     PADDLE_ENFORCE_EQ(
         PyGILState_Check(),
         false,
-        platform::errors::Fatal(
+        common::errors::Fatal(
             "GIL must be released before fut.wait(), otherwise fut_.get() "
             "blocking will cause the service to fail to "
             "process RPC requests, leading to deadlock"));

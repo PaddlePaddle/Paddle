@@ -21,9 +21,7 @@ if(WITH_XPU)
          data_transform
          phi
          common
-         var_helper
-         profiler
-         place)
+         var_helper)
 else()
   cc_library(
     prepared_operator
@@ -38,9 +36,7 @@ else()
          data_transform
          phi
          common
-         var_helper
-         profiler
-         place)
+         var_helper)
 endif()
 cc_library(
   layer
@@ -73,7 +69,6 @@ cc_library(
   DEPS layer
        engine
        amp
-       denormal
        garbage_collector
        var_helper
        layout_autotune
@@ -155,7 +150,7 @@ if(NOT WIN32)
   cc_library(
     data_loader
     SRCS data_loader.cc
-    DEPS enforce common)
+    DEPS phi common)
 endif()
 if(WITH_GLOO)
   cc_library(

@@ -142,7 +142,7 @@ class CodeTemplate {
     for (auto iter : template_var.Get()) {
       PADDLE_ENFORCE_NE(found.find(iter.first),
                         found.end(),
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Keyword %s in template is not set.", iter.first));
     }
 

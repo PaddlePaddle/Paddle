@@ -141,10 +141,10 @@ class TensorDescriptor {
 
   void set(const phi::DenseTensor& tensor, const miopenTensorFormat_t format) {
     const int groups = 1;
-    PADDLE_ENFORCE_EQ(
-        format,
-        MIOPEN_TENSOR_NCHW,
-        phi::errors::InvalidArgument("format should ONLY be NCHW in MIOPEN."));
+    PADDLE_ENFORCE_EQ(format,
+                      MIOPEN_TENSOR_NCHW,
+                      common::errors::InvalidArgument(
+                          "format should ONLY be NCHW in MIOPEN."));
     auto dims = common::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -191,10 +191,10 @@ class FilterDescriptor {
   void set(const phi::DenseTensor& tensor,
            const miopenTensorFormat_t format,
            const int groups = 1) {
-    PADDLE_ENFORCE_EQ(
-        format,
-        MIOPEN_TENSOR_NCHW,
-        phi::errors::InvalidArgument("format should ONLY be NCHW in MIOPEN."));
+    PADDLE_ENFORCE_EQ(format,
+                      MIOPEN_TENSOR_NCHW,
+                      common::errors::InvalidArgument(
+                          "format should ONLY be NCHW in MIOPEN."));
     auto dims = common::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;

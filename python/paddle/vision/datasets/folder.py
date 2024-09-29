@@ -14,11 +14,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, List, Literal, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, List, Literal, Tuple
 
 from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle._typing.dtype_like import _DTypeLiteral
     from paddle.vision.transforms.transforms import _Transform
 

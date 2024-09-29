@@ -23,6 +23,14 @@ namespace cinn {
 namespace ir {
 
 namespace ir_utils {
+bool EqualIntImmm(const Expr& lhs, const Expr& rhs) {
+  if (lhs == rhs) return true;
+  if (auto* plhs = lhs.As<ir::IntImm>()) {
+    auto* prhs = rhs.As<ir::IntImm>();
+    return plhs->type() == prhs->type() && plhs->value == prhs->value;
+  }
+  return false;
+}
 
 bool IrEqualVisitor::Compare(const Expr& lhs, const Expr& rhs) {
   if (lhs.get() == rhs.get()) {  // the same object, including both are null
@@ -391,6 +399,33 @@ bool IrEqualVisitor::Visit(const ScheduleBlockRealize* lhs, const Expr* other) {
 bool IrEqualVisitor::Visit(const _Dim_* lhs, const Expr* other) {
   auto* rhs = other->As<_Dim_>();
   return lhs->name == rhs->name && lhs->ToString() == rhs->ToString();
+}
+
+bool IrEqualVisitor::Visit(const IterMark* lhs, const Expr* other) {
+  auto* rhs = other->As<IterMark>();
+  if (!Compare(lhs->source, rhs->source)) return false;
+  if (EqualIntImmm(lhs->extent, rhs->extent)) return true;
+  return Compare(lhs->extent, rhs->extent);
+}
+
+bool IrEqualVisitor::Visit(const IterSplit* lhs, const Expr* other) {
+  auto* rhs = other->As<IterSplit>();
+  if (!Compare(lhs->source, rhs->source)) return false;
+  if (EqualIntImmm(lhs->extent, rhs->extent) &&
+      EqualIntImmm(lhs->lower_factor, rhs->lower_factor) &&
+      EqualIntImmm(lhs->scale, rhs->scale))
+    return true;
+  return Compare(lhs->extent, rhs->extent) &&
+         Compare(lhs->lower_factor, rhs->lower_factor) &&
+         Compare(lhs->scale, rhs->scale);
+}
+
+bool IrEqualVisitor::Visit(const IterSum* lhs, const Expr* other) {
+  auto* rhs = other->As<IterSum>();
+  for (size_t i = 0; i < lhs->args.size(); ++i) {
+    if (!Compare(lhs->args.at(i), rhs->args.at(i))) return false;
+  }
+  return Compare(lhs->base, rhs->base);
 }
 
 bool IRCompare(const Expr& lhs, const Expr& rhs, bool allow_name_suffix_diff) {

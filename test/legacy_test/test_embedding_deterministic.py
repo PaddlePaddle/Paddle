@@ -99,7 +99,7 @@ def generate_input_data(
     weight = paddle.randn([vocab_size, hidden_size]).astype(weight_dtype)
     weight.stop_gradient = False
 
-    out_grad_shape = list(ids_shape) + [hidden_size]
+    out_grad_shape = [*ids_shape, hidden_size]
     if allow_duplicate_id and not allow_pure_random:
         out_grad = paddle.randint(low=-10, high=10, shape=out_grad_shape)
     else:

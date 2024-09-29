@@ -16,12 +16,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/utils/string/string_helper.h"
@@ -148,7 +148,13 @@ GpuRDMAChecker *GpuRDMAChecker::get(int device_num) {
     g_checker = std::make_shared<GpuRDMAChecker>(device_num);
   }
   // check gpu num
-  CHECK(device_num == g_checker->device_num());
+  PADDLE_ENFORCE_EQ(
+      device_num,
+      g_checker->device_num(),
+      common::errors::InvalidArgument(
+          "Invalid number of device. Should be %d. But received %d.",
+          device_num,
+          g_checker->device_num()));
   return g_checker.get();
 }
 GpuRDMAChecker::GpuRDMAChecker(int device_num) {

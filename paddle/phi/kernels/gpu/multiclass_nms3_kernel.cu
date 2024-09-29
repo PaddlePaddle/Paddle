@@ -854,7 +854,7 @@ void InferNMS(gpuStream_t stream,
   PADDLE_ENFORCE_EQ(
       share_location,
       true,
-      phi::errors::Unimplemented("share_location=false is not supported."));
+      common::errors::Unimplemented("share_location=false is not supported."));
 
   // Prepare workspaces
   size_t bbox_data_size =
@@ -1058,16 +1058,16 @@ void MultiClassNMSGPUKernel(const Context& ctx,
   PADDLE_ENFORCE_LE(
       nms_top_k,
       num_priors,
-      phi::errors::InvalidArgument("Expect nms_top_k (%d)"
-                                   " <= num of boxes per batch (%d).",
-                                   nms_top_k,
-                                   num_priors));
+      common::errors::InvalidArgument("Expect nms_top_k (%d)"
+                                      " <= num of boxes per batch (%d).",
+                                      nms_top_k,
+                                      num_priors));
   PADDLE_ENFORCE_LE(keep_top_k,
                     nms_top_k,
-                    phi::errors::InvalidArgument("Expect keep_top_k (%d)"
-                                                 " <= nms_top_k (%d).",
-                                                 keep_top_k,
-                                                 nms_top_k));
+                    common::errors::InvalidArgument("Expect keep_top_k (%d)"
+                                                    " <= nms_top_k (%d).",
+                                                    keep_top_k,
+                                                    nms_top_k));
 
   // Transform the layout of bboxes and scores
   // bboxes: [N,M,4] -> [N,1,M,4]

@@ -66,26 +66,28 @@ class IRContext {
   template <typename TIRContextNode>
   const TIRContextNode* As() const {
     static_assert(std::is_base_of<IRContextNode, TIRContextNode>());
-    CHECK(data_.get()) << "IrContext holds null";
+    PADDLE_ENFORCE_NOT_NULL(
+        data_.get(), ::common::errors::InvalidArgument("IrContext holds null"));
     auto* ctx_node = data_.get()->safe_as<TIRContextNode>();
     if (!ctx_node) {
       std::stringstream err_msg;
       err_msg << "TypeConvertError: convert " << data_.get()->type_info()
               << " to " << TIRContextNode::__type_info__;
 
-      PADDLE_THROW(phi::errors::InvalidArgument(err_msg.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(err_msg.str()));
     }
     return ctx_node;
   }
   template <typename TIRContextNode>
   TIRContextNode* As() {
-    CHECK(data_.get()) << "IrContext holds null";
+    PADDLE_ENFORCE_NOT_NULL(
+        data_.get(), ::common::errors::InvalidArgument("IrContext holds null"));
     auto* ctx_node = data_.get()->safe_as<TIRContextNode>();
     if (!ctx_node) {
       std::stringstream ss;
       ss << "TypeConvertError: convert " << data_.get()->type_info() << " to "
          << TIRContextNode::__type_info__;
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
     return ctx_node;
   }
@@ -240,7 +242,7 @@ IRContext IRBuilderNode::GetLastContext() const {
     std::stringstream ss;
     ss << "TypeError: The last context is not "
        << TIRContextNode::__type_info__;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return contexts.back();
 }

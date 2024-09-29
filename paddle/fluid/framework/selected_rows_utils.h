@@ -22,7 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
 namespace paddle {
@@ -34,10 +34,10 @@ namespace framework {
  */
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows,
-                       const platform::DeviceContext& dev_ctx);
+                       const phi::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
                            phi::SelectedRows* selected_rows,
-                           const platform::DeviceContext& dev_ctx);
+                           const phi::DeviceContext& dev_ctx);
 
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows);

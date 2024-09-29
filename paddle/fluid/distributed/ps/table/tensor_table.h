@@ -28,7 +28,7 @@
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

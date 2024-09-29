@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -34,7 +36,7 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   auto op_attributes = op->attributes();
 
   VLOG(6) << "Start Build engine";
-  auto engine_serialized_data = op_attributes.at("engine_serialized_data")
+  auto engine_serialized_path = op_attributes.at("engine_serialized_data")
                                     .dyn_cast<pir::StrAttribute>()
                                     .AsString();
   workspace_size_ =
@@ -45,9 +47,13 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   auto output_names_attrs = op_attributes.at("output_names")
                                 .dyn_cast<pir::ArrayAttribute>()
                                 .AsVector();
-  for (auto output_names_attr : output_names_attrs) {
-    output_names_.push_back(
-        output_names_attr.dyn_cast<pir::StrAttribute>().AsString());
+  output_nums_ = output_names_attrs.size();
+  for (size_t i = 0; i < output_names_attrs.size(); ++i) {
+    auto output_name =
+        output_names_attrs[i].dyn_cast<pir::StrAttribute>().AsString();
+    if (output_name != "") {
+      output_names_[i] = output_name;
+    }
   }
   auto outputs_rank_attrs = op_attributes.at("outputs_rank")
                                 .dyn_cast<pir::ArrayAttribute>()
@@ -69,9 +75,13 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   auto input_names_attrs = op_attributes.at("input_names")
                                .dyn_cast<pir::ArrayAttribute>()
                                .AsVector();
-  for (auto input_names_attr : input_names_attrs) {
-    input_names_.push_back(
-        input_names_attr.dyn_cast<pir::StrAttribute>().AsString());
+  input_nums_ = input_names_attrs.size();
+  for (size_t i = 0; i < input_names_attrs.size(); ++i) {
+    auto input_name =
+        input_names_attrs[i].dyn_cast<pir::StrAttribute>().AsString();
+    if (input_name != "") {
+      input_names_[i] = input_name;
+    }
   }
 
   std::vector<std::string> dynamic_shape_names;
@@ -155,7 +165,8 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
              "===============";
   trt_engine_ = std::make_unique<paddle::platform::TensorRTEngine>(
       params, paddle::platform::NaiveLogger::Global());
-  trt_engine_->Deserialize(engine_serialized_data);
+  auto engine_data = ReadBinaryFileToString(engine_serialized_path);
+  trt_engine_->Deserialize(engine_data);
 
   VLOG(6) << "Finish build engine for: " << op_name_;
 
@@ -200,7 +211,7 @@ static void RuntimeDynamicShapeCheck(
   PADDLE_ENFORCE_EQ(is_input_shape_valid(
                         runtime_input_shape, min_input_shape, max_input_shape),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT runtime input shape of %s is invalid. Expect "
                         "runtime input shape to be within min/max input shape "
                         "configured in SetTRTDynamicShapeInfo(),"
@@ -227,7 +238,7 @@ static phi::DataType TRT2PaddleDataType(nvinfer1::DataType type) {
       return phi::DataType::BOOL;
 #endif
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
       return phi::DataType::FLOAT32;
   }
@@ -242,29 +253,28 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
   auto in_var_name = value_exec_info_->GetVarName(source_value);
 
   PADDLE_ENFORCE_NOT_NULL(scope.FindVar(in_var_name),
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "can not find var[%s] in scope", in_var_name));
   auto var = scope.FindVar(in_var_name);
   auto &variable_array = var->Get<VariableRefArray>();
   PADDLE_ENFORCE_EQ(variable_array.size(),
-                    input_names_.size(),
-                    phi::errors::InvalidArgument(
+                    input_nums_,
+                    common::errors::InvalidArgument(
                         "Input tensor num(%d) is not equal with the input "
                         "names num(%d) in TensorRTEngineInstruction",
                         variable_array.size(),
-                        input_names_.size()));
-  for (size_t i = 0; i < variable_array.size(); ++i) {
+                        input_nums_));
+
+  for (const auto &index_name_pair : input_names_) {
+    auto i = index_name_pair.first;
     if (!variable_array[i]->IsType<phi::DenseTensor>()) {
       PADDLE_THROW(
-          phi::errors::Unimplemented("Only support Vector<DenseTensor> now "
-                                     "not support vector<%d>.",
-                                     variable_array[i]->Type()));
+          common::errors::Unimplemented("Only support Vector<DenseTensor> now "
+                                        "not support vector<%d>.",
+                                        variable_array[i]->Type()));
     }
     auto input_tensor = variable_array[i]->Get<phi::DenseTensor>();
-    auto name = input_names_[i];
-    if (name == "") {
-      continue;
-    }
+    auto name = index_name_pair.second;
 
     VLOG(4) << "trt engine runtime input name(" << name << "), dims("
             << input_tensor.dims() << ")";
@@ -276,8 +286,12 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
     auto is_shape_tensor = true;
     if (trt_engine_->engine()) {
       auto *engine = trt_engine_->engine();
+#if IS_TRT_VERSION_GE(8600)
+      is_shape_tensor = engine->isShapeInferenceIO(name.c_str());
+#else
       is_shape_tensor =
           engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
+#endif
       if (!is_shape_tensor) {
         runtime_shape_tensor.erase(name);
         VLOG(4) << "trt engine runtime delete shape name(" << name << "), dims("
@@ -332,10 +346,8 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
         trt_engine_->min_input_shape();
     std::map<std::string, std::vector<int>> max_input_shape =
         trt_engine_->max_input_shape();
-    for (auto x : input_names_) {
-      if (x == "") {
-        continue;
-      }
+    for (const auto &index_name_pair : input_names_) {
+      auto x = index_name_pair.second;
       auto is_shape_tensor = false;
       if (trt_engine_->engine()) {
         auto *engine = trt_engine_->engine();
@@ -352,12 +364,12 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
       PADDLE_ENFORCE_EQ(
           min_input_shape.count(x),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input %s not found in TRT engine min_input_shape.", x));
       PADDLE_ENFORCE_EQ(
           max_input_shape.count(x),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input %s not found in TRT engine max_input_shape.", x));
       RuntimeDynamicShapeCheck(
           x, runtime_input_shape[x], min_input_shape[x], max_input_shape[x]);
@@ -402,9 +414,6 @@ void TensorRTEngineInstruction::BindInputTensor(
     std::vector<void *> &buffers,
     std::vector<int> &shape_v,
     int *runtime_batch) {
-  if (input_name == "") {
-    return;
-  }
   auto dev_place = dev_ctx_->GetPlace();
   const int num_bindings = trt_engine_->GetNbBindings();
   int binding_offset = 0;
@@ -416,7 +425,7 @@ void TensorRTEngineInstruction::BindInputTensor(
   PADDLE_ENFORCE_GT(
       input_tensor.numel(),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor named %s of trt-subgraph must "
           "have >0 elements, but now have %d elements. "
           "It's likely that this tensor is connected to a Concat op inside "
@@ -438,19 +447,35 @@ void TensorRTEngineInstruction::BindInputTensor(
   if (input_shape.empty()) {
     PADDLE_ENFORCE_EQ(input_tensor.numel(),
                       1UL,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "This tensor must have one element, but got %ld.",
                           input_tensor.numel()));
     input_shape.push_back(1);
   }
 
   // Get index of profile 0 first, then plus binding offset
+#if IS_TRT_VERSION_GE(8600)
+  int bind_index = -1;
+  for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+    if (std::string(input_name.c_str()) ==
+        std::string(trt_engine_->engine()->getIOTensorName(i))) {
+      bind_index = i + binding_offset;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_GE(
+      bind_index,
+      0,
+      phi::errors::InvalidArgument("Cannot find input name %s in TRT engine",
+                                   input_name.c_str()));
+#else
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(input_name.c_str()) +
       binding_offset;
+#endif
   PADDLE_ENFORCE_LT(bind_index,
                     num_bindings,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Wrong TRT engine input binding index. Expected The "
                         "binding index of TRT engine input to be less than "
                         "the number of inputs and outputs. Received binding "
@@ -460,8 +485,9 @@ void TensorRTEngineInstruction::BindInputTensor(
 
 #if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
-  if (trt_engine_->engine()->isShapeBinding(bind_index) &&
-      trt_engine_->engine()->bindingIsInput(bind_index)) {
+  if (trt_engine_->engine()->isShapeInferenceIO(input_name.c_str()) &&
+      trt_engine_->engine()->getTensorIOMode(input_name.c_str()) ==
+          nvinfer1::TensorIOMode::kINPUT) {
     if (input_tensor.dtype() == phi::DataType::INT32) {
       phi::memory_utils::Copy(phi::CPUPlace(),
                               shape_v.data(),
@@ -533,11 +559,16 @@ void TensorRTEngineInstruction::BindInputTensor(
           << input_tensor.dtype();
 
   auto indata_type = paddle::platform::PhiType2NvType(input_tensor.dtype());
+#if IS_TRT_VERSION_GE(8600)
+  auto intrt_type =
+      trt_engine_->engine()->getTensorDataType(input_name.c_str());
+#else
   auto intrt_index = trt_engine_->engine()->getBindingIndex(input_name.c_str());
   auto intrt_type = trt_engine_->engine()->getBindingDataType(intrt_index);
+#endif
   PADDLE_ENFORCE_EQ(indata_type,
                     intrt_type,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The TRT Engine OP's input type [%d] should equal "
                         "to the input data type [%d].",
                         static_cast<int>(intrt_type),
@@ -579,9 +610,9 @@ void TensorRTEngineInstruction::BindInputTensor(
         static_cast<void *>(const_cast<bool *>(input_tensor.data<bool>()));
 #endif
   } else {
-    PADDLE_THROW(
-        phi::errors::Fatal("The TRT Engine OP only support "
-                           "float/double/int32_t/int64_t/float16/bool input."));
+    PADDLE_THROW(common::errors::Fatal(
+        "The TRT Engine OP only support "
+        "float/double/int32_t/int64_t/float16/bool input."));
   }
 }
 
@@ -597,14 +628,29 @@ void TensorRTEngineInstruction::BindOutputTensor(
   // Initialize context and get offset by profile index
   trt_context = trt_engine_->context();
   binding_offset = trt_engine_->GetBindingsOffset();
-
+#if IS_TRT_VERSION_GE(8600)
+  int bind_index = -1;
+  for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+    if (std::string(output_name.c_str()) ==
+        std::string(trt_engine_->engine()->getIOTensorName(i))) {
+      bind_index = i + binding_offset;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_GE(
+      bind_index,
+      0,
+      phi::errors::InvalidArgument("Cannot find input name %s in TRT engine",
+                                   output_name.c_str()));
+#else
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(output_name.c_str()) +
       binding_offset;
+#endif
   std::vector<int> ddim;
 
 #if IS_TRT_VERSION_GE(8500)
-  auto x_name = trt_engine_->engine()->getBindingName(bind_index);
+  auto x_name = trt_engine_->engine()->getIOTensorName(bind_index);
   auto dims = trt_context->getTensorShape(x_name);
   int nb_dims = dims.nbDims;
   for (; nb_dims > 0; nb_dims--) {
@@ -630,16 +676,20 @@ void TensorRTEngineInstruction::BindOutputTensor(
 
   auto *fluid_t = output_tensor;
   fluid_t->Resize(common::make_ddim(ddim));
-
   PADDLE_ENFORCE_LT(bind_index,
                     num_bindings,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The binding index in TRT engine should be less "
                         "than the number of bindings, but got binding "
                         "index = %d, number of bindings = %d.",
                         bind_index,
                         num_bindings));
+#if IS_TRT_VERSION_GE(8600)
+  auto trt_type = trt_engine_->engine()->getTensorDataType(
+      trt_engine_->engine()->getIOTensorName(bind_index));
+#else
   auto trt_type = trt_engine_->engine()->getBindingDataType(bind_index);
+#endif
   // get adr and set type
   VLOG(1) << "trt output [" << output_name << "] dtype is "
           << TRT2PaddleDataType(trt_type);
@@ -661,18 +711,20 @@ void TensorRTEngineInstruction::RunTrt() {
   auto in_var_name = value_exec_info_->GetVarName(source_value);
 
   PADDLE_ENFORCE_NOT_NULL(scope.FindVar(in_var_name),
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "can not find var[%s] in scope", in_var_name));
   auto in_var = scope.FindVar(in_var_name);
   auto &in_variable_array = in_var->Get<VariableRefArray>();
   std::vector<std::vector<int>> shape_inputs(in_variable_array.size());
-  for (size_t i = 0; i < in_variable_array.size(); ++i) {
+
+  for (const auto &index_name_pair : input_names_) {
+    size_t i = index_name_pair.first;
     if (in_variable_array[i]->IsType<phi::DenseTensor>()) {
       auto input_tensor = in_variable_array[i]->Get<phi::DenseTensor>();
       // we will use shape_input when input is a shape tensor
       shape_inputs[i].resize(input_tensor.numel());
       // Bind input tensor to TRT.
-      BindInputTensor(input_names_[i],
+      BindInputTensor(index_name_pair.second,
                       input_tensor,
                       scope,
                       buffers,
@@ -680,45 +732,49 @@ void TensorRTEngineInstruction::RunTrt() {
                       &runtime_batch);
     } else {
       PADDLE_THROW(
-          phi::errors::Unimplemented("Only support Vector<DenseTensor> now "
-                                     "not support vector<%d>.",
-                                     in_variable_array[i]->Type()));
+          common::errors::Unimplemented("Only support Vector<DenseTensor> now "
+                                        "not support vector<%d>.",
+                                        in_variable_array[i]->Type()));
     }
   }
 
+  VariableRefArray *out_variable_array = nullptr;
   // Bind output tensor to TRT.
   VLOG(4) << "TensorRT Engine Op Outputs:";
   pir::Value result_value = op_->result(0);
   auto out_var_name = value_exec_info_->GetVarName(result_value);
 
   PADDLE_ENFORCE_NOT_NULL(scope.FindVar(out_var_name),
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "can not find var[%s] in scope", out_var_name));
   auto out_var = scope.FindVar(out_var_name);
-  auto *out_variable_array = out_var->GetMutable<VariableRefArray>();
-  for (size_t i = 0; i < out_variable_array->size(); ++i) {
+  out_variable_array = out_var->GetMutable<VariableRefArray>();
+  for (const auto &index_name_pair : output_names_) {
+    size_t i = index_name_pair.first;
     if (out_variable_array->at(i)->IsType<phi::DenseTensor>()) {
       auto output_tensor = const_cast<phi::DenseTensor *>(
           &(out_variable_array->at(i)->Get<phi::DenseTensor>()));
       // Bind input tensor to TRT.
       BindOutputTensor(
-          output_names_[i], output_tensor, i, buffers, &runtime_batch);
+          index_name_pair.second, output_tensor, i, buffers, &runtime_batch);
     } else {
       PADDLE_THROW(
-          phi::errors::Unimplemented("Only support Vector<DenseTensor> now "
-                                     "not support vector<%d>.",
-                                     out_variable_array->at(i)->Type()));
+          common::errors::Unimplemented("Only support Vector<DenseTensor> now "
+                                        "not support vector<%d>.",
+                                        out_variable_array->at(i)->Type()));
     }
   }
 
+  VLOG(4) << "Start Runing trt engine...";
   // Execute the engine.
   trt_engine_->Execute(runtime_batch, &buffers, stream);
-
-  for (size_t i = 0; i < out_variable_array->size(); ++i) {
+  VLOG(4) << "End Runing trt engine and deal with output";
+  for (const auto &index_name_pair : output_names_) {
+    size_t i = index_name_pair.first;
     auto type = outputs_dtype_[i];
 
     if (type == phi::DataType::INT64) {
-      auto y = output_names_[i];
+      auto y = index_name_pair.second;
       auto *fluid_v = out_variable_array->at(i);
       auto *fluid_t =
           const_cast<phi::DenseTensor *>(&(fluid_v->Get<phi::DenseTensor>()));
@@ -735,7 +791,7 @@ void TensorRTEngineInstruction::RunTrt() {
           *int32_tensor,
           phi::DataType::INT64);
     } else if (type == phi::DataType::FLOAT64) {
-      auto y = output_names_[i];
+      auto y = index_name_pair.second;
       auto *fluid_v = out_variable_array->at(i);
       auto *fluid_t =
           const_cast<phi::DenseTensor *>(&(fluid_v->Get<phi::DenseTensor>()));
@@ -758,6 +814,27 @@ void TensorRTEngineInstruction::RunTrt() {
 void TensorRTEngineInstruction::Run() {
   PrepareDynamicShape();
   RunTrt();
+}
+
+std::string TensorRTEngineInstruction::ReadBinaryFileToString(
+    const std::string &filePath) {
+  std::ifstream inputFile(filePath, std::ios::binary);
+
+  if (!inputFile) {
+    throw std::runtime_error("Failed to open file: " + filePath);
+  }
+
+  inputFile.seekg(0, std::ios::end);
+  std::streamsize fileSize = inputFile.tellg();
+  inputFile.seekg(0, std::ios::beg);
+
+  std::string fileContent(static_cast<size_t>(fileSize), '\0');
+
+  if (!inputFile.read(&fileContent[0], fileSize)) {
+    throw std::runtime_error("Failed to read file: " + filePath);
+  }
+
+  return fileContent;
 }
 
 }  // namespace framework

@@ -172,9 +172,9 @@ class ParameterServerRuntime(RuntimeBase):
     def _init_worker(self):
         def sync_strategy_envs():
             kwargs = {}
-            kwargs[
-                "pserver_endpoints"
-            ] = self.role_maker._get_pserver_endpoints()
+            kwargs["pserver_endpoints"] = (
+                self.role_maker._get_pserver_endpoints()
+            )
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
@@ -497,7 +497,7 @@ class ParameterServerRuntime(RuntimeBase):
                 optimizer.type, varname
             )
 
-            for var_name in [varname] + reshaped_varnames + origin_varnames:
+            for var_name in [varname, *reshaped_varnames, *origin_varnames]:
                 var = self.origin_main_program.global_block().vars[var_name]
                 block.append_op(
                     type='recv_save',

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 def call_sfl_functional(
@@ -120,7 +120,7 @@ def calc_sigmoid_focal_loss(
 
 
 class TestSigmoidFocalLoss(unittest.TestCase):
-    @test_with_pir_api
+
     def test_SigmoidFocalLoss(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
             np.float64
@@ -132,7 +132,13 @@ class TestSigmoidFocalLoss(unittest.TestCase):
             np.asarray([np.sum(label_np > 0)], dtype=label_np.dtype),
             None,
         ]
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if base.core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']

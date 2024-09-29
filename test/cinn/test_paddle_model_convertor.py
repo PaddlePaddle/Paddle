@@ -40,7 +40,7 @@ parser.add_argument(
 parser.add_argument(
     "-m",
     "--model_filename",
-    help="The filename of model file, default \"__model__\"",
+    help='The filename of model file, default "__model__"',
     type=str,
     default="__model__",
 )
@@ -103,7 +103,7 @@ class TestPaddleModel(OpMapperTest):
         self.params_filename = args.params_filename
 
         logger.info(
-            f"Run Model From \"{self.model_dir}\", which model filename is \"{self.model_filename}\", and parameter filename is \"{self.params_filename}\""
+            f'Run Model From "{self.model_dir}", which model filename is "{self.model_filename}", and parameter filename is "{self.params_filename}"'
         )
 
         self.load_paddle_program()

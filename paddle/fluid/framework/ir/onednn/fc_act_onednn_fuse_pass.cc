@@ -33,7 +33,7 @@ void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
 void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
                                     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("fc_" + act_type + "_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;

@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/utils/test_macros.h"
@@ -133,7 +133,7 @@ phi::DenseTensor LodExpand(const phi::DenseTensor& source,
   PADDLE_ENFORCE_EQ(
       num_instances,
       lod_level.size() - 1,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input phi::DenseTensor instance number should be equal to the "
           "LoD "
           "level size minus 1."
@@ -174,13 +174,13 @@ TEST_API std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
  */
 void SerializeToStream(std::ostream& os,
                        const phi::DenseTensor& tensor,
-                       const platform::DeviceContext& dev_ctx);
+                       const phi::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
                            phi::DenseTensor* tensor,
-                           const platform::DeviceContext& dev_ctx);
+                           const phi::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
                            phi::DenseTensor* tensor,
-                           const platform::DeviceContext& dev_ctx,
+                           const phi::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
 

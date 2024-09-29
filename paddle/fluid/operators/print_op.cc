@@ -58,11 +58,12 @@ class PrintOp : public framework::OperatorBase {
 
     PADDLE_ENFORCE_NOT_NULL(
         in_var,
-        phi::errors::NotFound("The input:%s not found in scope", Input("In")));
+        common::errors::NotFound("The input:%s not found in scope",
+                                 Input("In")));
     PADDLE_ENFORCE_NOT_NULL(
         out_var,
-        phi::errors::NotFound("The output:%s not found in scope",
-                              Output("Out")));
+        common::errors::NotFound("The output:%s not found in scope",
+                                 Output("Out")));
 
     auto &in_tensor = in_var->Get<phi::DenseTensor>();
     phi::DenseTensor *out_tensor = out_var->GetMutable<phi::DenseTensor>();

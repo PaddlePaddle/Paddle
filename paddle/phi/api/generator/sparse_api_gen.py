@@ -401,7 +401,7 @@ class SparseAPI(ForwardAPI):
         return f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
 {kernel_dispatch_code}
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
           "The kernel of ({self.api}) for input tensors is unimplemented, please check the type of input tensors."));
 }}
 """

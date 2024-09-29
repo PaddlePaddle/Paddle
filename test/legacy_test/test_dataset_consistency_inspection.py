@@ -163,14 +163,16 @@ class CTRDataset(fleet.MultiSlotDataGenerator):
                     pos_context_fea = pos_context_feas[p]
                     yield zip(
                         feature_name,
-                        [[1]]
-                        + sparse_query_feature
-                        + pos_url_fea
-                        + pos_click_fea
-                        + pos_context_fea
-                        + pos_url_fea
-                        + pos_click_fea
-                        + pos_context_fea,
+                        [
+                            [1],
+                            *sparse_query_feature,
+                            *pos_url_fea,
+                            *pos_click_fea,
+                            *pos_context_fea,
+                            *pos_url_fea,
+                            *pos_click_fea,
+                            *pos_context_fea,
+                        ],
                     )
                 for n in range(len(neg_url_feas)):
                     feature_name = ["click"]
@@ -181,14 +183,16 @@ class CTRDataset(fleet.MultiSlotDataGenerator):
                     neg_context_fea = neg_context_feas[n]
                     yield zip(
                         feature_name,
-                        [[0]]
-                        + sparse_query_feature
-                        + neg_url_fea
-                        + neg_click_fea
-                        + neg_context_fea
-                        + neg_url_fea
-                        + neg_click_fea
-                        + neg_context_fea,
+                        [
+                            [0],
+                            *sparse_query_feature,
+                            *neg_url_fea,
+                            *neg_click_fea,
+                            *neg_context_fea,
+                            *neg_url_fea,
+                            *neg_click_fea,
+                            *neg_context_fea,
+                        ],
                     )
             elif self.test == 0:
                 for p in range(len(pos_url_feas)):
@@ -215,14 +219,16 @@ class CTRDataset(fleet.MultiSlotDataGenerator):
                         yield list(
                             zip(
                                 feature_name,
-                                [[1]]
-                                + sparse_query_feature
-                                + pos_url_fea
-                                + pos_click_fea
-                                + pos_context_fea
-                                + neg_url_fea
-                                + neg_click_fea
-                                + neg_context_fea,
+                                [
+                                    [1],
+                                    *sparse_query_feature,
+                                    *pos_url_fea,
+                                    *pos_click_fea,
+                                    *pos_context_fea,
+                                    *neg_url_fea,
+                                    *neg_click_fea,
+                                    *neg_context_fea,
+                                ],
                             )
                         )
             elif self.test == 2:
@@ -250,14 +256,17 @@ class CTRDataset(fleet.MultiSlotDataGenerator):
                         yield list(
                             zip(
                                 feature_name,
-                                [[1], [2]]
-                                + sparse_query_feature
-                                + pos_url_fea
-                                + pos_click_fea
-                                + pos_context_fea
-                                + neg_url_fea
-                                + neg_click_fea
-                                + neg_context_fea,
+                                [
+                                    [1],
+                                    [2],
+                                    *sparse_query_feature,
+                                    *pos_url_fea,
+                                    *pos_click_fea,
+                                    *pos_context_fea,
+                                    *neg_url_fea,
+                                    *neg_click_fea,
+                                    *neg_context_fea,
+                                ],
                             )
                         )
             elif self.test == 3:
@@ -285,14 +294,17 @@ class CTRDataset(fleet.MultiSlotDataGenerator):
                         yield list(
                             zip(
                                 feature_name,
-                                [[1], [2.0]]
-                                + sparse_query_feature
-                                + pos_url_fea
-                                + pos_click_fea
-                                + pos_context_fea
-                                + neg_url_fea
-                                + neg_click_fea
-                                + neg_context_fea,
+                                [
+                                    [1],
+                                    [2.0],
+                                    *sparse_query_feature,
+                                    *pos_url_fea,
+                                    *pos_click_fea,
+                                    *pos_context_fea,
+                                    *neg_url_fea,
+                                    *neg_click_fea,
+                                    *neg_context_fea,
+                                ],
                             )
                         )
             elif self.test == 4:
@@ -320,14 +332,17 @@ class CTRDataset(fleet.MultiSlotDataGenerator):
                         yield list(
                             zip(
                                 feature_name,
-                                [[], [2.0]]
-                                + sparse_query_feature
-                                + pos_url_fea
-                                + pos_click_fea
-                                + pos_context_fea
-                                + neg_url_fea
-                                + neg_click_fea
-                                + neg_context_fea,
+                                [
+                                    [],
+                                    [2.0],
+                                    *sparse_query_feature,
+                                    *pos_url_fea,
+                                    *pos_click_fea,
+                                    *pos_context_fea,
+                                    *neg_url_fea,
+                                    *neg_click_fea,
+                                    *neg_context_fea,
+                                ],
                             )
                         )
             elif self.test == 5:

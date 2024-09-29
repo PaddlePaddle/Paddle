@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/thread_local_allocator.h"
+#include "paddle/phi/core/memory/allocation/thread_local_allocator.h"
 
 #include <condition_variable>  // NOLINT
 #include <thread>              // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/core/memory/malloc.h"
 
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
 COMMON_DECLARE_string(allocator_strategy);

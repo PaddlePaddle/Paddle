@@ -63,7 +63,7 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
       paddle::framework::fs_remove(tmp);
       if (i == retry_times_) {
         VLOG(0) << "fs_open_write failed, retry times reaches limit";
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "fs_open_write failed, retry times reaches %d limit.",
             retry_times_));
       }
@@ -79,7 +79,7 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
-      PADDLE_THROW(phi::errors::ExecutionTimeout(
+      PADDLE_THROW(common::errors::ExecutionTimeout(
           "fs_mv failed, tmp: %s, path: %s", tmp, path));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
@@ -117,7 +117,7 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   PADDLE_ENFORCE_EQ(
       is_exists,
       true,
-      phi::errors::NotFound("HdfsStore::get, path not exists: " + path));
+      common::errors::NotFound("HdfsStore::get, path not exists: " + path));
 
   int read_status = retry_do_func(
       [&path, &result]() {
@@ -141,7 +141,7 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   PADDLE_ENFORCE_EQ(
       read_status,
       0,
-      phi::errors::Fatal("HdfsStore::get, path read failed: " + path));
+      common::errors::Fatal("HdfsStore::get, path read failed: " + path));
 #endif
   return result;
 }
@@ -169,10 +169,10 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
           break;
         }
       }
-      PADDLE_THROW(
-          phi::errors::ExecutionTimeout("TIMEOUT self_rank = %d pair_rank = %d",
-                                        self_rank_,
-                                        last_check_rank));
+      PADDLE_THROW(common::errors::ExecutionTimeout(
+          "TIMEOUT self_rank = %d pair_rank = %d",
+          self_rank_,
+          last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }

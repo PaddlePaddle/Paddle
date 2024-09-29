@@ -43,6 +43,12 @@ _T = TypeVar("_T")
 _U = TypeVar("_U")
 
 
+class NotSupportedTensorArgumentError(TypeError):
+    def __init__(self, msg, name: str):
+        super().__init__(msg)
+        self.name = name
+
+
 def convert_to_list(value, n, name, dtype=int):
     """
     Converts a single numerical type or iterable of numerical
@@ -64,9 +70,7 @@ def convert_to_list(value, n, name, dtype=int):
         passed.
     """
     if isinstance(value, dtype):
-        return [
-            value,
-        ] * n
+        return [value] * n
     else:
         try:
             value_list = list(value)
@@ -79,9 +83,11 @@ def convert_to_list(value, n, name, dtype=int):
                 f"The {name}'s length must be {n}. Received: {value}"
             )
         for single_value in value_list:
-            assert not isinstance(
-                single_value, (Variable, paddle.pir.Value)
-            ), f"Required numerical type with '{dtype}', but received Tensor."
+            if isinstance(single_value, (Variable, paddle.pir.Value)):
+                raise NotSupportedTensorArgumentError(
+                    f"`{name}` required numerical type with `{dtype}`, but received Tensor.",
+                    name,
+                )
             try:
                 dtype(single_value)
             except (ValueError, TypeError):
@@ -489,29 +495,6 @@ def check_shape(shape):
                     ['int32', 'int64'],
                     'fill_constant',
                 )
-
-
-def try_set_static_shape_tensor(tensor, shape):
-    """Try to set static shape of tensor from a shape tensor.
-
-    For example,
-
-    import paddle
-    paddle.enable_static()
-    data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
-    shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape)
-    print(x.shape)
-    # (-1, 2)
-
-    """
-    if not in_dygraph_mode():
-        # static graph mode, and shape is not all inferred (contains -1)
-        if -1 in tensor.shape:
-            if isinstance(shape, Variable):
-                shape = try_get_constant_shape_from_tensor(shape)
-                if shape:
-                    tensor.desc.set_shape(shape)
 
 
 def try_get_constant_shape_from_tensor(shape_tensor):

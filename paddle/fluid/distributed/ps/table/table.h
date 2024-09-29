@@ -30,8 +30,8 @@
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
@@ -180,6 +180,9 @@ class Table {
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accessor;
   AfsClient _afs_client;
+  std::string _fs_name;
+  std::string _fs_user;
+  std::string _pass_wd;
 };
 REGISTER_PSCORE_REGISTERER(Table);
 

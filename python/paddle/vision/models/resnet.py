@@ -35,7 +35,6 @@ if TYPE_CHECKING:
         'resnet152',
         'resnext50_32x4d',
         'resnext50_64x4d',
-        'resnext50_64x4d',
         'resnext101_32x4d',
         'resnext101_64x4d',
         'resnext152_32x4d',

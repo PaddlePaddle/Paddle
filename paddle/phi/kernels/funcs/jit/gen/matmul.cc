@@ -28,9 +28,9 @@ void MatMulJitCode::genCode() {
   PADDLE_ENFORCE_GT(
       groups.front(),
       0,
-      phi::errors::InvalidArgument("The number of rest registers should "
-                                   "be larger than 0. But it is %d.",
-                                   groups.front()));
+      common::errors::InvalidArgument("The number of rest registers should "
+                                      "be larger than 0. But it is %d.",
+                                      groups.front()));
 
   const int block_len = sizeof(float) * block;  // NOLINT
   const int x_reg_idx = (block == ZMM_FLOAT_BLOCK ? 32 : 16) - 1;
@@ -123,21 +123,21 @@ class MatMulCreator : public JitCodeCreator<matmul_attr_t> {
     PADDLE_ENFORCE_GT(
         attr.m,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The attribute m (first matrix's row) of MatMul should "
             "be larger than 0. But it is %d.",
             attr.m));
     PADDLE_ENFORCE_GT(
         attr.n,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The attribute n (first matrix's col) of MatMul should "
             "be larger than 0. But it is %d.",
             attr.n));
     PADDLE_ENFORCE_GT(
         attr.k,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The attribute k (second matrix's col) of MatMul should "
             "be larger than 0. But it is %d.",
             attr.k));

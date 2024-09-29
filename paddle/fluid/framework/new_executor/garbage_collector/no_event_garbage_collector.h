@@ -31,10 +31,10 @@ class InterpreterCoreNoEventGarbageCollector
   void Add(Variable* var, const InstructionBase* instr) override;
 
  private:
-  void Add(Variable* var, const platform::DeviceContext* ctx);
-  void Add(Garbage garbage, const platform::DeviceContext* ctx);
+  void Add(Variable* var, const phi::DeviceContext* ctx);
+  void Add(Garbage garbage, const phi::DeviceContext* ctx);
   std::unique_ptr<WorkQueue> queue_;
-  std::unordered_set<const platform::DeviceContext*> ctxs_;
+  std::unordered_set<const phi::DeviceContext*> ctxs_;
 };
 
 }  // namespace framework

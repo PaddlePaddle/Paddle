@@ -145,8 +145,8 @@ class MatmulOpInferSymbolicShapeTest(TestBase):
             'shape[], data[NULL]',
             'shape[S0], data[NULL]',
             'shape[S0, S1], data[NULL]',
-            'shape[S0, S1, S5], data[NULL]',
-            'shape[S0, S1, S2, S7], data[NULL]',
+            'shape[Broadcast(S0, S3), S1, S5], data[NULL]',
+            'shape[Broadcast(S0, S4), Broadcast(S1, S5), S2, S7], data[NULL]',
             # with transpose
             'shape[S1, S3], data[NULL]',
             'shape[S0, S2], data[NULL]',

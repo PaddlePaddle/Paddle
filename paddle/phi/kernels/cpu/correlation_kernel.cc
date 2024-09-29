@@ -37,7 +37,7 @@ void CorrelationKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       is_gpu_place,
       true,
-      phi::errors::Unimplemented("Correlation only supports GPU now."));
+      common::errors::Unimplemented("Correlation only supports GPU now."));
 }
 
 }  // namespace phi

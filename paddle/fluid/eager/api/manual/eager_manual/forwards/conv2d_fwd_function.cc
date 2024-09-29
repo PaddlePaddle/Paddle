@@ -32,8 +32,8 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               int groups,
                               std::string data_format) {
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "conv2d dygraph", paddle::platform::TracerEventType::Operator, 1);
+  phi::RecordEvent dygraph_entrance_record_event(
+      "conv2d dygraph", phi::TracerEventType::Operator, 1);
 
   // AMP Logic
   if (egr::Controller::Instance().GetAMPLevel() !=
@@ -129,10 +129,8 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "conv2d node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
+    phi::RecordEvent node_creation_record_event(
+        "conv2d node_creation", phi::TracerEventType::OperatorInner, 1);
 
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 

@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.framework import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def gather_numpy(x, index, axis):
@@ -42,7 +41,7 @@ class TestGatherOp(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -122,7 +121,9 @@ class TestGatherOpBFP16(TestGatherOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            place=paddle.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -408,7 +409,7 @@ class TestGatherBF16Op(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', numeric_grad_delta=0.5, check_pir=True)
@@ -453,7 +454,7 @@ class TestGatherOp1(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -607,7 +608,7 @@ class TestGatherOp4Complex128(TestGatherOp4):
 
 
 class API_TestGather(unittest.TestCase):
-    @test_with_pir_api
+
     def test_out1(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
@@ -623,7 +624,6 @@ class API_TestGather(unittest.TestCase):
             expected_output = np.array([[3, 4], [5, 6]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
-    @test_with_pir_api
     def test_out2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -716,7 +716,7 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -749,7 +749,6 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_dtype1)
 
-    @test_with_pir_api
     def test_error2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -771,7 +770,6 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_index_type)
 
-    @test_with_pir_api
     def test_error3(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -796,7 +794,7 @@ class TestGathertError(unittest.TestCase):
 
 
 class TestCheckOutType(unittest.TestCase):
-    @test_with_pir_api
+
     def test_out_type(self):
         data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
         index = paddle.static.data(shape=[4], dtype='int64', name='index')

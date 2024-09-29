@@ -72,10 +72,10 @@ class Buffer {
     PADDLE_ENFORCE_EQ(
         shape_.defined(),
         true,
-        phi::errors::InvalidArgument("shape haven't been defined."));
+        ::common::errors::InvalidArgument("shape haven't been defined."));
     data_ = new T[shape_.num_elements()];
     PADDLE_ENFORCE_NOT_NULL(data_,
-                            phi::errors::NotFound("alloc buffer failed."));
+                            ::common::errors::NotFound("alloc buffer failed."));
   }
   //! Deallocate the memory in host device.
   void DeallocHost() {
@@ -86,7 +86,7 @@ class Buffer {
   T& operator()(int i0) {
     PADDLE_ENFORCE_EQ(shape_.ndims(),
                       1,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Expected shape has 1 dimension, but recevied %d.",
                           shape_.ndims()));
     return static_cast<T*>(data_)[i0];
@@ -94,7 +94,7 @@ class Buffer {
   T& operator()(int i0, int i1) {
     PADDLE_ENFORCE_EQ(shape_.ndims(),
                       2,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Expected shape has 2 dimensions, but recevied %d.",
                           shape_.ndims()));
     return static_cast<T*>(data_)[i0 * shape_[0] + i1];
@@ -102,7 +102,7 @@ class Buffer {
   T& operator()(int i0, int i1, int i2) {
     PADDLE_ENFORCE_EQ(shape_.ndims(),
                       3,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Expected shape has 3 dimensions, but recevied %d.",
                           shape_.ndims()));
     return static_cast<T*>(

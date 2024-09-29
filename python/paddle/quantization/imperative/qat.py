@@ -38,12 +38,12 @@ INFER_PARAMS_SUFFIX = ".pdiparams"
 def lazy_import_fleet(layer_name_map, fake_quant_input_layers):
     from paddle.distributed import fleet
 
-    layer_name_map[
-        'ColumnParallelLinear'
-    ] = fleet.meta_parallel.parallel_layers.mp_layers.ColumnParallelLinear
-    layer_name_map[
-        'RowParallelLinear'
-    ] = fleet.meta_parallel.parallel_layers.mp_layers.RowParallelLinear
+    layer_name_map['ColumnParallelLinear'] = (
+        fleet.meta_parallel.parallel_layers.mp_layers.ColumnParallelLinear
+    )
+    layer_name_map['RowParallelLinear'] = (
+        fleet.meta_parallel.parallel_layers.mp_layers.RowParallelLinear
+    )
     fake_quant_input_layers.append(fleet.meta_parallel.RowParallelLinear)
     fake_quant_input_layers.append(fleet.meta_parallel.ColumnParallelLinear)
     return layer_name_map, fake_quant_input_layers
@@ -294,9 +294,10 @@ class ImperativeQuantAware:
         return model
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
-        self._quantize_outputs.save_quantized_model(
-            layer, path, input_spec, **config
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self._quantize_outputs.save_quantized_model(
+                layer, path, input_spec, **config
+            )
 
 
 class ImperativeQuantizeInputs:
@@ -329,9 +330,11 @@ class ImperativeQuantizeInputs:
         )
 
         self._quantizable_layer_type = tuple(
-            self.layer_name_map[layer]
-            if layer in self.layer_name_map
-            else layer
+            (
+                self.layer_name_map[layer]
+                if layer in self.layer_name_map
+                else layer
+            )
             for layer in quantizable_layer_type
         )
         for layer in self._quantizable_layer_type:
@@ -656,8 +659,9 @@ class ImperativeQuantizeOutputs:
 
         def _gather_input_scale():
             target_ops = []
-            skip_ops = utils.fake_quantize_dequantize_op_types + [
-                "moving_average_abs_max_scale"
+            skip_ops = [
+                *utils.fake_quantize_dequantize_op_types,
+                "moving_average_abs_max_scale",
             ]
             for block in program.blocks:
                 for op in block.ops:

@@ -34,7 +34,7 @@ class Real(Constraint):
 
 
 class Range(Constraint):
-    def __init__(self, lower: Tensor, upper: Tensor) -> None:
+    def __init__(self, lower: float | Tensor, upper: float | Tensor) -> None:
         self._lower = lower
         self._upper = upper
         super().__init__()

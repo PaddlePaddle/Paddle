@@ -563,30 +563,30 @@ void CheckByInferMeta(pir::Operation* op,
     PADDLE_ENFORCE_EQ(
         infer_meta_result.size(),
         output_shapes.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "infer_meta_result.size() not equal output_shapes.size() for %s",
             op->name()));
     for (int i = 0; i < infer_meta_result.size(); i++) {
-      PADDLE_ENFORCE_EQ(
-          infer_meta_result[i].size(),
-          output_shapes[i].size(),
-          phi::errors::InvalidArgument("infer_meta_result[%d].size() not equal "
-                                       "output_shapes[%d].size() for %s",
-                                       i,
-                                       i,
-                                       op->name()));
+      PADDLE_ENFORCE_EQ(infer_meta_result[i].size(),
+                        output_shapes[i].size(),
+                        ::common::errors::InvalidArgument(
+                            "infer_meta_result[%d].size() not equal "
+                            "output_shapes[%d].size() for %s",
+                            i,
+                            i,
+                            op->name()));
       for (int j = 0; j < infer_meta_result[i].size(); j++) {
         if (infer_meta_result[i][j] != -1)
-          PADDLE_ENFORCE_EQ(
-              infer_meta_result[i][j],
-              output_shapes[i][j],
-              phi::errors::InvalidArgument("infer_meta_result[%d][%d] not "
-                                           "equal output_shapes[%d][%d] for %s",
-                                           i,
-                                           j,
-                                           i,
-                                           j,
-                                           op->name()));
+          PADDLE_ENFORCE_EQ(infer_meta_result[i][j],
+                            output_shapes[i][j],
+                            ::common::errors::InvalidArgument(
+                                "infer_meta_result[%d][%d] not "
+                                "equal output_shapes[%d][%d] for %s",
+                                i,
+                                j,
+                                i,
+                                j,
+                                op->name()));
       }
     }
     VLOG(4) << "check constraints success for " << op->name();

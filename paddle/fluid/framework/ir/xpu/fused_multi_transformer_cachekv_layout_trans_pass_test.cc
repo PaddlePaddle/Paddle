@@ -79,12 +79,12 @@ TEST(FillConstantReshapePass, basic) {
       "shape0", "shape1", "shape2", "shape3", "shape4"};
   PADDLE_ENFORCE_EQ(fill0_in_names,
                     expect_fill0_out_names,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "fill_constant name should not be updated."));
   auto fill1_in_names = fills[1]->Op()->Input("ShapeTensorList");
   PADDLE_ENFORCE_EQ(fill1_in_names,
                     expect_fill1_out_names,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "fill_constant name should not be updated."));
 }
 
@@ -112,7 +112,7 @@ TEST(GatherReshapePass, basic) {
   for (auto* gather : gathers) {
     PADDLE_ENFORCE_EQ(gather->Op()->GetAttrIfExists<int>("axis"),
                       1,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "gather's axis attr should not be updated by pass."));
   }
 }
@@ -164,19 +164,19 @@ TEST(FillConstantAndGatherReshapePass, basic) {
       "shape5", "shape8", "shape6", "shape7", "shape9"};
   PADDLE_ENFORCE_EQ(fill0_in_names,
                     expect_fill0_out_names,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "fill_constant name should be updated."));
   auto fill1_in_names = fills[1]->Op()->Input("ShapeTensorList");
   PADDLE_ENFORCE_EQ(fill1_in_names,
                     expect_fill1_out_names,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "fill_constant name should be updated."));
   auto gathers = GetOpNodes(graph, "gather");
   for (auto* gather : gathers) {
     PADDLE_ENFORCE_EQ(
         gather->Op()->GetAttrIfExists<int>("axis"),
         2,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "gather's axis attr should be updated to 2 by pass."));
   }
 }

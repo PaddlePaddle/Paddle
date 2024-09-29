@@ -47,11 +47,11 @@ class FusionOpsPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
         rewriter.ReplaceAllUsesWith(cloned_op->result(0),
                                     out_replacement.value());
-        PADDLE_ENFORCE_EQ(
-            cloned_op->use_empty(),
-            true,
-            phi::errors::InvalidArgument("cinn_op.generate_shape op shouldn't "
-                                         "be used outside fusion block."));
+        PADDLE_ENFORCE_EQ(cloned_op->use_empty(),
+                          true,
+                          ::common::errors::InvalidArgument(
+                              "cinn_op.generate_shape op shouldn't "
+                              "be used outside fusion block."));
         rewriter.EraseOp(cloned_op);
         ir_mapping.Add(op->result(0), out_replacement.value());
         rewriter.SetInsertionPointAfter(out_replacement.value().defining_op());

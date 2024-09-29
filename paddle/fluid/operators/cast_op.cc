@@ -94,7 +94,7 @@ class CastOp : public framework::OperatorWithKernel {
     auto *tensor = ctx.Input<phi::DenseTensor>("X");
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The tensor of Input(X) is not initialized."));
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place

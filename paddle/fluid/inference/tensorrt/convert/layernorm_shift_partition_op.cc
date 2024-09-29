@@ -49,16 +49,16 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Bias) of layer_norm should not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
     PADDLE_ENFORCE_EQ(
         begin_norm_axis,
         2,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The begin_norm_axis of LayernormShiftPartition should be %d",
             begin_norm_axis));
 
@@ -72,28 +72,23 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     PADDLE_ENFORCE_EQ(bias_weight.get().count,
                       scale_weight.get().count,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The num between bias_weight and scale_weight should "
                           "be equal. (%d vs %d)",
                           bias_weight.get().count,
                           scale_weight.get().count));
     nvinfer1::ILayer* layernorm_layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      plugin::LayernormShiftPartitionPluginDynamic* plugin =
-          new plugin::LayernormShiftPartitionPluginDynamic(
-              static_cast<const float*>(scale_weight.get().values),
-              static_cast<const float*>(bias_weight.get().values),
-              bias_weight.get().count,
-              shift_size,
-              window_size,
-              input_resolution,
-              eps,
-              with_fp16);
-      layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "LayernormShiftPartition TRT Plugin should run in dynamic shape."));
-    }
+    plugin::LayernormShiftPartitionPluginDynamic* plugin =
+        new plugin::LayernormShiftPartitionPluginDynamic(
+            static_cast<const float*>(scale_weight.get().values),
+            static_cast<const float*>(bias_weight.get().values),
+            bias_weight.get().count,
+            shift_size,
+            window_size,
+            input_resolution,
+            eps,
+            with_fp16);
+    layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
 
     auto output_name = op_desc.Output("Y").front();
     ReplenishLayerAndOutput(

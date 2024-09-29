@@ -26,18 +26,18 @@ template <typename T, typename Context>
 void ReduceMeanGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& out_grad,
-                          const IntArray& dims_arr,
+                          const IntArray& dims,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   dev_ctx.template Alloc<T>(x_grad);
   const XPUType* dy_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
 
   XPUType* x_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
 
-  auto reduce_dims = dims_arr.GetData();
+  auto reduce_dims = dims.GetData();
 
   std::vector<int> xdims = common::vectorize<int>(x.dims());
   std::vector<int> ydims = common::vectorize<int>(out_grad.dims());

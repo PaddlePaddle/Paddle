@@ -90,14 +90,14 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 /*
 TEST(Dropout, CPUDense) {
   f::Scope scope;
-  p::CPUPlace place;
+  phi::CPUPlace place;
   phi::CPUContext ctx(place);
   Compare(scope, ctx);
 }
 
 TEST(Dropout, GPUDense) {
   f::Scope scope;
-  p::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext ctx(place);
   Compare(scope, ctx);
 }

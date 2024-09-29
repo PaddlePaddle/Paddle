@@ -553,9 +553,11 @@ class PipelineLayer(nn.Layer):
             if framework.in_dynamic_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
-                        param.grad
-                        if not hasattr(param, "main_grad")
-                        else param.main_grad,
+                        (
+                            param.grad
+                            if not hasattr(param, "main_grad")
+                            else param.main_grad
+                        ),
                         group=comm['group'],
                     )
             else:
@@ -734,9 +736,9 @@ class PipelineLayer(nn.Layer):
                 flush_into_run_function()
                 if layer.layer_name not in self.shared_layers:
                     self.shared_layers[layer.layer_name] = layer.build_layer()
-                    self.shared_weight_attrs[
-                        layer.layer_name
-                    ] = layer.shared_weight_attr
+                    self.shared_weight_attrs[layer.layer_name] = (
+                        layer.shared_weight_attr
+                    )
                     for param in self.shared_layers[
                         layer.layer_name
                     ].parameters():

@@ -561,9 +561,9 @@ class TestGradScalerStateDict(unittest.TestCase):
             for param in resnet.parameters():
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
-                    dy_grad_value[
-                        param.name + base.core.grad_var_suffix()
-                    ] = np_array
+                    dy_grad_value[param.name + base.core.grad_var_suffix()] = (
+                        np_array
+                    )
 
             resnet.clear_gradients()
 
@@ -864,9 +864,9 @@ class TestPureFp16SaveLoad(unittest.TestCase):
             for param in resnet.parameters():
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
-                    dy_grad_value[
-                        param.name + base.core.grad_var_suffix()
-                    ] = np_array
+                    dy_grad_value[param.name + base.core.grad_var_suffix()] = (
+                        np_array
+                    )
 
             resnet.clear_gradients()
 
@@ -1152,9 +1152,9 @@ class TestResnet2(unittest.TestCase):
             for param in resnet.parameters():
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
-                    dy_grad_value[
-                        param.name + base.core.grad_var_suffix()
-                    ] = np_array
+                    dy_grad_value[param.name + base.core.grad_var_suffix()] = (
+                        np_array
+                    )
 
             resnet.clear_gradients()
 

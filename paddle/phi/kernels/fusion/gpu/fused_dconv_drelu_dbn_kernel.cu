@@ -992,14 +992,14 @@ void FusedDconvDreluDbnKernel(
     DenseTensor* grad_bn2_beta) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
   auto cudnn_version = phi::backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8900,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports CUDNN version >= 8900, "
                         "but got %d.",
                         cudnn_version));
@@ -1009,7 +1009,7 @@ void FusedDconvDreluDbnKernel(
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
   // update padding and dilation

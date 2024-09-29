@@ -36,10 +36,10 @@ void save_paddle2cinn_varmap(
   MkDirRecursively(DirName(save_path).c_str());
   // set append mode to write all paddle var to cinn var map
   std::ofstream outfile(save_path, std::ios::app);
-  PADDLE_ENFORCE_EQ(
-      static_cast<bool>(outfile),
-      true,
-      phi::errors::Unavailable("Cannot open %s to save variables.", save_path));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(outfile),
+                    true,
+                    common::errors::Unavailable(
+                        "Cannot open %s to save variables.", save_path));
   outfile << mapAsString;
   outfile.close();
 }

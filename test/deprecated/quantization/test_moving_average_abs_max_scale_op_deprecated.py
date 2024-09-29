@@ -26,7 +26,7 @@ paddle.enable_static()
 def init_data(batch_size=32, img_shape=[784], label_range=9):
     np.random.seed(5)
     assert isinstance(img_shape, list)
-    input_shape = [batch_size] + img_shape
+    input_shape = [batch_size, *img_shape]
     img = np.random.random(size=input_shape).astype(np.float32)
     label = (
         np.array([np.random.randint(0, label_range) for _ in range(batch_size)])

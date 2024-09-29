@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 import os
 import random
 import re
 import unittest
-from typing import List, Sequence, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -28,6 +30,9 @@ from paddle.base import core
 from paddle.incubate.nn.memory_efficient_attention import (
     memory_efficient_attention,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 paddle.seed(2023)
 
@@ -90,11 +95,11 @@ def create_attn_bias(
 
 def _rand_seqlens(
     r: random.Random, bs: int, q_len: int, kv_len: int
-) -> Tuple[Sequence[int], Sequence[int]]:
+) -> tuple[Sequence[int], Sequence[int]]:
     q_len *= bs
     kv_len *= bs
-    seqlens_q: List[int] = []
-    seqlens_k: List[int] = []
+    seqlens_q: list[int] = []
+    seqlens_k: list[int] = []
 
     step_q = [max(1, q_len // 10), max(2, q_len // 2)]
     step_k = [max(1, kv_len // 10), max(2, kv_len // 2)]

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import unittest
-from typing import Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from dygraph_to_static_utils import (
@@ -26,6 +26,9 @@ from dygraph_to_static_utils import (
 
 import paddle
 from paddle.static.input import InputSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
 
 class TestDynamicShapeInfermeta(Dy2StTestBase):
@@ -67,6 +70,27 @@ class TestDynamicShapeInfermeta(Dy2StTestBase):
             paddle.nn.Conv2D(3, 3, 3, groups=3),
             [paddle.randn([1, 3, 32, 32])],
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
+        )
+
+    @test_pir_only
+    @test_ast_only
+    def test_group_norm(self):
+        self.check_dynamic_shape(
+            paddle.nn.GroupNorm(3, 3),
+            [paddle.randn([1, 3, 32, 32])],
+            [InputSpec(shape=[None, None, None, None], dtype='float32')],
+        )
+
+    @test_pir_only
+    @test_ast_only
+    def test_functional_conv(self):
+        self.check_dynamic_shape(
+            paddle.nn.functional.conv2d,
+            [paddle.randn([1, 3, 32, 32]), paddle.randn([3, 3, 3, 3])],
+            [
+                InputSpec(shape=[None, None, None, None], dtype='float32'),
+                InputSpec(shape=[None, None, None, None], dtype='float32'),
+            ],
         )
 
 

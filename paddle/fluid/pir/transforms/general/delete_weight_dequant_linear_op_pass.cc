@@ -67,8 +67,8 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
       auto* weight_scale_var = this->scope_->FindVar(weight_scale_name);
       PADDLE_ENFORCE_NOT_NULL(
           weight_scale_var,
-          phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
-                                       weight_scale_name));
+          common::errors::InvalidArgument("Persistable var [%s] not in scope.",
+                                          weight_scale_name));
       if (!weight_scale_dtype.isa<pir::Float16Type>() &&
           !weight_scale_dtype.isa<pir::Float32Type>()) {
         return false;
@@ -103,7 +103,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
             PADDLE_ENFORCE_EQ(
                 weight_scale_nums,
                 1,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "When quant_axis == -1, it means using per_layer "
                     "dequantization. In this situation, the number of "
                     "weight_scale should be 1, but received %d.",
@@ -116,7 +116,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
             PADDLE_ENFORCE_EQ(
                 weight_scale_nums,
                 weight_shape[quant_axis],
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "When quant_axis != -1, it means using per_channel "
                     "dequantization. In this situation, the number of "
                     "weight_scale should be equal with "
@@ -143,7 +143,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
           PADDLE_ENFORCE_EQ(
               this->pass_state_.get().has_value(),
               true,
-              phi::errors::InvalidArgument("pass state has no value"));
+              common::errors::InvalidArgument("pass state has no value"));
 
           auto& quant_analysis =
               this->pass_state_.get()
@@ -155,7 +155,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
               this->pass_state_.get()
                   ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "QuantAnalysis should be Preserved"));
           quant_analysis.scale_map[match_ctx.Tensor("weight")] = weight_scales;
 
@@ -167,7 +167,8 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
               this->pass_state_.get()
                   ->preserved_analyses.IsPreserved<pir::pass::Int8Analysis>(),
               true,
-              phi::errors::InvalidArgument("Int8Analysis should be Preserved"));
+              common::errors::InvalidArgument(
+                  "Int8Analysis should be Preserved"));
           int8_analysis.enable_int8 = true;
         }
       }
@@ -191,14 +192,14 @@ class DeleteWeightDequantLinearOpPass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     PADDLE_ENFORCE_EQ(Has(pir::Pass::kParamScopeAttr),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Pass initialize failed."
                           "When using DeleteWeightDequantLinearOpPass, scope "
                           "attribute is required!"
                           "Use Set method to set the scope attribute."));
     scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
     PADDLE_ENFORCE_NOT_NULL(
-        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+        scope_, common::errors::InvalidArgument("scope can not be nullptr"));
     pir::RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<DeleteWeightDequantLinearOpPattern>(
         context, scope_, std::ref(pass_state())));

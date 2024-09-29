@@ -89,7 +89,7 @@ Tensor full<DescTensor>(const IntArray& shape,
       op->SetAttr("str_value", std::to_string(value.to<uint64_t>()));
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "We support "
           "bool/float16/bfloat16/float32/float64/int8/int16/int32/int64/uint8/"
           "uint16/"

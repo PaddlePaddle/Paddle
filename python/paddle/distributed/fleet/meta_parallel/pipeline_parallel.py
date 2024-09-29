@@ -10,12 +10,16 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+from __future__ import annotations
+
 import os
 import queue
 import sys
 import time
 import warnings
 from collections import defaultdict
+from enum import Enum
+from typing import Callable
 
 import paddle
 from paddle import framework
@@ -28,7 +32,7 @@ from ..utils.hybrid_parallel_util import (
     broadcast_sep_parameters,
     broadcast_sharding_parameters,
 )
-from ..utils.log_util import logger
+from ..utils.log_util import logger, sync_rotate_logger
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
 
@@ -45,6 +49,10 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+)
+
+from .pipeline_hooks import (
+    BubbleHook,
 )
 
 __all__ = []
@@ -144,6 +152,94 @@ class FakeMicroDataset:
             "batch_size = %d, micro_batch_size = %d, accumulate_steps = %d."
             % (batch_size, self._micro_batch_size, self._acc_steps)
         )
+
+
+# Enum for specifying the pipeline parallel micro-step locations.
+class PipelineParallelMicroStepLocations(Enum):
+    FORWARD_BEGIN = 'forward_begin'
+    FORWARD_END = 'forward_end'
+    BACKWARD_BEGIN = 'backward_begin'
+    BACKWARD_END = 'backward_end'
+
+
+# A callback class for managing hooks at different stages of a pipeline parallel process.
+class PipelineParallelMicroStepCallback:
+    def __init__(self):
+        # Initializes a dictionary to store hooks for each micro-step location in the pipeline.
+        self.hooks: dict[PipelineParallelMicroStepLocations, list[Callable]] = {
+            PipelineParallelMicroStepLocations.FORWARD_BEGIN: [],
+            PipelineParallelMicroStepLocations.FORWARD_END: [],
+            PipelineParallelMicroStepLocations.BACKWARD_BEGIN: [],
+            PipelineParallelMicroStepLocations.BACKWARD_END: [],
+        }
+
+    def register_hook(
+        self, location: PipelineParallelMicroStepLocations, hook: Callable
+    ):
+        """
+        Registers a hook function to be called at a specified pipeline parallel micro-step location.
+
+        Args:
+            location (PipelineParallelMicroStepLocations): The micro-step location where the hook should be registered.
+            hook (Callable): The hook function to be registered. The function should accept the following optional keyword arguments:
+                - input_tensor (paddle.Tensor): The input tensor to the current micro-step.
+                - output_tensor (paddle.Tensor): The output tensor from the current micro-step.
+                - input_tensor_grad (paddle.Tensor): The gradient of the input tensor.
+                - output_tensor_grad (paddle.Tensor): The gradient of the output tensor.
+                - step_id (paddle.Tensor): An identifier for the current step in the pipeline.
+
+        Raises:
+            AssertionError: If the specified location is not a valid micro-step location.
+        """
+        assert (
+            location in self.hooks
+        ), f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
+        self.hooks[location].append(hook)
+
+    def on_location(
+        self, location: PipelineParallelMicroStepLocations, **kwargs
+    ):
+        """
+        Triggers all registered hooks at a specified pipeline parallel micro-step location.
+
+        Args:
+            location (PipelineParallelMicroStepLocations): The micro-step location where the hooks should be triggered.
+            kwargs: Additional keyword arguments to be passed to the hook functions.
+
+        Raises:
+            AssertionError: If the specified location is not a valid micro-step location.
+        """
+        assert (
+            location in self.hooks
+        ), f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
+        for hook in self.hooks[location]:
+            hook(**kwargs)
+
+
+pipeline_parallel_callbacks_ = PipelineParallelMicroStepCallback()
+
+
+# It is typically very difficult for us to directly access the PipelineParallel object.
+# Users may use fleet.distributed_model to wrap a model into a pipeline parallel model (PP model).
+# We may not have access to the wrapped model when we want to register hooks, for example, when using PaddleNLP trainer to wrap around the PP model.
+# Additionally, we usually have only one `PipelineParallel` model, so the callbacks are registered globally.
+def register_global_pipeline_parallel_hook(
+    location: PipelineParallelMicroStepLocations, hook: Callable
+):
+    """
+    Registering global hooks for pipeline parallelism.
+    """
+    pipeline_parallel_callbacks_.register_hook(location, hook)
+
+
+pipeline_bubble_hooks_ = BubbleHook()
+
+
+def register_bubble_pipeline_parallel_hook(location: int, hook: Callable):
+    """
+    Registering bubble hooks for pipeline parallelism.
+    """
+    pipeline_bubble_hooks_.register_hook(location, hook)
 
 
 class PipelineParallel(MetaParallelBase):
@@ -299,6 +395,11 @@ class PipelineParallel(MetaParallelBase):
         self.loss_fn_idx = 0
 
         self._compute_loss = True
+        self.callbacks = pipeline_parallel_callbacks_
+
+        self.bubble_hooks = pipeline_bubble_hooks_
+
+        self.bubble_hooks.set_bubble_times(bubble_times=self.num_stages)
 
         logger.info(
             f"Pipeline Info -- num_stages: {self.num_stages}, stage_id: {self.stage_id}"
@@ -324,6 +425,11 @@ class PipelineParallel(MetaParallelBase):
             self.register_allreduce_overlap_hook(
                 self._layers, self.dp_group, self.accumulate_steps, True
             )
+
+    def register_hook(
+        self, location: PipelineParallelMicroStepLocations, hook: Callable
+    ):
+        self.callbacks.register_hook(location, hook)
 
     def is_pipeline_first_stage(self, ignore_virtual=False):
         if not ignore_virtual:
@@ -508,7 +614,9 @@ class PipelineParallel(MetaParallelBase):
             )
 
             self._record_stamp("F", step_id, '"B"', self._forward_color)
-            output_tensor = self._forward_step(input_tensor, micro_dataset)
+            output_tensor = self._forward_step(
+                input_tensor, micro_dataset, step_id=step_id
+            )
             self._record_stamp("F", step_id, '"E"', self._forward_color)
             self._p2p_helper.send_forward(
                 output_tensor,
@@ -540,7 +648,9 @@ class PipelineParallel(MetaParallelBase):
             self._record_stamp(
                 "F", startup_steps + i, '"B"', self._forward_color
             )
-            output_tensor = self._forward_step(input_tensor, micro_dataset)
+            output_tensor = self._forward_step(
+                input_tensor, micro_dataset, step_id=startup_steps + i
+            )
             self._record_stamp(
                 "F", startup_steps + i, '"E"', self._forward_color
             )
@@ -563,7 +673,7 @@ class PipelineParallel(MetaParallelBase):
 
             self._record_stamp("B", i, '"B"', self._backward_color)
             input_tensor_grad = self._backward_step(
-                input_tensor, output_tensor, output_tensor_grad
+                input_tensor, output_tensor, output_tensor_grad, step_id=i
             )
             self._record_stamp("B", i, '"E"', self._backward_color)
 
@@ -598,7 +708,10 @@ class PipelineParallel(MetaParallelBase):
                 "B", steady_steps + i, '"B"', self._backward_color
             )
             input_tensor_grad = self._backward_step(
-                input_tensor, output_tensor, output_tensor_grad
+                input_tensor,
+                output_tensor,
+                output_tensor_grad,
+                step_id=steady_steps + i,
             )
             self._record_stamp(
                 "B", steady_steps + i, '"E"', self._backward_color
@@ -758,7 +871,9 @@ class PipelineParallel(MetaParallelBase):
                 self.is_pipeline_first_stage()
             )
 
-            output_tensor = self._forward_step(input_tensor, micro_dataset)
+            output_tensor = self._forward_step(
+                input_tensor, micro_dataset, step_id=None
+            )
             self._p2p_helper.send_forward(
                 output_tensor,
                 self.is_pipeline_last_stage(),
@@ -776,7 +891,9 @@ class PipelineParallel(MetaParallelBase):
         for i in range(steady_steps):
             last_iter = i == (steady_steps - 1)
 
-            output_tensor = self._forward_step(input_tensor, micro_dataset)
+            output_tensor = self._forward_step(
+                input_tensor, micro_dataset, step_id=None
+            )
             self._p2p_helper.send_forward(
                 output_tensor,
                 self.is_pipeline_last_stage(),
@@ -798,7 +915,10 @@ class PipelineParallel(MetaParallelBase):
 
         return self.train_loss
 
-    def _forward_step(self, input_tensor, micro_dataset, chunk_id=None):
+    def _forward_step(
+        self, input_tensor, micro_dataset, chunk_id=None, step_id=None
+    ):
+        sync_rotate_logger().info("Before forward_step")
         if self._enable_timer:
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
@@ -807,7 +927,18 @@ class PipelineParallel(MetaParallelBase):
 
         assert chunk_id is None or isinstance(chunk_id, int)
 
+        self.callbacks.on_location(
+            PipelineParallelMicroStepLocations.FORWARD_BEGIN,
+            input_tensor=input_tensor,
+            step_id=step_id,
+        )
         output_tensor = self._layers.forward(input_tensor, chunk_id=chunk_id)
+        self.callbacks.on_location(
+            PipelineParallelMicroStepLocations.FORWARD_END,
+            input_tensor=input_tensor,
+            output_tensor=output_tensor,
+            step_id=step_id,
+        )
 
         if self.is_pipeline_last_stage():
             # train calculate loss for train
@@ -845,14 +976,25 @@ class PipelineParallel(MetaParallelBase):
             self.micro_batch_id += 1
         if self._enable_timer:
             self.timers("forward_step").stop()
+        sync_rotate_logger().info("After forward_step")
         if self.is_pipeline_last_stage() and self._compute_loss:
             return backward_loss_tensor
         return output_tensor
 
-    def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
+    def _backward_step(
+        self, input_tensor, output_tensor, output_tensor_grad, step_id=None
+    ):
         if self._enable_timer:
             self.timers("backward_step").start()
+        sync_rotate_logger().info("Before backward_step")
         with paddle.amp.auto_cast(enable=False):
+            self.callbacks.on_location(
+                PipelineParallelMicroStepLocations.BACKWARD_BEGIN,
+                input_tensor=input_tensor,
+                output_tensor=output_tensor,
+                output_tensor_grad=output_tensor_grad,
+                step_id=step_id,
+            )
             if self.is_pipeline_last_stage():
                 assert output_tensor_grad is None
                 if self.scaler:
@@ -883,6 +1025,16 @@ class PipelineParallel(MetaParallelBase):
                     input_tensor_grad = input_tensor.grad
             if self._enable_timer:
                 self.timers("backward_step").stop()
+            self.callbacks.on_location(
+                PipelineParallelMicroStepLocations.BACKWARD_END,
+                input_tensor=input_tensor,
+                output_tensor=output_tensor,
+                input_tensor_grad=input_tensor_grad,
+                output_tensor_grad=output_tensor_grad,
+                step_id=step_id,
+            )
+
+            sync_rotate_logger().info("After backward_step")
             return input_tensor_grad
 
     def _check_micro_batch_data_valid(self, micro_batch_data):
@@ -1131,7 +1283,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         )
         input_tensor = self.input_tensors[virtual_pp_rank][-1]
         output_tensor = self._forward_step(
-            input_tensor, micro_dataset, virtual_pp_rank
+            input_tensor, micro_dataset, virtual_pp_rank, step_id=micro_step
         )
         self.output_tensors[virtual_pp_rank].append(output_tensor)
 
@@ -1195,7 +1347,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         output_tensor = self.output_tensors[virtual_pp_rank].pop(0)
         output_tensor_grad = self.output_tensor_grads[virtual_pp_rank].pop(0)
         input_tensor_grad = self._backward_step(
-            input_tensor, output_tensor, output_tensor_grad
+            input_tensor, output_tensor, output_tensor_grad, step_id=micro_step
         )
 
         self._overlap_comm_grads()
@@ -1226,6 +1378,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         static_scheduler=False,
         return_micro_batch_loss=False,
     ):
+        sync_rotate_logger().info("start forward_backward_pipeline")
         # use interleave scheduling strategy.
         # this strategy is inspired by:
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
@@ -1327,6 +1480,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         steady_steps = num_steps - startup_steps
 
+        bubble_idx = -1
+        for location in range(self.stage_id):
+            bubble_idx += 1
+            self.bubble_hooks.run_hook(bubble_idx)
+
+        rest_bubble_times = self.num_stages - 1 - self.stage_id
+
         self.set_virtual_pipeline_rank(0)
         if not static_scheduler:
             self.input_tensors[0].append(
@@ -1363,6 +1523,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._record_stamp("F", micro_step, '"B"', forward=True)
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
             self._record_stamp("F", micro_step, '"E"', forward=True)
+
+            if micro_step >= startup_steps - rest_bubble_times:
+                bubble_idx += 1
+                self.bubble_hooks.run_hook(bubble_idx)
 
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
@@ -1403,6 +1567,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         recv_prev=recv_prev,
                         recv_next=recv_next,
                         batch_p2p_comm=self._use_batch_p2p_comm,
+                        skip_check_meta=not self.training,
                     )
                     # output_tensor_grad is not none if recv_next
                     # append output_tensor_grad no matter none or not
@@ -1414,6 +1579,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         output_tensor,
                         recv_prev=recv_prev,
                         batch_p2p_comm=self._use_batch_p2p_comm,
+                        skip_check_meta=not self.training,
                     )
                 # append input_tensor no matter none or not
                 self.input_tensors[next_virtual_pp_rank].append(input_tensor)
@@ -1426,6 +1592,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_prev=recv_prev,
                     batch_p2p_comm=self._use_batch_p2p_comm,
                     overlap_p2p_comm=True,
+                    skip_check_meta=not self.training,
                 )
                 if (
                     micro_step == (startup_steps - 1)
@@ -1536,6 +1703,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_prev=recv_prev,
                     batch_p2p_comm=self._use_batch_p2p_comm,
                     overlap_p2p_comm=True,
+                    skip_check_meta=not self.training,
                 )
 
                 if bwd_wait_handles is not None:
@@ -1667,6 +1835,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_prev=recv_prev,
                     recv_next=recv_next,
                     batch_p2p_comm=self._use_batch_p2p_comm,
+                    skip_check_meta=not self.training,
                 )
             # append input_tensor no matter none or not
             self.input_tensors[next_forward_virtual_pp_rank].append(
@@ -1711,6 +1880,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         f"backward step for {real_micro_step} with virtual pp rank {virtual_pp_rank}"
                     )
                     continue
+
+                if (
+                    micro_step
+                    < steady_steps + self.num_stages - 1 - self.stage_id
+                ):
+                    bubble_idx += 1
+                    self.bubble_hooks.run_hook(bubble_idx)
+
                 # cooldown loop
                 self._record_stamp("B", micro_step, '"B"', forward=False)
                 input_tensor_grad = self._backward_step_helper(micro_step)
@@ -1745,6 +1922,15 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             self._sync_overlap_grads()
 
+            for _ in range(self.stage_id):
+                bubble_idx += 1
+                self.bubble_hooks.run_hook(bubble_idx)
+
+            if not forward_only:
+                assert (bubble_idx + 1) == (
+                    2 * self.num_stages - 2
+                ), f"All bubbles number {bubble_idx + 1} should be equal to {(2 * self.num_stages - 2)}"
+
             if static_scheduler:
                 self._reset_counter()
                 return schedule
@@ -1774,6 +1960,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._p2p_helper.clear_meta_cache()
 
         self.timer_printer()
+        sync_rotate_logger().info("end forward_backward_pipeline")
+
         return train_loss
 
     def train_batch(
@@ -1972,6 +2160,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                 output_tensor,
                 recv_prev=recv_prev,
                 batch_p2p_comm=self._use_batch_p2p_comm,
+                skip_check_meta=not self.training,
             )
             self.input_tensors[next_virtual_pp_rank].append(input_tensor)
 

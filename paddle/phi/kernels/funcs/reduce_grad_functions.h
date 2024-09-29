@@ -94,7 +94,7 @@ void HandleLargeDimGrad(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       unreduced * reduced,
       x_numel,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Reducing failed in HandleLargeDimGrad, when try to transpose (%d) "
           "operands into 2D tensor with shape (%d, %d).",
           x_numel,

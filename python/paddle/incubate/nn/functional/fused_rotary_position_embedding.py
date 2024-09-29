@@ -12,23 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 def fused_rotary_position_embedding(
-    q,
-    k=None,
-    v=None,
-    sin=None,
-    cos=None,
-    position_ids=None,
-    use_neox_rotary_style=True,
-    time_major=False,
-    rotary_emb_base=10000.0,
-):
+    q: Tensor,
+    k: Tensor | None = None,
+    v: Tensor | None = None,
+    sin: Tensor | None = None,
+    cos: Tensor | None = None,
+    position_ids: Tensor | None = None,
+    use_neox_rotary_style: bool = True,
+    time_major: bool = False,
+    rotary_emb_base: float = 10000.0,
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Fused rotary position embedding.
 

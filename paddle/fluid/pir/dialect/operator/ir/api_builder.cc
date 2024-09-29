@@ -25,14 +25,14 @@ ApiBuilder::ApiBuilder()
   PADDLE_ENFORCE_NE(
       builder_,
       nullptr,
-      phi::errors::InvalidArgument("api builder construct error!"));
+      common::errors::InvalidArgument("api builder construct error!"));
 }
 
 void ApiBuilder::SetProgram(pir::Program* program) {
   PADDLE_ENFORCE_NE(
       program,
       nullptr,
-      phi::errors::InvalidArgument("argument of program is nullptr"));
+      common::errors::InvalidArgument("argument of program is nullptr"));
   builder_->SetInsertionPointToBlockEnd(program->block());
 }
 
@@ -59,7 +59,7 @@ void ApiBuilder::LoadInsertionPoint() {
   PADDLE_ENFORCE_EQ(
       !insertion_point_stack_.empty(),
       true,
-      phi::errors::InvalidArgument("insertion_point_stack_ is empty."));
+      common::errors::InvalidArgument("insertion_point_stack_ is empty."));
   builder_->set_insertion_point(insertion_point_stack_.top());
   insertion_point_stack_.pop();
 }

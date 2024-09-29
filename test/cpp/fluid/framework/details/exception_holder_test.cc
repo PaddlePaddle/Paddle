@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/details/exception_holder.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace framework {

@@ -29,6 +29,7 @@ from .framework import (  # noqa: F401
     register_rng_state_as_index,
     set_rng_state,
 )
+from .jit import inference
 from .nn.loss import identity_loss
 from .operators import (
     graph_khop_sampler,
@@ -66,4 +67,5 @@ __all__ = [
     'segment_max',
     'segment_min',
     'identity_loss',
+    'inference',
 ]

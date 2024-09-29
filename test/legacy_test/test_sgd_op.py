@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -118,7 +119,13 @@ class TestSparseSGDOp(unittest.TestCase):
         self.assertAlmostEqual(-3.0, result_array[rows[2], 8])
 
     def test_sparse_sgd(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -244,6 +251,22 @@ class TestSGDV2(unittest.TestCase):
         )
         out = linear_1(a)
         out = linear_2(out)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.SGD(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+        out = linear(a)
         out.backward()
         adam.step()
         adam.clear_gradients()

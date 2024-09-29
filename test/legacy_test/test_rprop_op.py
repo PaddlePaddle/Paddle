@@ -22,7 +22,7 @@ from op_test import (
 from utils import dygraph_guard
 
 import paddle
-from paddle.base import core
+from paddle.base import core, in_pir_mode
 
 paddle.enable_static()
 
@@ -226,17 +226,32 @@ class TestRpropMultiPrecision2_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.Rprop(multi_precision=mp)
 
-        if mp:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
-                use_fp16_guard=False,
-            )
         with paddle.static.program_guard(train_program, startup_program):
+            if in_pir_mode():
+                optimizer = paddle.optimizer.Rprop(multi_precision=mp)
+                linear = paddle.nn.Linear(2, 2)
+
+                if mp:
+                    linear, optimizer = paddle.amp.decorate(
+                        models=linear,
+                        optimizers=optimizer,
+                        level='O2',
+                        dtype='float16',
+                    )
+            else:
+                optimizer = paddle.optimizer.Rprop(multi_precision=mp)
+                linear = paddle.nn.Linear(2, 2)
+
+                if mp:
+                    optimizer = paddle.static.amp.decorate(
+                        optimizer,
+                        init_loss_scaling=128.0,
+                        use_dynamic_loss_scaling=True,
+                        use_pure_fp16=True,
+                        use_fp16_guard=False,
+                    )
+
             if mp:
                 data = paddle.static.data(
                     shape=[2, 2], name='X', dtype='float16'
@@ -245,10 +260,28 @@ class TestRpropMultiPrecision2_0(unittest.TestCase):
                 data = paddle.static.data(
                     shape=[2, 2], name='X', dtype='float32'
                 )
-            hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
-            optimizer.minimize(loss)
-        exe.run(startup_program)
+            if in_pir_mode():
+                if mp:
+                    with paddle.amp.auto_cast(
+                        level='O2', dtype='float16', use_promote=True
+                    ):
+                        hidden = linear(data)
+                else:
+                    hidden = linear(data)
+                loss = paddle.mean(hidden)
+                optimizer.minimize(loss)
+            else:
+                hidden = paddle.static.nn.fc(x=data, size=10)
+                loss = paddle.mean(hidden)
+                optimizer.minimize(loss)
+                if mp:
+                    optimizer.amp_init(
+                        place=paddle.CUDAPlace(0),
+                        scope=paddle.static.global_scope(),
+                    )
+                    x = np.random.random(size=(2, 2)).astype('float16')
+                else:
+                    x = np.random.random(size=(2, 2)).astype('float32')
 
         if mp:
             optimizer.amp_init(
@@ -257,11 +290,18 @@ class TestRpropMultiPrecision2_0(unittest.TestCase):
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')
+
+        exe.run(startup_program)
         out = []
         for idx in range(5):
-            (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
-            )
+            if in_pir_mode():
+                (loss_data,) = exe.run(
+                    train_program, feed={"X": x}, fetch_list=[loss]
+                )
+            else:
+                (loss_data,) = exe.run(
+                    train_program, feed={"X": x}, fetch_list=[loss.name]
+                )
             out.append(loss_data)
         return out
 
