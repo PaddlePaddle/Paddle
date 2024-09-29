@@ -1,27 +1,27 @@
 [submodule "third_party/protobuf"]
 	path = third_party/protobuf
-	url = http://pdegit.metax-internal.com/pde-ai/protobuf.git
+	url = https://github.com/protocolbuffers/protobuf.git
 	tag = paddle
 	ignore = dirty
 [submodule "third_party/pocketfft"]
 	path = third_party/pocketfft
-	url = http://pdegit.metax-internal.com/pde-ai/pocketfft.git
+	url = https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git
 	ignore = dirty
 [submodule "third_party/gflags"]
 	path = third_party/gflags
-	url = http://pdegit.metax-internal.com/pde-ai/gflags.git
+	url = https://github.com/gflags/gflags.git
 	ignore = dirty
 [submodule "third_party/gloo"]
 	path = third_party/gloo
-	url = http://pdegit.metax-internal.com/pde-ai/gloo.git
+	url = https://github.com/ziyoujiyi/gloo.git
 	ignore = dirty
 [submodule "third_party/dlpack"]
 	path = third_party/dlpack
-	url = http://pdegit.metax-internal.com/pde-ai/dlpack.git
+	url = https://github.com/dmlc/dlpack.git
 	ignore = dirty
 [submodule "third_party/utf8proc"]
 	path = third_party/utf8proc
-	url = http://pdegit.metax-internal.com/pde-ai/utf8proc.git
+	url = https://github.com/JuliaStrings/utf8proc.git
 	tag = v2.6.1
 	ignore = dirty
 [submodule "third_party/warpctc"]
@@ -30,63 +30,63 @@
 	ignore = dirty
 [submodule "third_party/warprnnt"]
 	path = third_party/warprnnt
-	url = http://pdegit.metax-internal.com/pde-ai/warp-transducer.git
+	url = https://github.com/PaddlePaddle/warp-transducer.git
 	ignore = dirty
 [submodule "third_party/xxhash"]
 	path = third_party/xxhash
-	url = http://pdegit.metax-internal.com/pde-ai/xxhash.git
+	url = https://github.com/Cyan4973/xxHash.git
 	tag = v0.6.5
 	ignore = dirty
 [submodule "third_party/pybind"]
 	path = third_party/pybind
-	url = http://pdegit.metax-internal.com/pde-ai/pybind11.git
+	url = https://github.com/pybind/pybind11.git
 	tag = v2.4.3
 	ignore = dirty
 [submodule "third_party/threadpool"]
 	path = third_party/threadpool
-	url = http://pdegit.metax-internal.com/pde-ai/threadpool.git
+	url = https://github.com/progschj/ThreadPool.git
 	ignore = dirty
 [submodule "third_party/zlib"]
 	path = third_party/zlib
-	url = http://pdegit.metax-internal.com/pde-ai/zlib.git
+	url = https://github.com/madler/zlib.git
 	tag = v1.2.8
 	ignore = dirty
 [submodule "third_party/glog"]
 	path = third_party/glog
-	url = http://pdegit.metax-internal.com/pde-ai/glog.git
+	url = https://github.com/google/glog.git
 	ignore = dirty
 [submodule "third_party/snappy"]
 	path = third_party/snappy
-	url = http://pdegit.metax-internal.com/pde-ai/snappy.git
+	url = https://github.com/google/snappy.git
 	ignore = dirty
 [submodule "third_party/xbyak"]
 	path = third_party/xbyak
-	url = http://pdegit.metax-internal.com/pde-ai/xbyak.git
+	url = https://github.com/herumi/xbyak.git
 	tag = v5.81
 	ignore = dirty
 [submodule "third_party/mkldnn"]
 	path = third_party/mkldnn
-	url = http://pdegit.metax-internal.com/pde-ai/onednn.git
+	url = https://github.com/oneapi-src/oneDNN.git
 	ignore = dirty
 [submodule "third_party/gtest"]
 	path = third_party/gtest
-	url = http://pdegit.metax-internal.com/pde-ai/googletest.git
+	url = https://github.com/google/googletest.git
 	ignore = dirty
 [submodule "third_party/openblas"]
 	path = third_party/openblas
-	url = http://pdegit.metax-internal.com/pde-ai/OpenBLAS.git
+	url = https://github.com/xianyi/OpenBLAS.git
 	ignore = dirty
 [submodule "third_party/leveldb"]
 	path = third_party/leveldb
-	url = http://pdegit.metax-internal.com/pde-ai/leveldb.git
+	url = https://github.com/google/leveldb.git
 	ignore = dirty
 [submodule "third_party/brpc"]
 	path = third_party/brpc
-	url = http://pdegit.metax-internal.com/pde-ai/brpc.git
+	url = https://github.com/apache/brpc.git
 	ignore = dirty
 [submodule "third_party/rocksdb"]
 	path = third_party/rocksdb
-	url = http://pdegit.metax-internal.com/pde-ai/rocksdb-for-paddle.git
+	url = https://github.com/Thunderbrook/rocksdb
 	ignore = dirty
 [submodule "third_party/cutlass"]
 	path = third_party/cutlass
