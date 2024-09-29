@@ -61,6 +61,7 @@ def update_weight(op, concrete_program):
             var_dist_attr.dims_mapping = dist_attr_w.dims_mapping
             tmp = paddle.base.core.reshard(param, var_dist_attr)
             param.get_tensor()._share_data_with(tmp.get_tensor())
+    return mp_axis
 
 
 def replace_embedding_with_c_embedding(op):
@@ -328,6 +329,37 @@ def update_after_dims_mapping(new_op):
                     )
 
 
+def update_startup_program(startup_program, mp_axis):
+    startup_block = startup_program.global_block()
+    for op in startup_block.ops:
+        if op.name() == 'pd_op.full':
+            next_op = op.result(0).all_used_ops()[0]
+            parameter_name = next_op.str_attr("parameter_name")
+            pattern = re.compile(r'embedding_.*\.w_0\.dist')
+            if pattern.match(parameter_name):
+                placements = op.results()[0].placements
+                dim_map, partial_status = (
+                    dist.auto_parallel.placement_type.to_dim_map(
+                        placements, len(placements)
+                    )
+                )
+                dim_map = [mp_axis, -1]
+                dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        op.results()[0].process_mesh, dim_map, partial_status
+                    )
+                )
+                dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    op.results()[0].type(), dist_attr
+                )
+                op.results()[0].set_type(dist_type)
+                op.dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        op.results()[0].process_mesh, [], [dist_attr]
+                    )
+                )
+
+
 @register_pass("auto_parallel_c_embedding_pass")
 class AutoParallelCEmbeddingPass(PassBase):
     def __init__(self):
@@ -353,7 +385,10 @@ class AutoParallelCEmbeddingPass(PassBase):
         for i, op in enumerate(ops):
             if op.name() == 'pd_op.embedding':
                 # update weight dims mapping
-                update_weight(op, concrete_program)
+                mp_axis = update_weight(op, concrete_program)
+
+                # update startup_program
+                update_startup_program(startup_program, mp_axis)
 
                 # replace embedding with c_embedding
                 c_emb_op = replace_embedding_with_c_embedding(op)
