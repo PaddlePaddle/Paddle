@@ -30,8 +30,18 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
                              const DistMetaTensor& x,
-                             int64_t start_index,
-                             int64_t vocab_size) {
+                             int start_index,
+                             int vocab_size) {
+  return CEmbeddingInferSpmdBase(weight,
+                                 x,
+                                 static_cast<int64_t>(start_index),
+                                 static_cast<int64_t>(vocab_size));
+}
+
+SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
+                                 const DistMetaTensor& x,
+                                 int64_t start_index,
+                                 int64_t vocab_size) {
   // Step0: Verify input args based on c_embedding logic
   auto x_shape = common::vectorize(x.dims());
   auto weight_shape = common::vectorize(weight.dims());
@@ -108,7 +118,7 @@ SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
   }
   out_dist_attr.set_partial_status(partial_on_dims);
 
-  VLOG(4) << "CEmbeddingInferSpmd:\n"
+  VLOG(4) << "CEmbeddingInferSpmdBase:\n"
           << "Einsum notation: [" << x_axes << "," << weight_axes << " --> "
           << out_axes << "]. " << std::endl
           << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
@@ -126,7 +136,15 @@ SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
 SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
                                  const DistMetaTensor& x,
                                  const DistMetaTensor& out_grad,
-                                 int64_t start_index) {
+                                 int start_index) {
+  return CEmbeddingGradInferSpmdBase(
+      weight, x, out_grad, static_cast<int64_t>(start_index));
+}
+
+SpmdInfo CEmbeddingGradInferSpmdBase(const DistMetaTensor& weight,
+                                     const DistMetaTensor& x,
+                                     const DistMetaTensor& out_grad,
+                                     int64_t start_index) {
   PADDLE_ENFORCE_EQ(out_grad.dims().size(),
                     out_grad.dist_attr().dims_mapping().size(),
                     common::errors::InvalidArgument(
@@ -203,7 +221,7 @@ SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
   out_grad_dst = DistMetaTensor(out_grad_dst.dims(), out_grad_dst_dist_attr);
   w_grad = DistMetaTensor(w_grad.dims(), w_grad_dist_attr);
 
-  VLOG(4) << "CEmbeddingGradInferSpmd:\n"
+  VLOG(4) << "CEmbeddingGradInferSpmdBase:\n"
           << "Input x shape: [" << str_join(phi::vectorize(x.dims()))
           << "], src_dims_mapping: [" << str_join(x.dist_attr().dims_mapping())
           << "], dst_dims_mapping: ["
