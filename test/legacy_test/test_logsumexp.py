@@ -199,7 +199,9 @@ class TestLogsumexp_FP16(TestLogsumexp):
 class TestLogsumexpBF16Op(TestLogsumexp):
     def setUp(self):
         self.op_type = 'logsumexp'
+        self.prim_op_type = "prim"
         self.python_api = logsumexp_wrapper
+        self.public_python_api = logsumexp_wrapper
         self.dtype = np.uint16
         self.shape = [2, 3, 4, 5]
         self.axis = [-1]
