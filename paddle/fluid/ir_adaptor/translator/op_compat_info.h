@@ -54,6 +54,26 @@ class OpNameNormalizer {
     return OpNameNormalizer;
   }
 
+  std::unordered_map<std::string, std::string> GetOpNameMappings() const {
+    return op_name_mappings;
+  }
+
+  std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
+  GetOpArgNameMappings() const {
+    return op_arg_name_mappings;
+  }
+
+  std::unordered_map<std::string,
+                     std::unordered_map<std::string, MutableAttributeInfo>>
+  GetOpMutableAttributeInfos() const {
+    return op_mutable_attribute_infos;
+  }
+
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+  GetOpMutableAttributes() const {
+    return op_mutable_attributes;
+  }
+
   std::string operator[](const std::string& op_type) {
     if (op_name_mappings.find(op_type) == op_name_mappings.end()) {
       return op_type;
