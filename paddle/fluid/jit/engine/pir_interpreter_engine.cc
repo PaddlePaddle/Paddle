@@ -60,8 +60,7 @@ std::vector<Tensor> PirInterpreterEngine::operator()(
 
 std::vector<DenseTensor> PirInterpreterEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
-  prog_ =
-      std::move(paddle::dialect::PdOpLowerToKernelPass(prog_.get(), place_));
+  prog_ = paddle::dialect::PdOpLowerToKernelPass(prog_.get(), place_);
   utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
 
   // the latter can be moved to python side.

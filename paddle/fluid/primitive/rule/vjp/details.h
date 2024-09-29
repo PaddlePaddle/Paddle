@@ -20,6 +20,7 @@
 
 #include <math.h>
 #include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
@@ -655,37 +656,36 @@ void add_grad(const Tensor& x,
               Tensor* dx,
               Tensor* dy) {
   if (dy) {
-    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
-      auto dy_tmp = reduce_as<T>(out_grad, y);
-      set_output<T>(dy_tmp, dy);
-    } else {
-      if (out_grad.dims() != y.dims()) {
+    if (!common::AreDimsWithDynamicShapeCompatible(out_grad.dims(), y.dims())) {
+      if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
+        auto dy_tmp = reduce_as<T>(out_grad, y);
+        set_output<T>(dy_tmp, dy);
+      } else {
         phi::DDim reduce_dim =
             get_reduce_dims_from_out(out_grad.dims(), y.dims());
         auto dy_reduce_res =
             out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
         auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
         set_output<T>(dy_tmp, dy);
-
-      } else {
-        by_pass<T>(out_grad, dy);
       }
+    } else {
+      by_pass<T>(out_grad, dy);
     }
   }
   if (dx) {
-    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
-      auto dx_tmp = reduce_as<T>(out_grad, x);
-      set_output<T>(dx_tmp, dx);
-    } else {
-      if (out_grad.dims() != x.dims()) {
+    if (!common::AreDimsWithDynamicShapeCompatible(out_grad.dims(), x.dims())) {
+      if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+        auto dx_tmp = reduce_as<T>(out_grad, x);
+        set_output<T>(dx_tmp, dx);
+      } else {
         auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
         auto dx_reduce_res =
             out_grad.sum(common::vectorize(reduce_dim), x.dtype(), false);
         auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
         set_output<T>(dx_tmp, dx);
-      } else {
-        by_pass<T>(out_grad, dx);
       }
+    } else {
+      by_pass<T>(out_grad, dx);
     }
   }
 }
@@ -2805,6 +2805,38 @@ void atan_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
     const Tensor one = full_scalar<T>(1.0, x.dtype());
     Tensor x_grad_tmp = out_grad / (one + x * x);
     set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void dot_grad(const Tensor& x,
+              const Tensor& y,
+              const Tensor& out_grad,
+              Tensor* x_grad,
+              Tensor* y_grad) {
+  const int64_t out_grad_dim_size = out_grad.dims().size();
+  Tensor out_grad_ = out_grad;
+
+  if (has_dynamic_shape(x.shape()) || has_dynamic_shape(y.shape())) {
+    auto out_grad_shape =
+        get_unsqueeze_dims<T>(shape<T>(out_grad_), {out_grad_dim_size});
+    out_grad_ = backend::reshape<T>(out_grad_, out_grad_shape);
+    out_grad_ = backend::expand_with_tensor<T>(out_grad_, shape<T>(x));
+  } else {
+    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, {out_grad_dim_size});
+    out_grad_ =
+        expand<T>(reshape<T>(out_grad_, out_grad_shape), IntArray(x_dim));
+  }
+
+  if (x_grad) {
+    Tensor x_grad_tmp = out_grad_ * y;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (y_grad) {
+    Tensor y_grad_tmp = out_grad_ * x;
+    set_output<T>(y_grad_tmp, y_grad);
   }
 }
 

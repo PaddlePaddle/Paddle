@@ -822,6 +822,7 @@ def GenDistBranch(args, op_info):
             if 'pir::VectorType' in op_info.input_type_list[input_index]:
                 TEMPLATE = """
     std::vector<phi::distributed::DistMetaTensor> vec_dist_meta_{name};
+    {name} = {name}_.type().dyn_cast<pir::VectorType>();
     for(auto& sub_ir_tensor: {name}.data()) {{
       vec_dist_meta_{name}.push_back(CvtToDistMetaTensor(sub_ir_tensor.dyn_cast<DistDenseTensorType>()));
     }}"""

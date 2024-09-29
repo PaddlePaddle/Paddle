@@ -789,7 +789,9 @@ def _dygraph_tracer():
 
 def _current_expected_place_():
     global _global_expected_place_
-    if _global_expected_place_ is None:
+    if _global_expected_place_ is None or isinstance(
+        _global_expected_place_, core.Place
+    ):
         if core.is_compiled_with_cuda():
             try:
                 device_count = core.get_cuda_device_count()
@@ -2935,7 +2937,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
 
                 >>> # get the number of elements of the Variable
-                >>> y = x.size() # type: ignore
+                >>> y = x.size
 
         """
 
