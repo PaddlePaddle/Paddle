@@ -25,6 +25,11 @@ def conv2d_wrapper(x):
     return conv(x)
 
 
+def conv2d_transpose_wrapper(x):
+    conv_transpose = paddle.nn.Conv2DTranspose(4, 6, (3, 3))
+    return conv_transpose(x)
+
+
 class TestConv2dTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = conv2d_wrapper
@@ -32,6 +37,20 @@ class TestConv2dTRTPattern(TensorRTBaseTest):
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 3, 8, 8]}
         self.max_shape = {"x": [10, 3, 8, 8]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestConv2dTransposeTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = conv2d_transpose_wrapper
+        self.api_args = {
+            "x": np.random.random([2, 4, 8, 8]).astype("float32"),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 4, 8, 8]}
+        self.max_shape = {"x": [10, 4, 8, 8]}
 
     def test_trt_result(self):
         self.check_trt_result()
