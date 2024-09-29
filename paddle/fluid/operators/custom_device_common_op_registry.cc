@@ -715,77 +715,6 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class LimitByCapacityOpCustomDeviceKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto expert_count = context.Input<phi::DenseTensor>("expert_count");
-    auto capacity = context.Input<phi::DenseTensor>("capacity");
-    auto out = context.Output<phi::DenseTensor>("Out");
-    auto n_worker = context.Attr<int>("n_worker");
-    auto n_expert = expert_count->numel() / n_worker;
-
-    const auto& dev_ctx = context.template device_context<phi::CustomContext>();
-
-    dev_ctx.template Alloc<T>(out);
-    std::vector<T> out_data(out->numel());
-    phi::DenseTensor expert_count_cpu, capacity_cpu;
-    framework::TensorCopySync(
-        *expert_count, phi::CPUPlace(), &expert_count_cpu);
-    framework::TensorCopySync(*capacity, phi::CPUPlace(), &capacity_cpu);
-
-    auto* ec_data = expert_count_cpu.data<T>();
-    auto* capacity_data = capacity_cpu.data<T>();
-    int eid, wid;
-    for (int64_t i = 0; i < expert_count->numel(); ++i) {
-      wid = i / n_expert;
-      eid = i % n_expert;
-      auto proposal = ec_data[i];
-      auto cap_left = capacity_data[eid];
-      capacity_data[eid] -= proposal;
-      if (cap_left >= proposal) {
-        out_data[wid * n_expert + eid] = proposal;
-      } else if (cap_left >= 0) {
-        out_data[wid * n_expert + eid] = cap_left;
-      } else {
-        out_data[wid * n_expert + eid] = 0;
-      }
-    }
-
-    auto out_dims = out->dims();
-    framework::TensorFromVector<T>(out_data, dev_ctx, out);
-    out->Resize(out_dims);
-  }
-};
-
-template <typename T>
-class PruneGateByCapacityCustomDeviceKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* gate_idx = context.Input<phi::DenseTensor>("GateIdx");
-    auto* expert_count = context.Input<phi::DenseTensor>("ExpertCount");
-    auto* new_gate_idx = context.Output<phi::DenseTensor>("NewGateIdx");
-    const auto& dev_ctx = context.template device_context<phi::CustomContext>();
-    dev_ctx.template Alloc<T>(new_gate_idx);
-
-    phi::DenseTensor expert_count_cpu, gate_idx_cpu;
-    framework::TensorCopySync(
-        *expert_count, phi::CPUPlace(), &expert_count_cpu);
-    framework::TensorCopySync(*gate_idx, phi::CPUPlace(), &gate_idx_cpu);
-    auto expert_count_data = expert_count_cpu.data<T>();
-    auto gate_idx_data = gate_idx_cpu.data<T>();
-    std::vector<T> new_gate_idx_data(gate_idx->numel());
-    for (auto i = 0; i < gate_idx->numel(); ++i) {
-      auto orig_cap = expert_count_data[gate_idx_data[i]]--;
-      if (orig_cap <= 0) {
-        new_gate_idx_data[i] = -1;
-      } else {
-        new_gate_idx_data[i] = gate_idx_data[i];
-      }
-    }
-  }
-};
-
-template <typename T>
 class RandomRoutingOpCustomDeviceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -815,56 +744,6 @@ class RandomRoutingOpCustomDeviceKernel : public framework::OpKernel<T> {
     auto out_dims = out->dims();
     framework::TensorFromVector<int64_t>(out_data, dev_ctx, out);
     out->Resize(out_dims);
-  }
-};
-
-template <typename T>
-class AssignPosCustomDeviceKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    // assign pos decides which tokens should be fetched belong to specially
-    // counter orderly.
-    auto cum_count = context.Input<phi::DenseTensor>(
-        "cum_count");  // (counter number) int32 | int64
-    auto numbers = context.Input<phi::DenseTensor>(
-        "X");  // (batch_size * seq_len, topk) int32
-    auto eff_num_len =
-        context.Input<phi::DenseTensor>("eff_num_len");  // (sum(cum_count))
-    auto out =
-        context.Output<phi::DenseTensor>("Out");  // (cum_count) value ranges
-                                                  // from 0 to batch_size *
-                                                  // seq_len * topk
-    const auto& dev_ctx = context.template device_context<phi::CustomContext>();
-
-    phi::DenseTensor cpu_eff_num_len;
-    int64_t cpu_eff_num_len_data = 0;
-    if (eff_num_len->place().GetType() == phi::AllocationType::CPU) {
-      cpu_eff_num_len_data = eff_num_len->data<T>()[0];
-    } else {
-      framework::TensorCopySync(
-          *eff_num_len, phi::CPUPlace(), &cpu_eff_num_len);
-      cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
-    }
-
-    out->Resize({cpu_eff_num_len_data});
-    dev_ctx.template Alloc<T>(out);
-
-    phi::DenseTensor numbers_cpu, cum_count_cpu;
-    framework::TensorCopySync(*numbers, phi::CPUPlace(), &numbers_cpu);
-    framework::TensorCopySync(*cum_count, phi::CPUPlace(), &cum_count_cpu);
-    auto* numbers_data = numbers_cpu.data<T>();
-    auto* cum_count_data = cum_count_cpu.data<T>();
-
-    std::vector<T> out_data(cpu_eff_num_len_data);
-    for (int64_t i = 0; i < numbers->numel(); ++i) {
-      int number_idx = numbers_data[i];
-      if (number_idx > -1) {
-        cum_count_data[number_idx] -= 1;
-        int p = cum_count_data[number_idx];
-        out_data[p] = i;
-      }
-    }
-    framework::TensorFromVector<int64_t>(out_data, dev_ctx, out);
   }
 };
 
@@ -1525,24 +1404,12 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       device_type,
       paddle::operators::BarrierOpCustomDeviceKernel<int>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      limit_by_capacity,
-      device_type,
-      paddle::operators::LimitByCapacityOpCustomDeviceKernel<int64_t>) {}
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      prune_gate_by_capacity,
-      device_type,
-      paddle::operators::PruneGateByCapacityCustomDeviceKernel<int64_t>) {}
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       random_routing,
       device_type,
       paddle::operators::RandomRoutingOpCustomDeviceKernel<float>,
       paddle::operators::RandomRoutingOpCustomDeviceKernel<double>,
       paddle::operators::RandomRoutingOpCustomDeviceKernel<
           phi::dtype::float16>) {}
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      assign_pos,
-      device_type,
-      paddle::operators::AssignPosCustomDeviceKernel<int64_t>) {}
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       global_scatter,

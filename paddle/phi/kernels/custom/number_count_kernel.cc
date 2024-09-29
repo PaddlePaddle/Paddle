@@ -44,6 +44,6 @@ void NumberCountKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    number_count, Custom, ALL_LAYOUT, phi::NumberCountKernel, int, int64_t) {}
+    number_count, Custom, ALL_LAYOUT, phi::NumberCountKernel, int64_t) {}
 
 #endif
