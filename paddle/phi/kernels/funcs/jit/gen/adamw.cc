@@ -125,11 +125,10 @@ void AdamWJitCode::mainCode() {
   je(".without_amsgrad", T_NEAR);
   // load mom2_max
   vmovups(ymm13 | k1, ptr[reg_mom2_max_ptr + reg_offset]);
-
-  // // compare mom2 and mom2_max and save to mom2
-  // vmaxps(ymm10 | k1, ymm10, ymm13);
-  // // store mom2_max
-  // vmovups(ptr[reg_mom2_max_out_ptr + reg_offset] | k1, ymm10);
+  // compare mom2 and mom2_max and save to mom2
+  vmaxps(ymm10 | k1, ymm10, ymm13);
+  // store mom2_max
+  vmovups(ptr[reg_mom2_max_out_ptr + reg_offset] | k1, ymm10);
 
   L(".without_amsgrad");
   {
@@ -191,7 +190,7 @@ class AdamWCreator : public JitCodeCreator<int> {
   bool CanBeUsed(const int& attr) const override {
     return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f);
   }
-  size_t CodeSize(const int& attr) const override { return 96 + 32 * 8 * 2; }
+  size_t CodeSize(const int& attr) const override { return 96 + 32 * 8; }
   std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {
     return make_unique<AdamWJitCode>(attr, CodeSize(attr));
   }

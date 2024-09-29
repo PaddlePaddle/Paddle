@@ -171,8 +171,14 @@ void AdamwDenseKernel(const Context& dev_ctx,
 #endif
   for (int64_t i = 0; i < numel / chunk_size; ++i) {
     const int64_t offset = i * chunk_size;
-    const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
-    T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+
+    // TODO(megemini): do NOT give nullptr
+    // const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
+    // T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+    const T* mom2_max_in_data =
+        amsgrad ? mom2_max_ptr + offset : mom2_ptr + offset;
+    T* mom2_max_out_data =
+        amsgrad ? mom2_max_out_ptr + offset : mom2_out_ptr + offset;
 
     // TODO(megemini)
     std::cout << ">>>>>>>>>> AdamwDenseKernel adamw_kernel.cc chunk_size "
@@ -202,8 +208,14 @@ void AdamwDenseKernel(const Context& dev_ctx,
   if (numel % chunk_size != 0) {
     const int64_t offset = (numel / chunk_size) * chunk_size;
     const int64_t tail_numel = numel % chunk_size;
-    const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
-    T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+
+    // TODO(megemini): do NOT give nullptr
+    // const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
+    // T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+    const T* mom2_max_in_data =
+        amsgrad ? mom2_max_ptr + offset : mom2_ptr + offset;
+    T* mom2_max_out_data =
+        amsgrad ? mom2_max_out_ptr + offset : mom2_out_ptr + offset;
 
     // TODO(megemini)
     std::cout << ">>>>>>>>>> AdamwDenseKernel adamw_kernel.cc numel chunk_size "

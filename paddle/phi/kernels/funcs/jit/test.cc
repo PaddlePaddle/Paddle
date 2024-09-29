@@ -878,8 +878,8 @@ void TestKernelAdam() {
 
 template <typename KernelTuple, typename PlaceType>
 void TestKernelAdamW() {
-  // for (bool amsgrad : {false, true}) {
-  for (bool amsgrad : {false}) {
+  for (bool amsgrad : {false, true}) {
+    // for (bool amsgrad : {false}) {
     using T = typename KernelTuple::data_type;
     VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
     const T old_lr = 0.1;
