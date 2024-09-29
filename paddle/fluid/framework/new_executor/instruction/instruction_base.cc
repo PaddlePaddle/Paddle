@@ -197,8 +197,6 @@ InstructionBase::InstructionBase(size_t id, const phi::Place& place)
       no_need_buffer_values_() {
   id_ = id;
 
-  is_artificial_ = false;
-
   if (phi::is_cpu_place(place)) {
     type_ = OpFuncType::kCpuSync;
   } else {

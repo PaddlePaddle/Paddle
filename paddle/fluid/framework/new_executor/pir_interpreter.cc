@@ -765,6 +765,33 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
   }
 }
 
+void PirInterpreter::AnalyzeForceSyncOps() {
+  for (auto& ins : vec_instruction_base_) {
+    ins->SetSyncAfterLaunch(FLAGS_benchmark);
+
+    // Analyze force sync op set by FLAGS_force_sync_op
+    int op_id = ins->Id();
+    std::string op_name = ins->Name();
+    std::string unused_prefix = "pd_op.";
+    int pos = op_name.find(unused_prefix);
+    if (pos != std::string::npos) {
+      op_name.erase(pos, unused_prefix.size());
+    }
+
+    for (auto& pair : execution_config_.force_sync_ops) {
+      int sync_op_id = pair.first;
+      std::string sync_op_name = pair.second;
+      if ((sync_op_id == op_id || sync_op_id == -1) &&
+          (sync_op_name == op_name || sync_op_name == "")) {
+        VLOG(8) << "Force sync op: "
+                << "sync_op_id=" << sync_op_id << ", op_id=" << op_id
+                << ", sync_op_name=" << sync_op_name << ", op_name=" << op_name;
+        ins->SetSyncAfterLaunch(true);
+      }
+    }
+  }
+}
+
 void PirInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for pir ... ";
   vec_instruction_base_.clear();
@@ -1900,7 +1927,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
         instr_node->Run();
       }
 
-      if (FLAGS_benchmark || execution_config_.sync_after_op_launch) {
+      if (instr_node->IsSyncAfterLaunch()) {
         instr_node->DeviceContext().Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
@@ -1991,6 +2018,9 @@ void PirInterpreter::PreAnalysis() {
   AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
                               ir_instruction_scheduling_priority_less);
   VLOG(4) << "Done AnalyseExecuteOrderForTrace";
+
+  AnalyzeForceSyncOps();
+  VLOG(4) << "Done AnalyzeForceSyncOps";
 
   UpdateSyncOpNum();
   VLOG(4) << "Done UpdateSyncOpNum";

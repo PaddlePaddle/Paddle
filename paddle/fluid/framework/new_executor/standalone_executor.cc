@@ -87,10 +87,8 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
     execution_config.skip_gc_vars = job->SkipGcVars();
-    if (phi::backends::gpu::GetCurrentDeviceId() == 4 &&
-        job_type == "forward" && micro_batch_id == 1) {
-      execution_config.sync_after_op_launch = true;
-    }
+    execution_config.force_sync_ops =
+        interpreter::GetForceSyncOps(micro_batch_id, job_type);
 
     // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_pir_in_executor) {
