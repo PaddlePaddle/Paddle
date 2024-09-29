@@ -715,30 +715,6 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class NumberCountOpCustomDeviceKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto numbers = context.Input<phi::DenseTensor>("numbers");
-    auto upper_range = context.Attr<int>("upper_range");
-    auto number_count = context.Output<phi::DenseTensor>("Out");
-    const auto& dev_ctx = context.template device_context<phi::CustomContext>();
-    number_count->Resize({upper_range});
-    dev_ctx.template Alloc<T>(number_count);
-    phi::DenseTensor cpu_tensor;
-    framework::TensorCopySync(*numbers, phi::CPUPlace(), &cpu_tensor);
-    std::vector<T> count(upper_range);
-    for (auto i = 0; i < cpu_tensor.numel(); ++i) {
-      auto idx = static_cast<int64_t>(cpu_tensor.data<T>()[i]);
-      if (idx >= 0 && idx < upper_range) {
-        count[idx] += 1;
-      }
-    }
-    framework::TensorFromVector<T>(count, dev_ctx, number_count);
-    number_count->Resize({upper_range});
-  }
-};
-
-template <typename T>
 class LimitByCapacityOpCustomDeviceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -1548,10 +1524,6 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       barrier,
       device_type,
       paddle::operators::BarrierOpCustomDeviceKernel<int>) {}
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      number_count,
-      device_type,
-      paddle::operators::NumberCountOpCustomDeviceKernel<int64_t>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       limit_by_capacity,
       device_type,
