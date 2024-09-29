@@ -344,7 +344,7 @@ class SparseAPI(ForwardAPI):
 {self.gene_infer_meta(kernel_output_names, '')}
 {kernel_context_code}
     phi_kernel(&kernel_context);
-    if (FLAGS_sync_for_benchmark) {{
+    if (FLAGS_benchmark) {{
         dev_ctx->Wait();
         std::cout << \"{self.api} kernel run finish.\" << std::endl;
     }}

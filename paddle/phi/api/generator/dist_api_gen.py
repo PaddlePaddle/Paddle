@@ -423,7 +423,7 @@ KERNEL_CALL_TEMPLATE = """
       using kernel_signature = {};
       auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
       (*kernel_fn)({}, {});
-      if (FLAGS_sync_for_benchmark) {{
+      if (FLAGS_benchmark) {{
           dev_ctx->Wait();
           std::cout << \"{} kernel run finish.\" << std::endl;
       }}

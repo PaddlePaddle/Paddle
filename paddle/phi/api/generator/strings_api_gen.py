@@ -227,7 +227,7 @@ class StringsAPI(ForwardAPI):
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
-{code_indent}  if (FLAGS_sync_for_benchmark) {{
+{code_indent}  if (FLAGS_benchmark) {{
 {code_indent}      dev_ctx->Wait();
 {code_indent}      std::cout << \"{self.api} kernel run finish.\" << std::endl;
 {code_indent}  }}
