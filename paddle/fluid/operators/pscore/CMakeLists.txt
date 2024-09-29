@@ -20,7 +20,7 @@ if(WITH_ARM_BRPC)
     framework_proto
     sendrecv_rpc
     arm_brpc
-    phi
+    phi_core
     common
     glog
     snappy
@@ -39,7 +39,7 @@ else()
     framework_proto
     sendrecv_rpc
     ${EXTERNAL_BRPC_DEPS}
-    phi
+    phi_core
     common
     zlib
     device_context)

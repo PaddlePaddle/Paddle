@@ -11,6 +11,7 @@ set(backends_srcs CACHE INTERNAL "" FORCE)
 set(kernels_srcs CACHE INTERNAL "" FORCE)
 set(infermeta_srcs CACHE INTERNAL "" FORCE)
 #set(excluded_srcs CACHE INTERNAL "" FORCE)
+set(fleet_ops_srcs CACHE INTERNAL "" FORCE)
 
 # paddle experimental common components
 add_subdirectory(common)
@@ -136,6 +137,12 @@ if(WITH_AVX
                "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
 endif()
 
+set(FLEET_OPS_DEPS fleet_wrapper ps_gpu_wrapper box_wrapper gloo_wrapper
+                   heter_wrapper)
+if(WITH_NCCL OR WITH_RCCL)
+  list(APPEND FLEET_OPS_DEPS nccl_wrapper)
+endif()
+
 if(WITH_GPU)
   set_source_files_properties(
     backends/gpu/gpu_resources.cc
@@ -198,6 +205,12 @@ endif()
 if((WITH_GPU OR WITH_ROCM) AND NOT WITH_SHARED_PHI)
   target_link_libraries(phi_core phi_gpu)
 endif()
+
+# Operators that rely on the fleet library, the fleet library is located in the paddle/fluid/framework/fleet directory.
+# Fleet depends on phi, so add a library to solve the cyclic dependency problem.
+add_library(phi_fleet_ops ${fleet_ops_srcs})
+add_dependencies(phi_fleet_ops ${FLEET_OPS_DEPS})
+target_link_libraries(phi_fleet_ops ${FLEET_OPS_DEPS})
 
 target_compile_definitions(phi_core PUBLIC PHI_INNER)
 

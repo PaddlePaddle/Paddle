@@ -6,7 +6,7 @@ if(WITH_GPU)
 endif()
 
 add_executable(print_phi_kernels print_phi_kernels.cc)
-target_link_libraries(print_phi_kernels phi common)
+target_link_libraries(print_phi_kernels phi common phi_fleet_ops)
 if(WIN32)
   target_link_libraries(print_phi_kernels shlwapi.lib)
   # In windows, some operators need to link pir, such as fused_attention

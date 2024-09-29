@@ -21,13 +21,13 @@ if(WITH_GPU)
   nv_library(
     stream_callback_manager
     SRCS stream_callback_manager.cc
-    DEPS simple_threadpool phi common)
+    DEPS simple_threadpool phi_core common)
 endif()
 if(WITH_ROCM)
   hip_library(
     stream_callback_manager
     SRCS stream_callback_manager.cc
-    DEPS simple_threadpool phi common)
+    DEPS simple_threadpool phi_core common)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -40,14 +40,14 @@ if(WITH_GLOO)
   cc_library(
     gloo_context
     SRCS gloo_context.cc
-    DEPS framework_proto gloo_wrapper phi common)
+    DEPS framework_proto gloo_wrapper phi_core common)
 endif()
 
 # separate init from device_context to avoid cycle dependencies
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context phi common)
+  DEPS device_context phi_core common)
 
 #fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -64,13 +64,13 @@ cc_library(
        ${ONEDNN_CTX_DEPS}
        ${dgc_deps}
        dlpack
-       phi
+       phi_core
        common)
 
 cc_library(
   collective_helper
   SRCS collective_helper.cc
-  DEPS framework_proto device_context phi common)
+  DEPS framework_proto phi_core common)
 
 # Manage all device event library
 set(DEVICE_EVENT_LIBS)
@@ -78,7 +78,7 @@ set(DEVICE_EVENT_LIBS)
 cc_library(
   lodtensor_printer
   SRCS lodtensor_printer.cc
-  DEPS phi
+  DEPS phi_core
        common
        tensor
        scope
