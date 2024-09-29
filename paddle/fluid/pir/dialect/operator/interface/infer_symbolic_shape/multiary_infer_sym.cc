@@ -1571,15 +1571,6 @@ bool FlashmaskAttentionOpInferSymbolicShape(
         common::errors::InvalidArgument(
             "flashmask_attention receive startend_row_indices with dim "
             "[batch_size, num_heads,seq_len, mask_bounds]"));
-    PADDLE_ENFORCE_EQ(
-        infer_context->IsEqual(startend_row_indices[3], symbol::DimExpr{1}) ||
-            infer_context->IsEqual(startend_row_indices[3],
-                                   symbol::DimExpr{2}) ||
-            infer_context->IsEqual(startend_row_indices[3], symbol::DimExpr{4}),
-        true,
-        common::errors::InvalidArgument(
-            "flashmask_attention startend_row_indices "
-            "mask_bounds must in [1,2,4]"));
   }
   std::vector<symbol::DimExpr> out_shape = q.shape();
 
