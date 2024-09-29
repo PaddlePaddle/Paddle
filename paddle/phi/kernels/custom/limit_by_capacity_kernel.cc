@@ -24,7 +24,7 @@ void LimitByCapacityKernel(const Context& dev_ctx,
                            const DenseTensor& expert_count_in,
                            const DenseTensor& capacity_in,
                            int n_worker,
-                           DenseTensor* Out) {
+                           DenseTensor* out) {
   auto expert_count = &expert_count_in;
   auto capacity = &capacity_in;
 
