@@ -20,7 +20,6 @@ import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class LabelSmoothTestCase(unittest.TestCase):
@@ -89,7 +88,6 @@ class LabelSmoothTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
-    @test_with_pir_api
     def _test_equivalence(self, place):
         place = base.CPUPlace()
         result1 = self.base_layer(place)

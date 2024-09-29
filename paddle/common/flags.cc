@@ -1551,7 +1551,7 @@ PHI_DEFINE_EXPORTED_bool(logging_pir_py_code_dump_symbolic_dims,
  * Example:
  * Note: If True, PIR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable PIR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, true, "Enable PIR API in Python");
 
 /**
  * Using PIR in executor FLAG

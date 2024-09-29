@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 API_list = [
     (paddle.quantile, np.quantile),
@@ -367,7 +366,6 @@ class TestQuantileRuntime(unittest.TestCase):
                         paddle_res.numpy(), np_res, rtol=1e-05
                     )
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for func, res_func in API_list:

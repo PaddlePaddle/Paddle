@@ -167,6 +167,7 @@ class MobileNet:
         use_cudnn=True,
         name=None,
     ):
+
         conv = paddle.static.nn.conv2d(
             input=input,
             num_filters=num_filters,

@@ -18,7 +18,6 @@ import numpy
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -101,7 +100,6 @@ class TestPrintVariable(TestPrintBase):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_variable
 
-    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.get_dygraph_output()
         self.get_static_output()
