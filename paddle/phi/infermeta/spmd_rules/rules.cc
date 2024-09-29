@@ -713,5 +713,11 @@ PD_REGISTER_SPMD_RULE(pad,
 PD_REGISTER_SPMD_RULE(nonzero,
                       PD_INFER_SPMD(phi::distributed::NonZeroInferSpmd),
                       PD_INFER_SPMD(phi::distributed::NonZeroInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    einsum,
+    PD_INFER_SPMD(phi::distributed::EinsumInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::EinsumSpmdGradInferSpmdBase));
+
 }  // namespace distributed
 }  // namespace phi
