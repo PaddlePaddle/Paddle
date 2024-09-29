@@ -1964,7 +1964,6 @@ def _get_no_grad_set_value(no_grad_set):
 
 
 @overload
-@framework.static_only
 def append_backward(
     loss: Tensor,
     parameter_list: Sequence[Tensor | str] | None = ...,
@@ -1974,12 +1973,11 @@ def append_backward(
         | None
     ) = ...,
     checkpoints: None = ...,
-    distop_context: DistributedContext = ...,
+    distop_context: DistributedContext | None = ...,
 ) -> list[tuple[Tensor, Tensor]]: ...
 
 
 @overload
-@framework.static_only
 def append_backward(
     loss: Tensor,
     parameter_list: Sequence[Tensor | str] | None = ...,
@@ -1989,7 +1987,7 @@ def append_backward(
         | None
     ) = ...,
     checkpoints: list[Tensor] = ...,
-    distop_context: DistributedContext = ...,
+    distop_context: DistributedContext | None = ...,
 ) -> tuple[list[tuple[Tensor, Tensor]], list[str]]: ...
 
 

@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.inference as paddle_infer
 import paddle.nn.functional as F
-from paddle import nn
+from paddle import Tensor, nn
 from paddle.static import InputSpec
 from paddle.tensorrt.export import (
     Input,
@@ -31,6 +31,59 @@ from paddle.tensorrt.export import (
 from paddle.tensorrt.util import (
     predict_program,
 )
+
+
+class LeNetMultiInput(nn.Layer):
+    """LeNet model modified to accept two inputs."""
+
+    def __init__(self, num_classes: int = 10) -> None:
+        super().__init__()
+        self.num_classes = num_classes
+
+        # Convolution layers for the first input
+        self.features1 = nn.Sequential(
+            nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2D(2, 2),
+            nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            nn.ReLU(),
+            nn.MaxPool2D(2, 2),
+        )
+
+        # Convolution layers for the second input
+        self.features2 = nn.Sequential(
+            nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2D(2, 2),
+            nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            nn.ReLU(),
+            nn.MaxPool2D(2, 2),
+        )
+
+        # Fully connected layers
+        if num_classes > 0:
+            self.fc = nn.Sequential(
+                nn.Linear(400 * 2, 120),  # Adjusted for two inputs
+                nn.Linear(120, 84),
+                nn.Linear(84, num_classes),
+            )
+
+    def forward(self, input1: Tensor, input2: Tensor) -> Tensor:
+        # Apply feature extraction on both inputs
+        x1 = self.features1(input1)
+        x2 = self.features2(input2)
+
+        # Flatten both feature maps
+        x1 = paddle.flatten(x1, 1)
+        x2 = paddle.flatten(x2, 1)
+
+        # Concatenate the features from both inputs
+        x = paddle.concat([x1, x2], axis=1)
+
+        if self.num_classes > 0:
+            x = self.fc(x)
+
+        return x
 
 
 class CumsumModel(nn.Layer):
@@ -121,7 +174,7 @@ class TestConvertLoadedModel(unittest.TestCase):
 
         paddle.disable_static()
         for i, input_instrance in enumerate(trt_config.inputs):
-            min_data, _, max_data = input_instrance[i].generate_input_data()
+            min_data, _, max_data = input_instrance.generate_input_data()
             model_inputs = paddle.to_tensor(min_data)
             output_converted = predictor.run([model_inputs])
 
@@ -136,7 +189,7 @@ class TestConvert(unittest.TestCase):
             )
             trt_config = TensorRTConfig(inputs=[input_config])
             for i, input_instrance in enumerate(trt_config.inputs):
-                min_data, _, max_data = input_instrance[i].generate_input_data()
+                min_data, _, max_data = input_instrance.generate_input_data()
                 paddle.disable_static()
                 x = paddle.to_tensor(min_data)
                 net = CumsumModel(input_dim=min_data.shape[-1])
@@ -167,6 +220,70 @@ class TestConvert(unittest.TestCase):
                     atol=1e-2,
                     err_msg="Outputs are not within the 1e-2 tolerance",
                 )
+
+
+class TestConvertMultipleInputs(unittest.TestCase):
+    def test_run(self):
+        with paddle.pir_utils.IrGuard():
+            input_config = Input(
+                min_input_shape=(1, 1, 28, 28),
+                optim_input_shape=(1, 1, 28, 28),
+                max_input_shape=(1, 1, 28, 28),
+            )
+            input_config2 = Input(
+                min_input_shape=(1, 1, 28, 28),
+                optim_input_shape=(1, 1, 28, 28),
+                max_input_shape=(1, 1, 28, 28),
+            )
+            trt_config = TensorRTConfig(inputs=[input_config, input_config2])
+
+            min_data_list = []
+            max_data_list = []
+            for i, input_instrance in enumerate(trt_config.inputs):
+                min_data, _, max_data = input_instrance.generate_input_data()
+
+                min_data_list.append(min_data)
+                max_data_list.append(max_data)
+                paddle.disable_static()
+
+            x = [paddle.to_tensor(md) for md in min_data_list]
+            net = LeNetMultiInput()
+            out = net(*x)
+
+            input_spec = [
+                InputSpec(
+                    shape=min_data_list[0].shape, dtype='float32', name='input1'
+                ),
+                InputSpec(
+                    shape=min_data_list[1].shape, dtype='float32', name='input2'
+                ),
+            ]
+
+            program_with_trt, scope = convert(
+                net,
+                input_spec=input_spec,
+                config=trt_config,
+                full_graph=True,
+            )
+            output_var = program_with_trt.list_vars()[-1]
+
+            output_converted = predict_program(
+                program_with_trt,
+                {"input1": min_data_list[0], "input2": min_data_list[1]},
+                [output_var],
+                scope=scope,
+            )
+            output_expected = out.numpy()
+            output_converted_np = output_converted[0]
+
+            # Check that the results are close to each other within a tolerance of 1e-2
+            np.testing.assert_allclose(
+                output_expected,
+                output_converted_np,
+                rtol=1e-2,
+                atol=1e-2,
+                err_msg="Outputs are not within the 1e-2 tolerance",
+            )
 
 
 if __name__ == "__main__":
