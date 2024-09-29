@@ -35,11 +35,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/core/framework/data_feed.pb.h"
 #include "paddle/phi/core/platform/timer.h"
 #include "paddle/utils/string/string_helper.h"
 #if defined(PADDLE_WITH_CUDA)
