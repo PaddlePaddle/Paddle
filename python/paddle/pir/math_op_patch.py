@@ -1066,7 +1066,7 @@ def monkey_patch_value():
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
         ('__neg__', _scalar_neg_),
-        ('__abs__', _scalar_neg_),
+        ('__abs__', _scalar_abs_),
         # For compare operators
         (
             '__eq__',
