@@ -119,7 +119,14 @@ class TestSimpleNetForSemiAutoParallel:
             layer, dist_loader, loss_fn, opt, strategy=strategy
         )
         loss_list = []
+        dist_model._engine._mode = "train"
         dist_model.train()
+
+        if use_pass:
+            dist_program = dist_model._engine._pir_dist_main_progs["train"]
+            op_name = dist_program.global_block().ops[8].name()
+            np.testing.assert_equal(op_name, 'pd_op.c_embedding')
+
         for epoch in range(5):
             for batch_id, data in enumerate(dist_loader()):
                 x, label = data
