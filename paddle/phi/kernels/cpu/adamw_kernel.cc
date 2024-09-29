@@ -143,6 +143,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
+  phi::jit::adamw_attr_t attr(beta1_, beta2_, coeff_, amsgrad);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
@@ -153,7 +154,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
 
   auto adamw =
       phi::jit::KernelFuncs<phi::jit::AdamWTuple<T>, phi::CPUPlace>::Cache().At(
-          1);
+          attr);
 
   static constexpr int64_t chunk_size = 512;
 

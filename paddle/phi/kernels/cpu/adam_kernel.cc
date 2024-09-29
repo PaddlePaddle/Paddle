@@ -129,7 +129,7 @@ void AdamDenseKernel(const Context& dev_ctx,
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  phi::jit::adam_attr_t attr(beta1_, beta2_);
+  phi::jit::adam_attr_t attr(beta1_, beta2_, amsgrad);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
