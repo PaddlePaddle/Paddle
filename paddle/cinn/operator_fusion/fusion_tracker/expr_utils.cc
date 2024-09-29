@@ -130,7 +130,7 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
   }
   PADDLE_ENFORCE_EQ(result.size(),
                     op_exprs.size(),
-                    common::errors::PreconditionNotMet(
+                    ::common::errors::PreconditionNotMet(
                         "[Error info] the size of result should be equal to "
                         "the size of op_exprs."));
   std::vector<ir::Expr> sorted_result;
