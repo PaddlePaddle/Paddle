@@ -1317,7 +1317,7 @@ PHI_DEFINE_EXPORTED_bool(
     "Doing memory benchmark. It will make deleting scope synchronized, "
     "and add some memory usage logs."
     "Default cuda is asynchronous device, set to True will"
-    "force op run in synchronous mode.");
+    "force op run in synchronous mode(PIR and Dygraph supported).");
 
 /**
  * Autotune related FLAG
