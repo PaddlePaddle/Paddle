@@ -27,6 +27,7 @@ class TestNet(paddle.nn.Layer):
         super().__init__()
         self.fc1 = paddle.nn.Linear(4, 4)
         self.fc2 = paddle.nn.Linear(4, 4)
+        self.register_buffer("buffer", paddle.randn([5, 1]))
 
     def forward(self, x1, x2):
         y1 = self.fc1(x1)
@@ -122,6 +123,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         # config.enable_memory_optim()
         config.enable_new_executor()
         config.enable_new_ir()
+        config.switch_ir_debug(
+            True, ['add_shadow_output_after_dead_parameter_pass']
+        )
         predictor = create_predictor(config)
         return predictor
 
