@@ -26,9 +26,6 @@ namespace interpreter {
 
 struct ExecutionConfig {
   bool create_local_scope{true};
-
-  bool sync_after_op_launch{false};  // unused in run, just for debug
-
   bool used_for_cinn{false};
   bool used_for_control_flow_op{false};
   bool used_for_jit{false};
