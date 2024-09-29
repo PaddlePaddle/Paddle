@@ -1589,14 +1589,7 @@ bool FlashAttnVarlenQkvpackedOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(softmax_lse_shape)});
 
-  if (paddle::dialect::details::IsFakeValue(op->result(3)) ||
-      op->result(3)
-              .type()
-              .dyn_cast<paddle::dialect::DenseTensorType>()
-              .dims()
-              .size() == 0) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(3));
-  } else {
+  if (!paddle::dialect::details::IsFakeValue(op->result(3))) {
     std::vector<symbol::DimExpr> seed_offset_dims = {symbol::DimExpr(2)};
     infer_context->SetShapeOrDataForValue(
         op->result(3),
