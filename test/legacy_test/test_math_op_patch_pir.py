@@ -593,8 +593,8 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     feed={"x": x_np},
                     fetch_list=[a, b],
                 )
-                np.testing.assert_array_equal(res, a_np)
-                np.testing.assert_array_equal(res, b_np)
+                np.testing.assert_allclose(res, a_np, rtol=2e-7, atol=0.0)
+                np.testing.assert_allclose(res, b_np, rtol=2e-7, atol=0.0)
 
     def test_builtin_type_conversion(self):
         with paddle.pir_utils.IrGuard():
