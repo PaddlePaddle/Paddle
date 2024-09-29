@@ -878,6 +878,8 @@ void TestKernelAdam() {
 
 template <typename KernelTuple, typename PlaceType>
 void TestKernelAdamW() {
+  std::cout << ">>>>>>>>>> TestKernelAdamW" << std::endl;
+
   for (bool amsgrad : {false, true}) {
     // for (bool amsgrad : {false}) {
     using T = typename KernelTuple::data_type;
@@ -917,6 +919,8 @@ void TestKernelAdamW() {
 
     auto ref = jit::GetReferFunc<KernelTuple>();
     EXPECT_TRUE(ref != nullptr);
+    jit::adamw_attr_t attr(beta1, beta2, coeff, amsgrad);
+
     ref(beta1,
         beta2,
         -learning_rate,
@@ -996,7 +1000,7 @@ void TestKernelAdamW() {
       ExpectEQ<T>(ref_param_out.data(), jit_param_out.data(), numel);
     };
 
-    TestAllImpls<KernelTuple, PlaceType>(1,
+    TestAllImpls<KernelTuple, PlaceType>(attr,
                                          verifier,
                                          beta1,
                                          beta2,
