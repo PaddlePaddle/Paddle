@@ -9,11 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/memcpy_d2h_op.h"
-
 #include <string>
-
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -60,25 +58,6 @@ class MemcpyD2HInferVarType : public framework::VarTypeInference {
   }
 };
 
-class MemcpyD2HKernel {
- public:
-  void operator()(const framework::ExecutionContext &ctx) const {
-    auto *x = ctx.InputVar("X");
-    if (x == nullptr) {
-      return;
-    }
-    PADDLE_ENFORCE_EQ(
-        ctx.HasOutput("Out"),
-        true,
-        common::errors::NotFound("Output(Out) of memcpy_d2h_op is not found."));
-    auto *out = ctx.OutputVar("Out");
-    // Get dev_ctx from ExecutionContext, it's D2H stream
-    auto &dev_ctx = ctx.device_context();
-    auto dst_place_type = ctx.Attr<int>("dst_place_type");
-    framework::VisitVarType(*x, MemcpyD2HFunctor(out, dev_ctx, dst_place_type));
-  }
-};
-
 class MemcpyD2HOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -119,31 +98,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MemcpyD2HInferShapeFunctor);
-
-#ifdef PADDLE_WITH_IPU
-REGISTER_OP_IPU_KERNEL_FUNCTOR(memcpy_d2h,
-                               float,
-                               ops::MemcpyD2HKernel,
-                               double,
-                               ops::MemcpyD2HKernel,
-                               int8_t,
-                               ops::MemcpyD2HKernel,
-                               uint8_t,
-                               ops::MemcpyD2HKernel,
-                               int,
-                               ops::MemcpyD2HKernel,
-                               int64_t,
-                               ops::MemcpyD2HKernel,
-                               bool,
-                               ops::MemcpyD2HKernel,
-                               phi::dtype::bfloat16,
-                               ops::MemcpyD2HKernel,
-                               phi::dtype::complex<float>,
-                               ops::MemcpyD2HKernel,
-                               phi::dtype::complex<double>,
-                               ops::MemcpyD2HKernel,
-                               phi::dtype::float16,
-                               ops::MemcpyD2HKernel,
-                               int16_t,
-                               ops::MemcpyD2HKernel);
-#endif

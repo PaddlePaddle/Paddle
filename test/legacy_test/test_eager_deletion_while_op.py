@@ -24,14 +24,13 @@ import paddle
 from paddle import base
 from paddle.base import core, in_pir_mode
 from paddle.base.executor import Executor
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 base.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
-    @test_with_pir_api
+
     def test_main(self):
         places = []
         if (

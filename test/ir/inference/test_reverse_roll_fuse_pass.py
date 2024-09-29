@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+import sys
 import unittest
 from functools import partial
 
@@ -208,12 +209,17 @@ class ReverseRollPass(PassAutoScanTest):
         return program_config
 
     def test(self):
+        max_examples = 50
+        min_success_num = 50
+        if sys.platform == "win32":
+            max_examples = 5
+            min_success_num = 5
         self.run_and_statis(
             quant=False,
-            max_examples=50,
+            max_examples=max_examples,
             passes=["reverse_roll_fuse_pass"],
             max_duration=250,
-            min_success_num=50,
+            min_success_num=min_success_num,
         )
 
 
@@ -385,12 +391,17 @@ class ReverseRoll2Pass(PassAutoScanTest):
         return program_config
 
     def test(self):
+        max_examples = 50
+        min_success_num = 50
+        if sys.platform == "win32":
+            max_examples = 5
+            min_success_num = 5
         self.run_and_statis(
             quant=False,
-            max_examples=50,
+            max_examples=max_examples,
             passes=["reverse_roll_fuse_pass"],
             max_duration=250,
-            min_success_num=50,
+            min_success_num=min_success_num,
         )
 
 

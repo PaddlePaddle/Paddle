@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 
 import paddle
 from paddle import nn, static
 from paddle.nn import TransformerEncoder, TransformerEncoderLayer
-from paddle.tensorrt.util import run_pir_pass
 
 
 def get_r50_program():
@@ -89,7 +87,6 @@ def get_dummy_program():
             concat_out = paddle.concat([y_gelu_1, y_gelu_2], axis=-1)
             output = paddle.unsqueeze(concat_out, axis=0)
 
-        main_program = run_pir_pass(main_program)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(default_startup_program)
 
@@ -153,6 +150,7 @@ def get_bert_program():
         else paddle.CPUPlace()
     )
     pir_program = main_program
+
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(pir_program, startup_program):
             x = np.ones([1, seq_length]).astype('int64')
@@ -163,6 +161,7 @@ def get_bert_program():
                 feed={"input_ids": x},
                 fetch_list=pir_program.list_vars()[-3],
             )
+
     params = main_program.global_block().all_parameters()
     param_dict = {}
     # save parameters

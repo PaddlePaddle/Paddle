@@ -447,7 +447,7 @@ class TestImperativeResneXt(unittest.TestCase):
                 name='label', shape=[-1, 1], dtype='int64'
             )
             out = se_resnext(img)
-            softmax_out = paddle.nn.function.softmax(out)
+            softmax_out = paddle.nn.functional.softmax(out)
             loss = paddle.nn.functional.cross_entropy(
                 input=softmax_out,
                 label=label,

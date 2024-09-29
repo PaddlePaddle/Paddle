@@ -62,7 +62,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_mul_op$|\
 ^test_bmn$|\
 ^test_memory_efficient_attention$|\
-^test_fuse_gemm_epilogue_pass$|\
+^test_fuse_gemm_epilogue_pass_deprecated$|\
 ^test_tril_triu_op$|\
 ^test_train_step_resnet18_adam$|\
 ^test_train_step_resnet18_sgd$|\
@@ -144,7 +144,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^paddle_infer_api_copy_tensor_tester$|\
 ^cudnn_helper_test$|\
 ^test_analyzer_small_dam$|\
-^test_analyzer_transformer$|\
+^test_analyzer_transformer_deprecated$|\
 ^test_analyzer_int8_mobilenetv3_large$|\
 ^test_analyzer_bfloat16_mobilenetv3_large$|\
 ^test_api_impl$|\
@@ -235,7 +235,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_add_reader_dependency_deprecated$|\
 ^test_conv2d_fusion_op$|\
 ^test_fused_conv2d_add_act_op$|\
-^test_analyzer_detect_functional_mkldnn$|\
 ^test_audio_datasets$|\
 ^test_signal$|\
 ^test_stft_op$|\
@@ -428,7 +427,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
 # TODO: fix these unittest that is bound to fail
 disable_wincpu_test="^jit_kernel_test$|\
-^test_analyzer_transformer$|\
+^test_analyzer_transformer_deprecated$|\
 ^test_vision_models$|\
 ^test_dygraph_multi_forward$|\
 ^test_imperative_transformer_sorted_gradient$|\
