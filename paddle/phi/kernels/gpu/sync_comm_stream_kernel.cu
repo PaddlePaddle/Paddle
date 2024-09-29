@@ -14,5 +14,9 @@
 
 #include "paddle/phi/kernels/impl/sync_comm_stream_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    sync_comm_stream, GPU, ALL_LAYOUT, phi::SyncCommStreamKernel, float) {}
+PD_REGISTER_KERNEL(sync_comm_stream,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SyncCommStreamKernel,
+                   float,
+                   double) {}
