@@ -1953,7 +1953,3 @@ PHI_DEFINE_EXPORTED_bool(fused_multi_transformer_op_use_mbfmha,
 PHI_DEFINE_EXPORTED_int64(multi_block_attention_min_partition_size,
                           1024,
                           "The minimum partition size for flash decoding");
-
-PHI_DEFINE_EXPORTED_bool(sync_for_benchmark,
-                         false,
-                         "Whether call dev_ctx->Wait() after lunch kernel.");
