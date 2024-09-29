@@ -42,7 +42,11 @@ XPU_FA_TGEMM get_flash_attn_tgemm() {
       (std::is_same<phi::dtype::float16, T>::value ||
        std::is_same<XPUTypeFP16, T>::value)) {
     return XPU_FA_TGEMM::FA_FLOAT16;
-  } else if (std::getenv("XPU_PADDLE_FA_TGEMM_FLOAT")) {
+  } else if ((std::is_same<phi::dtype::bfloat16, T>::value ||
+              std::is_same<XPUTypeBF16, T>::value) &&
+             std::getenv("XPU_PADDLE_FA_BFLOAT16_XTE") != nullptr) {
+    return XPU_FA_TGEMM::FA_FLOAT16;
+  } else if (std::getenv("XPU_PADDLE_FA_TGEMM_FLOAT") != nullptr) {
     return XPU_FA_TGEMM::FA_FLOAT;
   } else {
     return XPU_FA_TGEMM::FA_TFLOAT32;
