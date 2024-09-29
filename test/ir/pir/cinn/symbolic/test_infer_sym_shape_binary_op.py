@@ -336,5 +336,42 @@ class SearchsortedOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class RepeatInterleaveWithTensorIndexNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, repeat):
+        out = paddle.repeat_interleave(x, repeat, axis=0)
+        out = paddle.repeat_interleave(x, repeat, axis=1)
+        out = paddle.repeat_interleave(x, repeat, axis=-1)
+        out = paddle.repeat_interleave(x, repeat, axis=-2)
+        return out
+
+
+class RepeatInterleaveWithTensorIndexOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = [
+            'shape[Mul(S0, S3), S1, S2], data[NULL]',
+            'shape[S0, Mul(S1, S3), S2], data[NULL]',
+            'shape[S0, S1, Mul(S2, S3)], data[NULL]',
+            'shape[S0, Mul(S1, S3), S2], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = RepeatInterleaveWithTensorIndexNet()
+        x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+        repeat_spec = InputSpec(shape=[None], dtype='int32')
+        input_spec = [x_spec, repeat_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(
+            net,
+            input_spec,
+            'pd_op.repeat_interleave_with_tensor_index',
+            self.expected,
+        )
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()

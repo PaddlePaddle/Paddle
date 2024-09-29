@@ -3961,7 +3961,7 @@
     func : repeat_interleave_with_tensor_index
     data_type : x
   backward: repeat_interleave_with_tensor_index_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reshape
   args : (Tensor x, IntArray shape)

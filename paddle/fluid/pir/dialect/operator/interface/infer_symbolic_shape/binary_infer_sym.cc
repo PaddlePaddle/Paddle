@@ -1442,11 +1442,58 @@ bool PriorBoxOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool RepeatInterleaveWithTensorIndexOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool RepeatInterleaveWithTensorIndexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &index_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const auto &attributes = op->attributes();
+  int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+
+  const std::vector<symbol::DimExpr> &in_dims_sym = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (operand_shape_or_data.data().has_value()) {
+      dims = operand_shape_or_data.data().value();
+    } else {
+      dims = operand_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  const symbol::DimExpr &repeat_times_sym = [&] {
+    symbol::DimExpr repeat_times;
+    if (index_shape_or_data.data().has_value()) {
+      repeat_times = index_shape_or_data.data().value()[0];
+    } else {
+      repeat_times = index_shape_or_data.shape()[0];
+    }
+    return repeat_times;
+  }();
+
+  int x_rank = in_dims_sym.size();
+  if (axis < 0) axis += x_rank;
+
+  const auto &out_sym_shape = [&] {
+    std::vector<symbol::DimExpr> out_sym_shape;
+    for (int i = 0; i < x_rank; i++) {
+      if (i == axis) {
+        out_sym_shape.push_back(in_dims_sym.at(i) * repeat_times_sym);
+      } else {
+        out_sym_shape.push_back(in_dims_sym.at(i));
+      }
+    }
+    return out_sym_shape;
+  }();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_sym_shape)});
+
+  return true;
+}
 
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
