@@ -652,12 +652,41 @@ bool BilinearOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool BroadcastTensorsOpInferSymbolicShape(pir::Operation *op,
-//                                           pir::InferSymbolicShapeContext
-//                                           *infer_context) {
-//   // pass
-//   return true;
-// }
+bool BroadcastTensorsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data_list =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  // 1. Find Output rank = max(Inputs rank)
+  int target_rank = 0;
+  for (const auto &input_shape_or_data : input_shape_or_data_list) {
+    int tmp_rank = input_shape_or_data.shape().size();
+    target_rank = std::max(target_rank, tmp_rank);
+  }
+  // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
+  std::vector<symbol::DimExpr> out_shape;
+  symbol::DimExprBuilder builder;
+  for (int i = 0; i < target_rank; i++) {
+    auto tmp_dim = symbol::DimExpr{1};
+    for (const auto &input_shape_or_data : input_shape_or_data_list) {
+      int axis = input_shape_or_data.shape().size();
+      axis = i - target_rank + axis;
+      if (axis >= 0) {
+        infer_context->AddBroadcastableCstr(input_shape_or_data.shape()[axis],
+                                            tmp_dim);
+        tmp_dim = builder.Broadcast(input_shape_or_data.shape()[axis], tmp_dim);
+      }
+    }
+    out_shape.emplace_back(tmp_dim);
+  }
+  symbol::TensorListShapeOrDataDimExprs out_shapes;
+  for (size_t i = 0; i < input_shape_or_data_list.size(); i++) {
+    out_shapes.emplace_back(out_shape);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{out_shapes});
+  return true;
+}
 
 bool BilinearInterpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
