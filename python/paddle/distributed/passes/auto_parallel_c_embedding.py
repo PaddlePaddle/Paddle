@@ -137,6 +137,9 @@ def update_before_dims_mapping(new_op):
                     results.append(dist_attr_new)
                     sub_name = op.name().split('.')[1]
                     if op.num_operands() > 0:
+                        assert core.contains_spmd_rule(
+                            sub_name
+                        ), "Need to call the infer spmd_rules"
                         if sub_name == 'reshard':
                             placements_in = op.operand(0).source().placements
                             dim_map_in, partial_status_in = (
@@ -151,55 +154,6 @@ def update_before_dims_mapping(new_op):
                                 partial_status_in,
                             )
                             results.append(dist_attr_in)
-                        elif core.contains_spmd_rule(sub_name):
-                            rule = core.get_phi_spmd_rule(sub_name)
-                            tensor_dist_attr = TensorDistAttr()
-                            tensor_dist_attr.dims_mapping = dim_map
-                            partial_dims = []
-                            for i, p in enumerate(placements):
-                                if isinstance(p, dist.Partial):
-                                    partial_dims.append(i)
-                            if len(partial_dims) > 0:
-                                tensor_dist_attr._set_partial_dims(partial_dims)
-                            tensor_dist_attr.process_mesh = result.process_mesh
-                            outputs = DistTensorSpec(
-                                result.shape, tensor_dist_attr
-                            )
-                            input_specs = []
-                            # TODO(lizhenxing) fix bug
-                            input_specs.append(outputs)
-                            attr_names = op.get_attr_names()
-                            for attr_name in attr_names:
-                                input_specs.append(op.attrs()[attr_name])
-                            infered_dist_attrs = rule.infer_backward(
-                                *input_specs
-                            )
-                            dims_mapping_new_out = infered_dist_attrs[0][
-                                0
-                            ].dims_mapping
-                            partial_status = {}
-                            if infered_dist_attrs[1][0]._is_partial():
-                                partial_dims = infered_dist_attrs[0][
-                                    0
-                                ]._partial_dims()
-                                for i in partial_dims:
-                                    partial_status[i] = (
-                                        paddle.base.core.ReduceType.kRedSum
-                                    )
-                            dist_attr_new_out = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                                result.process_mesh,
-                                dims_mapping_new_out,
-                                partial_status,
-                            )
-                            dist_type = (
-                                paddle.base.libpaddle.pir.cvt_to_dist_type(
-                                    op.operand(0).type(), dist_attr_new_out
-                                )
-                            )
-                            op.operand(0).source().set_type(dist_type)
-                            operands.source().append(dist_attr_new_out)
-                            next_op = op.operand(0).source().get_defining_op()
-                            stack.append(next_op)
                         else:
                             operands.append(dist_attr_new)
                             next_op = op.operand(0).source().get_defining_op()
