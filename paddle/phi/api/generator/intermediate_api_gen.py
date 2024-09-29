@@ -63,6 +63,7 @@ def source_include(header_file_path):
 #endif
 
 COMMON_DECLARE_int32(low_precision_op_list);
+PD_DECLARE_bool(sync_for_benchmark);
 """
 
 
