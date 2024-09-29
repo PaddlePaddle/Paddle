@@ -130,9 +130,32 @@ void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
 
 void CheckError(float data_ref, float data) {
   if (std::abs(data_ref) > 1) {
-    CHECK_LE(std::abs((data_ref - data) / data_ref), FLAGS_accuracy);
+    PADDLE_ENFORCE_LE(
+        std::abs((data_ref - data) / data_ref),
+        FLAGS_accuracy,
+        common::errors::InvalidArgument([&]() {
+          std::ostringstream os;
+          os << "[Error info] This inequality must be satisfied 'abs((data_ref "
+                "- data) / data_ref) <= FLAGS_accuracy'.\n"
+             << "[Argument info] The current abs((data_ref - data) / data_ref) "
+                "is "
+             << std::abs((data_ref - data) / data_ref)
+             << " and the current FLAGS_accuracy is " << FLAGS_accuracy << ".";
+          return os.str();
+        }()));
   } else {
-    CHECK_LE(std::abs(data_ref - data), FLAGS_accuracy);
+    PADDLE_ENFORCE_LE(
+        std::abs(data_ref - data),
+        FLAGS_accuracy,
+        common::errors::InvalidArgument([&]() {
+          std::ostringstream os;
+          os << "[Error info] This inequality must be satisfied 'abs(data_ref "
+                "- data) <= FLAGS_accuracy'.\n"
+             << "[Argument info] The current abs(data_ref - data) is "
+             << std::abs(data_ref - data)
+             << " and the current FLAGS_accuracy is " << FLAGS_accuracy << ".";
+          return os.str();
+        }()));
   }
 }
 
@@ -669,7 +692,13 @@ void SummarizeAccuracy(float avg_acc_ref, float avg_acc, int compared_idx) {
 }
 
 void SummarizePerformance(const char *title, float sample) {
-  CHECK_GT(sample, 0.0);
+  PADDLE_ENFORCE_GT(sample, 0.0f, common::errors::InvalidArgument([&]() {
+                      std::ostringstream os;
+                      os << "[Error info] sample must be greater than 0.0.\n"
+                         << "[Argument info] The current sample is " << sample
+                         << ".";
+                      return os.str();
+                    }()));
   auto throughput = 1000.0 / sample;
   LOG(INFO) << title << ": avg fps: " << std::fixed << std::setw(6)
             << std::setprecision(4) << throughput << ", avg latency: " << sample
@@ -757,14 +786,44 @@ void CompareAccuracy(
 
   SummarizeAccuracy(avg_acc_ref, avg_acc_quant, compared_idx);
 
-  if (FLAGS_enable_fp32) CHECK_GT(avg_acc_ref, 0.0);
+  if (FLAGS_enable_fp32) {
+    PADDLE_ENFORCE_GT(
+        avg_acc_ref, 0.0f, common::errors::PreconditionNotMet([&]() {
+          std::ostringstream os;
+          os << "[Error info] avg_acc_ref must be greater than 0.0.\n"
+             << "[Condition info] The current avg_acc_ref is " << avg_acc_ref
+             << ".";
+          return os.str();
+        }()));
+  }
 
-  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16)
-    CHECK_GT(avg_acc_quant, 0.0);
+  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16) {
+    PADDLE_ENFORCE_GT(
+        avg_acc_quant, 0.0f, common::errors::PreconditionNotMet([&]() {
+          std::ostringstream os;
+          os << "[Error info] avg_acc_quant must be greater than 0.0.\n"
+             << "[Condition info] The current avg_acc_quant is "
+             << avg_acc_quant << ".";
+          return os.str();
+        }()));
+  }
 
   if (FLAGS_enable_fp32 &&
-      (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16))
-    CHECK_LE(avg_acc_ref - avg_acc_quant, FLAGS_quantized_accuracy);
+      (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16)) {
+    PADDLE_ENFORCE_LE(
+        avg_acc_ref - avg_acc_quant,
+        FLAGS_quantized_accuracy,
+        common::errors::PreconditionNotMet([&]() {
+          std::ostringstream os;
+          os << "[Error info] avg_acc_ref - avg_acc_quant must be less than or "
+                "equal to FLAGS_quantized_accuracy.\n"
+             << "[Condition info] The current avg_acc_ref - avg_acc_quant is "
+             << avg_acc_ref - avg_acc_quant
+             << "and the the FLAGS_quantized_accuracy is "
+             << FLAGS_quantized_accuracy << ".";
+          return os.str();
+        }()));
+  }
 }
 
 void CompareDeterministic(
