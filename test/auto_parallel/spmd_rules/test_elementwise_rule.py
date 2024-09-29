@@ -559,6 +559,127 @@ class TestElementwiseSPMDRule(unittest.TestCase):
             infered_output_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
         )
 
+    def test_single_mesh_dim_greater_than(self):
+        binary_rule = core.get_phi_spmd_rule("greater_than")
+        # [0, -1], [-1, -1] --> [0, -1], [0, -1], [0, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+        result_dist_attrs = binary_rule.infer_forward(
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
+        )
+        self.assertEqual(len(result_dist_attrs), 2)
+
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
+
+        # [0, -1], [-1, 0] --> [0, -1], [0, -1], [0, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
+        result_dist_attrs = binary_rule.infer_forward(
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
+        )
+        self.assertEqual(len(result_dist_attrs), 2)
+
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
+
+    def test_single_mesh_dim_broadcast_greater_than(self):
+        binary_rule = core.get_phi_spmd_rule("greater_than")
+        self.x_dist_tensor_spec.shape = [1, 64]
+        self.y_dist_tensor_spec.shape = [64]
+
+        # [-1, 0], [-1] --> [-1, 0], [0], [-1, 0]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, 0])
+        self.y_dist_tensor_spec.set_dims_mapping([-1])
+
+        resulted_dist_attrs = binary_rule.infer_forward(
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
+        )
+
+        self.assertEqual(len(resulted_dist_attrs), 2)
+
+        infered_input_dist_attrs = resulted_dist_attrs[0]
+        infered_output_dist_attrs = resulted_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, 0])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
+
+    def test_single_mesh_dim_less_than(self):
+        binary_rule = core.get_phi_spmd_rule("less_than")
+        # [0, -1], [-1, -1] --> [0, -1], [0, -1], [0, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+        result_dist_attrs = binary_rule.infer_forward(
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
+        )
+        self.assertEqual(len(result_dist_attrs), 2)
+
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
+
+        # [0, -1], [-1, 0] --> [0, -1], [0, -1], [0, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
+        result_dist_attrs = binary_rule.infer_forward(
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
+
+    def test_single_mesh_dim_broadcast_less_than(self):
+        binary_rule = core.get_phi_spmd_rule("less_than")
+        self.x_dist_tensor_spec.shape = [1, 64]
+        self.y_dist_tensor_spec.shape = [64]
+
+        # [-1, 0], [-1] --> [-1, 0], [0], [-1, 0]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, 0])
+        self.y_dist_tensor_spec.set_dims_mapping([-1])
+
+        resulted_dist_attrs = binary_rule.infer_forward(
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
+        )
+
+        self.assertEqual(len(resulted_dist_attrs), 2)
+
+        infered_input_dist_attrs = resulted_dist_attrs[0]
+        infered_output_dist_attrs = resulted_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, 0])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
+
 
 if __name__ == "__main__":
     unittest.main()
