@@ -161,6 +161,7 @@ void AddmmKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
+#ifdef PADDLE_WITH_XPU_XRE5
 PD_REGISTER_KERNEL(addmm,
                    XPU,
                    ALL_LAYOUT,
@@ -168,3 +169,11 @@ PD_REGISTER_KERNEL(addmm,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(addmm,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AddmmKernel,
+                   float,
+                   phi::dtype::float16) {}
+#endif

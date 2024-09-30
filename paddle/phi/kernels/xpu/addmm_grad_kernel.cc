@@ -131,6 +131,7 @@ void AddmmGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
+#ifdef PADDLE_WITH_XPU_XRE5
 PD_REGISTER_KERNEL(addmm_grad,
                    XPU,
                    ALL_LAYOUT,
@@ -138,3 +139,11 @@ PD_REGISTER_KERNEL(addmm_grad,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(addmm_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AddmmGradKernel,
+                   float,
+                   phi::dtype::float16) {}
+#endif
