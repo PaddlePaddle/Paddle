@@ -198,6 +198,7 @@ class TestMultipleAccelerators(unittest.TestCase):
             training_script=target_file_name,
             training_script_args=[],
             need_envs=need_envs,
+            accelerator_type=accelerator_type,
         )
 
         while True:

@@ -491,7 +491,9 @@ class TestDistSPTrainingWithConfigs(TestDistSPTrainingBase):
             "pp_degree": 1,
             "mp_configs": {
                 "mp_async_allreduce": True,
-                "mp_fused_linear_param_grad_add": True,
+                "mp_fused_linear_param_grad_add": (
+                    False if paddle.is_compiled_with_xpu() else True
+                ),
                 "sp_async_reduce_scatter": True,
             },
         }
@@ -509,7 +511,9 @@ class TestDistSPTrainingAmpWithConfigs(TestDistSPTrainingBase):
             "pp_degree": 1,
             "mp_configs": {
                 "mp_async_allreduce": True,
-                "mp_fused_linear_param_grad_add": True,
+                "mp_fused_linear_param_grad_add": (
+                    False if paddle.is_compiled_with_xpu() else True
+                ),
                 "sp_async_reduce_scatter": True,
                 "recompute_allgather": True,
             },
@@ -777,7 +781,9 @@ class TestDistSPTrainingWithoutBias2(TestDistSPTrainingWithoutBias):
             "pp_degree": 1,
             "mp_configs": {
                 "mp_async_allreduce": True,
-                "mp_fused_linear_param_grad_add": True,
+                "mp_fused_linear_param_grad_add": (
+                    False if paddle.is_compiled_with_xpu() else True
+                ),
                 "sp_async_reduce_scatter": True,
             },
         }

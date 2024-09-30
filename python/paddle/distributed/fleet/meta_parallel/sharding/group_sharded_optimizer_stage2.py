@@ -590,6 +590,12 @@ class GroupShardedOptimizerStage2(Optimizer):
                             )
                             .cast(dtype=param.dtype)
                         )
+                    elif self._default_device == "xpu":
+                        param.set_value(
+                            self._master_params[param.name]
+                            .to("xpu:" + str(self.dev_id))
+                            .cast(dtype=param.dtype)
+                        )
                     else:
                         param.set_value(
                             self._master_params[param.name]

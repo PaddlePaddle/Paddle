@@ -18,14 +18,29 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
 
+import paddle
+
 
 class TestDygraphShardingStage3(TestMultipleAccelerators):
     # check sharding logic as well as the accuracy with single mode
     def test_dygraph_sharding_stage3(self):
-        self.run_mnist_2accelerators('dygraph_group_sharded_stage3.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'dygraph_group_sharded_stage3.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('dygraph_group_sharded_stage3.py')
 
     def test_dygraph_sharding_stage3_offload(self):
-        self.run_mnist_2accelerators('dygraph_group_sharded_stage3_offload.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'dygraph_group_sharded_stage3_offload.py',
+                accelerator_type="xpu",
+            )
+        else:
+            self.run_mnist_2accelerators(
+                'dygraph_group_sharded_stage3_offload.py'
+            )
 
 
 if __name__ == "__main__":

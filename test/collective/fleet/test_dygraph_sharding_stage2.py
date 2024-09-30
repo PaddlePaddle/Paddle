@@ -18,19 +18,40 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
 
+import paddle
+
 
 class TestDygraphShardingStage2(TestMultipleAccelerators):
     # check sharding logic as well as the accuracy with single mode
     def test_dygraph_sharding_stage2(self):
-        self.run_mnist_2accelerators('dygraph_group_sharded_stage2.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'dygraph_group_sharded_stage2.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('dygraph_group_sharded_stage2.py')
 
     def test_dygraph_sharding_stage2_offload(self):
-        self.run_mnist_2accelerators('dygraph_group_sharded_stage2_offload.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'dygraph_group_sharded_stage2_offload.py',
+                accelerator_type="xpu",
+            )
+        else:
+            self.run_mnist_2accelerators(
+                'dygraph_group_sharded_stage2_offload.py'
+            )
 
     def test_dygraph_sharding_stage2_with_comm_overlap(self):
-        self.run_mnist_2accelerators(
-            'dygraph_group_sharded_stage2_comm_overlap.py'
-        )
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'dygraph_group_sharded_stage2_comm_overlap.py',
+                accelerator_type="xpu",
+            )
+        else:
+            self.run_mnist_2accelerators(
+                'dygraph_group_sharded_stage2_comm_overlap.py'
+            )
 
 
 if __name__ == "__main__":
