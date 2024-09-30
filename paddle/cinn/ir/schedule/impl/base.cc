@@ -44,7 +44,7 @@ void DyScheduleImpl::MergeExprs() {
   if (exprs.size() <= 1U) return;
   PADDLE_ENFORCE_NOT_NULL(
       exprs[0].As<ir::Block>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MergeExprs>.\n"
           "[Error info] Expr[0] of module_expr should be a Block!\n"
@@ -53,7 +53,7 @@ void DyScheduleImpl::MergeExprs() {
   PADDLE_ENFORCE_EQ(
       exprs[0].As<ir::Block>()->stmts.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MergeExprs>.\n"
           "[Error info] Expr[0] of module_expr should have only one stmt!\n"
@@ -61,7 +61,7 @@ void DyScheduleImpl::MergeExprs() {
           module_expr_.GetExprs()));
   PADDLE_ENFORCE_NOT_NULL(
       exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MergeExprs>.\n"
           "[Error info] Expr[0] of module_expr should be Block with only one "
@@ -77,7 +77,7 @@ void DyScheduleImpl::MergeExprs() {
           ->stmts[0]
           .As<ir::ScheduleBlockRealize>()
           ->schedule_block.As<ir::ScheduleBlock>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MergeExprs>.\n"
           "[Error info] Expr[0] of module_expr should be Block with only one "
@@ -209,7 +209,7 @@ void DyScheduleImpl::Annotate(const Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Annotate>.\n"
           "[Error info] Expr parameter 'block' must be a "
@@ -219,7 +219,7 @@ void DyScheduleImpl::Annotate(const Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Annotate>.\n"
           "[Error info] Expr parameter 'block' must be a ScheduleBlockRealize "
@@ -242,7 +242,7 @@ void DyScheduleImpl::Unannotate(Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Unannotate>.\n"
           "[Error info] Expr parameter 'block' must be a "
@@ -252,7 +252,7 @@ void DyScheduleImpl::Unannotate(Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Unannotate>.\n"
           "[Error info] Expr parameter 'block' must be a ScheduleBlockRealize "
@@ -280,7 +280,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Expr parameter 'block' must be a "
@@ -290,7 +290,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block_target.As<ir::ScheduleBlockRealize>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Expr parameter 'block_target' must be a "
@@ -303,7 +303,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   PADDLE_ENFORCE_EQ(
       exprs.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Size of exprs of current module must be 1!\n"
@@ -325,7 +325,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
     PADDLE_ENFORCE_EQ(
         vars[i]->upper_bound.defined() && vars_target[i]->upper_bound.defined(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<CopyTransformAndLoopInfo>.\n"
             "[Error info] Upper bound of iter_vars in both Expr parameter "
@@ -348,7 +348,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   PADDLE_ENFORCE_EQ(
       !new_iter_values.empty(),
       true,
-      common::errors::InvalidArgument([&]() -> std::string {
+      ::common::errors::InvalidArgument([&]() -> std::string {
         std::ostringstream oss;
         oss << "[IRScheduleError] An error occurred in the schedule primitive <"
             << primitive << ">.\n"
@@ -373,7 +373,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
 
   PADDLE_ENFORCE_EQ(!used_target_loop_vars.empty(),
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <CopyTransformAndLoopInfo>.\n"
                         "[Error info] Cannot CopyTransformAndLoopInfo since "
@@ -393,7 +393,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         true);
     PADDLE_ENFORCE_EQ(find_loop_var.size(),
                       1U,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <CopyTransformAndLoopInfo>.\n"
                           "[Error info] Number of loop with iter_var which is "
@@ -411,7 +411,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   for (int i = new_iter_values.size(); i < old_iter_values.size(); ++i) {
     PADDLE_ENFORCE_EQ(old_iter_values[i].as_var() != nullptr,
                       true,
-                      common::errors::InvalidArgument([&]() -> std::string {
+                      ::common::errors::InvalidArgument([&]() -> std::string {
                         std::ostringstream oss;
                         oss << "[IRScheduleError] An error occurred in the "
                                "schedule primitive <"
@@ -433,7 +433,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   } else {
     PADDLE_ENFORCE_EQ(old_iter_values[changed_loop_num].as_var() != nullptr,
                       true,
-                      common::errors::InvalidArgument([&]() -> std::string {
+                      ::common::errors::InvalidArgument([&]() -> std::string {
                         std::ostringstream oss;
                         oss << "[IRScheduleError] An error occurred in the "
                                "schedule primitive <"
@@ -457,7 +457,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
     PADDLE_ENFORCE_EQ(
         find_partial_loop.size(),
         1U,
-        common::errors::InvalidArgument([&]() -> std::string {
+        ::common::errors::InvalidArgument([&]() -> std::string {
           std::ostringstream oss;
           oss << "[IRScheduleError] An error occurred in the schedule "
                  "primitive <"
@@ -475,7 +475,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         true);
     PADDLE_ENFORCE_EQ(find_schedule_block.size(),
                       1U,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <CopyTransformAndLoopInfo>.\n"
                           "[Error info] Number of ScheduleBlockRealize in "
@@ -491,7 +491,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   PADDLE_ENFORCE_EQ(
       !used_target_loops.empty(),
       true,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Cannot CopyTransformAndLoopInfo since there is no loop "
@@ -521,7 +521,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
 
   PADDLE_ENFORCE_EQ(!all_loops.empty(),
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <CopyTransformAndLoopInfo>.\n"
                         "[Error info] Cannot CopyTransformAndLoopInfo since "
@@ -554,7 +554,7 @@ Expr DyScheduleImpl::SampleCategorical(
 
   PADDLE_ENFORCE_EQ(candidates.size(),
                     probs.size(),
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SampleCategorical>.\n"
                         "[Error info] vector<int> params(candidates) and "
@@ -580,7 +580,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
 
   PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<SampleCategorical>.\n"
           "[Error info] Expr parameter 'loop' should be a For loop.\n"
@@ -589,7 +589,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
 
   PADDLE_ENFORCE_GE(n,
                     2,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SamplePerfectTile>.\n"
                         "[Error info] The number of tile factors (n) should be "
@@ -600,7 +600,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
 
   PADDLE_ENFORCE_GE(max_innermost_factor,
                     1,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SamplePerfectTile>.\n"
                         "[Error info] The max innermost factor should be at "
@@ -611,7 +611,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
 
   PADDLE_ENFORCE_EQ(cinn::common::is_zero(loop.As<ir::For>()->min),
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SamplePerfectTile>.\n"
                         "[Error info] The For loop should start from 0.\n"
@@ -629,7 +629,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
   // 检查是否找到合适的 innermost_factor
   PADDLE_ENFORCE_EQ(!innermost_factors.empty(),
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SamplePerfectTile>.\n"
                         "[Error info] No innermost factor found for loop "
