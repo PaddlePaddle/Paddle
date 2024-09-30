@@ -41,7 +41,7 @@ void CBroadcastKernel(const Context& dev_ctx,
 
   std::shared_ptr<phi::stream::Stream> stream;
   if (use_calc_stream) {
-    stream = static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
+    stream = static_cast<phi::CustomContext*>(&dev_ctx)->GetStream();
   } else {
     stream = comm->GetStream();
   }

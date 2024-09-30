@@ -84,8 +84,7 @@ void CAllReduceKernel(const Context& dev_ctx,
 
   std::shared_ptr<phi::stream::Stream> stream;
   if (use_calc_stream) {
-    auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
-    stream = static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
+    stream = static_cast<phi::CustomContext*>(&dev_ctx)->GetStream();
   } else {
     stream = comm->GetStream();
   }

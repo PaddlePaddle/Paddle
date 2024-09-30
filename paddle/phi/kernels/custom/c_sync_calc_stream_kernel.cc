@@ -24,9 +24,6 @@ template <typename T, typename Context>
 void CSyncCalcStreamKernel(const Context &dev_ctx,
                            const DenseTensor &x,
                            DenseTensor *out) {
-  auto place = dev_ctx.GetPlace();
-  auto dev_ctx = static_cast<DeviceContext *>(
-      phi::DeviceContextPool::Instance().Get(place));
   dev_ctx->GetStream()->Synchronize();
 }
 }  // namespace phi
