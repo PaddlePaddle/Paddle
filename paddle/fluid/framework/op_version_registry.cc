@@ -100,7 +100,7 @@ PassVersionCheckerRegistrar& PassVersionCheckerRegistrar::GetInstance() {
 }
 
 // Provide a fake registration item for pybind testing.
-#include "paddle/fluid/framework/op_version_registry.inl"
+// #include "paddle/fluid/framework/op_version_registry.inl"
 
 }  // namespace compatible
 }  // namespace framework

@@ -303,7 +303,7 @@ file(GLOB_RECURSE dist_dialect_srcs
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
 set(op_dialect_deps
-    phi
+    phi_core
     common
     pir
     type_info

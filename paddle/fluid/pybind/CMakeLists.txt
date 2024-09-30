@@ -6,8 +6,6 @@ set(PYBIND_DEPS
     proto_desc
     standalone_executor
     executor
-    fleet_wrapper
-    box_wrapper
     metrics
     prune
     feed_fetch_method
@@ -25,11 +23,8 @@ set(PYBIND_DEPS
     imperative_flag
     dlpack_tensor
     device_context
-    gloo_wrapper
     infer_io_utils
-    heter_wrapper
     op_version_registry
-    ps_gpu_wrapper
     custom_operator
     cost_model
     fleet_executor

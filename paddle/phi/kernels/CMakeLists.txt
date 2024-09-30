@@ -18,6 +18,7 @@ add_subdirectory(funcs)
 
 # kernel autotune
 add_subdirectory(autotune)
+add_subdirectory(fleet)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 

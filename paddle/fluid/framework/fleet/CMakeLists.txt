@@ -20,7 +20,7 @@ else()
   cc_library(
     fleet_wrapper
     SRCS fleet_wrapper.cc
-    DEPS framework_proto variable_helper scope)
+    DEPS framework_proto proto_desc variable_helper scope)
 endif()
 
 if(WITH_HETERPS)
@@ -88,7 +88,7 @@ if(WITH_GLOO)
   cc_library(
     gloo_wrapper
     SRCS gloo_wrapper.cc
-    DEPS framework_proto variable_helper scope gloo)
+    DEPS framework_proto variable_helper scope gloo framework_io)
   cc_library(
     metrics
     SRCS metrics.cc
@@ -97,7 +97,7 @@ else()
   cc_library(
     gloo_wrapper
     SRCS gloo_wrapper.cc
-    DEPS framework_proto variable_helper scope)
+    DEPS framework_proto variable_helper scope framework_io)
   cc_library(
     metrics
     SRCS metrics.cc
