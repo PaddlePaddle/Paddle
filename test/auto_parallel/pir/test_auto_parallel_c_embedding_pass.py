@@ -17,18 +17,18 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
+class TestAutoParallelCEmbeddingPass(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
             num_of_devices=2,
             timeout=300,
         )
-        self._default_envs = {"dtype": "float32", "seed": "2023"}
+        self._default_envs = {"dtype": "float32", "seed": "2024"}
         self._changeable_envs = {"backend": ["gpu"]}
 
     def test_mlp(self):
         envs_list = test_base.gen_product_envs_list(
-            {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
+            {"dtype": "float32", "seed": "2024"}, {"backend": ["gpu"]}
         )
         for envs in envs_list:
             # self._log_dir.name = "./log"
