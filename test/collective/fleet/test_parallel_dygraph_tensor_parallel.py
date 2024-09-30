@@ -18,33 +18,76 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
 
+import paddle
+
 
 class TestHybridParallel(TestMultipleAccelerators):
     def test_hybrid_parallel_mp_random(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_random.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_random.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('hybrid_parallel_mp_random.py')
 
     def test_hybrid_parallel_mp_model(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_model.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_model.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('hybrid_parallel_mp_model.py')
 
     def test_hybrid_parallel_mp_model_with_sequence_parallel(self):
-        self.run_mnist_2accelerators(
-            'hybrid_parallel_mp_model_with_sequence_parallel.py'
-        )
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_model_with_sequence_parallel.py',
+                accelerator_type="xpu",
+            )
+        else:
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_model_with_sequence_parallel.py'
+            )
 
     def test_hybrid_parallel_mp_amp(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_amp.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_amp.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('hybrid_parallel_mp_amp.py')
 
     def test_hybrid_parallel_mp_fp16(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_fp16.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_fp16.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('hybrid_parallel_mp_fp16.py')
 
     def test_hybrid_parallel_mp_bf16(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_bf16.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_bf16.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('hybrid_parallel_mp_bf16.py')
 
     def test_hybrid_parallel_mp_clip_grad(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_clip_grad.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_clip_grad.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('hybrid_parallel_mp_clip_grad.py')
 
     def test_hybrid_parallel_mp_broadcast_obj(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_broadcast_obj.py')
+        if paddle.is_compiled_with_xpu():
+            self.run_mnist_2accelerators(
+                'hybrid_parallel_mp_broadcast_obj.py', accelerator_type="xpu"
+            )
+        else:
+            self.run_mnist_2accelerators('hybrid_parallel_mp_broadcast_obj.py')
 
 
 if __name__ == "__main__":

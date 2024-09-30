@@ -112,6 +112,7 @@ def train_mlp(
         group=group,
         offload=offload,
         segment_size=2**15,
+        device="xpu",
     )
 
     paddle.seed(2023)
@@ -215,23 +216,24 @@ def test_stage3_offload():
             atol=1e-2,
         )
 
-    # bfp16 offload
-    nccl_version = core.nccl_version()
-    if (
-        nccl_version >= 21000
-        and paddle.device.cuda.get_device_properties().major >= 8
-    ):
-        stage3_params = train_mlp(mlp7, use_pure_fp16=True, use_bfp16=True)
-        stage3_params_offload = train_mlp(
-            mlp8, use_pure_fp16=True, offload=True, use_bfp16=True
-        )
-        for i in range(len(stage3_params)):
-            np.testing.assert_allclose(
-                stage3_params[i].astype("float32").numpy(),
-                stage3_params_offload[i].astype("float32").numpy(),
-                rtol=1e-2,
-                atol=1e-2,
+    if paddle.is_compiled_with_cuda():
+        # bfp16 offload
+        nccl_version = core.nccl_version()
+        if (
+            nccl_version >= 21000
+            and paddle.device.cuda.get_device_properties().major >= 8
+        ):
+            stage3_params = train_mlp(mlp7, use_pure_fp16=True, use_bfp16=True)
+            stage3_params_offload = train_mlp(
+                mlp8, use_pure_fp16=True, offload=True, use_bfp16=True
             )
+            for i in range(len(stage3_params)):
+                np.testing.assert_allclose(
+                    stage3_params[i].astype("float32").numpy(),
+                    stage3_params_offload[i].astype("float32").numpy(),
+                    rtol=1e-2,
+                    atol=1e-2,
+                )
 
     # fp32 accumulate grad offload
     stage3_params = train_mlp(

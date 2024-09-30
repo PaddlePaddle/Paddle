@@ -98,7 +98,9 @@ def train_mlp(
     test_minimize=False,
 ):
     if sharding_stage != "dp":
-        group = paddle.distributed.new_group([0, 1], backend="nccl")
+        group = paddle.distributed.new_group(
+            [0, 1], backend="bkcl" if paddle.is_compiled_with_xpu() else "nccl"
+        )
     if opt_group:
         optimizer = optimizer_setting(
             model=model, use_pure_fp16=use_pure_fp16, opt_group=opt_group
@@ -108,12 +110,29 @@ def train_mlp(
 
     if sharding_stage == 2:
         origin_model = model
-        optimizer = GroupShardedOptimizerStage2(
-            params=optimizer._parameter_list, optim=optimizer, group=group
-        )
-        model = GroupShardedStage2(
-            model, optimizer, group=group, buffer_max_size=2**21
-        )
+        if paddle.is_compiled_with_xpu():
+            optimizer = GroupShardedOptimizerStage2(
+                params=optimizer._parameter_list,
+                optim=optimizer,
+                group=group,
+                device="xpu",
+            )
+        else:
+            optimizer = GroupShardedOptimizerStage2(
+                params=optimizer._parameter_list, optim=optimizer, group=group
+            )
+        if paddle.is_compiled_with_xpu():
+            model = GroupShardedStage2(
+                model,
+                optimizer,
+                group=group,
+                buffer_max_size=2**21,
+                device="xpu",
+            )
+        else:
+            model = GroupShardedStage2(
+                model, optimizer, group=group, buffer_max_size=2**21
+            )
         model._set_reduce_overlap(True)
         optimizer._set_broadcast_overlap(True, model)
     else:
@@ -140,7 +159,7 @@ def train_mlp(
     )
 
     if sharding_stage == 2:
-        model.to(device="gpu")
+        model.to(device="xpu" if paddle.is_compiled_with_xpu() else "gpu")
 
     for eop in range(epoch):
         model.train()
@@ -166,7 +185,10 @@ def train_mlp(
             optimizer.step()
             optimizer.clear_grad()
 
-    paddle.device.cuda.synchronize()
+    if paddle.is_compiled_with_xpu():
+        paddle.device.xpu.synchronize()
+    else:
+        paddle.device.cuda.synchronize()
 
     if save_model:
         return model, optimizer
@@ -201,7 +223,10 @@ def test_dp_stage2():
     )
     for i in range(len(dp_params)):
         np.testing.assert_allclose(
-            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6
+            dp_params[i].numpy(),
+            stage2_params[i].numpy(),
+            rtol=1e-6,
+            atol=1e-8 if paddle.is_compiled_with_xpu() else 0,
         )
 
     # stage2 accumulate grad
@@ -223,7 +248,10 @@ def test_dp_stage2():
     )
     for i in range(len(dp_params)):
         np.testing.assert_allclose(
-            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6
+            dp_params[i].numpy(),
+            stage2_params[i].numpy(),
+            rtol=1e-6,
+            atol=1e-8 if paddle.is_compiled_with_xpu() else 0,
         )
 
     # save/load model
