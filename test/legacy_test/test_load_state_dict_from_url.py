@@ -16,10 +16,11 @@ import unittest
 import paddle
 from paddle.vision.models import resnet18
 
+
 class TestLoadStateDictFromUrl(unittest.TestCase):
     def setUp(self):
         self.model = resnet18(pretrained=False)
-        self.weight_path = '/paddle/test_zty/test/resnet18.pdparams'#Local model path
+        self.weight_path = '/paddle/test_zty/test/resnet18.pdparams'
 
     def test_load_state_dict_from_url(self):
         # Verify the consistency of the local files loaded by paddle.load with the local files loaded load_state_dict_from_url
