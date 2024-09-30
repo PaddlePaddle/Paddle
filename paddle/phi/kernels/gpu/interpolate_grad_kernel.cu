@@ -368,7 +368,7 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
 
   // Restricted parallelism if ratio_w is over threshold
   // to avoid atomic contention overhead.
-  if (ratio_w < 0.5) [[likely]] {
+  if (ratio_w < 0.5) [[likely]] {  // NOLINT
     if (index < num_in) {
       int index_tmp = index;
       const int w1 = index_tmp % in_w;
@@ -436,7 +436,7 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
       }
       in[index] = static_cast<T>(d2val_sum);
     }
-  } else [[unlikely]] {  // If contention is mild, fallback to naive atomics
+  } else [[unlikely]] {  // NOLINT
     for (; index < num_out; index += stride) {
       int index_tmp = index;
       int w2 = index_tmp % out_w;
