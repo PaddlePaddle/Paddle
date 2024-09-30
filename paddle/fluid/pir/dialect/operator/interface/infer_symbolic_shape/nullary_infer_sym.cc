@@ -258,14 +258,14 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
   if (!num_rows_shape_or_data.data().has_value()) {
     rows = symbol::DimExpr(infer_context->GetNextSymName());
   } else {
-    rows = symbol::DimExpr(
-        static_cast<int64_t>(num_rows_shape_or_data.data()->at(0)));
+    rows =
+        symbol::DimExpr((num_rows_shape_or_data.data()->at(0)).Get<int64_t>());
   }
   if (!num_columns_shape_or_data.data().has_value()) {
     columns = symbol::DimExpr(infer_context->GetNextSymName());
   } else {
-    const auto columns = symbol::DimExpr(
-        static_cast<int64_t>(num_columns_shape_or_data.data()->at(0)));
+    auto columns = symbol::DimExpr(
+        (num_columns_shape_or_data.data()->at(0)).Get<int64_t>());
     if (columns == symbol::DimExpr(-1)) {
       columns = rows;
     }
