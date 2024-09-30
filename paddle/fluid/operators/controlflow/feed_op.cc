@@ -198,7 +198,3 @@ REGISTER_OPERATOR(
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(
     feed_dense_tensor, ALL_LAYOUT, paddle::operators::FeedDenseTensorKernel) {}
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(feed_strings,
-                                         ALL_LAYOUT,
-                                         paddle::operators::FeedStringsKernel) {
-}

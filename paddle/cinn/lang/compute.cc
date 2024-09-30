@@ -211,6 +211,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
 
   auto op = ir::ComputeOp::Make(
       unique_name, fn, real_shape, domain_without_reduce_axis, reduce_axis);
+
   auto tensor = ir::Tensor(unique_name,
                            fn_body.type(),
                            real_shape,
