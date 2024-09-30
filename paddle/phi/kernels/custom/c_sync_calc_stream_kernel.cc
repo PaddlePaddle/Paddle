@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -24,7 +22,7 @@ template <typename T, typename Context>
 void CSyncCalcStreamKernel(const Context &dev_ctx,
                            const DenseTensor &x,
                            DenseTensor *out) {
-  dev_ctx->GetStream()->Synchronize();
+  dev_ctx.GetStream()->Synchronize();
 }
 }  // namespace phi
 
