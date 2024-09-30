@@ -61,6 +61,7 @@ decomp_interface_declare_gen_op_list = [
     "swiglu",
     "softmax",
     "softsign",
+    "split_with_num",
     "square",
     "squared_l2_norm",
     "squeeze",

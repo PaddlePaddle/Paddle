@@ -77,7 +77,7 @@ class TestSplitWithNumOp(OpTest):
         self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.dtype = self.get_dtype()
         self.init_data()
         self.attrs = {
@@ -118,7 +118,7 @@ class TestSplitWithNumOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
