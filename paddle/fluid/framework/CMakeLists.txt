@@ -505,7 +505,7 @@ cc_library(
 cc_library(
   variable_helper
   SRCS variable_helper.cc
-  DEPS lod_tensor)
+  DEPS lod_tensor type_info)
 
 set(NAIVE_EXECUTOR_DEPS
     op_registry
