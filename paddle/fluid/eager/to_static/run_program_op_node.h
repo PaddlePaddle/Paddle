@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <queue>
+#include <vector>
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -372,6 +374,60 @@ void print_collection(const T &t) {
 
 }  // namespace details
 
+inline void PrintScope2(paddle::framework::Scope *root) {
+  std::cout << "PrintScope2" << std::endl;
+  if (!root) return;
+
+  // level traversal
+  std::queue<paddle::framework::Scope *> queue;
+  queue.push(root);
+
+  std::vector<paddle::framework::Scope *> scopes;
+
+  while (!queue.empty()) {
+    auto *end = queue.back();
+    paddle::framework::Scope *q = nullptr;
+    while (q != end) {
+      q = queue.front();
+      queue.pop();
+      scopes.push_back(q);
+
+      for (auto *c : q->kids()) {
+        queue.push(c);
+      }
+    }
+  }
+
+  for (paddle::framework::Scope *q : scopes) {
+    std::cout << q << std::endl;
+    for (auto &var_name : q->LocalVarNames()) {
+      paddle::framework::Variable *var = q->FindVar(var_name);
+      if (var) {
+        if (var->IsInitialized()) {
+          if (var->IsType<phi::DenseTensor>()) {
+            if (var->GetMutable<phi::DenseTensor>()->Holder()) {
+              std::cout << var_name << " is densetensor holder = "
+                        << var->GetMutable<phi::DenseTensor>()->Holder()->ptr()
+                        << std::endl;
+            } else {
+              std::cout << var_name << " is densetensor holder = null "
+                        << var->GetMutable<phi::DenseTensor>()->Holder()
+                        << std::endl;
+            }
+
+          } else {
+            std::cout << var_name << " is not densetensor" << std::endl;
+          }
+        } else {
+          std::cout << var_name << " is not init" << std::endl;
+        }
+      } else {
+        std::cout << var_name << " is null" << std::endl;
+      }
+    }
+  }
+}
+
 inline void PirRunProgramAPI(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
@@ -528,6 +584,9 @@ inline void PirRunProgramAPI(
         "interpreter_core_run", phi::TracerEventType::UserDefined, 1);
     interpreter_core->Run({});
   }
+  std::cout << "lala 1" << std::endl;
+  PrintScope2(
+      const_cast<paddle::framework::Scope *>(global_inner_scope->root()));
 
   {
     phi::RecordEvent record_event(
@@ -549,6 +608,9 @@ inline void PirRunProgramAPI(
       global_inner_scope->SetCanReused(false);
     }
   }
+  std::cout << "lala 2" << std::endl;
+  PrintScope2(
+      const_cast<paddle::framework::Scope *>(global_inner_scope->root()));
 
 #ifdef PADDLE_WITH_DNNL
   if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
