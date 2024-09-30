@@ -84,4 +84,5 @@ PD_REGISTER_KERNEL(fused_gemm_epilogue,
                    ALL_LAYOUT,
                    phi::fusion::FusedGemmEpilogueKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}

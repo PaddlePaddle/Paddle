@@ -21,14 +21,14 @@ import builtins
 import inspect
 from collections import namedtuple
 from copy import deepcopy
-from functools import cached_property
+from functools import cached_property, reduce
 from typing import Any, Callable, Tuple, Union
 
 from typing_extensions import TypeAlias, TypeGuard
 
 import paddle
 from paddle.jit.utils import OrderedSet
-from paddle.utils import flatten
+from paddle.utils import flatten, map_structure
 
 from .....utils.layers_utils import NotSupportedTensorArgumentError
 from ...infer_meta import (
@@ -42,7 +42,6 @@ from ...symbolic.statement_ir import Reference, StatementIR, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
-    BreakGraphError,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -640,25 +639,40 @@ class FunctionGraph:
             except NotSupportedTensorArgumentError as e:
                 bound_arguments = inspect.signature(func).bind(*args, **kwargs)
                 bound_arguments.apply_defaults()
-                if e.name not in bound_arguments.arguments:
-                    # TODO(zrr1999): fallback static shape for all symbolic variables
-                    raise BreakGraphError(
-                        f"Can't find {e.name} in bound arguments."
+                if e.name in bound_arguments.arguments:
+                    original_var = bound_arguments.arguments[e.name]
+                    flatten_vars = original_var.flatten_items()
+                    if not any(
+                        isinstance(arg, SymbolicVariable)
+                        for arg in flatten_vars
+                    ):
+                        # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
+                        raise e
+
+                    args, kwargs = map_if(
+                        (args, kwargs),
+                        pred=lambda x: x is original_var,
+                        true_fn=lambda x: replace_symbolic_var_with_constant_var(
+                            x
+                        ),
+                        false_fn=lambda x: x,
                     )
-                original_var = bound_arguments.arguments[e.name]
-                flatten_vars = original_var.flatten_items()
+                else:
+                    flatten_vars = reduce(
+                        lambda x, y: x + y.flatten_items(),
+                        bound_arguments.arguments.values(),
+                        [],
+                    )
 
-                if not any(
-                    isinstance(arg, SymbolicVariable) for arg in flatten_vars
-                ):
-                    raise e
+                    if not any(
+                        isinstance(arg, SymbolicVariable)
+                        for arg in flatten_vars
+                    ):
+                        raise e
 
-                args, kwargs = map_if(
-                    (args, kwargs),
-                    pred=lambda x: x is original_var,
-                    true_fn=lambda x: replace_symbolic_var_with_constant_var(x),
-                    false_fn=lambda x: x,
-                )
+                    args, kwargs = map_structure(
+                        replace_symbolic_var_with_constant_var, (args, kwargs)
+                    )
 
                 metas = convert_to_meta(args)
                 kwmetas = convert_to_meta(kwargs)
