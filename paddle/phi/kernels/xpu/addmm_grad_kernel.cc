@@ -140,10 +140,6 @@ PD_REGISTER_KERNEL(addmm_grad,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(addmm_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::AddmmGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    addmm_grad, XPU, ALL_LAYOUT, phi::AddmmGradKernel, float, phi::dtype::float16) {}
 #endif

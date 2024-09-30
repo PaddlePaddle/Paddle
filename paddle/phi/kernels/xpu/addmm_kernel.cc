@@ -170,10 +170,6 @@ PD_REGISTER_KERNEL(addmm,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(addmm,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::AddmmKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    addmm, XPU, ALL_LAYOUT, phi::AddmmKernel, float, phi::dtype::float16) {}
 #endif
