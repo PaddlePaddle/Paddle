@@ -44,7 +44,7 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   std::ostringstream os;
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<ComputeAt>.\n"
           "[Error info] Expr param(block) should be a ScheduleBlockRealize!\n"
@@ -52,7 +52,7 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
           module_expr_.GetExprs()));
   PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<ComputeAt>.\n"
           "[Error info] Expr param(loop) should be a For node!\n"
@@ -88,7 +88,7 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   std::ostringstream os;
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<SimpleComputeAt>.\n"
           "[Error info] Expr param(block) should be a ScheduleBlockRealize!\n"
@@ -96,7 +96,7 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
           module_expr_.GetExprs()));
   PADDLE_ENFORCE_NOT_NULL(
       loop.As<For>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<SimpleComputeAt>.\n"
           "[Error info] Expr param(loop) should be a For node!\n"
@@ -149,7 +149,7 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
     PADDLE_ENFORCE_EQ(
         prove_eq.has_value(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<SimpleComputeAt>.\n"
             "[Error info] Extent of loop in Expr Param(loop) and extent of "
@@ -160,7 +160,7 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
     PADDLE_ENFORCE_EQ(
         prove_eq.value(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<SimpleComputeAt>.\n"
             "[Error info] Extent of loop in Expr Param(loop) and extent of "
@@ -291,7 +291,7 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
 
   PADDLE_ENFORCE_NOT_NULL(
       schedule_block.As<ir::ScheduleBlockRealize>(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<ComputeInline>.\n"
           "[Error info] Expr param(schedule_block) should be a "
@@ -306,7 +306,7 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
   PADDLE_ENFORCE_EQ(
       inliner.BodyPatternAllowInline(),
       true,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<ComputeInline>.\n"
           "[Error info] Current IR can't meets the requirements of "
@@ -342,7 +342,7 @@ void DyScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
   PADDLE_ENFORCE_EQ(
       inliner.BodyPatternAllowInline(),
       true,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<ReverseComputeInline>.\n"
           "[Error info] Current IR can't meets the requirements of "
