@@ -24,6 +24,7 @@ from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
+from paddle.base import core
 
 
 class XPUTestAddMMOp(XPUOpTestWrapper):
@@ -193,9 +194,13 @@ class XPUTestAddMMOp(XPUOpTestWrapper):
             )
             out.backward()
 
+            xpu_version = core.get_xpu_device_version(0)
+            if xpu_version == core.XPUVersion.XPU3:
+                test_dtypes = [paddle.float32, paddle.float16, paddle.bfloat16]
+            else:
+                test_dtypes = [paddle.float32, paddle.float16]
             atol = 0.001
             rtol = 1e-5
-            test_dtypes = [paddle.float32, paddle.float16, paddle.bfloat16]
             for test_dtype in test_dtypes:
                 input_xpu = paddle.to_tensor(
                     input_np,
