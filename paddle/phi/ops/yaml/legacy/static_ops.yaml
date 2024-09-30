@@ -966,6 +966,7 @@
   kernel :
     func : unique
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : unpool
   args: (Tensor x, Tensor indices, int[] ksize, str unpooling_type, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")

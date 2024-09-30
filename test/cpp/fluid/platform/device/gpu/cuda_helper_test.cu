@@ -22,10 +22,10 @@
 #include <random>
 
 #define PADDLE_CUDA_FP16
-#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_helper.h"
 
 using phi::PADDLE_CUDA_NUM_THREADS;
 using phi::dtype::float16;
