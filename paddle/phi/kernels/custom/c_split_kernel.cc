@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/c_split_kernel.h"
-
+#include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
