@@ -133,8 +133,12 @@ PhiKernelInstruction::PhiKernelInstruction(
   auto kernel_key = op_attributes.at("kernel_key")
                         .dyn_cast<paddle::dialect::KernelAttribute>()
                         .data();
+  std::cout << "wanghuan kernel_name: " << kernel_name << std::endl;
+  std::cout << "wanghuan kernel_key: " << kernel_key << std::endl;
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
+  std::cout << "wanghuan has_fallback_cpu: " << kernel_result.has_fallback_cpu
+            << std::endl;
   kernel_name_ = kernel_name;
   phi_kernel_ = new phi::Kernel(kernel_result.kernel);
   PADDLE_ENFORCE_EQ(
@@ -180,18 +184,18 @@ PhiKernelInstruction::PhiKernelInstruction(
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
-  VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
+  std::cout << "Begin run op " << phi_op_name_ << " infer meta." << std::endl;
   if (infer_meta_interface_) {
     phi::RecordEvent record_event("PhiKernelInstruction::infermeta",
                                   phi::TracerEventType::UserDefined,
                                   1);
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
-  VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
+  std::cout << "End run op " << phi_op_name_ << " infer meta." << std::endl;
   for (auto& pair : this->InplaceInfo()) {
     ShareVarBuffer(pair.first, pair.second);
   }
-  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
+  std::cout << "Begin run op " << phi_op_name_ << " kernel." << std::endl;
   {
     phi::RecordEvent record_event(kernel_name_ + " kernel launch",
                                   phi::TracerEventType::StaticKernelLaunch,
@@ -199,7 +203,7 @@ void PhiKernelInstruction::Run() {
     (*(phi_kernel_))(&(kernel_context_));
   }
 
-  VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
+  std::cout << "End run op " << phi_op_name_ << " kernel." << std::endl;
 }
 
 }  // namespace framework
