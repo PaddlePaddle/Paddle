@@ -773,7 +773,7 @@ void PirInterpreter::AnalyzeForceSyncOps() {
     int op_id = ins->Id();
     std::string op_name = ins->Name();
     std::string unused_prefix = "pd_op.";
-    int pos = op_name.find(unused_prefix);
+    auto pos = op_name.find(unused_prefix);
     if (pos != std::string::npos) {
       op_name.erase(pos, unused_prefix.size());
     }
