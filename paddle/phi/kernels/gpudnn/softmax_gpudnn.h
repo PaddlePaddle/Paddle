@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -110,7 +111,7 @@ __device__ __forceinline__ void WarpReduceSum(T* sum) {
 #pragma unroll
     for (int i = 0; i < BatchSize; ++i) {
       T sum_val =
-          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, sum[i], offset);
       sum[i] = sum[i] + sum_val;
     }
   }
@@ -123,7 +124,7 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
 #pragma unroll
     for (int i = 0; i < BatchSize; ++i) {
       T max_val =
-          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, sum[i], offset);
       sum[i] = max(sum[i], max_val);
     }
   }

@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #endif
 #include "paddle/phi/common/amp_type_traits.h"
@@ -29,7 +30,7 @@
 namespace phi {
 namespace fusion {
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 
 template <typename T, typename MT, typename Context>
 void FusedLinearParamGradAddImpl(const Context &ctx,

@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +15,7 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 
 #include "glog/logging.h"
 
@@ -35,7 +36,7 @@ PHI_DECLARE_int64(cublaslt_exhaustive_search_times);
 namespace phi {
 namespace funcs {
 
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0)
 
 // Set this enum according to
 // https://docs.nvidia.com/cuda/cublas/index.html#cublasltepilogue-t
@@ -1130,7 +1131,7 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
 #else
 // A void structure just for successfully compile.
 struct MatmulPlanner {};
-#endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 
 }  // namespace funcs
 }  // namespace phi

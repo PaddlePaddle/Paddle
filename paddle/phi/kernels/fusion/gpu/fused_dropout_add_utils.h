@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,10 +28,19 @@ static inline std::vector<size_t> GetRandomCudaProp(int64_t numel,
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, kVecSize);
   size_t grid_size = gpu_config.GetGridSize();
   size_t block_size = gpu_config.GetBlockSize();
-  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  const char* env_value = std::getenv("PADDLE_ENABLE_SAME_RAND_A100");
+  int maxThreadsPerMultiProcessor, multiProcessorCount;
+  if (env_value != nullptr && std::string(env_value) == "1") {
+    maxThreadsPerMultiProcessor = 2048;
+    multiProcessorCount = 108;
+  } else {
+    int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+    const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+    maxThreadsPerMultiProcessor = prop.maxThreadsPerMultiProcessor;
+    multiProcessorCount = prop.multiProcessorCount;
+  }
   size_t max_grid_size =
-      prop.maxThreadsPerMultiProcessor * prop.multiProcessorCount / block_size;
+      (maxThreadsPerMultiProcessor / block_size) * multiProcessorCount;
   grid_size = std::min(grid_size, max_grid_size);
   auto offset =
       ((numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;

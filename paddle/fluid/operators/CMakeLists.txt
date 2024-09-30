@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 include(operators)
 
 add_subdirectory(generator)
@@ -43,9 +44,9 @@ if (NOT WIN32)
     add_subdirectory(nccl)
 endif()
 
-if (WITH_GPU AND TENSORRT_FOUND)
-    add_subdirectory(tensorrt)
-endif()
+# if (WITH_GPU AND TENSORRT_FOUND)
+#     add_subdirectory(tensorrt)
+# endif()
 
 if (WITH_DLNNE)
     add_subdirectory(dlnne)

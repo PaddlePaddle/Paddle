@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -982,7 +983,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
 #pragma unroll
     for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
       // reduce sum with wrap
-      val += phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, val, i);
+      val += phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, val, i);
     }
 
     size_t idx_j = j + threadIdx.y;
@@ -1005,7 +1006,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
         for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
           // reduce sum with wrap
           inter_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, inter_val, i);
         }
         if (threadIdx.x == 0 && (idx_j < w)) d_intermediate[idx_j] = inter_val;
       }

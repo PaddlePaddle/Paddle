@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +24,7 @@
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
-
+#include <stdio.h>
 namespace phi {
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
@@ -107,7 +108,7 @@ void TopkKernel(const Context& dev_ctx,
 
     // The conclusion is drawn from the data through multiple sets of
     // statistics
-    if (input_width >= 128 && k >= input_width * 0.25) {
+    // if (input_width >= 128 && k >= input_width * 0.25) {
       auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
       if (phi::funcs::SortTopk<T>(*ctx,
                                   input,
@@ -123,7 +124,7 @@ void TopkKernel(const Context& dev_ctx,
         VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
                    "default topk kernel.";
       }
-    }
+    // }
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
     if (input_width >= 1024 && in_dims.size() == 1) {
@@ -294,7 +295,7 @@ void TopkKernel(const Context& dev_ctx,
       }
     }
 
-    const int kMaxHeight = 2048;
+    const int kMaxHeight = 2147483647;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);

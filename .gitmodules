@@ -1,6 +1,7 @@
 [submodule "third_party/protobuf"]
 	path = third_party/protobuf
 	url = https://github.com/protocolbuffers/protobuf.git
+	tag = paddle
 	ignore = dirty
 [submodule "third_party/pocketfft"]
 	path = third_party/pocketfft
@@ -21,10 +22,11 @@
 [submodule "third_party/utf8proc"]
 	path = third_party/utf8proc
 	url = https://github.com/JuliaStrings/utf8proc.git
+	tag = v2.6.1
 	ignore = dirty
 [submodule "third_party/warpctc"]
 	path = third_party/warpctc
-	url = https://github.com/baidu-research/warp-ctc.git
+	url = http://pdegit.metax-internal.com/pde-ai/warp-ctc.git
 	ignore = dirty
 [submodule "third_party/warprnnt"]
 	path = third_party/warprnnt
@@ -33,10 +35,12 @@
 [submodule "third_party/xxhash"]
 	path = third_party/xxhash
 	url = https://github.com/Cyan4973/xxHash.git
+	tag = v0.6.5
 	ignore = dirty
 [submodule "third_party/pybind"]
 	path = third_party/pybind
 	url = https://github.com/pybind/pybind11.git
+	tag = v2.4.3
 	ignore = dirty
 [submodule "third_party/threadpool"]
 	path = third_party/threadpool
@@ -45,38 +49,24 @@
 [submodule "third_party/zlib"]
 	path = third_party/zlib
 	url = https://github.com/madler/zlib.git
+	tag = v1.2.8
 	ignore = dirty
 [submodule "third_party/glog"]
 	path = third_party/glog
 	url = https://github.com/google/glog.git
 	ignore = dirty
-[submodule "third_party/eigen3"]
-	path = third_party/eigen3
-	url = https://gitlab.com/libeigen/eigen.git
-	ignore = dirty
 [submodule "third_party/snappy"]
 	path = third_party/snappy
 	url = https://github.com/google/snappy.git
 	ignore = dirty
-[submodule "third_party/cub"]
-	path = third_party/cub
-	url = https://github.com/NVIDIA/cub.git
-	ignore = dirty
-[submodule "third_party/cutlass"]
-	path = third_party/cutlass
-	url = https://github.com/NVIDIA/cutlass.git
-	ignore = dirty
 [submodule "third_party/xbyak"]
 	path = third_party/xbyak
 	url = https://github.com/herumi/xbyak.git
+	tag = v5.81
 	ignore = dirty
 [submodule "third_party/mkldnn"]
 	path = third_party/mkldnn
 	url = https://github.com/oneapi-src/oneDNN.git
-	ignore = dirty
-[submodule "third_party/flashattn"]
-	path = third_party/flashattn
-	url = https://github.com/PaddlePaddle/flash-attention.git
 	ignore = dirty
 [submodule "third_party/gtest"]
 	path = third_party/gtest
@@ -98,15 +88,11 @@
 	path = third_party/rocksdb
 	url = https://github.com/Thunderbrook/rocksdb
 	ignore = dirty
-[submodule "third_party/absl"]
-	path = third_party/absl
-	url = https://github.com/abseil/abseil-cpp.git
+[submodule "third_party/cutlass"]
+	path = third_party/cutlass
+	url = http://pdegit.metax-internal.com/pde-ai/cutlass.git
 	ignore = dirty
-[submodule "third_party/jitify"]
-	path = third_party/jitify
-	url = https://github.com/NVIDIA/jitify.git
-	ignore = dirty
-[submodule "third_party/cccl"]
-	path = third_party/cccl
-	url = https://github.com/NVIDIA/cccl.git
+[submodule "third_party/eigen3"]
+	path = third_party/eigen3
+	url = ssh://gerrit.metax-internal.com:29418/MACA/library/mcEigen
 	ignore = dirty

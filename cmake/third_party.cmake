@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 # Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,21 +30,21 @@ set(third_party_deps)
 
 include(ProcessorCount)
 ProcessorCount(NPROC)
-if(NOT WITH_SETUP_INSTALL)
-  #NOTE(risemeup1):Initialize any submodules.
-  message(
-    STATUS
-      "Check submodules of paddle, and run 'git submodule update --init --recursive'"
-  )
-  execute_process(
-    COMMAND git submodule update --init --recursive
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
-    RESULT_VARIABLE result_var)
-  if(NOT result_var EQUAL 0)
-    message(FATAL_ERROR "Failed to get submodule, please check your network !")
-  endif()
-
-endif()
+#if(NOT WITH_SETUP_INSTALL)
+#  #NOTE(risemeup1):Initialize any submodules.
+#  message(
+#    STATUS
+#      "Check submodules of paddle, and run 'git submodule update --init --recursive'"
+#  )
+#  execute_process(
+#    COMMAND git submodule update --init --recursive
+#    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+#    RESULT_VARIABLE result_var)
+#  if(NOT result_var EQUAL 0)
+#    message(FATAL_ERROR "Failed to get submodule, please check your network !")
+#  endif()
+#
+#endif()
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
@@ -272,16 +273,16 @@ include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
 
 ########################### include third_party according to flags ###############################
-if(WITH_GPU
-   AND NOT WITH_ARM
-   AND NOT WIN32
-   AND NOT APPLE)
-  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
-    include(external/cutlass) # download, build, install cusparselt
-    list(APPEND third_party_deps extern_cutlass)
-    set(WITH_CUTLASS ON)
-  endif()
-endif()
+# if(WITH_GPU
+#    AND NOT WITH_ARM
+#    AND NOT WIN32
+#    AND NOT APPLE)
+#   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
+#     include(external/cutlass) # download, build, install cusparselt
+#     list(APPEND third_party_deps extern_cutlass)
+#     set(WITH_CUTLASS ON)
+#   endif()
+# endif()
 
 if(WITH_CINN)
   if(WITH_MKL)
@@ -391,15 +392,15 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-    include(external/cub) # download cub
-    list(APPEND third_party_deps extern_cub)
-  elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.0 AND WITH_SHARED_PHI)
-    include(external/cccl)
-    add_definitions(-DPADDLE_WITH_CCCL)
-  endif()
+  # if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+  #   include(external/cub) # download cub
+  #   list(APPEND third_party_deps extern_cub)
+  # elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.0 AND WITH_SHARED_PHI)
+  #   include(external/cccl)
+  #   add_definitions(-DPADDLE_WITH_CCCL)
+  # endif()
   set(URL
-      "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz"
+      "http://pdegit.metax-internal.com/pde-ai/static-dependency-for-paddle/uploads/4b9906cbd8034aa0b8300d1b89def65f/externalErrorMsg_20210928.tar.gz"
       CACHE STRING "" FORCE)
   file_download_and_uncompress(
     ${URL} "externalError" MD5 a712a49384e77ca216ad866712f7cafa
@@ -569,7 +570,6 @@ if(WITH_GPU
     foreach(arch ${NVCC_ARCH_BIN})
       if(${arch} GREATER_EQUAL 80)
         include(external/flashattn)
-        list(APPEND third_party_deps extern_flashattn)
         set(WITH_FLASHATTN ON)
         break()
       endif()

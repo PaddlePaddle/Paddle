@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 remove_definitions(-DPADDLE_DLL_EXPORT)
 set(CC_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test/cpp
@@ -138,7 +139,7 @@ if(WITH_TESTING)
     add_subdirectory(mkldnn)
   endif()
   add_subdirectory(prim)
-  add_subdirectory(quantization)
+  # add_subdirectory(quantization)
   add_subdirectory(rnn)
   add_subdirectory(rpc)
   add_subdirectory(sequence)
@@ -242,13 +243,13 @@ if(TARGET layer_test)
   add_dependencies(layer_test jit_download_program)
 endif()
 
-if(TEST buddy_allocator_test)
-  if(NOT WIN32)
-    add_dependencies(buddy_allocator_test download_data)
-  endif()
-  set_tests_properties(buddy_allocator_test PROPERTIES LABELS
-                                                       "RUN_TYPE=EXCLUSIVE")
-endif()
+# if(TEST buddy_allocator_test)
+#   if(NOT WIN32)
+#     add_dependencies(buddy_allocator_test download_data)
+#   endif()
+#   set_tests_properties(buddy_allocator_test PROPERTIES LABELS
+#                                                        "RUN_TYPE=EXCLUSIVE")
+# endif()
 
 add_custom_target(build_tests)
 

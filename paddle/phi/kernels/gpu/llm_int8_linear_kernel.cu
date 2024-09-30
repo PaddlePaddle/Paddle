@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +20,7 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020 && 0
 #include "paddle/phi/kernels/impl/llm_int8_matmul_kernel_impl.h"
 #endif
 
@@ -33,7 +34,7 @@ void llm_int8_compute(const Context& dev_ctx,
                       const DenseTensor& weight_scale,
                       const float threshold,
                       DenseTensor* out) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020 && 0
   DenseTensor cublaslt_workspace;
   cublaslt_workspace.Resize({{3000000}});
   dev_ctx.template Alloc<int8_t>(&cublaslt_workspace);

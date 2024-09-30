@@ -976,10 +976,14 @@ if '${WITH_CPP_DIST}' == 'ON':
     paddle_lib_test_dir = '${PADDLE_LIB_TEST_DIR}'
     install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir)
 
+# maca ai version
+maca_ai_version = os.getenv('MACA_AI_VERSION')
+if not maca_ai_version:
+    maca_ai_version = "0.0.0.0"
 
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
-        version='${PADDLE_VERSION}',
+        version='${PADDLE_VERSION}'+'+mc'+maca_ai_version,
         description='Parallel Distributed Deep Learning',
         long_description=long_description,
         long_description_content_type="text/markdown",

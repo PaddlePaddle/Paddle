@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +69,7 @@ struct BinaryEqual {
   BinaryEqual(int64_t _col, const InT* _in_trans_data)
       : col(_col), in_trans_data(_in_trans_data) {}
 
-  __device__ bool operator()(int64_t a, int64_t b) const {
+  __host__ __device__ bool operator()(int64_t a, int64_t b) const {
     for (int64_t i = 0; i < col; ++i) {
       InT lhs = in_trans_data[i + a * col];
       InT rhs = in_trans_data[i + b * col];
@@ -89,7 +90,7 @@ struct BinaryNotEqual {
   BinaryNotEqual(int64_t _col, const InT* _in_trans_data)
       : col(_col), in_trans_data(_in_trans_data) {}
 
-  __device__ bool operator()(int64_t a, int64_t b) const {
+  __host__ __device__ bool operator()(int64_t a, int64_t b) const {
     for (int64_t i = 0; i < col; ++i) {
       InT lhs = in_trans_data[i + a * col];
       InT rhs = in_trans_data[i + b * col];
@@ -388,9 +389,11 @@ static void ComputeUniqueDims(const Context& context,
   // 3. counts: 'counts'
   counts->Resize(common::make_ddim({num_out}));
   auto* count_data = context.template Alloc<IndexT>(counts);
-  thrust::fill(exec_policy, count_data, count_data + row, 0);
-  thrust::adjacent_difference(
-      exec_policy, range_data_ptr + 1, range_data_ptr + row + 1, count_data);
+  thrust::fill(exec_policy, count_data, count_data + num_out, 0);
+  thrust::adjacent_difference(exec_policy,
+                              range_data_ptr + 1,
+                              range_data_ptr + num_out + 1,
+                              count_data);
 }
 
 // Calculate unique when 'axis' is set

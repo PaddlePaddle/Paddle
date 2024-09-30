@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -824,7 +825,7 @@ class AllocatorFacadePrivate {
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGetAttribute(
               &val,
-              CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+              CU_DEVICE_ATTRIBUTE_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED,
               device));
     } catch (...) {
       val = 0;
@@ -910,7 +911,7 @@ class AllocatorFacadePrivate {
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGetAttribute(
               &val,
-              CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+              CU_DEVICE_ATTRIBUTE_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED,
               device));
     } catch (...) {
       val = 0;

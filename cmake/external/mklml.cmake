@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 # Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,13 +37,14 @@ else()
   #TODO(intel-huying):
   #  Now enable csrmm function in mklml library temporarily,
   #  it will be updated as offical version later.
-  set(MKLML_FILE
-      "csrmm_mklml_lnx_2019.0.5.tgz"
-      CACHE STRING "" FORCE)
-  set(MKLML_URL
-      "http://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
-      CACHE STRING "" FORCE)
-  set(MKLML_URL_MD5 bc6a7faea6a2a9ad31752386f3ae87da)
+  #set(MKLML_FILE
+  #    "csrmm_mklml_lnx_2019.0.5.tgz"
+  #    CACHE STRING "" FORCE)
+  #set(MKLML_URL
+  #    "http://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
+  #    CACHE STRING "" FORCE)
+  #set(MKLML_URL_MD5 bc6a7faea6a2a9ad31752386f3ae87da)
+  set(MKLML_REPOSITORY http://pdegit.metax-internal.com/pde-ai/mklml.git)
   set(MKLML_LIB ${MKLML_LIB_DIR}/libmklml_intel.so)
   set(MKLML_IOMP_LIB ${MKLML_LIB_DIR}/libiomp5.so)
   set(MKLML_SHARED_LIB ${MKLML_LIB_DIR}/libmklml_intel.so)
@@ -50,39 +52,8 @@ else()
 endif()
 
 set(MKLML_PROJECT "extern_mklml")
-message(STATUS "MKLML_FILE: ${MKLML_FILE}, MKLML_URL: ${MKLML_URL}")
+#message(STATUS "MKLML_FILE: ${MKLML_FILE}, MKLML_URL: ${MKLML_URL}")
 set(MKLML_PREFIX_DIR ${THIRD_PARTY_PATH}/mklml)
-
-function(download_mklml)
-  message(
-    STATUS "Downloading ${MKLML_URL} to ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}")
-  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-  file(
-    DOWNLOAD ${MKLML_URL} ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
-    EXPECTED_MD5 ${MKLML_URL_MD5}
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${MKLML_FILE} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${MKLML_FILE} again"
-    )
-  endif()
-endfunction()
-
-# Download and check mklml.
-if(EXISTS ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE})
-  file(MD5 ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE} MKLML_MD5)
-  if(NOT MKLML_MD5 STREQUAL MKLML_URL_MD5)
-    # clean build file
-    file(REMOVE_RECURSE ${MKLML_PREFIX_DIR})
-    file(REMOVE_RECURSE ${MKLML_INSTALL_DIR})
-    download_mklml()
-  endif()
-else()
-  download_mklml()
-endif()
 
 # Ninja Generator can not establish the correct dependency relationship
 # between the imported library with target, the product file
@@ -92,10 +63,11 @@ endif()
 ExternalProject_Add(
   ${MKLML_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  URL ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
-  URL_MD5 ${MKLML_URL_MD5}
-  DOWNLOAD_DIR ${MKLML_DOWNLOAD_DIR}
+  #URL ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
+  #URL_MD5 ${MKLML_URL_MD5}
+  #DOWNLOAD_DIR ${MKLML_DOWNLOAD_DIR}
   SOURCE_DIR ${MKLML_INSTALL_DIR}
+  GIT_REPOSITORY ${MKLML_REPOSITORY}
   PREFIX ${MKLML_PREFIX_DIR}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""

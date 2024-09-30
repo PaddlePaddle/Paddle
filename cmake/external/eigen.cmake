@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 # Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +18,7 @@ include(ExternalProject)
 # update eigen to the commit id f612df27 on 03/16/2021
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
 set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
-set(EIGEN_TAG f612df273689a19d25b45ca4f8269463207c4fee)
+set(EIGEN_TAG 9cce7ac69fbd989ffcc9103d15d93ee4523854ca)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/eigen3)
 
 if(WIN32)
@@ -44,7 +45,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
        tensor_random_header)
   # See: [Why calling some `git` commands before `patch`?]
   set(EIGEN_PATCH_COMMAND
-      git checkout -- . && git checkout ${EIGEN_TAG} && patch -Nd
+      patch -Nd
       ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor <
       ${tensor_random_header})
   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion

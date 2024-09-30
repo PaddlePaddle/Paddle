@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +40,7 @@ ExternalProject_Add(
              -DBUILD_STATIC=ON
              -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
              -DCMAKE_INSTALL_PREFIX:PATH=${UTF8PROC_INSTALL_DIR}
+             -DCMAKE_INSTALL_LIBDIR:PATH=${UTF8PROC_INSTALL_DIR}/lib
              -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
   BUILD_BYPRODUCTS ${UTF8PROC_LIBRARIES})
 

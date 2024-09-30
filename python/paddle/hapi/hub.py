@@ -117,7 +117,6 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
             hub_dir,
             check_exist=not force_reload,
             decompress=False,
-            method=('wget' if source == 'gitee' else 'get'),
         )
         shutil.move(fpath, cached_file)
 

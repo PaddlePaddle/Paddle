@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
@@ -29,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
+#include <nccl.h>
 
 namespace phi {
 
@@ -109,7 +111,7 @@ class PADDLE_API GPUContext : public DeviceContext,
   blasHandle_t cublas_handle() const;
 
   /*! \brief  Return cublasLt handle in the device context. */
-  blasLtHandle_t cublaslt_handle() const;
+  // blasLtHandle_t cublaslt_handle() const;
 
   /*! \brief  Return cusolver handle in the device context. */
   solverHandle_t cusolver_dn_handle() const;
@@ -232,8 +234,8 @@ class PADDLE_API GPUContext : public DeviceContext,
   void SetBlasTF32Handle(blasHandle_t);
   void SetBlasTF32Handle(std::function<blasHandle_t()>&&);
 
-  void SetBlasLtHandle(blasLtHandle_t);
-  void SetBlasLtHandle(std::function<blasLtHandle_t()>&&);
+  // void SetBlasLtHandle(blasLtHandle_t);
+  // void SetBlasLtHandle(std::function<blasLtHandle_t()>&&);
 
   void SetDnnHandle(dnnHandle_t);
   void SetDnnHandle(std::function<dnnHandle_t()>&&);

@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/dynload/cublasLt.h"
+// #include "paddle/fluid/platform/dynload/cublasLt.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
+// namespace paddle {
+// namespace platform {
+// namespace dynload {
 
-#define DEFINE_WRAP(__name) DynLoad__##__name __name
+// #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-CUBLASLT_BLAS_ROUTINE_EACH(DEFINE_WRAP);
+// CUBLASLT_BLAS_ROUTINE_EACH(DEFINE_WRAP);
 
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+// }  // namespace dynload
+// }  // namespace platform
+// }  // namespace paddle

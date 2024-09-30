@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,7 +41,8 @@ using paddle::distributed::CommContext;
 using paddle::distributed::Communicator;
 using paddle::distributed::FeatureNode;
 using paddle::distributed::FleetWrapper;
-using paddle::distributed::GraphNode;
+// using paddle::distributed::GraphNode;
+using DistrGraphNode = paddle::distributed::GraphNode;
 using paddle::distributed::GraphPyClient;
 using paddle::distributed::GraphPyServer;
 using paddle::distributed::GraphPyService;
@@ -201,16 +203,16 @@ void BindHeterClient(py::module* m) {
 }
 
 void BindGraphNode(py::module* m) {
-  py::class_<GraphNode>(*m, "GraphNode")
+  py::class_<DistrGraphNode>(*m, "GraphNode")
       .def(py::init<>())
-      .def("get_id", &GraphNode::get_py_id)
-      .def("get_feature", &GraphNode::get_feature);
+      .def("get_id", &DistrGraphNode::get_py_id)
+      .def("get_feature", &DistrGraphNode::get_feature);
 }
 void BindGraphPyFeatureNode(py::module* m) {
   py::class_<FeatureNode>(*m, "FeatureNode")
       .def(py::init<>())
-      .def("get_id", &GraphNode::get_py_id)
-      .def("get_feature", &GraphNode::get_feature);
+      .def("get_id", &DistrGraphNode::get_py_id)
+      .def("get_feature", &DistrGraphNode::get_feature);
 }
 
 void BindGraphPyService(py::module* m) {

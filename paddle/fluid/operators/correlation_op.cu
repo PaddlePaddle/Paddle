@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,9 +28,9 @@ namespace operators {
 #ifdef __HIPCC__
 #define THREADS_PER_BLOCK 64
 #else
-#define THREADS_PER_BLOCK 32
+#define THREADS_PER_BLOCK 64
 #endif
-#define FULL_MASK 0xffffffff
+#define FULL_MASK 0xffffffffffffffffull
 
 template <typename T>
 __forceinline__ __device__ T warpReduceSum(T val) {
@@ -48,7 +49,7 @@ __forceinline__ __device__ T blockReduceSum(T val) {
 #ifdef __HIPCC__
   static __shared__ T shared[64];
 #else
-  static __shared__ T shared[32];
+  static __shared__ T shared[64];
 #endif
   int lane = threadIdx.x % warpSize;
   int wid = threadIdx.x / warpSize;

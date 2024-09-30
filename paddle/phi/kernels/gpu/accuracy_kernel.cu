@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,8 +55,9 @@ __global__ void AccuracyCudaKernel(const int N,
 
 // reduce the count with init value 0, and output accuracy.
 #ifdef PADDLE_WITH_CUDA
-  int result = thrust::reduce(thrust::device, total, total + BlockSize, 0);
-#else
+// //#if 0
+//   int result = thrust::reduce(thrust::device, total, total + BlockSize, 0);
+// #else
   // HIP thrust::reduce not support __device__
   for (int s = BlockSize / 2; s > 0; s >>= 1) {
     if (threadIdx.x < s) {

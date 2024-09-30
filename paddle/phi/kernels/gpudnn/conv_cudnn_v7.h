@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,9 +49,10 @@ std::string GetPerfResultString(std::string prefix,
 template <typename PerfT, typename AlgoT>
 void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
                            size_t workspace_limit,
-                           SearchResult<AlgoT>* search_result) {
+                           SearchResult<AlgoT>* search_result,
+                           int available_algo_num) {
   int best_algo_idx = -1;
-  for (size_t i = 0; i < perf_results.size(); ++i) {
+  for (size_t i = 0; i < available_algo_num; ++i) {
     const auto& result = perf_results[i];
     if (result.status == CUDNN_STATUS_SUCCESS &&
         result.memory <= workspace_limit) {
@@ -160,7 +162,7 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
                                             workspace_size_limit);
       // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, actual_perf_count);
 #else
       VLOG(3) << "Fallback to non-v7 method to find conv algorithm "
                  "becasue the workspace size request("
@@ -234,7 +236,7 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
         returned_algo_count,
         workspace_size_limit);
     ChooseAlgoByWorkspace<PerfT, AlgoT>(
-        perf_results, workspace_size_limit, &result);
+        perf_results, workspace_size_limit, &result, returned_algo_count);
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
@@ -344,7 +346,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardData> {
 #if CUDNN_VERSION >= 8000
       // cudnnGetConvolutionBackwardDataAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, actual_perf_count);
 #else
       VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
                  "the workspace size request("
@@ -418,7 +420,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardData> {
         returned_algo_count,
         workspace_size_limit);
     ChooseAlgoByWorkspace<PerfT, AlgoT>(
-        perf_results, workspace_size_limit, &result);
+        perf_results, workspace_size_limit, &result, returned_algo_count);
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
@@ -516,7 +518,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
 #if CUDNN_VERSION >= 8000
       // cudnnGetConvolutionBackwardFilterAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, actual_perf_count);
 #else
       VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
                  "the workspace size request("
@@ -592,7 +594,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
           returned_algo_count,
           workspace_size_limit);
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, returned_algo_count);
     } else {
       int max_algos = GetAlgorithmMaxCount(args.handle);
       std::vector<PerfT> perf_results(max_algos);
@@ -614,7 +616,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
           perf_results.size(),
           workspace_size_limit);
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, returned_algo_count);
     }
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);

@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -620,7 +621,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         RandVec<VecSize>(&state, rand);
 #pragma unroll
         for (int jt = 0; jt < VecSize; jt++) {
-#pragma unroll
+// #pragma unroll
           mask_vec[it][jt] = static_cast<MaskType>(rand[jt] >= dropout_prob);
         }
       }

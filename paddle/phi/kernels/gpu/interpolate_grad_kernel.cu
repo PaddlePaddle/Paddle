@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -207,16 +208,19 @@ __global__ void KeNearestNeighborInterpBw(
 template <typename T>
 __inline__ __device__ T PartialBlockMin(T val,
                                         size_t threads_num_in_block,
-                                        unsigned mask) {
+                                        unsigned long long mask) {
   __shared__ T shared[WARP_SIZE];
   __shared__ T shared_last_val;
   __shared__ int shared_last_idx;
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
+  // int lane = threadIdx.x & 0x1f;
+  // int wid = threadIdx.x >> 5;
+  int lane = threadIdx.x & 0x3f;
+  int wid = threadIdx.x >> 6;
   int threshold = (threads_num_in_block & (-WARP_SIZE));
 
   if (threadIdx.x < threshold) {
-    shared_last_idx = (threshold >> 5) - 1;
+    // shared_last_idx = (threshold >> 5) - 1;
+    shared_last_idx = (threshold >> 6) - 1;
     val = phi::funcs::WarpReduceMin(val, mask);
     if (lane == 0) {
       shared[wid] = val;

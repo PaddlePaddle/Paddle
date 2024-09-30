@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -327,7 +328,7 @@ void* GetCublasDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libmcblas.so");
 #endif
 }
 
@@ -369,7 +370,7 @@ void* GetCUDNNDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
 #else
   return GetDsoHandleFromSearchPath(
-      FLAGS_cudnn_dir, "libcudnn.so", false, {cuda_lib_path});
+      FLAGS_cudnn_dir, "libmcdnn.so", false, {cuda_lib_path});
 #endif
 }
 
@@ -379,7 +380,7 @@ void* GetCUPTIDsoHandle() {
       FLAGS_cupti_dir, "libcupti.dylib", false, {cupti_lib_path});
 #else
   return GetDsoHandleFromSearchPath(
-      FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
+      FLAGS_cupti_dir, "libmcpti.so", false, {cupti_lib_path});
 #endif
 }
 
@@ -392,7 +393,7 @@ void* GetCurandDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libmcrand.so");
 #endif
 }
 
@@ -424,7 +425,7 @@ void* GetCusolverDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libmcsolver.so");
 #endif
 }
 
@@ -437,7 +438,7 @@ void* GetCusparseDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocsparse.so");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libmcsparse.so");
 #endif
 }
 
@@ -447,7 +448,7 @@ void* GetNVRTCDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libmcruntime.so", false);
 #endif
 }
 
@@ -461,7 +462,7 @@ void* GetCUDADsoHandle() {
   GetSystemDirectory(system32_dir, MAX_PATH);
   return GetDsoHandleFromSearchPath(system32_dir, "nvcuda.dll");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libmcruntime.so", false);
 #endif
 }
 
@@ -503,7 +504,7 @@ void* GetFlashAttnDsoHandle() {
 #elif defined(_WIN32)
   return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
 #else
-  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libmcFlashAttn.so");
 #endif
 }
 
@@ -528,7 +529,7 @@ void* GetNCCLDsoHandle() {
       FLAGS_rccl_dir, "librccl.so", true, {}, warning_msg);
 #else
   return GetDsoHandleFromSearchPath(
-      FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
+      FLAGS_nccl_dir, "libmccl.so", true, {}, warning_msg);
 #endif
 }
 
@@ -601,7 +602,7 @@ void* GetMKLRTDsoHandle() {
 
 void* GetCusparseLtDsoHandle() {
 // APIs available after CUDA 11.2
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020 && 0
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, "libcusparseLt.so");
 #else
   std::string warning_msg(

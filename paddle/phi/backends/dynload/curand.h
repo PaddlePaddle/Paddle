@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +34,9 @@ extern void *curand_dso_handle;
       std::call_once(curand_dso_flag, []() {                       \
         curand_dso_handle = phi::dynload::GetCurandDsoHandle();    \
       });                                                          \
-      static void *p_##__name = dlsym(curand_dso_handle, #__name); \
+      std::string replaced_name = #__name;                                  \
+      replaced_name =  replaced_name.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(curand_dso_handle, replaced_name.c_str());    \
       return reinterpret_cast<curandFunc>(p_##__name)(args...);    \
     }                                                              \
   };                                                               \

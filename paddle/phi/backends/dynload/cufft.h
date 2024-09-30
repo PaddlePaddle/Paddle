@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +41,9 @@ extern void EnforceCUFFTLoaded(const char* fn_name);
         cufft_dso_handle = phi::dynload::GetCUFFTDsoHandle();        \
       });                                                            \
       EnforceCUFFTLoaded(#__name);                                   \
-      static void* p_##__name = dlsym(cufft_dso_handle, #__name);    \
+      std::string replaced_name = #__name;                                  \
+      replaced_name =  replaced_name.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(cufft_dso_handle, replaced_name.c_str());    \
       return reinterpret_cast<cufft_func>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

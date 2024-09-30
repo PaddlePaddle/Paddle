@@ -125,10 +125,18 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
         MPType p0 = static_cast<MPType>(input[pr_index]);
         MPType p1 = static_cast<MPType>(input[ls_index]);
 
-        result[pr_index] =
-            cos_value[pr_index] * p0 - sign * sin_value[ls_index] * p1;
-        result[ls_index] =
-            cos_value[ls_index] * p1 + sign * sin_value[pr_index] * p0;
+        if (sign == 1) {
+          result[pr_index] = cos_value[pr_index] * p0;
+          result[pr_index] -= sin_value[pr_index] * p1;
+
+          result[ls_index] = sin_value[ls_index] * p0;
+          result[ls_index] += cos_value[ls_index] * p1;
+        } else if (sign == -1) {
+          result[pr_index] =
+              cos_value[pr_index] * p0 + sin_value[ls_index] * p1;
+          result[ls_index] =
+              cos_value[ls_index] * p1 - sin_value[pr_index] * p0;
+        }
 
         store[pr_index] = static_cast<T>(result[pr_index]);
         store[ls_index] = static_cast<T>(result[ls_index]);

@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +38,7 @@ struct BroadcastTypeClassifier {
   int broadcast_num{0};              // Not used for XPU
   bool all_elementwise{true};        // Not used for XPU
   Array<bool, Arity> use_broadcast;  // Not used for XPU
+  int64_t use_broadcast1 = 0;
   Array<kps::details::BroadcastConfig, Arity> configs;
   Array<const _ptr_ char *__restrict__, Arity> ins_data;
   Array<_ptr_ OutT *, NumOuts> outs_data;
@@ -59,7 +61,7 @@ struct BroadcastTypeClassifier {
       all_elementwise &= is_same_dim;
     }
 #endif
-
+    memcpy(&use_broadcast1,use_broadcast.Get(),use_broadcast.size()*sizeof(bool));
     InitBroadcastConfigs(ins, outs, axis);
 
     using Traits = phi::funcs::FunctionTraits<Functor>;
@@ -104,7 +106,8 @@ struct BroadcastTypeClassifier {
         if (ins[i]->numel()) {
           configs[i] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
                                                      dims_simplifier.in_dims[i],
-                                                     dims_simplifier.rank);
+                                                     dims_simplifier.rank,
+                                                     ins[i]->numel());
         }
       }
     }
@@ -237,15 +240,46 @@ struct BroadcastDataInit {
 
 template <int Index, int VecSize>
 struct BroadcastDataSetter {
-  template <typename Array, typename ArgsT>
+  template <typename Array, typename Array2, typename ArgsT>
   static __device__ __forceinline__ void Apply(const Array &ins,
                                                ArgsT *args,
+                                               const Array2 &configs,
                                                uint32_t index_bc[][VecSize]) {
     using Type = std::tuple_element_t<Index, ArgsT>;
+
+    if (configs[Index].in_numel == 1) {
+      Type temp = reinterpret_cast<const _ptr_ Type *>(ins[Index])[index_bc[Index][0]];
+#pragma unroll
+      for (int k = 0; k < VecSize; ++k) {
+        std::get<Index>(args[k]) = temp;
+      }
+      return;
+    }
+
+    using VecType = phi::kps::details::VectorType<Type, VecSize>;
+    Type vec_temp[4];
+    VecType *__restrict__ vec_temp_ptr = reinterpret_cast<VecType *>(vec_temp);
+    const VecType *__restrict__ ins_src = reinterpret_cast<const VecType *>(ins[Index]);
+    uint32_t index_src0;
+    uint32_t idx_diff;
+    bool vecRead = false;
+
+    index_src0 = index_bc[Index][0] / VecSize;
+    if (index_src0 * VecSize + VecSize <= configs[Index].in_numel) {
+      vecRead = true;
+      *vec_temp_ptr = ins_src[index_src0];
+      index_src0 *= VecSize;
+    }
+
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
-      std::get<Index>(args[k]) =
-          reinterpret_cast<const _ptr_ Type *>(ins[Index])[index_bc[Index][k]];
+      uint32_t idx_diff = index_bc[Index][k] - index_src0;
+      Type tmp = vec_temp[idx_diff & (VecSize - 1)];
+
+      std::get<Index>(args[k]) = (idx_diff < VecSize && vecRead)
+                                     ? tmp
+                                     : reinterpret_cast<const _ptr_ Type *>(
+                                           ins[Index])[index_bc[Index][k]];
     }
   }
 };
@@ -326,7 +360,7 @@ __device__ void VectorizedBroadcastKernelImpl(
         }
       }
     }
-    Unroller<BroadcastDataSetter, VecSize, Arity>::step(ins, args, index_bc);
+    Unroller<BroadcastDataSetter, VecSize, Arity>::step(ins, args, configs, index_bc);
   } else {
     BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
         ins, args, configs, use_broadcast, block_offset, num, numel, read_lens);
@@ -351,13 +385,20 @@ template <typename Functor,
 __global__ void VectorizedBroadcastKernel(
     Array<const _ptr_ char *__restrict__, Arity> ins,
     Array<_ptr_ OutT *, NumOuts> outs,
-    Array<bool, Arity> use_broadcast,
+    // Array<bool, Arity> use_broadcast,
+    int64_t use_broadcast1,
     uint32_t numel,
     Array<kps::details::BroadcastConfig, Arity> configs,
     int main_offset,
     int tail_tid,
     int read_lens,
     Functor func) {
+
+    Array<bool, Arity> use_broadcast;
+    bool *use_broadcast_temp = reinterpret_cast<bool *>(&use_broadcast1);
+    for (size_t i = 0; i < Arity; ++i)
+      use_broadcast[i] = use_broadcast_temp[i];
+
 #ifdef PADDLE_WITH_XPU_KP
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
   int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
@@ -477,7 +518,7 @@ void LaunchBroadcastKernel(
                               kElementwise>
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
-                                         classifier.use_broadcast,
+                                         classifier.use_broadcast1,
                                          numel,
                                          classifier.configs,
                                          main_offset,
@@ -489,7 +530,7 @@ void LaunchBroadcastKernel(
     VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, type_>
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
-                                         classifier.use_broadcast,
+                                         classifier.use_broadcast1,
                                          numel,
                                          classifier.configs,
                                          main_offset,
@@ -500,7 +541,7 @@ void LaunchBroadcastKernel(
     VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, kMixed>
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
-                                         classifier.use_broadcast,
+                                         classifier.use_broadcast1,
                                          numel,
                                          classifier.configs,
                                          main_offset,
@@ -539,10 +580,12 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   // Calculate the max vec_size for all ins and outs.
   int vec_size = GetVectorizedSizeForTensors(ins, *outs);
 #endif
+  vec_size = (Arity == 3) ? 2 : vec_size;
 
   auto classifier =
       BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   switch (vec_size) {
+    case VecSizeXL:
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
           ctx, classifier, func);

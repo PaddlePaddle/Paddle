@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -220,6 +221,7 @@ function(build_protobuf TARGET_NAME)
       "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
       "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
       "-Dprotobuf_WITH_ZLIB=ON"
+      "-DZLIB_LIBRARY=${THIRD_PARTY_PATH}/install/zlib/lib/libz.so"
       ${EXTERNAL_OPTIONAL_ARGS})
   if(NOT APPLE)
     set(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
@@ -233,7 +235,7 @@ function(build_protobuf TARGET_NAME)
 
   if(WITH_IPU)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
-    set(PROTOBUF_TAG v21.12)
+    set(PROTOBUF_TAG v21.7)
   elseif(WIN32)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
     # Change the tag to support building with vs2019
@@ -244,12 +246,12 @@ function(build_protobuf TARGET_NAME)
       set(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
     else()
       set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
-      set(PROTOBUF_TAG v21.12)
+      set(PROTOBUF_TAG v21.7)
     endif()
     if(WITH_GPU)
       if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
          AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
-        set(PROTOBUF_TAG v21.12)
+        set(PROTOBUF_TAG v21.7)
       endif()
     endif()
   endif()
@@ -318,18 +320,18 @@ function(build_protobuf TARGET_NAME)
 endfunction()
 
 if(WITH_IPU)
-  set(PROTOBUF_VERSION 21.12)
+  set(PROTOBUF_VERSION 21.7)
 elseif(WITH_ARM_BRPC)
-  set(PROTOBUF_VERSION 21.12-baidu-ee-common)
+  set(PROTOBUF_VERSION 21.7-baidu-ee-common)
 elseif(WIN32)
   #Lower version prootbuf is used for widows
   set(PROTOBUF_VERSION 3.2)
 else()
-  set(PROTOBUF_VERSION 21.12)
+  set(PROTOBUF_VERSION 21.7)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
        AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
-      set(PROTOBUF_VERSION 21.12)
+      set(PROTOBUF_VERSION 21.7)
     endif()
   endif()
 endif()

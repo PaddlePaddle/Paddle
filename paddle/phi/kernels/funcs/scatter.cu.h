@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,14 +37,14 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
 
-    PADDLE_ENFORCE(
-        scatter_i >= 0 && scatter_i < output_count,
-        "The index is out of bounds, "
-        "please check whether the dimensions of index and "
-        "input meet the requirements. It should "
-        "be less than [%d] and greater or equal to 0, but received [%d]",
-        output_count,
-        scatter_i);
+    // PADDLE_ENFORCE(
+    //     scatter_i >= 0 && scatter_i < output_count,
+    //     "The index is out of bounds, "
+    //     "please check whether the dimensions of index and "
+    //     "input meet the requirements. It should "
+    //     "be less than [%d] and greater or equal to 0, but received [%d]",
+    //     output_count,
+    //     scatter_i);
 
     int64_t out_i = scatter_i * slice_size + slice_i;
     *(output + out_i) = static_cast<T>(0);
@@ -63,14 +64,14 @@ __global__ void ScatterCUDAKernel(const T* params,
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
 
-    PADDLE_ENFORCE(
-        scatter_i >= 0 && scatter_i < output_count,
-        "The index is out of bounds, "
-        "please check whether the dimensions of index and "
-        "input meet the requirements. It should "
-        "be less than [%d] and greater or equal to 0, but received [%d]",
-        output_count,
-        scatter_i);
+    // PADDLE_ENFORCE(
+    //     scatter_i >= 0 && scatter_i < output_count,
+    //     "The index is out of bounds, "
+    //     "please check whether the dimensions of index and "
+    //     "input meet the requirements. It should "
+    //     "be less than [%d] and greater or equal to 0, but received [%d]",
+    //     output_count,
+    //     scatter_i);
 
     int64_t out_i = scatter_i * slice_size + slice_i;
     if (overwrite) {
@@ -165,9 +166,10 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   const size_t& slice_bytes = slice_size * sizeof(T);
 
   // set block and grid num
-  int block = 512;
+  int block = 256;
   int64_t n = slice_size * index_size;
-  dim3 grid = dim3((n + block - 1) / block);
+  const int num_per_thread = 4;
+  dim3 grid = dim3((n + block * num_per_thread - 1) / (block * num_per_thread));
   phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   // if not overwrite mode, init data

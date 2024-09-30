@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
@@ -22,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
 
 template <typename T>
 phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
@@ -65,7 +66,7 @@ template <typename T, typename DeviceContext>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if CUDA_VERSION < 11060
+#if CUDA_VERSION < 11060 || 1
     PADDLE_THROW(phi::errors::Unimplemented(
         "The fused_gemm_epilogue operator only support CUDA 11.6 "
         "or higher version."));
@@ -121,7 +122,7 @@ template <typename T, typename DeviceContext>
 class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if CUDA_VERSION < 11060
+#if CUDA_VERSION < 11060 || 1
     PADDLE_THROW(phi::errors::Unimplemented(
         "The fused_gemm_epilogue operator only support CUDA 11.6 "
         "or higher version."));
@@ -177,19 +178,19 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedGemmEpilogueKernel,
-                          float,
-                          double,
-                          plat::float16,
-                          plat::bfloat16) {}
-PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedGemmEpilogueGradKernel,
-                          float,
-                          double,
-                          plat::float16,
-                          plat::bfloat16) {}
+// PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue,
+//                           GPU,
+//                           ALL_LAYOUT,
+//                           ops::FusedGemmEpilogueKernel,
+//                           float,
+//                           double,
+//                           plat::float16,
+//                           plat::bfloat16) {}
+// PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue_grad,
+//                           GPU,
+//                           ALL_LAYOUT,
+//                           ops::FusedGemmEpilogueGradKernel,
+//                           float,
+//                           double,
+//                           plat::float16,
+//                           plat::bfloat16) {}

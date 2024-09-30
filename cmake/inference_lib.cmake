@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 # Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -219,13 +220,13 @@ if(WITH_GPU)
     DSTS ${dst_dir})
 endif()
 
-if(WITH_XPU)
-  set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/xpu")
-  copy(
-    inference_lib_dist
-    SRCS ${XPU_INC_DIR} ${XPU_LIB_DIR}
-    DSTS ${dst_dir} ${dst_dir})
-endif()
+#if(WITH_XPU)
+#  set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/xpu")
+#  copy(
+#    inference_lib_dist
+#    SRCS ${XPU_INC_DIR} ${XPU_LIB_DIR}
+#    DSTS ${dst_dir} ${dst_dir})
+#endif()
 
 # CMakeCache Info
 copy(
@@ -236,6 +237,16 @@ copy(
 copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
+
+if(WIN32)
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/common.*)
+else()
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
+endif()
+copy(
+  inference_lib_dist
+  SRCS ${paddle_common_lib}
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 
 if(WIN32)
   if(WITH_STATIC_LIB)
@@ -268,11 +279,6 @@ else()
       SRCS ${paddle_phi_lib}
       DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
   endif()
-  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
-  copy(
-    inference_lib_dist
-    SRCS ${paddle_common_lib}
-    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 endif()
 
 copy(

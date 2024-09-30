@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 // Copyright (c) 2019-2022, NVIDIA CORPORATION.  All rights reserved.
 //
@@ -42,7 +43,7 @@ inline int getSMVersion() {
 }
 
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-#define FINAL_MASK 0xffffffff
+#define FINAL_MASK 0xffffffffffffffffull
 
 template <int UNROLL_FACTOR>
 __global__ void generalAddBiasResidualLayerNormOpt2(
@@ -456,7 +457,7 @@ int PrelnResidualBiasPluginDynamic::enqueue(
       // if hidden is even, use half2 kernel generalAddBiasResidualLayerNormOpt2
       if (hidden % 2 == 0) {
         int half_n = hidden / 2;
-        int half_n_32 = (half_n + 31) / 32 * 32;
+        int half_n_32 = (half_n + 63) / 64 * 64;
         dim3 block(std::min(half_n_32, 512));
         int rolls_per_thread = half_n / block.x;
         int unroll_factor = 8;

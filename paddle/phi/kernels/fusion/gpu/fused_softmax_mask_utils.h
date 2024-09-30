@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +71,7 @@ struct MaxOP {
 
 template <typename T>
 __device__ __forceinline__ T
-warp_shfl_xor(T value, int laneMask, int width, unsigned int mask = MASK) {
+warp_shfl_xor(T value, int laneMask, int width, unsigned long long int mask = MASK) {
 #if CUDA_VERSION >= 9000
   return __shfl_xor_sync(mask, value, laneMask, width);
 #else

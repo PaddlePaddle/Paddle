@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,7 @@
 include(ExternalProject)
 
 set(DLPACK_PREFIX_DIR ${THIRD_PARTY_PATH}/dlpack)
+set(DLPACK_REPOSITORY http://172.161.13.41/pde-ai/dlpack.git)
 set(DLPACK_TAG v0.4)
 set(DLPACK_INCLUDE_DIR ${THIRD_PARTY_PATH}/dlpack/src/extern_dlpack/include)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/dlpack)

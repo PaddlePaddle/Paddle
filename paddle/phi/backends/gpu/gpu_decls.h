@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 // Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 //
@@ -16,6 +17,12 @@
 #pragma once
 
 #include "paddle/phi/backends/gpu/forwards.h"
+#include <cuda.h>
+#include <cusparse.h>
+#include <cublas_v2.h>
+#include <cudnn.h>
+//#include <cublasLt.h>
+#include <cusolverDn.h>
 
 namespace phi {
 
@@ -62,7 +69,7 @@ DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
 
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
-DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
+// DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
 
 DECLARE_TYPE_FOR_GPU(solverHandle_t, cusolverDnHandle_t, rocsolver_handle);
 

@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -205,7 +206,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
   __syncthreads();
 
   // NOTE(zcd): temporary solution
-  unsigned mask = 0u;
+  unsigned long long mask = 0ull;
   CREATE_SHFL_MASK(mask, true);
 
   for (int i = 0; i < num_sequence; i++) {
@@ -277,7 +278,7 @@ __global__ void RowConvGradFilter(const T *in,
   T *sh_dout = &mem[block_x * block_y];
 
   // NOTE(zcd): temporary solution
-  unsigned mask = 0u;
+  unsigned long long mask = 0ull;
   CREATE_SHFL_MASK(mask, true);
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);

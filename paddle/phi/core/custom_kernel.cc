@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +22,7 @@ namespace phi {
 void CustomKernelMap::RegisterCustomKernel(const std::string& name,
                                            const KernelKey& key,
                                            const Kernel& kernel) {
+  std::cout<<"RegisterCustomKernel start\n";
   PADDLE_ENFORCE_EQ(kernels_[name].find(key),
                     kernels_[name].end(),
                     phi::errors::AlreadyExists(
@@ -29,6 +31,7 @@ void CustomKernelMap::RegisterCustomKernel(const std::string& name,
                         "info in your lib(s) before load again.",
                         name,
                         key));
+  std::cout<<"PADDLE_ENFORCE_EQ\n";
   kernels_[name][key] = kernel;
 }
 

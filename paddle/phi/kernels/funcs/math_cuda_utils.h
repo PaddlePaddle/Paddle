@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -168,19 +169,19 @@ struct KeyValuePair<half> {
 // return 32 for this variable, and all current AMD devices return 64. Device
 // code should use the warpSize built-in to develop portable wave-aware code.
 #ifdef PADDLE_WITH_HIP
-#define FINAL_MASK 0xffffffffffffffffUL
+#define FINAL_MASK 0xffffffffffffffffull
 #define HALF_WARP 32
 #define WARP_SIZE 64
 #define WARP_SIZE_WIDTH 6
 #define WARP_SIZE_WIDTH_MASK 0x3f
 typedef u_int64_t warp_mask_t;
 #else
-#define FINAL_MASK 0xffffffff
-#define HALF_WARP 16
-#define WARP_SIZE 32
-#define WARP_SIZE_WIDTH 5
-#define WARP_SIZE_WIDTH_MASK 0x1f
-typedef unsigned warp_mask_t;
+#define FINAL_MASK 0xffffffffffffffffull
+#define HALF_WARP 32
+#define WARP_SIZE 64
+#define WARP_SIZE_WIDTH 6
+#define WARP_SIZE_WIDTH_MASK 0x3f
+typedef long long warp_mask_t;
 #endif
 
 template <typename T>
@@ -232,7 +233,7 @@ __inline__ __device__ T WarpReduceSumV2(T *val) {
 
 template <typename T, int NUM>
 __inline__ __device__ T BlockReduceSumV2(T *val) {
-  static __shared__ T shared[NUM][33];
+  static __shared__ T shared[NUM][65];
   int lane = threadIdx.x & WARP_SIZE_WIDTH_MASK;
   int wid = threadIdx.x >> WARP_SIZE_WIDTH;
 

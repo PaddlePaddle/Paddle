@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +37,9 @@ extern bool HasCUDADriver();
       std::call_once(cuda_dso_flag, []() {                           \
         cuda_dso_handle = phi::dynload::GetCUDADsoHandle();          \
       });                                                            \
-      static void* p_##__name = dlsym(cuda_dso_handle, #__name);     \
+      std::string replaced_name = #__name;                                  \
+      replaced_name =  replaced_name.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(cuda_dso_handle, replaced_name.c_str());    \
       return reinterpret_cast<cuda_func>(p_##__name)(args...);       \
     }                                                                \
   };                                                                 \

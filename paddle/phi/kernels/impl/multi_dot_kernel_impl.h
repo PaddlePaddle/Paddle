@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -237,6 +238,10 @@ void MultiDotKernel(const Context& ctx,
     *out = tmp;
     out->Resize(out_dim);
   }
+
+  auto& theta_grad = out;
+  T* th_data = ctx.template Alloc<T>(theta_grad);
+  
 }
 
 /**

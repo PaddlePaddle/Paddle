@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 include(operators)
 if(WITH_UNITY_BUILD)
   # Load Unity Build rules for operators in paddle/fluid/operators/fused.
@@ -19,7 +20,7 @@ register_operators(
   fused_multi_transformer_int8_op
   resnet_unit_op
   fused_gemm_epilogue_op
-  fused_gate_attention_op
+  # fused_gate_attention_op
   resnet_basic_block_op)
 
 op_library(fusion_lstm_op)
@@ -46,7 +47,7 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   op_library(yolo_box_head_op)
   op_library(yolo_box_post_op)
-  op_library(fused_gate_attention_op)
+  # op_library(fused_gate_attention_op)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)
     op_library(fusion_group_op)
@@ -63,14 +64,14 @@ if(WITH_GPU OR WITH_ROCM)
     # fused_attention_op
     op_library(fused_attention_op)
     op_library(fused_multi_transformer_op)
-    op_library(fused_multi_transformer_int8_op)
+    # op_library(fused_multi_transformer_int8_op)
   endif()
   # resnet_unit needs cudnn 8.0 above
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))
     op_library(resnet_unit_op)
   endif()
 
-  if(CUDA_VERSION GREATER_EQUAL 11.6)
-    op_library(fused_gemm_epilogue_op)
-  endif()
+  # if(CUDA_VERSION GREATER_EQUAL 11.6)
+  #   op_library(fused_gemm_epilogue_op)
+  # endif()
 endif()

@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /*
  * Copyright (c) 2019-2023, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -30,7 +31,7 @@
 
 #pragma once
 
-#include <cublasLt.h>
+// #include <cublasLt.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <glog/logging.h>

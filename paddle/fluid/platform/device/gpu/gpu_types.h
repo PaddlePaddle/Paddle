@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 // Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 //
@@ -27,7 +28,7 @@
 #include <cuda_runtime.h>
 
 #include "paddle/fluid/platform/dynload/cublas.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
+// #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 
@@ -86,7 +87,7 @@ DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
 
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
-DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
+// DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
 
 using CUDAGraphID = unsigned long long;  // NOLINT
 

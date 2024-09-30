@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +28,7 @@
 
 namespace phi {
 
-#define FULL_MASK 0xffffffff
+#define FULL_MASK 0xffffffffffffffffull
 
 template <typename Tx, typename Ty = Tx>
 struct ZeroOrderFunctor {

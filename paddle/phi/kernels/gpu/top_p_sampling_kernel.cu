@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -612,17 +613,28 @@ __global__ void print_kernel(T* input, int size) {
   }
 }
 #else
+// template <typename T>
+// __global__ void print_kernel(T* input, int size) {
+//   for (int i = 0; i < size; i++) {
+//     std::stringstream ss;
+//     ss << "[";
+//     if (i != size - 1) {
+//       ss << static_cast<float>(input[i]) << ", ";
+//     } else {
+//       ss << static_cast<float>(input[i]) << "]\n";
+//     }
+//     VLOG(0) << ss.str();
+//   }
+// }
 template <typename T>
 __global__ void print_kernel(T* input, int size) {
   for (int i = 0; i < size; i++) {
-    std::stringstream ss;
-    ss << "[";
+    printf("[");
     if (i != size - 1) {
-      ss << static_cast<float>(input[i]) << ", ";
+      printf("%f, ", static_cast<float>(input[i]));
     } else {
-      ss << static_cast<float>(input[i]) << "]\n";
+      printf("%f]\n", static_cast<float>(input[i]));
     }
-    VLOG(0) << ss.str();
   }
 }
 #endif

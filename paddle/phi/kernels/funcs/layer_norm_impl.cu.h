@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,18 +43,19 @@ template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 inline static int GetDesiredBlockDim(int64_t block_dim) {
-  const int kMaxBlockDim = 512;
+  const int kMaxBlockDim = 256;
 #ifdef __HIPCC__
   const int lwarpSize = 64;
 #else
-  const int lwarpSize = 32;
+  const int lwarpSize = 64;
 #endif
   return block_dim >= kMaxBlockDim ? kMaxBlockDim : lwarpSize;
 }
 
 template <typename U>
 static __forceinline__ __device__ U WarpReduceSum(U val) {
-  unsigned mask = 0u;
+  // unsigned mask = 0u;
+  unsigned long long mask = 0ull;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
     val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
@@ -254,7 +256,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-      mu_local += __shfl_xor_sync(uint32_t(-1), mu_local, it);
+      mu_local += __shfl_xor_sync(uint64_t(-1), mu_local, it);
     }
     if (WARPS_N > 1) {
       if (lane == 0) {
@@ -290,7 +292,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-      var_local += __shfl_xor_sync(uint32_t(-1), var_local, it);
+      var_local += __shfl_xor_sync(uint64_t(-1), var_local, it);
     }
 
     if (WARPS_N > 1) {
@@ -531,21 +533,19 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
   if (i1 >= i1_end) return;
   U curr_mean = mean[i1];
   U curr_invvar = rsqrt_<U>(var[i1] + epsilon);
+  const int loop = min(VPT, n2 - i2_off);
 #pragma unroll
-  for (int k = 0; k < VPT; ++k) {
+  for (int k = 0; k < loop; ++k) {
     const int i2 = i2_off + k;
     const int64_t load_idx = i1 * n2 + i2;
     const int write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
-    if (i2 < n2) {
-      U curr_input = static_cast<U>(input[load_idx]);
-      U curr_dout = static_cast<U>(dout[load_idx]);
-      warp_buf1[write_idx] += curr_dout;
-      warp_buf2[write_idx] +=
-          curr_dout * (curr_input - curr_mean) * curr_invvar;
-    }
+    U curr_input = static_cast<U>(input[load_idx]);
+    U curr_dout = static_cast<U>(dout[load_idx]);
+    warp_buf1[write_idx] += curr_dout;
+    warp_buf2[write_idx] +=
+        curr_dout * (curr_input - curr_mean) * curr_invvar;
   }
 }
-
 #ifdef PADDLE_WITH_CUDA
 template <bool IsFusedDropoutResidualLn,
           bool NeedDDropoutSrcPtr,
@@ -678,16 +678,16 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
 #pragma unroll
       // row reduction among 32 threads.
       for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-        sum_loss1 += __shfl_xor_sync(uint32_t(-1), sum_loss1, it);
-        sum_loss2 += __shfl_xor_sync(uint32_t(-1), sum_loss2, it);
+        sum_loss1 += __shfl_xor_sync(uint64_t(-1), sum_loss1, it);
+        sum_loss2 += __shfl_xor_sync(uint64_t(-1), sum_loss2, it);
       }
       sum_loss1 *= rn;
       sum_loss2 *= rn;
     } else {
 #pragma unroll
       for (int it = 16; it > 0; it /= 2) {
-        sum_loss1 += __shfl_down_sync(uint32_t(-1), sum_loss1, it);
-        sum_loss2 += __shfl_down_sync(uint32_t(-1), sum_loss2, it);
+        sum_loss1 += __shfl_down_sync(uint64_t(-1), sum_loss1, it);
+        sum_loss2 += __shfl_down_sync(uint64_t(-1), sum_loss2, it);
       }
 
       if (lane == 0) {
@@ -1365,8 +1365,8 @@ __global__ void LayerNormBackwardComputeGradInput(const T *__restrict__ dout,
       sum_loss2 += __shfl_xor(sum_loss2, mask, warpSize);
 #else
       // WARP_SHFL_XOR(sum_loss, mask);
-      sum_loss1 += __shfl_xor_sync(0xffffffff, sum_loss1, mask, warpSize);
-      sum_loss2 += __shfl_xor_sync(0xffffffff, sum_loss2, mask, warpSize);
+      sum_loss1 += __shfl_xor_sync(0xffffffffffffffffull, sum_loss1, mask, warpSize);
+      sum_loss2 += __shfl_xor_sync(0xffffffffffffffffull, sum_loss2, mask, warpSize);
 #endif
     }
     // inter-warp reductions
@@ -1441,7 +1441,8 @@ __global__ void LayerNormBackwardComputeGradInputWithSmallFeatureSize(
 #ifdef __HIPCC__
   for (int64_t bid = hipBlockIdx_x; bid < n1; bid += hipGridDim_x) {
 #else
-  for (int64_t bid = blockIdx.x; bid < n1; bid += gridDim.x) {
+  for (int64_t bid = bid = blockIdx.x * blockDim.z + threadIdx.z;
+                bid < n1; bid += gridDim.x * blockDim.z) {
 #endif
     U sum_loss1 = U(0);
     U sum_loss2 = U(0);
@@ -1516,38 +1517,39 @@ __global__ void LayerNormBackwardComputeGradInputWithSmallFeatureSize(
       sum_loss2 += __shfl_xor(sum_loss2, mask, warpSize);
 #else
       // WARP_SHFL_XOR(sum_loss, mask);
-      sum_loss1 += __shfl_xor_sync(0xffffffff, sum_loss1, mask, WarpSize);
-      sum_loss2 += __shfl_xor_sync(0xffffffff, sum_loss2, mask, WarpSize);
+      sum_loss1 += __shfl_xor_sync(0xffffffffffffffffull, sum_loss1, mask, WarpSize);
+      sum_loss2 += __shfl_xor_sync(0xffffffffffffffffull, sum_loss2, mask, WarpSize);
 #endif
     }
 
     // inter-warp reductions
     if (blockDim.y > 1) {
-      __shared__ U buf[512];
+      __shared__ U buf[1024];
+      const int z_offset = threadIdx.z * blockDim.y * blockDim.x * 2;
       for (int offset = blockDim.y / 2; offset > 0; offset /= 2) {
         // upper half of warps write to shared
         if (threadIdx.y >= offset && threadIdx.y < 2 * offset) {
           const int wrt_i = (threadIdx.y - offset) * WarpSize + threadIdx.x;
-          buf[2 * wrt_i] = sum_loss1;
-          buf[2 * wrt_i + 1] = sum_loss2;
+          buf[z_offset + 2 * wrt_i] = sum_loss1;
+          buf[z_offset + 2 * wrt_i + 1] = sum_loss2;
         }
         __syncthreads();
         // lower half merges
         if (threadIdx.y < offset) {
           const int read_i = threadIdx.y * blockDim.x + threadIdx.x;
-          sum_loss1 += buf[2 * read_i];
-          sum_loss2 += buf[2 * read_i + 1];
+          sum_loss1 += buf[z_offset + 2 * read_i];
+          sum_loss2 += buf[z_offset + 2 * read_i + 1];
         }
         __syncthreads();
       }
       if (threadIdx.y == 0) {
-        buf[2 * threadIdx.x] = sum_loss1;
-        buf[2 * threadIdx.x + 1] = sum_loss2;
+        buf[z_offset + 2 * threadIdx.x] = sum_loss1;
+        buf[z_offset + 2 * threadIdx.x + 1] = sum_loss2;
       }
       __syncthreads();
       if (threadIdx.y != 0) {
-        sum_loss1 = buf[2 * threadIdx.x];
-        sum_loss2 = buf[2 * threadIdx.x + 1];
+        sum_loss1 = buf[z_offset + 2 * threadIdx.x];
+        sum_loss2 = buf[z_offset + 2 * threadIdx.x + 1];
       }
     }
 
@@ -2150,14 +2152,20 @@ static void LayerNormBackward(
         }
         block_dim_y = std::min(8, (block_dim_y / 2));
 #endif  // __GNUCC__
-
-          dim3 threads1(BDIMX, block_dim_y, 1);
+          int BDIMZ = 512/(BDIMX * block_dim_y);
+          dim3 threads1(BDIMX, block_dim_y, BDIMZ);
+#define LOOP_PER_THREAD 4
+          int batch_per_block = BDIMZ * LOOP_PER_THREAD;
+          int64_t gdimx = (batch_size + batch_per_block - 1)/batch_per_block;
 #define IMPL_BACKWARD_FOR_INPUT(num)                                       \
   LayerNormBackwardComputeGradInputWithSmallFeatureSize<T, U, ScaleT, num> \
-      <<<batch_size, threads1, 0, stream>>>(                               \
+      <<<gdimx, threads1, 0, stream>>>(                               \
           d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
 
           switch (real_vec) {
+            case 8: {
+              IMPL_BACKWARD_FOR_INPUT(8);
+            } break;
             case 4: {
               IMPL_BACKWARD_FOR_INPUT(4);
             } break;

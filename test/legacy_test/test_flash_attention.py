@@ -1,3 +1,4 @@
+# 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 # Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,7 +106,7 @@ def is_flashattn_supported():
 class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 16)
+        self.shape = (2, 128, 8, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
@@ -327,7 +328,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
 class TestFlashAttentionWithMaskAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 32)
+        self.shape = (2, 128, 8, 64)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
@@ -378,7 +379,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 16)
+        self.shape = (2, 128, 8, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -389,7 +390,7 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
 class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 256, 8, 16)
+        self.shape = (2, 256, 8, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -400,7 +401,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
 class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 512, 8, 16)
+        self.shape = (2, 512, 8, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = True
@@ -422,7 +423,7 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
 class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 256)
+        self.shape = (8, 1024, 16, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -477,7 +478,7 @@ class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
 class TestFlashAttentionNoKVGrad(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 16)
+        self.shape = (2, 128, 8, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = True

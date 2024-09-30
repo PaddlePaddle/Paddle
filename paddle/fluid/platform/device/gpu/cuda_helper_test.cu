@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -211,7 +212,7 @@ TEST(CudaAtomic, float16Unalign) {
 // https://devblogs.nvidia.com/faster-parallel-reductions-kepler/
 template <typename T>
 static __forceinline__ __device__ T WarpReduceSum(T val) {
-  unsigned mask = 0u;
+  unsigned long long mask = 0ull;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
     val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);

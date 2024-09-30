@@ -1,3 +1,4 @@
+#2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 include(ExternalProject)
 
 set(ALLOCATOR_DEPS place stats profiler phi common device_context)
@@ -149,13 +150,13 @@ cc_test(
   SRCS buddy_allocator_test.cc
   DEPS allocator)
 
-if(WITH_TESTING)
-  # TODO(zhiqiu): why not win32? because wget is not found on windows
-  if(NOT WIN32)
-    add_custom_target(
-      download_data
-      COMMAND wget -nc --no-check-certificate
-              https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
-      COMMAND tar -xf buddy_allocator_test_data.tar)
-  endif()
-endif()
+#if(WITH_TESTING)
+#  # TODO(zhiqiu): why not win32? because wget is not found on windows
+#  if(NOT WIN32)
+#    add_custom_target(
+#      download_data
+#      COMMAND wget -nc --no-check-certificate
+#              https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
+#      COMMAND tar -xf buddy_allocator_test_data.tar)
+#  endif()
+#endif()

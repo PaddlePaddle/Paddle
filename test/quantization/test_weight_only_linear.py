@@ -399,5 +399,47 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
         np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-3, atol=1e-3)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase11(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.weight_dtype = "int8"
+        self.in_features = 128
+        self.out_features = 288
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase12(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.bias = False
+        self.weight_dtype = "int8"
+        self.in_features = 128
+        self.out_features = 288
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase13(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int8"
+        self.in_features = 128
+        self.out_features = 288
+
+
 if __name__ == '__main__':
     unittest.main()

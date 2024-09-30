@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,10 +39,10 @@ namespace fusion {
 #ifdef PADDLE_WITH_HIP
 #define WARP_SIZE 64
 #else
-#define WARP_SIZE 32
+#define WARP_SIZE 64
 #endif
 
-#define MASK 0xffffffff
+#define MASK 0xffffffffffffffffull
 
 __device__ __inline__ void load_data_upper_tri(phi::float16* dst,
                                                const phi::float16* src) {
@@ -93,7 +94,7 @@ template <typename T>
 __device__ __forceinline__ T warp_shfl_xor_upper_tri(T value,
                                                      int laneMask,
                                                      int width,
-                                                     unsigned int mask = MASK) {
+                                                     unsigned long long mask = MASK) {
 #if CUDA_VERSION >= 9000
   return __shfl_xor_sync(mask, value, laneMask, width);
 #else

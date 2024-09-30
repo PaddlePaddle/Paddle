@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,6 +67,7 @@
 #define GRID_NUM_Y gridDim.y
 #define GRID_NUM_Z gridDim.z
 
+#define VecSizeXL 8
 #define VecSizeL 4
 #define VecSizeM 2
 #define VecSizeS 1

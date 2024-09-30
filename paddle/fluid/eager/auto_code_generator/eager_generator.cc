@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -589,6 +590,11 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   // Skip ooerator which is not inherit form OperatorWithKernel, like while,
   // since only OperatorWithKernel can run in dygraph mode.
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
+  // if(op_type=="dgc"){
+  //   std::cerr << "count eager dygraph: " << all_kernels.count(op_type) << std::endl;
+  //   std::cerr << "map size dygraph: " << all_kernels.size() << std::endl;
+  //   std::cerr << "HasCompatiblePhiKernel eager dygraph: " << phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type) << std::endl;
+  // }
   if (!all_kernels.count(op_type) &&
       !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
     return false;

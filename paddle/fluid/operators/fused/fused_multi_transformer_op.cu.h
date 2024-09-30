@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
 
@@ -247,14 +248,16 @@ template <> struct V_vec_acum_fp32_<uint4> { using Type = Float8_; };
 // clang-format on
 
 inline __device__ float half_to_float(uint16_t h) {
-  float f;
-  asm volatile("cvt.f32.f16 %0, %1;\n" : "=f"(f) : "h"(h));
+  // asm volatile("cvt.f32.f16 %0, %1;\n" : "=f"(f) : "h"(h));
+  __half a;
+  a = *(reinterpret_cast<__half *>(&h));
+  float f = __half2float(a);
   return f;
 }
 
 inline __device__ float2 half2_to_float2(uint32_t v) {
   uint16_t lo, hi;
-  asm volatile("mov.b32 {%0, %1}, %2;\n" : "=h"(lo), "=h"(hi) : "r"(v));
+  // asm volatile("mov.b32 {%0, %1}, %2;\n" : "=h"(lo), "=h"(hi) : "r"(v));
   return make_float2(half_to_float(lo), half_to_float(hi));
 }
 
@@ -264,9 +267,11 @@ inline __device__ uint32_t float2_to_half2(float2 f) {
     uint16_t u16[2];
   } tmp;
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-  asm volatile("cvt.rn.f16x2.f32 %0, %1, %2;\n"
-               : "=r"(tmp.u32)
-               : "f"(f.y), "f"(f.x));
+  // asm volatile("cvt.rn.f16x2.f32 %0, %1, %2;\n"
+  //              : "=r"(tmp.u32)
+  //              : "f"(f.y), "f"(f.x));
+  __half2 hf2 = __float22half2_rn(f);
+  tmp.u32 = *(reinterpret_cast<uint32_t *>(&hf2));
 #else
   asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[0]) : "f"(f.x));
   asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[1]) : "f"(f.y));
@@ -294,13 +299,15 @@ inline __device__ float4 add(float4 a, float4 b) {
 
 inline __device__ uint16_t add(uint16_t a, uint16_t b) {
   uint16_t c;
-  asm volatile("add.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
+  c = a + b;
+  // asm volatile("add.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
   return c;
 }
 
 inline __device__ uint32_t add(uint32_t a, uint32_t b) {
   uint32_t c;
-  asm volatile("add.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
+  c = a + b;
+  // asm volatile("add.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
   return c;
 }
 
@@ -363,14 +370,16 @@ inline __device__ float4 mul(float4 a, float4 b) {
 template <>
 inline __device__ uint16_t mul(uint16_t a, uint16_t b) {
   uint16_t c;
-  asm volatile("mul.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
+  c = a * b;
+  // asm volatile("mul.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
   return c;
 }
 
 template <>
 inline __device__ uint32_t mul(uint32_t a, uint32_t b) {
   uint32_t c;
-  asm volatile("mul.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
+  c = a * b;
+  // asm volatile("mul.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
   return c;
 }
 
@@ -533,11 +542,15 @@ inline __device__ float4 fma(float4 a, float4 b, float4 c) {
 }
 
 inline __device__ uint32_t fma(uint32_t a, uint32_t b, uint32_t c) {
-  uint32_t d;
-  asm volatile("fma.rn.f16x2 %0, %1, %2, %3;\n"
-               : "=r"(d)
-               : "r"(a), "r"(b), "r"(c));
-  return d;
+  // uint32_t d;
+  // asm volatile("fma.rn.f16x2 %0, %1, %2, %3;\n"
+  //              : "=r"(d)
+  //              : "r"(a), "r"(b), "r"(c));
+  __half2 a_hf2 = *(reinterpret_cast<__half2 *>(&a));
+  __half2 b_hf2 = *(reinterpret_cast<__half2 *>(&b));
+  __half2 c_hf2 = *(reinterpret_cast<__half2 *>(&b));
+  __half2 d = __hfma2(a_hf2, b_hf2, c_hf2);
+  return *(reinterpret_cast<uint32_t *>(&d));
 }
 
 inline __device__ uint2 fma(uint2 a, uint2 b, uint2 c) {
@@ -582,9 +595,10 @@ inline __device__ Float8_ fma(float a, Float8_ b, Float8_ c) {
 }
 
 inline __device__ uint32_t h0_h0(uint16_t a) {
-  uint32_t b;
-  asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
-  return b;
+  __half a_hf = *(reinterpret_cast<__half *>(&a));
+  // asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
+  __half2 b_hf2 = make_half2(a_hf, a_hf);
+  return *(reinterpret_cast<uint32_t *>(&b_hf2));
 }
 
 inline __device__ uint32_t fma(uint16_t a, uint32_t b, uint32_t c) {
@@ -639,7 +653,7 @@ inline __device__ float qk_dot_(const K_vec (&q)[N],
   float qk = sum(qk_vec);
 #pragma unroll
   for (int mask = THREADS_PER_KEY / 2; mask >= 1; mask /= 2) {
-    qk += __shfl_xor_sync(uint32_t(-1), qk, mask);
+    qk += __shfl_xor_sync(uint64_t(-1), qk, mask);
   }
   return qk;
 }
@@ -647,15 +661,15 @@ inline __device__ float qk_dot_(const K_vec (&q)[N],
 inline __device__ float4 hmma_fp32_tensorcore(const uint2 &a, uint32_t b) {
   float4 c;
   float zero = 0.f;
-  asm volatile(
-      "mma.sync.aligned.m16n8k8.row.col.f32.f16.f16.f32 \n"
-      "    {%0, %1, %2, %3}, \n"
-      "    {%4, %5}, \n"
-      "    {%6}, \n"
-      "    {%7, %7, %7, %7}; \n"
+  // asm volatile(
+  //     "mma.sync.aligned.m16n8k8.row.col.f32.f16.f16.f32 \n"
+  //     "    {%0, %1, %2, %3}, \n"
+  //     "    {%4, %5}, \n"
+  //     "    {%6}, \n"
+  //     "    {%7, %7, %7, %7}; \n"
 
-      : "=f"(c.x), "=f"(c.y), "=f"(c.z), "=f"(c.w)
-      : "r"(a.x) "r"(a.y), "r"(b), "f"(zero));
+  //     : "=f"(c.x), "=f"(c.y), "=f"(c.z), "=f"(c.w)
+  //     : "r"(a.x) "r"(a.y), "r"(b), "f"(zero));
   return c;
 }
 
@@ -713,14 +727,14 @@ struct Qk_dot<float16, 4> {
   }
 };
 
-template <int WARPS_PER_BLOCK, int WARP_SIZE = 32>
+template <int WARPS_PER_BLOCK, int WARP_SIZE = 64>
 inline __device__ float block_sum(float *red_smem, float sum) {
   int warp = threadIdx.x / WARP_SIZE;
   int lane = threadIdx.x % WARP_SIZE;
 
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
-    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+    sum += __shfl_xor_sync(uint64_t(-1), sum, mask);
   }
 
   if (lane == 0) {
@@ -734,10 +748,10 @@ inline __device__ float block_sum(float *red_smem, float sum) {
 
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+    sum += __shfl_xor_sync(uint64_t(-1), sum, mask);
   }
 
-  return __shfl_sync(uint32_t(-1), sum, 0);
+  return __shfl_sync(uint64_t(-1), sum, 0);
 }
 
 inline __device__ void convert_from_float(float &dst, float src) {  // NOLINT
@@ -1034,7 +1048,7 @@ __global__ void masked_multihead_attention_kernel(
 
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
-    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint64_t(-1), qk_max, mask));
   }
 
   const int warp = tid / WARP_SIZE;
@@ -1049,7 +1063,7 @@ __global__ void masked_multihead_attention_kernel(
   qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint64_t(-1), qk_max, mask));
   }
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
@@ -1775,7 +1789,7 @@ void InvokeRebuildPadding(const phi::GPUContext &dev_ctx,
       output_data, input_data, padding_offset, dim_embed);
 }
 
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
 // Only Used in Inference
 template <typename T>
 class CublasFusedMLP {

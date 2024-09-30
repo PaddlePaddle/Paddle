@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 // Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 //
@@ -376,7 +377,7 @@ message DistributedStrategy {
   optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
   optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
   optional bool cudnn_exhaustive_search = 21 [ default = false ];
-  optional int32 conv_workspace_size_limit = 22 [ default = 512 ];
+  optional int32 conv_workspace_size_limit = 22 [ default = 1024 ];
   optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = false ];
   optional bool adaptive_localsgd = 24 [ default = false ];
   optional bool fp16_allreduce = 25 [ default = false ];

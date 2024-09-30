@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
@@ -196,10 +197,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.fuse_adamw_, "fuse_adamw_op_pass");
 #endif
 
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
-    AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
-                        "fuse_gemm_epilogue_pass");
-#endif
+//#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
+//    AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
+//                        "fuse_gemm_epilogue_pass");
+//#endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
     // for single card training, fuse_all_reduce_ops is unnecessary.
@@ -549,6 +550,6 @@ USE_PASS(mkldnn_placement_pass);
     !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
 #endif
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
-USE_PASS(fuse_gemm_epilogue_pass);
-#endif
+//#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
+//USE_PASS(fuse_gemm_epilogue_pass);
+//#endif

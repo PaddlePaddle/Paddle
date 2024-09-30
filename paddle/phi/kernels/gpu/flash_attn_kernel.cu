@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,63 +62,65 @@ void FlashAttnUnpaddedKernel(
   const int64_t batch_size = cu_seqlens_q.numel() - 1;
   const int64_t num_heads = dims[1];
   const int64_t head_size = dims[2];
+  const int64_t head_size_og = out->dims()[2];
   const int64_t num_heads_k = k.dims()[1];
+  const int64_t total_q = dims[0];
+  const int64_t total_k = k.dims()[0];
+  FlashAttnParamsFwd<T> params = FlashAttnParamsFwd<T>(ctx,
+                                                       attn_mask,
+                                                       return_softmax,
+                                                       *softmax,
+                                                       q,
+                                                       k,
+                                                       v,
+                                                       *out,
+                                                       *softmax_lse,
+                                                       is_test,
+                                                       dropout,
+                                                       causal,
+                                                       fixed_seed_offset,
+                                                       *seed_offset,
+                                                       rng_name,
+                                                       batch_size,
+                                                       max_seqlen_q,
+                                                       num_heads,
+                                                       head_size,
+                                                       max_seqlen_k,
+                                                       num_heads_k);
 
-  // TODO(umiswing): add shape check
-
-  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
-                                                           batch_size,
-                                                           max_seqlen_q,
-                                                           max_seqlen_k,
-                                                           num_heads,
-                                                           num_heads_k,
-                                                           head_size,
-                                                           dropout,
-                                                           scale,
-                                                           causal,
-                                                           return_softmax,
-                                                           q.dtype(),
-                                                           is_test,
-                                                           rng_name,
-                                                           fixed_seed_offset,
-                                                           attn_mask,
-                                                           softmax,
-                                                           softmax_lse,
-                                                           seed_offset);
-
-  VLOG(10) << "FlashAttn fwd seed: " << params.seed
-           << ", offset: " << params.offset;
-
-  bool succ = phi::dynload::flash_attn_varlen_fwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      cu_seqlens_q.data<int32_t>(),
-      cu_seqlens_k.data<int32_t>(),
-      params.rng_state.data(),
-      out->data(),
-      params.return_softmax ? softmax->data() : nullptr,
-      softmax_lse->data(),
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.seqlen_q_rounded,
-      params.seqlen_k_rounded,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.head_size_rounded,
-      params.dropout,
-      params.softmax_scale,
-      1.0f / params.softmax_scale,
-      params.causal,
-      params.return_softmax,
-      params.is_bf16,
-      stream,
-      params.seed,
-      params.offset,
-      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
+  VLOG(10) << "FlashAttn fwd seed: " << params.seed_offset_data[0]
+           << ", offset: " << params.seed_offset_data[1];
+  auto flash_cu_seqlens_q = DenseTensorToMcFlashAttnTensor(cu_seqlens_q);
+  auto flash_cu_seqlens_k = DenseTensorToMcFlashAttnTensor(cu_seqlens_k);
+  mcflashattnStatus_t succ =
+      phi::dynload::mha_varlen_fwd(params.batch_size,
+                                   total_q,
+                                   params.num_heads,
+                                   total_k,
+                                   params.num_heads_k,
+                                   head_size_og,
+                                   params.q,
+                                   params.k,
+                                   params.v,
+                                   params.out,
+                                   flash_cu_seqlens_q,
+                                   flash_cu_seqlens_k,
+                                   nullptr,
+                                   params.alibi_slopes,
+                                   params.softmax_lse,
+                                   params.p,
+                                   params.rng_state,
+                                   params.seqlen_q,
+                                   params.seqlen_k,
+                                   params.p_dropout,
+                                   params.softmax_scale,
+                                   params.is_causal,
+                                   params.window_size_left,
+                                   params.window_size_right,
+                                   params.stream,
+                                   params.extend_parameter);
+  phi::dynload::release_tensor(cu_seqlens_q);
+  phi::dynload::release_tensor(cu_seqlens_k);
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -141,6 +144,7 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
+  ctx.template Alloc<T>(out);
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
   PADDLE_ENFORCE_EQ(dims.size(),
@@ -148,82 +152,67 @@ void FlashAttnKernel(const Context& ctx,
                     phi::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
-
   const int64_t batch_size = dims[0];
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
   const int64_t head_size = dims[3];
   const int64_t seqlen_k = k.dims()[1];
   const int64_t num_heads_k = k.dims()[2];
-
-  // TODO(umiswing): Add check shape
-
-  const float softmax_scale = 1.0f / std::sqrt(head_size);
-  const float softmax_unscale = std::sqrt(head_size);
-
-  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
-                                                           batch_size,
-                                                           seqlen_q,
-                                                           seqlen_k,
-                                                           num_heads,
-                                                           num_heads_k,
-                                                           head_size,
-                                                           dropout,
-                                                           softmax_scale,
-                                                           causal,
-                                                           return_softmax,
-                                                           q.dtype(),
-                                                           is_test,
-                                                           rng_name,
-                                                           fixed_seed_offset,
-                                                           attn_mask,
-                                                           softmax,
-                                                           softmax_lse,
-                                                           seed_offset);
+  FlashAttnParamsFwd<T> params = FlashAttnParamsFwd<T>(ctx,
+                                                       attn_mask,
+                                                       return_softmax,
+                                                       *softmax,
+                                                       q,
+                                                       k,
+                                                       v,
+                                                       *out,
+                                                       *softmax_lse,
+                                                       is_test,
+                                                       dropout,
+                                                       causal,
+                                                       fixed_seed_offset,
+                                                       *seed_offset,
+                                                       rng_name,
+                                                       batch_size,
+                                                       seqlen_q,
+                                                       num_heads,
+                                                       head_size,
+                                                       seqlen_k,
+                                                       num_heads_k);
 
   VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
            << k.dims() << "], v.shape=[" << v.dims() << "]";
   VLOG(10) << "[FlashAttn Forward] dropout=" << dropout
-           << ", seed=" << params.seed << ", offset=" << params.offset;
-  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << softmax_scale
-           << ", softmax_unscale=" << softmax_unscale;
+           << ", seed=" << params.seed_offset_data[0]
+           << ", offset=" << params.seed_offset_data[1];
+  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << params.softmax_scale;
   if (attn_mask.get_ptr()) {
     VLOG(10) << "[FlashAttn Forward] attn_mask.shape=["
              << (attn_mask.get_ptr())->dims() << "]";
   }
 
-  ctx.template Alloc<T>(out);
-
-  cudaStream_t stream = ctx.stream();
-
-  bool succ = phi::dynload::flash_attn_fwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      params.rng_state.data(),
-      out->data(),
-      params.return_softmax ? params.softmax->data() : nullptr,
-      params.softmax_lse->data(),
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.seqlen_q_rounded,
-      params.seqlen_k_rounded,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.head_size_rounded,
-      params.dropout,
-      params.softmax_scale,
-      softmax_unscale,
-      params.causal,
-      params.return_softmax,
-      params.is_bf16,
-      stream,
-      params.seed,
-      params.offset,
-      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
+  mcflashattnStatus_t succ = phi::dynload::mha_fwd(params.batch_size,
+                                                   params.seqlen_q,
+                                                   params.num_heads,
+                                                   params.seqlen_k,
+                                                   params.num_heads_k,
+                                                   params.head_size,
+                                                   params.q,
+                                                   params.k,
+                                                   params.v,
+                                                   params.out,
+                                                   params.alibi_slopes,
+                                                   params.attn_mask,
+                                                   params.softmax_lse,
+                                                   params.p,  // return softmax
+                                                   params.rng_state,
+                                                   params.p_dropout,
+                                                   params.softmax_scale,
+                                                   params.is_causal,
+                                                   params.window_size_left,
+                                                   params.window_size_right,
+                                                   params.stream,
+                                                   params.extend_parameter);
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();

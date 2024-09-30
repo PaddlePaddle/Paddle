@@ -1,3 +1,4 @@
+// 2024 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.   
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +15,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <cublasXt.h>
+// #include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
 
@@ -46,7 +47,11 @@ extern void *cublas_dso_handle;
       std::call_once(cublas_dso_flag, []() {                                \
         cublas_dso_handle = phi::dynload::GetCublasDsoHandle();             \
       });                                                                   \
-      static void *p_##__name = dlsym(cublas_dso_handle, #__name);          \
+      std::string replaced_name = #__name;                                  \
+      replaced_name =  replaced_name.replace(0,2,"mc");          \
+      int index = replaced_name.find("_",0);                                      \
+      if(index != -1) replaced_name = replaced_name.substr(0,index);                  \
+      static void* p_##__name = dlsym(cublas_dso_handle, replaced_name.c_str()); \
       return reinterpret_cast<cublas_func>(p_##__name)(args...);            \
     }                                                                       \
   };                                                                        \
