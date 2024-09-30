@@ -35,8 +35,8 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
                                int nranks,
                                DenseTensor* softmax,
                                DenseTensor* loss) {
-  const int rid = ring_id,
-            auto map = distributed::ProcessGroupMapFromGid::getInstance();
+  const int rid = ring_id;
+  auto map = distributed::ProcessGroupMapFromGid::getInstance();
   if (map->has(rid)) {
     const phi::DenseTensor* logits = &logits_in;
     const phi::DenseTensor* labels = &label_in;
