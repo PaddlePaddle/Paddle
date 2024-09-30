@@ -215,11 +215,9 @@ def cast_converter(network, paddle_op, inputs):
     # Reference paddle/phi/common/data_type.h enum DataType
     if out_dtype == 1:
         out_dtype = trt.bool
-    elif out_dtype == 2:
-        out_dtype = trt.uint8
-    elif out_dtype == 3:
-        out_dtype = trt.int8
     elif out_dtype == 7:
+        out_dtype = trt.int32
+    elif out_dtype == 9:
         out_dtype = trt.int32
     elif out_dtype == 10:
         out_dtype = trt.float32
@@ -231,5 +229,7 @@ def cast_converter(network, paddle_op, inputs):
         raise RuntimeError(
             f"cast converter currently doesn't support dtype: {out_dtype}"
         )
-    cast_layer = network.add_cast(input_tensor, out_dtype)
+    cast_layer = network.add_identity(input_tensor)
+    cast_layer.set_output_type(0, out_dtype)
+    cast_layer.get_output(0).dtype = out_dtype
     return cast_layer.get_output(0)
