@@ -30,6 +30,9 @@ void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
+  if (!x.initialized()) {
+    return;
+  }
   PADDLE_ENFORCE_GE(
       dst_place_type,
       0,
@@ -40,7 +43,6 @@ void MemcpyH2DKernel(const Context& dev_ctx,
       3,
       errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
                          dst_place_type));
-
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 }
 
@@ -49,6 +51,10 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
+  if (!x.initialized()) {
+    return;
+  }
+
   switch (dst_place_type) {
     case 0:
       Copy(dev_ctx, x, CPUPlace(), false, out);
