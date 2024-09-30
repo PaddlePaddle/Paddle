@@ -15,6 +15,7 @@
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -233,7 +234,7 @@ void GlobalScatterKernel(const Context& dev_ctx,
     }
   }
 
-  phi::DeviceManager::SynchronizeDevice(ctx.GetPlace());
+  phi::DeviceManager::SynchronizeDevice(dev_ctx.GetPlace());
 }
 }  // namespace phi
 
