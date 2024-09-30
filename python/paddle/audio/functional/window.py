@@ -108,7 +108,7 @@ def _general_gaussian(
 
 @window_function_register.register()
 def _general_cosine(
-    M: int, a: float, sym: bool = True, dtype: str = 'float64'
+    M: int, a: list[float], sym: bool = True, dtype: str = 'float64'
 ) -> Tensor:
     """Compute a generic weighted sum of cosine terms window.
     This function is consistent with scipy.signal.windows.general_cosine().

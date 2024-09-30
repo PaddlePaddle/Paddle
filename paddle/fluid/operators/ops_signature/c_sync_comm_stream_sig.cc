@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/core/compat/op_utils.h"
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/rocm_helper.h"
-#else
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_helper.h"
-#include "paddle/fluid/platform/device/gpu/cuda/cusparse_helper.h"
-#endif
+namespace phi {
 
-#define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
+KernelSignature CSyncCommStreamOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("sync_comm_stream", {"X"}, {"ring_id"}, {"Out"});
+}
 
-#endif
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(c_sync_comm_stream,
+                           phi::CSyncCommStreamOpArgumentMapping);
