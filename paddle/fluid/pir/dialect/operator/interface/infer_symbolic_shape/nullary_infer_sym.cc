@@ -246,6 +246,38 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
   }
 }
 
+bool EyeOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto num_rows_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto num_columns_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  std::vector<symbol::DimExpr> out_dims;
+  symbol::DimExpr rows;
+  symbol::DimExpr columns;
+  if (!num_rows_shape_or_data.data().has_value()) {
+    rows = symbol::DimExpr(infer_context->GetNextSymName());
+  } else {
+    rows = symbol::DimExpr(
+        static_cast<int64_t>(num_rows_shape_or_data.data()->at(0)));
+  }
+  if (!num_columns_shape_or_data.data().has_value()) {
+    columns = symbol::DimExpr(infer_context->GetNextSymName());
+  } else {
+    const auto columns = symbol::DimExpr(
+        static_cast<int64_t>(num_columns_shape_or_data.data()->at(0)));
+    if (columns == symbol::DimExpr(-1)) {
+      columns = rows;
+    }
+  }
+  out_dims.emplace_back(rows);
+  out_dims.emplace_back(columns);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  return true;
+}
 bool FeedOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   std::string name =
