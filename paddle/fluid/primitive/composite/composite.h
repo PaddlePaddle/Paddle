@@ -1708,6 +1708,7 @@ std::vector<Tensor> split_with_num_decomp(const Tensor& x,
     axis_int += x.dims().size();
   }
 
+  std::vector<int64_t> x_dim = x.shape();
   int64_t each = x_dim[axis_int] / num;
   std::vector<int64_t> sections(num, each);
   return split<T>(x, sections, axis);
