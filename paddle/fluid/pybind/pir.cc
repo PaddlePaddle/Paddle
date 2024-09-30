@@ -358,6 +358,15 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
   }
 }
 
+void SetIsTestAttr(const std::shared_ptr<Program> &prog) {
+  for (auto &op : prog->block()->ops()) {
+    if (op->HasAttribute("is_test")) {
+      op->set_attribute(
+          "is_test", pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+    }
+  }
+}
+
 void BindProgram(py::module *m) {
   static int64_t global_prog_seed = 0;
   py::class_<Program, std::shared_ptr<Program>> program(
@@ -422,6 +431,8 @@ void BindProgram(py::module *m) {
            [](const std::shared_ptr<Program> &self) {
              return self->parameters_num();
            })
+      .def("set_is_test_attr",
+           [](const std::shared_ptr<Program> &self) { SetIsTestAttr(self); })
       .def("set_parameters_from",
            [](const std::shared_ptr<Program> &self,
               const std::shared_ptr<Program> &other) {
@@ -506,6 +517,10 @@ void BindProgram(py::module *m) {
       .def("get_parameter_value_by_name",
            [](Program &self, const std::string &name) {
              return name_analysis::GetParameterValueByName(self, name);
+           })
+      .def("get_all_parameter_values",
+           [](Program &self) {
+             return name_analysis::GetAllParameterValues(self);
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
       .def(
