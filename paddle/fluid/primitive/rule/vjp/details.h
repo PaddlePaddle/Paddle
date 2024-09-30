@@ -20,6 +20,7 @@
 
 #include <math.h>
 #include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
@@ -666,12 +667,12 @@ void add_grad(const Tensor& x,
             out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
         auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
         set_output<T>(dy_tmp, dy);
-
       } else {
         by_pass<T>(out_grad, dy);
       }
     }
   }
+
   if (dx) {
     if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_tmp = reduce_as<T>(out_grad, x);
