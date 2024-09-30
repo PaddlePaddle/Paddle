@@ -858,6 +858,23 @@ bool DecodeJpegOpInferSymbolicShape(
   return true;
 }
 
+bool DetOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  const std::vector<symbol::DimExpr> out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims = x_shape_or_data.shape();
+    out_dims.pop_back();
+    out_dims.pop_back();
+    return out_dims;
+  }();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  return true;
+}
+
 bool DiagOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto x_shape_or_data =
@@ -1552,6 +1569,17 @@ bool IdentityLossOpInferSymbolicShape(
 
   return true;
 }
+
+bool IsEmptyOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<symbol::DimExpr> out_shape = {};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
+
 bool GumbelSoftmaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
