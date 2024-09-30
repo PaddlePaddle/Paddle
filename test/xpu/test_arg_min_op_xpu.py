@@ -46,9 +46,13 @@ class XPUTestArgMin(XPUOpTestWrapper):
                 self.dtype if self.dtype != np.uint16 else np.float32
             )
 
-            self.inputs = {'X': self.x 
-                           if self.dtype != np.uint16
-                           else convert_float_to_uint16(self.x)}
+            self.inputs = {
+                'X': (
+                    self.x
+                    if self.dtype != np.uint16
+                    else convert_float_to_uint16(self.x)
+                )
+            }
             self.attrs = {'axis': self.axis, 'use_xpu': True}
             self.outputs = {'Out': np.argmin(self.x, axis=self.axis)}
 
