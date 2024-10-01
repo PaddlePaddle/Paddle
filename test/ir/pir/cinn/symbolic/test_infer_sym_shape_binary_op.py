@@ -373,5 +373,73 @@ class RepeatInterleaveWithTensorIndexOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class SolveNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        out = paddle.linalg.solve(x, y)
+        return out
+
+
+class SolveOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [
+            (
+                np.random.rand(4, 5, 5),
+                np.random.rand(4, 5),
+            ),
+            (
+                np.random.rand(4, 5, 5),
+                np.random.rand(4, 5, 3),
+            ),
+            (
+                np.random.rand(4, 5, 5),
+                np.random.rand(5, 6),
+            ),
+            (
+                np.random.rand(4, 5, 5),
+                np.random.rand(4, 5),
+            ),
+            (
+                np.random.rand(5, 5),
+                np.random.rand(5, 3),
+            ),
+            (
+                np.random.rand(5, 5),
+                np.random.rand(5),
+            ),
+        ]
+        self.expected = [
+            'shape[S0, S1, S4], data[NULL]',  # It should be shape[S0,S1] but the metashape is not correct
+            'shape[S0, S1, S5], data[NULL]',
+            'shape[S0, S1, S4], data[NULL]',
+            'shape[S0, S1], data[NULL]',
+            'shape[S0, S3], data[NULL]',
+            'shape[S0], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = SolveNet()
+        for i in range(len(self.cases)):
+            x, y = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for _ in range(len(x.shape))], dtype='float32'
+            )
+            y_spec = InputSpec(
+                shape=[None for _ in range(len(y.shape))], dtype='float32'
+            )
+            input_spec = [x_spec, y_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+            check_infer_results(
+                net,
+                input_spec,
+                'pd_op.solve',
+                [self.expected[i]],
+            )
+            return True
+
+
 if __name__ == '__main__':
     unittest.main()
