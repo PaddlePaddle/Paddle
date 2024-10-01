@@ -59,11 +59,11 @@ std::vector<Tensor> Argmin(const Tensor &in_tensor,
   }
   PADDLE_ENFORCE_LT(pos_axis,
                     ndim,
-                    common::errors::PreconditionNotMet(
+                    ::common::errors::PreconditionNotMet(
                         "[Error info] Axis must be less than tensor's dim."));
   PADDLE_ENFORCE_GE(pos_axis,
                     0,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[Error info] Axis must be more than 0."));
 
   std::vector<Expr> output_shape;
@@ -128,7 +128,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
     PADDLE_ENFORCE_GE(
         pack_args.size(),
         1U,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[Error info] There should be 1 input args for argmax compute.", ));
     Expr in_expr = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
@@ -136,11 +136,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
         ::common::errors::InvalidArgument(
             "The input argument of argmin compute is not tensor."));
     Tensor in_tensor = in_expr.as_tensor_ref();
-    PADDLE_ENFORCE_GE(
-        pack_args.size(),
-        2U,
-        common::errors::InvalidArgument("[Error info] The size of pack_args "
-                                        "should be greater or equal to 2.", ));
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      2U,
+                      ::common::errors::InvalidArgument(
+                          "[Error info] The size of pack_args "
+                          "should be greater or equal to 2.", ));
     PADDLE_ENFORCE_EQ(
         pack_args[1].is_string(),
         true,

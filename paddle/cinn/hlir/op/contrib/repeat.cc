@@ -160,7 +160,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
         2U,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[Error info] The size of pack_args should equal to 2."));
     std::string tensor_name = pack_args[1].operator std::string();
 
@@ -169,7 +169,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
         out.size(),
         1U,
         ::common::errors::InvalidArgument(
-            "The size of Repeat's output should be 1, but got %d. "
+            "The size of Repeat's output should be 1, but got %ld. "
             "Please check your Repeat function implementation.",
             out.size()));
 
