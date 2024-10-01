@@ -68,7 +68,7 @@ class TestLoadStateDictFromUrl(unittest.TestCase):
         model1.set_state_dict(weight1)
         model2 = self.model
         weight2 = paddle.hapi.hub.load_state_dict_from_url(
-            url='http://127.0.0.1:9100/download/resnet18.zip',
+            url='http://121.48.164.41:9100/download/resnet18.zip',
             model_dir="/paddle/test_zty/test2",
         )
         model2.set_state_dict(weight2)
