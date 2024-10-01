@@ -136,11 +136,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
         ::common::errors::InvalidArgument(
             "The input argument of argmin compute is not tensor."));
     Tensor in_tensor = in_expr.as_tensor_ref();
-    PADDLE_ENFORCE_GE(pack_args.size(),
-                      2U,
-                      ::common::errors::InvalidArgument(
-                          "[Error info] The size of pack_args "
-                          "should be greater or equal to 2.", ));
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        2U,
+        ::common::errors::InvalidArgument("[Error info] The size of pack_args "
+                                          "should be greater or equal to 2."));
     PADDLE_ENFORCE_EQ(
         pack_args[1].is_string(),
         true,
