@@ -129,7 +129,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
         pack_args.size(),
         1U,
         ::common::errors::InvalidArgument(
-            "[Error info] There should be 1 input args for argmax compute.", ));
+            "[Error info] There should be 1 input args for argmax compute."));
     Expr in_expr = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
         in_expr.as_tensor(),
