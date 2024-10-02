@@ -202,6 +202,7 @@
     func : allclose
     data_type : x
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -550,6 +551,7 @@
     func: bincount
   optional: weights
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : binomial
   args : (Tensor count, Tensor prob)
@@ -682,6 +684,7 @@
     func: broadcast_tensors
     data_type : input
   backward: broadcast_tensors_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : c_allgather
   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
@@ -1601,6 +1604,7 @@
   kernel :
     func : equal_all
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : erf
   args : (Tensor x)
@@ -2433,6 +2437,7 @@
   kernel :
     func : histogram
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse)
@@ -2630,6 +2635,7 @@
     func : IsEmptyInferMeta
   kernel :
     func : is_empty
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : isclose
   args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8,  bool equal_nan=false)
@@ -2641,6 +2647,7 @@
     func : isclose
     data_type : x
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : isfinite
   args : (Tensor x)
@@ -2651,6 +2658,7 @@
     func : isfinite {dense -> dense},
            isfinite_sr {selected_rows -> selected_rows}
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : isinf
   args : (Tensor x)
@@ -2826,6 +2834,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : llm_int8_linear
   args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, float threshold=6.0)
@@ -3471,7 +3480,6 @@
   output : Tensor(out)
   infer_meta :
     func : NonZeroInferMeta
-    spmd_rule: NonZeroInferSpmd
   kernel :
     func : nonzero
     data_type: condition
@@ -3875,6 +3883,7 @@
     func : reduce_as
     data_type : x
   backward : reduce_as_grad
+  no_need_buffer : target
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_scatter
@@ -4158,6 +4167,7 @@
     func : searchsorted
     data_type : sorted_sequence
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : segment_pool
   args : (Tensor x, Tensor segment_ids, str pooltype="SUM")
@@ -4844,7 +4854,7 @@
     func : triangular_solve
     data_type : x
   backward : triangular_solve_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tril
   args : (Tensor x, int diagonal)

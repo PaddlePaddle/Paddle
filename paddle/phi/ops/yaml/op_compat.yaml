@@ -1684,6 +1684,7 @@
     {x : X, cvm : CVM}
   outputs:
     out : Out
+  drop_empty_grad : [x_grad]
 
 - op : fused_transpose
   inputs:
@@ -4671,6 +4672,12 @@
     out : Out
 
 - op: sync_calc_stream(c_sync_calc_stream)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: sync_comm_stream
   inputs :
     x : X
   outputs :

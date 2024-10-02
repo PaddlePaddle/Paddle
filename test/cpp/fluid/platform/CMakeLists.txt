@@ -24,7 +24,7 @@ cc_test(
 cc_test(
   cpu_helper_test
   SRCS cpu_helper_test.cc
-  DEPS cpu_helper)
+  DEPS phi common)
 cc_test(
   init_test
   SRCS init_test.cc
@@ -59,7 +59,7 @@ endif()
 cc_test(
   timer_test
   SRCS timer_test.cc
-  DEPS timer)
+  DEPS phi common)
 
 cc_test(
   lodtensor_printer_test
