@@ -908,7 +908,7 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
   if (src->dl_tensor.device.device_type == kDLCPU) {
     place = phi::CPUPlace();
   } else if (src->dl_tensor.device.device_type == kDLCUDA) {
-    place = phi::GPUPlace();
+    place = phi::GPUPlace(src->dl_tensor.device.device_id);
   } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
     place = phi::GPUPinnedPlace();
   } else {
