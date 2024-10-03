@@ -260,6 +260,19 @@ class FleetWrapper {
       std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
       std::vector<const phi::DenseTensor*>* outputs);  // NOLINT
 
+  void PushSparseFromTensorWithLabelAsyncByVar(
+      framework::Variable* var,
+      const uint64_t table_id,
+      int fea_dim,
+      uint64_t padding_id,
+      bool scale_sparse,
+      const std::string& accessor,
+      const std::string& click_name,
+      phi::Place place,
+      const std::vector<std::string>& input_names,
+      std::vector<const phi::DenseTensor*>* inputs,
+      std::vector<const phi::DenseTensor*>* outputs);
+
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
   // Param<Out>: push_values, push_sparse_status

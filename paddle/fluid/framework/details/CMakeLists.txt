@@ -4,11 +4,10 @@ set(op_handle_srcs nan_inf_utils_detail.cc var_handle.cc op_handle_base.cc
 set(op_handle_deps
     pass
     operator
-    phi
+    phi_core
     common
     framework_proto
     node
-    device_context
     op_registry
     lod_tensor
     selected_rows_utils

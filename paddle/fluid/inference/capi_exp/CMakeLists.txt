@@ -37,6 +37,7 @@ if(APPLE)
     protobuf
     phi
     common
+    phi_fleet_ops
     pir
     cblas)
 endif()

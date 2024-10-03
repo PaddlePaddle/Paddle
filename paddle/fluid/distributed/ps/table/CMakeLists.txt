@@ -18,7 +18,7 @@ set_source_files_properties(
 cc_library(
   graph_node
   SRCS ${graphDir}/graph_node.cc
-  DEPS WeightedSampler phi common)
+  DEPS WeightedSampler phi_core common)
 set_source_files_properties(
   memory_dense_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
@@ -46,7 +46,7 @@ cc_library(
        string_helper
        simple_threadpool
        xxhash
-       phi
+       phi_core
        common)
 
 set_source_files_properties(
@@ -90,7 +90,7 @@ cc_library(
        ps_framework_proto
        string_helper
        device_context
-       phi
+       phi_core
        common
        glog
        framework_io

@@ -27,7 +27,7 @@ set(transforms_deps
     standalone_executor
     pir
     pir_general_functions
-    phi
+    phi_core
     common)
 
 if(WITH_CINN)
