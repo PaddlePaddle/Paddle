@@ -139,6 +139,7 @@ class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
         self.enable_cinn = False
         self.tol = 0.08
 
+
 class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
@@ -169,6 +170,7 @@ class TestPrimLayerNormWithGrad4(TestPrimBaseWithGrad):
         self.net = layer_norm_net1
         self.enable_cinn = False
         self.tol = 0.08
+
 
 class TestPrimLeakyReluWithGrad(TestPrimBaseWithGrad):
     def setUp(self):
