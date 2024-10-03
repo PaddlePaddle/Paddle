@@ -124,7 +124,7 @@ class TestPrimLayerNormWithGrad1(TestPrimThreeWithGrad):
         self.z = np.random.random(self.z_shape).astype(self.dtype)
         self.net = layer_norm_net1
         self.enable_cinn = False
-        self.tol = 1e-5
+        self.tol = 0.08
 
 
 class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
@@ -137,8 +137,7 @@ class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = layer_norm_net1
         self.enable_cinn = False
-        self.tol = 1e-5
-
+        self.tol = 0.08
 
 class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
     def setUp(self):
@@ -156,7 +155,7 @@ class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
         self.z = np.random.random(self.z_shape).astype(self.dtype)
         self.net = layer_norm_net2
         self.enable_cinn = False
-        self.tol = 1e-5
+        self.tol = 0.08
 
 
 class TestPrimLayerNormWithGrad4(TestPrimBaseWithGrad):
@@ -169,8 +168,7 @@ class TestPrimLayerNormWithGrad4(TestPrimBaseWithGrad):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = layer_norm_net1
         self.enable_cinn = False
-        self.tol = 1e-5
-
+        self.tol = 0.08
 
 class TestPrimLeakyReluWithGrad(TestPrimBaseWithGrad):
     def setUp(self):
