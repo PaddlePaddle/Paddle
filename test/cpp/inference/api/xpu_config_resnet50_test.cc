@@ -72,13 +72,7 @@ TEST(xpu_config, inference) {
   config.SetXpuConfig(xpu_config);
 
   XpuConfig xpu_config_test = config.xpu_config();
-  PADDLE_ENFORCE_EQ(xpu_config_test.l3_size,
-                    l3_size,
-                    common::errors::InvalidArgument(
-                        "xpu_config_test.l3_size %ld is different from our "
-                        "expected value l3_size %ld.",
-                        xpu_config_test.l3_size,
-                        l3_size));
+  CHECK_EQ(xpu_config_test.l3_size, l3_size);
 
   auto predictor = CreatePredictor(config);
   PrepareInput(predictor);
