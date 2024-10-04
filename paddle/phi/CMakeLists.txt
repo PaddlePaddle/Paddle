@@ -208,13 +208,21 @@ endif()
 
 # Operators that rely on the fleet library, the fleet library is located in the paddle/fluid/framework/fleet directory.
 # Fleet depends on phi, so add a library to solve the cyclic dependency problem.
-message("fleet_ops_srcs " ${fleet_ops_srcs})
-if(WITH_ROCM)
-  hip_library(phi_fleet_ops ${fleet_ops_srcs} ${FLEET_OPS_DEPS})
+if(WITH_GPU)
+  nv_library(
+    phi_fleet_ops
+    SRCS ${fleet_ops_srcs}
+    DEPS ${FLEET_OPS_DEPS})
+elseif(WITH_ROCM)
+  hip_library(
+    phi_fleet_ops
+    SRCS ${fleet_ops_srcs}
+    DEPS ${FLEET_OPS_DEPS})
 else()
-  add_library(phi_fleet_ops ${fleet_ops_srcs})
-  add_dependencies(phi_fleet_ops ${FLEET_OPS_DEPS})
-  target_link_libraries(phi_fleet_ops ${FLEET_OPS_DEPS})
+  cc_library(
+    phi_fleet_ops
+    SRCS ${fleet_ops_srcs}
+    DEPS ${FLEET_OPS_DEPS})
 endif()
 
 target_compile_definitions(phi_core PUBLIC PHI_INNER)
@@ -295,7 +303,7 @@ endif()
 # for inference static library
 if(NOT WITH_SHARED_PHI)
   get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
-  set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi)
+  set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi phi_fleet_ops)
   set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
 endif()
 
