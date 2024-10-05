@@ -148,9 +148,3 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(distributed_lookup_table,
                   ops::DistributedLookupTableOp,
                   ops::DistributedLookupTableOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(distributed_lookup_table,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::DistributedLookupTableKernel,
-                          float) {}

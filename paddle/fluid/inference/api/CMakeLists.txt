@@ -30,6 +30,7 @@ endif()
 if(WITH_CUSTOM_DEVICE)
   set(paddle_inference_api_deps ${paddle_inference_api_deps} phi common)
 endif()
+list(APPEND paddle_inference_api_deps phi_fleet_ops)
 
 if(WIN32)
   cc_library(
@@ -49,7 +50,7 @@ cc_library(
   DEPS paddle_inference_api paddle_pass_builder table_printer utf8proc)
 
 if(WIN32)
-  target_link_libraries(paddle_inference_api phi common)
+  target_link_libraries(paddle_inference_api phi common phi_fleet_ops)
 endif()
 
 set(inference_deps

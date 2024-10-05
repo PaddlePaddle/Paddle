@@ -1,11 +1,11 @@
 cc_library(
   imperative_flag
   SRCS flags.cc
-  DEPS phi common)
+  DEPS phi_core common)
 cc_library(
   var_helper
   SRCS var_helper.cc type_defs.cc
-  DEPS tensor phi common)
+  DEPS tensor phi_core common)
 if(WITH_XPU)
   cc_library(
     prepared_operator
@@ -19,7 +19,7 @@ if(WITH_XPU)
          var_type_traits
          op_kernel_type
          data_transform
-         phi
+         phi_core
          common
          var_helper)
 else()
@@ -34,7 +34,7 @@ else()
          var_type_traits
          op_kernel_type
          data_transform
-         phi
+         phi_core
          common
          var_helper)
 endif()
@@ -42,52 +42,41 @@ cc_library(
   layer
   SRCS layer.cc
   DEPS prepared_operator
-       phi
+       phi_core
        common
        imperative_flag
        variable_helper
        op_registry
        var_helper)
-if(WITH_GPU)
-  cc_library(
-    layout_autotune
-    SRCS layout_autotune.cc
-    DEPS op_info phi common)
-else()
-  cc_library(
-    layout_autotune
-    SRCS layout_autotune.cc
-    DEPS op_info)
-endif()
 cc_library(
   amp
   SRCS amp_auto_cast.cc
   DEPS layer var_helper)
 cc_library(
   tracer
-  SRCS tracer.cc
+  SRCS tracer.cc layout_autotune.cc
   DEPS layer
        engine
        amp
        garbage_collector
        var_helper
-       layout_autotune
        ops_extra_info
-       phi
+       phi_core
        common
-       global_utils)
+       global_utils
+       op_info)
 cc_library(
   basic_engine
   SRCS basic_engine.cc
-  DEPS layer gradient_accumulator phi common)
+  DEPS layer gradient_accumulator phi_core common)
 cc_library(
   engine
   SRCS basic_engine.cc partial_grad_engine.cc
-  DEPS layer gradient_accumulator phi common)
+  DEPS layer gradient_accumulator phi_core common)
 cc_library(
   imperative_profiler
   SRCS profiler.cc
-  DEPS phi common)
+  DEPS phi_core common)
 if(NOT WIN32)
   if(WITH_NCCL OR WITH_RCCL)
     cc_library(
@@ -150,7 +139,7 @@ if(NOT WIN32)
   cc_library(
     data_loader
     SRCS data_loader.cc
-    DEPS phi common)
+    DEPS phi_core common)
 endif()
 if(WITH_GLOO)
   cc_library(
@@ -178,5 +167,5 @@ cc_library(
        selected_rows_utils
        var_type_traits
        layer
-       phi
+       phi_core
        common)

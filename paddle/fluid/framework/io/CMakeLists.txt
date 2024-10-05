@@ -4,7 +4,7 @@ if(WITH_CRYPTO)
   set(framework_io_srcs ${framework_io_srcs} ${framework_io_crypto_srcs})
 endif()
 
-set(framework_io_deps glog phi)
+set(framework_io_deps glog phi_core string_helper)
 if(WITH_CRYPTO)
   set(framework_io_deps ${framework_io_deps} cryptopp)
 endif()

@@ -12,5 +12,5 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_library(
     pybind_util
     SRCS pybind.cc
-    DEPS phi common)
+    DEPS phi_core common)
 endif()

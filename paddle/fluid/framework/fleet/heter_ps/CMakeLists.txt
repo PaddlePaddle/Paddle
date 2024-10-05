@@ -1,5 +1,5 @@
 if(WITH_GPU)
-  set(HETERPS_DEPS device_context)
+  set(HETERPS_DEPS phi_core common)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
     set(HETERPS_DEPS ${HETERPS_DEPS} cub)
   endif()

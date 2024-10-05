@@ -14,4 +14,4 @@ set(XPU_CTX_DEPS
 cc_library(
   xpu_op_list
   SRCS xpu_op_list.cc
-  DEPS glog xpulib device_context op_kernel_type phi common)
+  DEPS glog xpulib device_context op_kernel_type phi_core common)
