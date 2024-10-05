@@ -757,7 +757,6 @@ class SymbolicVariable(VariableBase):
             if var.tracker.is_traceable():
                 tracker_expr = var.tracker.trace_value_from_frame().inlined_expr
                 symbolic_inputs[tracker_expr] = None
-                return
             for input_var in var.tracker.inputs:
                 disable_symbolic(input_var)
 
