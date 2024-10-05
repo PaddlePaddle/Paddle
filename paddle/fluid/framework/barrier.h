@@ -140,7 +140,7 @@ class Semaphore {
         common::errors::InvalidArgument(
             "Fail to post the semaphore with error code %d.", ret));
 #endif
-  }  // test
+  }
   void wait() {
 #ifdef _LINUX
     int ret = ignore_signal_call(sem_wait, &_sem);
