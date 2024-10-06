@@ -50,7 +50,7 @@ class Barrier {
             "Fail to initialize the barrier with error code %d.", ret));
 #endif
   }
-  ~Barrier() {
+  ~Barrier() noexcept(false) {
 #ifdef _LINUX
     int ret = pthread_barrier_destroy(&_barrier);
     PADDLE_ENFORCE_EQ(
