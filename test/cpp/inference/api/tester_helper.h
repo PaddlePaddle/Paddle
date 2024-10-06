@@ -130,32 +130,38 @@ void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
 
 void CheckError(float data_ref, float data) {
   if (std::abs(data_ref) > 1) {
-    PADDLE_ENFORCE_LE(
-        std::abs((data_ref - data) / data_ref),
-        FLAGS_accuracy,
-        common::errors::InvalidArgument([&]() {
-          std::ostringstream os;
-          os << "[Error info] This inequality must be satisfied 'abs((data_ref "
-                "- data) / data_ref) <= FLAGS_accuracy'.\n"
-             << "[Argument info] The current abs((data_ref - data) / data_ref) "
-                "is "
-             << std::abs((data_ref - data) / data_ref)
-             << " and the current FLAGS_accuracy is " << FLAGS_accuracy << ".";
-          return os.str();
-        }()));
+    PADDLE_ENFORCE_LE(std::abs((data_ref - data) / data_ref),
+                      FLAGS_accuracy,
+                      common::errors::InvalidArgument([&]() {
+                        std::ostringstream os;
+                        //   os << "[Error info] This inequality must be
+                        //   satisfied 'abs((data_ref "
+                        //         "- data) / data_ref) <= FLAGS_accuracy'.\n"
+                        //      << "[Argument info] The current abs((data_ref -
+                        //      data) / data_ref) "
+                        //         "is "
+                        //      << std::abs((data_ref - data) / data_ref)
+                        //      << " and the current FLAGS_accuracy is " <<
+                        //      FLAGS_accuracy << ".";
+                        os << "Error";
+                        return os.str();
+                      }()));
   } else {
-    PADDLE_ENFORCE_LE(
-        std::abs(data_ref - data),
-        FLAGS_accuracy,
-        common::errors::InvalidArgument([&]() {
-          std::ostringstream os;
-          os << "[Error info] This inequality must be satisfied 'abs(data_ref "
-                "- data) <= FLAGS_accuracy'.\n"
-             << "[Argument info] The current abs(data_ref - data) is "
-             << std::abs(data_ref - data)
-             << " and the current FLAGS_accuracy is " << FLAGS_accuracy << ".";
-          return os.str();
-        }()));
+    PADDLE_ENFORCE_LE(std::abs(data_ref - data),
+                      FLAGS_accuracy,
+                      common::errors::InvalidArgument([&]() {
+                        std::ostringstream os;
+                        //   os << "[Error info] This inequality must be
+                        //   satisfied 'abs(data_ref "
+                        //         "- data) <= FLAGS_accuracy'.\n"
+                        //      << "[Argument info] The current abs(data_ref -
+                        //      data) is "
+                        //      << std::abs(data_ref - data)
+                        //      << " and the current FLAGS_accuracy is " <<
+                        //      FLAGS_accuracy << ".";
+                        os << "Error";
+                        return os.str();
+                      }()));
   }
 }
 
