@@ -169,7 +169,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
         out.size(),
         1U,
         ::common::errors::InvalidArgument(
-            "The size of Repeat's output should be 1, but got %ld. "
+            "The size of Repeat's output should be 1, but got %d. "
             "Please check your Repeat function implementation.",
             out.size()));
 
