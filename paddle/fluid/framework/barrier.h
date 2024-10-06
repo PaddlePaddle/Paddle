@@ -132,7 +132,7 @@ class Semaphore {
             "Fail to initialize the semaphore with error code %d.", ret));
 #endif
   }
-  ~Semaphore() {
+  ~Semaphore() noexcept(false) {
 #ifdef _LINUX
     int ret = sem_destroy(&_sem);
     PADDLE_ENFORCE_EQ(
