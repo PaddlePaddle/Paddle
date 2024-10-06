@@ -698,7 +698,7 @@ std::vector<int64_t> GetLoopStrides(const ir::Expr& body,
   PADDLE_ENFORCE_EQ(
       iter_values.size(),
       iter_vars.size(),
-      ::common::errors::PreconditionNotMet(
+      ::common::errors::InvalidArgument(
           "The size of iter_values should be equal to iter_vars.\n"
           "But now received: \n"
           "iter_values: %d, and iter_vars: %d.",
@@ -754,7 +754,7 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
     if (!split_transform_block.empty()) {
       PADDLE_ENFORCE_EQ(split_transform_block.size(),
                         1,
-                        ::common::errors::PreconditionNotMet(
+                        ::common::errors::InvalidArgument(
                             "The size of split_transform_block should be 1.\n"
                             "But received: \n"
                             "split_transform_block: %d.",

@@ -158,7 +158,7 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
         }()));
     float float_value = (reinterpret_cast<const float*>(attr_field.data))[0];
     PADDLE_ENFORCE_EQ(
-        float_value, 1.0f, common::errors::PreconditionNotMet([&]() {
+        float_value, 1.0, common::errors::PreconditionNotMet([&]() {
           std::ostringstream os;
           os << "[Error info] float_value must be equal to 1.0.\n"
              << "[Condition info] The current float_value is " << float_value
@@ -211,7 +211,7 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kCHAR);
     std::string expect_string_attr = "test_string_attr";
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(attr_field.length),
+        (size_t)(attr_field.length),
         expect_string_attr.size() + 1,
         common::errors::PreconditionNotMet([&]() {
           std::ostringstream os;
@@ -275,7 +275,7 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
         }()));
     const float* floats_value = reinterpret_cast<const float*>(attr_field.data);
     PADDLE_ENFORCE_EQ(
-        floats_value[0], 1.0f, common::errors::PreconditionNotMet([&]() {
+        floats_value[0], 1.0, common::errors::PreconditionNotMet([&]() {
           std::ostringstream os;
           os << "[Error info] floats_value[0] must be equal to 1.0.\n"
              << "[Condition info] The current floats_value[0] is "
@@ -283,7 +283,7 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
           return os.str();
         }()));
     PADDLE_ENFORCE_EQ(
-        floats_value[1], 2.0f, common::errors::PreconditionNotMet([&]() {
+        floats_value[1], 2.0, common::errors::PreconditionNotMet([&]() {
           std::ostringstream os;
           os << "[Error info] floats_value[1] must be equal to 2.0.\n"
              << "[Condition info] The current floats_value[1] is "
@@ -291,7 +291,7 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
           return os.str();
         }()));
     PADDLE_ENFORCE_EQ(
-        floats_value[2], 3.0f, common::errors::PreconditionNotMet([&]() {
+        floats_value[2], 3.0, common::errors::PreconditionNotMet([&]() {
           std::ostringstream os;
           os << "[Error info] floats_value[2] must be equal to 3.0.\n"
              << "[Condition info] The current floats_value[2] is "

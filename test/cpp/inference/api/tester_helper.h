@@ -692,7 +692,7 @@ void SummarizeAccuracy(float avg_acc_ref, float avg_acc, int compared_idx) {
 }
 
 void SummarizePerformance(const char *title, float sample) {
-  PADDLE_ENFORCE_GT(sample, 0.0f, common::errors::InvalidArgument([&]() {
+  PADDLE_ENFORCE_GT(sample, 0.0, common::errors::InvalidArgument([&]() {
                       std::ostringstream os;
                       os << "[Error info] sample must be greater than 0.0.\n"
                          << "[Argument info] The current sample is " << sample
@@ -788,7 +788,7 @@ void CompareAccuracy(
 
   if (FLAGS_enable_fp32) {
     PADDLE_ENFORCE_GT(
-        avg_acc_ref, 0.0f, common::errors::PreconditionNotMet([&]() {
+        avg_acc_ref, 0.0, common::errors::PreconditionNotMet([&]() {
           std::ostringstream os;
           os << "[Error info] avg_acc_ref must be greater than 0.0.\n"
              << "[Condition info] The current avg_acc_ref is " << avg_acc_ref
@@ -799,7 +799,7 @@ void CompareAccuracy(
 
   if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16) {
     PADDLE_ENFORCE_GT(
-        avg_acc_quant, 0.0f, common::errors::PreconditionNotMet([&]() {
+        avg_acc_quant, 0.0, common::errors::PreconditionNotMet([&]() {
           std::ostringstream os;
           os << "[Error info] avg_acc_quant must be greater than 0.0.\n"
              << "[Condition info] The current avg_acc_quant is "

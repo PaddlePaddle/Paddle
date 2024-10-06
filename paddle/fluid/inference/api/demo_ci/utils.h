@@ -111,7 +111,7 @@ void CheckOutput(const std::string& referfile,
             common::errors::PreconditionNotMet(
                 "[error info] static_cast<int64_t*>(output.data.data())[i], "
                 "refer.data[i] should be equal.\n"
-                "[condition info] The current values are %d and %d.",
+                "[condition info] The current values are %ld and %ld.",
                 static_cast<int64_t*>(output.data.data())[i],
                 refer.data[i]));
       }

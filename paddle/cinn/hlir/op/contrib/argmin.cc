@@ -59,7 +59,7 @@ std::vector<Tensor> Argmin(const Tensor &in_tensor,
   }
   PADDLE_ENFORCE_LT(pos_axis,
                     ndim,
-                    ::common::errors::PreconditionNotMet(
+                    ::common::errors::InvalidArgument(
                         "[Error info] Axis must be less than tensor's dim."));
   PADDLE_ENFORCE_GE(pos_axis,
                     0,
