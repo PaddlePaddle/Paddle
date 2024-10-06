@@ -139,88 +139,33 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2* createPlugin(
       const char* name,
       const nvinfer1::PluginFieldCollection* fc) noexcept override {
-    PADDLE_ENFORCE_EQ(fc->nbFields,
-                      7,
-                      common::errors::InvalidArgument(
-                          "[Error info] The fc->nbFields must be equal to 7.\n"
-                          "[Argument info] The current fc->nbFields is %d.",
-                          fc->nbFields));
+    CHECK_EQ(fc->nbFields, 7);
     // float_attr
     auto attr_field = (fc->fields)[0];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kFLOAT32);
-    PADDLE_ENFORCE_EQ(
-        attr_field.length, 1, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] attr_field.length must be equal to 1.\n"
-             << "[Condition info] The current attr_field.length is "
-             << attr_field.length << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(attr_field.length, 1);
     float float_value = (reinterpret_cast<const float*>(attr_field.data))[0];
-    PADDLE_ENFORCE_EQ(
-        float_value, 1.0, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] float_value must be equal to 1.0.\n"
-             << "[Condition info] The current float_value is " << float_value
-             << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(float_value, 1.0);
 
     // int_attr
     attr_field = (fc->fields)[1];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
-    PADDLE_ENFORCE_EQ(
-        attr_field.length, 1, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] attr_field.length must be equal to 1.\n"
-             << "[Condition info] The current attr_field.length is "
-             << attr_field.length << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(attr_field.length, 1);
     int int_value = (reinterpret_cast<const int*>(attr_field.data))[0];
-    PADDLE_ENFORCE_EQ(int_value, 1, common::errors::PreconditionNotMet([&]() {
-                        std::ostringstream os;
-                        os << "[Error info] int_value must be equal to 1.\n"
-                           << "[Condition info] The current int_value is "
-                           << int_value << ".";
-                        return os.str();
-                      }()));
+    CHECK_EQ(int_value, 1);
 
     // bool_attr
     attr_field = (fc->fields)[2];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
-    PADDLE_ENFORCE_EQ(
-        attr_field.length, 1, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] attr_field.length must be equal to 1.\n"
-             << "[Condition info] The current attr_field.length is "
-             << attr_field.length << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(attr_field.length, 1);
     int bool_value = (reinterpret_cast<const int*>(attr_field.data))[0];
-    PADDLE_ENFORCE_EQ(bool_value, 1, common::errors::PreconditionNotMet([&]() {
-                        std::ostringstream os;
-                        os << "[Error info] bool_value must be equal to 1.\n"
-                           << "[Condition info] The current bool_value is "
-                           << bool_value << ".";
-                        return os.str();
-                      }()));
+    CHECK_EQ(bool_value, 1);
 
     // string_attr
     attr_field = (fc->fields)[3];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kCHAR);
     std::string expect_string_attr = "test_string_attr";
-    PADDLE_ENFORCE_EQ(
-        (size_t)(attr_field.length),
-        expect_string_attr.size() + 1,
-        common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] attr_field.length must match the expected string "
-                "size.\n"
-             << "[Condition info] The current attr_field.length is "
-             << attr_field.length << ".";
-          return os.str();
-        }()));
+    CHECK_EQ((size_t)attr_field.length, expect_string_attr.size() + 1);
     const char* receive_string_attr =
         reinterpret_cast<const char*>(attr_field.data);
     CHECK(expect_string_attr == std::string(receive_string_attr));
@@ -228,113 +173,29 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     // ints_attr
     attr_field = (fc->fields)[4];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
-    PADDLE_ENFORCE_EQ(
-        attr_field.length, 3, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] attr_field.length must be equal to 3.\n"
-             << "[Condition info] The current attr_field.length is "
-             << attr_field.length << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(attr_field.length, 3);
     const int* ints_value = reinterpret_cast<const int*>(attr_field.data);
-    PADDLE_ENFORCE_EQ(
-        ints_value[0], 1, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] ints_value[0] must be equal to 1.\n"
-             << "[Condition info] The current ints_value[0] is "
-             << ints_value[0] << ".";
-          return os.str();
-        }()));
-    PADDLE_ENFORCE_EQ(
-        ints_value[1], 2, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] ints_value[1] must be equal to 2.\n"
-             << "[Condition info] The current ints_value[1] is "
-             << ints_value[1] << ".";
-          return os.str();
-        }()));
-    PADDLE_ENFORCE_EQ(
-        ints_value[2], 3, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] ints_value[2] must be equal to 3.\n"
-             << "[Condition info] The current ints_value[2] is "
-             << ints_value[2] << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(ints_value[0], 1);
+    CHECK_EQ(ints_value[1], 2);
+    CHECK_EQ(ints_value[2], 3);
 
     // floats_attr
     attr_field = (fc->fields)[5];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kFLOAT32);
-    PADDLE_ENFORCE_EQ(
-        attr_field.length, 3, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] attr_field.length must be equal to 3.\n"
-             << "[Condition info] The current attr_field.length is "
-             << attr_field.length << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(attr_field.length, 3);
     const float* floats_value = reinterpret_cast<const float*>(attr_field.data);
-    PADDLE_ENFORCE_EQ(
-        floats_value[0], 1.0, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] floats_value[0] must be equal to 1.0.\n"
-             << "[Condition info] The current floats_value[0] is "
-             << floats_value[0] << ".";
-          return os.str();
-        }()));
-    PADDLE_ENFORCE_EQ(
-        floats_value[1], 2.0, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] floats_value[1] must be equal to 2.0.\n"
-             << "[Condition info] The current floats_value[1] is "
-             << floats_value[1] << ".";
-          return os.str();
-        }()));
-    PADDLE_ENFORCE_EQ(
-        floats_value[2], 3.0, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] floats_value[2] must be equal to 3.0.\n"
-             << "[Condition info] The current floats_value[2] is "
-             << floats_value[2] << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(floats_value[0], 1.0);
+    CHECK_EQ(floats_value[1], 2.0);
+    CHECK_EQ(floats_value[2], 3.0);
 
     // bools_attr
     attr_field = (fc->fields)[6];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
-    PADDLE_ENFORCE_EQ(
-        attr_field.length, 3, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] attr_field.length must be equal to 3.\n"
-             << "[Condition info] The current attr_field.length is "
-             << attr_field.length << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(attr_field.length, 3);
     ints_value = reinterpret_cast<const int*>(attr_field.data);
-    PADDLE_ENFORCE_EQ(
-        ints_value[0], true, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] ints_value[0] must be true.\n"
-             << "[Condition info] The current ints_value[0] is "
-             << ints_value[0] << ".";
-          return os.str();
-        }()));
-    PADDLE_ENFORCE_EQ(
-        ints_value[1], false, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] ints_value[1] must be false.\n"
-             << "[Condition info] The current ints_value[1] is "
-             << ints_value[1] << ".";
-          return os.str();
-        }()));
-    PADDLE_ENFORCE_EQ(
-        ints_value[2], true, common::errors::PreconditionNotMet([&]() {
-          std::ostringstream os;
-          os << "[Error info] ints_value[2] must be true.\n"
-             << "[Condition info] The current ints_value[2] is "
-             << ints_value[2] << ".";
-          return os.str();
-        }()));
+    CHECK_EQ(ints_value[0], true);
+    CHECK_EQ(ints_value[1], false);
+    CHECK_EQ(ints_value[2], true);
 
     return new custom_op_plugin(float_value);
   }
