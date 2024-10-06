@@ -133,10 +133,3 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(distributed_push_sparse,
                   ops::DistributedPushSparseOp,
                   ops::DistributedPushSparseOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(distributed_push_sparse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::DistributedPushSparseKernel,
-                          float,
-                          double) {}

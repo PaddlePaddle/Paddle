@@ -196,7 +196,7 @@ class FleetWrapper {
                                  uint64_t padding_id,
                                  phi::Place place,
                                  std::vector<const phi::DenseTensor*>* inputs,
-                                 std::vector<int>& slots,  // NOLINT
+                                 const std::vector<int>& slots,  // NOLINT
                                  const phi::DenseTensor* shows,
                                  const phi::DenseTensor* clicks,
                                  std::vector<phi::DenseTensor*>* outputs,

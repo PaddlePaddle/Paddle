@@ -576,7 +576,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
     uint64_t padding_id,
     phi::Place place,
     std::vector<const phi::DenseTensor*>* inputs,
-    std::vector<int>& slots,
+    const std::vector<int>& slots,
     const phi::DenseTensor* shows,
     const phi::DenseTensor* clks,
     std::vector<phi::DenseTensor*>* outputs,

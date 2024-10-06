@@ -373,19 +373,18 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
-void DistributedPushSparseInferMeta(
-    const std::vector<const MetaTensor*>& ids,
-    const std::vector<const MetaTensor*>& shows,
-    const std::vector<const MetaTensor*>& clicks,
-    int table_id,
-    int size,
-    bool is_distributed,
-    const std::string& push_sparse_version,
-    int64_t padding_idx,
-    DataType dtype,
-    bool is_test,
-    bool use_cvm_op,
-    std::vector<MetaTensor*> output) {
+void DistributedPushSparseInferMeta(const std::vector<const MetaTensor*>& ids,
+                                    const MetaTensor& shows,
+                                    const MetaTensor& clicks,
+                                    int table_id,
+                                    int size,
+                                    bool is_distributed,
+                                    const std::string& push_sparse_version,
+                                    int64_t padding_idx,
+                                    DataType dtype,
+                                    bool is_test,
+                                    bool use_cvm_op,
+                                    std::vector<MetaTensor*> output) {
   auto ids_size = ids.size();
   std::vector<DDim> ids_dims;
   ids_dims.reserve(ids.size());
