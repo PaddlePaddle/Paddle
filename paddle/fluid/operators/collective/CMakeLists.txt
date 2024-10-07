@@ -18,7 +18,7 @@ foreach(src ${OPS})
 endforeach()
 
 if(WITH_GLOO)
-  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper phi common)
+  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper phi_core common)
 endif()
 
 register_operators(

@@ -1246,6 +1246,32 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     const std::vector<std::string>& input_names,
     std::vector<const phi::DenseTensor*>* inputs,
     std::vector<const phi::DenseTensor*>* outputs) {
+  framework::Variable* var = scope.FindVar(click_name);
+  PushSparseFromTensorWithLabelAsyncByVar(var,
+                                          table_id,
+                                          fea_dim,
+                                          padding_id,
+                                          scale_sparse,
+                                          accessor,
+                                          click_name,
+                                          place,
+                                          input_names,
+                                          inputs,
+                                          outputs);
+}
+
+void FleetWrapper::PushSparseFromTensorWithLabelAsyncByVar(
+    framework::Variable* var,
+    const uint64_t table_id,
+    int fea_dim,
+    uint64_t padding_id,
+    bool scale_sparse,
+    const std::string& accessor,
+    const std::string& click_name,
+    phi::Place place,
+    const std::vector<std::string>& input_names,
+    std::vector<const phi::DenseTensor*>* inputs,
+    std::vector<const phi::DenseTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   int show_index = 0;
   int click_index = 1;
@@ -1324,7 +1350,6 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
 
   std::vector<float> fea_labels;
   fea_labels.reserve(MAX_FEASIGN_NUM / 100);
-  framework::Variable* var = scope.FindVar(click_name);
   size_t global_idx = 0;
   if (click_name != "") {
     PADDLE_ENFORCE_NOT_NULL(

@@ -113,7 +113,7 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 cc_library(
   string_array
   SRCS string_array.cc
-  DEPS utf8proc phi common)
+  DEPS utf8proc phi_core common)
 
 cc_library(
   data_type
@@ -123,27 +123,27 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS data_type device_context phi common)
+  DEPS data_type phi_core common)
 
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS phi common tensor framework_proto version)
+  DEPS phi_core common tensor framework_proto version)
 
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context phi common glog)
+  DEPS phi_core common glog)
 
 cc_library(
   reader
   SRCS reader.cc
-  DEPS lod_tensor phi common)
+  DEPS lod_tensor phi_core common)
 
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope phi common)
+  DEPS framework_proto scope phi_core common)
 
 # every source file that includes "dnnl.h" must depends on onednn
 # or, the first one should depends on onednn
@@ -169,7 +169,7 @@ endif()
 cc_library(
   scope
   SRCS scope.cc
-  DEPS glog phi common xxhash var_type_traits)
+  DEPS glog phi_core common xxhash var_type_traits)
 cc_library(
   device_worker
   SRCS device_worker.cc
@@ -220,7 +220,7 @@ endif()
 cc_library(
   data_layout_transform
   SRCS data_layout_transform.cc
-  DEPS tensor phi common)
+  DEPS tensor phi_core common)
 
 cc_library(
   data_transform
@@ -231,13 +231,13 @@ cc_library(
        data_device_transform
        data_type_transform
        data_layout_transform
-       phi
+       phi_core
        common)
 
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto phi common)
+  DEPS framework_proto phi_core common)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -263,7 +263,7 @@ cc_library(
 cc_library(
   shape_inference
   SRCS shape_inference.cc
-  DEPS phi common attribute selected_rows_utils)
+  DEPS phi_core common attribute selected_rows_utils)
 
 # every source file that includes "dnnl.h" must depends on onednn
 # or, the first one should depends on onednn
@@ -284,7 +284,7 @@ cc_library(
 cc_library(
   op_kernel_type
   SRCS op_kernel_type.cc
-  DEPS device_context phi common)
+  DEPS phi_core common)
 
 if(WITH_XPU)
   cc_library(
@@ -292,7 +292,7 @@ if(WITH_XPU)
     SRCS phi_utils.cc
     DEPS lod_tensor
          selected_rows_utils
-         phi
+         phi_core
          common
          var_type_traits
          op_info
@@ -301,7 +301,7 @@ else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
-    DEPS lod_tensor selected_rows_utils phi common var_type_traits op_info)
+    DEPS lod_tensor selected_rows_utils phi_core common var_type_traits op_info)
 endif()
 
 if(WITH_XPU)
@@ -311,7 +311,6 @@ if(WITH_XPU)
     DEPS xpu_op_list
          op_info
          proto_desc
-         device_context
          tensor
          scope
          glog
@@ -327,7 +326,7 @@ if(WITH_XPU)
          detail_op_handle
          phi_utils
          infershape_utils
-         phi
+         phi_core
          common
          op_compat_infos
          type_info)
@@ -337,7 +336,6 @@ else()
     SRCS operator.cc
     DEPS op_info
          proto_desc
-         device_context
          tensor
          scope
          glog
@@ -353,7 +351,7 @@ else()
          detail_op_handle
          phi_utils
          infershape_utils
-         phi
+         phi_core
          common
          op_compat_infos
          type_info)
@@ -372,7 +370,7 @@ add_dependencies(
   glog
   version
   xxhash
-  phi
+  phi_core
   common)
 
 cc_library(
@@ -387,7 +385,7 @@ cc_library(
        version
        xxhash
        op_dist_attr
-       phi
+       phi_core
        common
        op_version_proto
        op_version_registry)
@@ -400,7 +398,7 @@ cc_library(
 cc_library(
   op_call_stack
   SRCS op_call_stack.cc
-  DEPS op_proto_maker phi common)
+  DEPS op_proto_maker phi_core common)
 
 cc_library(
   program_utils
@@ -507,7 +505,7 @@ cc_library(
 cc_library(
   variable_helper
   SRCS variable_helper.cc
-  DEPS lod_tensor)
+  DEPS lod_tensor type_info)
 
 set(NAIVE_EXECUTOR_DEPS
     op_registry
@@ -672,7 +670,7 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            ${${EXTERNAL_BRPC_DEPS}}
-           phi
+           phi_core
            common)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -870,7 +868,7 @@ cc_library(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS phi common device_context)
+  DEPS phi_core common device_context)
 
 cc_library(
   dlpack_tensor
@@ -889,7 +887,7 @@ cc_library(
        selected_rows_utils
        attribute
        var_type_traits
-       phi
+       phi_core
        common
        phi_utils
        op_info
@@ -923,7 +921,7 @@ cc_library(
        op_registry
        operator
        string_helper
-       phi
+       phi_core
        common
        imperative_flag
        layer
@@ -940,13 +938,13 @@ if(WITH_ONEDNN)
 endif()
 
 set(FLUID_FRAMEWORK_MODULES
-    proto_desc
     lod_tensor
     executor
     data_feed_proto
     layer
     phi
     common
-    custom_operator)
+    custom_operator
+    phi_fleet_ops)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})

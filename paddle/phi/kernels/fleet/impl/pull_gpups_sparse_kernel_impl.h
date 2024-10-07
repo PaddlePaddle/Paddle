@@ -1,4 +1,4 @@
-//   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,17 +17,23 @@
 #include <vector>
 
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/utils/optional.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
-template <typename T>
-static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
-  auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
-  auto embedding_size_vec = ctx.Attr<std::vector<int>>("size");
+template <typename T, typename Context>
+void PullGpupsSparseKernel(const Context &dev_ctx,
+                           const paddle::optional<DenseTensor> &w,
+                           const std::vector<const DenseTensor *> &ids,
+                           const std::vector<int> &size,
+                           bool is_sparse,
+                           bool is_distributed,
+                           std::vector<DenseTensor *> out) {
+  auto inputs = ids;
+  auto outputs = out;
+  auto embedding_size_vec = size;
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   // GpuPS only supports float now
@@ -39,13 +45,13 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
         reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
-    auto *output = outputs[i]->mutable_data<T>(ctx.GetPlace());
+    auto *output = dev_ctx.template Alloc<T>(outputs[i]);
     // double type is not fully supported now
     all_values[i] = reinterpret_cast<float *>(output);
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PullSparse(ctx.GetPlace(),
+  gpu_ps_ptr->PullSparse(dev_ctx.GetPlace(),
                          0,
                          all_keys,
                          all_values,
@@ -55,11 +61,16 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
 #endif
 }
 
-template <typename T>
-static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
-  auto d_output =
-      ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
+template <typename T, typename Context>
+void PushGpupsSparseKernel(const Context &dev_ctx,
+                           const std::vector<const DenseTensor *> &ids,
+                           const std::vector<const DenseTensor *> &out_grad,
+                           const std::vector<int> &size,
+                           bool is_sparse,
+                           bool is_distributed,
+                           std::vector<DenseTensor *> out_grad_out) {
+  auto inputs = ids;
+  auto d_output = out_grad;
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   std::vector<const float *> all_grad_values(slot_size);
@@ -87,7 +98,7 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(),
+  gpu_ps_ptr->PushSparseGrad(dev_ctx.GetPlace(),
                              0,
                              all_keys,
                              all_grad_values,
@@ -97,20 +108,4 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
 #endif
 }
 
-template <typename T, typename DeviceContext>
-class PullGpuPSSparseCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PullGpuPSSparseFunctor<T>(ctx);
-  }
-};
-
-template <typename T, typename DeviceContext>
-class PushGpuPSSparseCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PushGpuPSSparseFunctor<T>(ctx);
-  }
-};
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

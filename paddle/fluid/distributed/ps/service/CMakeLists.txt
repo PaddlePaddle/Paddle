@@ -3,11 +3,12 @@ set_source_files_properties(${BRPC_SRCS})
 
 if(WITH_HETERPS)
 
-  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context rocksdb)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi_core common zlib device_context
+                rocksdb)
 
 else()
 
-  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi_core common zlib device_context)
 
 endif()
 
@@ -102,7 +103,7 @@ cc_library(
        simple_threadpool
        simple_rpc
        scope
-       phi
+       phi_core
        common
        ps_gpu_wrapper
        fleet

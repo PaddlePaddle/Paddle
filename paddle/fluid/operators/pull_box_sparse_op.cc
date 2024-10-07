@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/pull_box_sparse_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -136,8 +137,3 @@ REGISTER_OPERATOR(pull_box_sparse,
                   ops::PushBoxSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushBoxSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
-
-PD_REGISTER_STRUCT_KERNEL(
-    pull_box_sparse, CPU, ALL_LAYOUT, ops::PullBoxSparseKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    push_box_sparse, CPU, ALL_LAYOUT, ops::PushBoxSparseKernel, float) {}

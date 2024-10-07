@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/pull_gpups_sparse_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -146,16 +147,3 @@ REGISTER_OPERATOR(pull_gpups_sparse,
                   ops::PushGpuPSSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushGpuPSSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_gpups_sparse, ops::PushGpuPSSparseOp);
-
-PD_REGISTER_STRUCT_KERNEL(pull_gpups_sparse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PullGpuPSSparseCPUKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(push_gpups_sparse,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PushGpuPSSparseCPUKernel,
-                          float,
-                          double) {}
