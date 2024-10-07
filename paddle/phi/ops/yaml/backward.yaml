@@ -2414,6 +2414,7 @@
   kernel :
     func : push_gpups_sparse
   inplace : (out_grad -> ids_grad)
+  optional : ids_grad
 
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
