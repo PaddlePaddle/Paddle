@@ -19,12 +19,13 @@
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void PullGpupsSparseKernel(const Context &dev_ctx,
-                           const DenseTensor &w,
+                           const paddle::optional<DenseTensor> &w,
                            const std::vector<const DenseTensor *> &ids,
                            const std::vector<int> &size,
                            bool is_sparse,
