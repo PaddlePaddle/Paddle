@@ -132,10 +132,7 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 3)
         self.assertEqual(len(infered_output_dist_attrs), 1)
-        print(
-            "infered_input_dist_attrs[0].dims_mapping::",
-            infered_input_dist_attrs[0].dims_mapping,
-        )
+
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [1, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1, -1, -1])
