@@ -58,26 +58,14 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
    * @param apply_group_schedule Whether to schedule at group level.
    * @return The lowered funcs.
    */
-  BucketLoweredFuncsWrapper BucketLower(const OpLoweringGroupPtr& group,
-                                        bool apply_op_schedule = false,
-                                        bool apply_group_schedule = true,
-                                        bool apply_pass = true);
+  BucketLoweredFuncsWrapper BucketLower(const OpLoweringGroupPtr& group);
 
  private:
-  /**
-   * @brief Lower a group composed of CustomCall Op.
-   * @param group The group to be lowered.
-   * @return The lowered funcs.
-   */
-  std::vector<ir::LoweredFunc> LowerCustomCall(const OpLoweringGroupPtr& group);
-
   /**
    * @brief Post processing, including preparing function args and temporary
    * variables, applying low-level optimization passes, etc.
    * @param group The group to be lowered.
    * @param tensor_map All tensors used for calculating the group.
-   * @param done_op_schedule Mark whether the Op level schedule has been
-   * applied.
    * @param func_bodies The scheduled func bodies of group.
    * @param group_func_arg_tensors Tensors used as the group function arguments.
    * @param group_func_args Arguments used as the group function arguments.
@@ -86,7 +74,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
   std::vector<ir::LoweredFunc> PostProcess(
       const OpLoweringGroupPtr& group,
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-      bool done_op_schedule,
       std::vector<ir::Expr> func_bodies,
       std::vector<ir::Tensor>* group_func_arg_tensors,
       std::vector<ir::Argument>* group_func_args,
@@ -106,10 +93,8 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
   std::vector<ir::Expr> LowerOps(
       const OpLoweringGroupPtr& group,
       const std::vector<::pir::Operation*>& ops,
-      bool apply_op_schedule,
       std::vector<ir::Tensor>* group_func_arg_tensors,
-      std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-      std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info);
+      std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
 
   /**
    * @brief Lower an Op to CINN IR. The Compute and Lower processes will be
@@ -124,7 +109,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
       std::shared_ptr<hlir::framework::OpImpl> op_impl,
       ::pir::Operation* op,
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-      std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
       std::vector<ir::Tensor>* op_func_arg_tensors);
 
   /**

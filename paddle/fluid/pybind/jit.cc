@@ -44,11 +44,11 @@ void BindJit(pybind11::module *m) {
       *m, "Function", R"DOC(Function Class.)DOC");
   g_jit_function_pytype = reinterpret_cast<PyTypeObject *>(function.ptr());
 
-  py::class_<jit::FunctionInfo, std::shared_ptr<jit::FunctionInfo>>(
-      *m, "FunctionInfo", R"DOC(FunctionInfo Class.)DOC")
-      .def("name", &jit::FunctionInfo::FunctionName)
-      .def("input_names", &jit::FunctionInfo::InputArgNames)
-      .def("output_names", &jit::FunctionInfo::OutputArgNames);
+  py::class_<jit::BaseFunctionInfo, std::shared_ptr<jit::BaseFunctionInfo>>(
+      *m, "FunctionInfo", R"DOC(BaseFunctionInfo Class.)DOC")
+      .def("name", &jit::BaseFunctionInfo::FunctionName)
+      .def("input_names", &jit::BaseFunctionInfo::InputArgNames)
+      .def("output_names", &jit::BaseFunctionInfo::OutputArgNames);
 
   m->def("Load", [](const std::string &path, const phi::CPUPlace &cpu_place) {
     return paddle::jit::Load(path, cpu_place);

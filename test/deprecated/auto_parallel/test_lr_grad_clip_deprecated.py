@@ -17,7 +17,7 @@ import unittest
 
 sys.path.append("../../auto_parallel")
 
-from test_to_static import MLPLayer, MyDataset
+from test_to_static_deprecated import MLPLayer, MyDataset
 
 import paddle
 from paddle.distributed.fleet import auto

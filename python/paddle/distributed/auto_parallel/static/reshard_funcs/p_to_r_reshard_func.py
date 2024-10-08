@@ -64,9 +64,16 @@ class PToRReshardFunction(ReshardFunction):
 
         # set dist type and dist attr
         reduced_value.set_type(dst_type)
+        chunk_id = -1
+        if src_value.get_defining_op().dist_attr:
+            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+
         reduced_value.get_defining_op().dist_attr = (
             paddle.base.libpaddle.pir.create_op_dist_attribute(
-                src_mesh, [src_dist_attr], [dst_dist_attr]
+                src_mesh,
+                [src_dist_attr],
+                [dst_dist_attr],
+                chunk_id,
             )
         )
         return reduced_value

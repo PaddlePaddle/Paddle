@@ -121,16 +121,21 @@ class OperationDistAttribute : public pir::AttrBase<OperationDistAttribute,
 
   uint32_t num_results() const;
 
+  int64_t chunk_id() const;
+
   static OperationDistAttribute get(pir::IrContext* ctx,
                                     ProcessMeshAttribute mesh,
                                     const std::vector<Attribute>& operands,
-                                    const std::vector<Attribute>& results);
+                                    const std::vector<Attribute>& results,
+                                    const int64_t& chunk_id = -1);
 
   static OperationDistAttribute get(pir::IrContext* ctx,
                                     const phi::distributed::ProcessMesh& mesh,
                                     const std::vector<Attribute>& operands,
-                                    const std::vector<Attribute>& results) {
-    return get(ctx, ProcessMeshAttribute::get(ctx, mesh), operands, results);
+                                    const std::vector<Attribute>& results,
+                                    const int64_t& chunk_id = -1) {
+    return get(
+        ctx, ProcessMeshAttribute::get(ctx, mesh), operands, results, chunk_id);
   }
 
   static std::string name() { return "a_op_dist"; }
