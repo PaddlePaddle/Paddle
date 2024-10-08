@@ -149,9 +149,7 @@ pir::Operation* CreateOpeartionByName(const std::string& op_name,
                                       const std::vector<pir::Value>& inputs,
                                       const pir::AttributeMap& attrs,
                                       const pir::PatternRewriter& rewriter) {
-  // return OperationFactory::Instance().CreateOperation(
-  //     op_name, inputs, attrs, const_cast<pir::PatternRewriter&>(rewriter));
-  return OperationFactory::Instance().CreateOperation(
+  return paddle::drr::OperationFactory::Instance().CreateOperation(
       op_name, inputs, attrs, const_cast<pir::PatternRewriter&>(rewriter));
 }
 
