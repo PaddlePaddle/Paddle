@@ -284,11 +284,19 @@ def _pir_append_gradient_merge_backward_op(
             not param.is_selected_row_type()
         ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
 
+        grad_dtype = grad.dtype
+        grad_type = grad.type()
+
+        for op in grad.all_used_ops():
+            if op.has_attr("master_grad_cast"):
+                grad_dtype = op.result(0).dtype
+                grad_type = op.result(0).type()
+
         # step1: create gradient_merge var and init with 0
         # Add persistable gradient variables in startup_program
         paddle.pir.set_insertion_point_to_block_end(startup_block)
         gradient_merge_var = paddle.full(
-            shape=grad._local_shape, fill_value=0.0, dtype=grad.dtype
+            shape=grad._local_shape, fill_value=0.0, dtype=grad_dtype
         )
         gradient_merge_var.persistable = True
 
@@ -305,7 +313,7 @@ def _pir_append_gradient_merge_backward_op(
         paddle.pir.set_insertion_point_after(grad_defining_op)
 
         new_gradient_merge_var = main_block.add_kwarg(
-            param.name + "@GRAD@MERGE", grad.type()
+            param.name + "@GRAD@MERGE", grad_type
         )
         new_gradient_merge_var.persistable = True
 
@@ -335,28 +343,10 @@ def _pir_append_gradient_merge_backward_op(
             new_gradient_merge_var, set(opt_ops_use_grad)
         )
 
-        for opt_op in opt_ops_use_grad:
-            if opt_op.name() == "pd_op.c_allreduce_sum":
-                paddle.pir.set_insertion_point_after(opt_op)
-                allreduce_sum_out = opt_op.result(0)
-
-                scale_out = paddle._C_ops.scale_(
-                    allreduce_sum_out, 0.5, 0.0, False
-                )
-
-                scale_op = scale_out.get_defining_op()
-                scale_op.op_role = int(OpRole.Optimize)
-
-                full_op = scale_op.operand_source(1).get_defining_op()
-                assert (
-                    full_op.name() == "pd_op.full"
-                ), f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
-                full_op.op_role = int(OpRole.Optimize)
-
         # reset gradient merge var to zero after finishing optimization
         paddle.pir.set_insertion_point_to_block_end(main_block)
         set_value = paddle.full(
-            shape=[1], fill_value=float(0), dtype=grad.dtype
+            shape=[1], fill_value=float(0), dtype=grad_dtype
         )
         new_gradient_merge_var_zero = paddle._C_ops.set_value_with_tensor_(
             new_gradient_merge_var, set_value, [], [], [], [], [], []
@@ -463,22 +453,10 @@ def _remove_cast_for_master_grad(main_program, dist_context):
 
 
 def _pir_remove_cast_for_master_grad(main_program, params_grads):
-    def is_cast_to_float32(op):
-        return (
-            op.name() == "pd_op.cast"
-            and op.results()[0].dtype == paddle.float32
-        )
-
-    for _, grad in params_grads:
-        if grad is None:
-            continue
-        if grad.dtype == paddle.float32:
-            continue
-
-        for op in grad.all_used_ops():
-            if is_cast_to_float32(op):
-                op.results()[0].replace_all_uses_with(grad)
-                op.erase()
+    for op in main_program.global_block().ops:
+        if op.has_attr("master_grad_cast"):
+            op.result(0).replace_all_uses_with(op.operand_source(0))
+            op.erase()
 
 
 def _create_cond_block_and_update_optimizer(
