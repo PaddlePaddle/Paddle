@@ -16,7 +16,8 @@
 #include <string>
 #include "paddle/phi/core/enforce.h"
 
-namespace phi::dynload {
+namespace phi {
+namespace dynload {
 
 std::once_flag cutlass_cuda_gemm_dso_flag;
 void* cutlass_cuda_gemm_dso_handle;
@@ -52,4 +53,5 @@ void* GetCutlassCudaGemmHandle() {
   return cutlass_cuda_gemm_dso_handle;
 }
 
-}  // namespace phi::dynload
+}  // namespace dynload
+}  // namespace phi

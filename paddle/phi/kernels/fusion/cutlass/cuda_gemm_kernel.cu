@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/cuda_gemm/cuda_gemm.h"
+#include "paddle/phi/kernels/fusion/cutlass/cuda_gemm_kernel.h"
 #include "paddle/phi/backends/dynload/cutlass_cuda_gemm.h"
 
 
@@ -111,5 +112,4 @@ PD_REGISTER_KERNEL(cuda_gemm,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::CudaGemm,
-                   int8_t,
-                   phi::dtype::float8_e4m3fn) {}
+                   int8_t) {}

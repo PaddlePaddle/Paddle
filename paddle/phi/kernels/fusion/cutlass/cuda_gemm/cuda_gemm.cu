@@ -16,8 +16,6 @@
 #include "cutlass/numeric_conversion.h"
 #include "cuda_gemm.h"
 #include <cub/cub.cuh>
-#define ENABLE_FP8
-#define ENABLE_BF16
 
 namespace phi
 {
