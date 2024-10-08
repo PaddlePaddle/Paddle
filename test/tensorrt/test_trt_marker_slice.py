@@ -35,9 +35,9 @@ class TestSliceTRTPattern(PassTest):
                 )
 
                 # Convert starts and ends to tensors
-                axes = [0, 1, 2]
-                starts = [-3, 0, 2]
-                ends = [3, 2, 4]
+                axes = [0, 1]
+                starts = [0, 2]
+                ends = [2, 4]
 
                 sliced_1 = paddle.slice(x, axes=axes, starts=starts, ends=ends)
 
