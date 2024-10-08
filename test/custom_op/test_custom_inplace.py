@@ -26,7 +26,6 @@ from utils import (
 
 import paddle
 from paddle import static
-from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -430,7 +429,6 @@ class TestCustomInplaceJit(unittest.TestCase):
             np.random.random((3, 2)).astype("float32"),
         ]
 
-    @test_with_pir_api
     def test_static_add(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -509,7 +507,6 @@ class TestCustomInplaceJit(unittest.TestCase):
                 check_output(custom_x_grad, pd_x_grad, "x_grad")
                 check_output(custom_y_grad, pd_y_grad, "y_grad")
 
-    @test_with_pir_api
     def test_static_add_vector(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -582,7 +579,6 @@ class TestCustomInplaceJit(unittest.TestCase):
                 check_output(custom_x_grad, pd_x_grad, "x_grad")
                 check_output(custom_y_grad, pd_y_grad, "y_grad")
 
-    @test_with_pir_api
     def test_static_relu_net(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -658,7 +654,6 @@ class TestCustomInplaceJit(unittest.TestCase):
                 check_output(custom_x_grad, pd_x_grad, "x_grad")
                 check_output(custom_y_grad, pd_y_grad, "y_grad")
 
-    @test_with_pir_api
     def test_static_multi_inplace(self):
         for device in self.devices:
             for dtype in self.dtypes:

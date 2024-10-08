@@ -2223,6 +2223,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : PadGradInferSpmdDynamic
   kernel :
     func : pad_grad
     param: [out_grad, paddings, pad_value]
