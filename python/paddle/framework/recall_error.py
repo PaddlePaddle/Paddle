@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import paddle
-
 
 AADIFF_ERROR = "PaddleRecall error(101): AAdiff"
 LOSS_NAN_ERROR = "PaddleRecall error(102): LossNan"
