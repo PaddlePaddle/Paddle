@@ -672,6 +672,9 @@ class BeamSearchDecoder(Decoder):
         predicted_ids = paddle.nn.functional.gather_tree(
             outputs.predicted_ids, outputs.parent_ids
         )
+        predicted_ids = paddle.cast(
+            predicted_ids, dtype=outputs.predicted_ids.dtype
+        )
         # TODO: use FinalBeamSearchDecoderOutput as output
         return predicted_ids, final_states
 
@@ -1017,6 +1020,220 @@ def _dynamic_decode_declarative(
     )
 
 
+def _dynamic_decode_pir_declarative(
+    decoder,
+    inits=None,
+    max_step_num=None,
+    output_time_major=False,
+    impute_finished=False,
+    is_test=False,
+    return_length=False,
+    **kwargs,
+):
+    initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
+    global_inputs, global_states, global_finished = (
+        initial_inputs,
+        initial_states,
+        initial_finished,
+    )
+    global_finished.stop_gradient = True
+    step_idx = paddle.full(shape=[1], fill_value=0, dtype="int64")
+
+    cond = paddle.logical_not(paddle.all(initial_finished))
+    a = paddle.to_tensor(1)
+    b = paddle.to_tensor(5)
+    cond1 = paddle.less_than(a, b)
+
+    if max_step_num is not None:
+        max_step_num = paddle.full(
+            shape=[1], fill_value=max_step_num, dtype="int64"
+        )
+
+    while_op = paddle.static.nn.control_flow.While(cond, is_test=is_test)
+
+    sequence_lengths = paddle.cast(paddle.zeros_like(initial_finished), "int64")
+    sequence_lengths.stop_gradient = True
+
+    if is_test:
+        # for test, reuse inputs and states variables to save memory
+        inputs = paddle.utils.map_structure(lambda x: x, initial_inputs)
+        states = paddle.utils.map_structure(lambda x: x, initial_states)
+    else:
+        # inputs and states of all steps must be saved for backward and training
+        inputs_arrays = paddle.utils.map_structure(
+            lambda x: paddle.tensor.array.array_write(x, step_idx),
+            initial_inputs,
+        )
+        states_arrays = paddle.utils.map_structure(
+            lambda x: paddle.tensor.array.array_write(x, step_idx),
+            initial_states,
+        )
+
+    def _maybe_copy(state, new_state, step_mask):
+        # TODO: use where_op
+        state_dtype = state.dtype
+        if convert_dtype(state_dtype) in ["bool"]:
+            state = paddle.cast(state, dtype="float32")
+            new_state = paddle.cast(new_state, dtype="float32")
+        if step_mask.dtype != state.dtype:
+            step_mask = paddle.cast(step_mask, dtype=state.dtype)
+            # otherwise, renamed bool gradients of would be summed up leading
+            # to sum(bool) error.
+        step_mask = step_mask.unsqueeze([1])
+        step_mask.stop_gradient = True
+        new_state = paddle.multiply(state, step_mask) - paddle.multiply(
+            new_state, (step_mask - 1)
+        )
+        if convert_dtype(state_dtype) in ["bool"]:
+            new_state = paddle.cast(new_state, dtype=state_dtype)
+        return new_state
+
+    def _transpose_batch_time(x):
+        return paddle.transpose(x, [1, 0, *list(range(2, len(x.shape)))])
+
+    from paddle.pir.core import default_main_program
+
+    def _create_array_out_of_while(dtype):
+        with paddle.base.program_guard(default_main_program()):
+            prev_insertion_point = paddle.pir.get_current_insertion_point()
+            paddle.pir.set_insertion_point(
+                default_main_program().global_block().back()
+            )
+            tensor_array = paddle.tensor.array.create_array(dtype)
+            paddle.pir.set_insertion_point(prev_insertion_point)
+        return tensor_array
+
+    # While
+    with while_op.block():
+        a = paddle.increment(x=a)
+
+        paddle.assign(paddle.less_than(x=a, y=b), cond1)
+        if not is_test:
+            inputs = paddle.utils.map_structure(
+                lambda array: paddle.tensor.array.array_read(array, step_idx),
+                inputs_arrays,
+            )
+            states = paddle.utils.map_structure(
+                lambda array: paddle.tensor.array.array_read(array, step_idx),
+                states_arrays,
+            )
+        (outputs, next_states, next_inputs, next_finished) = decoder.step(
+            step_idx, inputs, states, **kwargs
+        )
+
+        if not decoder.tracks_own_finished:
+            # BeamSearchDecoder would track it own finished, since beams would
+            # be reordered and the finished status of each entry might change.
+            # Otherwise, perform logical OR which would not change the already
+            # finished.
+            next_finished = paddle.logical_or(next_finished, global_finished)
+            next_sequence_lengths = paddle.add(
+                sequence_lengths,
+                paddle.cast(
+                    paddle.logical_not(global_finished),
+                    sequence_lengths.dtype,
+                ),
+            )
+            if impute_finished:  # rectify the states for the finished.
+                next_states = paddle.utils.map_structure(
+                    lambda x, y: _maybe_copy(x, y, global_finished),
+                    states,
+                    next_states,
+                )
+        else:
+            (
+                warnings.warn(
+                    "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+                )
+                if not hasattr(next_states, "lengths")
+                else None
+            )
+            next_sequence_lengths = getattr(
+                next_states, "lengths", sequence_lengths
+            )
+
+        # # create tensor array in global block after dtype[s] of outputs can be got
+        outputs_arrays = paddle.utils.map_structure(
+            lambda x: _create_array_out_of_while(x.dtype), outputs
+        )
+
+        paddle.utils.map_structure(
+            lambda x, x_array: paddle.tensor.array.array_write(
+                x, i=step_idx, array=x_array
+            ),
+            outputs,
+            outputs_arrays,
+        )
+
+        step_idx = paddle.increment(x=step_idx, value=1.0)
+        # update the global_finished first, since it might be also in states of
+        # decoder, which otherwise would write a stale finished status to array
+        paddle.assign(next_finished, global_finished)
+        paddle.assign(next_sequence_lengths, sequence_lengths)
+        if is_test:
+            paddle.utils.map_structure(
+                paddle.assign, next_inputs, global_inputs
+            )
+            paddle.utils.map_structure(
+                paddle.assign, next_states, global_states
+            )
+        else:
+            paddle.utils.map_structure(
+                lambda x, x_array: paddle.tensor.array.array_write(
+                    x, i=step_idx, array=x_array
+                ),
+                next_inputs,
+                inputs_arrays,
+            )
+            paddle.utils.map_structure(
+                lambda x, x_array: paddle.tensor.array.array_write(
+                    x, i=step_idx, array=x_array
+                ),
+                next_states,
+                states_arrays,
+            )
+        if max_step_num is not None:
+            cond_tmp = paddle.logical_and(
+                paddle.less_equal(step_idx, max_step_num),
+                paddle.logical_not(paddle.all(global_finished)),
+            )
+            paddle.assign(cond_tmp, cond)
+        else:
+            paddle.assign(paddle.logical_not(paddle.all(global_finished)), cond)
+
+    final_outputs = paddle.utils.map_structure(
+        lambda array: paddle.tensor.manipulation.tensor_array_to_tensor(
+            array, axis=0, use_stack=True
+        )[0],
+        outputs_arrays,
+    )
+    if is_test:
+        final_states = global_states
+    else:
+        final_states = paddle.utils.map_structure(
+            lambda array: paddle.tensor.array.array_read(array, step_idx),
+            states_arrays,
+        )
+
+    try:
+        final_outputs, final_states = decoder.finalize(
+            final_outputs, final_states, sequence_lengths
+        )
+    except NotImplementedError as e:
+        pass
+
+    if not output_time_major:
+        final_outputs = paddle.utils.map_structure(
+            _transpose_batch_time, final_outputs
+        )
+
+    return (
+        (final_outputs, final_states, sequence_lengths)
+        if return_length
+        else (final_outputs, final_states)
+    )
+
+
 @overload
 def dynamic_decode(
     decoder: Decoder,
@@ -1143,6 +1360,17 @@ def dynamic_decode(
     """
     if in_dynamic_mode():
         return _dynamic_decode_imperative(
+            decoder,
+            inits,
+            max_step_num,
+            output_time_major,
+            impute_finished,
+            is_test,
+            return_length,
+            **kwargs,
+        )
+    elif paddle.framework.in_pir_mode():
+        return _dynamic_decode_pir_declarative(
             decoder,
             inits,
             max_step_num,

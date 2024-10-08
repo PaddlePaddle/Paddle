@@ -170,6 +170,14 @@ class TensorRTBaseTest(unittest.TestCase):
             min_shape_data = dict()  # noqa: C408
             max_shape_data = dict()  # noqa: C408
             for feed_name in self.program_config["feed_list"]:
+                if (
+                    feed_name not in self.min_shape.keys()
+                    and feed_name not in self.max_shape.keys()
+                ):
+                    min_shape_data[feed_name] = self.api_args[feed_name]
+                    max_shape_data[feed_name] = self.api_args[feed_name]
+                    continue
+
                 if isinstance(self.api_args[feed_name], dict):
                     # shape_tensor
                     if (

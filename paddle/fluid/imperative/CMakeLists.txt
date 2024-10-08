@@ -69,7 +69,6 @@ cc_library(
   DEPS layer
        engine
        amp
-       denormal
        garbage_collector
        var_helper
        layout_autotune
