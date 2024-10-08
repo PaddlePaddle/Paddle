@@ -11,8 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include <queue>
+#include <vector>
 
 #include "glog/logging.h"
 #include "paddle/common/ddim.h"
@@ -760,6 +761,60 @@ void HandleForInplaceVarOp(pir::Operation* op,
   }
 }
 
+void PrintScope(Scope* root) {
+  std::cout << "PrintScope" << std::endl;
+  if (!root) return;
+
+  // level traversal
+  std::queue<Scope*> queue;
+  queue.push(root);
+
+  std::vector<Scope*> scopes;
+
+  while (!queue.empty()) {
+    auto* end = queue.back();
+    Scope* q = nullptr;
+    while (q != end) {
+      q = queue.front();
+      queue.pop();
+      scopes.push_back(q);
+
+      for (auto* c : q->kids()) {
+        queue.push(c);
+      }
+    }
+  }
+
+  for (Scope* q : scopes) {
+    std::cout << q << std::endl;
+    for (auto& var_name : q->LocalVarNames()) {
+      Variable* var = q->FindVar(var_name);
+      if (var) {
+        if (var->IsInitialized()) {
+          if (var->IsType<phi::DenseTensor>()) {
+            if (var->GetMutable<phi::DenseTensor>()->Holder()) {
+              std::cout << var_name << " is densetensor holder = "
+                        << var->GetMutable<phi::DenseTensor>()->Holder()->ptr()
+                        << std::endl;
+            } else {
+              std::cout << var_name << " is densetensor holder = null "
+                        << var->GetMutable<phi::DenseTensor>()->Holder()
+                        << std::endl;
+            }
+
+          } else {
+            std::cout << var_name << " is not densetensor" << std::endl;
+          }
+        } else {
+          std::cout << var_name << " is not init" << std::endl;
+        }
+      } else {
+        std::cout << var_name << " is null" << std::endl;
+      }
+    }
+  }
+}
+
 // NOTE(zhiqiu): the persistable is created in inner_scope's root, and other
 // is created in inner_scope.
 void BuildScope(const pir::Block& block,
@@ -770,6 +825,7 @@ void BuildScope(const pir::Block& block,
           << "(" << value_exe_info->GetScope() << ") ******\n"
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
+  PrintScope(const_cast<Scope*>(value_exe_info->GetScope()->root()));
 
   VLOG(6) << "Start handle keyword blockargument!";
   for (auto& kwarg : block.kwargs()) {
