@@ -46,25 +46,6 @@ void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
-Tensor ConverToMT(const Tensor& x) {
-  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
-                   x.dtype() == phi::DataType::BFLOAT16;
-  if (need_cast) {
-    return cast<T>(x, phi::DataType::FLOAT32);
-  }
-  return x;
-}
-
-template <typename T>
-Tensor ConverToOrig(const Tensor& out, phi::DataType input_dtype) {
-  bool need_cast = out.dtype() != input_dtype;
-  if (need_cast) {
-    return cast<T>(out, input_dtype);
-  }
-  return out;
-}
-
-template <typename T>
 void bce_loss_grad(const Tensor& input,
                    const Tensor& label,
                    const Tensor& out_grad,
@@ -349,82 +330,46 @@ void gelu_grad(const Tensor& x,
                bool approximate,
                Tensor* x_grad) {
   if (!x_grad) return;
-  // Promote to fp32 when the input type is fp16 for keeping consistent with
-  // phi kernel
+  // Automatically promote to fp32 when the input type is fp16 for keeping
+  // consistent with phi kernel
 
-  if (is_half_dtype(x.dtype())) {
-    auto promoted_x = cast<T>(x, phi::DataType::FLOAT32);
-    auto promoted_out_grad = cast<T>(out_grad, phi::DataType::FLOAT32);
-    if (approximate) {
-      float kbeta = M_SQRT2 * M_2_SQRTPI * 0.5;
-      float kkappa = 0.044715;
-      Tensor kbeta_ = full_scalar<T>(kbeta, promoted_x.dtype());
-      Tensor kkappa_ = full_scalar<T>(kkappa, promoted_x.dtype());
+  auto promoted_x = ConverToMT<T>(x);
+  auto promoted_out_grad = ConverToMT<T>(out_grad);
+  if (approximate) {
+    float kbeta = M_SQRT2 * M_2_SQRTPI * 0.5;
+    float kkappa = 0.044715;
+    Tensor kbeta_ = full_scalar<T>(kbeta, promoted_x.dtype());
+    Tensor kkappa_ = full_scalar<T>(kkappa, promoted_x.dtype());
 
-      auto x_sq = promoted_x * promoted_x;
-      auto x_cube = x_sq * promoted_x;
-      auto inner = kbeta_ * (promoted_x + kkappa_ * x_cube);
-      auto tanh_inner = tanh<T>(inner);
+    auto x_sq = promoted_x * promoted_x;
+    auto x_cube = x_sq * promoted_x;
+    auto inner = kbeta_ * (promoted_x + kkappa_ * x_cube);
+    auto tanh_inner = tanh<T>(inner);
 
-      auto left = scale<T>(promoted_x, 0.5);
-      auto right = scale<T>(tanh_inner, 1., 1.);
+    auto left = scale<T>(promoted_x, 0.5);
+    auto right = scale<T>(tanh_inner, 1., 1.);
 
-      auto left_derivative = scale<T>(right, 0.5);
+    auto left_derivative = scale<T>(right, 0.5);
 
-      auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
-      auto inner_derivative = kbeta_ * (scale<T>(3 * kkappa_ * x_sq, 1., 1.));
-      auto right_derivative = left * tanh_derivative * inner_derivative;
+    auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
+    auto inner_derivative = kbeta_ * (scale<T>(3 * kkappa_ * x_sq, 1., 1.));
+    auto right_derivative = left * tanh_derivative * inner_derivative;
 
-      set_output<T>(
-          cast<T>(promoted_out_grad * (left_derivative + right_derivative),
-                  x.type()),
-          x_grad);
-    } else {
-      float kalpha = M_SQRT1_2;
-      float kbeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
-      Tensor kalpha_ = full_scalar<T>(kalpha, promoted_x.dtype());
-      Tensor kbeta_ = full_scalar<T>(kbeta, promoted_x.dtype());
-
-      auto cdf = scale<T>(scale<T>(erf<T>(kalpha_ * promoted_x), 1., 1.), 0.5);
-      auto pdf = kbeta_ * exp<T>(scale<T>(promoted_x * promoted_x, -0.5));
-      set_output<T>(
-          cast<T>(promoted_out_grad * (cdf + promoted_x * pdf), x.type()),
-          x_grad);
-    }
+    set_output<T>(
+        ConverToOrig<T>(
+            promoted_out_grad * (left_derivative + right_derivative), x.type()),
+        x_grad);
   } else {
-    // Scale only support fp32 attr in static graph mode, use elementwise_xx
-    // when precision is over fp32.
-    if (approximate) {
-      auto kBeta = M_SQRT2 * M_2_SQRTPI * 0.5;
-      auto kKappa = 0.044715;
-      Tensor kBeta_ = full_scalar<T>(kBeta, x.dtype());
-      Tensor kKappa_ = full_scalar<T>(kKappa, x.dtype());
+    float kalpha = M_SQRT1_2;
+    float kbeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
+    Tensor kalpha_ = full_scalar<T>(kalpha, promoted_x.dtype());
+    Tensor kbeta_ = full_scalar<T>(kbeta, promoted_x.dtype());
 
-      auto x_sq = x * x;
-      auto x_cube = x_sq * x;
-      auto inner = kBeta_ * (x + kKappa_ * x_cube);
-      auto tanh_inner = tanh<T>(inner);
-
-      auto left = scale<T>(x, 0.5);
-      auto right = scale<T>(tanh_inner, 1., 1.);
-
-      auto left_derivative = scale<T>(right, 0.5);
-
-      auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
-      auto inner_derivative = kBeta_ * (scale<T>(3 * kKappa_ * x_sq, 1., 1.));
-      auto right_derivative = left * tanh_derivative * inner_derivative;
-
-      set_output<T>(out_grad * (left_derivative + right_derivative), x_grad);
-    } else {
-      auto kAlpha = M_SQRT1_2;
-      auto kBeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
-      Tensor kAlpha_ = full_scalar<T>(kAlpha, x.dtype());
-      Tensor kBeta_ = full_scalar<T>(kBeta, x.dtype());
-
-      auto cdf = scale<T>(scale<T>(erf<T>(kAlpha_ * x), 1., 1.), 0.5);
-      auto pdf = kBeta_ * exp<T>(scale<T>(x * x, -0.5));
-      set_output<T>(out_grad * (cdf + x * pdf), x_grad);
-    }
+    auto cdf = scale<T>(scale<T>(erf<T>(kalpha_ * promoted_x), 1., 1.), 0.5);
+    auto pdf = kbeta_ * exp<T>(scale<T>(promoted_x * promoted_x, -0.5));
+    set_output<T>(
+        ConverToOrig<T>(promoted_out_grad * (cdf + promoted_x * pdf), x.type()),
+        x_grad);
   }
 }
 
@@ -1400,12 +1345,8 @@ void masked_select_grad(const Tensor& x,
                         const Tensor& out_grad,
                         Tensor* x_grad) {
   if (x_grad) {
-    auto promoted_x = x;
-    auto promoted_out_grad = out_grad;
-    if (is_half_dtype(x.dtype())) {
-      promoted_x = cast<T>(x, DataType::FLOAT32);
-      promoted_out_grad = cast<T>(out_grad, DataType::FLOAT32);
-    }
+    auto promoted_x = ConverToMT<T>(x);
+    auto promoted_out_grad = ConverToMT<T>(out_grad);
 
     auto x_num = 1;
     for (size_t i = 0; i < promoted_x.shape().size(); i++) {
@@ -2853,16 +2794,10 @@ void logcumsumexp_grad(const Tensor& x,
   if (x_grad) {
     reverse = !reverse;
     Tensor tmp, lowest, x_grad_tmp;
-    Tensor x_cast = x;
-    Tensor out_cast = out;
-    Tensor out_grad_cast = out_grad;
-    bool need_cast = is_half_dtype(x.dtype());
+    Tensor x_cast = ConverToMT<T>(x);
+    Tensor out_cast = ConverToMT<T>(out);
+    Tensor out_grad_cast = ConverToMT<T>(out_grad);
 
-    if (need_cast) {
-      x_cast = cast<T>(x, DataType::FLOAT32);
-      out_cast = cast<T>(out, DataType::FLOAT32);
-      out_grad_cast = cast<T>(out_grad, DataType::FLOAT32);
-    }
     const Tensor out_grad_log = log<T>(abs<T>(out_grad_cast));
     auto out_grad_dtype = out_grad_cast.dtype();
 
@@ -2931,11 +2866,7 @@ void logcumsumexp_grad(const Tensor& x,
       x_grad_tmp = reshape<T>(out_grad_pos - out_grad_neg, x_cast.shape());
     }
 
-    if (need_cast) {
-      set_output<T>(cast<T>(x_grad_tmp, x.dtype()), x_grad);
-    } else {
-      set_output<T>(x_grad_tmp, x_grad);
-    }
+    set_output<T>(ConverToOrig<T>(x_grad_tmp, x.dtype()), x_grad);
   }
 }
 
