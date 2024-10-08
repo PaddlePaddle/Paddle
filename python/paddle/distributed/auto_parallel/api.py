@@ -31,6 +31,7 @@ from paddle.base.framework import (
     EagerParamBase,
     Variable,
     default_main_program,
+    in_dygraph_mode,
     in_pir_mode,
     use_pir_api,
 )
@@ -1000,7 +1001,7 @@ def get_placement_with_sharding(param, sharding_mesh_axis):
 
 
 class _ShardOptimizer(Optimizer):
-    def __init__(self, optimizer, shard_fn=None):
+    def __init__(self, optimizer, shard_fn=None, gradient_accumulation_steps=1):
         assert (
             optimizer is not None
         ), "The argument `optimizer` cannot be empty."
@@ -1025,6 +1026,7 @@ class _ShardOptimizer(Optimizer):
         self._shard_fn = shard_fn
         self._sharding_mesh_axis = None
         self._sharding_degree = None
+        self.gradient_accumulation_steps = gradient_accumulation_steps
 
         if isinstance(
             self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
@@ -1246,6 +1248,21 @@ class _ShardOptimizer(Optimizer):
         return self._inner_opt.state_dict()
 
     def _append_optimize_op(self, block, param_and_grad):
+        if (
+            in_auto_parallel_align_mode()  # In align mode, we use enable_delay_scale_loss by default
+            and in_dygraph_mode()
+            and param_and_grad[1].is_dist()
+        ):
+            placements = param_and_grad[1].placements
+            meshs = param_and_grad[1].process_mesh
+            grad = param_and_grad[1]
+
+            for i in range(len(placements) - 1, -1, -1):
+                if isinstance(placements[i], dist.Partial):
+                    placements[i] = dist.Replicate()
+                    grad = dist.reshard(grad, meshs, placements)
+            grad /= self.gradient_accumulation_steps
+            param_and_grad = (param_and_grad[0], grad)
         return self._inner_opt._append_optimize_op(block, param_and_grad)
 
     def __getattr__(self, item):
@@ -1596,6 +1613,7 @@ class ShardingStage3(_ShardingStageBase):
 def shard_optimizer(
     optimizer: Optimizer,
     shard_fn: Callable[[str, Tensor, Tensor], Tensor] | None = None,
+    gradient_accumulation_steps: int = 1,
 ) -> _ShardOptimizer:
     """
 
@@ -1640,7 +1658,7 @@ def shard_optimizer(
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
 
     """
-    return _ShardOptimizer(optimizer, shard_fn)
+    return _ShardOptimizer(optimizer, shard_fn, gradient_accumulation_steps)
 
 
 def shard_scaler(scaler: GradScaler) -> GradScaler:
