@@ -478,6 +478,13 @@ void LimitByCapacityInferMeta(const MetaTensor& expert_count,
                               int n_worker,
                               MetaTensor* out);
 
+void LodResetInferMeta(const MetaTensor& x,
+                       const MetaTensor& y,
+                       const std::vector<int>& target_lod,
+                       bool append,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
+
 void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             MetaTensor* out);
@@ -500,6 +507,10 @@ void LUUnpackInferMeta(const MetaTensor& x,
                        MetaTensor* pmat,
                        MetaTensor* l,
                        MetaTensor* u);
+
+void LookupTableInferMeta(const MetaTensor& w,
+                          const MetaTensor& ids,
+                          MetaTensor* out);
 
 void MarginCrossEntropyInferMeta(const MetaTensor& logits,
                                  const MetaTensor& label,

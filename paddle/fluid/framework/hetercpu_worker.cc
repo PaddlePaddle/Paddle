@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

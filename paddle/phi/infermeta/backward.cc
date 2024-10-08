@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
-#include "glog/logging.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -969,6 +968,19 @@ void GradSameWithXInferMeta(const MetaTensor& x,
   dx->set_dims(x.dims());
   dx->set_dtype(out.dtype());
   dx->share_lod(x);
+}
+
+void LodResetGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& out_grad,
+                           const std::vector<int>& target_lod,
+                           bool append,
+                           MetaTensor* x_grad,
+                           MetaConfig config) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x.dims());
+    x_grad->share_lod(x);
+    x_grad->set_dtype(x.dtype());
+  }
 }
 
 void LUGradInferMeta(const MetaTensor& x,

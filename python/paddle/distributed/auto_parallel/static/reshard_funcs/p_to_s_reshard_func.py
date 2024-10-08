@@ -50,6 +50,10 @@ class PToSReshardFunction(ReshardFunction):
             src_reduce_type == paddle.base.core.ReduceType.kRedSum
         ), f"The p to s reshard func only support sum op, but received {src_reduce_type}"
 
+        chunk_id = -1
+        if src_value.get_defining_op().dist_attr:
+            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+
         split_axis = dst_dist_attr.dims_mapping.index(0)
         if split_axis != 0:
             perm = list(range(0, len(src_value.shape)))
@@ -88,7 +92,7 @@ class PToSReshardFunction(ReshardFunction):
         dst_value.set_type(dst_type)
         dst_value.get_defining_op().dist_attr = (
             paddle.base.libpaddle.pir.create_op_dist_attribute(
-                src_mesh, [src_dist_attr], [dst_dist_attr]
+                src_mesh, [src_dist_attr], [dst_dist_attr], chunk_id
             )
         )
 

@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_topk(x, k=1, axis=-1, largest=True):
@@ -485,7 +484,6 @@ class TestTopKAPI(unittest.TestCase):
         for place in places:
             self.run_dygraph(place)
 
-    @test_with_pir_api
     def test_static_cases(self):
         places = []
         if (

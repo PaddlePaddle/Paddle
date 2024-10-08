@@ -1162,6 +1162,27 @@ void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
                                    MetaTensor* reordered_h0,
                                    MetaTensor* reordered_c0);
 
+void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
+                              const MetaTensor& cvm,
+                              const std::string& pooltype,
+                              float pad_value,
+                              bool use_cvm,
+                              int cvm_offset,
+                              std::vector<MetaTensor*> out,
+                              MetaConfig config = MetaConfig());
+
+void FusedSeqpoolCvmGradInferMeta(
+    const std::vector<const MetaTensor*>& x,
+    const MetaTensor& cvm,
+    const std::vector<const MetaTensor*>& out_grad,
+    const std::string& pooltype,
+    float pad_value,
+    bool use_cvm,
+    int cvm_offset,
+    std::vector<MetaTensor*> x_grad,
+    MetaTensor* cvm_grad,
+    MetaConfig config = MetaConfig());
+
 void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                   const std::string& pooltype,
                                   int axis,
