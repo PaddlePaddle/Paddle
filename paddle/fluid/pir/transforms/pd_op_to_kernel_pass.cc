@@ -1663,7 +1663,8 @@ void AddShadowFeedForValue(
     std::unordered_map<std::string, pir::Attribute> attr_map{
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
         {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
-        {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
+        {"kernel_key", KernelAttribute::get(ctx, shadow_key)},
+        {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
 
     auto out_type = AllocatedDenseTensorType::get(
         ctx,
@@ -1698,7 +1699,8 @@ void AddShadowFeedForValue(
     std::unordered_map<std::string, pir::Attribute> attr_map{
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed_tensors")},
         {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed_tensors")},
-        {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
+        {"kernel_key", KernelAttribute::get(ctx, shadow_key)},
+        {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
 
     pir::OpInfo phi_kernel_op_info =
         ctx->GetRegisteredOpInfo(PhiKernelOp::name());
@@ -2998,6 +3000,52 @@ void AddShadowFeedOpForDataOrFeed(
   }
 }
 
+/*
+   shadow_feed(x), y = memcpy_d2h(x), any_op(y)
+=> shadow_feed(x, dst_place=cpu_place), any_op(x)
+
+   shadow_feed(x), y = memcpy_h2d(x), any_op(y)
+=> shadow_feed(x, dst_place=gpu_place), any_op(x)
+*/
+void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
+                                          pir::IrContext* ctx) {
+  for (auto it = block->begin(); it != block->end(); ++it) {
+    if (it->isa<PhiKernelOp>() &&
+        (it->dyn_cast<PhiKernelOp>().op_name() == "pd_op.shadow_feed" ||
+         it->dyn_cast<PhiKernelOp>().op_name() ==
+             "pd_op.shadow_feed_tensors")) {
+      pir::Value shadow_value = it->result(0);
+      if (shadow_value.use_count() == 1) {
+        pir::Operation* next_op = shadow_value.first_use().owner();
+        bool is_memcpy_d2h =
+            next_op->isa<PhiKernelOp>() &&
+            next_op->dyn_cast<PhiKernelOp>().op_name() == "pd_op.memcpy_d2h";
+        bool is_memcpy_h2d =
+            next_op->isa<PhiKernelOp>() &&
+            next_op->dyn_cast<PhiKernelOp>().op_name() == "pd_op.memcpy_h2d";
+
+        if (is_memcpy_d2h || is_memcpy_h2d) {
+          VLOG(6) << "Remove redundant memcpy op after shadow_feed";
+          VLOG(6) << *it;
+          VLOG(6) << next_op;
+          VLOG(6) << "==>";
+
+          // remove memcpy op
+          next_op->result(0).ReplaceAllUsesWith(shadow_value);
+          block->erase(next_op->operator pir::Block::ConstIterator());
+
+          // set dst_place_type for shadow_feed, 0 for cpu_place, 1 for
+          // gpu_place
+          int dst_place_type = is_memcpy_d2h ? 0 : 1;
+          it->set_attribute("dst_place_type",
+                            pir::Int32Attribute::get(ctx, dst_place_type));
+          VLOG(6) << *it;
+        }
+      }
+    }
+  }
+}
+
 pir::Operation* BuildKernelOp(
     const std::string& kernel_fn_str,
     const phi::KernelKey& kernel_key,
@@ -3213,7 +3261,8 @@ void ProcessBlock(
         std::unordered_map<std::string, pir::Attribute> attr_map{
             {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
             {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
-            {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
+            {"kernel_key", KernelAttribute::get(ctx, shadow_key)},
+            {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
 
         auto out_type =
             AllocatedDenseTensorType::get(ctx, place, dense_tensor_type);
@@ -3354,6 +3403,8 @@ void ProcessBlock(
     AddShadowFeedOpForDataOrFeed(
         place, op_item, op, new_block, ctx, map_op_pair, map_value_pair);
   }
+
+  RemoveRedundantMemcpyAfterShadowFeed(new_block, ctx);
 }
 
 std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
