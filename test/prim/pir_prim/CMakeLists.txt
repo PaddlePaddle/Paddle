@@ -39,7 +39,7 @@ set(TEST_PRIM_DYNAMIC_SHAPE_BACKWARD_PIR_CASES
     test_prim_sub_graph_backward_dynamic_shape
     test_prim_sub_graph_abcde_backward_dynamic_shape
     test_prim_sub_graph_fghij_backward_dynamic_shape
-    test_prim_sub_graph_klmno_backward_dynamic_shape
+    test_prim_klmno
     test_prim_sub_graph_pqrst_backward_dynamic_shape
     test_prim_sub_graph_uvwxyz_backward_dynamic_shape)
 
