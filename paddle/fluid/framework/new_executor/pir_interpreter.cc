@@ -542,7 +542,7 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.send_v2",
       "pd_op.mp_allreduce_sum",
       "pd_op.barrier",
-      "pd_op.alltoall",
+      "pd_op.all_to_all",
       "pd_op.global_gather",
       "pd_op.distributed_fused_lamb",
       "pd_op.margin_cross_entropy",
