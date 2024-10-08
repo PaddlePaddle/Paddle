@@ -69,7 +69,7 @@ TEST(save_load_version_compat, op_patch_test) {
   builder.SetFileVersion(1);
   std::filesystem::path patch_path("patch");
   VLOG(8) << "Patch path: " << patch_path;
-  builder.BuildPatch(patch_path.string(), 2, 2);
+  builder.BuildPatch(2, 2, patch_path.string());
 }
 
 bool ReadModuleForTest(const std::string &file_path,
@@ -87,7 +87,7 @@ bool ReadModuleForTest(const std::string &file_path,
       builder.SetFileVersion(file_version);
       std::filesystem::path patch_path("patch");
       VLOG(8) << "Patch path: " << patch_path;
-      builder.BuildPatch(patch_path.string(), 2, 2);
+      builder.BuildPatch(2, 2, patch_path.string());
     }
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument("Invalid model file: %s.",

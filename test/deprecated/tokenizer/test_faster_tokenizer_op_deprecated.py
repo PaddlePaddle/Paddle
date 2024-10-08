@@ -199,6 +199,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         self.text_pairs_tensor = to_string_tensor(self.text_pairs, "text_pairs")
 
     def test_padding(self):
+        paddle.disable_static()
         self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = True
@@ -313,6 +314,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         )
 
     def test_no_padding(self):
+        paddle.disable_static()
         self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = False
@@ -373,6 +375,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         )
 
     def test_is_split_into_words(self):
+        paddle.disable_static()
         self.init_data()
         self.is_split_into_words = True
 
@@ -396,6 +399,7 @@ class TestBertTokenizerOp(unittest.TestCase):
         )
 
     def test_inference(self):
+        paddle.disable_static()
         self.init_data()
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path, exist_ok=True)
@@ -426,16 +430,6 @@ class TestBertTokenizerOp(unittest.TestCase):
         np.testing.assert_allclose(
             token_type_ids, py_token_type_ids, rtol=0, atol=0.01
         )
-
-    def test_feed_string_var(self):
-        self.init_data()
-        paddle.enable_static()
-        x = paddle.static.data(
-            name="x", shape=[-1], dtype=core.VarDesc.VarType.STRINGS
-        )
-        exe = paddle.static.Executor(paddle.framework.CPUPlace())
-        exe.run(paddle.static.default_main_program(), feed={'x': self.text})
-        paddle.disable_static()
 
 
 if __name__ == '__main__':

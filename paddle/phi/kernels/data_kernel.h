@@ -34,11 +34,13 @@ void ShadowOutputKernel(const Context& ctx,
 template <typename T, typename Context>
 void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
+                      int dst_place_type,
                       DenseTensor* out);
 
 template <typename T, typename Context>
 void ShadowFeedTensorsKernel(const Context& ctx,
                              const std::vector<const DenseTensor*>& xs,
+                             int dst_place_type,
                              std::vector<DenseTensor*> outs);
 
 template <typename T, typename Context>

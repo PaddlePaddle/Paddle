@@ -200,3 +200,34 @@ def trt_reshape(network, input, new_shape, name="", is_shape_tensor=False):
     if name != "":
         reshape_layer.name = name
     return reshape_layer.get_output(0)
+
+
+# Get element tensor of 1D shape tensor
+def get_shape_tensor_element(network, x, index):
+    assert index >= 0, (
+        "The index should be greater or equal than 0, but got %d" % index
+    )
+    gather_layer = network.add_gather(
+        input=x, indices=add_1D_constant_layer(network, index), axis=0
+    )
+    return gather_layer.get_output(0)
+
+
+def trt_sum(network, a, b):
+    layer = network.add_elementwise(a, b, trt.ElementWiseOperation.SUM)
+    return layer.get_output(0)
+
+
+def trt_max(network, a, b):
+    layer = network.add_elementwise(a, b, trt.ElementWiseOperation.MAX)
+    return layer.get_output(0)
+
+
+def trt_sub(network, a, b):
+    layer = network.add_elementwise(a, b, trt.ElementWiseOperation.SUB)
+    return layer.get_output(0)
+
+
+def trt_min(network, a, b):
+    layer = network.add_elementwise(a, b, trt.ElementWiseOperation.MIN)
+    return layer.get_output(0)

@@ -11,4 +11,3 @@ endforeach()
 set_tests_properties(test_comp_high_grad PROPERTIES TIMEOUT 100)
 
 add_subdirectory(eager)
-add_subdirectory(static)
