@@ -29,16 +29,19 @@ enum class EinsumType {
   // other cases
 };
 
-SpmdInfo EinsumInferSpmdBase(const std::vector<DistMetaTensor>& inputs);
+SpmdInfo EinsumInferSpmdBase(const std::vector<DistMetaTensor>& inputs,
+                             bool is_outer = false,
+                             int32_t out_dim = 0);
 
-SpmdInfo EinsumSpmdGradInferSpmdBase(const std::vector<DistMetaTensor>& inputs,
-                                     const DistMetaTensor& out_grad);
+SpmdInfo EinsumGradInferSpmdBase(const std::vector<DistMetaTensor>& inputs,
+                                 const DistMetaTensor& out_grad,
+                                 bool is_outer = false);
 
 SpmdInfo EinsumInferSpmd(const std::vector<DistMetaTensor>& inputs,
                          const std::string& equation);
 
-SpmdInfo EinsumSpmdGradInferSpmd(const std::vector<DistMetaTensor>& inputs,
-                                 const DistMetaTensor& out_grad,
-                                 const std::string& equation);
+SpmdInfo EinsumGradInferSpmd(const std::vector<DistMetaTensor>& inputs,
+                             const DistMetaTensor& out_grad,
+                             const std::string& equation);
 }  // namespace distributed
 }  // namespace phi
