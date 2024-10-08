@@ -103,15 +103,15 @@ void GroupOp::VerifySig() {}
 void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
-  printer.PrintOpResult(op);
+  printer.PrintOpResult(*op);
   os << " = \"" << name() << "\" [id:" << op->id() << "]";
-  printer.PrintOpOperands(op);
+  printer.PrintOpOperands(*op);
   os << " -> ";
-  printer.PrintOpReturnType(op);
+  printer.PrintOpReturnType(*op);
   os << " {\n";
   printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    printer.PrintOperation(sub_op);
+    printer.PrintOperation(*sub_op);
     os << "\n";
   }
   printer.DecreaseIndentation();
@@ -187,15 +187,15 @@ void FusionOp::VerifySig() {}
 void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
-  printer.PrintOpResult(op);
+  printer.PrintOpResult(*op);
   os << " = \"" << name() << "\" [id:" << op->id() << "]";
-  printer.PrintOpOperands(op);
+  printer.PrintOpOperands(*op);
   os << " -> ";
-  printer.PrintOpReturnType(op);
+  printer.PrintOpReturnType(*op);
   os << " {\n";
   printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    printer.PrintOperation(sub_op);
+    printer.PrintOperation(*sub_op);
     os << "\n";
   }
   printer.DecreaseIndentation();
@@ -533,8 +533,14 @@ bool GenerateShapeOp::InferSymbolicShape(
     return dim_exprs;
   }();
 
-  std::vector<symbol::DimExpr> shape{
-      std::int64_t(substituted_dim_exprs.size())};
+  const auto& out_dims = this->out().type().dyn_cast<DenseTensorType>().dims();
+  const auto shape = [&] {
+    std::vector<symbol::DimExpr> result;
+    for (int i = 0; i < out_dims.size(); ++i) {
+      result.emplace_back(out_dims.at(i));
+    }
+    return result;
+  }();
   symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
       symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
 

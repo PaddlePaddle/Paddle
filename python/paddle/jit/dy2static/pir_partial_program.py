@@ -819,10 +819,8 @@ class PartialProgramLayer:
         Verify that the program parameter is initialized, prune some unused params,
         and remove redundant op callstack.
         """
-        # 1. Check all params from main program can be found in self._params
+        # Check all params from main program can be found in self._params
         self._check_params_all_inited(main_program)
-        # 2. Prune the parameters not used anywhere in the program.
-        self._prune_unused_params(main_program, outputs)
 
         return main_program
 
@@ -1049,29 +1047,6 @@ class PartialProgramLayer:
             (0, forward_end_idx),
             (backward_start_op_index, backward_end_op_index),
         )
-
-    def _prune_unused_params(self, program, outputs):
-        """
-        Prune the parameters not used anywhere in the program.
-        The `@to_static` may only decorated a sub function which
-        contains some unused parameters created in `__init__`.
-        So prune these parameters to avoid unnecessary operations in
-        `run_program_op`.
-        """
-        required_params = []
-        required_param_values = []
-        block = program.global_block()
-        for param, param_value in zip(self._params, self._param_values):
-            if not param_value.use_empty() or any(
-                out.is_same(param_value) for out in outputs
-            ):
-                required_params.append(param)
-                required_param_values.append(param_value)
-            else:
-                # in pir, we need remove the get_parameter op for unused parameters.
-                block.remove_op(param_value.get_defining_op())
-        self._params = required_params
-        self._param_values = required_param_values
 
     def _prepare_attributes(self):
         attrs = [

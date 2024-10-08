@@ -85,3 +85,47 @@ def copy_dist_attr_with_new_member(
         new_dims_mapping,
         new_partial_status,
     )
+
+
+def copy_op_attr_with_new_member(
+    src_dist_attr,
+    new_process_mesh=None,
+    new_operands=None,
+    new_results=None,
+    new_chunk_id=None,
+):
+    if new_process_mesh is None:
+        new_process_mesh = src_dist_attr.process_mesh
+    if new_operands is None:
+        new_operands = src_dist_attr.operands()
+    if new_results is None:
+        new_results = src_dist_attr.results()
+    if new_chunk_id is None:
+        new_chunk_id = src_dist_attr.chunk_id
+
+    return paddle.base.libpaddle.pir.create_op_dist_attribute(
+        new_process_mesh,
+        new_operands,
+        new_results,
+        new_chunk_id,
+    )
+
+
+def copy_process_mesh_with_new_member(
+    src_process_mesh,
+    new_shape=None,
+    new_process_ids=None,
+    new_dim_names=None,
+):
+    if new_shape is None:
+        new_shape = src_process_mesh.shape
+    if new_process_ids is None:
+        new_process_ids = src_process_mesh.process_ids
+    if new_dim_names is None:
+        new_dim_names = src_process_mesh.dim_names
+
+    return paddle.base.libpaddle.pir.create_process_mesh(
+        new_shape,
+        new_process_ids,
+        new_dim_names,
+    )

@@ -61,21 +61,20 @@ class AutoMixedPrecisionPassForSparseOp(InferencePassTest):
         self.indices = np.array([[0, 0, 0], [0, 16, 16], [0, 20, 8]]).astype(
             "int32"
         )
-        self.path_prefix = (
-            "inference_test_models/auto_mixed_precision_pass_for_sparse_op_test"
-        )
-        paddle.jit.save(
-            self.test_model,
-            self.path_prefix,
-            input_spec=[
-                paddle.static.InputSpec(
-                    shape=[3, -1], dtype='int32', name="indices"
-                ),
-                paddle.static.InputSpec(
-                    shape=[-1, 3], dtype='float32', name="values"
-                ),
-            ],
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self.path_prefix = "inference_test_models/auto_mixed_precision_pass_for_sparse_op_test"
+            paddle.jit.save(
+                self.test_model,
+                self.path_prefix,
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[3, -1], dtype='int32', name="indices"
+                    ),
+                    paddle.static.InputSpec(
+                        shape=[-1, 3], dtype='float32', name="values"
+                    ),
+                ],
+            )
 
     def test_check_output(self):
         fp32_out = self.inference("fp32")

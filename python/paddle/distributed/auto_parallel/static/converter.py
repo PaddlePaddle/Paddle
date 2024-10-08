@@ -310,6 +310,9 @@ class Converter:
     def slice_with_dist_attr(tensor, dist_attr):
         """Slice tensor with distributed attribute"""
         dims_mapping = dist_attr["dims_mapping"]
+        if len(dims_mapping) == 0:
+            # NOTE: scalar tensor no need to split
+            return tensor
         process_shape = dist_attr["process_shape"]
         process_group = dist_attr["process_group"]
         # slice the tensor with dist_attr

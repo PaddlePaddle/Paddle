@@ -126,11 +126,14 @@ uint32_t OperationDistAttribute::num_results() const {
   return results().size();
 }
 
+int64_t OperationDistAttribute::chunk_id() const { return storage()->chunk_id; }
+
 OperationDistAttribute OperationDistAttribute::get(
     pir::IrContext* ctx,
     ProcessMeshAttribute mesh,
     const std::vector<pir::Attribute>& operands,
-    const std::vector<pir::Attribute>& results) {
+    const std::vector<pir::Attribute>& results,
+    const int64_t& chunk_id) {
   auto check_dist_attr = [=](pir::Attribute attr) {
     auto dist_attr = attr.dyn_cast<TensorDistAttribute>();
     auto ids = mesh.process_ids();
@@ -156,7 +159,7 @@ OperationDistAttribute OperationDistAttribute::get(
       check_dist_attr(attr);
     }
   }
-  return Base::get(ctx, mesh, operands, results);
+  return Base::get(ctx, mesh, operands, results, chunk_id);
 }
 
 }  // namespace dialect

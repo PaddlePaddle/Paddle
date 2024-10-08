@@ -64,6 +64,10 @@ def reshape_net(x):
     return paddle.reshape(x, [30, 200 * 40])
 
 
+def roll_net(x):
+    return paddle.roll(x, shifts=[101, -1], axis=[0, -2])
+
+
 def scale_net(x):
     return paddle.scale(x, scale=-2.3)
 
@@ -106,6 +110,10 @@ def split_net2(x):
 
 def square_net(x):
     return paddle.square(x)
+
+
+def squeeze_net(x):
+    return paddle.squeeze(x, axis=[0, -2])
 
 
 def stack_net1(x):
@@ -156,6 +164,10 @@ def swiglu_net2(x):
 
 def tanh_net(x):
     return paddle.tanh(x)
+
+
+def topk_net(x):
+    return paddle.topk(x, k=3, axis=1)[0]
 
 
 def transpose_net(x):
@@ -326,6 +338,32 @@ class TestPrimReshapeWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = reshape_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimRollWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.roll_grad"
+        self.dtype = "float32"
+        self.x_shape = [100, 4, 5]
+        self.init_x_shape = [None, None, 5]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = roll_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimRollWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.roll_grad"
+        self.dtype = "float32"
+        self.x_shape = [100, 4, 5]
+        self.init_x_shape = [100, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = roll_net
         self.enable_cinn = False
         self.tol = 1e-6
 
@@ -541,6 +579,45 @@ class TestPrimSquareWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, 70]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = square_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSqueezeWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.squeeze_grad"
+        self.dtype = "float32"
+        self.x_shape = [1, 20, 1, 30]
+        self.init_x_shape = [None, None, None, 30]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = squeeze_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSqueezeWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.squeeze_grad"
+        self.dtype = "float32"
+        self.x_shape = [1, 20, 1, 30]
+        self.init_x_shape = [None, 20, None, 30]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = squeeze_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSqueezeWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.squeeze_grad"
+        self.dtype = "float32"
+        self.x_shape = [1, 20, 1, 30]
+        self.init_x_shape = [1, None, 1, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = squeeze_net
         self.enable_cinn = False
         self.tol = 1e-6
 
@@ -954,6 +1031,32 @@ class TestPrimTanhWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = tanh_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimTopkWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.topk_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = topk_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimTopkWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.topk_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, 200, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = topk_net
         self.enable_cinn = False
         self.tol = 1e-6
 

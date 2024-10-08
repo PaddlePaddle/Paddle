@@ -81,25 +81,34 @@ def yolo_box_post(
 class TestYoloBoxPost(unittest.TestCase):
     def test_yolo_box_post(self):
         place = paddle.CUDAPlace(0)
-        program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.static.program_guard(program, startup_program):
-            box0 = paddle.static.data("box0", [1, 255, 19, 19])
-            box1 = paddle.static.data("box1", [1, 255, 38, 38])
-            box2 = paddle.static.data("box2", [1, 255, 76, 76])
-            im_shape = paddle.static.data("im_shape", [1, 2])
-            im_scale = paddle.static.data("im_scale", [1, 2])
-            out, rois_num = yolo_box_post(box0, box1, box2, im_shape, im_scale)
-        exe = paddle.static.Executor(place)
-        exe.run(startup_program)
-        feed = {
-            "box0": np.random.uniform(size=[1, 255, 19, 19]).astype("float32"),
-            "box1": np.random.uniform(size=[1, 255, 38, 38]).astype("float32"),
-            "box2": np.random.uniform(size=[1, 255, 76, 76]).astype("float32"),
-            "im_shape": np.array([[608.0, 608.0]], "float32"),
-            "im_scale": np.array([[1.0, 1.0]], "float32"),
-        }
-        outs = exe.run(program, feed=feed, fetch_list=[out, rois_num])
+        with paddle.pir_utils.OldIrGuard():
+            program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(program, startup_program):
+                box0 = paddle.static.data("box0", [1, 255, 19, 19])
+                box1 = paddle.static.data("box1", [1, 255, 38, 38])
+                box2 = paddle.static.data("box2", [1, 255, 76, 76])
+                im_shape = paddle.static.data("im_shape", [1, 2])
+                im_scale = paddle.static.data("im_scale", [1, 2])
+                out, rois_num = yolo_box_post(
+                    box0, box1, box2, im_shape, im_scale
+                )
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+            feed = {
+                "box0": np.random.uniform(size=[1, 255, 19, 19]).astype(
+                    "float32"
+                ),
+                "box1": np.random.uniform(size=[1, 255, 38, 38]).astype(
+                    "float32"
+                ),
+                "box2": np.random.uniform(size=[1, 255, 76, 76]).astype(
+                    "float32"
+                ),
+                "im_shape": np.array([[608.0, 608.0]], "float32"),
+                "im_scale": np.array([[1.0, 1.0]], "float32"),
+            }
+            outs = exe.run(program, feed=feed, fetch_list=[out, rois_num])
 
 
 if __name__ == '__main__':

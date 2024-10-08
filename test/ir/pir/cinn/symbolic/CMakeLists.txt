@@ -90,19 +90,6 @@ if(WITH_GPU)
   set_tests_properties(test_simple_llama_dy PROPERTIES LABELS "RUN_TYPE=CINN")
 
   add_test(
-    NAME test_decomp_inference_predictor_run
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_prim_all=true FLAGS_cinn_bucket_compile=false
-      FLAGS_pir_apply_shape_optimization_pass=true
-      FLAGS_prim_enable_dynamic=true ${PYTHON_EXECUTABLE}
-      ${CMAKE_CURRENT_SOURCE_DIR}/test_decomp_inference_predictor_run.py
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  set_tests_properties(test_decomp_inference_predictor_run
-                       PROPERTIES LABELS "RUN_TYPE=CINN")
-
-  add_test(
     NAME test_cinn_reduce_symbolic_demo
     COMMAND
       ${CMAKE_COMMAND} -E env

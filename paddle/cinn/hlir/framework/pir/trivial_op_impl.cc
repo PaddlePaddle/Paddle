@@ -695,7 +695,15 @@ std::vector<int64_t> GetLoopStrides(const ir::Expr& body,
   auto* block = expr_block.As<ir::ScheduleBlockRealize>();
   auto& iter_values = block->iter_values;
   auto& iter_vars = block->schedule_block.As<ir::ScheduleBlock>()->iter_vars;
-  CHECK_EQ(iter_values.size(), iter_vars.size());
+  PADDLE_ENFORCE_EQ(
+      iter_values.size(),
+      iter_vars.size(),
+      ::common::errors::InvalidArgument(
+          "The size of iter_values should be equal to iter_vars.\n"
+          "But now received: \n"
+          "iter_values: %d, and iter_vars: %d.",
+          iter_values.size(),
+          iter_vars.size()));
   const std::vector<ir::Var> for_iters =
       trivial_fusion_detail::GetAllForIters(body);
 
@@ -744,7 +752,13 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
   for (const auto& body : op_compute_bodies) {
     std::vector<ir::Expr> split_transform_block = GetSplitTransformBlock(body);
     if (!split_transform_block.empty()) {
-      CHECK_EQ(split_transform_block.size(), 1);
+      PADDLE_ENFORCE_EQ(split_transform_block.size(),
+                        1,
+                        ::common::errors::InvalidArgument(
+                            "The size of split_transform_block should be 1.\n"
+                            "But received: \n"
+                            "split_transform_block: %d.",
+                            split_transform_block.size()));
       group_info->loop_strides = GetLoopStrides(body, split_transform_block[0]);
     }
 

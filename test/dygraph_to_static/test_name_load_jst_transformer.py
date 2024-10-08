@@ -18,7 +18,6 @@ import numpy
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -36,7 +35,6 @@ def f(x):
 
 class TestAssertVariable(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_load_name_in_args(self):
         x = paddle.to_tensor([1, 2, 3], dtype='float32')
         dy_out = f(x)
