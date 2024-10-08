@@ -15,25 +15,8 @@ limitations under the License. */
 /**************************** Enforce Wrapper **************************/
 
 #pragma once
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
-#endif
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/phi/backends/callback_manager.h"
-#include "paddle/phi/backends/custom/enforce_custom.h"
-#include "paddle/phi/backends/device_guard.h"
-#include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/backends/event.h"
-#include "paddle/phi/backends/stream.h"
 #endif
