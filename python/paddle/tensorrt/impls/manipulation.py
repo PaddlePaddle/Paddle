@@ -315,7 +315,7 @@ def slice_converter(network, paddle_op, inputs):
             len(starts),
             len(axes),
         )
-        for idx in axes:
+        for idx in range(len(axes)):
             if starts[idx] < 0:
                 starts_tensor[axes[idx]] = trt_max(
                     network,
@@ -338,7 +338,7 @@ def slice_converter(network, paddle_op, inputs):
                 )
     else:
         starts = inputs[1]
-        for idx in axes:
+        for idx in range(len(axes)):
             starts_tensor[axes[idx]] = get_shape_tensor_element(
                 network, starts, idx
             )
@@ -351,7 +351,7 @@ def slice_converter(network, paddle_op, inputs):
             len(ends),
             len(axes),
         )
-        for idx in axes:
+        for idx in range(len(axes)):
             if ends[idx] < 0:
                 ends_tensor[axes[idx]] = trt_max(
                     network,
@@ -374,7 +374,7 @@ def slice_converter(network, paddle_op, inputs):
                 )
     else:
         ends = inputs[2]
-        for idx in axes:
+        for idx in range(len(axes)):
             ends_tensor[axes[idx]] = get_shape_tensor_element(
                 network, ends, idx
             )
