@@ -1352,6 +1352,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}    kernel_record_event = new phi::RecordEvent(\"{kernel_name} kernel launch\", phi::TracerEventType::DygraphKernelLaunch, 1);
 {code_indent}  }}
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{code_indent}  if (FLAGS_benchmark) {{
+{code_indent}      dev_ctx->Wait();
+{code_indent}      std::cout << \"{kernel_name} kernel run finish.\" << std::endl;
+{code_indent}  }}
 {code_indent}  if(kernel_record_event != nullptr){{
 {code_indent}    delete kernel_record_event;
 {code_indent}  }}
