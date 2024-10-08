@@ -305,21 +305,33 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   int idx = -1;
   for (auto& i : factors) {
     idx++;
-    if (i == 0 || i < -1) {
-      std::ostringstream os;
-      os << "The params in factors of Split should be positive. However, the "
-            "factor at position "
-         << idx << " is " << i << std::endl;
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
-    } else if (i == -1) {
-      if (has_minus_one) {
-        std::ostringstream os;
-        os << "The params in factors of Split should not be less than -1 or "
-              "have "
-              "more than one -1!"
-           << std::endl;
-        throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
-      }
+    PADDLE_ENFORCE_EQ(
+        i != 0 && i >= -1, true, phi::errors::InvalidArgument([&]() {
+          std::ostringstream os;
+          os << "[IRScheduleError] An Error occurred in the schedule primitive "
+                "<"
+             << primitive << ">.\n"
+             << "[Error info] The params in factors of Split should be "
+                "positive. However, the factor at position "
+             << idx << " is " << i << ".\n"
+             << "[Expr info] The Expr of current schedule is "
+             << module_expr.GetExprs() << ".";
+          return os.str();
+        }()));
+    PADDLE_ENFORCE_EQ(
+        i == -1 && has_minus_one, false, phi::errors::InvalidArgument([&]() {
+          std::ostringstream os;
+          os << "[IRScheduleError] An Error occurred in the "
+                "schedule primitive <"
+             << primitive << ">.\n"
+             << "[Error info] The params in factors of Split "
+                "should not be less than -1 or "
+             << "have more than one -1!\n"
+             << "[Expr info] The Expr of current schedule is "
+             << module_expr.GetExprs() << ".";
+          return os.str();
+        }()));
+    if (i == -1) {
       has_minus_one = true;
     } else {
       product *= i;
@@ -327,14 +339,20 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   }
   std::vector<int> validated_factors = factors;
   if (!has_minus_one) {
-    if (product < total_extent) {
-      std::ostringstream os;
-      os << "In Split, the factors' product[" << product
-         << "] should be not larger than or equal "
-            "to original loop's extent["
-         << total_extent << "]!" << std::endl;
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
-    }
+    PADDLE_ENFORCE_GE(
+        product, total_extent, phi::errors::PreconditionNotMet([&]() {
+          std::ostringstream os;
+          os << "[IRScheduleError] An Error occurred in the schedule primitive "
+                "<"
+             << primitive << ">.\n"
+             << "[Error info] In Split, the factors' product[" << product
+             << "] should be not larger than or equal "
+                "to original loop's extent["
+             << total_extent << "]!\n"
+             << "[Expr info] The Expr of current schedule is "
+             << module_expr.GetExprs() << ".";
+          return os.str();
+        }()));
     return validated_factors;
   } else {
     int minus_one_candidate = static_cast<int>(
