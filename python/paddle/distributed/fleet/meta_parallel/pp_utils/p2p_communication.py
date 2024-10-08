@@ -24,12 +24,8 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
-<<<<<<< HEAD
-from paddle.framework.recall_error import LOSS_NAN_ERROR
+from paddle.framework.recall_error import check_naninf, LOSS_NAN_ERROR
 from paddle.utils import strtobool
-=======
-from paddle.framework.recall_error import check_naninf
->>>>>>> 4c8d658d64... Separate LossNaN and LossInf error (#68367)
 
 from ...utils import timer_helper as timer
 from .utils import number_2_dtype, paddle_2_number
