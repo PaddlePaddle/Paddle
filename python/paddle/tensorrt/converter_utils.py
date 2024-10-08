@@ -130,3 +130,66 @@ def get_positive_dim(dim, dim_size):
     if dim < 0:
         return dim % dim_size
     return dim
+
+
+def add_elementwise_layer(network, paddle_op, inputs, op_type):
+    weight_shape = paddle_op.operands()[1].source().shape
+    input_shape = paddle_op.operands()[0].source().shape
+
+    weight_tensor = inputs[1]
+    input_tensor = inputs[0]
+    if type(inputs[1]) == trt.Weights:
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    if type(inputs[0]) == trt.Weights:
+        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
+            0
+        )
+    lhs_val, rhs_val = broadcast(
+        network,
+        input_tensor,
+        weight_tensor,
+        input_tensor.name,
+        weight_tensor.name,
+    )
+    layer = network.add_elementwise(lhs_val, rhs_val, op_type)
+    return layer.get_output(0)
+
+
+# Create and add 1D constant layer
+def add_1D_constant_layer(network, data, dtype=np.int32):
+    constant_data = np.array([data], dtype=dtype)
+    constant_layer = network.add_constant(constant_data.shape, constant_data)
+    return constant_layer.get_output(0)
+
+
+# Get element tensor of 1D shape tensor
+def get_shape_tensor_element(network, x, index):
+    assert index >= 0, (
+        "The index should be greater or equal than 0, but got %d" % index
+    )
+    gather_layer = network.add_gather(
+        input=x, indices=add_1D_constant_layer(network, index), axis=0
+    )
+    return gather_layer.get_output(0)
+
+
+def trt_sum(network, a, b):
+    layer = network.add_elementwise(a, b, trt.ElementWiseOperation.SUM)
+    return layer.get_output(0)
+
+
+def trt_max(network, a, b):
+    layer = network.add_elementwise(a, b, trt.ElementWiseOperation.MAX)
+    return layer.get_output(0)
+
+
+def trt_sub(network, a, b):
+    layer = network.add_elementwise(a, b, trt.ElementWiseOperation.SUB)
+    return layer.get_output(0)
+
+
+def trt_min(network, a, b):
+    layer = network.add_elementwise(a, b, trt.ElementWiseOperation.MIN)
+    return layer.get_output(0)

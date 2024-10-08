@@ -339,8 +339,11 @@ paddle::dialect::OperationDistAttribute deserializeOperationDistAttr(
   for (auto& item : results_json) {
     results.push_back(parseAttr(&item));
   }
+
+  Json chunk_id_json = data_json.at(3);
+  int64_t chunk_id = chunk_id_json.get<int64_t>();
   return paddle::dialect::OperationDistAttribute::get(
-      ctx, mesh, operands, results);
+      ctx, mesh, operands, results, chunk_id);
 }
 
 pir::Attribute AttrTypeReader::ReadBuiltInAttr(const std::string attr_name,

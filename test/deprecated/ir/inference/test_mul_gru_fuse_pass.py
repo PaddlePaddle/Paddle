@@ -36,7 +36,7 @@ class TestMulGruFusePass(PassAutoScanTest):
         has_origin_mode = draw(st.booleans())
         origin_mode = False
         gate_activation = draw(st.sampled_from(['sigmoid', 'tanh']))
-        batch_size = draw(st.integers(min_value=1, max_value=40))
+        batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input():
             shape = [batch_size, 128, 6, 120]

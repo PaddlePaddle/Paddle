@@ -419,6 +419,8 @@ void* GetCublasLtDsoHandle() {
   }
 #elif !defined(__linux__) && defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10010
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipblaslt.so");
 #else
   std::string warning_msg(
       "Your CUDA_VERSION less 10.1, not support CublasLt. "

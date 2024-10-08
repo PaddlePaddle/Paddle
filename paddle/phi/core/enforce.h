@@ -56,6 +56,7 @@ limitations under the License. */
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/dynload/hipblasLt.h"
 #include "paddle/phi/backends/dynload/hipfft.h"
 #include "paddle/phi/backends/dynload/hiprand.h"
 #include "paddle/phi/backends/dynload/miopen.h"
@@ -604,6 +605,45 @@ inline std::string build_rocm_error_msg(rocblas_status stat) {
   return msg + rocblasGetErrorString(stat) + " ";
 }
 
+/***** HIPBLASLT ERROR *****/
+inline bool is_error(hipblasStatus_t stat) {
+  return stat != HIPBLAS_STATUS_SUCCESS;
+}
+
+inline const char* hipblasltGetErrorString(hipblasStatus_t stat) {
+  switch (stat) {
+    case HIPBLAS_STATUS_NOT_INITIALIZED:
+      return "HIPBLAS_STATUS_NOT_INITIALIZED";
+    case HIPBLAS_STATUS_ALLOC_FAILED:
+      return "HIPBLAS_STATUS_ALLOC_FAILED";
+    case HIPBLAS_STATUS_INVALID_VALUE:
+      return "HIPBLAS_STATUS_INVALID_VALUE";
+    case HIPBLAS_STATUS_MAPPING_ERROR:
+      return "HIPBLAS_STATUS_MAPPING_ERROR";
+    case HIPBLAS_STATUS_EXECUTION_FAILED:
+      return "HIPBLAS_STATUS_EXECUTION_FAILED";
+    case HIPBLAS_STATUS_INTERNAL_ERROR:
+      return "HIPBLAS_STATUS_INTERNAL_ERROR";
+    case HIPBLAS_STATUS_NOT_SUPPORTED:
+      return "HIPBLAS_STATUS_NOT_SUPPORTED";
+    case HIPBLAS_STATUS_ARCH_MISMATCH:
+      return "HIPBLAS_STATUS_ARCH_MISMATCH";
+    case HIPBLAS_STATUS_HANDLE_IS_NULLPTR:
+      return "HIPBLAS_STATUS_HANDLE_IS_NULLPTR";
+    case HIPBLAS_STATUS_INVALID_ENUM:
+      return "HIPBLAS_STATUS_INVALID_ENUM";
+    case HIPBLAS_STATUS_UNKNOWN:
+      return "HIPBLAS_STATUS_UNKNOWN";
+    default:
+      return "Unknown hipblaslt status";
+  }
+}
+
+inline std::string build_rocm_error_msg(hipblasStatus_t stat) {
+  std::string msg(" HipblasLt error, ");
+  return msg + hipblasltGetErrorString(stat) + " ";
+}
+
 /****** RCCL ERROR ******/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 inline bool is_error(ncclResult_t nccl_result) {
@@ -640,6 +680,7 @@ DEFINE_EXTERNAL_API_TYPE(hipError_t, hipSuccess);
 DEFINE_EXTERNAL_API_TYPE(hiprandStatus_t, HIPRAND_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(miopenStatus_t, miopenStatusSuccess);
 DEFINE_EXTERNAL_API_TYPE(rocblas_status, rocblas_status_success);
+DEFINE_EXTERNAL_API_TYPE(hipblasStatus_t, HIPBLAS_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(hipfftResult_t, HIPFFT_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)

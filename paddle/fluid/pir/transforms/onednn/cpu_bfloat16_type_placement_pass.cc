@@ -42,8 +42,6 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::QuantizeOp>() &&
         !op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
-        !op->isa<paddle::onednn::dialect::CastOp>() &&
-        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&

@@ -1180,6 +1180,22 @@ phi::KernelKey GetKernelKey(
     return {backend, phi::DataLayout::ANY, dtype};
   }
 
+  if (op->isa<CreateArrayOp>()) {
+    VLOG(6) << "CreateArrayOp doesn't need a kernel";
+    auto backend = paddle::experimental::ParseBackend(place);
+    auto dtype = op->result(0)
+                     .type()
+                     .dyn_cast<paddle::dialect::DenseTensorArrayType>()
+                     .dtype();
+
+    phi::KernelKey res(
+        backend, phi::DataLayout::ANY, TransToPhiDataType(dtype));
+    if (NeedFallBackCpu(op, kernel_fn_str, res)) {
+      res.set_backend(phi::Backend::CPU);
+    }
+    return res;
+  }
+
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_dtype = phi::DataType::UNDEFINED;
@@ -1351,9 +1367,9 @@ phi::KernelKey GetKernelKey(
     VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";
   }
 
-  if (op->isa<CSyncCommStream_Op>() || op->isa<CSyncCommStreamOp>()) {
+  if (op->isa<SyncCommStream_Op>() || op->isa<SyncCommStreamOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
-    VLOG(8) << "CSyncCommStream_Op/CSyncCommStreamOp's kernel data type must "
+    VLOG(8) << "SyncCommStream_Op/SyncCommStreamOp's kernel data type must "
                "be FLOAT32";
   }
 

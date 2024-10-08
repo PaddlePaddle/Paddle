@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -24,6 +25,11 @@
 namespace paddle::dialect {
 
 pir::Value builtin_combine(const std::vector<pir::Value>& x) {
+  // Auto Parallel condition
+  ProcessMeshAttribute op_mesh;
+  if (HasDistInput(x, &op_mesh)) {
+    CvtAllInputsToDist(x, op_mesh);
+  }
   auto combine_op =
       ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(x);
   return combine_op.out();

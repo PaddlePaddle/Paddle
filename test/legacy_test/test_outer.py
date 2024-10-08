@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestMultiplyApi(unittest.TestCase):
@@ -55,7 +54,6 @@ class TestMultiplyApi(unittest.TestCase):
         res = paddle.outer(x, y)
         return res.numpy()
 
-    @test_with_pir_api
     def test_multiply_static(self):
         np.random.seed(7)
 
@@ -142,7 +140,7 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors_static(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()

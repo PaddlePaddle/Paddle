@@ -40,7 +40,6 @@ from .framework import (
     Operator,
     Program,
     Variable,
-    _apply_pass,
     convert_np_dtype_to_dtype_,
     default_main_program,
     get_flags,
@@ -587,27 +586,6 @@ def _merge_tensors(tensor, micro_batch_num):
     return [np.array(chunk) for chunk in chunk_tensor]
 
 
-def _apply_inplace_addto_pass(
-    program, enable_inplace, enable_addto, skip_var_names
-):
-    use_cuda = True if core.is_compiled_with_cuda() else False
-
-    attrs = {"use_cuda": use_cuda, "mem_opt_skip_vars": skip_var_names}
-    attr_types = {"use_cuda": "bool", "mem_opt_skip_vars": "list[str]"}
-
-    empty_startup_program = Program()
-    if enable_inplace:
-        pass_name = "buffer_shared_inplace_pass"
-        _apply_pass(
-            program, empty_startup_program, pass_name, attrs, attr_types
-        )
-    if enable_addto and use_cuda:
-        pass_name = "inplace_addto_op_pass"
-        _apply_pass(
-            program, empty_startup_program, pass_name, attrs, attr_types
-        )
-
-
 def _fetch_var(name, scope=None, return_numpy=True):
     """
     Fetch the value of the variable with the given name from the
@@ -651,7 +629,7 @@ def _to_name_str(var):
         elif isinstance(var, Operator):
             return str(id(var))
         elif isinstance(var, Value):
-            return str(var)
+            return str(id(var))
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
@@ -1046,34 +1024,6 @@ class _ExecutorCache:
             use_fetch_v2=True,
         )
 
-        # standalone executor will apply buffer_shared_inplace_pass and
-        # inplace_addto_op_pass to program according to build_strategy
-        enable_inplace = (
-            True
-            if build_strategy is None or build_strategy.enable_inplace
-            else False
-        )
-
-        enable_addto = (
-            True
-            if build_strategy is not None and build_strategy.enable_addto
-            else False
-        )
-
-        if get_flags('FLAGS_enable_pir_in_executor')[
-            'FLAGS_enable_pir_in_executor'
-        ]:
-            # todo(phlrain), skip inplace add addto pass in new IR
-            enable_inplace = False
-            enable_addto = False
-
-        if enable_inplace or enable_addto:
-            # inplace should skip feed and fetch var
-            skip_var_names = _get_feed_fetch_var_names(feed, fetch_list)
-            _apply_inplace_addto_pass(
-                program, enable_inplace, enable_addto, skip_var_names
-            )
-
         new_program = program.clone()
         if (
             new_program._pipeline_opt
@@ -1232,8 +1182,8 @@ class _ExecutorCache:
             for job_type in cached_data.plan.job_types():
                 ir_program = cached_data.plan.ir_program(job_type)
                 value_map = pir.IrMapping()
-                program = ir_program.clone(value_map)
-                type_to_program[job_type] = program
+                program_tmp = ir_program.clone(value_map)
+                type_to_program[job_type] = program_tmp
                 value_map_list.append(value_map)
 
             job_list = []

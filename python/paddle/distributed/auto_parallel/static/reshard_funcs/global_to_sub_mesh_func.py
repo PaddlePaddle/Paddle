@@ -14,21 +14,54 @@
 
 import paddle
 
-from .base_reshard_func import ReshardFunction
+from .base_reshard_func import (
+    ReshardFunction,
+    is_replicated,
+)
+from .nd_mesh_reshard_func import NdMeshReshardFunction
 
 
 class GlobaleToSubMeshFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
-        if 0 in src_dist_attr.dims_mapping or 0 in src_dist_attr.partial_status:
+
+        # NOTE we could allow the src_dist_attr is not replicated and reshard it as replicated before go through the global_to_sub logic
+        # but the dst_dist_attr should be replicated otherwise there will be un-defined result when change the mesh.
+        if not is_replicated(dst_dist_attr):
             return False
         in_mesh = src_dist_attr.process_mesh
         out_mesh = dst_dist_attr.process_mesh
-        if in_mesh.ndim != out_mesh.ndim + 1:
+        if in_mesh.ndim > out_mesh.ndim + 1:
             return False
-        sub_meshes = paddle.base.libpaddle.pir.get_sub_meshes(in_mesh)
-        return out_mesh in sub_meshes
+        if in_mesh.ndim == out_mesh.ndim:
+            return set(out_mesh.process_ids) < set(in_mesh.process_ids)
+        else:
+            sub_meshes = paddle.base.libpaddle.pir.get_sub_meshes(in_mesh)
+            return out_mesh in sub_meshes
 
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
+
+        # reshard operand as replicated before change the mesh.
+        if not is_replicated(src_dist_attr):
+            tmp_dist_attr = (
+                paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                    src_dist_attr.process_mesh,
+                    [-1] * len(src_dist_attr.dims_mapping),
+                    {},
+                )
+            )
+            tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                src_value.type(), tmp_dist_attr
+            )
+
+            pre_reshard_func = NdMeshReshardFunction()
+            src_value = pre_reshard_func.reshard(
+                src_dist_attr,
+                tmp_dist_attr,
+                src_value,
+                tmp_dst_type,
+            )
+            src_dist_attr = tmp_dist_attr
+
         if src_value.has_one_use():
             src_value.update_dist_attr(dst_dist_attr)
             prev_op = src_value.get_defining_op()
@@ -36,10 +69,11 @@ class GlobaleToSubMeshFunction(ReshardFunction):
             op_mesh = op_dist_attr.process_mesh
             operands = op_dist_attr.operands()
             results = op_dist_attr.results()
+            chunk_id = op_dist_attr.chunk_id
             results[src_value.index()] = dst_dist_attr
             prev_op.dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
-                    op_mesh, operands, results
+                    op_mesh, operands, results, chunk_id
                 )
             )
             return src_value
@@ -48,9 +82,15 @@ class GlobaleToSubMeshFunction(ReshardFunction):
             share_data_op = dst_value.get_defining_op()
             # set dist type and dist attr
             dst_value.set_type(dst_type)
+            chunk_id = -1
+            if src_value.get_defining_op().dist_attr:
+                chunk_id = src_value.get_defining_op().dist_attr.chunk_id
             share_data_op.dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
-                    src_dist_attr.process_mesh, [src_dist_attr], [dst_dist_attr]
+                    src_dist_attr.process_mesh,
+                    [src_dist_attr],
+                    [dst_dist_attr],
+                    chunk_id,
                 )
             )
             return dst_value
