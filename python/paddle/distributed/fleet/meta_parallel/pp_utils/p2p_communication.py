@@ -141,7 +141,7 @@ class SendRecvMeta:
             tensor_type = 0
             tensors_to_send = [tensor]
         elif isinstance(tensor, tuple):
-            tensor_type = 0
+            tensor_type = 1
             tensors_to_send = list(tensor)
         else:
             raise TypeError(
