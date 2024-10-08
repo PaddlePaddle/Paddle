@@ -482,6 +482,9 @@ def monkey_patch_variable():
     def _neg_(var):
         return _scalar_op_(var, -1.0, 0.0)
 
+    def _abs_(var):
+        return paddle.abs(var)
+
     @property
     def _ndim(self):
         """
@@ -778,6 +781,7 @@ def monkey_patch_variable():
     variable_methods = [
         #   b=-a
         ('__neg__', _neg_),
+        ('__abs__', _abs_),
         ('astype', astype),
         ('cpu', cpu),
         ('cuda', cuda),
