@@ -39,6 +39,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.cumprod",
     "pd_op.cumsum",
     "pd_op.divide",
+    "pd_op.dot",
     "pd_op.dropout",
     "pd_op.elementwise_pow",
     "pd_op.erf",
@@ -51,6 +52,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.hardswish",
     "pd_op.leaky_relu",
     "pd_op.log",
+    "pd_op.logcumsumexp",
     "pd_op.matmul",
     "pd_op.max",
     "pd_op.maximum",
@@ -389,6 +391,19 @@ def get_real_op_inputs(op):
         return get_used_external_value(op)
     else:
         return op.operands_source()
+
+
+def get_real_op_outputs(op):
+    outputs = op.results()
+    if op.name() == "pd_op.array_write_":
+        for x in op.operands():
+            outputs.append(x.source())
+    if op.name() == "pd_op.while":
+        for internal_op in op.as_while_op().body().ops:
+            if internal_op.name() == "pd_op.array_write_":
+                for x in internal_op.operands():
+                    outputs.append(x.source())
+    return outputs
 
 
 def inverse_sort_op(old_ops):
