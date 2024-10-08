@@ -18,7 +18,6 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_slice_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle::dialect {
 
@@ -1587,7 +1586,8 @@ bool FusedFeedforwardOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(x_shape)});
   }
 
-  auto mean_dim = std::vector<symbol::DimExpr>{batch_size_ * height_};
+  std::vector<symbol::DimExpr> mean_dim =
+      std::vector<symbol::DimExpr>{batch_size_ * height_};
 
   bool pre_layer_norm =
       op->attribute<pir::BoolAttribute>("pre_layer_norm").data();
