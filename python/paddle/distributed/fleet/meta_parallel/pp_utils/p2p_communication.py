@@ -123,7 +123,9 @@ class SendRecvMeta:
             dtypes.append(dtype_number)
             stop_grads.append(stop_gradient)
 
-        assert len(data) == 0, "send data must be parsed zero"
+        assert (
+            len(data) == 0
+        ), f"send data must be parsed zero, now it is {data}"
 
         if tensor_type == 0:
             self.recv_shape_message = shapes[0]
