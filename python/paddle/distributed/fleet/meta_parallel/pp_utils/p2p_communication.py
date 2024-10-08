@@ -116,11 +116,11 @@ class SendRecvMeta:
             shape_len = data.pop(0)
             shape = data[:shape_len]
             data = data[shape_len:]
-            dtype = number_2_dtype(data.pop(0))
+            dtype_number = data.pop(0)
             stop_gradient = bool(data.pop(0))
 
             shapes.append(shape)
-            dtypes.append(dtype)
+            dtypes.append(dtype_number)
             stop_grads.append(stop_gradient)
 
         assert len(data) == 0, "send data must be parsed zero"
