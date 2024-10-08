@@ -1781,12 +1781,70 @@ bool TdmChildOpInferSymbolicShape(
   return true;
 }
 
-// bool TriangularSolveOpInferSymbolicShape(pir::Operation *op,
-//                                          pir::InferSymbolicShapeContext
-//                                          *infer_context) {
-//   // pass
-//   return true;
-// }
+static inline std::vector<symbol::DimExpr> MatrixGetBroadcastBatchPortion(
+    const std::vector<symbol::DimExpr> &x,
+    const std::vector<symbol::DimExpr> &y,
+    pir::InferSymbolicShapeContext *infer_context) {
+  // use int to avoid underflow for minus
+  int size_x = x.size();
+  int size_y = y.size();
+  int max_size = std::max(size_x, size_y);
+  std::vector<symbol::DimExpr> batchPortion(max_size);
+
+  int size_diff = size_x - size_y;
+  if (size_diff > 0) {
+    for (int i = 0; i < size_diff; i++) {
+      batchPortion[i] = x[i];
+    }
+  } else {
+    size_diff = -size_diff;
+    for (int i = 0; i < size_diff; i++) {
+      batchPortion[i] = y[i];
+    }
+  }
+
+  symbol::DimExprBuilder builder;
+  for (int i = size_diff; i < max_size; i++) {
+    int offset = max_size - i;
+    int dim_x = size_x - offset;
+    int dim_y = size_y - offset;
+    infer_context->AddBroadcastableCstr(x[dim_x], y[dim_y]);
+    batchPortion[i] = builder.Broadcast(x[dim_x], y[dim_y]);
+  }
+  return batchPortion;
+}
+
+bool TriangularSolveOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &y_shape = y_shape_or_data.shape();
+
+  const auto &x_rank = x_shape.size();
+  const auto &y_rank = y_shape.size();
+
+  infer_context->AddEqualCstr(x_shape[x_rank - 2], x_shape[x_rank - 1]);
+
+  std::vector<symbol::DimExpr> x_shape_cut(x_shape.begin(), x_shape.end() - 2);
+  std::vector<symbol::DimExpr> y_shape_cut(y_shape.begin(), y_shape.end() - 2);
+
+  std::vector<symbol::DimExpr> expand_batch_portion =
+      MatrixGetBroadcastBatchPortion(x_shape_cut, y_shape_cut, infer_context);
+
+  std::vector<symbol::DimExpr> output_shape({expand_batch_portion});
+  output_shape.insert(output_shape.end(),
+                      {y_shape[y_rank - 2], y_shape[y_rank - 1]});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
 
 bool Unpool3dOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

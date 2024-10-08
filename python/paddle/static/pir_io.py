@@ -172,11 +172,15 @@ def pir_prune_with_input(program, feed_vars, target_vars):
 
     total_ops = program.global_block().ops
     intersection_op_flags = [True] * len(total_ops)
+    skip_prune_ops = ["builtin.parameter"]
 
     # from output to input
     target_vars_ = ValueSet(target_vars)
     for i, op in reversed(list(enumerate(total_ops))):
-        if some_in_set(get_real_op_outputs(op), target_vars_):
+        if (
+            some_in_set(get_real_op_outputs(op), target_vars_)
+            or op.name() in skip_prune_ops
+        ):
             for operand in get_real_op_inputs(op):
                 target_vars_.add(operand)
         else:

@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -41,8 +42,17 @@ class XPUTestArgMin(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.initTestCase()
 
-            self.x = (np.random.random(self.dims)).astype(self.dtype)
-            self.inputs = {'X': self.x}
+            self.x = (np.random.random(self.dims)).astype(
+                self.dtype if self.dtype != np.uint16 else np.float32
+            )
+
+            self.inputs = {
+                'X': (
+                    self.x
+                    if self.dtype != np.uint16
+                    else convert_float_to_uint16(self.x)
+                )
+            }
             self.attrs = {'axis': self.axis, 'use_xpu': True}
             self.outputs = {'Out': np.argmin(self.x, axis=self.axis)}
 

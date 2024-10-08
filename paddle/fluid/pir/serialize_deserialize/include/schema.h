@@ -82,8 +82,16 @@ namespace pir {
 #define NULL_TYPE "NULL"
 
 // special op compress
-
 #define PARAMETEROP "p"
+
+// actions for patch
+#define DELETE "DEL"
+#define ADD "ADD"
+#define UPDATE "UPD"
+#define NEW_NAME "NN"
+#define ADD_ATTRS "ADD_A"
+#define ADD_OPRESULTS_ATTRS "ADD_OA"
+#define PATCH "patch"
 
 std::pair<std::string, std::string> GetContentSplitByDot(
     const std::string& str);
@@ -109,6 +117,4 @@ class DialectIdMap {
   std::unordered_map<std::string, std::string> DecompressDialect;
 };
 
-uint64_t GetPirVersion();
-uint64_t GetMaxReleasePirVersion();
 }  // namespace pir

@@ -140,11 +140,24 @@ type_patches:
 ```
 
 ## pir_version 配置说明
-### C++端版本号管理
-- 版本号管理在C++端，通过宏PIR_VERSION进行管理。
-- pir_version 定义PIR的版本迭代，每次PIR进行更新并新增patch文件后，版本号会顺序递增。与Paddle的主版本号解耦，可以独立迭代。
-- 定义GetPirVersion函数获取当前的版本号：在"paddle/fluid/pir/serialize_deserialize/patch"路径下进行yaml文件查询，如果存在"0.yaml"则为develop版本，pir_verison为0；否则查找到的yaml文件名最大值即为当前的pir_version。
-- ReadModule和WriteModule参数中的pir_version设为默认值，可以不用传递。pir_version 函数默认值为0，为develop版本下的值，进入函数后会获取当前的版本号。
+### C++端版本号管理与CMake配置
+- 版本号管理在C++端，在CMakeList.txt中配置。
+- PIR版本号定义PIR的版本迭代，版本号与yaml文件名强相关。每次PIR进行更新并新增patch文件后，patch文件名顺序递增，版本号同时顺序递增。与Paddle的主版本号解耦，可以独立迭代。
+  ```cmake
+  # change pir version when new patches are added
+  add_definitions(-DDEVELOP_VERSION=1)
+  add_definitions(-DRELEASE_VERSION=1)
+  ```
+
+  ```tree
+  ├─patch
+  │  ├─0.yaml
+  │  └─1.yaml
+  ```
+  - RELEASE_VERSION 为已发布的版本中PIR版本号，即为patch yaml文件名的最大值。
+  - DEVELOP_VERSION 为当前develop分支下的PIR版本号，若存在未发布的新增patch，配置在`0.yaml`中，且当前的develop pir 版本号为0。
+
+- ReadModule和WriteModule参数中的pir_version设为默认值，可以不用传递。pir_version 函数默认值为-1，进入函数后会获取CMake中配置的当前的PIR版本号。
 
 ### Python端
 - Paddle的主版本号定义在Python端，与PIR version不产生关联。Python端不再需要获取和传入pir_version，直接使用默认值即可。

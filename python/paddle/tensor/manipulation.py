@@ -803,6 +803,13 @@ def crop(
                              [[3, 4, 5],
                               [6, 7, 8]]]
 
+    The image below demonstrates the  Case 2 that a 3D tensor with shape [2,3,4] is cropped into a 3D tensor with shape [2,2,3]
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/crop.png
+       :width: 500
+       :alt: Illustration of Case 2
+       :align: center
+
     Parameters:
         x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
         shape (list|tuple|Tensor, optional): The output shape is specified
@@ -2019,6 +2026,13 @@ def roll(
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
                 For more information, please refer to :ref:`api_guide_Name` .
 
+    The image below shows a 2D tensor `[[1,2,3],[4,5,6],[7,8,9]]` being transformed into tensors with
+    different shapes through the roll operation.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/roll.png
+        :width: 700
+        :align: center
+        :alt: legend of roll API
 
     Returns:
         Tensor, A Tensor with same data type as `x`.
@@ -4385,6 +4399,19 @@ def chunk(
 ) -> list[Tensor]:
     """
     Split the input tensor into multiple sub-Tensors.
+
+    Here are some examples to explain it.
+
+        - 1. Given a 3-D tensor x with a shape [3, 3, 3], if we split the first dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [1, 3, 3].
+        - 2. Given a 3-D tensor x with a shape [3, 3, 3], if we split the second dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [3, 1, 3].
+        - 3. Given a 3-D tensor x with a shape [3, 3, 3], if we split the third dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [3, 3, 1].
+
+    The following figure illustrates the first example.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/chunk.png
+        :width: 800
+        :alt: legend of reshape API
+        :align: center
 
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.

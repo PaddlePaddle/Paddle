@@ -62,38 +62,6 @@ llvm::Value* CodeGenInvokeModule::LowerInvokeFunc(
   return f_;
 }
 
-llvm::Value* CodeGenInvokeModule::LowerParseArgsValueCall(
-    const ir::Call* call_ir) {
-  auto ret_type = CinnTypeToLLVMType(Int(64), m_);
-  std::vector<llvm::Type*> args_type;
-  PADDLE_ENFORCE_EQ(
-      call_ir->read_args.size(),
-      2,
-      ::common::errors::InvalidArgument(
-          "The number of arguments of ParseArgsValue should be 2"));
-  PADDLE_ENFORCE_EQ(call_ir->read_args[0].is_var() &&
-                        call_ir->read_args[0].as_var()->type().is_cpp_handle(),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "The first read argument must be a variable "
-                        "with a C++ handle type."));
-
-  PADDLE_ENFORCE_EQ(call_ir->read_args[1].type().is_int(32),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "The second read argument must be of type int32."));
-  args_type.push_back(CinnTypeToLLVMType(type_of<void*>(), m_));
-  args_type.push_back(CinnTypeToLLVMType(type_of<int32_t>(), m_));
-
-  auto func_type = llvm::FunctionType::get(ret_type, args_type, false);
-  auto call_func = m_->getOrInsertFunction(call_ir->name, func_type);
-
-  std::vector<llvm::Value*> call_args;
-  call_args.push_back(std::addressof(*f_->arg_begin()));
-  call_args.push_back(b_->getInt32(call_ir->read_args[1].as_int32()));
-  return b_->CreateCall(call_func, call_args);
-}
-
 llvm::Value* CodeGenSwitchHost::LowerInnerCaseCall(const ir::Call* op) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
