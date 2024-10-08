@@ -33,6 +33,7 @@ using Tensor = paddle::Tensor;
 using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
+
 template <typename T>
 void pow_grad(const Tensor& x,
               const Tensor& out_grad,

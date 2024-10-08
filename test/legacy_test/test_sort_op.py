@@ -19,14 +19,12 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSortOnCPU(unittest.TestCase):
     def setUp(self):
         self.place = core.CPUPlace()
 
-    @test_with_pir_api
     def test_api_0(self):
         with base.program_guard(base.Program()):
             input = paddle.static.data(
@@ -45,7 +43,6 @@ class TestSortOnCPU(unittest.TestCase):
             np_result = np.sort(result)
             self.assertEqual((result == np_result).all(), True)
 
-    @test_with_pir_api
     def test_api_1(self):
         with base.program_guard(base.Program()):
             input = paddle.static.data(
@@ -64,7 +61,6 @@ class TestSortOnCPU(unittest.TestCase):
             np_result = np.sort(result, axis=1)
             self.assertEqual((result == np_result).all(), True)
 
-    @test_with_pir_api
     def test_api_2(self):
         with base.program_guard(base.Program()):
             input = paddle.static.data(

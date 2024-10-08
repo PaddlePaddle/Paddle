@@ -80,12 +80,14 @@ static std::vector<int64_t> get_expand_dims(const Tensor& origin,
 // This function compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
     const Tensor& origin, const std::vector<int64_t>& axis) {
+  auto sort_axis = axis;
+  std::sort(sort_axis.begin(), sort_axis.end());
   auto origin_dims = origin.shape();
-  auto total_shape_size = origin_dims.size() + axis.size();
+  auto total_shape_size = origin_dims.size() + sort_axis.size();
   std::vector<int64_t> result;
   size_t j = 0, k = 0;
   for (size_t i = 0; i < total_shape_size; ++i) {
-    if (j < axis.size() && axis[j] == int64_t(i)) {
+    if (j < sort_axis.size() && sort_axis[j] == int64_t(i)) {
       result.push_back(1);
       j++;
     } else {
@@ -279,6 +281,26 @@ static bool has_dynamic_shape(const std::vector<int64_t>& shape,
     }
   }
   return flag;
+}
+
+template <typename T>
+Tensor ConverToMT(const Tensor& x) {
+  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
+                   x.dtype() == phi::DataType::BFLOAT16 ||
+                   x.dtype() == phi::DataType::UINT16;
+  if (need_cast) {
+    return cast<T>(x, phi::DataType::FLOAT32);
+  }
+  return x;
+}
+
+template <typename T>
+Tensor ConverToOrig(const Tensor& out, phi::DataType input_dtype) {
+  bool need_cast = out.dtype() != input_dtype;
+  if (need_cast) {
+    return cast<T>(out, input_dtype);
+  }
+  return out;
 }
 
 }  // namespace primitive

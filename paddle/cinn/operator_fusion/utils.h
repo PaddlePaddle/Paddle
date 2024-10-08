@@ -89,7 +89,7 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   std::stringstream ss;
   pir::IrPrinter printer(ss);
   for (const auto* op : ops) {
-    printer.PrintOperation(const_cast<pir::Operation*>(op));
+    printer.PrintOperation(*op);
     ss << "(" << op << ")"
        << "\n";
   }

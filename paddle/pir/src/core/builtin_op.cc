@@ -171,15 +171,15 @@ void GroupOp::VerifySig() {}
 void GroupOp::Print(IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
-  printer.PrintOpResult(op);
+  printer.PrintOpResult(*op);
   os << " = \"" << name() << "\" [id:" << op->id() << "]";
-  printer.PrintOpOperands(op);
+  printer.PrintOpOperands(*op);
   os << " -> ";
-  printer.PrintOpReturnType(op);
+  printer.PrintOpReturnType(*op);
   os << " {\n";
   printer.AddIndentation();
   for (auto &sub_op : GetOperators()) {
-    printer.PrintOperation(sub_op);
+    printer.PrintOperation(*sub_op);
     os << "\n";
   }
   printer.DecreaseIndentation();
@@ -644,7 +644,7 @@ void ConstantTensorOp::VerifySig() const {
       common::errors::InvalidArgument("Type of value must be str attribute"));
 }
 
-ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
+ConstantTensorOp ConstantTensorOp::dyn_cast(const Operation *op) {
   if (ConstantTensorOp::classof(op)) return ConstantTensorOp(op);
   return ConstantTensorOp(nullptr);
 }

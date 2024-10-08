@@ -22,7 +22,6 @@ from dygraph_to_static_utils import (
     ToStaticMode,
     disable_test_case,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -266,7 +265,6 @@ class TestListWithoutControlFlowConfig(Dy2StTestBase):
 
 
 class TestListWithoutControlFlow(TestListWithoutControlFlowConfig):
-    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 
@@ -299,7 +297,6 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
             return self.result_to_numpy(res)
 
     @disable_test_case((ToStaticMode.AST, IrMode.PT))
-    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 
@@ -365,7 +362,6 @@ class ListWithCondNet(paddle.nn.Layer):
 
 
 class TestListWithCondGradInferVarType(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         net = ListWithCondNet()
         x = paddle.to_tensor([2, 3, 4], dtype='float32')
@@ -383,7 +379,6 @@ def tensor_array_dtype():
 
 class TestTensorArrayDtype(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_tensor_array_dtype(self):
         fn = tensor_array_dtype
         static_fn = paddle.jit.to_static(fn)

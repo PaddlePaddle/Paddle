@@ -21,7 +21,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -70,7 +69,6 @@ class TestLstm(Dy2StTestBase):
             y = net(x)
             return y.numpy()
 
-    @test_legacy_and_pt_and_pir
     def test_lstm_to_static(self):
         dygraph_out = self.run_lstm(to_static=False)
         static_out = self.run_lstm(to_static=True)
@@ -120,12 +118,10 @@ class TestLstm(Dy2StTestBase):
         )
 
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_save_without_training(self):
         self.save_in_eval(with_training=False)
 
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_save_with_training(self):
         self.save_in_eval(with_training=True)
 
@@ -165,7 +161,6 @@ class TestSaveInEvalMode(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_legacy_and_pt_and_pir
     def test_save_in_eval(self):
         net = paddle.jit.to_static(LinearNet())
         x = paddle.randn((2, 10))
@@ -208,7 +203,6 @@ class TestEvalAfterSave(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_legacy_and_pt_and_pir
     def test_eval_after_save(self):
         x = paddle.randn((2, 10, 12)).astype('float32')
         net = Net(12, 2)

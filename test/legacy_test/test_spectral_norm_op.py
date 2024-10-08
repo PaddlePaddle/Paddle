@@ -20,7 +20,6 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 from paddle import _C_ops
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -140,7 +139,7 @@ class TestSpectralNormOp2(TestSpectralNormOp):
 
 
 class TestSpectralNormOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_static_errors(self):
         with program_guard(Program(), Program()):
 
@@ -176,7 +175,6 @@ class TestSpectralNormOpError(unittest.TestCase):
             # the dim must be 0 or 1
             self.assertRaises(ValueError, test_dim_out_of_range_2)
 
-    @test_with_pir_api
     def test_nn_api_errors(self):
         with program_guard(Program(), Program()):
 
