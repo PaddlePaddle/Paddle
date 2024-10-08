@@ -368,7 +368,9 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
 
   // Restricted parallelism if ratio_w is over threshold
   // to avoid atomic contention overhead.
-  if (ratio_w < 0.5) [[likely]] {  // NOLINT
+  // This threshold 0.5f is come up with extensive quantitative analysis,
+  // corresponding to 2x or larger scale factor in W axis.
+  if (ratio_w < 0.5f) [[likely]] {  // NOLINT
     if (index < num_in) {
       int index_tmp = index;
       const int w1 = index_tmp % in_w;
