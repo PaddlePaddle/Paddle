@@ -676,8 +676,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                            workspace /*output parameter*/,
                            workspace_size /*output parameter*/);
       MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
-      VLOG(6) << best_desc->GetDescResultString(
-          "[Searched CublasltDescriptor] ");
+      VLOG(6) << "[Searched CublasltDescriptor] ";
 
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
       cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
