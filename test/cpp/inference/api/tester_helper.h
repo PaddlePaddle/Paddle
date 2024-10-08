@@ -804,7 +804,7 @@ void CompareNativeAndAnalysis(
                         "The analysis outputs is empty. The analysis outputs "
                         "vector size must be bigger than 0"));
   CompareResult(analysis_outputs.back(), native_outputs.back());
-}
+}  // test
 
 void CompareQuantizedAndAnalysis(
     const AnalysisConfig *config,
