@@ -1266,7 +1266,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PADDLE_ENFORCE_NOT_NULL(
         dlMTensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "from_dlpack received an invalid capsule. "
             "Note that DLTensor capsules can be consumed only once, "
             "so you might have already constructed a tensor from it once."));
