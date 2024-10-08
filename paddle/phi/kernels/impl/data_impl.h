@@ -26,25 +26,52 @@ const char kBackward[] = "BACKWARD";
 template <typename T, typename Context>
 void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
+                      int dst_place_type,
                       DenseTensor* out) {
+  Place target_place;
+  switch (dst_place_type) {
+    case 0:  // CPUPlace
+      target_place = CPUPlace();
+      break;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case 1:  // CUDAPlace
+      target_place = GPUPlace(backends::gpu::GetCurrentDeviceId());
+      break;
+#elif defined(PADDLE_WITH_XPU)
+    case 1:  // XPUPlace
+      target_place = XPUPlace(backends::xpu::GetXPUCurrentDeviceId());
+      break;
+#endif
+    default:
+      PADDLE_THROW(errors::Unimplemented("dst_place_type: %d is not supported.",
+                                         dst_place_type));
+      break;
+  }
+
   if (!x.initialized()) {
-    ctx.template Alloc<T>(out);
+    if (target_place == CPUPlace()) {
+      ctx.template HostAlloc<T>(out);
+    } else {
+      ctx.template Alloc<T>(out);
+    }
     return;
   }
-  if (x.place() == ctx.GetPlace()) {
+
+  if (x.place() == target_place) {
     out->ShareDataWith(x);
     out->set_lod(x.lod());
   } else {
-    phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
+    phi::Copy<Context>(ctx, x, target_place, true, out);
   }
 }
 
 template <typename T, typename Context>
 void ShadowFeedTensorsKernel(const Context& ctx,
                              const std::vector<const DenseTensor*>& xs,
+                             int dst_place_type,
                              std::vector<DenseTensor*> outs) {
   for (size_t i = 0; i < xs.size(); ++i) {
-    ShadowFeedKernel<T, Context>(ctx, *(xs[i]), outs[i]);
+    ShadowFeedKernel<T, Context>(ctx, *(xs[i]), dst_place_type, outs[i]);
   }
 }
 

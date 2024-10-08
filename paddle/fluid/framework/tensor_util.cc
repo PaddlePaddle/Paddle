@@ -919,7 +919,7 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
   } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
     place = phi::GPUPinnedPlace();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Given Place is not supported"));
+    PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
   }
 
   ::DLDataType type = src->dl_tensor.dtype;
