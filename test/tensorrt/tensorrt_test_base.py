@@ -67,15 +67,27 @@ class TensorRTBaseTest(unittest.TestCase):
                         new_list_args.append(input_data)
                     api_args[feed_name] = new_list_args
                 else:
-                    input_shape_without_dynamic_dim = self.api_args[
-                        feed_name
-                    ].shape[1:]
-                    input_dynamic_shape = [-1]
-                    input_dynamic_shape.extend(input_shape_without_dynamic_dim)
+                    empty_min_max_shape = (
+                        self.min_shape is None or self.max_shape is None
+                    )
+                    if (
+                        not empty_min_max_shape
+                        and feed_name in self.min_shape.keys()
+                        and feed_name in self.max_shape.keys()
+                    ):
+                        # dynamic shape condition
+                        input_shape_without_dynamic_dim = self.api_args[
+                            feed_name
+                        ].shape[1:]
+                        input_shape = [-1]
+                        input_shape.extend(input_shape_without_dynamic_dim)
+                    else:
+                        input_shape = self.api_args[feed_name].shape
+
                     input_dtype = self.api_args[feed_name].dtype
                     input_data = paddle.static.data(
                         name=feed_name,
-                        shape=input_dynamic_shape,
+                        shape=input_shape,
                         dtype=input_dtype,
                     )
                     api_args[feed_name] = input_data
@@ -144,6 +156,14 @@ class TensorRTBaseTest(unittest.TestCase):
             min_shape_data = dict()  # noqa: C408
             max_shape_data = dict()  # noqa: C408
             for feed_name in self.program_config["feed_list"]:
+                if (
+                    feed_name not in self.min_shape.keys()
+                    and feed_name not in self.max_shape.keys()
+                ):
+                    min_shape_data[feed_name] = self.api_args[feed_name]
+                    max_shape_data[feed_name] = self.api_args[feed_name]
+                    continue
+
                 if isinstance(self.api_args[feed_name], dict):
                     for i in range(len(self.min_shape[feed_name])):
                         sub_feed_name = feed_name + str(i)

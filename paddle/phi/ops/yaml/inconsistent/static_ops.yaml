@@ -424,6 +424,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : greater_than
   data_transform :
@@ -479,6 +480,20 @@
     param: [x, y, transpose_x, transpose_y, alpha]
   backward : legacy_matmul_grad
 
+- op : legacy_reshape
+  args : (Tensor x, IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+    spmd_rule : ReshapeInferSpmd
+    local_shape: out
+    global_shape: out
+  kernel :
+    func : reshape
+  inplace : (x -> out)
+  view: (x -> out)
+  backward: legacy_reshape_grad
+
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -497,6 +512,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : less_than
   data_transform :
@@ -516,6 +532,16 @@
 - op : lod_array_length
   args : (Tensor[] x)
   output : Tensor(out)
+
+- op : lod_reset
+  args: (Tensor x, Tensor y, int[] target_lod={}, bool append=false)
+  output: Tensor(out)
+  infer_meta:
+    func: LodResetInferMeta
+  kernel:
+    func: lod_reset
+  optional: y
+  inplace: (x -> out)
 
 - op : lookup_table
   args : (Tensor w, Tensor ids, bool is_sparse = false, bool is_distributed = false,
@@ -763,7 +789,7 @@
     func : recv_v2
     param : [ring_id, dynamic_shape, peer, out_shape, dtype, use_calc_stream]
     data_type : dtype
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : remainder
   args : (Tensor x, Tensor y)
@@ -862,25 +888,25 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed
-  args : (Tensor x)
+  args : (Tensor x,  int dst_place_type)
   output : Tensor(out)
   infer_meta:
     func: UnchangedInferMeta
     param: [x]
   kernel:
     func: shadow_feed
-    param: [x]
+    param: [x, dst_place_type]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed_tensors
-  args : (Tensor[] x)
+  args : (Tensor[] x, int dst_place_type)
   output : Tensor[](out){x.size()}
   infer_meta:
     func: UnchangedVectorInferMeta
     param: [x]
   kernel:
     func: shadow_feed_tensors
-    param: [x]
+    param: [x, dst_place_type]
 
 - op : share_data_
   args : (Tensor x)
@@ -951,6 +977,17 @@
     support_trans_dtype : x, y
   backward : subtract_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : sync_comm_stream
+  args : (Tensor[] x, int ring_id = 0)
+  output : Tensor[](out){x.size()}
+  infer_meta :
+    func : UnchangedVectorInferMeta
+    param : [x]
+  kernel :
+    func : sync_comm_stream
+    data_type : DataType::FLOAT32
+  inplace: (x -> out)
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})

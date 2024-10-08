@@ -22,7 +22,6 @@ import paddle.nn.quant as Q
 from paddle import base
 from paddle.base import core
 from paddle.framework import set_default_dtype
-from paddle.pir_utils import test_with_pir_api
 
 
 @unittest.skipIf(
@@ -124,7 +123,6 @@ class LLMInt8LinearTestCase(unittest.TestCase):
         )
         return out.numpy()
 
-    @test_with_pir_api
     def llm_int8_linear_out_static(self, out_expect):
         paddle.enable_static()
         main = paddle.static.Program()
