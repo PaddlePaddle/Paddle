@@ -107,6 +107,7 @@ class TestVjpPrim(unittest.TestCase):
                 "pd_op.reshape",
                 "pd_op.divide",
             ]
+            print(pir_program)
             for idx, op in enumerate(pir_program.global_block().ops):
                 self.assertEqual(op.name(), all_op_names[idx])
             paddle.framework.core._set_prim_backward_enabled(False)
