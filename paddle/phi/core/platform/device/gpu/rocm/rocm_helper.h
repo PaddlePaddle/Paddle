@@ -14,14 +14,11 @@
 
 #pragma once
 
-#include <functional>
 #include <mutex>  // NOLINT
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/backends/dynload/cublas.h"
-#include "paddle/phi/backends/dynload/cublasLt.h"
-#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/backends/dynload/rocblas.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -70,38 +67,29 @@ namespace platform {
  *
  */
 
-#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                    \
-  int64_t __index__ =                                                \
-      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;   \
-  int64_t __stride__ = static_cast<int64_t>(blockDim.x) * gridDim.x; \
-  for (index_type i = __index__; __index__ < (num);                  \
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                           \
+  int64_t __index__ =                                                       \
+      static_cast<int64_t>(hipBlockIdx_x) * hipBlockDim_x + hipThreadIdx_x; \
+  int64_t __stride__ = static_cast<int64_t>(hipBlockDim_x) * hipGridDim_x;  \
+  for (index_type i = __index__; __index__ < (num);                         \
        __index__ += __stride__, i = __index__)
 
 class CublasHandleHolder {
  public:
-  CublasHandleHolder(cudaStream_t stream, cublasMath_t math_type) {
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(&handle_));
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetStream(handle_, stream));
-#if CUDA_VERSION >= 9000
-    if (math_type == CUBLAS_TENSOR_OP_MATH) {
-      PADDLE_RETRY_CUDA_SUCCESS(
-          phi::dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
-#if CUDA_VERSION >= 11000
-    } else if (math_type == CUBLAS_TF32_TENSOR_OP_MATH) {
-      PADDLE_RETRY_CUDA_SUCCESS(
-          phi::dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
-#endif  // CUDA_VERSION >= 11000
-    }
-#endif  // CUDA_VERSION >= 9000
+  explicit CublasHandleHolder(hipStream_t stream) {
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::rocblas_create_handle(&handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::rocblas_set_stream(handle_, stream));
   }
 
-  const cublasHandle_t& GetCublasHandle() const { return handle_; }
+  const rocblas_handle& GetCublasHandle() const { return handle_; }
 
   ~CublasHandleHolder() PADDLE_MAY_THROW {
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasDestroy(handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::rocblas_destroy_handle(handle_));
   }
 
-  inline void Call(const std::function<void(blasHandle_t)>& callback) const {
+  template <typename Callback>
+  inline void Call(Callback&& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }
@@ -109,30 +97,7 @@ class CublasHandleHolder {
  private:
   DISABLE_COPY_AND_ASSIGN(CublasHandleHolder);
 
-  cublasHandle_t handle_;
-  mutable std::mutex mtx_;
-};
-
-class CublasLtHandleHolder {
- public:
-  CublasLtHandleHolder() {
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasLtCreate(&handle_));
-  }
-  const cublasLtHandle_t& GetCublasLtHandle() const { return handle_; }
-
-  ~CublasLtHandleHolder() PADDLE_MAY_THROW {
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasLtDestroy(handle_));
-  }
-
-  inline void Call(const std::function<void(blasLtHandle_t)>& callback) const {
-    std::lock_guard<std::mutex> guard(mtx_);
-    callback(handle_);
-  }
-
- private:
-  DISABLE_COPY_AND_ASSIGN(CublasLtHandleHolder);
-
-  cublasLtHandle_t handle_;
+  rocblas_handle handle_;
   mutable std::mutex mtx_;
 };
 
