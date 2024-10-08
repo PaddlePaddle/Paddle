@@ -241,7 +241,7 @@ def cast_converter(network, paddle_op, inputs):
     cast_layer.get_output(0).dtype = out_dtype
     return cast_layer.get_output(0)
 
-  
+
 @converter_registry.register("pd_op.slice", trt_version="8.x")
 def slice_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
