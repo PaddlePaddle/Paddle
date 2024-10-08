@@ -64,17 +64,13 @@ class TensorRTBaseTest(unittest.TestCase):
                                 input_shape_without_dynamic_dim
                             )
                         else:
-                            input_dynamic_shape = []
-                            input_shape_without_dynamic_dim = (
-                                sub_arg_value.shape[0:]
-                            )
-                            input_dynamic_shape.extend(
-                                input_shape_without_dynamic_dim
-                            )
+                            static_shape = []
+                            actual_shape = sub_arg_value.shape[0:]
+                            static_shape.extend(actual_shape)
                         input_dtype = sub_arg_value.dtype
                         input_data = paddle.static.data(
                             name=sub_arg_name,
-                            shape=input_dynamic_shape,
+                            shape=static_shape,
                             dtype=input_dtype,
                         )
                         new_list_args.append(input_data)

@@ -170,8 +170,6 @@ def nearest_interp_converter(network, paddle_op, inputs):
         scale_w = scale_attr[1]
     else:
         if out_h > 0 and out_w > 0:
-            # if scale_attr is not None and len(scale_attr) > 0:
-            #     raise ValueError("When out_h and out_w are set, scale_attr cannot be set at the same time.")
             if data_format == "NCHW":
                 h_axis = 2
                 w_axis = 3
@@ -201,7 +199,6 @@ def nearest_interp_converter(network, paddle_op, inputs):
                 size_tensor_shape = size_tensor_operand.source().shape
                 if size_tensor_shape.size >= 2:
                     size_tensor = inputs[2]
-                    # 提取 height 和 width
                     outsize_h = network.add_slice(
                         size_tensor, start=[0], shape=[1], stride=[1]
                     ).get_output(0)
