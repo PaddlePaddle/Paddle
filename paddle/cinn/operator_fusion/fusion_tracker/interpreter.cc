@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/operator_fusion/fusion_tracker/interpreter.h"
 #include "glog/logging.h"
+#include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 
 namespace cinn::fusion {
 
@@ -191,10 +192,14 @@ void RunPaddingInstr(const std::shared_ptr<PaddingInstr>& instr,
 
 void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
                     FusionInterpreter* interpreter) {
+  using namespace cinn::hlir::framework::pir::trivial_fusion_detail;  // NOLINT
   for (auto fusion_op : interpreter->scope[instr->target_]->fusion_ops) {
     auto exprs = std::visit(GetSplitedExprFromFusionOp(), fusion_op);
-    interpreter->ret_expr.insert(
-        interpreter->ret_expr.end(), exprs.begin(), exprs.end());
+    // Insert if for append loops
+    for (const auto& expr : exprs) {
+      interpreter->ret_expr.push_back(
+          ExprTransformerUtils::InsertIfForAppendVarsTransformer()(expr));
+    }
   }
 }
 

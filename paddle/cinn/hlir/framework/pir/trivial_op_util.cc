@@ -794,6 +794,35 @@ ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
   return ExprTransformer(f);
 }
 
+ExprTransformer InsertIfForAppendVarsTransformer() {
+  const auto& f = [=](const ir::Expr& root) -> ir::Expr {
+    const auto vars = GetNonReduceLoopVars(root);
+    std::vector<ir::Expr> conditions;
+    for (const auto& var : vars) {
+      if (var->name.find("append") == std::string::npos) {
+        continue;
+      }
+      VLOG(4) << "Insert If for append loop: " << var;
+      conditions.push_back(ir::EQ::Make(var, var->lower_bound));
+    }
+    auto last_for = (ExprSetFinderUtils::ChildFors *
+                     ExprSetFinderUtils::IsForIterVar(vars.back()))
+                        .GetSingle(root)
+                        .As<ir::For>();
+    ir::Expr new_body = last_for->body;
+    std::reverse(conditions.begin(), conditions.end());
+    for (const auto& cond : conditions) {
+      new_body = ir::IfThenElse::Make(cond, new_body);
+    }
+    if (!new_body.As<ir::Block>()) {
+      new_body = ir::Block::Make({new_body});
+    }
+    last_for->body = new_body;
+    return root;
+  };
+  return ExprTransformer(f);
+}
+
 int InplaceMutateSingleExpr(ir::Expr* root,
                             const ExprSetFinderUtils::ExprSetFinder& finder,
                             const ExprTransformer& transformer) {

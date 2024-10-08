@@ -258,6 +258,7 @@ ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm);
 ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones);
 ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
                                       const std::vector<ir::Var>& vars);
+ExprTransformer InsertIfForAppendVarsTransformer();
 int InplaceMutateSingleExpr(ir::Expr* root,
                             const ExprSetFinderUtils::ExprSetFinder& finder,
                             const ExprTransformer& transformer);
