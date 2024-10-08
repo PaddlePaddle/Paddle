@@ -20,7 +20,6 @@ import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class AffineGridTestCase(unittest.TestCase):
@@ -90,7 +89,6 @@ class AffineGridTestCase(unittest.TestCase):
                 )
                 return y_np
 
-    @test_with_pir_api
     def test_static_api(self):
         place = base.CPUPlace()
         paddle.enable_static()
@@ -137,7 +135,6 @@ class AffineGridTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
-    @test_with_pir_api
     def _test_equivalence(self, place):
         place = base.CPUPlace()
         result1 = self.base_layer(place)
