@@ -33,7 +33,6 @@ void CudaGemm(const Context& ctx,
                              const DenseTensor& input,
                              const DenseTensor& w,
                              DenseTensor* output) {
-  // printf("zhangsishuai\n");
   ctx.template Alloc<int32_t>(output);
   auto input_dims = input.dims();
   PADDLE_ENFORCE_EQ(
@@ -47,26 +46,20 @@ void CudaGemm(const Context& ctx,
       weight_dims.size(),
       2UL,
       common::errors::InvalidArgument(
-          "The w tensor dimensions should be 2, but got %d.",
-          input_dims.size()));
-  printf("zhangsishuai %d %d %d %d\n", input_dims[0], input_dims[1], weight_dims[0], weight_dims[1]);
-  // PADDLE_ENFORCE_EQ(weight_dims.size(),
-  //                   2UL,
-  //                   common::errors::InvalidArgument(
-  //                       "In gemm_epilogue kernel, weight_dims should be 2."));
+          "The weight tensor dimensions should be 2, but got %d.",
+          weight_dims.size()));
+
   auto out_dims = output->dims();
-  // printf("zhangsishuai   222\n");
-  
-  // const int batch = input_dims[0];
+
   const int m = input_dims[0];
-  const int n = input_dims[1];
+  const int n = weight_dims[0];
   
   PADDLE_ENFORCE_EQ(
       input_dims[1],
-      weight_dims[0],
+      weight_dims[1],
       common::errors::InvalidArgument(
-          "The w tensor dimensions should be 2, but got %d.",
-          input_dims.size()));
+          "The input dims[1] %d should be equal to weight dims[1] %d.",
+          input_dims[1], weight_dims[1]));
   const int k = weight_dims[1];
 
   auto get_phi_dtype = [&](decltype(input.dtype()) x_type)

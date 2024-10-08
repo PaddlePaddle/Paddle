@@ -1851,10 +1851,23 @@ MatmulJudgeDtypeKernel(const Context& ctx,
                        DenseTensor* out,
                        bool transpose_x,
                        bool transpose_y) {
-  if (std::is_same<Context, phi::GPUContext>::value && std::is_same<T, int8_t>::value)  {
+  if (std::is_same<Context, phi::GPUContext>::value &&
+      std::is_same<T, int8_t>::value) {
     if (x.dtype() == phi::DataType::INT8 && x_dims[0] <= 4 && FLAGS_cuda_gemm) {
-      phi::fusion::cutlass_internal::CudaGemm<T, Context>(ctx, x, y, out);
-      return;
+      if (!transpose_y) {
+        DenseTensor delta;
+        phi::EmptyKernel<float, Context>(
+            ctx, {y.dims()[1], y.dims()[0]}, DataType::INT8, &delta);
+        phi::TransposeKernel<int8_t, Context>(ctx, y, {1, 0}, &delta);
+        std::vector<int8_t> tmp(delta.numel());
+        cudaMemcpy(tmp.data(),
+                   delta.data<int8_t>(),
+                   sizeof(int8_t) * delta.numel(),
+                   cudaMemcpyDeviceToHost);
+        phi::fusion::cutlass_internal::CudaGemm<T, Context>(ctx, x, delta, out);
+      } else {
+        phi::fusion::cutlass_internal::CudaGemm<T, Context>(ctx, x, y, out);
+      }
     }
   }
   bool try_matmul_int8 = MatMulInt8Function<Context>(
