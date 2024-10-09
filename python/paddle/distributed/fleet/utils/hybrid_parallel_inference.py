@@ -64,7 +64,7 @@ class HybridParallelInferenceHelper:
             ...         # read data from global lod_tensor_array
             ...         element_in_arr = paddle.tensor.array_read(array=arr, i=step_idx)
             ...         # write placeholder data to global lod_tensor_array,
-            ...         # it need for send_v2 of lod_tensor_array
+            ...         # it need for p_send of lod_tensor_array
             ...         paddle.increment(x=step_idx, value=1.0)
             ...         paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
             ...     with paddle.base.device_guard(f'{device}:0'):
@@ -74,7 +74,7 @@ class HybridParallelInferenceHelper:
             ...     with paddle.base.device_guard(f'{device}:{num_pp-1}'):
             ...         # generate some data in while block and write to global lod_tensor_array
             ...         # that they are read in next while step.
-            ...         # we will using send_v2 to send global lod_tensor_array to other pipeline and sync
+            ...         # we will using p_send to send global lod_tensor_array to other pipeline and sync
             ...         paddle.tensor.array_write(other_var, i=step_idx, array=arr)
             ...         # update cond and assign to cond_int, we will sync cond_int
             ...         layers.assign(layers.cast(cond, dtype="int32"), cond_int)
@@ -613,18 +613,16 @@ class HybridParallelInferenceHelper:
                     else:
                         ring_id = self._pp_ring_map[pair_key]
 
-                    block._insert_op_without_sync(
+                    send_op = block._insert_op_without_sync(
                         index=index + extra_index_info['index'],
-                        type='send_v2',
-                        inputs={'X': var},
+                        type='p_send',
+                        inputs={'x': var},
                         attrs={
-                            self._op_device_key: prev_dev,
-                            self._op_role_key: op_role,
-                            'use_calc_stream': True,
                             'peer': 1,
                             'ring_id': ring_id,
                         },
                     )
+                    send_op.dist_attr.execution_stream = "default"
                     extra_index_info['index'] += 1
                     var_shape = list(var.shape)
                     if var_shape[0] < 0:
@@ -635,20 +633,17 @@ class HybridParallelInferenceHelper:
                         else:
                             var_shape[0] = self.micro_batch_size
 
-                    block._insert_op_without_sync(
+                    recv_op = block._insert_op_without_sync(
                         index=index + extra_index_info['index'],
-                        type='recv_v2',
-                        outputs={'Out': [var]},
+                        type='p_recv',
+                        outputs={'out': [var]},
                         attrs={
-                            'out_shape': var_shape,
                             'dtype': var.dtype,
-                            self._op_device_key: cur_dev,
-                            self._op_role_key: op_role,
-                            'use_calc_stream': True,
                             'peer': 0,
                             'ring_id': ring_id,
                         },
                     )
+                    recv_op.dist_attr.execution_stream = "default"
                     extra_index_info['index'] += 1
 
                 _insert_send_recv(
@@ -712,20 +707,16 @@ class HybridParallelInferenceHelper:
             for var_name in var_names:
                 var = block._var_recursive(var_name)
                 if stage == cur_id:
-                    block._insert_op_without_sync(
+                    send_op = block._insert_op_without_sync(
                         index=index,
-                        type='send_v2',
-                        inputs={'X': var},
+                        type='p_send',
+                        inputs={'x': var},
                         attrs={
-                            self._op_device_key: self._device
-                            + ':'
-                            + str(cur_id),
-                            self._op_role_key: int(self._op_role.Forward),
-                            'use_calc_stream': True,
                             'peer': 0,
                             'ring_id': ring_id,
                         },
                     )
+                    send_op.dist_attr.execution_stream = "default"
                 else:
                     var_shape = list(var.shape)
                     print(var_name)
@@ -735,22 +726,17 @@ class HybridParallelInferenceHelper:
                             if var_shape[0] < 0
                             else var_shape[0]
                         )
-                    block._insert_op_without_sync(
+                    recv_op = block._insert_op_without_sync(
                         index=index,
-                        type='recv_v2',
-                        outputs={'Out': [var]},
+                        type='p_recv',
+                        outputs={'out': [var]},
                         attrs={
-                            'out_shape': var_shape,
                             'dtype': var.dtype,
-                            self._op_device_key: self._device
-                            + ':'
-                            + str(prev_id),
-                            self._op_role_key: int(self._op_role.Forward),
-                            'use_calc_stream': True,
                             'peer': 1,
                             'ring_id': ring_id,
                         },
                     )
+                    recv_op.dist_attr.execution_stream = "default"
                 index += 1
         block._sync_with_cpp()
 

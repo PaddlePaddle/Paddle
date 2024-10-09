@@ -257,7 +257,7 @@ void PRecvArrayInferMeta(int peer,
         errors::InvalidArgument("The shape attribute for recv must be set "
                                 "explicitly, but the %dth element is %d which "
                                 "is less than 1. Or dynamic_shape should be "
-                                "set to True for both send_v2 and recv_v2.",
+                                "set to True for both p_send and p_recv.",
                                 i,
                                 out_shape[i]));
   }
@@ -274,13 +274,13 @@ void RecvV2InferMeta(const int ring_id,
       peer,
       0,
       errors::InvalidArgument(
-          "The peer (%d) for recv_v2 op must be non-negative.", peer));
+          "The peer (%d) for p_recv op must be non-negative.", peer));
 
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
       errors::InvalidArgument(
-          "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
+          "The ring_id (%d) for p_recv op must be non-negative.", ring_id));
 
   if (!dynamic_shape) {
     PADDLE_ENFORCE_GE(out_shape.size(),
@@ -293,10 +293,10 @@ void RecvV2InferMeta(const int ring_id,
       PADDLE_ENFORCE_GE(out_shape[i],
                         1,
                         errors::InvalidArgument(
-                            "The shape attribute for recv_v2 must be set "
+                            "The shape attribute for p_recv must be set "
                             "explicitly, but the %dth element is %d which "
                             "is less than 1. Or dynamic_shape should be "
-                            "set to True for both send_v2 and recv_v2.",
+                            "set to True for both p_send and p_recv.",
                             i,
                             out_shape[i]));
     }
