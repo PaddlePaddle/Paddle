@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/fusion/cutlass/variable_length_memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/gpu/block_attn.h"
+#include "paddle/phi/kernels/fusion/gpu/block_attn_tc.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
@@ -33,6 +34,8 @@ inline int getSMVersion() {
 #define CUDA_BFLOAT16_AVALIABLE
 #include <cuda_bf16.h>
 #endif
+
+COMMON_DECLARE_bool(blha_use_tensorcore);
 
 namespace phi {
 namespace fusion {
@@ -476,6 +479,16 @@ void DispatchWithDtype(
         dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
   }
 
+  int cachekv_quant_mode = 0;
+  if (cache_k_quant_scales) {
+    if (dynamic_cachekv_quant) {
+      cachekv_quant_mode = 2;
+    } else {
+      cachekv_quant_mode = 1;
+    }
+  }
+  VLOG(1) << "cachekv_quant_mode: " << cachekv_quant_mode;
+
   if (max_enc_len_this_time_data > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     // VLOGMatrix(
@@ -678,6 +691,23 @@ void DispatchWithDtype(
                                  pre_cache_length,
                                  key_cache_out,
                                  value_cache_out);
+    } else if (FLAGS_blha_use_tensorcore && cachekv_quant_mode > 0) {
+      phi::fusion::WriteEncoderCacheKvHdim128<T> writeEncoderCacheKvHdim128;
+      writeEncoderCacheKvHdim128(qkv_buf.data<T>(),
+                                 cu_seqlens_q.data<int32_t>(),
+                                 block_tables.data<int32_t>(),
+                                 seq_lens_encoder.data<int32_t>(),
+                                 key_cache_out->data<uint8_t>(),
+                                 value_cache_out->data<uint8_t>(),
+                                 cache_k_quant_scales.get_ptr()->data<T>(),
+                                 cache_v_quant_scales.get_ptr()->data<T>(),
+                                 q_num_head,
+                                 kv_num_head,
+                                 dim_head,
+                                 max_block_per_seq,
+                                 max_seq_len,
+                                 bsz,
+                                 dev_ctx.stream());
     } else {
       CacheKernel<T>(dev_ctx,
                      qkv_buf,
@@ -706,6 +736,28 @@ void DispatchWithDtype(
   VLOG(3) << "encoder done";
   VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time_data;
   if (max_dec_len_this_time_data > 0) {
+    phi::DenseTensor rope_sin_cos_v;
+    if (FLAGS_blha_use_tensorcore) {
+      float inv_compression_ratio = 1.0;
+      float rope_theta = 1000000.0;
+      rope_sin_cos_v.Resize({{bsz, dim_head}});
+      dev_ctx.template Alloc<float>(&rope_sin_cos_v,
+                                    rope_sin_cos_v.numel() * sizeof(float));
+      get_rope_sin_cos_kernel<<<bsz, 64, 0, dev_ctx.stream()>>>(
+          rope_sin_cos_v.data<float>(),
+          seq_lens_decoder.data<int>(),
+          inv_compression_ratio,
+          rope_theta,
+          dim_head);
+    }
+    // VLOGMatrix(rope_sin_cos_v.data<float>(),
+    //            rope_sin_cos_v.numel(),
+    //            "rope_sin_cos_v",
+    //            rope_sin_cos_v.numel());
+    // VLOGMatrix(rope_emb.get().data<float>(),
+    //            rope_emb.get().numel(),
+    //            "rope_emb",
+    //            rope_emb.get().numel());
     GetDecoderTensor<T>(dev_ctx,
                         qkv_buf,
                         nullptr,
@@ -719,55 +771,68 @@ void DispatchWithDtype(
                         max_seq_len,
                         dim_head);
     VLOG(3) << "qkv_out_decoder: " << qkv_out_decoder.dims();
-    int cachekv_quant_mode = 0;
-    if (cache_k_quant_scales) {
-      if (dynamic_cachekv_quant) {
-        cachekv_quant_mode = 2;
-      } else {
-        cachekv_quant_mode = 1;
-      }
-    }
     // VLOGMatrix(qkv_out_decoder.data<T>(),
     //            qkv_out_decoder.numel(),
     //            "qkv_out_decoder",
     //            qkv_out_decoder.numel());
-    VLOG(1) << "cachekv_quant_mode " << cachekv_quant_mode;
-    blha<T>(dev_ctx,
-            qkv_out_decoder,
-            nullptr,  // qkv_bias
-            &block_tables,
-            tgt_mask ? &tgt_mask.get() : nullptr,
-            &cum_offsets,
-            &seq_lens_decoder,
-            rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
-            key_cache_out,
-            value_cache_out,
-            &fmha_buf,
-            bsz,
-            max_block_per_seq,
-            block_size,
-            max_seq_len,
-            pre_cache_length,
-            q_num_head,
-            kv_num_head,
-            dim_head,
-            max_dec_len_this_time_data,
-            rope_emb ? 1 : 0,
-            1. / sqrt(dim_head),
-            /*compute_bias*/ false,
-            use_neox_style,
-            quant_round_type,
-            quant_max_bound,
-            quant_min_bound,
-            cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
-            cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
-            cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
-            cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr,
-            nullptr,  // dequant_qkv_scales
-            nullptr,  // shift
-            nullptr,  // smooth
-            -1,       // quant_fmha_out_scale
-            cachekv_quant_mode);
+    if (FLAGS_blha_use_tensorcore) {
+      blha_tc<T>(
+          dev_ctx,
+          qkv_out_decoder,
+          &block_tables,
+          &cum_offsets,
+          &seq_lens_decoder,
+          &rope_sin_cos_v,  // rope_emb
+          key_cache_out,
+          value_cache_out,
+          &fmha_buf,
+          bsz,
+          max_block_per_seq,
+          block_size,
+          max_seq_len,
+          q_num_head,
+          kv_num_head,
+          dim_head,
+          max_dec_len_this_time_data,
+          use_neox_style,
+          cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
+          cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
+          cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
+          cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr,
+          nullptr,
+          nullptr,
+          cachekv_quant_mode);
+    } else {
+      blha<T>(
+          dev_ctx,
+          qkv_out_decoder,
+          nullptr,  // qkv_bias
+          &block_tables,
+          tgt_mask ? &tgt_mask.get() : nullptr,
+          &cum_offsets,
+          &seq_lens_decoder,
+          rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
+          key_cache_out,
+          value_cache_out,
+          &fmha_buf,
+          bsz,
+          max_block_per_seq,
+          block_size,
+          max_seq_len,
+          pre_cache_length,
+          q_num_head,
+          kv_num_head,
+          dim_head,
+          max_dec_len_this_time_data,
+          use_neox_style,
+          cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
+          cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
+          cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
+          cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr,
+          nullptr,  // shift
+          nullptr,  // smooth
+          cachekv_quant_mode);
+    }
     VLOG(3) << "blha end";
   }
   // VLOGMatrix(
