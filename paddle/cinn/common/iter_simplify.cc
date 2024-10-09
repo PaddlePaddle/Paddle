@@ -612,8 +612,7 @@ ir::IndexExpr IterMapRewriter::ToIterSum(const Expr& expr) {
 void IterMapRewriter::AddToLhs(ir::IterSum* lhs,
                                const ir::IterSplit& rhs,
                                int sign) {
-  auto rhs_expr =
-      ir::ir_utils::IRCopy(Expr(const_cast<ir::IterSplit*>(&rhs))).as_index();
+  auto rhs_expr = ir::ir_utils::IRCopy(Expr(&Reference(&rhs))).as_index();
   for (auto&& lvalue : lhs->args) {
     if (lvalue == rhs_expr) {
       auto lsplit = lvalue.As<ir::IterSplit>();
