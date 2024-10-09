@@ -1240,4 +1240,11 @@ struct hash<cinn::ir::Var> {
     return std::hash<std::string>()(var->name);
   }
 };
+
+template <>
+struct hash<cinn::ir::IndexExpr> {
+  size_t operator()(const cinn::ir::IndexExpr& x) const {
+    return reinterpret_cast<size_t>(x.get());
+  }
+};
 }  // namespace std

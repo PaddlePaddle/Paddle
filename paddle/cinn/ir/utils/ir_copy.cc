@@ -464,12 +464,11 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     return IterMark::Make(source, extent);
   }
   Expr Visit(const ir::IterSplit* op) override {
-    Expr source = Visit(&(op->source));
     Expr lower_factor = Visit(&(op->lower_factor));
     Expr extent = Visit(&(op->extent));
     Expr scale = Visit(&(op->scale));
 
-    return IterSplit::Make(source, lower_factor, extent, scale);
+    return IterSplit::Make(op->source, lower_factor, extent, scale);
   }
   Expr Visit(const ir::IterSum* op) override {
     std::vector<IndexExpr> args;

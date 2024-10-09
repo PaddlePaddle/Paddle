@@ -197,7 +197,7 @@ void IterMapRewriter::Visit(const ir::Div* op, Expr* expr) {
     return;
   }
 
-  auto ret = ir::ir_utils::IRCopy(a);
+  auto ret = ir::ir_utils::IRCopy(a).as_index();
 
   auto preprocessed = PreprocessDividend(ret);
   auto preprocessed_sum = preprocessed.As<ir::IterSum>();
@@ -227,7 +227,7 @@ void IterMapRewriter::Visit(const ir::Mod* op, Expr* expr) {
     return;
   }
 
-  auto ret = ir::ir_utils::IRCopy(a);
+  auto ret = ir::ir_utils::IRCopy(a).as_index();
 
   auto preprocessed = PreprocessDividend(ret);
   auto preprocessed_sum = preprocessed.As<ir::IterSum>();
@@ -237,21 +237,25 @@ void IterMapRewriter::Visit(const ir::Mod* op, Expr* expr) {
   *expr = ret;
 }
 
-Expr IterMapRewriter::PreprocessDividend(const Expr& dividend) {
+ir::IndexExpr IterMapRewriter::PreprocessDividend(
+    const ir::IndexExpr& dividend) {
   if (dividend.As<ir::IterSplit>()) {
     return ir::IterSum::Make({dividend}, ir::Zero(dividend.type()));
   } else if (auto sum = dividend.As<ir::IterSum>()) {
     if (sum->args.size() == 1) {
       return dividend;
     }
-    // TODO(liuruyan): number of split in sum is greater then 1, Do `tryFuse` in
-    // latter.
-    auto fused = dividend;
-    return fused;
+    auto opt_fused = TryFuse(dividend);
+    if (!opt_fused) {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "Dividend can't be written as a single fused IterSum"));
+      return ir::IndexExpr();
+    }
+    return opt_fused.value();
   } else {
     PADDLE_THROW(
         ::common::errors::InvalidArgument("Expect dividend is IterExpr."));
-    return Expr();
+    return ir::IndexExpr();
   }
 }
 
@@ -366,6 +370,231 @@ ir::IndexExpr IterMapRewriter::SplitModConst(ir::IndexExpr lhs_expr,
   // divided by divisor now.
 
   return ir::IterSplit::Make(lhs->source, lhs->lower_factor, rhs, lhs->scale);
+}
+
+int32_t IterMapRewriter::FindFirstPossibleUnitExtentIndex(
+    const ir::IterSum& expr) {
+  for (size_t i = 0; i < expr.args.size(); ++i) {
+    if (IsOne(expr.args[i].As<ir::IterSplit>()->extent))
+      return static_cast<int32_t>(i);
+  }
+  return static_cast<int32_t>(expr.args.size());
+}
+
+int32_t IterMapRewriter::FindIterWithExactScale(
+    const ir::IterSum& expr,
+    const std::vector<bool>& skip_flag,
+    const ir::IndexExpr& expected_scale,
+    const ir::IndexExpr& match_source,
+    int32_t rbegin,
+    int32_t first_possible_unit_extent_pos) {
+  if (rbegin == -1) {
+    rbegin = static_cast<int32_t>(expr.args.size()) - 1;
+  }
+  int32_t matched_pos = -1;
+  // use reverse search, as smallest scale usually are near the end.
+  for (int32_t j = rbegin; j >= 0; --j) {
+    if (skip_flag[j]) continue;
+    auto split = expr.args[j].As<ir::IterSplit>();
+    if (match_source.defined() && match_source != split->source) continue;
+    const ir::IndexExpr& cur_scale = split->scale;
+    // for bijective mapping, the matched scale must equal to expected scale
+    if (ProveEQ(cur_scale, expected_scale, analyzer_)) {
+      if (IsOne(split->extent)) return j;
+      if (matched_pos == -1) {
+        matched_pos = j;
+      }
+      if (j <= first_possible_unit_extent_pos) return matched_pos;
+    }
+  }
+  return matched_pos;
+}
+
+int32_t IterMapRewriter::FindBaseIter(const ir::IterSum& expr,
+                                      const std::vector<bool>& skip_flag,
+                                      const ir::IndexExpr& match_source,
+                                      int32_t rbegin) {
+  if (rbegin == -1) {
+    rbegin = static_cast<int>(expr.args.size()) - 1;
+  }
+
+  int base_index = -1;
+  int64_t min_const_scale = 0;
+
+  for (int32_t i = rbegin; i >= 0; --i) {
+    if (skip_flag[i]) continue;
+    auto split = expr.args[i].As<ir::IterSplit>();
+    if (match_source.defined() && match_source != split->source) continue;
+    if (const auto* op = split->scale.As<ir::IntImm>()) {
+      if (base_index == -1 || op->value < min_const_scale) {
+        min_const_scale = op->value;
+        base_index = static_cast<int>(i);
+      } else if (op->value == min_const_scale) {
+        if (IsOne(split->extent) &&
+            !IsOne(expr.args[base_index].As<ir::IterSplit>()->extent)) {
+          base_index = static_cast<int32_t>(i);
+        }
+      }
+    }
+  }
+  if (base_index != -1) return base_index;
+
+  int32_t min_reduce_size = 0;
+  for (int32_t i = rbegin; i >= 0; --i) {
+    if (skip_flag[i]) continue;
+    auto split = expr.args[i].As<ir::IterSplit>();
+    if (match_source.defined() && match_source != split->source) continue;
+    int32_t reduce_size = 0;
+    auto fcollect = [&](const ir::IndexExpr&) { ++reduce_size; };
+    UnpackReduction<ir::Mul>(split->scale, fcollect);
+    if (base_index == -1 || reduce_size < min_reduce_size) {
+      min_reduce_size = reduce_size;
+      base_index = static_cast<int32_t>(i);
+    }
+  }
+  return base_index;
+}
+
+std::optional<ir::IndexExpr> IterMapRewriter::TryFuse(
+    const ir::IndexExpr& expr) {
+  auto iter_sum = expr.As<ir::IterSum>();
+  if (!iter_sum) return std::nullopt;
+  if (iter_sum->args.size() <= 1) return std::nullopt;
+  if (auto opt = TryFuseSameSource(expr)) {
+    auto sum = opt.value().As<ir::IterSum>();
+    if (sum->args.size() <= 1) {
+      return opt.value();
+    }
+  }
+
+  std::vector<bool> visited(iter_sum->args.size(), false);
+  int base_index = FindBaseIter(*iter_sum, visited, ir::IndexExpr(), -1);
+  if (base_index == -1) return std::nullopt;
+  ir::IndexExpr base_scale =
+      iter_sum->args[base_index].As<ir::IterSplit>()->scale;
+
+  std::vector<ir::IndexExpr> grouped_iters;
+
+  // check if it can be remapped into a fused pattern.
+  ir::IndexExpr expected_extra_base = ir::Zero(iter_sum->type());
+  ir::IndexExpr tail_extent = ir::Zero(iter_sum->type());
+  ir::IndexExpr expected_scale = base_scale;
+  int first_possible_unit_extent_pos =
+      FindFirstPossibleUnitExtentIndex(*iter_sum);
+
+  for (size_t i = 0; i < iter_sum->args.size(); ++i) {
+    ir::IndexExpr matched_scale{nullptr};
+    bool is_exact_match{false};
+
+    int matched_pos =
+        i == 0 ? base_index
+               : FindIterWithExactScale(*iter_sum,
+                                        visited,
+                                        expected_scale,
+                                        ir::IndexExpr(),
+                                        -1,
+                                        first_possible_unit_extent_pos);
+    if (matched_pos != -1) matched_scale = expected_scale;
+
+    if (matched_pos == -1) return std::nullopt;
+
+    visited[matched_pos] = true;
+    auto arg_copy = ir::ir_utils::IRCopy(iter_sum->args[matched_pos]);
+    auto arg = arg_copy.As<ir::IterSplit>();
+    arg->scale = arg->scale / base_scale;
+    grouped_iters.push_back(arg_copy.as_index());
+    expected_scale = MulAndNormalize(
+        iter_sum->args[matched_pos].As<ir::IterSplit>()->extent, matched_scale);
+  }
+  std::reverse(grouped_iters.begin(), grouped_iters.end());
+  ir::IndexExpr grouped_sum =
+      ir::IterSum::Make(grouped_iters, ir::Zero(iter_sum->type()));
+
+  auto it = sum_fuse_map_.find(grouped_sum);
+  if (it != sum_fuse_map_.end()) {
+    return ir::IterSum::Make({ir::IterSplit::Make(it->second, base_scale)},
+                             iter_sum->base);
+  } else {
+    // new iter, form a new mark
+    auto mark = ir::IterMark::Make(grouped_sum, expected_scale / base_scale);
+    sum_fuse_map_[grouped_sum] = mark;
+    return ir::IterSum::Make({ir::IterSplit::Make(mark, base_scale)},
+                             iter_sum->base);
+  }
+}
+
+std::optional<ir::IndexExpr> IterMapRewriter::TryFuseSameSource(
+    const ir::IndexExpr& expr) {
+  auto iter_sum = expr.As<ir::IterSum>();
+  if (!iter_sum) return std::nullopt;
+  if (iter_sum->args.size() <= 1) return std::nullopt;
+
+  // Only for IterMark
+  std::unordered_map<ir::IndexExpr, int32_t> hit_count;
+
+  bool has_overlap = false;
+
+  for (size_t i = 0; i < iter_sum->args.size(); ++i) {
+    auto mark = iter_sum->args[i].As<ir::IterSplit>()->source;
+    auto it = hit_count.find(mark);
+    if (it != hit_count.end()) {
+      ++it->second;
+      has_overlap = true;
+    } else {
+      hit_count[mark] = 1;
+    }
+  }
+  if (!has_overlap) return std::nullopt;
+
+  std::vector<bool> visited(iter_sum->args.size(), false);
+  // Only for IterSplit
+  std::vector<ir::IndexExpr> reverse_flattened_iters;
+
+  int first_possible_unit_extent_pos =
+      FindFirstPossibleUnitExtentIndex(*iter_sum);
+
+  // Start eliminating the iterators
+  for (int rend = static_cast<int32_t>(iter_sum->args.size()) - 1; rend >= 0;) {
+    auto split = iter_sum->args[rend].As<ir::IterSplit>();
+    if (visited[rend]) {
+      --rend;
+      continue;
+    }
+    if (hit_count.at(split->source) == 1) {
+      reverse_flattened_iters.push_back(iter_sum->args[rend]);
+      visited[rend] = true;
+      --rend;
+      continue;
+    }
+    int matched_index = FindBaseIter(*iter_sum, visited, split->source, rend);
+    visited[matched_index] = true;
+    auto split_copy = ir::ir_utils::IRCopy(iter_sum->args[matched_index]);
+    auto rhs_iter = split_copy.As<ir::IterSplit>();
+
+    while (true) {
+      ir::IndexExpr lhs_scale =
+          MulAndNormalize(rhs_iter->extent, rhs_iter->scale);
+      matched_index = FindIterWithExactScale(*iter_sum,
+                                             visited,
+                                             lhs_scale,
+                                             rhs_iter->source,
+                                             rend,
+                                             first_possible_unit_extent_pos);
+      if (matched_index == -1) break;
+      auto lhs_iter = iter_sum->args[matched_index].As<ir::IterSplit>();
+      ir::IndexExpr lhs_lower_factor =
+          MulAndNormalize(rhs_iter->lower_factor, rhs_iter->extent);
+      if (!ProveEQ(lhs_iter->lower_factor, lhs_lower_factor, analyzer_)) break;
+      visited[matched_index] = true;
+
+      rhs_iter->extent = MulAndNormalize(lhs_iter->extent, rhs_iter->extent);
+    }
+    reverse_flattened_iters.push_back(split_copy);
+  }
+  std::reverse(reverse_flattened_iters.begin(), reverse_flattened_iters.end());
+  auto simplified_sum =
+      ir::IterSum::Make(reverse_flattened_iters, iter_sum->base);
+  return simplified_sum;
 }
 
 ir::IndexExpr IterMapRewriter::ToIterSum(const Expr& expr) {
