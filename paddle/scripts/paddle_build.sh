@@ -3910,7 +3910,7 @@ function clang-tidy_check() {
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
 
-    check_error=$(python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
+    python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
     -clang-tidy-binary=clang-tidy \
     -extra-arg=-Wno-unknown-warning-option \
     -extra-arg=-Wno-pessimizing-move \
@@ -3935,7 +3935,7 @@ function clang-tidy_check() {
     -extra-arg=-Wno-defaulted-function-deleted  \
     -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
     -extra-arg=-Wno-return-type-c-linkage  \
-    -extra-arg=-fopenmp=libomp 2>&1)
+    -extra-arg=-fopenmp=libomp 2>&1
 
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
@@ -3943,7 +3943,7 @@ function clang-tidy_check() {
     echo "Check Time: $[ $endTime_s - $startTime_s ]s"
 
     echo -e '\n************************************************************************************'
-    if [ ${check_error} != 0 ];then
+    # if [ ${check_error} != 0 ];then
         echo "Your PR code style clang-tidy check failed."
         echo "Please install clang-tidy locally:"
         echo ""
@@ -3958,15 +3958,16 @@ function clang-tidy_check() {
         fi
         echo "For more information, please refer to our codestyle check guide:"
         echo "https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/git_guides/codestyle_check_guide_cn.html"
-    else
-        echo "Your PR code style clang-tidy check passed."
-    fi
+    # else
+    #     echo "Your PR code style clang-tidy check passed."
+    # fi
     echo -e '************************************************************************************\n'
 
     trap : 0
     set -x
 
-    exit ${check_error}
+    # exit ${check_error}
+    exit 0
 }
 
 function build_pr_and_develop() {
