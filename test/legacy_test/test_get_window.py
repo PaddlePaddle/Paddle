@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 import unittest
 
+from parameterized import parameterized
 from scipy import signal
 
 import paddle
@@ -20,41 +22,80 @@ import paddle.audio
 from paddle.base import core
 
 
+def parameterize(*params):
+    return parameterized.expand(list(itertools.product(*params)))
+
+
 class TestAudioFuncitons(unittest.TestCase):
-    def test_bartlett_nuttall_kaiser_window(self):
+    def setUp(self):
         paddle.disable_static(
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        n_fft = 1
 
-        window_scipy_bartlett = signal.windows.bartlett(n_fft)
-        window_paddle_bartlett = paddle.audio.functional.get_window(
-            'bartlett', n_fft
-        )
-        window_scipy_bartlett = paddle.to_tensor(
-            window_scipy_bartlett, dtype=window_paddle_bartlett.dtype
-        )
+    @parameterize(
+        [
+            "hamming",
+            "hann",
+            "triang",
+            "bohman",
+            "blackman",
+            "cosine",
+            "tukey",
+            "taylor",
+            "bartlett",
+            "nuttall",
+        ],
+        [1, 512],
+    )
+    def test_window(self, window_type: str, n_fft: int):
+        window_scipy = signal.get_window(window_type, n_fft)
+        window_paddle = paddle.audio.functional.get_window(window_type, n_fft)
+        window_scipy = paddle.to_tensor(window_scipy, dtype=window_paddle.dtype)
         paddle.allclose(
-            window_scipy_bartlett,
-            window_paddle_bartlett,
+            window_scipy,
+            window_paddle,
             atol=0.0001,
             rtol=0.0001,
         )
 
-        window_scipy_nuttall = signal.windows.nuttall(n_fft)
-        window_paddle_nuttall = paddle.audio.functional.get_window(
-            'nuttall', n_fft
+    
+    @parameterize([1, 512])
+    def test_window_and_exception(self, n_fft: int):
+        window_scipy_gaussain = signal.windows.gaussian(n_fft, std=7)
+        window_paddle_gaussian = paddle.audio.functional.get_window(
+            ('gaussian', 7), n_fft, False
         )
-        window_scipy_nuttall = paddle.to_tensor(
-            window_scipy_nuttall, dtype=window_paddle_nuttall.dtype
+        window_scipy_gaussain = paddle.to_tensor(
+            window_scipy_gaussain, dtype=window_paddle_gaussian.dtype
         )
         paddle.allclose(
-            window_scipy_nuttall,
-            window_paddle_nuttall,
-            atol=0.0001,
-            rtol=0.0001,
+            window_scipy_gaussain, window_paddle_gaussian, atol=0.0001, rtol=0.0001
+        )
+
+        window_scipy_general_gaussain = signal.windows.general_gaussian(
+            n_fft, 1, 7
+        )
+        window_paddle_general_gaussian = paddle.audio.functional.get_window(
+            ('general_gaussian', 1, 7), n_fft, False
+        )
+        window_scipy_general_gaussain = paddle.to_tensor(
+            window_scipy_general_gaussain, dtype=window_paddle_general_gaussian.dtype
+        )
+        paddle.allclose(
+            window_scipy_gaussain, window_paddle_gaussian, atol=0.0001, rtol=0.0001
+        )
+
+        window_scipy_exp = signal.windows.exponential(n_fft)
+        window_paddle_exp = paddle.audio.functional.get_window(
+            ('exponential', None, 1), n_fft, False
+        )
+        window_scipy_exp = paddle.to_tensor(
+            window_scipy_exp, dtype=window_paddle_exp.dtype
+        )
+        paddle.allclose(
+            window_scipy_exp, window_paddle_exp, atol=0.0001, rtol=0.0001
         )
 
         window_scipy_kaiser = signal.windows.kaiser(n_fft, beta=14.0)
@@ -67,48 +108,6 @@ class TestAudioFuncitons(unittest.TestCase):
         paddle.allclose(
             window_scipy_kaiser, window_paddle_kaiser, atol=0.0001, rtol=0.0001
         )
-
-        n_fft = 512
-
-        window_scipy_bartlett = signal.windows.bartlett(n_fft)
-        window_paddle_bartlett = paddle.audio.functional.get_window(
-            'bartlett', n_fft
-        )
-        window_scipy_bartlett = paddle.to_tensor(
-            window_scipy_bartlett, dtype=window_paddle_bartlett.dtype
-        )
-        paddle.allclose(
-            window_scipy_bartlett,
-            window_paddle_bartlett,
-            atol=0.0001,
-            rtol=0.0001,
-        )
-
-        window_scipy_nuttall = signal.windows.nuttall(n_fft)
-        window_paddle_nuttall = paddle.audio.functional.get_window(
-            'nuttall', n_fft
-        )
-        window_scipy_nuttall = paddle.to_tensor(
-            window_scipy_nuttall, dtype=window_paddle_nuttall.dtype
-        )
-        paddle.allclose(
-            window_scipy_nuttall,
-            window_paddle_nuttall,
-            atol=0.0001,
-            rtol=0.0001,
-        )
-
-        window_scipy_kaiser = signal.windows.kaiser(n_fft, beta=14.0)
-        window_paddle_kaiser = paddle.audio.functional.get_window(
-            ('kaiser', 14.0), n_fft
-        )
-        window_scipy_kaiser = paddle.to_tensor(
-            window_scipy_kaiser, dtype=window_paddle_kaiser.dtype
-        )
-        paddle.allclose(
-            window_scipy_kaiser, window_paddle_kaiser, atol=0.0001, rtol=0.0001
-        )
-        paddle.enable_static()
 
 
 if __name__ == '__main__':
