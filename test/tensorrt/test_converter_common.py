@@ -17,38 +17,32 @@ import unittest
 import numpy as np
 from tensorrt_test_base import TensorRTBaseTest
 
-import paddle
+from paddle import _C_ops
 
 
-def conv2d_wrapper(x):
-    conv = paddle.nn.Conv2D(3, 3, (3, 3))
-    return conv(x)
+def dropout_wrapper(x, p):
+    out = _C_ops.dropout(
+        x,
+        None,
+        p,
+        True,
+        "upscale_in_train",
+        0,
+        True,
+    )
+    return out
 
 
-class TestConv2dTRTPattern(TensorRTBaseTest):
+class TestDropoutTRTPattern(TensorRTBaseTest):
     def setUp(self):
-        self.python_api = conv2d_wrapper
-        self.api_args = {"x": np.random.random([2, 3, 8, 8]).astype("float32")}
+        self.python_api = dropout_wrapper
+        self.api_args = {
+            "x": np.random.random([1, 2, 3]).astype("float32"),
+            "p": 0,
+        }
         self.program_config = {"feed_list": ["x"]}
-        self.min_shape = {"x": [1, 3, 8, 8]}
-        self.max_shape = {"x": [10, 3, 8, 8]}
-
-    def test_trt_result(self):
-        self.check_trt_result()
-
-
-def depthwise_conv2d_wrapper(x):
-    conv = paddle.nn.Conv2D(2, 2, (3, 3), groups=2)
-    return conv(x)
-
-
-class TestDepthwiseConv2dTRTPattern(TensorRTBaseTest):
-    def setUp(self):
-        self.python_api = depthwise_conv2d_wrapper
-        self.api_args = {"x": np.random.random([3, 2, 8, 8]).astype("float32")}
-        self.program_config = {"feed_list": ["x"]}
-        self.min_shape = {"x": [1, 2, 8, 8]}
-        self.max_shape = {"x": [10, 2, 8, 8]}
+        self.min_shape = {"x": [1, 2, 3]}
+        self.max_shape = {"x": [10, 2, 3]}
 
     def test_trt_result(self):
         self.check_trt_result()

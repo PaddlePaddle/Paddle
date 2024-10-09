@@ -31,6 +31,7 @@ from paddle.base.log_helper import get_logger
 
 from .impls.activation import *  # noqa: F403
 from .impls.attribute import *  # noqa: F403
+from .impls.common import *  # noqa: F403
 from .impls.conv import *  # noqa: F403
 from .impls.creation import *  # noqa: F403
 from .impls.linalg import *  # noqa: F403
