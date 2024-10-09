@@ -1411,7 +1411,6 @@ def save(
                 clone_program = concrete_program.main_program.clone()
                 clone_input_vars = input_vars
                 clone_output_vars = output_vars
-
             save_inference_model(
                 path_prefix=file_path,
                 feed_vars=clone_input_vars,

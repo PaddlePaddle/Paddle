@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -43,7 +42,6 @@ class TestVanderAPI(unittest.TestCase):
         paddle.enable_static()
         out_ref = ref_vander(self.x, N, increasing)
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.shape)
@@ -94,7 +92,6 @@ class TestVanderAPI(unittest.TestCase):
         test_api_case(N, increasing=True)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

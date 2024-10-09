@@ -18,9 +18,5 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_array.h"
 
 namespace paddle {
-namespace framework {
-
-using LoDTensorArray = phi::TensorArray;
-
-}  // namespace framework
+namespace framework {}  // namespace framework
 }  // namespace paddle

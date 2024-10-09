@@ -591,6 +591,11 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
 
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void ReduceSumInferMeta(const MetaTensor& x,
+                        const std::vector<int64_t>& axis,
+                        bool keep_dim,
+                        MetaTensor* out);
+
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
@@ -772,6 +777,10 @@ void SumInferMeta(const MetaTensor& x,
                   const IntArray& axis,
                   DataType dtype,
                   bool keep_dim,
+                  MetaTensor* out,
+                  MetaConfig config = MetaConfig());
+
+void DetInferMeta(const MetaTensor& x,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
 

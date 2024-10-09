@@ -42,21 +42,21 @@ SpmdInfo MoECombineFwdInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       2,
-      phi::errors::InvalidArgument(
+      errors::InvalidArgument(
           "x should be a 2-D tensor, but got x_shape.size() == %d",
           x_shape.size()));
-  PADDLE_ENFORCE_EQ(combine_weights_shape.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "combine_weights should be a 2-D tensor, but got "
-                        "combine_weights_shape.size() == %d",
-                        combine_weights.size()));
-  PADDLE_ENFORCE_EQ(scatter_index_shape.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "scatter_index should be a 2-D tensor, but got "
-                        "scatter_index_shape.size() == %d",
-                        scatter_index.size()));
+  PADDLE_ENFORCE_EQ(
+      combine_weights_shape.size(),
+      2,
+      errors::InvalidArgument("combine_weights should be a 2-D tensor, but got "
+                              "combine_weights_shape.size() == %d",
+                              combine_weights.size()));
+  PADDLE_ENFORCE_EQ(
+      scatter_index_shape.size(),
+      2,
+      errors::InvalidArgument("scatter_index should be a 2-D tensor, but got "
+                              "scatter_index_shape.size() == %d",
+                              scatter_index.size()));
 
   // Step 1: infer sharding
   std::string x_axes = "sh", combine_weights_axes = "sk",
@@ -132,33 +132,33 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       2,
-      phi::errors::InvalidArgument(
+      errors::InvalidArgument(
           "x should be a 2-D tensor, but got x_shape.size() == %d",
           x_shape.size()));
 
-  PADDLE_ENFORCE_EQ(combine_weights_shape.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "combine_weights should be a 2-D tensor, but got "
-                        "combine_weights_shape.size() == %d",
-                        combine_weights_shape.size()));
-  PADDLE_ENFORCE_EQ(scatter_index_shape.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "scatter_index should be a 2-D tensor, but got "
-                        "scatter_index_shape.size() == %d",
-                        scatter_index_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      combine_weights_shape.size(),
+      2,
+      errors::InvalidArgument("combine_weights should be a 2-D tensor, but got "
+                              "combine_weights_shape.size() == %d",
+                              combine_weights_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      scatter_index_shape.size(),
+      2,
+      errors::InvalidArgument("scatter_index should be a 2-D tensor, but got "
+                              "scatter_index_shape.size() == %d",
+                              scatter_index_shape.size()));
   PADDLE_ENFORCE_EQ(
       grad_y_shape.size(),
       2,
-      phi::errors::InvalidArgument(
+      errors::InvalidArgument(
           "grad_y should be a 2-D tensor, but got grad_y_shape.size() == %d",
           grad_y_shape.size()));
 
   // step 1 : infer sharding
   std::string x_axes = "sh", combine_weights_axes = "sk",
               scatter_index_axes = "sk", grad_y_axes = "sh", grad_x_axes = "sh",
-              grad_combine_weights_axes = "sk";
+              grad_combine_weights_axes = "sk", grad_scatter_index_axes = "sk";
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
           {{x_axes, x_dims_mapping_src},
@@ -173,6 +173,8 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
       GetDimsMappingForAxes(grad_x_axes, axis_to_dim_map);
   std::vector<int64_t> grad_combine_weights_dims_mapping =
       GetDimsMappingForAxes(grad_combine_weights_axes, axis_to_dim_map);
+  std::vector<int64_t> grad_scatter_index_dims_mapping =
+      GetDimsMappingForAxes(grad_scatter_index_axes, axis_to_dim_map);
 
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   TensorDistAttr combine_weights_dist_attr_dst =
@@ -184,6 +186,8 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
   TensorDistAttr grad_x_dist_attr_dst =
       CopyTensorDistAttrForOutput(grad_y_dist_attr_src);
   TensorDistAttr grad_combine_weights_dist_attr_dst =
+      CopyTensorDistAttrForOutput(grad_y_dist_attr_src);
+  TensorDistAttr grad_scatter_index_dist_attr_dst =
       CopyTensorDistAttrForOutput(grad_y_dist_attr_src);
 
   x_dist_attr_dst.set_dims_mapping(
@@ -197,6 +201,8 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
   grad_x_dist_attr_dst.set_dims_mapping(grad_x_dims_mapping);
   grad_combine_weights_dist_attr_dst.set_dims_mapping(
       grad_combine_weights_dims_mapping);
+  grad_scatter_index_dist_attr_dst.set_dims_mapping(
+      grad_scatter_index_dims_mapping);
 
   // Step 2: Log messages
   LOG_SPMD_INPUT(x);
@@ -210,7 +216,9 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
            combine_weights_dist_attr_dst,
            scatter_index_dist_attr_dst,
            grad_y_dist_attr_dst},
-          {grad_x_dist_attr_dst, grad_combine_weights_dist_attr_dst}};
+          {grad_x_dist_attr_dst,
+           grad_combine_weights_dist_attr_dst,
+           grad_scatter_index_dist_attr_dst}};
 }
 
 }  // namespace distributed

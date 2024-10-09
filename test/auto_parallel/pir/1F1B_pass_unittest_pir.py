@@ -38,11 +38,13 @@ def apply_pass(use_1f1b=False):
         pipeline = strategy.pipeline
         pipeline.enable = True
         pipeline.schedule_mode = "1F1B"
+        pipeline.pp_degree = 2
         pipeline.accumulate_steps = 2
     else:
         pipeline = strategy.pipeline
         pipeline.enable = True
         pipeline.schedule_mode = "FThenB"
+        pipeline.pp_degree = 2
         pipeline.accumulate_steps = 2
 
     return strategy

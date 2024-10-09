@@ -187,6 +187,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : greater_than
   inplace: (x -> out)
@@ -217,6 +218,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : less_than
   inplace: (x -> out)
@@ -325,6 +327,16 @@
     func : subtract
   inplace : (x -> out)
   backward : subtract_grad
+
+- op : sync_comm_stream
+  args : (Tensor[] x, int ring_id = 0)
+  output : Tensor[](out){x.size()}
+  infer_meta :
+    func : UnchangedVectorInferMeta
+    param : [x]
+  kernel :
+    func : sync_comm_stream
+    data_type : DataType::FLOAT32
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})

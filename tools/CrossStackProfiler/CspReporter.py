@@ -166,14 +166,14 @@ class CspReporter:
                 self._timeInfo[gpuId * trainerId] = info
 
     def _generateTraceFileByGroupAndGpuId(
-        self, pipileInfo, netInfo, groupId, gpuId
+        self, pipeLineInfo, netInfo, groupId, gpuId
     ):
         dcgmInfoDict = self._dcgmFileReader.getDcgmInfoDict(groupId, gpuId)
         opInfoDict = self._profileFileReader.getOpInfoDict(groupId, gpuId)
 
         traceObj = {}
         traceObj["traceEvents"] = (
-            pipileInfo[str(gpuId)]
+            pipeLineInfo[str(gpuId)]
             + opInfoDict["traceEvents"]
             + dcgmInfoDict["traceEvents"]
             + netInfo["traceEvents"]
@@ -185,7 +185,7 @@ class CspReporter:
 
     def _generateTraceFileByGroup(self, groupId, processNum):
         # first we need to generate pipeline info
-        pipileInfo = self._profileFileReader.getPipeLineInfo(
+        pipeLineInfo = self._profileFileReader.getPipeLineInfo(
             groupId, processNum
         )
         # second we need to generate dcgm info
@@ -207,7 +207,7 @@ class CspReporter:
             subproc = Process(
                 target=self._generateTraceFileByGroupAndGpuId,
                 args=(
-                    pipileInfo,
+                    pipeLineInfo,
                     netInfo,
                     groupId,
                     gpuId,
