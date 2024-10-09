@@ -21,7 +21,6 @@ from scipy.special import erf
 import paddle
 import paddle.base.dygraph as dg
 from paddle import base, static
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -82,7 +81,6 @@ class TestErfLayer(unittest.TestCase):
         if base.is_compiled_with_cuda():
             self._test_dygraph(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def _test_static(self, place):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):

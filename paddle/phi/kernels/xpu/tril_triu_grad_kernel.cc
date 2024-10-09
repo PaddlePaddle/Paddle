@@ -69,19 +69,28 @@ PD_REGISTER_KERNEL(tril_grad,
                    ALL_LAYOUT,
                    phi::TrilGradKernel,
                    int,
+                   int64_t,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   bool) {}
 PD_REGISTER_KERNEL(triu_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::TriuGradKernel,
                    int,
+                   int64_t,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   bool) {}
 PD_REGISTER_KERNEL(tril_triu_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::TrilTriuGradKernel,
                    int,
+                   int64_t,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   bool) {}

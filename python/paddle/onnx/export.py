@@ -14,11 +14,13 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from paddle.utils import try_import
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import Unpack
 
     from paddle import Tensor

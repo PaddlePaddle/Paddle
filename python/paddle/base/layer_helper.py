@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 import paddle
 
@@ -30,6 +30,8 @@ from .layer_helper_base import LayerHelperBase
 from .param_attr import ParamAttr
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from paddle import Tensor
     from paddle.base.framework import Operator
 

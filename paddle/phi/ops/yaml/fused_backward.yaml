@@ -78,6 +78,18 @@
     data_type : out_q_grad
   support_dygraph_mode : true
 
+- backward_op : fused_seqpool_cvm_grad
+  forward: fused_seqpool_cvm(Tensor[] x, Tensor cvm, str pooltype = "SUM", float pad_value = 0.0, bool
+    use_cvm = true, int cvm_offset = 2) -> Tensor[] (out)
+  args: (Tensor[] x, Tensor cvm, Tensor[] out_grad, str pooltype = "SUM", float pad_value = 0.0, bool
+    use_cvm = true, int cvm_offset = 2)
+  output: Tensor[] (x_grad){x.size()}, Tensor (cvm_grad)
+  infer_meta:
+    func: FusedSeqpoolCvmGradInferMeta
+  kernel:
+    func: fused_seqpool_cvm_grad
+    data_type: x
+
 - backward_op : max_pool2d_v2_grad
   forward : max_pool2d_v2(Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, str data_format = "NCHW", bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(saved_idx)
   args : (Tensor x, Tensor out, Tensor saved_idx, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, str data_format, bool global_pooling, bool adaptive)

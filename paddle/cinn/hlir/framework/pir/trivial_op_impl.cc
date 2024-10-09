@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
+#include "paddle/cinn/ir/group_schedule/config/group_tile_util.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -695,7 +696,15 @@ std::vector<int64_t> GetLoopStrides(const ir::Expr& body,
   auto* block = expr_block.As<ir::ScheduleBlockRealize>();
   auto& iter_values = block->iter_values;
   auto& iter_vars = block->schedule_block.As<ir::ScheduleBlock>()->iter_vars;
-  CHECK_EQ(iter_values.size(), iter_vars.size());
+  PADDLE_ENFORCE_EQ(
+      iter_values.size(),
+      iter_vars.size(),
+      ::common::errors::InvalidArgument(
+          "The size of iter_values should be equal to iter_vars.\n"
+          "But now received: \n"
+          "iter_values: %d, and iter_vars: %d.",
+          iter_values.size(),
+          iter_vars.size()));
   const std::vector<ir::Var> for_iters =
       trivial_fusion_detail::GetAllForIters(body);
 
@@ -721,7 +730,7 @@ std::vector<int64_t> GetLoopStrides(const ir::Expr& body,
   return loop_strides;
 }
 
-FusionGroupInfo GetFusionGroupInfo(
+std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies) {
   using trivial_fusion_detail::AppendBound;
   using trivial_fusion_detail::GetAllForIters;
@@ -733,7 +742,8 @@ FusionGroupInfo GetFusionGroupInfo(
   using trivial_fusion_detail::ExprSetFinderUtils::
       ScheduleBlockRealizeIsSplitTransform;
 
-  FusionGroupInfo group_info = FusionGroupInfo();
+  std::shared_ptr<FusionGroupInfo> group_info =
+      std::make_shared<FusionGroupInfo>();
 
   const auto GetSplitTransformBlock = [](const ir::Expr& expr_body) {
     return (ChildScheduleBlockRealizes *
@@ -743,18 +753,24 @@ FusionGroupInfo GetFusionGroupInfo(
   for (const auto& body : op_compute_bodies) {
     std::vector<ir::Expr> split_transform_block = GetSplitTransformBlock(body);
     if (!split_transform_block.empty()) {
-      CHECK_EQ(split_transform_block.size(), 1);
-      group_info.loop_strides = GetLoopStrides(body, split_transform_block[0]);
+      PADDLE_ENFORCE_EQ(split_transform_block.size(),
+                        1,
+                        ::common::errors::InvalidArgument(
+                            "The size of split_transform_block should be 1.\n"
+                            "But received: \n"
+                            "split_transform_block: %d.",
+                            split_transform_block.size()));
+      group_info->loop_strides = GetLoopStrides(body, split_transform_block[0]);
     }
 
     if (IsReduceBody(body)) {
       ReduceOp op = ReduceOp(body);
-      if (group_info.reduce_var_name.empty()) {
+      if (group_info->reduce_var_name.empty()) {
         std::vector<ir::Var> all_iters =
             AppendBound(GetAllForIters(body), body);
         std::transform(all_iters.begin(),
                        all_iters.end(),
-                       std::back_inserter(group_info.loop_ranges),
+                       std::back_inserter(group_info->loop_ranges),
                        [](const ir::Var var) {
                          VLOG(4) << "Var is : : " << var;
                          VLOG(4) << "Var->upper_bound: " << var->upper_bound;
@@ -769,20 +785,20 @@ FusionGroupInfo GetFusionGroupInfo(
         for (int64_t i = all_iters.size() - reduce_iters.size();
              i < all_iters.size();
              i++) {
-          group_info.reduce_axis.emplace_back(i);
+          group_info->reduce_axis.emplace_back(i);
         }
       }
-      group_info.reduce_var_name.emplace_back(GetOutputTensor(op)->name);
+      group_info->reduce_var_name.emplace_back(GetOutputTensor(op)->name);
     }
   }
 
-  if (group_info.reduce_var_name.empty()) {
+  if (group_info->reduce_var_name.empty()) {
     trivial_fusion_detail::TrivialOp op =
         trivial_fusion_detail::TrivialOp(*(op_compute_bodies.begin()));
     std::vector<ir::Var> iters = GetOutputIters(op);
     std::transform(iters.begin(),
                    iters.end(),
-                   std::back_inserter(group_info.loop_ranges),
+                   std::back_inserter(group_info->loop_ranges),
                    [](const ir::Var var) {
                      if (var->upper_bound.is_constant()) {
                        return var->upper_bound.as_int64();
@@ -791,7 +807,11 @@ FusionGroupInfo GetFusionGroupInfo(
                      }
                    });
   }
-  VLOG(4) << group_info.DebugPrint();
+
+  group_info->can_apply_grid_reduce =
+      GetCanApplyGridReduce(op_compute_bodies, group_info->reduce_axis);
+
+  VLOG(4) << group_info->DebugPrint();
   return group_info;
 }
 

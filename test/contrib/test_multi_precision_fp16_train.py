@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.io import Dataset
 from paddle.nn import Layer
-from paddle.pir_utils import test_with_pir_api
 from paddle.static.amp.fp16_utils import cast_model_to_fp16
 
 paddle.enable_static()
@@ -254,7 +253,6 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
 
 
 class TestImageMultiPrecision(unittest.TestCase):
-    @test_with_pir_api
     def test_resnet_pure_fp16(self):
         if not base.core.is_compiled_with_cuda():
             return

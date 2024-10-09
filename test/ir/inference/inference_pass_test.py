@@ -93,14 +93,15 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return PaddlePaddle outputs.
         '''
-        with base.scope_guard(scope):
-            outs = executor.run(
-                program=program,
-                feed=self.feeds,
-                fetch_list=self.fetch_list,
-                return_numpy=False,
-            )
-        return outs
+        with paddle.pir_utils.OldIrGuard():
+            with base.scope_guard(scope):
+                outs = executor.run(
+                    program=program,
+                    feed=self.feeds,
+                    fetch_list=self.fetch_list,
+                    return_numpy=False,
+                )
+            return outs
 
     def _get_inference_outs(self, config):
         '''

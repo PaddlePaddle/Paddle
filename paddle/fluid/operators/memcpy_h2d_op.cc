@@ -9,10 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/memcpy_h2d_op.h"
-
 #include <string>
-
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -58,25 +55,6 @@ class MemcpyH2DInferVarType : public framework::VarTypeInference {
   }
 };
 
-class MemcpyH2DKernel {
- public:
-  void operator()(const framework::ExecutionContext &ctx) const {
-    auto *x = ctx.InputVar("X");
-    if (x == nullptr) {
-      return;
-    }
-    PADDLE_ENFORCE_EQ(
-        ctx.HasOutput("Out"),
-        true,
-        common::errors::NotFound("Output(Out) of memcpy_d2h_op is not found."));
-    auto *out = ctx.OutputVar("Out");
-    // Get dev_ctx from ExecutionContext, it's H2D stream
-    auto &dev_ctx = ctx.device_context();
-    auto dst_place_type = ctx.Attr<int>("dst_place_type");
-    framework::VisitVarType(*x, MemcpyH2DFunctor(out, dev_ctx, dst_place_type));
-  }
-};
-
 class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -116,31 +94,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MemcpyH2DInferShapeFunctor);
-
-#ifdef PADDLE_WITH_IPU
-REGISTER_OP_IPU_KERNEL_FUNCTOR(memcpy_h2d,
-                               float,
-                               ops::MemcpyH2DKernel,
-                               double,
-                               ops::MemcpyH2DKernel,
-                               int8_t,
-                               ops::MemcpyH2DKernel,
-                               uint8_t,
-                               ops::MemcpyH2DKernel,
-                               int,
-                               ops::MemcpyH2DKernel,
-                               int64_t,
-                               ops::MemcpyH2DKernel,
-                               bool,
-                               ops::MemcpyH2DKernel,
-                               phi::dtype::bfloat16,
-                               ops::MemcpyH2DKernel,
-                               phi::dtype::complex<float>,
-                               ops::MemcpyH2DKernel,
-                               phi::dtype::complex<double>,
-                               ops::MemcpyH2DKernel,
-                               phi::dtype::float16,
-                               ops::MemcpyH2DKernel,
-                               int16_t,
-                               ops::MemcpyH2DKernel);
-#endif

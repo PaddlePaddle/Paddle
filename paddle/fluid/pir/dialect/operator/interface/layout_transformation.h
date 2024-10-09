@@ -86,7 +86,7 @@ class LayoutTransformationInterface
                   CanBeModifiedModel) {}
   };
 
-  LayoutTransformationInterface(pir::Operation* op, Concept* impl)
+  LayoutTransformationInterface(const pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<LayoutTransformationInterface>(op), impl_(impl) {}
 
   common::DataLayout PreferLayout(pir::Operation* op) {

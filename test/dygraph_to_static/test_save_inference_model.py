@@ -21,7 +21,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pir,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -235,7 +234,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
 class TestPartialProgramRaiseError(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt_and_pir
     def test_param_type(self):
         x_data = np.random.random((20, 20)).astype('float32')
 

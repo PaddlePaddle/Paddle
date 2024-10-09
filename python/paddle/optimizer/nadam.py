@@ -87,7 +87,7 @@ class NAdam(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        weight_decay (float|Tensor|None, optional): The weight decay coefficient, it can be float or Tensor.
+        weight_decay (int|float|Tensor|None, optional): The weight decay coefficient, it can be int, float or Tensor.
             Default None, meaning there is no regularization.
         momentum_decay (float, optional): momentum momentum_decay. The default value is 0.004.
         grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of

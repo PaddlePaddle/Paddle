@@ -196,7 +196,7 @@ class TestTranslatedLayer(unittest.TestCase):
             paddle.static.InputSpec(
                 shape=[None, CLASS_NUM],
                 dtype='float32',
-                name='translated_layer/scale_0.tmp_1',
+                name='output_0',
             )
         ]
         actual_spec = translated_layer._output_spec()
