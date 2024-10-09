@@ -83,7 +83,6 @@ def recv_new(tensor, src, group=None, sync_op=True, dtype='float32'):
             'ring_id': ring_id,
             'peer': src,
             'dynamic_shape': True,
-            'out_shape': tensor.shape,
             'dtype': base.framework.convert_np_dtype_to_proto_type(dtype),
         },
     )
