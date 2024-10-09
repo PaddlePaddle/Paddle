@@ -19,7 +19,11 @@ from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import PassBase
-from ..pass_utils import set_skip_gc_vars, shadow_var_between_sub_programs
+from ..pass_utils import (
+    set_pir_skip_gc_vars,
+    set_skip_gc_vars,
+    shadow_var_between_sub_programs,
+)
 
 logger = get_logger(logging.INFO)
 
@@ -27,6 +31,9 @@ logger = get_logger(logging.INFO)
 class PipelinePassBase(PassBase):
     def __init__(self):
         super().__init__()
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
 
     def _check_self(self):
         return True
@@ -41,6 +48,29 @@ class PipelinePassBase(PassBase):
         pass
 
     def _partial_programs(self, program):
+        """
+        An interface that MUST be implemented by subclasses.
+        The return value MUST be two lists, one is a list of types(str), another
+        is a list of sub programs.
+        For example:
+        return [FORWARD, BACKWARD, OPT], [fwd_prog, bwd_prog, opt_prog]
+        or
+        return [FORWARD], [fwd_prog]
+        """
+        pass
+
+    def _apply_impl(self, main_programs, startup_programs, context):
+        for main_program, startup_program in zip(
+            main_programs, startup_programs
+        ):
+            if self._in_pir_mode:
+                self._apply_pir_single_impl(
+                    main_program, startup_program, context
+                )
+            else:
+                self._apply_single_impl(main_program, startup_program, context)
+
+    def _partial_pir_programs(self, program):
         """
         An interface that MUST be implemented by subclasses.
         The return value MUST be two lists, one is a list of types(str), another
@@ -82,6 +112,27 @@ class PipelinePassBase(PassBase):
                 )
             else:
                 type_to_program[type] = type_to_program[type].desc
+
+        plan = core.Plan(jobs, type_to_program)
+        context.set_attr("plan", plan)
+
+    def _apply_pir_single_impl(self, main_program, startup_program, context):
+        """
+        The shared process is implemented in this function and new subclass only need
+        to implement two interfaces above, 'create_job_list' and 'partial_programs'.
+        """
+
+        job_types, sub_programs = self._partial_pir_programs(main_program)
+
+        for i in range(len(job_types)):
+            logger.debug(
+                f"sub_program type: {job_types[i]}, sub_program:\n{sub_programs[i]}"
+            )
+
+        jobs = self._create_job_list()
+        type_to_program = set_pir_skip_gc_vars(
+            self.get_attr("num_micro_batches"), job_types, sub_programs, jobs
+        )
 
         plan = core.Plan(jobs, type_to_program)
         context.set_attr("plan", plan)

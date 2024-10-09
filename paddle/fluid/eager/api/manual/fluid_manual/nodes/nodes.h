@@ -31,7 +31,7 @@ const T& GetAttrWithDefault(
     return PADDLE_GET_CONST(T, iter2->second);
   }
   PADDLE_THROW(
-      phi::errors::InvalidArgument("Attribute(%s) cannot be found.", name));
+      common::errors::InvalidArgument("Attribute(%s) cannot be found.", name));
 }
 
 class fused_gate_attentionGradNodeCompat : public egr::GradNodeBase {

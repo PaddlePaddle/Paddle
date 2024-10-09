@@ -38,14 +38,10 @@
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
-#ifdef PADDLE_WITH_DNNL
-#include "paddle_onednn_quantizer_config.h"  // NOLINT
-#endif
 
 namespace paddle {
 
 class AnalysisPredictor;
-struct MkldnnQuantizerConfig;
 
 struct PD_INFER_DECL XpuConfig {
   // Select which xpu device to run model.
@@ -963,12 +959,6 @@ struct PD_INFER_DECL AnalysisConfig {
   }
 
   ///
-  /// \brief Turn on OneDNN quantization.
-  ///
-  ///
-  void EnableMkldnnQuantizer();
-
-  ///
   /// \brief Turn on OneDNN int8.
   ///
   /// \param op_list The operator type list.
@@ -1022,20 +1012,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the thread local CUDA stream is enabled.
   ///
   bool thread_local_stream_enabled() const { return thread_local_stream_; }
-
-  ///
-  /// \brief A boolean state telling whether the OneDNN quantization is enabled.
-  ///
-  /// \return bool Whether the OneDNN quantization is enabled.
-  ///
-  bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
-
-  ///
-  /// \brief Get OneDNN quantizer config.
-  ///
-  /// \return MkldnnQuantizerConfig* OneDNN quantizer config.
-  ///
-  MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
 
   ///
   /// \brief Specify the memory buffer of program and parameter.
@@ -1341,8 +1317,6 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // onednn related.
   int mkldnn_cache_capacity_{10};
-  bool use_mkldnn_quantizer_{false};
-  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
   bool use_mkldnn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
   bool use_mkldnn_int8_{false};

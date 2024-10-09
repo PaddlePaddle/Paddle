@@ -68,26 +68,26 @@ void BasicAucCalculator::add_unlock_data(double pred, int label) {
   PADDLE_ENFORCE_GE(
       pred,
       0.0,
-      phi::errors::PreconditionNotMet("pred should be greater than 0"));
+      common::errors::PreconditionNotMet("pred should be greater than 0"));
   PADDLE_ENFORCE_LE(
       pred,
       1.0,
-      phi::errors::PreconditionNotMet("pred should be lower than 1"));
+      common::errors::PreconditionNotMet("pred should be lower than 1"));
   PADDLE_ENFORCE_EQ(
       label * label,
       label,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "label must be equal to 0 or 1, but its value is: %d", label));
   int pos = std::min(static_cast<int>(pred * _table_size), _table_size - 1);
   PADDLE_ENFORCE_GE(
       pos,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "pos must be equal or greater than 0, but its value is: %d", pos));
   PADDLE_ENFORCE_LT(
       pos,
       _table_size,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "pos must be less than table_size, but its value is: %d", pos));
   _local_abserr += fabs(pred - label);
   _local_sqrerr += (pred - label) * (pred - label);
@@ -287,15 +287,15 @@ void BasicAucCalculator::add_uid_unlock_data(double pred,
   PADDLE_ENFORCE_GE(
       pred,
       0.0,
-      phi::errors::PreconditionNotMet("pred should be greater than 0"));
+      common::errors::PreconditionNotMet("pred should be greater than 0"));
   PADDLE_ENFORCE_LE(
       pred,
       1.0,
-      phi::errors::PreconditionNotMet("pred should be lower than 1"));
+      common::errors::PreconditionNotMet("pred should be lower than 1"));
   PADDLE_ENFORCE_EQ(
       label * label,
       label,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "label must be equal to 0 or 1, but its value is: %d", label));
 
   WuaucRecord record = {0, 0, 0};

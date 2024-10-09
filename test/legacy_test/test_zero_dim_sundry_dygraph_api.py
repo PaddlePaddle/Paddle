@@ -1690,7 +1690,13 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(y2.grad.shape, [])
 
     def test_repeat_interleave(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:

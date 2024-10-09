@@ -21,6 +21,7 @@ from scipy.special import erf, expit
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
+from paddle.incubate.nn.functional import fused_bias_act
 
 
 def round_type_1_process(val):
@@ -63,34 +64,6 @@ def fake_quant(
     elif round_type == 1:
         values_tmp = round_type_1(values_tmp)
     return np.clip(values_tmp, min_bound, max_bound).astype(np.int8)
-
-
-def fused_act_bias_wrapper(
-    x,
-    bias=None,
-    dequant_scales=None,
-    shift=None,
-    smooth=None,
-    act_method='gelu',
-    compute_dtype='default',
-    quant_scale=-1,
-    quant_round_type=0,
-    quant_max_bound=0,
-    quant_min_bound=0,
-):
-    return paddle._C_ops.fused_bias_act(
-        x,
-        bias,
-        dequant_scales,
-        shift,
-        smooth,
-        act_method,
-        compute_dtype,
-        quant_scale,
-        quant_round_type,
-        quant_max_bound,
-        quant_min_bound,
-    )
 
 
 @unittest.skipIf(
@@ -137,7 +110,7 @@ class TestFusedBiasActOp(unittest.TestCase):
         x = paddle.to_tensor(self.x)
         bias = paddle.to_tensor(self.bias)
 
-        return fused_act_bias_wrapper(
+        return fused_bias_act(
             x=x,
             bias=bias,
             act_method=self.act_method,
@@ -192,7 +165,7 @@ class TestFastGeluFP16(TestFusedBiasActOp):
         x = paddle.to_tensor(self.x)
         bias = paddle.to_tensor(self.bias)
         self.use_fast_math(True)
-        out = fused_act_bias_wrapper(
+        out = fused_bias_act(
             x=x,
             bias=bias,
             act_method=self.act_method,
@@ -272,7 +245,7 @@ class TestQuantFP32(TestFusedBiasActOp):
         shift = paddle.to_tensor(self.shift)
         smooth = paddle.to_tensor(self.smooth)
 
-        out = fused_act_bias_wrapper(
+        out = fused_bias_act(
             x=x,
             bias=bias,
             dequant_scales=dequant_scales,
@@ -320,7 +293,7 @@ class TestDequantFP32(TestQuantFP32):
         bias = paddle.to_tensor(self.bias)
         dequant_scales = paddle.to_tensor(self.dequant_scales)
 
-        out = fused_act_bias_wrapper(
+        out = fused_bias_act(
             x=x,
             bias=bias,
             dequant_scales=dequant_scales,
@@ -434,7 +407,7 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
         x = paddle.to_tensor(convert_float_to_uint16(self.x))
         bias = paddle.to_tensor(convert_float_to_uint16(self.bias))
 
-        out = fused_act_bias_wrapper(
+        out = fused_bias_act(
             x=x,
             bias=bias,
             act_method=self.act_method,
@@ -555,7 +528,7 @@ class TestQuantBF16(TestFusedBiasActOpBF16):
         shift = paddle.to_tensor(convert_float_to_uint16(self.shift))
         smooth = paddle.to_tensor(convert_float_to_uint16(self.smooth))
 
-        out = fused_act_bias_wrapper(
+        out = fused_bias_act(
             x=x,
             bias=bias,
             dequant_scales=dequant_scales,
@@ -672,7 +645,7 @@ class TestAssert(unittest.TestCase):
         bias = np.random.rand(self.cols).astype(self.dtype)
 
         try:
-            out = fused_act_bias_wrapper(
+            out = fused_bias_act(
                 x=paddle.to_tensor(x),
                 bias=paddle.to_tensor(bias),
             )
@@ -688,7 +661,7 @@ class TestAssert(unittest.TestCase):
         bias = np.random.rand(self.cols).astype(self.dtype)
 
         try:
-            out = fused_act_bias_wrapper(
+            out = fused_bias_act(
                 x=paddle.to_tensor(x),
                 bias=paddle.to_tensor(bias),
                 compute_dtype='fp16',
@@ -705,7 +678,7 @@ class TestAssert(unittest.TestCase):
         bias = np.random.rand(self.cols).astype(self.dtype)
         act_method = "error_type"
         try:
-            out = fused_act_bias_wrapper(
+            out = fused_bias_act(
                 x=paddle.to_tensor(x),
                 bias=paddle.to_tensor(bias),
                 compute_dtype='fp16',
@@ -757,7 +730,7 @@ class TestWithoutBias(unittest.TestCase):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         x = paddle.to_tensor(self.x)
 
-        return fused_act_bias_wrapper(
+        return fused_bias_act(
             x=x,
             bias=None,
             act_method=self.act_method,

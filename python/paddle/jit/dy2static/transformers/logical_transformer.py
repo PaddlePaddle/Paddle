@@ -93,7 +93,7 @@ class LogicalTransformer(BaseTransformer):
                 post_logic_node = nodes[2]
             else:
                 post_logic_node = self._create_bool_op_node(nodes[2:], api_type)
-            nodes = [pre_logic_node] + [post_logic_node]
+            nodes = [pre_logic_node, post_logic_node]
 
         args = [ast_to_source_code(child) for child in nodes]
         new_node_str = f"_jst.{api_type}(lambda:{args[0]}, lambda:{args[1]})"

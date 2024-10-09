@@ -27,16 +27,16 @@ paddle.enable_static()
 class TestDistFleetHeterProgram(unittest.TestCase):
     def build_role(self):
         environs = {}
-        environs[
-            "PADDLE_PSERVERS_IP_PORT_LIST"
-        ] = "127.0.0.1:36012,127.0.0.1:36013"
+        environs["PADDLE_PSERVERS_IP_PORT_LIST"] = (
+            "127.0.0.1:36012,127.0.0.1:36013"
+        )
         environs["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36014,127.0.0.1:36015"
-        environs[
-            "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"
-        ] = "127.0.0.1:36016,127.0.0.1:36017"
-        environs[
-            "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"
-        ] = "127.0.0.1:36014,127.0.0.1:36015"
+        environs["PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = (
+            "127.0.0.1:36016,127.0.0.1:36017"
+        )
+        environs["PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = (
+            "127.0.0.1:36014,127.0.0.1:36015"
+        )
         environs["PADDLE_HETER_TRAINER_DEVICE"] = "gpu"
         environs["TRAINING_ROLE"] = "HETER_TRAINER"
         environs["STAGE_ID"] = 2
@@ -78,7 +78,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
 
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="float32")
 
-        inputs = [dense_input] + sparse_input_ids + [label]
+        inputs = [dense_input, *sparse_input_ids, label]
         return inputs
 
     def build_net(self, inputs):

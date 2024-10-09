@@ -82,7 +82,7 @@ class FFTConfig {
             return HIPFFT_Z2D;
         }
       }
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only transforms of type float32 and float64 are supported."));
     }();
 
@@ -175,7 +175,7 @@ static void exec_plan(const FFTConfig& config,
       }
     }
   }
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "hipFFT only support transforms of type float32 and float64"));
 }
 

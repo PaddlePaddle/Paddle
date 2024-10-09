@@ -85,7 +85,6 @@ class TestLayer(TestBase):
         )
         self.net = LayerCase
         self.atol = 1e-5
-        self.with_train = False
 
 
 if __name__ == '__main__':

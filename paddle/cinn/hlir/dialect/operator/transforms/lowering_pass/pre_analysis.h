@@ -14,7 +14,6 @@
 
 #pragma once
 #include <unordered_map>
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
 namespace cinn::dialect::ir::details {

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -20,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def calc_margin_rank_loss(x, y, label, margin=0.0, reduction='none'):
@@ -43,11 +43,15 @@ def create_test_case(margin, reduction):
                 "float64"
             )
             self.places = []
-            self.places.append(base.CPUPlace())
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                self.places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
 
-        @test_with_pir_api
         def run_static_functional_api(self, place):
             paddle.enable_static()
             expected = calc_margin_rank_loss(
@@ -83,7 +87,6 @@ def create_test_case(margin, reduction):
                 )
                 np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
 
-        @test_with_pir_api
         def run_static_api(self, place):
             paddle.enable_static()
             expected = calc_margin_rank_loss(
@@ -199,7 +202,6 @@ for margin in [0.0, 0.2]:
 class MarginRakingLossError(unittest.TestCase):
     paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         def test_margin_value_error():
             margin_rank_loss = paddle.nn.loss.MarginRankingLoss(

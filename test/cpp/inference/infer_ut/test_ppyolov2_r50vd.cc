@@ -74,6 +74,11 @@ TEST(tensorrt_tester_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
       1 << 28, 2, 10, paddle_infer::PrecisionType::kFloat32, false, false);
+  std::map<std::string, std::vector<int>> input_shape;
+  input_shape["image"] = {1, 3, 640, 640};
+  input_shape["im_shape"] = {1, 2};
+  input_shape["scale_factor"] = {1, 2};
+  config.SetTRTDynamicShapeInfo(input_shape, input_shape, input_shape, false);
   LOG(INFO) << config.Summary();
   // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);

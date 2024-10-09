@@ -85,7 +85,7 @@ bool TRTInt8Calibrator::setBatch(
   for (const auto& it : data) {
     auto dataptr = data_buffers_.find(it.first);
     if (dataptr == data_buffers_.end()) {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "%s input name '%s' does not match with the buffer names.",
           engine_name_,
           it.first));
@@ -120,10 +120,10 @@ bool TRTInt8Calibrator::getBatch(void** bindings,
     if (it == data_buffers_.end()) {
       try {
         PADDLE_THROW(
-            phi::errors::Fatal("Calibration engine asked for unknown tensor "
-                               "name '%s' at position %d.",
-                               names[i],
-                               i));
+            common::errors::Fatal("Calibration engine asked for unknown tensor "
+                                  "name '%s' at position %d.",
+                                  names[i],
+                                  i));
       } catch (std::exception& e) {
       }
     }

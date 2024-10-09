@@ -39,7 +39,7 @@ llvm::Value* CodeGenInvokeModule::LowerInvokeFunc(
   // Set local scope table
   PADDLE_ENFORCE_EQ(ll_function_args.size(),
                     func->args.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of arguments is not equal to the number of "
                         "function arguments"));
   for (int i = 0; i < ll_function_args.size(); ++i) {
@@ -62,30 +62,6 @@ llvm::Value* CodeGenInvokeModule::LowerInvokeFunc(
   return f_;
 }
 
-llvm::Value* CodeGenInvokeModule::LowerParseArgsValueCall(
-    const ir::Call* call_ir) {
-  auto ret_type = CinnTypeToLLVMType(Int(64), m_);
-  std::vector<llvm::Type*> args_type;
-  PADDLE_ENFORCE_EQ(
-      call_ir->read_args.size(),
-      2,
-      phi::errors::InvalidArgument(
-          "The number of arguments of ParseArgsValue should be 2"));
-  CHECK(call_ir->read_args[0].is_var() &&
-        call_ir->read_args[0].as_var()->type().is_cpp_handle());
-  CHECK(call_ir->read_args[1].type().is_int(32));
-  args_type.push_back(CinnTypeToLLVMType(type_of<void*>(), m_));
-  args_type.push_back(CinnTypeToLLVMType(type_of<int32_t>(), m_));
-
-  auto func_type = llvm::FunctionType::get(ret_type, args_type, false);
-  auto call_func = m_->getOrInsertFunction(call_ir->name, func_type);
-
-  std::vector<llvm::Value*> call_args;
-  call_args.push_back(std::addressof(*f_->arg_begin()));
-  call_args.push_back(b_->getInt32(call_ir->read_args[1].as_int32()));
-  return b_->CreateCall(call_func, call_args);
-}
-
 llvm::Value* CodeGenSwitchHost::LowerInnerCaseCall(const ir::Call* op) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
@@ -94,7 +70,10 @@ llvm::Value* CodeGenSwitchHost::LowerInnerCaseCall(const ir::Call* op) {
                  [](auto& arg) { return std::addressof(arg); });
   // TODO(Hongqing-work): Add check for parameter type
   llvm::Function* call_func = m_->getFunction(op->name);
-  CHECK(call_func) << "Unknown function referenced. [" << op->name << "]";
+  PADDLE_ENFORCE_NOT_NULL(
+      call_func,
+      ::common::errors::InvalidArgument("Unknown function referenced. [%s]",
+                                        op->name.c_str()));
   b_->CreateCall(call_func, ll_function_args);
   return nullptr;
 }

@@ -88,7 +88,7 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
       std::find(inputs.begin(), inputs.end(), input_name) != inputs.end();
   PADDLE_ENFORCE_EQ(name_found,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Var(%s) isn't the input of the %s operator.",
                         input_name,
                         op->Op()->Type()));
@@ -154,16 +154,16 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
   auto output = op->outputs[0];
   PADDLE_ENFORCE_GE(inputs.size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "OP(%s)'s inputs(%d) must be equal or greater than 1.",
                         op->Name(),
                         inputs.size()));
-  PADDLE_ENFORCE_EQ(
-      op->outputs.size(),
-      1,
-      phi::errors::InvalidArgument("OP(%s)'s outputs(%d) must be equal to 1.",
-                                   op->Name(),
-                                   op->outputs.size()));
+  PADDLE_ENFORCE_EQ(op->outputs.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "OP(%s)'s outputs(%d) must be equal to 1.",
+                        op->Name(),
+                        op->outputs.size()));
 
   // create a quantize op desc prototype
   OpDesc q_desc;
@@ -185,7 +185,7 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
     if (index == -1) {
       PADDLE_ENFORCE_NE(index,
                         -1,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Var(%s) isn't the input of the %s operator.",
                             unique_var_names[var_id],
                             op->Op()->Type()));
@@ -243,7 +243,7 @@ void CPUQuantizePass::DequantizeOutput(Graph* g,
       std::find(outputs.begin(), outputs.end(), output_name) != outputs.end();
   PADDLE_ENFORCE_EQ(name_found,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Var(%s) isn't the output of the %s operator.",
                         output_name,
                         op->Op()->Type()));
@@ -288,7 +288,7 @@ void CPUQuantizePass::DequantizeOutputs(Graph* g,
 
   PADDLE_ENFORCE_GE(outputs.size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "OP(%s)'s outputs(%d) must be equal or greater than 1.",
                         op->Name(),
                         outputs.size()));
@@ -309,7 +309,7 @@ void CPUQuantizePass::DequantizeOutputs(Graph* g,
     if (index == -1) {
       PADDLE_ENFORCE_NE(index,
                         -1,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Var(%s) isn't the input of the %s operator.",
                             var_names[var_id],
                             op->Op()->Type()));
@@ -906,14 +906,14 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
     bool is_x_unsigned{false}, is_y_unsigned{false};
     auto input_x_scale = GetScaleValueForNode(matmul_in_x, &is_x_unsigned);
     auto input_y_scale = GetScaleValueForNode(matmul_in_y, &is_y_unsigned);
-    PADDLE_ENFORCE_EQ(
-        is_x_unsigned,
-        is_y_unsigned,
-        phi::errors::InvalidArgument("Matmul inputs should have the same "
-                                     "attribute of signed/unsigned, but they "
-                                     "are different: x(%d), y(%d).",
-                                     is_x_unsigned,
-                                     is_y_unsigned));
+    PADDLE_ENFORCE_EQ(is_x_unsigned,
+                      is_y_unsigned,
+                      common::errors::InvalidArgument(
+                          "Matmul inputs should have the same "
+                          "attribute of signed/unsigned, but they "
+                          "are different: x(%d), y(%d).",
+                          is_x_unsigned,
+                          is_y_unsigned));
 
     if (with_residual) {
       GET_IR_NODE_FROM_SUBGRAPH(
@@ -1278,11 +1278,12 @@ void CPUQuantizePass::QuantizeFusionLSTM(Graph* graph) const {
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   PADDLE_ENFORCE_NOT_NULL(
-      param_scope(), phi::errors::InvalidArgument("Scope cannot be nullptr."));
+      param_scope(),
+      common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GetQuantInfo(graph);
   QuantizeConv(graph, "fused_conv2d", false /* with_residual_data */);

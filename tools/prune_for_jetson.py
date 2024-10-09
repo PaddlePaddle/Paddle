@@ -116,11 +116,10 @@ def append_fluid_kernels():
         os.path.dirname(os.path.abspath(__file__))
         + "/../paddle/fluid/inference/tensorrt/CMakeLists.txt"
     )
-    append_str = "\nfile(APPEND ${pybind_file} \"USE_NO_KERNEL_OP__(tensorrt_engine);\\n\")\n"
+    append_str = '\nfile(APPEND ${pybind_file} "USE_NO_KERNEL_OP__(tensorrt_engine);\\n")\n'
     for op in op_white_list:
         append_str = (
-            append_str
-            + f"file(APPEND ${{pybind_file}} \"USE_OP__({op});\\n\")\n"
+            append_str + f'file(APPEND ${{pybind_file}} "USE_OP__({op});\\n")\n'
         )
 
     with open(file_name, 'r', encoding='utf-8') as f:
@@ -130,7 +129,7 @@ def append_fluid_kernels():
     new_content = content.replace(location_str, location_str + append_str)
 
     if new_content == content:
-        print(f"ERROR: can not find \"{location_str}\" in file \"{file_name}\"")
+        print(f'ERROR: can not find "{location_str}" in file "{file_name}"')
         return False
 
     with open(file_name, 'w', encoding='utf-8') as f:

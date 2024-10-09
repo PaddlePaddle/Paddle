@@ -31,7 +31,7 @@ void Property::DeserializationFromString(const std::string &str) {
   PADDLE_ENFORCE_EQ(
       this->Proto()->ParsePartialFromString(str),
       true,
-      phi::errors::InvalidArgument("Failed to parse pb from string"));
+      common::errors::InvalidArgument("Failed to parse pb from string"));
   return;
 }
 
@@ -39,7 +39,7 @@ std::string Property::SerializationToString() {
   std::string retv;
   PADDLE_ENFORCE_EQ(this->Proto()->SerializePartialToString(&retv),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
   return retv;
 }
@@ -142,19 +142,19 @@ float Property::GetFloat(const std::string &name) const {
     auto e = property_.entrys(i);
 
     if (e.has_name() && e.name() == name) {
-      PADDLE_ENFORCE(
-          e.has_type() && e.type() == proto::ValueProto::FLOAT,
-          phi::errors::PreconditionNotMet("JIT::Property GetFloat: idx=%d type "
-                                          "is not float. Expect %d, but %d",
-                                          i,
-                                          proto::ValueProto::FLOAT,
-                                          e.type()));
+      PADDLE_ENFORCE(e.has_type() && e.type() == proto::ValueProto::FLOAT,
+                     common::errors::PreconditionNotMet(
+                         "JIT::Property GetFloat: idx=%d type "
+                         "is not float. Expect %d, but %d",
+                         i,
+                         proto::ValueProto::FLOAT,
+                         e.type()));
 
       return e.f();
     }
   }
 
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(common::errors::NotFound(
       "JIT::Property GetFloat: name: %s not found", name));
   return 0;
 }
@@ -163,7 +163,7 @@ float Property::GetFloat(const int &idx) const {
   PADDLE_ENFORCE_EQ(
       idx < Size() && idx >= 0,
       true,
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "JIT::Property GetFloat: idx=%d out of range %d", idx, Size()));
 
   auto e = property_.entrys(idx);
@@ -171,7 +171,7 @@ float Property::GetFloat(const int &idx) const {
     return e.f();
   }
 
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "JIT::Property GetFloat: input idx (%d) element is not a float.", idx));
   return 0;
 }
@@ -205,7 +205,7 @@ std::vector<float> Property::GetFloats(const std::string &name) {
     if (e.has_name() && e.name() == name) {
       PADDLE_ENFORCE(
           e.has_type() && e.type() == proto::ValueProto::FLOATS,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "JIT::Property GetFloats: idx=%d type is not floats.", i));
 
       // auto items = e.floats();
@@ -213,7 +213,7 @@ std::vector<float> Property::GetFloats(const std::string &name) {
     }
   }
 
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(common::errors::NotFound(
       "JIT::Property GetFloats: name: %s not found", name));
   return std::vector<float>();
 }
@@ -241,14 +241,14 @@ int64_t Property::GetInt64(const std::string &name) {
 
     if (e.has_name() && e.name() == name) {
       PADDLE_ENFORCE(e.has_type() && e.type() == proto::ValueProto::INT,
-                     phi::errors::PreconditionNotMet(
+                     common::errors::PreconditionNotMet(
                          "JIT::Property GetInt64: idx=%d type is not int.", i));
 
       return e.i();
     }
   }
 
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(common::errors::NotFound(
       "JIT::Property GetInt64: name: %s not found", name));
   return 0;
 }
@@ -282,7 +282,7 @@ std::vector<int> Property::GetInt64s(const std::string &name) {
     if (e.has_name() && e.name() == name) {
       PADDLE_ENFORCE(
           e.has_type() && e.type() == proto::ValueProto::INTS,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "JIT::Property GetInt64s: idx=%d type is not ints.", i));
 
       auto items = e.ints();
@@ -295,7 +295,7 @@ std::vector<int> Property::GetInt64s(const std::string &name) {
     }
   }
 
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(common::errors::NotFound(
       "JIT::Property GetInt64s: name: %s not found", name));
   return {};
 }
@@ -324,13 +324,13 @@ std::string Property::GetString(const std::string &name) {
     if (e.has_name() && e.name() == name) {
       PADDLE_ENFORCE(
           e.has_type() && e.type() == proto::ValueProto::STRING,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "JIT::Property GetString: idx=%d type is not string.", i));
       return e.s();
     }
   }
 
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(common::errors::NotFound(
       "JIT::Property GetString: name: %s not found", name));
   return {};
 }
@@ -364,7 +364,7 @@ std::vector<std::string> Property::GetStrings(const std::string &name) {
     if (e.has_name() && e.name() == name) {
       PADDLE_ENFORCE(
           e.has_type() && e.type() == proto::ValueProto::STRINGS,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "JIT::Property GetStrings: idx=%d type is not strings.", i));
 
       // auto items = e.strings();
@@ -372,7 +372,7 @@ std::vector<std::string> Property::GetStrings(const std::string &name) {
     }
   }
 
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(common::errors::NotFound(
       "JIT::Property GetStrings: name: %s not found", name));
   return {};
 }

@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_resource_pool.h"
 #include "xpu/bkcl.h"
 
 namespace paddle {

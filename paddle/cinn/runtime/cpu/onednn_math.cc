@@ -53,7 +53,7 @@ void cinn_cpu_onednn_softmax_fp32(int batch,
     default:
       std::stringstream ss;
       ss << "wrong dim: " << size;
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       break;
   }
 
@@ -166,7 +166,7 @@ CINN_REGISTER_HELPER(cinn_cpu_onednn) {
       [](const std::vector<Expr>& args, int offset) {
         PADDLE_ENFORCE_EQ(args.size(),
                           16UL,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Wrong number of arguments passed in."));
         auto N = cinn::common::AutoSimplify(args[0]);
         int input_h = cinn::common::AutoSimplify(args[2]).as_int32();

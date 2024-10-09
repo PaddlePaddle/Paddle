@@ -85,6 +85,7 @@ function make_ubuntu20_cu12_dockerfile(){
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel distro \&\& pip3.8 install distro" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN cd /usr/local/TensorRT-8.6.1.6/python \&\& pip3.9 install tensorrt-8.6.1-cp39-none-linux_x86_64.whl" ${dockerfile_name}
   sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8616#g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn896 #g' ${dockerfile_name}

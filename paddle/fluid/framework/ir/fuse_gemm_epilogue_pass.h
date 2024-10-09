@@ -51,7 +51,7 @@ class EpiloguePassActivationCache {
     if (HasFusedActivation(key)) {
       return fused_activation_space_map_.find(key)->second;
     }
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The key (%d) of EpiloguePassActivationCache does not exist.", key));
   }
 
@@ -61,7 +61,7 @@ class EpiloguePassActivationCache {
       fused_activation_space_map_.insert({key, value});
       mtx_.unlock();
     } else {
-      PADDLE_THROW(phi::errors::AlreadyExists(
+      PADDLE_THROW(common::errors::AlreadyExists(
           "The key (%d) of EpiloguePassActivationCache already exist.", key));
     }
   }

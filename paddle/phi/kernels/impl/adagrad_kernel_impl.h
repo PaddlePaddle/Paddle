@@ -107,15 +107,15 @@ void AdagradSparseKernel(const Context& ctx,
   T epsilon = static_cast<T>(epsilon_t);
 
   auto* param_tensor = &param_t;
-  PADDLE_ENFORCE_EQ(param_tensor,
-                    param_out_tensor,
-                    phi::errors::InvalidArgument(
+  PADDLE_ENFORCE_EQ(param_tensor->IsSharedBufferWith(*param_out_tensor),
+                    true,
+                    common::errors::InvalidArgument(
                         "the input tensor not equal with output tensor"));
 
   auto* moment_tensor = &moment_t;
-  PADDLE_ENFORCE_EQ(moment_tensor,
-                    moment_out_tensor,
-                    phi::errors::InvalidArgument(
+  PADDLE_ENFORCE_EQ(moment_tensor->IsSharedBufferWith(*moment_out_tensor),
+                    true,
+                    common::errors::InvalidArgument(
                         "the input moment not equal with output moment"));
 
   SparseAdagradFunctor<Context, T> functor;

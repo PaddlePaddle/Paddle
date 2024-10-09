@@ -110,8 +110,9 @@ void GRUCPUKernel(const Context &dev_ctx,
                                      frame_size /*height of height*/);
     PADDLE_ENFORCE_NOT_NULL(
         packed_gate,
-        phi::errors::NotFound("The calculation result of packed_gate by "
-                              "GEMM_ALLOC should not be null when using MKL."));
+        common::errors::NotFound(
+            "The calculation result of packed_gate by "
+            "GEMM_ALLOC should not be null when using MKL."));
     blas.GEMM_PACK(CblasBMatrix,
                    CblasNoTrans,
                    1 /*cur bs?*/,
@@ -127,8 +128,9 @@ void GRUCPUKernel(const Context &dev_ctx,
                                       frame_size /*height of height*/);
     PADDLE_ENFORCE_NOT_NULL(
         packed_state,
-        phi::errors::NotFound("The calculation result of packed_state by "
-                              "GEMM_ALLOC should not be null when using MKL."));
+        common::errors::NotFound(
+            "The calculation result of packed_state by "
+            "GEMM_ALLOC should not be null when using MKL."));
     blas.GEMM_PACK(CblasBMatrix,
                    CblasNoTrans,
                    1 /*cur bs?*/,

@@ -273,11 +273,11 @@ class HybridParallelInferenceHelper:
         # Create mp rings
         if self.num_mp > 1:
             mp_endpoints = [self.endpoints[mp_idx] for mp_idx in self.mp_group]
-            mp_rank = [
+            mp_rank = next(
                 idx
                 for idx, mp_idx in enumerate(self.mp_group)
                 if mp_idx == self.rank
-            ][0]
+            )
             collective_helper._init_communicator(
                 self._startup_program,
                 self.current_endpoint,

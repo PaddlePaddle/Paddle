@@ -89,12 +89,12 @@ class GRUOneDNNHandler
       PADDLE_ENFORCE_EQ(
           gate_activation,
           "sigmoid",
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "oneDNN fusion_gru supports only sigmoid as a gate activation."));
       PADDLE_ENFORCE_EQ(
           activation,
           "tanh",
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "oneDNN fusion_gru supports only tanh as an activation."));
 
       // Weights for int8 kernel are of a type s8
@@ -575,14 +575,14 @@ void FusionGRUKernel(const Context& dev_ctx,
           : "float32";
   std::vector<std::string> mkldnn_data_type_list = {
       "float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(
-      std::find(mkldnn_data_type_list.begin(),
-                mkldnn_data_type_list.end(),
-                mkldnn_data_type) != mkldnn_data_type_list.end(),
-      true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
-                                   "int8, bfloat16], but found %s.",
-                                   mkldnn_data_type.c_str()));
+  PADDLE_ENFORCE_EQ(std::find(mkldnn_data_type_list.begin(),
+                              mkldnn_data_type_list.end(),
+                              mkldnn_data_type) != mkldnn_data_type_list.end(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The mkldnn_data_type shoule be [float32, "
+                        "int8, bfloat16], but found %s.",
+                        mkldnn_data_type.c_str()));
   const float scale_data =
       dev_ctx.HasDnnAttr("Scale_data")
           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_data"))

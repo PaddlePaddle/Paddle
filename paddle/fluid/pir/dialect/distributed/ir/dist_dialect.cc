@@ -35,7 +35,10 @@ void DistDialect::initialize() {
                      TensorDistAttribute,
                      OperationDistAttribute>();
   RegisterTypes<DistDenseTensorType>();
-  RegisterOps<ShardTensorOp, ReshardOp>();
+  RegisterOps<ShardTensorOp,
+              ReshardOp,
+              MoESubMeshTensorsOp,
+              MoEGlobalMeshTensorOp>();
 }
 
 void DistDialect::PrintType(pir::Type type, std::ostream &os) const {
@@ -110,13 +113,14 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
       os << ",result(" + std::to_string(i) + "):{" << op_dist_attr.result(i)
          << "}";
     }
+    os << ",chunk_id:" << op_dist_attr.chunk_id();
     os << "}";
   } else {
     os << "error_attribute_type";
   }
 }
 
-pir::OpPrintFn DistDialect::PrintOperation(pir::Operation *op) const {
+pir::OpPrintFn DistDialect::PrintOperation(const pir::Operation &op) const {
   return nullptr;
 }
 

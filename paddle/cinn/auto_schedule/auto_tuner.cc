@@ -145,7 +145,7 @@ void PrintResult(const TuningResult& result) {
 TuningResult AutoTuner::Tune(const TuningOptions& options) {
   PADDLE_ENFORCE_GT(options.num_tuning_rounds,
                     0,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The num_tuning_rounds should be greater than 0."));
 
   TuningResult result;

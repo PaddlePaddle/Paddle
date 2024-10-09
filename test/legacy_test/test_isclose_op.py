@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestIscloseOp(OpTest):
@@ -115,12 +115,18 @@ class TestIscloseOpNanTrue(TestIscloseOp):
 
 
 class TestIscloseStatic(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api_case(self):
         paddle.enable_static()
         x_data = np.random.rand(10, 10)
         y_data = np.random.rand(10, 10)
-        places = [paddle.base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.base.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.base.CUDAPlace(0))
         for place in places:
@@ -146,7 +152,13 @@ class TestIscloseStatic(unittest.TestCase):
 
 class TestIscloseDygraph(unittest.TestCase):
     def test_api_case(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -211,7 +223,7 @@ class TestIscloseError(unittest.TestCase):
 
 
 class TestIscloseOpFp16(unittest.TestCase):
-    @test_with_pir_api
+
     def test_fp16(self):
         if core.is_compiled_with_cuda():
             x_data = np.random.rand(10, 10).astype('float16')
@@ -270,7 +282,7 @@ class TestIscloseOpFloat64(TestIscloseOp):
 
 
 class TestIscloseOpCp64(unittest.TestCase):
-    @test_with_pir_api
+
     def test_cp64(self):
         x_data = (
             np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
@@ -292,7 +304,7 @@ class TestIscloseOpCp64(unittest.TestCase):
 
 
 class TestIscloseOpCp128(unittest.TestCase):
-    @test_with_pir_api
+
     def test_cp128(self):
         x_data = (
             np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)

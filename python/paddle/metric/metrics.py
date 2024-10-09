@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, Any, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -27,6 +27,8 @@ from ..base.layer_helper import LayerHelper
 from ..framework import in_dynamic_mode
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import numpy.typing as npt
 
     from paddle import Tensor

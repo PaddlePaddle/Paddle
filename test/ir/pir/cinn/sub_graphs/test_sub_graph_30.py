@@ -694,7 +694,6 @@ class TestLayer(TestBase):
         )
         self.net = LayerCase
         self.atol = 1e-1
-        self.with_train = False
 
     # NOTE prim + cinn lead to error
 

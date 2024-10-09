@@ -87,7 +87,7 @@ void TDMSamplerInner(const Context &dev_ctx,
     PADDLE_ENFORCE_LT(
         -1,
         input_id,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -96,7 +96,7 @@ void TDMSamplerInner(const Context &dev_ctx,
     PADDLE_ENFORCE_LT(
         input_id,
         travel_dim[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -120,7 +120,7 @@ void TDMSamplerInner(const Context &dev_ctx,
       PADDLE_ENFORCE_LE(
           sample_num,
           node_nums - 1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Neg sample nums id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected <= %ld - 1 (positive included), but got %ld. Please "
               "check neg_samples_num_list.",
@@ -157,7 +157,7 @@ void TDMSamplerInner(const Context &dev_ctx,
       PADDLE_ENFORCE_LE(
           positive_node_id,
           node_id_max,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
@@ -168,7 +168,7 @@ void TDMSamplerInner(const Context &dev_ctx,
       PADDLE_ENFORCE_LE(
           node_id_min,
           positive_node_id,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
@@ -218,7 +218,7 @@ void TDMSamplerInner(const Context &dev_ctx,
         PADDLE_ENFORCE_LE(
             layer_data[layer_offset_lod[layer_idx] + sample_res],
             node_id_max,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
                 "expected >= %ld and <= %ld, but got %ld. Please check input "
                 "tdm tree structure and tdm travel info.",
@@ -263,7 +263,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
       input_type == ProtoDataType::INT32 || input_type == ProtoDataType::INT64;
   PADDLE_ENFORCE_EQ(input_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(X) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         phi::DataTypeToString(x.dtype()),
@@ -275,7 +275,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                            travel_type == ProtoDataType::INT64;
   PADDLE_ENFORCE_EQ(travel_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Travel) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         phi::DataTypeToString(travel.dtype()),
@@ -287,7 +287,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
       layer_type == ProtoDataType::INT32 || layer_type == ProtoDataType::INT64;
   PADDLE_ENFORCE_EQ(layer_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Layer) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         phi::DataTypeToString(layer.dtype()),
@@ -295,7 +295,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                         phi::DataTypeToString(DataType::INT64)));
   PADDLE_ENFORCE_EQ(travel_type,
                     layer_type,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Travel) must holds the same type with "
                         "Input(Layer), but Travel holds %s, and Layer holds %s",
                         phi::DataTypeToString(travel.dtype()),

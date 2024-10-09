@@ -1664,8 +1664,8 @@ void FusedMultiTransformerDecoderPass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::Fatal("During the multi_transformer pass, "
-                         "The scope should not be null."));
+      common::errors::Fatal("During the multi_transformer pass, "
+                            "The scope should not be null."));
 
   VLOG(3) << "Running fused_multi_transformer_decoder_pass.";
   if (graph->IsMainGraph()) {
@@ -2379,8 +2379,8 @@ void FusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::Fatal("During the fused_multi_transformer_decoder "
-                         "pass, The scope should not be null."));
+      common::errors::Fatal("During the fused_multi_transformer_decoder "
+                            "pass, The scope should not be null."));
 
   VLOG(3) << "Running fused_multi_transformer_decoder_fuse_qkv_pass.";
   if (graph->IsMainGraph()) {
@@ -3160,8 +3160,8 @@ void MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::Fatal("During the fused_multi_transformer_decoder "
-                         "pass, The scope should not be null."));
+      common::errors::Fatal("During the fused_multi_transformer_decoder "
+                            "pass, The scope should not be null."));
 
   VLOG(3)
       << "Running multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass.";

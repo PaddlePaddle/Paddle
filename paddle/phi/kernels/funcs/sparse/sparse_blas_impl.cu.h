@@ -82,8 +82,8 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
   PADDLE_ENFORCE_GE(
       x_ndims,
       2,
-      phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
-                                   "greater than or equal to 2."));
+      common::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
+                                      "greater than or equal to 2."));
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
   int batch_size = 1;
@@ -92,7 +92,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
   }
   PADDLE_ENFORCE_EQ(x.non_zero_crows().numel(),
                     batch_size * (M + 1),
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "the length of SparseCsrTensor crows is not right."));
 
   const IntT* crows_data = x.non_zero_crows().data<IntT>();
@@ -121,7 +121,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
           *descriptor, batch_size, M + 1, batch_nnz);
     });
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCsrSetStridedBatch', which is "
         "supported from CUDA 11.8"));
 #endif
@@ -137,8 +137,8 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   PADDLE_ENFORCE_GE(
       x_ndims,
       2,
-      phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
-                                   "greater than or equal to 2."));
+      common::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
+                                      "greater than or equal to 2."));
 
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
@@ -176,7 +176,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
           *descriptor, batch_size, batch_nnz);
     });
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCooSetStridedBatch', which is "
         "supported from CUDA 11.8"));
 #endif
@@ -232,8 +232,8 @@ class CuSparseDnMatDescriptor {
     PADDLE_ENFORCE_GE(
         x_ndims,
         2,
-        phi::errors::InvalidArgument("the dim size of DenseTensor must be "
-                                     "greater than or equal to 2."));
+        common::errors::InvalidArgument("the dim size of DenseTensor must be "
+                                        "greater than or equal to 2."));
 
     int64_t M = xdim_vec[x_ndims - 2];
     int64_t N = xdim_vec[x_ndims - 1];
@@ -262,7 +262,7 @@ class CuSparseDnMatDescriptor {
             descriptor_, batch_size, M * N);
       });
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Batch Sparse matmul use 'cusparseDnMatSetStridedBatch', which is "
           "supported from CUDA 11.8"));
 #endif
@@ -295,7 +295,7 @@ class CuSparseDnVecDescriptor {
     auto x_ndims = xdim_vec.size();
     PADDLE_ENFORCE_GE(x_ndims,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "the dim size of Vec must be equal to 1."));
 
     const T* x_data = x.data<T>();

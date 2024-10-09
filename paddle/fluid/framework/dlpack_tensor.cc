@@ -33,15 +33,19 @@ static ::DLDataType GetDLDataTypeCode() {
   } else if (std::is_same<T, phi::dtype::float16>::value ||
              std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
+  } else if (std::is_same<T, bool>::value) {
+    // Since std::is_unsigned<bool>::value is True,
+    // it is necessary to evaluate bool before std::is_unsigned.
+    dtype.code = kDLBool;
   } else if (std::is_unsigned<T>::value) {
     dtype.code = kDLUInt;
   } else if (std::is_integral<T>::value) {
     dtype.code = kDLInt;
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Unsupported data type (%s), only supports float16, float, unsigned "
         "int and int.",
-        platform::demangle(typeid(T).name())));
+        common::demangle(typeid(T).name())));
   }
   dtype.bits = 8 * sizeof(T);
   dtype.lanes = 1;
@@ -65,8 +69,8 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
   auto it = type_to_dtype_map.find(static_cast<int>(type));
   PADDLE_ENFORCE_NE(it,
                     type_to_dtype_map_end_it,
-                    phi::errors::InvalidArgument("Unsupported data type (%s).",
-                                                 DataTypeToString(type)));
+                    common::errors::InvalidArgument(
+                        "Unsupported data type (%s).", DataTypeToString(type)));
   return it->second;
 #undef REG_DL_DATA_TYPE
 }
@@ -82,26 +86,28 @@ struct DLDeviceVisitor {
   }
 
   inline ::DLDevice operator()(const phi::IPUPlace &place) const {
-    PADDLE_THROW(phi::errors::Unimplemented("phi::IPUPlace is not supported"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("phi::IPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::XPUPlace &place) const {
-    PADDLE_THROW(phi::errors::Unimplemented("phi::XPUPlace is not supported"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("phi::XPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::CustomPlace &place) const {
     PADDLE_THROW(
-        phi::errors::Unimplemented("phi::CustomPlace is not supported"));
+        common::errors::Unimplemented("phi::CustomPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::GPUPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
-    device.device_type = kDLGPU;
+    device.device_type = kDLCUDA;
     device.device_id = place.device;  // NOLINT
     return device;
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "phi::GPUPlace is not supported in CPU only version."));
 #endif
   }
@@ -109,11 +115,11 @@ struct DLDeviceVisitor {
   inline ::DLDevice operator()(const phi::GPUPinnedPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
-    device.device_type = kDLCPUPinned;
+    device.device_type = kDLCUDAHost;
     device.device_id = 0;
     return device;
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "phi::GPUPinnedPlace is not supported in CPU only version."));
 #endif
   }
@@ -123,13 +129,16 @@ struct DLDeviceVisitor {
 struct PaddleDLMTensor {
   phi::DenseTensor handle;
   DLManagedTensor tensor;
-  PaddleDLMTensor() : tensor() {}
 };
 
-void deleter(DLManagedTensor *arg) {
-  delete[] arg->dl_tensor.shape;
-  delete[] arg->dl_tensor.strides;
-  delete static_cast<PaddleDLMTensor *>(arg->manager_ctx);
+static void deleter(DLManagedTensor *self) {
+  if (self && self->manager_ctx) {
+    delete[] self->dl_tensor
+        .shape;  // delete shape allocated in toDLPack manually
+    delete[] self->dl_tensor
+        .strides;  // delete strides allocated in toDLPack manually
+    delete static_cast<PaddleDLMTensor *>(self->manager_ctx);
+  }
 }
 
 DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
@@ -137,38 +146,37 @@ DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
   pdDLMTensor->handle = const_cast<phi::DenseTensor &>(src);
   pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
   pdDLMTensor->tensor.deleter = &deleter;
-  pdDLMTensor->tensor.dl_tensor.data = const_cast<void *>(src.data());
 
   // init ndim
-  using DimType = decltype(pdDLMTensor->tensor.dl_tensor.ndim);  // int
-  pdDLMTensor->tensor.dl_tensor.ndim = static_cast<DimType>(src.dims().size());
+  using DimType = decltype(pdDLMTensor->tensor.dl_tensor.ndim);  // int32_t
+  auto _shape = src.dims();
+  pdDLMTensor->tensor.dl_tensor.ndim = static_cast<DimType>(_shape.size());
   DimType ndim = pdDLMTensor->tensor.dl_tensor.ndim;
 
   // init shape
-  auto shape = new int64_t[ndim];
+  int64_t *shape = new int64_t[ndim];
   for (DimType i = 0; i < ndim; ++i) {
-    shape[i] = src.dims()[i];
+    shape[i] = _shape[i];
   }
   pdDLMTensor->tensor.dl_tensor.shape = shape;
 
-  // init stride
-  auto strides = new int64_t[ndim];
-  for (DimType i = 0; i < ndim; ++i) {
-    strides[i] = 1;
-  }
-  for (DimType i = ndim - 2; i >= 0; --i) {
-    strides[i] = shape[i + 1] * strides[i + 1];
+  // init strides
+  auto _strides = src.strides();
+  int64_t *strides = new int64_t[ndim];
+  for (int i = 0; i < src.dims().size(); i++) {
+    strides[i] = _strides[i];
+    if (shape[i] < 2) {
+      strides[i] = 1;
+    }
   }
   pdDLMTensor->tensor.dl_tensor.strides = strides;
 
-  // init device, DLDevice type with device_type and device_id
+  pdDLMTensor->tensor.dl_tensor.data = const_cast<void *>(src.data());
   auto place = src.place();
   pdDLMTensor->tensor.dl_tensor.device =
       phi::VisitPlace(place, internal::DLDeviceVisitor());
-
   pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
       framework::TransToProtoVarType(src.dtype()));
-
   pdDLMTensor->tensor.dl_tensor.byte_offset = 0;
   return &(pdDLMTensor->tensor);
 }

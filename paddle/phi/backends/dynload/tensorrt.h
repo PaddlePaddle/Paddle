@@ -54,21 +54,21 @@ extern void* tensorrt_plugin_dso_handle;
   };                                                                   \
   extern DynLoad__##__name __name
 
-#define DECLARE_DYNAMIC_LOAD_TENSORRT_NON_POINTER_WRAP(__name)               \
-  struct DynLoad__##__name {                                                 \
-    template <typename... Args>                                              \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {         \
-      std::call_once(tensorrt_dso_flag, []() {                               \
-        tensorrt_dso_handle = phi::dynload::GetTensorRtHandle();             \
-      });                                                                    \
-      static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);         \
-      PADDLE_ENFORCE_NOT_NULL(                                               \
-          p_##__name,                                                        \
-          phi::errors::Unavailable("Load tensorrt api %s failed", #__name)); \
-      using tensorrt_func = decltype(&::__name);                             \
-      return reinterpret_cast<tensorrt_func>(p_##__name)(args...);           \
-    }                                                                        \
-  };                                                                         \
+#define DECLARE_DYNAMIC_LOAD_TENSORRT_NON_POINTER_WRAP(__name)              \
+  struct DynLoad__##__name {                                                \
+    template <typename... Args>                                             \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {        \
+      std::call_once(tensorrt_dso_flag, []() {                              \
+        tensorrt_dso_handle = phi::dynload::GetTensorRtHandle();            \
+      });                                                                   \
+      static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);        \
+      PADDLE_ENFORCE_NOT_NULL(p_##__name,                                   \
+                              common::errors::Unavailable(                  \
+                                  "Load tensorrt api %s failed", #__name)); \
+      using tensorrt_func = decltype(&::__name);                            \
+      return reinterpret_cast<tensorrt_func>(p_##__name)(args...);          \
+    }                                                                       \
+  };                                                                        \
   extern DynLoad__##__name __name
 
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP(__name)                      \
@@ -80,7 +80,7 @@ extern void* tensorrt_plugin_dso_handle;
       });                                                                      \
       static void* p_##__name = dlsym(tensorrt_plugin_dso_handle, #__name);    \
       PADDLE_ENFORCE_NOT_NULL(p_##__name,                                      \
-                              phi::errors::Unavailable(                        \
+                              common::errors::Unavailable(                     \
                                   "Load tensorrt plugin %s failed", #__name)); \
       using tensorrt_plugin_func = decltype(&::__name);                        \
       return reinterpret_cast<tensorrt_plugin_func>(p_##__name)(args...);      \

@@ -66,3 +66,11 @@ PD_REGISTER_KERNEL(matmul_with_flatten_double_grad,
                    double,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(legacy_matmul_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

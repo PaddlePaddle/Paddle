@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from itertools import combinations
 
@@ -43,7 +44,13 @@ class TestIndexFillAPIBase(unittest.TestCase):
             self.index_type
         )
 
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if self.dtype_np == 'float16':
             self.place = []
         if paddle.is_compiled_with_cuda():

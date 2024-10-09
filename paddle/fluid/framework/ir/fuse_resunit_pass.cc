@@ -415,7 +415,7 @@ ir::Node *RetrieveForwardNode(ir::Graph *graph,
   PADDLE_ENFORCE_NE(
       pos,
       std::string::npos,
-      phi::errors::InvalidArgument("expect @GRAD in name, got (%s)", name));
+      common::errors::InvalidArgument("expect @GRAD in name, got (%s)", name));
   std::string fwd_name = name.substr(0, pos);
   for (auto *node : graph->Nodes()) {
     if (node->Name() == fwd_name) {
@@ -426,8 +426,8 @@ ir::Node *RetrieveForwardNode(ir::Graph *graph,
       }
     }
   }
-  PADDLE_THROW(
-      phi::errors::InvalidArgument("The node (%d) does not exist.", fwd_name));
+  PADDLE_THROW(common::errors::InvalidArgument("The node (%d) does not exist.",
+                                               fwd_name));
   return nullptr;
 }
 
@@ -472,7 +472,7 @@ ir::Graph *FuseResUnitPass::FuseConvBNAddActFwd(
     bool shortcut,
     bool is_training) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("conv_bn_add_act");
   FusePassBase::Init(scope_name, graph);
 
@@ -601,7 +601,7 @@ ir::Graph *FuseResUnitPass::FuseConvBNActConvBNstats(
     int *found_pattern_count_output,
     ResUnitPassCache *cache) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("conv_bn_act_conv_bnstats");
   FusePassBase::Init(scope_name, graph);
 
@@ -689,7 +689,7 @@ ir::Graph *FuseResUnitPass::FuseBNActConvBwd(
     const std::unordered_set<std::string> &act_grad_types,
     ResUnitPassCache *cache) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   VLOG(4) << "Applying FuseBNActConvBwd";
   const std::string scope_name("bn_act_conv_bwd");
   FusePassBase::Init(scope_name, graph);
@@ -714,7 +714,7 @@ ir::Graph *FuseResUnitPass::FuseBNActConvBwd(
     auto *bn_eqbias =
         cache->Get(GetCacheKey(bn_saved_mean->Var()->Name(), g->GetBlockId()));
     if (bn_eqscale == nullptr || bn_eqbias == nullptr) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The bn_eqscale and bn_eqbias do not exist in the cache. "
           "The forward fusion pass may not be successful."));
     }
@@ -769,7 +769,7 @@ ir::Graph *FuseResUnitPass::FuseBNAddActConvBwd(
     bool shortcut,
     bool with_sum) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   VLOG(4) << "Applying FuseBNAddActConvBwd, shortcut=" << shortcut
           << ", with_sum=" << with_sum;
   const std::string scope_name("bn_add_act_conv_bwd");

@@ -29,17 +29,17 @@ namespace ir {
 // var: variable.
 // arg: the argument declared by PATTERN_DECL_NODE in a pattern definition.
 // pat: the pattern object.
-#define SAFE_GET_IR_NODE_FROM_SUBGRAPH(var, arg, pat)                        \
-  Node* var = nullptr;                                                       \
-  if (pat.arg##_n()) {                                                       \
-    PADDLE_ENFORCE_NE(subgraph.count(pat.arg##_n()),                         \
-                      0UL,                                                   \
-                      phi::errors::NotFound("Node not found for PDNode %s",  \
-                                            pat.arg##_repr()));              \
-    var = subgraph.at(pat.arg##_n());                                        \
-    PADDLE_ENFORCE_NOT_NULL(                                                 \
-        var,                                                                 \
-        phi::errors::NotFound("node %s not exists in the sub-graph", #arg)); \
+#define SAFE_GET_IR_NODE_FROM_SUBGRAPH(var, arg, pat)                          \
+  Node* var = nullptr;                                                         \
+  if (pat.arg##_n()) {                                                         \
+    PADDLE_ENFORCE_NE(subgraph.count(pat.arg##_n()),                           \
+                      0UL,                                                     \
+                      common::errors::NotFound("Node not found for PDNode %s", \
+                                               pat.arg##_repr()));             \
+    var = subgraph.at(pat.arg##_n());                                          \
+    PADDLE_ENFORCE_NOT_NULL(var,                                               \
+                            common::errors::NotFound(                          \
+                                "node %s not exists in the sub-graph", #arg)); \
   }
 
 #define SAFE_IR_NODE_LINK_TO(a, b)    \

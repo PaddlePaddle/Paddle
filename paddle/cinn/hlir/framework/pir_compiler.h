@@ -27,12 +27,10 @@ class PirCompiler final {
   std::vector<pir::CINNKernelInfo> Build(
       const std::vector<pir::OpLoweringGroupPtr>& groups);
 
-  pir::CINNKernelInfo BuildBroadcastTree(
-      const std::vector<pir::OpLoweringGroupPtr>& leaf_groups,
-      pir::OpLoweringGroupPtr origin_group);
-
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
+
+  std::shared_ptr<pir::CompilationResult> Compile(GroupCompilationContext* ctx);
 
   Target target_;
 };

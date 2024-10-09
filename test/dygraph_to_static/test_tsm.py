@@ -204,7 +204,7 @@ class TSM_ResNet(paddle.nn.Layer):
         )
 
     def forward(self, inputs):
-        y = paddle.reshape(inputs, [-1] + self.reshape_list)
+        y = paddle.reshape(inputs, [-1, *self.reshape_list])
         y = self.conv(y)
         y = self.pool2d_max(y)
         for bottleneck_block in self.bottleneck_block_list:

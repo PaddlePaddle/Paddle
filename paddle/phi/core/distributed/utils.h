@@ -59,7 +59,7 @@ inline void* GetPointerByOffset(void* raw_pointer,
     return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
                                    offset);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Datatype %s in NCCL is not supported.", type));
   }
   return nullptr;
@@ -72,7 +72,7 @@ inline void CheckSizeOnEachRank(const phi::DDim& tensor_dim,
   PADDLE_ENFORCE_EQ(
       length_size_on_each_rank,
       world_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The length of size_on_each_rank must be equal to world_size."));
 
   int64_t sum_size_on_each_rank = std::accumulate(size_on_each_rank.begin(),
@@ -81,7 +81,7 @@ inline void CheckSizeOnEachRank(const phi::DDim& tensor_dim,
   PADDLE_ENFORCE_EQ(
       sum_size_on_each_rank,
       tensor_dim[0],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The sum of size_on_each_rank must be equal to tensor's dim[0]."));
 }
 

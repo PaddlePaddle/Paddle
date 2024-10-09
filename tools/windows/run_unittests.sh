@@ -31,10 +31,8 @@ disable_wingpu_test="^test_model$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
-^test_reader_reset$|\
+^test_reader_reset_deprecated$|\
 ^test_imperative_se_resnext$|\
-^test_sync_batch_norm_op$|\
-^test_sync_batch_norm_op_static_build$|\
 ^test_dataloader_keep_order_deprecated$|\
 ^test_dataloader_unkeep_order_deprecated$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -64,7 +62,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_mul_op$|\
 ^test_bmn$|\
 ^test_memory_efficient_attention$|\
-^test_fuse_gemm_epilogue_pass$|\
+^test_fuse_gemm_epilogue_pass_deprecated$|\
 ^test_tril_triu_op$|\
 ^test_train_step_resnet18_adam$|\
 ^test_train_step_resnet18_sgd$|\
@@ -73,8 +71,8 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_multi_precision_fp16_train$|\
 ^test_imperative_skip_op$|\
 ^test_qat$|\
-^test_standalone_cuda_graph_multi_stream$|\
-^test_standalone_cuda_graph_multi_stream_static_build$|\
+^test_standalone_cuda_graph_multi_stream_deprecated$|\
+^test_standalone_cuda_graph_multi_stream_deprecated_static_build$|\
 ^test_save_load$|\
 ^test_conv_transpose_nn_grad$|\
 ^test_dygraph_spectral_norm$|\
@@ -146,7 +144,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^paddle_infer_api_copy_tensor_tester$|\
 ^cudnn_helper_test$|\
 ^test_analyzer_small_dam$|\
-^test_analyzer_transformer$|\
+^test_analyzer_transformer_deprecated$|\
 ^test_analyzer_int8_mobilenetv3_large$|\
 ^test_analyzer_bfloat16_mobilenetv3_large$|\
 ^test_api_impl$|\
@@ -222,9 +220,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_decoupled_py_reader_deprecated$|\
 ^test_generator_dataloader_deprecated$|\
 ^test_py_reader_combination$|\
-^test_reader_reset$|\
-^test_sync_batch_norm_op$|\
-^test_sync_batch_norm_op_static_build$|\
+^test_reader_reset_deprecated$|\
 ^test_decoupled_py_reader_deprecated_static_build$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -239,7 +235,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_add_reader_dependency_deprecated$|\
 ^test_conv2d_fusion_op$|\
 ^test_fused_conv2d_add_act_op$|\
-^test_analyzer_detect_functional_mkldnn$|\
 ^test_audio_datasets$|\
 ^test_signal$|\
 ^test_stft_op$|\
@@ -392,7 +387,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_model$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_push_pop$|\
-^test_reader_reset$|\
+^test_reader_reset_deprecated$|\
 ^test_py_reader_pin_memory$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -405,8 +400,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_py_reader_using_executor$|\
 ^test_dataloader_keep_order_deprecated$|\
 ^test_dataloader_unkeep_order_deprecated$|\
-^test_sync_batch_norm_op$|\
-^test_sync_batch_norm_op_static_build$|\
 ^test_fuse_bn_act_pass_deprecated$|\
 ^test_fuse_bn_act_pass_deprecated_static_build$|\
 ^test_fuse_bn_add_act_pass$|\
@@ -434,7 +427,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
 # TODO: fix these unittest that is bound to fail
 disable_wincpu_test="^jit_kernel_test$|\
-^test_analyzer_transformer$|\
+^test_analyzer_transformer_deprecated$|\
 ^test_vision_models$|\
 ^test_dygraph_multi_forward$|\
 ^test_imperative_transformer_sorted_gradient$|\

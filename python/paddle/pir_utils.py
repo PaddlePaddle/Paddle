@@ -13,9 +13,6 @@
 # limitations under the License.
 
 
-import os
-from functools import wraps
-
 import paddle
 from paddle.framework.dtype import bind_datatype, bind_vartype
 
@@ -183,42 +180,6 @@ class DygraphOldIrGuard:
             _switch_to_pir_()
 
 
-def test_with_pir_api(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        skip_old_ir = os.environ.get("FLAGS_CI_skip_old_ir", "False")
-        skip_pir = os.environ.get("FLAGS_CI_skip_pir", "False")
-        if skip_old_ir == "False" or not skip_old_ir:
-            with OldIrGuard():
-                func(*args, **kwargs)
-        if skip_pir == "False" or not skip_pir:
-            with IrGuard():
-                func(*args, **kwargs)
-
-    return impl
-
-
-def test_with_old_ir_only(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        with OldIrGuard():
-            func(*args, **kwargs)
-
-    return impl
-
-
-def test_with_dygraph_pir(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        with DygraphOldIrGuard():
-            func(*args, **kwargs)
-
-        with DygraphPirGuard():
-            func(*args, **kwargs)
-
-    return impl
-
-
 def get_memory(value):
     from paddle.base.core import DataType
 
@@ -254,3 +215,21 @@ def analysis_io(program: paddle.pir.Program):
             total_io += get_memory(value)
 
     return total_io / 1024 / 1024 / 1024
+
+
+def append_activation_in_pir(input, act=None, use_cudnn=None):
+    if act is None:
+        return input
+
+    act_name_mapping = {
+        "hard_swish": "hardswish",
+    }
+    act = act_name_mapping.get(act, act)
+
+    attrs = ()
+    if use_cudnn:
+        attrs = ('use_cudnn', use_cudnn)
+    act_op = getattr(paddle._C_ops, act)
+    if act == 'softmax':
+        return act_op(input, -1)
+    return act_op(input, *attrs)

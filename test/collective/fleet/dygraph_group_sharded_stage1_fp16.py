@@ -123,13 +123,13 @@ def train_mlp(
             "sharding_degree": 2,
         }
         strategy.hybrid_configs = hybrid_configs
-        strategy.hybrid_configs[
-            "sharding_configs"
-        ].use_reduce_avg = sharding_use_reduce_avg
+        strategy.hybrid_configs["sharding_configs"].use_reduce_avg = (
+            sharding_use_reduce_avg
+        )
         strategy.hybrid_configs["sharding_configs"].comm_overlap = comm_overlap
-        strategy.hybrid_configs[
-            "sharding_configs"
-        ].tensor_fusion = tensor_fusion
+        strategy.hybrid_configs["sharding_configs"].tensor_fusion = (
+            tensor_fusion
+        )
 
     fleet.init(is_collective=True, strategy=strategy)
     model = fleet.distributed_model(model)

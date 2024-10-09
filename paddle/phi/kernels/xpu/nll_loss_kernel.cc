@@ -33,7 +33,7 @@ void NllLossRawKernel(const Context& dev_ctx,
       label_type == phi::DataType::INT32 || label_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(label_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Label) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         label_type,

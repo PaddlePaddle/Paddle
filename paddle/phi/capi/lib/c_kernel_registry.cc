@@ -60,7 +60,7 @@ void PD_KernelArgsParseFn(const phi::KernelKey& default_key,
           std::type_index(typeid(
               const paddle::optional<std::vector<const phi::DenseTensor*>>&)));
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "PD_KernelArgumentType %d is not supported.", arg_type));
     }
   }
@@ -104,7 +104,7 @@ void PD_KernelArgsParseFn(const phi::KernelKey& default_key,
     } else if (arg_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_SCALAR) {
       args_def->AppendAttribute(phi::AttributeType::SCALARS);
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "PD_KernelArgumentType %d is not supported.", arg_type));
     }
   }
@@ -123,7 +123,7 @@ void PD_KernelArgsParseFn(const phi::KernelKey& default_key,
           default_key.dtype(),
           std::type_index(typeid(std::vector<phi::DenseTensor*>)));
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "PD_KernelArgumentType %d is not supported.", arg_type));
     }
   }

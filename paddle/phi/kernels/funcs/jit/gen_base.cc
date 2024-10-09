@@ -55,14 +55,14 @@ void* GenBase::operator new(size_t size) {
   PADDLE_ENFORCE_EQ(
       posix_memalign(&ptr, alignment, size),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Jitcode generator (GenBase) allocate %ld memory error!", size));
 #endif
   PADDLE_ENFORCE_NOT_NULL(
       ptr,
-      phi::errors::InvalidArgument("Fail to allocate jitcode generator "
-                                   "(GenBase) CPU memory: size = %d .",
-                                   size));
+      common::errors::InvalidArgument("Fail to allocate jitcode generator "
+                                      "(GenBase) CPU memory: size = %d .",
+                                      size));
   return ptr;
 }
 

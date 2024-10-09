@@ -106,7 +106,7 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
       padding_token_length = 512;
     } else {
       try {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Token_prune'token_length(max) must <= 512"));
       } catch (std::exception& e) {
       }

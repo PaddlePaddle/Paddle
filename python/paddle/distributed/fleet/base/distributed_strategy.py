@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import google.protobuf
 import google.protobuf.text_format
@@ -23,6 +26,112 @@ from paddle.base.framework import _global_flags
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.distributed.fleet.utils.log_util import logger
+
+if TYPE_CHECKING:
+    from paddle.static import BuildStrategy
+
+    class _SyncConf(TypedDict, total=False):
+        k_step: int
+        max_merge_var_num: int
+        send_queue_size: int
+        independent_recv_thread: bool
+        thread_pool_size: int
+        send_wait_times: int
+        runtime_split_send_recv: bool
+
+    class _TrainerDescConf(TypedDict, total=False):
+        dump_fields_path: str
+        dump_field: list[str]
+        dump_param: list[str]
+        stat_var_names: list[str]
+
+    class _FsClientParam(TypedDict, total=False):
+        uri: str
+        user: str
+        passwd: str
+        hadoop_bin: str
+
+    class _AmpConf(TypedDict, total=False):
+        init_loss_scaling: float
+        use_dynamic_loss_scaling: bool
+        incr_every_n_steps: int
+        decr_every_n_nan_or_inf: int
+        incr_ratio: float
+        decr_ratio: float
+        custom_white_list: list[str]
+        custom_black_list: list[str]
+        custom_black_varnames: list[str]
+        use_pure_fp16: bool
+        use_pure_bf16: bool
+        use_fp16_guard: bool
+
+    class _QATConfig(TypedDict, total=False):
+        channel_wise_abs_max: bool
+        weight_bits: int
+        activation_bits: int
+        not_quant_pattern: list[str]
+        algo: str
+
+    class _RecomputeConfig(TypedDict, total=False):
+        checkpoints: list[str]
+        enable_offload: bool
+        checkpoint_shape: list[int]
+
+    class _ShardingConfig(TypedDict, total=False):
+        sharding_segment_strategy: str
+        segment_broadcast_MB: float
+        segment_anchors: list[str]
+        sharding_degree: int
+        gradient_merge_acc_step: int
+        optimize_offload: bool
+        dp_degree: int
+        mp_degree: int
+        pp_degree: int
+        pp_allreduce_in_optimize: bool
+        optimize_cast: bool
+
+    class _PipelineConfig(TypedDict, total=False):
+        micro_batch_size: int
+
+    class _TensorParallelConfig(TypedDict, total=False):
+        tensor_parallel_degree: int
+        tensor_init_seed: int
+
+    class _HybridConfig(TypedDict, total=False):
+        dp_degree: int
+        mp_degree: int
+        pp_degree: int
+        sep_degree: int
+        sharding_degree: int
+        order: list[str]
+
+    class _LocalSGDConfig(TypedDict, total=False):
+        k_steps: int
+        begin_step: int
+
+    class _AdaptiveLocalSGDConfig(TypedDict, total=False):
+        init_k_steps: int
+        begin_step: int
+
+    class _DGCConfig(TypedDict, total=False):
+        rampup_begin_step: int
+        rampup_step: int
+        sparsity: list[float]
+
+    class _GradientMergeConfig(TypedDict, total=False):
+        k_steps: int
+        avg: bool
+
+    class _LarsConfig(TypedDict, total=False):
+        lars_coeff: float
+        lars_weight_decay: float
+        epsilon: float
+        exclude_from_weight_decay: list[str]
+
+    class _LambConfig(TypedDict, total=False):
+        lamb_weight_decay: float
+        exclude_from_weight_decay: list[str]
+
 
 __all__ = []
 
@@ -175,7 +284,7 @@ ReduceStrategyFleet = int
 class DistributedStrategy:
     __lock_attr = False
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
 
         DistributedStrategy is the main configuration entry for distributed training of Paddle.
@@ -189,38 +298,48 @@ class DistributedStrategy:
         DistributedStrategy supports configurations from BuildStrategy.
 
         """
-        self.strategy = distributed_strategy_pb2.DistributedStrategy()
+        self.strategy: Any = distributed_strategy_pb2.DistributedStrategy()
 
         # Set the default values of the following flags to the ones set by users
         key = 'FLAGS_cudnn_batchnorm_spatial_persistent'
         if _global_flags().is_public(key):
-            self.strategy.cudnn_batchnorm_spatial_persistent = bool(
+            self.strategy.cudnn_batchnorm_spatial_persistent: bool = bool(
                 _global_flags()[key]
             )
         key = 'FLAGS_conv_workspace_size_limit'
         if _global_flags().is_public(key):
-            self.strategy.conv_workspace_size_limit = int(_global_flags()[key])
+            self.strategy.conv_workspace_size_limit: int = int(
+                _global_flags()[key]
+            )
         key = 'FLAGS_cudnn_exhaustive_search'
         if _global_flags().is_public(key):
-            self.strategy.cudnn_exhaustive_search = bool(_global_flags()[key])
+            self.strategy.cudnn_exhaustive_search: bool = bool(
+                _global_flags()[key]
+            )
         key = 'FLAGS_sync_nccl_allreduce'
         if _global_flags().is_public(key):
-            self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
+            self.strategy.sync_nccl_allreduce: bool = bool(_global_flags()[key])
 
-        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'sep', 'mp']
-        self.sync_param_name = ["embedding", "layer_norm", ".b_"]
+        self.hybrid_parallel_order: list[str] = [
+            'dp',
+            'pp',
+            'sharding',
+            'sep',
+            'mp',
+        ]
+        self.sync_param_name: list[str] = ["embedding", "layer_norm", ".b_"]
 
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         if self.__lock_attr and not hasattr(self, key):
             raise TypeError(
                 f"{key} is not a attribute of {self.__class__.__name__}"
             )
         object.__setattr__(self, key, value)
 
-    def save_to_prototxt(self, output):
+    def save_to_prototxt(self, output: str) -> None:
         """
 
         Serialize current DistributedStrategy to string and save to output file
@@ -239,7 +358,7 @@ class DistributedStrategy:
         with open(output, "w") as fout:
             fout.write(str(self.strategy))
 
-    def load_from_prototxt(self, pb_file):
+    def load_from_prototxt(self, pb_file: str) -> None:
         """
 
         Load from prototxt file for DistributedStrategy initialization
@@ -263,7 +382,7 @@ class DistributedStrategy:
             )
 
     @property
-    def build_strategy(self):
+    def build_strategy(self) -> BuildStrategy:
         """
 
         Configure BuildStrategy for DistributedStrategy
@@ -299,7 +418,7 @@ class DistributedStrategy:
 
     @build_strategy.setter
     @is_strict_auto
-    def build_strategy(self, strategy):
+    def build_strategy(self, strategy: BuildStrategy) -> None:
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
             if f.label == 1 or f.label == 2:  # optional and required field
@@ -313,7 +432,7 @@ class DistributedStrategy:
                 )
 
     @property
-    def gradient_scale_configs(self):
+    def gradient_scale_configs(self) -> dict[str, Any]:
         """
 
         Set the strategy of gradient scale
@@ -332,7 +451,7 @@ class DistributedStrategy:
 
     @gradient_scale_configs.setter
     @is_strict_auto
-    def gradient_scale_configs(self, config):
+    def gradient_scale_configs(self, config: dict[str, Any]) -> None:
         check_configs_key(
             self.strategy.gradient_scale_configs,
             config,
@@ -341,7 +460,7 @@ class DistributedStrategy:
         assign_configs_value(self.strategy.gradient_scale_configs, config)
 
     @property
-    def a_sync(self):
+    def a_sync(self) -> bool:
         """
 
         Indicating whether we are using asynchronous stochastic gradient descent updates
@@ -367,7 +486,7 @@ class DistributedStrategy:
 
     @a_sync.setter
     @is_strict_auto
-    def a_sync(self, flag):
+    def a_sync(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.a_sync = flag
             self.a_sync_configs = {"k_steps": 0}
@@ -377,7 +496,7 @@ class DistributedStrategy:
             )
 
     @property
-    def a_sync_configs(self):
+    def a_sync_configs(self) -> _SyncConf:
         """
 
         Set a_sync update configurations. In general, asynchronous parameter server
@@ -419,14 +538,14 @@ class DistributedStrategy:
 
     @a_sync_configs.setter
     @is_strict_auto
-    def a_sync_configs(self, configs):
+    def a_sync_configs(self, configs: _SyncConf) -> None:
         check_configs_key(
             self.strategy.a_sync_configs, configs, "a_sync_configs"
         )
         assign_configs_value(self.strategy.a_sync_configs, configs)
 
     @property
-    def trainer_desc_configs(self):
+    def trainer_desc_configs(self) -> _TrainerDescConf:
         """
 
         Set trainer desc configurations.
@@ -458,7 +577,7 @@ class DistributedStrategy:
         return get_msg_dict(self.strategy.trainer_desc_configs)
 
     @property
-    def adam_d2sum(self):
+    def adam_d2sum(self) -> bool:
         """
 
         set adam_d2sum
@@ -482,7 +601,7 @@ class DistributedStrategy:
 
     @adam_d2sum.setter
     @is_strict_auto
-    def adam_d2sum(self, flag):
+    def adam_d2sum(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.adam_d2sum = flag
         else:
@@ -492,14 +611,14 @@ class DistributedStrategy:
 
     @trainer_desc_configs.setter
     @is_strict_auto
-    def trainer_desc_configs(self, configs):
+    def trainer_desc_configs(self, configs: _TrainerDescConf) -> None:
         check_configs_key(
             self.strategy.trainer_desc_configs, configs, "trainer_desc_configs"
         )
         assign_configs_value(self.strategy.trainer_desc_configs, configs)
 
     @property
-    def fs_client_param(self):
+    def fs_client_param(self) -> _FsClientParam:
         """
 
         Set fs client configurations.
@@ -530,24 +649,26 @@ class DistributedStrategy:
 
     @fs_client_param.setter
     @is_strict_auto
-    def fs_client_param(self, configs):
+    def fs_client_param(self, configs: _FsClientParam) -> None:
         check_configs_key(
             self.strategy.fs_client_param, configs, "fs_client_param"
         )
         assign_configs_value(self.strategy.fs_client_param, configs)
 
     @property
-    def sparse_table_configs(self):
+    def sparse_table_configs(self) -> dict[str, Any]:
         return self.strategy.downpour_table_param
 
     @sparse_table_configs.setter
     @is_strict_auto
-    def sparse_table_configs(self, configs):
+    def sparse_table_configs(self, configs: dict[str, Any]) -> None:
         from google.protobuf.descriptor import FieldDescriptor
 
         table_param = self.strategy.downpour_table_param
 
-        def set_table_config(msg, config_name, configs, index=0):
+        def set_table_config(
+            msg: str, config_name: str, configs: dict[str, Any], index: int = 0
+        ) -> None:
             for field in msg.DESCRIPTOR.fields:
                 name = config_name + "." + field.name
                 if field.type == FieldDescriptor.TYPE_MESSAGE:
@@ -589,7 +710,7 @@ class DistributedStrategy:
                 )
 
     @sparse_table_configs.setter
-    def fleet_desc_configs(self, configs):
+    def fleet_desc_configs(self, configs: dict[str, Any]) -> None:
         support_sparse_key_list = [
             'sparse_table_class',
             'sparse_compress_in_save',
@@ -917,7 +1038,7 @@ class DistributedStrategy:
                 set_sparse_table_config(table_data, configs[table_name])
 
     @property
-    def amp(self):
+    def amp(self) -> bool:
         """
         Indicating whether we are using automatic mixed precision training
         Default Value: False
@@ -935,14 +1056,14 @@ class DistributedStrategy:
 
     @amp.setter
     @is_strict_auto
-    def amp(self, flag):
+    def amp(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.amp = flag
         else:
             logger.warning("amp should have value of bool type")
 
     @property
-    def amp_configs(self):
+    def amp_configs(self) -> _AmpConf:
         """
 
         Set automatic mixed precision training configurations. In general, amp has several configurable
@@ -1003,12 +1124,12 @@ class DistributedStrategy:
 
     @amp_configs.setter
     @is_strict_auto
-    def amp_configs(self, configs):
+    def amp_configs(self, configs: _AmpConf) -> None:
         check_configs_key(self.strategy.amp_configs, configs, "amp_configs")
         assign_configs_value(self.strategy.amp_configs, configs)
 
     @property
-    def asp(self):
+    def asp(self) -> bool:
         """
 
         Indicating whether we are using automatic sparsity training
@@ -1026,14 +1147,14 @@ class DistributedStrategy:
 
     @asp.setter
     @is_strict_auto
-    def asp(self, flag):
+    def asp(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.asp = flag
         else:
             logger.warning("asp should have value of bool type")
 
     @property
-    def qat(self):
+    def qat(self) -> bool:
         """
         Indicating whether we are using quantization aware training
         Default Value: False
@@ -1051,12 +1172,12 @@ class DistributedStrategy:
 
     @qat.setter
     @is_strict_auto
-    def qat(self, flag):
+    def qat(self, flag: bool) -> None:
         assert isinstance(flag, bool), "qat should have value of bool type"
         self.strategy.qat = flag
 
     @property
-    def qat_configs(self):
+    def qat_configs(self) -> _QATConfig:
         """
         Set quantization training configurations. In general, qat has several configurable
         settings that can be configured through a dict.
@@ -1085,12 +1206,12 @@ class DistributedStrategy:
         return get_msg_dict(self.strategy.qat_configs)
 
     @qat_configs.setter
-    def qat_configs(self, configs):
+    def qat_configs(self, configs: _QATConfig) -> None:
         check_configs_key(self.strategy.qat_configs, configs, "qat_configs")
         assign_configs_value(self.strategy.qat_configs, configs)
 
     @property
-    def recompute(self):
+    def recompute(self) -> bool:
         """
         Indicating whether we are using forward recomputation for memory optimization
         Default value: False
@@ -1109,14 +1230,14 @@ class DistributedStrategy:
 
     @recompute.setter
     @is_strict_auto
-    def recompute(self, flag):
+    def recompute(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.recompute = flag
         else:
             logger.warning("recompute should have value of bool type")
 
     @property
-    def sync_nccl_allreduce(self):
+    def sync_nccl_allreduce(self) -> bool:
         """
 
         Indicating whether we are using synchronized all reduce in each communication thread
@@ -1134,14 +1255,14 @@ class DistributedStrategy:
 
     @sync_nccl_allreduce.setter
     @is_strict_auto
-    def sync_nccl_allreduce(self, flag):
+    def sync_nccl_allreduce(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.sync_nccl_allreduce = flag
         else:
             logger.warning("sync_nccl_allreduce should have value of bool type")
 
     @property
-    def use_hierarchical_allreduce(self):
+    def use_hierarchical_allreduce(self) -> bool:
         """
 
         Indicating whether we are using hierarchical allreduce in collective communication
@@ -1160,7 +1281,7 @@ class DistributedStrategy:
 
     @use_hierarchical_allreduce.setter
     @is_strict_auto
-    def use_hierarchical_allreduce(self, flag):
+    def use_hierarchical_allreduce(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.use_hierarchical_allreduce = flag
         else:
@@ -1169,7 +1290,7 @@ class DistributedStrategy:
             )
 
     @property
-    def hierarchical_allreduce_inter_nranks(self):
+    def hierarchical_allreduce_inter_nranks(self) -> int:
         """
 
         Number of ranks for low level node groups in hierarchical allreduce
@@ -1187,7 +1308,7 @@ class DistributedStrategy:
 
     @hierarchical_allreduce_inter_nranks.setter
     @is_strict_auto
-    def hierarchical_allreduce_inter_nranks(self, value):
+    def hierarchical_allreduce_inter_nranks(self, value: int) -> None:
         if isinstance(value, int):
             self.strategy.hierarchical_allreduce_inter_nranks = value
         else:
@@ -1196,7 +1317,7 @@ class DistributedStrategy:
             )
 
     @property
-    def sync_batch_norm(self):
+    def sync_batch_norm(self) -> bool:
         """
 
         Indicating whether we are using sync_batch_norm to do synchronous batch normalization among all training nodes.
@@ -1216,14 +1337,14 @@ class DistributedStrategy:
 
     @sync_batch_norm.setter
     @is_strict_auto
-    def sync_batch_norm(self, flag):
+    def sync_batch_norm(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.sync_batch_norm = flag
         else:
             logger.warning("sync_batch_norm should have value of bool type")
 
     @property
-    def fuse_all_reduce_ops(self):
+    def fuse_all_reduce_ops(self) -> bool:
         """
 
         Indicating whether we are using fuse_all_reduce_ops for gradient fusion during backward phase of training
@@ -1241,14 +1362,14 @@ class DistributedStrategy:
 
     @fuse_all_reduce_ops.setter
     @is_strict_auto
-    def fuse_all_reduce_ops(self, flag):
+    def fuse_all_reduce_ops(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.fuse_all_reduce_ops = flag
         else:
             logger.warning("fuse_all_reduce_ops should have value of bool type")
 
     @property
-    def fuse_grad_size_in_MB(self):
+    def fuse_grad_size_in_MB(self) -> int:
         """
 
         Specifying the size of gradient to fuse in Mega-Bytes
@@ -1267,14 +1388,14 @@ class DistributedStrategy:
 
     @fuse_grad_size_in_MB.setter
     @is_strict_auto
-    def fuse_grad_size_in_MB(self, value):
+    def fuse_grad_size_in_MB(self, value: int) -> None:
         if isinstance(value, int):
             self.strategy.fuse_grad_size_in_MB = value
         else:
             logger.warning("fuse_grad_size_in_MB should have value of int type")
 
     @property
-    def last_comm_group_size_MB(self):
+    def last_comm_group_size_MB(self) -> int:
         """
 
         Specifying the size of gradient to fuse in Mega-Bytes when
@@ -1295,14 +1416,14 @@ class DistributedStrategy:
 
     @last_comm_group_size_MB.setter
     @is_strict_auto
-    def last_comm_group_size_MB(self, value):
+    def last_comm_group_size_MB(self, value: int) -> None:
         if value > 0:
             self.strategy.last_comm_group_size_MB = value
         else:
             raise ValueError("last_comm_group_size_MB should be greater than 0")
 
     @property
-    def find_unused_parameters(self):
+    def find_unused_parameters(self) -> bool:
         """
 
         Indicating whether we are using find_unused_parameters to
@@ -1323,7 +1444,7 @@ class DistributedStrategy:
 
     @find_unused_parameters.setter
     @is_strict_auto
-    def find_unused_parameters(self, flag):
+    def find_unused_parameters(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.find_unused_parameters = flag
         else:
@@ -1332,12 +1453,12 @@ class DistributedStrategy:
             )
 
     @property
-    def _fuse_grad_size_in_TFLOPS(self):
+    def _fuse_grad_size_in_TFLOPS(self) -> float:
         return self.strategy.fuse_grad_size_in_TFLOPS
 
     @_fuse_grad_size_in_TFLOPS.setter
     @is_strict_auto
-    def _fuse_grad_size_in_TFLOPS(self, value):
+    def _fuse_grad_size_in_TFLOPS(self, value: float) -> None:
         if isinstance(value, float):
             self.strategy.fuse_grad_size_in_TFLOPS = value
         else:
@@ -1346,7 +1467,7 @@ class DistributedStrategy:
             )
 
     @property
-    def nccl_comm_num(self):
+    def nccl_comm_num(self) -> int:
         """
 
         Specifying the number of NCCL communicator
@@ -1366,20 +1487,20 @@ class DistributedStrategy:
 
     @nccl_comm_num.setter
     @is_strict_auto
-    def nccl_comm_num(self, value):
+    def nccl_comm_num(self, value: int) -> None:
         if isinstance(value, int):
             self.strategy.nccl_comm_num = value
         else:
             logger.warning("nccl_comm_num should have value of int type")
 
     @property
-    def recompute_configs(self):
+    def recompute_configs(self) -> _RecomputeConfig:
         """
 
         Set recompute configurations.
 
         **Note**:
-        checkpoints(list): list of string name of checkpoints. In general, the recompute
+        checkpoints(list[str]): list of string name of checkpoints. In general, the recompute
         strategy of current implementation should have some manually assign checkpoints.
 
         enable_offload(bool): enable recompute checkpoints offload feature. this feature
@@ -1387,7 +1508,7 @@ class DistributedStrategy:
         the memcpy from host to device takes time, it is a trade off between larger batch
         size and training speed.
 
-        checkpoint_shape(list): list of int that specific the shape of checkpoint. so far
+        checkpoint_shape(list[int]): list of int that specific the shape of checkpoint. so far
         recompute-offload requires that all checkpoint to be same shape, and every dimension
         specific here should be determined ("-1" is not allowed).
 
@@ -1408,14 +1529,14 @@ class DistributedStrategy:
 
     @recompute_configs.setter
     @is_strict_auto
-    def recompute_configs(self, configs):
+    def recompute_configs(self, configs: _RecomputeConfig) -> None:
         check_configs_key(
             self.strategy.recompute_configs, configs, "checkpoint_configs"
         )
         assign_configs_value(self.strategy.recompute_configs, configs)
 
     @property
-    def sharding(self):
+    def sharding(self) -> bool:
         """
 
         Indicating whether we are using sharding Optimizer for memory
@@ -1439,14 +1560,14 @@ class DistributedStrategy:
 
     @sharding.setter
     @is_strict_auto
-    def sharding(self, flag):
+    def sharding(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.sharding = flag
         else:
             logger.warning("sharding should have value of bool type")
 
     @property
-    def sharding_configs(self):
+    def sharding_configs(self) -> _ShardingConfig:
         """
 
         Set sharding configurations.
@@ -1505,14 +1626,14 @@ class DistributedStrategy:
 
     @sharding_configs.setter
     @is_strict_auto
-    def sharding_configs(self, configs):
+    def sharding_configs(self, configs: _ShardingConfig) -> None:
         check_configs_key(
             self.strategy.sharding_configs, configs, "sharding_configs"
         )
         assign_configs_value(self.strategy.sharding_configs, configs)
 
     @property
-    def without_graph_optimization(self):
+    def without_graph_optimization(self) -> bool:
         """
 
         Run program using Executor other than ParallelExecutor.
@@ -1529,7 +1650,7 @@ class DistributedStrategy:
 
     @without_graph_optimization.setter
     @is_strict_auto
-    def without_graph_optimization(self, flag):
+    def without_graph_optimization(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.without_graph_optimization = flag
         else:
@@ -1538,7 +1659,7 @@ class DistributedStrategy:
             )
 
     @property
-    def _calc_comm_same_stream(self):
+    def _calc_comm_same_stream(self) -> bool:
         """
 
         This based on raw_program_optimizer program
@@ -1557,7 +1678,7 @@ class DistributedStrategy:
 
     @_calc_comm_same_stream.setter
     @is_strict_auto
-    def _calc_comm_same_stream(self, same):
+    def _calc_comm_same_stream(self, same: bool) -> None:
         if isinstance(same, bool):
             self.strategy.calc_comm_same_stream = same
         else:
@@ -1566,7 +1687,7 @@ class DistributedStrategy:
             )
 
     @property
-    def fuse_grad_merge(self):
+    def fuse_grad_merge(self) -> bool:
         """
 
         Set whether fuse the grad for gradient merge.
@@ -1585,14 +1706,14 @@ class DistributedStrategy:
 
     @fuse_grad_merge.setter
     @is_strict_auto
-    def fuse_grad_merge(self, fuse_grad_merge):
+    def fuse_grad_merge(self, fuse_grad_merge: bool) -> None:
         if isinstance(fuse_grad_merge, bool):
             self.strategy.fuse_grad_merge = fuse_grad_merge
         else:
             logger.warning("fuse_grad_merge should have value of boolean type")
 
     @property
-    def fuse_grad_size_in_num(self):
+    def fuse_grad_size_in_num(self) -> int:
         """
 
         This based on raw_program_optimizer program and allreduce the num of the fused op
@@ -1610,7 +1731,7 @@ class DistributedStrategy:
 
     @fuse_grad_size_in_num.setter
     @is_strict_auto
-    def fuse_grad_size_in_num(self, num):
+    def fuse_grad_size_in_num(self, num: int) -> None:
         if isinstance(num, int):
             self.strategy.fuse_grad_size_in_num = num
         else:
@@ -1619,7 +1740,7 @@ class DistributedStrategy:
             )
 
     @property
-    def pipeline(self):
+    def pipeline(self) -> bool:
         """
 
         Indicating whether we are using pipeline parallelism for distributed training.
@@ -1638,24 +1759,24 @@ class DistributedStrategy:
         return self.strategy.pipeline
 
     @property
-    def is_fl_ps_mode(self):
+    def is_fl_ps_mode(self) -> bool:
         return self.strategy.is_fl_ps_mode
 
     @is_fl_ps_mode.setter
     @is_strict_auto
-    def is_fl_ps_mode(self, flag):
+    def is_fl_ps_mode(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.is_fl_ps_mode = flag
         else:
             logger.warning("is_fl_ps_mode should have value of bool type")
 
     @property
-    def is_with_coordinator(self):
+    def is_with_coordinator(self) -> bool:
         return self.strategy.with_coordinator
 
     @is_with_coordinator.setter
     @is_strict_auto
-    def is_with_coordinator(self, flag):
+    def is_with_coordinator(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.with_coordinator = flag
         else:
@@ -1663,14 +1784,14 @@ class DistributedStrategy:
 
     @pipeline.setter
     @is_strict_auto
-    def pipeline(self, flag):
+    def pipeline(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.pipeline = flag
         else:
             logger.warning("pipeline should have value of bool type")
 
     @property
-    def pipeline_configs(self):
+    def pipeline_configs(self) -> _PipelineConfig:
         """
 
         Set pipeline parallelism configurations. In pipeline parallelism,
@@ -1701,14 +1822,14 @@ class DistributedStrategy:
 
     @pipeline_configs.setter
     @is_strict_auto
-    def pipeline_configs(self, configs):
+    def pipeline_configs(self, configs: _PipelineConfig) -> None:
         check_configs_key(
             self.strategy.pipeline_configs, configs, "pipeline_configs"
         )
         assign_configs_value(self.strategy.pipeline_configs, configs)
 
     @property
-    def tensor_parallel(self):
+    def tensor_parallel(self) -> bool:
         """
 
         Indicating whether we are using tensor parallel for distributed training.
@@ -1725,14 +1846,14 @@ class DistributedStrategy:
 
     @tensor_parallel.setter
     @is_strict_auto
-    def tensor_parallel(self, flag):
+    def tensor_parallel(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.tensor_parallel = flag
         else:
             logger.warning("tensor_parallel should have value of bool type")
 
     @property
-    def tensor_parallel_configs(self):
+    def tensor_parallel_configs(self) -> _TensorParallelConfig:
         """
 
         Set tensor_parallel configurations.
@@ -1759,7 +1880,7 @@ class DistributedStrategy:
 
     @tensor_parallel_configs.setter
     @is_strict_auto
-    def tensor_parallel_configs(self, configs):
+    def tensor_parallel_configs(self, configs: _TensorParallelConfig) -> None:
         check_configs_key(
             self.strategy.tensor_parallel_configs,
             configs,
@@ -1768,7 +1889,7 @@ class DistributedStrategy:
         assign_configs_value(self.strategy.tensor_parallel_configs, configs)
 
     @property
-    def hybrid_configs(self):
+    def hybrid_configs(self) -> _HybridConfig:
         """
 
         Dynamic graph hybrid parallel strategy configuration. Five-way hybrid parallelism
@@ -1805,7 +1926,7 @@ class DistributedStrategy:
         return get_msg_dict(self.strategy.hybrid_configs)
 
     @hybrid_configs.setter
-    def hybrid_configs(self, configs):
+    def hybrid_configs(self, configs: _HybridConfig) -> None:
         hybrid_config = copy.deepcopy(configs)
         if "order" in hybrid_config:
             self.hybrid_parallel_order = hybrid_config["order"]
@@ -1833,7 +1954,7 @@ class DistributedStrategy:
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property
-    def localsgd(self):
+    def localsgd(self) -> bool:
         """
 
         Indicating whether we are using Local SGD training. Default Value: False
@@ -1852,14 +1973,14 @@ class DistributedStrategy:
 
     @localsgd.setter
     @is_strict_auto
-    def localsgd(self, flag):
+    def localsgd(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.localsgd = flag
         else:
             logger.warning("localsgd should have value of bool type")
 
     @property
-    def localsgd_configs(self):
+    def localsgd_configs(self) -> _LocalSGDConfig:
         """
 
         Set LocalSGD training configurations. LocalSGD has a configurable
@@ -1884,14 +2005,14 @@ class DistributedStrategy:
 
     @localsgd_configs.setter
     @is_strict_auto
-    def localsgd_configs(self, configs):
+    def localsgd_configs(self, configs: _LocalSGDConfig) -> None:
         check_configs_key(
             self.strategy.localsgd_configs, configs, "localsgd_configs"
         )
         assign_configs_value(self.strategy.localsgd_configs, configs)
 
     @property
-    def adaptive_localsgd(self):
+    def adaptive_localsgd(self) -> bool:
         """
 
         Indicating whether we are using Adaptive Local SGD training. Default Value: False
@@ -1910,14 +2031,14 @@ class DistributedStrategy:
 
     @adaptive_localsgd.setter
     @is_strict_auto
-    def adaptive_localsgd(self, flag):
+    def adaptive_localsgd(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.adaptive_localsgd = flag
         else:
             logger.warning("adaptive_localsgd should have value of bool type")
 
     @property
-    def adaptive_localsgd_configs(self):
+    def adaptive_localsgd_configs(self) -> _AdaptiveLocalSGDConfig:
         """
 
         Set AdaptiveLocalSGD training configurations. AdaptiveLocalSGD has a configurable
@@ -1945,7 +2066,9 @@ class DistributedStrategy:
 
     @adaptive_localsgd_configs.setter
     @is_strict_auto
-    def adaptive_localsgd_configs(self, configs):
+    def adaptive_localsgd_configs(
+        self, configs: _AdaptiveLocalSGDConfig
+    ) -> None:
         check_configs_key(
             self.strategy.adaptive_localsgd_configs,
             configs,
@@ -1954,7 +2077,7 @@ class DistributedStrategy:
         assign_configs_value(self.strategy.adaptive_localsgd_configs, configs)
 
     @property
-    def dgc(self):
+    def dgc(self) -> bool:
         """
 
         Indicating whether we are using Deep Gradient Compression training. For more details, please refer to
@@ -1974,14 +2097,14 @@ class DistributedStrategy:
 
     @dgc.setter
     @is_strict_auto
-    def dgc(self, flag):
+    def dgc(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.dgc = flag
         else:
             logger.warning("dgc should have value of bool type")
 
     @property
-    def dgc_configs(self):
+    def dgc_configs(self) -> _DGCConfig:
         r"""
 
         Set Deep Gradient Compression training configurations. In general, dgc has several configurable
@@ -2012,12 +2135,12 @@ class DistributedStrategy:
 
     @dgc_configs.setter
     @is_strict_auto
-    def dgc_configs(self, configs):
+    def dgc_configs(self, configs: _DGCConfig) -> None:
         check_configs_key(self.strategy.dgc_configs, configs, "dgc_configs")
         assign_configs_value(self.strategy.dgc_configs, configs)
 
     @property
-    def fp16_allreduce(self):
+    def fp16_allreduce(self) -> bool:
         """
 
         Indicating whether we are using fp16 gradient allreduce training
@@ -2036,13 +2159,13 @@ class DistributedStrategy:
 
     @fp16_allreduce.setter
     @is_strict_auto
-    def fp16_allreduce(self, flag):
+    def fp16_allreduce(self, flag: bool) -> None:
         if not isinstance(flag, bool):
             raise TypeError('fp16_allreduce must be value of bool type')
         self.strategy.fp16_allreduce = flag
 
     @property
-    def gradient_merge(self):
+    def gradient_merge(self) -> bool:
         """
 
         Gradient Merge, also called as Gradient Accumulation,
@@ -2067,14 +2190,14 @@ class DistributedStrategy:
 
     @gradient_merge.setter
     @is_strict_auto
-    def gradient_merge(self, flag):
+    def gradient_merge(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.gradient_merge = flag
         else:
             logger.warning("gradient_merge should have value of bool type")
 
     @property
-    def gradient_merge_configs(self):
+    def gradient_merge_configs(self) -> _GradientMergeConfig:
         """
 
         the key-value configs of distribute_strategy
@@ -2097,14 +2220,14 @@ class DistributedStrategy:
 
     @gradient_merge_configs.setter
     @is_strict_auto
-    def gradient_merge_configs(self, configs):
+    def gradient_merge_configs(self, configs: _GradientMergeConfig) -> None:
         check_configs_key(
             self.strategy.gradient_merge_configs, configs, "gradient_configs"
         )
         assign_configs_value(self.strategy.gradient_merge_configs, configs)
 
     @property
-    def lars(self):
+    def lars(self) -> bool:
         """
 
         Set lars configurations. lars is used to deal with the convergence problems when the global
@@ -2125,14 +2248,14 @@ class DistributedStrategy:
 
     @lars.setter
     @is_strict_auto
-    def lars(self, flag):
+    def lars(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.lars = flag
         else:
             logger.warning("lars should have value of bool type")
 
     @property
-    def lars_configs(self):
+    def lars_configs(self) -> _LarsConfig:
         """
 
         Set Lars training configurations.
@@ -2142,7 +2265,7 @@ class DistributedStrategy:
         **lars_weight_decay** (float): weight decay coefficient in lars formula.
         **epsilon (float)**: argument is used to avoid potential division-by-zero
         when compute the local lr;
-        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        **exclude_from_weight_decay (list[str])**: is a list of name strings of layers which
         will be exclude from weight decay in lars formula.
 
         Examples:
@@ -2163,12 +2286,12 @@ class DistributedStrategy:
 
     @lars_configs.setter
     @is_strict_auto
-    def lars_configs(self, configs):
+    def lars_configs(self, configs: _LarsConfig) -> None:
         check_configs_key(self.strategy.lars_configs, configs, "lars_configs")
         assign_configs_value(self.strategy.lars_configs, configs)
 
     @property
-    def lamb(self):
+    def lamb(self) -> bool:
         """
 
         Set lamb configurations. lamb is used to deal with the convergence problems for large
@@ -2191,21 +2314,21 @@ class DistributedStrategy:
 
     @lamb.setter
     @is_strict_auto
-    def lamb(self, flag):
+    def lamb(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.lamb = flag
         else:
             logger.warning("lamb should have value of bool type")
 
     @property
-    def lamb_configs(self):
+    def lamb_configs(self) -> _LambConfig:
         """
 
         Set Lars training configurations.
 
         **Notes**:
         **lamb_weight_decay** (float): weight decay coefficient in lamb formula.
-        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        **exclude_from_weight_decay (list[str])**: is a list of name strings of layers which
         will be exclude from weight decay in lamb formula.
 
         Examples:
@@ -2224,12 +2347,12 @@ class DistributedStrategy:
 
     @lamb_configs.setter
     @is_strict_auto
-    def lamb_configs(self, configs):
+    def lamb_configs(self, configs: _LambConfig) -> None:
         check_configs_key(self.strategy.lamb_configs, configs, "lamb_configs")
         assign_configs_value(self.strategy.lamb_configs, configs)
 
     @property
-    def elastic(self):
+    def elastic(self) -> bool:
         """
 
         Indicating whether we want to do current distributed training on clusters with elastic resources.
@@ -2240,14 +2363,14 @@ class DistributedStrategy:
 
     @elastic.setter
     @is_strict_auto
-    def elastic(self, flag):
+    def elastic(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.elastic = flag
         else:
             logger.warning("elastic should have value of bool type")
 
     @property
-    def auto(self):
+    def auto(self) -> bool:
         """
 
         Indicating whether we are using auto-parallel configuration
@@ -2276,14 +2399,14 @@ class DistributedStrategy:
         return self.strategy.auto
 
     @auto.setter
-    def auto(self, flag):
+    def auto(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.auto = flag
         else:
             logger.warning("auto should have value of bool type")
 
     @property
-    def semi_auto(self):
+    def semi_auto(self) -> bool:
         """
 
         Indicating whether we are using semi-auto parallel function
@@ -2312,14 +2435,14 @@ class DistributedStrategy:
         return self.strategy.semi_auto
 
     @semi_auto.setter
-    def semi_auto(self, flag):
+    def semi_auto(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.semi_auto = flag
         else:
             logger.warning("semi-auto should have value of bool type")
 
     @property
-    def auto_search(self):
+    def auto_search(self) -> bool:
         """
 
         Indicating whether we are using auto-search parallel function
@@ -2340,14 +2463,14 @@ class DistributedStrategy:
         return self.strategy.auto_search
 
     @auto_search.setter
-    def auto_search(self, flag):
+    def auto_search(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.auto_search = flag
         else:
             logger.warning("auto-search should have value of bool type")
 
     @property
-    def split_data(self):
+    def split_data(self) -> bool:
         """
 
         Indicating whether we split the data. If True, we split the data.
@@ -2367,14 +2490,14 @@ class DistributedStrategy:
         return self.strategy.split_data
 
     @split_data.setter
-    def split_data(self, flag):
+    def split_data(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.split_data = flag
         else:
             logger.warning("split_data should have value of bool type")
 
     @property
-    def qat(self):
+    def qat(self) -> bool:
         """
 
         Indicating whether we are using quantization training
@@ -2384,14 +2507,14 @@ class DistributedStrategy:
         return self.strategy.qat
 
     @qat.setter
-    def qat(self, flag):
+    def qat(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.qat = flag
         else:
             logger.warning("qat should have value of bool type")
 
     @property
-    def qat_configs(self):
+    def qat_configs(self) -> _QATConfig:
         """
 
         Set quantization training configurations. In general, qat has several configurable
@@ -2427,12 +2550,12 @@ class DistributedStrategy:
         return get_msg_dict(self.strategy.qat_configs)
 
     @qat_configs.setter
-    def qat_configs(self, configs):
+    def qat_configs(self, configs: _QATConfig) -> None:
         check_configs_key(self.strategy.qat_configs, configs, "qat_configs")
         assign_configs_value(self.strategy.qat_configs, configs)
 
     @property
-    def heter_ccl_mode(self):
+    def heter_ccl_mode(self) -> bool:
         """
 
         Indicating whether we are using heter_ccl_mode for model training.
@@ -2457,14 +2580,14 @@ class DistributedStrategy:
         return self.strategy.heter_ccl_mode
 
     @heter_ccl_mode.setter
-    def heter_ccl_mode(self, flag):
+    def heter_ccl_mode(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.heter_ccl_mode = flag
         else:
             logger.warning("heter_ccl_mode should have value of bool type")
 
     @property
-    def cudnn_exhaustive_search(self):
+    def cudnn_exhaustive_search(self) -> bool:
         """
 
         Indicating whether to use exhaustive search method to choose convolution algorithms.
@@ -2491,7 +2614,7 @@ class DistributedStrategy:
 
     @cudnn_exhaustive_search.setter
     @is_strict_auto
-    def cudnn_exhaustive_search(self, flag):
+    def cudnn_exhaustive_search(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.cudnn_exhaustive_search = flag
         else:
@@ -2500,7 +2623,7 @@ class DistributedStrategy:
             )
 
     @property
-    def conv_workspace_size_limit(self):
+    def conv_workspace_size_limit(self) -> int:
         """
 
         The workspace limit size in MB unit for choosing cuDNN convolution algorithms.
@@ -2527,7 +2650,7 @@ class DistributedStrategy:
 
     @conv_workspace_size_limit.setter
     @is_strict_auto
-    def conv_workspace_size_limit(self, value):
+    def conv_workspace_size_limit(self, value: int) -> None:
         if isinstance(value, int):
             self.strategy.conv_workspace_size_limit = value
         else:
@@ -2536,7 +2659,7 @@ class DistributedStrategy:
             )
 
     @property
-    def cudnn_batchnorm_spatial_persistent(self):
+    def cudnn_batchnorm_spatial_persistent(self) -> bool:
         """
 
         Indicates whether to use the mode CUDNN_BATCHNORM_SPATIAL_PERSISTENT function in batchnorm.
@@ -2561,7 +2684,7 @@ class DistributedStrategy:
 
     @cudnn_batchnorm_spatial_persistent.setter
     @is_strict_auto
-    def cudnn_batchnorm_spatial_persistent(self, flag):
+    def cudnn_batchnorm_spatial_persistent(self, flag: bool) -> None:
         if isinstance(flag, bool):
             self.strategy.cudnn_batchnorm_spatial_persistent = flag
         else:
@@ -2569,7 +2692,7 @@ class DistributedStrategy:
                 "cudnn_batchnorm_spatial_persistent should have value of bool type"
             )
 
-    def _enable_env(self):
+    def _enable_env(self) -> None:
         strategy = self.strategy
         keys = [
             "FLAGS_cudnn_batchnorm_spatial_persistent",
@@ -2592,13 +2715,13 @@ class DistributedStrategy:
             if _global_flags().is_public(key):
                 _global_flags()[key] = values[i]
 
-    def _is_strict_auto(self):
+    def _is_strict_auto(self) -> bool:
         global non_auto_func_called
         if self.strategy.auto and non_auto_func_called:
             return True
         return False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         spacing = 2
         max_k = 38
         max_v = 38

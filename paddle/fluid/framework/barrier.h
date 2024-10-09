@@ -22,9 +22,12 @@
 #ifdef _LINUX
 #include <pthread.h>
 #include <semaphore.h>
+#include <cstdlib>
 #endif
 #include <condition_variable>
 #include <mutex>
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -33,24 +36,53 @@ class Barrier {
  public:
   explicit Barrier(int count = 1) {
 #ifdef _LINUX
-    CHECK_GE(count, 1);
+    PADDLE_ENFORCE_GE(
+        count,
+        1UL,
+        common::errors::InvalidArgument("The count of barrier must not be less "
+                                        "than 1. But received count = %d.",
+                                        count));
     int ret = pthread_barrier_init(&_barrier, NULL, count);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        common::errors::InvalidArgument(
+            "Fail to initialize the barrier with error code %d.", ret));
 #endif
   }
-  ~Barrier() {
+  ~Barrier() noexcept(false) {
 #ifdef _LINUX
     int ret = pthread_barrier_destroy(&_barrier);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0,
+        ret,
+        common::errors::PreconditionNotMet(
+            "[error info] the result of "
+            "pthread_barrier_destroy(&_barrier) should be zero.\n "
+            "[result info] The value of current result is %d.",
+            ret));
 #endif
   }
   void reset(int count) {
 #ifdef _LINUX
-    CHECK_GE(count, 1);
+    PADDLE_ENFORCE_GE(count,
+                      1UL,
+                      common::errors::InvalidArgument(
+                          "The count of reset must not be less than "
+                          "1. But received count = %d.",
+                          count));
     int ret = pthread_barrier_destroy(&_barrier);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        common::errors::InvalidArgument(
+            "Fail to destroy the barrier with error code %d.", ret));
     ret = pthread_barrier_init(&_barrier, NULL, count);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        common::errors::InvalidArgument(
+            "Fail to initialize the barrier with error code %d.", ret));
 #endif
   }
 
@@ -58,7 +90,14 @@ class Barrier {
 #ifdef _LINUX
     int err = pthread_barrier_wait(&_barrier);
     err = pthread_barrier_wait(&_barrier);
-    CHECK_EQ(true, (err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD));
+    PADDLE_ENFORCE_EQ(
+        true,
+        (err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD),
+        common::errors::InvalidArgument(
+            "pthread_barrier_wait failed. Expected err to be 0 or "
+            "PTHREAD_BARRIER_SERIAL_THREAD, but got %d. This indicates a "
+            "problem with the pthread barrier synchronization.",
+            err));
 #endif
   }
 
@@ -86,32 +125,58 @@ class Semaphore {
   Semaphore() {
 #ifdef _LINUX
     int ret = sem_init(&_sem, 0, 0);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        common::errors::InvalidArgument(
+            "Fail to initialize the semaphore with error code %d.", ret));
 #endif
   }
-  ~Semaphore() {
+  ~Semaphore() noexcept(false) {
 #ifdef _LINUX
     int ret = sem_destroy(&_sem);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0,
+        ret,
+        common::errors::PreconditionNotMet(
+            "[error info] the result of sem_destroy(&_sem) should be zero.\n"
+            "[result info] The value of current result is %d.",
+            ret));
 #endif
   }
   void post() {
 #ifdef _LINUX
     int ret = sem_post(&_sem);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        common::errors::InvalidArgument(
+            "Fail to post the semaphore with error code %d.", ret));
 #endif
   }
   void wait() {
 #ifdef _LINUX
     int ret = ignore_signal_call(sem_wait, &_sem);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL,
+                      ret,
+                      common::errors::InvalidArgument(
+                          "Fail to ignore signal call to wait for "
+                          "semaphore with error code %d.",
+                          ret));
 #endif
   }
   bool try_wait() {
     int err = 0;
 #ifdef _LINUX
     err = ignore_signal_call(sem_trywait, &_sem);
-    CHECK_EQ(true, (err == 0 || errno == EAGAIN));
+    PADDLE_ENFORCE_EQ(true,
+                      (err == 0 || errno == EAGAIN),
+                      common::errors::InvalidArgument(
+                          "Call to sem_trywait failed. Expected err to be 0 or "
+                          "errno to be EAGAIN, but got err=%d and errno=%d. "
+                          "This indicates a problem with semaphore operation.",
+                          err,
+                          errno));
 #endif
     return err == 0;
   }

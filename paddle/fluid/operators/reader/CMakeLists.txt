@@ -27,7 +27,7 @@ cc_library(
 cc_library(
   buffered_reader
   SRCS buffered_reader.cc
-  DEPS reader simple_threadpool fluid_memory)
+  DEPS reader simple_threadpool phi common)
 
 reader_library(create_double_buffer_reader_op SRCS
                create_double_buffer_reader_op.cc DEPS buffered_reader)

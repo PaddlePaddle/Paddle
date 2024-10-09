@@ -89,7 +89,7 @@ inline void TensorContainsNAN(const phi::DenseTensor& tensor,
     return;
   }
 #endif
-  PADDLE_THROW(phi::errors::Unimplemented("Not supported on %s.", place));
+  PADDLE_THROW(common::errors::Unimplemented("Not supported on %s.", place));
 }
 inline void TensorContainsInf(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
@@ -106,7 +106,7 @@ inline void TensorContainsInf(const phi::DenseTensor& tensor,
     return;
   }
 #endif
-  PADDLE_THROW(phi::errors::Unimplemented("Not supported on %s.", place));
+  PADDLE_THROW(common::errors::Unimplemented("Not supported on %s.", place));
 }
 inline void TensorIsfinite(const phi::DenseTensor& tensor,
                            phi::DenseTensor* out) {
@@ -123,7 +123,7 @@ inline void TensorIsfinite(const phi::DenseTensor& tensor,
     return;
   }
 #endif
-  PADDLE_THROW(phi::errors::Unimplemented("Not supported on %s.", place));
+  PADDLE_THROW(common::errors::Unimplemented("Not supported on %s.", place));
 }
 
 // copy the result bool to cpu
@@ -173,7 +173,7 @@ class OverflowKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_EQ(true,
                         false,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The input type mismatch, the type of Input(X) "
                             "must be phi::DenseTensor or "
                             "SelectedRows, please check your input."));

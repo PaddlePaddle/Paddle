@@ -99,7 +99,7 @@ def check(use_cuda):
 if __name__ == '__main__':
     try:
         check(use_cuda=False)
-        raise AssertionError()
+        raise AssertionError
     except Exception as e:
         print(e)
         print(type(e))
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     if core.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
-            raise AssertionError()
+            raise AssertionError
         except Exception as e:
             print(e)
             print(type(e))

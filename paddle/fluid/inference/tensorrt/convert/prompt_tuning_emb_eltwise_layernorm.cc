@@ -90,7 +90,7 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_fp16,
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Only Precision::KHalf(fp16) is supported when infering "
             "ernie(bert) model with config.EnableVarseqlen(). "
             "But Precision::KFloat32 is setted."));

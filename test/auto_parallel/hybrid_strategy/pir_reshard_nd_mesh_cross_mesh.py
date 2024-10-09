@@ -17,8 +17,10 @@ import os
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.pir_pass import (
-    apply_reshard_pass,
+    ReshardPasses,
 )
+from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class TestReshardNdMeshCrossMesh:
@@ -80,7 +82,8 @@ class TestReshardNdMeshCrossMesh:
                     dist_input, self._mesh1, output_placements
                 )
             dist_program = main_program.clone()
-            apply_reshard_pass(dist_program)
+            set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
+            ReshardPasses.apply_reshard_pass(dist_program)
 
         return main_program, dist_program
 

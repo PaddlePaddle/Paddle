@@ -25,9 +25,10 @@ namespace framework {
 const Attribute &InferNoNeedBufferVarsContext::GetAttr(
     const std::string &name) const {
   auto iter = attrs_.find(name);
-  PADDLE_ENFORCE_NE(iter,
-                    attrs_.end(),
-                    phi::errors::NotFound("Cannot find attribute (%s).", name));
+  PADDLE_ENFORCE_NE(
+      iter,
+      attrs_.end(),
+      common::errors::NotFound("Cannot find attribute (%s).", name));
   return iter->second;
 }
 

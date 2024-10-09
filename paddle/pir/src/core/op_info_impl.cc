@@ -22,7 +22,7 @@ namespace pir {
 
 void OpInfo::AttachInterface(InterfaceValue &&interface_value) {
   PADDLE_ENFORCE_NOT_NULL(impl_,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Cann't attach interface to a nullptr OpInfo"));
   impl_->AttachInterface(std::move(interface_value));
 }
@@ -33,7 +33,7 @@ void OpInfoImpl::AttachInterface(InterfaceValue &&interface_value) {
   PADDLE_ENFORCE_EQ(
       success,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Interface: id[%u] is already registered. inset failed", type_id));
   VLOG(10) << "Attach a interface: id[" << type_id << "]. to " << op_name_;
 }

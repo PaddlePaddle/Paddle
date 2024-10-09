@@ -42,9 +42,15 @@ void GetBroadcastShape(const Tensor& a,
                        std::vector<bool>* broadcast_flag2,
                        int* axis_offset,
                        const Expr& axis) {
-  CHECK(common_shape);
-  CHECK(broadcast_flag1);
-  CHECK(broadcast_flag2);
+  PADDLE_ENFORCE_NOT_NULL(
+      common_shape,
+      ::common::errors::PreconditionNotMet("common_shape should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(broadcast_flag1,
+                          ::common::errors::PreconditionNotMet(
+                              "broadcast_flag1 should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(broadcast_flag2,
+                          ::common::errors::PreconditionNotMet(
+                              "broadcast_flag2 should not be null."));
 
   const auto& shape1 = a->shape;
   const auto& shape2 = b->shape;
@@ -58,12 +64,12 @@ void GetBroadcastShape(const Tensor& a,
     int axis_val = axis.as_int32();
     PADDLE_ENFORCE_GE(axis_val,
                       -1,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "axis should be equal or greater than -1."));
     if (shape1.size() >= shape2.size()) {
       PADDLE_ENFORCE_LE(axis_val,
                         static_cast<int>(shape1.size() - shape2.size()),
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The axis_val should be less than or equal to "
                             "shape1.size() - shape2.size()."));
       if (axis_val >= 0) {
@@ -82,7 +88,7 @@ void GetBroadcastShape(const Tensor& a,
     } else {
       PADDLE_ENFORCE_LE(axis_val,
                         static_cast<int>(shape2.size() - shape1.size()),
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The axis_val should be less than or equal to "
                             "shape2.size() - shape1.size()."));
       if (axis_val >= 0) {
@@ -118,12 +124,20 @@ void GetBroadcastShape(const Tensor& a,
       broadcast_flag1->emplace_back(true);
       broadcast_flag2->emplace_back(true);
     } else if (MathEqual(one, shape1_new[size1 - i])) {
-      CHECK(!MathEqual(one, shape2_new[size2 - i]));
+      PADDLE_ENFORCE_EQ(
+          MathEqual(one, shape2_new[size2 - i]),
+          false,
+          ::common::errors::PreconditionNotMet(
+              "MathEqual(one, shape2_new[size2 - i]) should be false."));
       common_shape->insert(common_shape->begin(), shape2_new[size2 - i]);
       broadcast_flag1->emplace_back(false);
       broadcast_flag2->emplace_back(true);
     } else if (MathEqual(one, shape2_new[size2 - i])) {
-      CHECK(!MathEqual(one, shape1_new[size1 - i]));
+      PADDLE_ENFORCE_EQ(
+          MathEqual(one, shape1_new[size1 - i]),
+          false,
+          ::common::errors::PreconditionNotMet(
+              "MathEqual(one, shape1_new[size1 - i]) should be false."));
       common_shape->insert(common_shape->begin(), shape1_new[size1 - i]);
       broadcast_flag1->emplace_back(true);
       broadcast_flag2->emplace_back(false);
@@ -164,7 +178,7 @@ void GetBroadcastShape(const Tensor& a,
         ss << "Incompatible broadcast dims " << shape1_new[size1 - i] << " and "
            << shape2_new[size2 - i] << " in: " << shape1_new << " and "
            << shape2_new << std::endl;
-        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+        PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       }
     }
   }
@@ -189,15 +203,19 @@ void GetBroadcastIndice(const std::vector<Expr>& indice,
                         std::vector<Expr>* broadcast_indice2,
                         const std::vector<bool>& broadcast_flags1,
                         const std::vector<bool>& broadcast_flags2) {
-  CHECK(broadcast_indice1);
-  CHECK(broadcast_indice2);
+  PADDLE_ENFORCE_NOT_NULL(broadcast_indice1,
+                          ::common::errors::PreconditionNotMet(
+                              "broadcast_indice1 should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(broadcast_indice2,
+                          ::common::errors::PreconditionNotMet(
+                              "broadcast_indice2 should not be null."));
   if (broadcast_indice1->empty() && broadcast_indice2->empty()) {
     int flag_size = broadcast_flags1.size();
     int i;
     PADDLE_ENFORCE_GE(
         indice.size(),
         flag_size,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "indice size should be greater than or equal to flag size."));
     for (i = 0; i < flag_size; i++) {
       if (broadcast_flags1[flag_size - 1 - i]) {
@@ -331,13 +349,13 @@ Tensor BroadcastTo(const Tensor& A,
   PADDLE_ENFORCE_EQ(
       A_shape.size(),
       broadcast_axes.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "broadcast_axes's size should be same with the input shape's size"));
-  PADDLE_ENFORCE_GE(
-      out_shape.size(),
-      broadcast_axes.size(),
-      phi::errors::InvalidArgument("broadcast_axes's size should be less than "
-                                   "or equal to out_shape's size"));
+  PADDLE_ENFORCE_GE(out_shape.size(),
+                    broadcast_axes.size(),
+                    ::common::errors::InvalidArgument(
+                        "broadcast_axes's size should be less than "
+                        "or equal to out_shape's size"));
   auto axes = broadcast_axes;
   for (auto& axis : axes) {
     // if axis < 0, plus out_shape.size
@@ -346,7 +364,7 @@ Tensor BroadcastTo(const Tensor& A,
     }
     PADDLE_ENFORCE_LT(axis,
                       out_shape.size(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "axis should be less than out_shape's size"));
   }
   std::sort(axes.begin(), axes.end());
@@ -365,7 +383,7 @@ Tensor BroadcastTo(const Tensor& A,
             std::stringstream ss;
             ss << "fail to broad cast input shape " << a_shape_i
                << " to output shape " << out_shape[axes[idx]];
-            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+            PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
           }
         }
         return A(broadcast_indice);

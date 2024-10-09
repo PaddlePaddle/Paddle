@@ -34,15 +34,15 @@ void MergePrograms(ProgramDesc *dst,
                    const std::vector<ProgramDesc> &srcs,
                    bool append) {
   PADDLE_ENFORCE_NOT_NULL(
-      dst, phi::errors::InvalidArgument("Dst program must be provided."));
+      dst, common::errors::InvalidArgument("Dst program must be provided."));
   bool reverse = !append;
 
   auto create_var_visitor = [dst](const ProgramDesc &src) {
     PADDLE_ENFORCE_EQ(
         src.Size(),
         1,
-        phi::errors::Unimplemented("MergePrograms can only support to "
-                                   "merge program with only one block."));
+        common::errors::Unimplemented("MergePrograms can only support to "
+                                      "merge program with only one block."));
     const auto &src_block = src.Block(0);
     auto *dst_block = dst->MutableBlock(0);
     for (const auto *src_new_var : src_block.AllVars()) {

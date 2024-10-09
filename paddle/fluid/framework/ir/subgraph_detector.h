@@ -151,7 +151,7 @@ static iterator_range<NodesTSIterator> TopologicalSort(const Graph &g) {
   PADDLE_ENFORCE_GT(
       start_points.size(),
       0U,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected the number of graph's start points >= 1. Expected %d.",
           start_points.size()));
   NodesTSIterator x(start_points);

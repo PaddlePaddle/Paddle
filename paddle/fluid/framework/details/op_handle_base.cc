@@ -69,7 +69,7 @@ void OpHandleBase::InitCUDA() {
     PADDLE_ENFORCE_EQ(
         dev_ctxes_.size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Operator %s should have only one dev_ctx, but got %d.",
             Name(),
             dev_ctxes_.size()));
@@ -81,7 +81,7 @@ void OpHandleBase::InitCUDA() {
         PADDLE_ENFORCE_EQ(
             phi::is_same_place(place, out_var_handle->place()),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The place of output(%s) is not consistent with the "
                 "place of current op(%s).",
                 out_var_handle->Name(),
@@ -91,7 +91,7 @@ void OpHandleBase::InitCUDA() {
     }
   }
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "Paddle can't use CUDA device since it's not compiled with CUDA,"
       "Please recompile or reinstall Paddle with GPU support."));
 #endif
@@ -109,7 +109,7 @@ void OpHandleBase::InitXPU() {
   } else {
     PADDLE_ENFORCE_EQ(dev_ctxes_.size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "%s should have only one dev_ctx.", Name()));
     auto &place = dev_ctxes_.begin()->first;
     int dev_id = place.device;
@@ -120,7 +120,7 @@ void OpHandleBase::InitXPU() {
         PADDLE_ENFORCE_EQ(
             phi::is_same_place(place, out_var_handle->place()),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The place of output(%s) is not consistent with the "
                 "place of current op(%s).",
                 out_var_handle->Name(),
@@ -129,7 +129,7 @@ void OpHandleBase::InitXPU() {
     }
   }
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "Paddle can't use XPU device since it's not compiled with XPU,"
       "Please recompile or reinstall Paddle with XPU support."));
 #endif
@@ -144,7 +144,7 @@ void OpHandleBase::Run(DeviceType use_device) {
   PADDLE_ENFORCE_NE(
       use_device,
       p::kCUDA,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Argument use_device should not be kCUDA when Paddle is not "
           "compiled with CUDA."));
 #endif
@@ -156,7 +156,7 @@ void OpHandleBase::Run(DeviceType use_device) {
     PADDLE_ENFORCE_NE(
         use_device,
         p::kXPU,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Argument use_device should not be kXPU when Paddle is not "
             "compiled with XPU."));
 #endif
@@ -174,12 +174,13 @@ void OpHandleBase::Run(DeviceType use_device) {
 void OpHandleBase::RecordWaitEventOnCtx(phi::DeviceContext *waited_ctx) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_NOT_NULL(
-      waited_ctx, phi::errors::InvalidArgument("Argument waited_ctx is NULL."));
+      waited_ctx,
+      common::errors::InvalidArgument("Argument waited_ctx is NULL."));
   if (phi::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
       PADDLE_ENFORCE_NOT_NULL(
           dev_ctx.second,
-          phi::errors::InvalidArgument("The device context is NULL."));
+          common::errors::InvalidArgument("The device context is NULL."));
       dev_ctx.second->Wait();
     }
   } else {
@@ -232,7 +233,7 @@ void OpHandleBase::WaitInputVarGenerated(const phi::Place &place) {
 #endif
 #else
           PADDLE_THROW(
-              phi::errors::PreconditionNotMet("Not compiled with CUDA."));
+              common::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
         }
         // There are nothing to do when the place is CPUPlace.
@@ -309,7 +310,7 @@ void OpHandleBase::SetLocalExecScopes(
     PADDLE_ENFORCE_NE(
         iter,
         scope_map.end(),
-        phi::errors::NotFound("Local scope not found in scope map."));
+        common::errors::NotFound("Local scope not found in scope map."));
     local_exec_scopes_.emplace_back(iter->second);
   }
 }

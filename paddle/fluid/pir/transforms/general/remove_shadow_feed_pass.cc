@@ -86,7 +86,7 @@ class RemoveShadowFeedPattern
       if (!var) {
         return false;
       }
-      phi::Place var_place;
+      phi::Place var_place, dst_place;
       if (var->IsType<phi::DenseTensor>()) {
         var_place = GetVarPlace<phi::DenseTensor>(var, place_);
       } else if (var->IsType<phi::SelectedRows>()) {
@@ -95,11 +95,20 @@ class RemoveShadowFeedPattern
         var_place =
             GetVarPlace<paddle::framework::VariableRefArray>(var, place_);
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "RemoveShadowFeedPattern only support output "
             "variable of type DenseTensor, SelectedRows or VariableRefArray"));
       }
-      return var_place == place_;
+
+      int dst_place_type =
+          op.attribute("dst_place_type").dyn_cast<pir::Int32Attribute>().data();
+      if (dst_place_type == 0) {
+        dst_place = phi::CPUPlace();
+      } else {
+        dst_place = place_;
+      }
+
+      return var_place == dst_place;
     }
     return false;
   }
@@ -181,21 +190,21 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
       PADDLE_ENFORCE_EQ(
           Has("top_block"),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Pass initialize failed."
               "When using RemoveShadowFeedPass, block attribute is required!"
               "Use Set method to set the place attribute."));
       PADDLE_ENFORCE_EQ(
           Has(pir::Pass::kPlaceAttr),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Pass initialize failed."
               "When using RemoveShadowFeedPass, place attribute is required!"
               "Use Set method to set the place attribute."));
       PADDLE_ENFORCE_EQ(
           Has(pir::Pass::kParamScopeAttr),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Pass initialize failed."
               "When using RemoveShadowFeedPass, scope attribute is required!"
               "Use Set method to set the scope attribute."));
@@ -204,9 +213,9 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
       auto scope =
           &Get<const paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
       PADDLE_ENFORCE_NOT_NULL(
-          block, phi::errors::InvalidArgument("block can not be nullptr"));
+          block, common::errors::InvalidArgument("block can not be nullptr"));
       PADDLE_ENFORCE_NOT_NULL(
-          scope, phi::errors::InvalidArgument("scope can not be nullptr"));
+          scope, common::errors::InvalidArgument("scope can not be nullptr"));
 
       ps.Add<RemoveShadowFeedPattern>(context, block, place, scope);
     }

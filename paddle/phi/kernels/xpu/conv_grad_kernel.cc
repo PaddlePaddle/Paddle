@@ -44,7 +44,7 @@ void ConvGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       data_format == "NDHWC",
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           ("XPU doesn't support data_format is NDHWC in conv grad op.")));
 
   phi::DDim in_data_dims =

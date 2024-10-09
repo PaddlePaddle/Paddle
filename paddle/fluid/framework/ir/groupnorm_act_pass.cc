@@ -78,7 +78,7 @@ namespace paddle::framework::ir {
 
 int GroupNormActFusePass::ApplyGNSiluPattern(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("groupnorm_silu_fuse", graph);
 
   int found_subgraph_count = 0;

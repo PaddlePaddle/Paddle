@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def pdf(x, n, p):
@@ -96,7 +95,6 @@ class TestBinomialApi(unittest.TestCase):
         # and ``test_multinomial_op``
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-    @test_with_pir_api
     def test_static(self):
         n = 200
         p = 0.6

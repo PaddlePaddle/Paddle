@@ -100,17 +100,17 @@ void SparseCooTensor::Resize(const DDim& dense_dims,
                              const int64_t non_zero_num) {
   PADDLE_ENFORCE_GE(non_zero_num,
                     this->nnz(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "the non_zero_num must be greater than or equal to the "
                         "origin non_zero_num."));
   PADDLE_ENFORCE_GE(sparse_dim,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "the sparse_dim must be greater than or equal 1."));
   PADDLE_ENFORCE_LE(
       sparse_dim,
       dense_dims.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the sparse_dim must be less than or equal dense_dims."));
 
   DDim indices_dims = common::make_ddim({sparse_dim, non_zero_num});
@@ -162,7 +162,7 @@ int32_t SparseCooTensor::dense_dim() const {
 void SparseCooTensor::set_meta(SparseTensorMeta&& meta) {
   PADDLE_ENFORCE_EQ(meta_.valid(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Only when the original attribute of Tensor is "
                         "incomplete, can it be reset."));
   meta_ = std::move(meta);
@@ -172,7 +172,7 @@ void SparseCooTensor::set_meta(const SparseTensorMeta& meta) {
   PADDLE_ENFORCE_EQ(
       meta.valid(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;
   meta_.dtype = meta.dtype;

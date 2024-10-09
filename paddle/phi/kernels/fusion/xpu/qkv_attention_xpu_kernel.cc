@@ -204,7 +204,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
                                        qk_max_data);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "qkv_attention_xpu");
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "flas attention with int8 Not support q_dtype is %s.",
             DataTypeToString(q.dtype())));
       }
@@ -314,7 +314,7 @@ void QKVAttentionXPUKernel(const Context& ctx,
     QKV_ATTENTION_XPU_KERNEL_IMPL(int8_t, int8_t, int8_t);
 
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s"
         "and qkv_dtype is %s.",
         DataTypeToString(q.dtype()),

@@ -18,9 +18,9 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+import paddle.static
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
@@ -70,6 +70,7 @@ class ElementwiseDivOp(OpTest):
         self.enable_cinn = True
 
     def init_args(self):
+        self.check_pir = True
         self.check_dygraph = True
         self.place = None
 
@@ -99,9 +100,15 @@ class ElementwiseDivOp(OpTest):
 
     def test_check_output(self):
         if self.place is None:
-            self.check_output(check_pir=True)
+            self.check_output(
+                check_pir=self.check_pir, check_dygraph=self.check_dygraph
+            )
         else:
-            self.check_output_with_place(self.place, check_pir=True)
+            self.check_output_with_place(
+                self.place,
+                check_pir=self.check_pir,
+                check_dygraph=self.check_dygraph,
+            )
 
     def test_check_gradient(self):
         check_list = []
@@ -129,11 +136,13 @@ class ElementwiseDivOp(OpTest):
                 'check_prim_pir': self.check_prim_pir,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs, check_pir=True)
+                self.check_grad(
+                    *check_args, **check_kwargs, check_pir=self.check_pir
+                )
             else:
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(
-                    *check_args, **check_kwargs, check_pir=True
+                    *check_args, **check_kwargs, check_pir=self.check_pir
                 )
 
 
@@ -407,6 +416,15 @@ class TestElementwiseDivOpXsizeLessThanYsize(ElementwiseDivOp):
 
 
 class TestElementwiseDivOpInt(ElementwiseDivOp):
+    def init_args(self):
+        self.check_pir = False
+        self.check_dygraph = False
+        self.place = None
+
+    def if_check_prim(self):
+        self.check_prim = False
+        self.check_prim_pir = False
+
     def init_dtype(self):
         self.dtype = np.int32
         self.val_dtype = np.int32
@@ -415,7 +433,7 @@ class TestElementwiseDivOpInt(ElementwiseDivOp):
         return np.random.randint(1, 5, size=shape)
 
     def compute_output(self, x, y):
-        return x // y
+        return x / y
 
 
 def create_test_fp16_class(parent, max_relative_error=2e-3):
@@ -463,7 +481,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                         **check_kwargs,
                         check_pir=True,
                         check_prim=True,
-                        check_prim_pir=True
+                        check_prim_pir=True,
                     )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
@@ -489,7 +507,7 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
-    @test_with_pir_api
+
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -509,14 +527,15 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
         paddle.enable_static()
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program):
-            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
+        with paddle.pir_utils.OldIrGuard():
+            main_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program):
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+                y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = paddle.divide(x, y, name='div_res')
+                y_1 = paddle.divide(x, y, name='div_res')
 
-            self.assertEqual(('div_res' in y_1.name), True)
+                self.assertEqual(('div_res' in y_1.name), True)
 
         paddle.disable_static()
 
@@ -630,6 +649,52 @@ class TestElementwiseDivop(unittest.TestCase):
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()
+
+
+# The new ir and dynamic graphs are not consistent with the int division of the old ir.
+class TestElementwiseDivopInt(unittest.TestCase):
+    def test_dygraph_div(self):
+        paddle.disable_static()
+
+        np_a = np.random.randint(1, 5, size=(2, 3, 4)).astype(np.int32)
+        np_b = np.random.randint(1, 5, size=(2, 3, 4)).astype(np.int32)
+        expect_res = np_a / np_b
+        expect_a_grad = (1 / np_b).astype(np.int32)
+        expect_b_grad = (-np_a / np_b**2).astype(np.int32)
+
+        paddle_a = paddle.to_tensor(np_a, stop_gradient=False)
+        paddle_b = paddle.to_tensor(np_b, stop_gradient=False)
+        actual_res = paddle_a / paddle_b
+        actual_res.backward()
+        actual_a_grad = paddle_a.grad
+        actual_b_grad = paddle_b.grad
+        np.testing.assert_allclose(actual_res, expect_res)
+        np.testing.assert_allclose(expect_a_grad, actual_a_grad)
+        np.testing.assert_allclose(expect_b_grad, actual_b_grad)
+
+    def test_pir_div(self):
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            exe = paddle.static.Executor()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                np_a = np.random.randint(1, 5, size=(2, 3, 4)).astype(np.int32)
+                np_b = np.random.randint(1, 5, size=(2, 3, 4)).astype(np.int32)
+                expect_res = np_a / np_b
+                expect_a_grad = (1 / np_b).astype(np.int32)
+                expect_b_grad = (-np_a / np_b**2).astype(np.int32)
+
+                paddle_a = paddle.to_tensor(np_a, stop_gradient=False)
+                paddle_b = paddle.to_tensor(np_b, stop_gradient=False)
+                out = paddle_a / paddle_b
+                actual_grad = paddle.static.gradients(out, [paddle_a, paddle_b])
+                actual_res = exe.run(
+                    main_program, fetch_list=[out, actual_grad]
+                )
+                np.testing.assert_allclose(actual_res[0], expect_res)
+                np.testing.assert_allclose(actual_res[1], expect_a_grad)
+                np.testing.assert_allclose(actual_res[2], expect_b_grad)
 
 
 if __name__ == '__main__':

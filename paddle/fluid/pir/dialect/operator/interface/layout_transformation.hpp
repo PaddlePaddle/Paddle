@@ -99,7 +99,13 @@ std::vector<pir::Value> RelevantOutputsImpl(pir::Operation* op) {
 
 template <typename ConcreteOp>
 bool CanBeModifiedImpl(pir::Operation* op) {
-  return true;
+  auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
+  if (!data_format_attr) {
+    return true;
+  }
+  auto cur_layout = common::StringToDataLayout(data_format_attr.AsString());
+  auto prefer_layout = PreferLayoutImpl<ConcreteOp>(op);
+  return cur_layout != prefer_layout;
 }
 
 class FusedConv2dAddActOp;

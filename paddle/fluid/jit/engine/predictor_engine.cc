@@ -17,7 +17,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/jit/function_utils.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace jit {

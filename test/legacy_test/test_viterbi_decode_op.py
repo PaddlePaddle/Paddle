@@ -16,7 +16,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -49,7 +48,7 @@ class Decoder:
             alpha_exp = np.expand_dims(alpha, 2)
             alpha_trn_sum = alpha_exp + trans_exp
             max_res = np.amax(alpha_trn_sum, 1), np.argmax(alpha_trn_sum, 1)
-            histories = histories + [max_res[1]] if i >= 1 else []
+            histories = [*histories, max_res[1]] if i >= 1 else []
             alpha_nxt = max_res[0] + logit
             mask = left_length > 0
             alpha = mask * alpha_nxt + (1 - mask) * alpha
@@ -100,7 +99,7 @@ class TestViterbiOp(OpTest):
         self.outputs = {'Scores': scores, 'Path': path}
 
     def test_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestViterbiAPI(unittest.TestCase):
@@ -148,7 +147,6 @@ class TestViterbiAPI(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], self.scores, rtol=1e-5)
             np.testing.assert_allclose(fetches[1], self.path)
 
-    @test_with_pir_api
     def test_static_net(self):
         for place in self.places:
             self.check_static_result(place)

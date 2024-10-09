@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import json
 import os
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -21,12 +23,18 @@ import paddle
 from paddle import static
 from paddle.base import core
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle.base.compiler import CompiledProgram
+    from paddle.base.framework import Program
+
 
 class CostModel:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def build_program(self):
+    def build_program(self) -> tuple[Program, Program]:
         paddle.enable_static()
 
         main_program = static.Program()
@@ -47,11 +55,11 @@ class CostModel:
 
     def profile_measure(
         self,
-        startup_program,
-        main_program,
-        device='gpu',
-        fetch_cost_list=['time'],
-    ):
+        startup_program: Program | CompiledProgram,
+        main_program: Program | CompiledProgram,
+        device: str = 'gpu',
+        fetch_cost_list: Sequence[str] = ['time'],
+    ) -> None:
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
         exe = paddle.static.Executor(place)
@@ -64,7 +72,7 @@ class CostModel:
         cost_model = core.CostModel()
         cost_data = cost_model.ProfileMeasure(device)
 
-    def static_cost_data(self):
+    def static_cost_data(self) -> dict[str, str | float]:
         static_cost_data_path = os.path.join(
             os.path.dirname(__file__), "static_op_benchmark.json"
         )
@@ -74,7 +82,9 @@ class CostModel:
         # return all static cost data
         return load_dict
 
-    def get_static_op_time(self, op_name, forward=True, dtype="float32"):
+    def get_static_op_time(
+        self, op_name: str, forward: bool = True, dtype: str = "float32"
+    ) -> dict[str, str | float]:
         # if forward is True, return op forward time, otherwise return op backward time.
         if op_name is None:
             raise ValueError(

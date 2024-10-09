@@ -60,7 +60,7 @@ void recompute_bias_and_weights(const Scope* scope,
   // Re-compute bias of conv2d from AffineChannel
   PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(),
                     ac_bias_tensor.dims(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "phi::DenseTensor elementwise y(%d) and activation "
                         "bias(%d) must have same "
                         "dimension.",
@@ -218,12 +218,12 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 void ConvAffineChannelFusePass::FuseConvAffineChannel(
     ir::Graph* graph, const std::string& conv_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =

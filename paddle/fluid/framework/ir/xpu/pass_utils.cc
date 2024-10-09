@@ -57,7 +57,7 @@ int ConvertActivationType(std::string act_type) {
   } else if (act_type == "relu6") {
     return static_cast<int>(xpu::Activation_t::RELU6);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Not support convert activation_type(%s).", act_type));
   }
   return -1;
@@ -91,7 +91,7 @@ std::vector<Node*> FindOpNodeByInputName(Graph* graph,
 
 template <typename T>
 std::string IntTypeToString() {
-  PADDLE_THROW(phi::errors::InvalidArgument("Not support type."));
+  PADDLE_THROW(common::errors::InvalidArgument("Not support type."));
   return "";
 }
 
@@ -257,23 +257,23 @@ void PrepareWeight(Graph* graph,
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
           scope->FindVar(dst_weight_max_name),
-          phi::errors::Fatal("dst_weight_max(%s) variable should not be "
-                             "nullptr if dst_weight(%s) "
-                             "variable is exist. (weight_name is %s)",
-                             dst_weight_max_name,
-                             dst_weight_name,
-                             weight_name));
+          common::errors::Fatal("dst_weight_max(%s) variable should not be "
+                                "nullptr if dst_weight(%s) "
+                                "variable is exist. (weight_name is %s)",
+                                dst_weight_max_name,
+                                dst_weight_name,
+                                weight_name));
     }
   } else {
     *dst_weight_max = FindNodeWithName(graph, dst_weight_max_name);
     PADDLE_ENFORCE_NOT_NULL(
         *dst_weight_max,
-        phi::errors::Fatal("dst_weight_max(%s) variable should not be "
-                           "nullptr if dst_weight(%s) "
-                           "variable is exist. (weight_name is %s)",
-                           dst_weight_max_name,
-                           dst_weight_name,
-                           weight_name));
+        common::errors::Fatal("dst_weight_max(%s) variable should not be "
+                              "nullptr if dst_weight(%s) "
+                              "variable is exist. (weight_name is %s)",
+                              dst_weight_max_name,
+                              dst_weight_name,
+                              weight_name));
   }
 
   if (dst_scale_max_tensor.initialized()) {
@@ -303,12 +303,12 @@ void PrepareWeight(Graph* graph,
         // Share the same variable
         PADDLE_ENFORCE_NOT_NULL(
             scope->FindVar(dst_scale_max_name),
-            phi::errors::Fatal("dst_scale_max(%s) variable should not be "
-                               "nullptr if dst_weight(%s) "
-                               "variable is exist. (weight_name is %s)",
-                               dst_scale_max_name,
-                               dst_weight_name,
-                               weight_name));
+            common::errors::Fatal("dst_scale_max(%s) variable should not be "
+                                  "nullptr if dst_weight(%s) "
+                                  "variable is exist. (weight_name is %s)",
+                                  dst_scale_max_name,
+                                  dst_weight_name,
+                                  weight_name));
       }
     }
   }

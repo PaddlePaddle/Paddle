@@ -30,7 +30,7 @@ void Analyzer::Run(Argument *argument) { RunAnalysis(argument); }
 void Analyzer::RunAnalysis(Argument *argument) {
   PADDLE_ENFORCE_EQ(argument->analysis_passes_valid(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "analysis_passes is not valid in the argument."));
   const bool disable_logs = argument->disable_logs();
   for (auto &pass : argument->analysis_passes()) {
@@ -42,7 +42,7 @@ void Analyzer::RunAnalysis(Argument *argument) {
     auto *ptr = PassRegistry::Global().Retrieve(pass);
     PADDLE_ENFORCE_NOT_NULL(
         ptr,
-        phi::errors::PreconditionNotMet("no analysis pass called %s", pass));
+        common::errors::PreconditionNotMet("no analysis pass called %s", pass));
     ptr->Run(argument);
   }
 }

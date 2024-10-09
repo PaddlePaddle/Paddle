@@ -85,7 +85,7 @@ class FFTConfigCache {
   FFTConfig& lookup(FFTConfigKey params) {
     PADDLE_ENFORCE_GT(_max_size,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The max size of FFTConfigCache must be great than 0,"
                           "But received is [%d]",
                           _max_size));
@@ -150,12 +150,12 @@ class FFTConfigCache {
     PADDLE_ENFORCE_GE(
         new_size,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "cuFFT plan cache size must be non-negative, But received is [%d]",
             new_size));
     PADDLE_ENFORCE_LE(new_size,
                       CUFFT_MAX_PLAN_NUM,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "cuFFT plan cache size can not be larger than [%d], "
                           "But received is [%d]",
                           CUFFT_MAX_PLAN_NUM,

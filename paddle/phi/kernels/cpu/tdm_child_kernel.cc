@@ -50,7 +50,7 @@ void TDMChildInner(const Context &dev_ctx,
     PADDLE_ENFORCE_LT(
         input_data[input_ids],
         node_nums,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input id of OP(paddle.incubate.layers.tdm_child) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -59,7 +59,7 @@ void TDMChildInner(const Context &dev_ctx,
     PADDLE_ENFORCE_LE(
         0,
         input_data[input_ids],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input id of OP(paddle.incubate.layers.tdm_child) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -112,7 +112,7 @@ void TDMChildKernel(const Context &dev_ctx,
       input_type == DataType::INT32 || input_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(input_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(X) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         DataTypeToString(input_type),
@@ -125,7 +125,7 @@ void TDMChildKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       info_type_match,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(TreeInfo) holds the wrong type, it holds %s, but "
           "desires to be %s or %s",
           DataTypeToString(info_type),
@@ -137,7 +137,7 @@ void TDMChildKernel(const Context &dev_ctx,
       output_type == DataType::INT32 || output_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(out_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Output(Child) & Output(LeafMask) holds the wrong "
                         "type, it holds %s, but "
                         "desires to be %s or %s",

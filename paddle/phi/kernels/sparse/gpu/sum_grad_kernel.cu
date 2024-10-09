@@ -168,7 +168,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
   }
   PADDLE_ENFORCE_EQ(axis[0],
                     -1,
-                    phi::errors::Unimplemented(
+                    common::errors::Unimplemented(
                         "`axis` of SumCsrKernel only support None or -1 now."
                         "More number will be supported in the future."));
   if (x.dims().size() == 2) {

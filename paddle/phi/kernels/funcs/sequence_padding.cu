@@ -78,7 +78,7 @@ class PaddingLoDTensorFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_GE(
         pad_seq_len,
         max_seq_len,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The pad_seq_len must be equal to or greater than the "
             "original max sequence length. Expected %ld >= %ld, but got %ld < "
             "%ld. Please check the input value.",
@@ -98,7 +98,7 @@ class PaddingLoDTensorFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         pad_value.numel() == 1 || pad_value.numel() == step_width,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The numel of 'pad_value' can only be 1 or be equal to "
             "the 'step_width', but got %ld != 1 and %ld. Please check the "
             "input value.",

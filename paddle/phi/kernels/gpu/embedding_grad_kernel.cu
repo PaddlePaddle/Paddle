@@ -148,8 +148,8 @@ void EmbeddingGradKernel(const Context& ctx,
   } else if (input.dtype() == phi::DataType::INT16) {
     functor.template apply<int16_t>();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int16, int32 and int64"));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "embedding input only support int16, int32 and int64"));
   }
 }
 
@@ -212,7 +212,7 @@ struct EmbeddingSparseGradCUDAFunctor {
         common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
     PADDLE_ENFORCE_EQ(d_table_value->dims(),
                       d_output_dims_2d,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: The shape of lookup_table@Grad and "
                           "output@Grad should be same. "
                           "But received lookup_table@Grad's shape = [%s], "
@@ -252,8 +252,8 @@ void EmbeddingSparseGradKernel(const Context& ctx,
     functor.template apply<int64_t>();
   } else if (input.dtype() == phi::DataType::INT16) {
     functor.template apply<int16_t>();
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int16, int32 and int64"));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "embedding input only support int16, int32 and int64"));
   }
 }
 

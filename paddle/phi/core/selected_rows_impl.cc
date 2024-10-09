@@ -123,13 +123,13 @@ int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
     PADDLE_ENFORCE_EQ(
         auto_grown,
         true,
-        phi::errors::NotFound("Input key(%lld) is not found.", key));
+        common::errors::NotFound("Input key(%lld) is not found.", key));
     rwlock_->WRLock();
     auto map_size = id_to_index_.size();
     auto vector_size = rows_.size();
     if (map_size != vector_size) {
       rwlock_->UNLock();
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Row map size(%zu) should be equal to rows size(%zu).",
           map_size,
           vector_size));
@@ -139,7 +139,7 @@ int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
       int row_num = static_cast<int>(rows_.size());
       if (row_num == value_->dims()[0]) {
         rwlock_->UNLock();
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Selected rows is full, then length exceed the length of first "
             "dimension (%d).",
             row_num));
@@ -178,7 +178,7 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
   PADDLE_ENFORCE_EQ(
       value->IsInitialized(),
       true,
-      phi::errors::InvalidArgument("The value tensor is not initialized."));
+      common::errors::InvalidArgument("The value tensor is not initialized."));
   if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
@@ -186,7 +186,7 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
     PADDLE_ENFORCE_EQ(
         value_width,
         value->numel() / value->dims()[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Output tensor should have the same shape with table "
             "except the first dimension, excepted value width not counting "
             "the first dimension is %d, actual value width is %d.",

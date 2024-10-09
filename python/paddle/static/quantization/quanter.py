@@ -327,7 +327,7 @@ def quant_aware(
         sub_graphs = list(main_graph.all_sub_graphs())
         transform_pass_ops = []
         quant_dequant_ops = []
-        if 'quant_config' in config and config['quant_config']:
+        if config.get('quant_config'):
             transform_pass_ops = config[
                 'quant_config'
             ].weight_quant_operation_types

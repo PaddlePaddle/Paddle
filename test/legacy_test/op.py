@@ -273,15 +273,15 @@ class OperatorFactory:
         if "type" in kwargs:
             if len(args) != 0:
                 raise ValueError(
-                    "Except the argument \"type\","
-                    "all of the other arguments should be keyword arguments."
+                    'Except the argument "type",'
+                    'all of the other arguments should be keyword arguments.'
                 )
             t = kwargs.pop("type")
         else:
             if len(args) != 1:
                 raise ValueError(
-                    "Except the argument \"type\","
-                    "all of the other arguments should be keyword arguments."
+                    'Except the argument "type",'
+                    'all of the other arguments should be keyword arguments.'
                 )
             t = args[0]
 

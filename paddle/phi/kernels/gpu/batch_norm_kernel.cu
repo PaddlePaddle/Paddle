@@ -544,7 +544,7 @@ void BatchNormKernel(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       x_dims.size() >= 2 && x_dims.size() <= 5,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input's dimensions should be between 2 and 5"
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
@@ -707,7 +707,7 @@ void BatchNormKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         est_mean->dims().size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of mean's dimensions must equal to 1."
             "But received: the size of mean's dimensions mean is [%d],"
             "the dimensions of mean is [%s].",
@@ -716,7 +716,7 @@ void BatchNormKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         est_var->dims().size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of variance's dimensions must equal to 1."
             "But received: the size of variance's dimensions is [%d],"
             "the dimensions of variance is [%s].",
@@ -725,7 +725,7 @@ void BatchNormKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         est_mean->dims()[0],
         C,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The first dimension of mean must equal to the number of "
             "Channels, which is [%d]. But received: the first dimension"
             "of mean is [%d], the dimensions of mean is [%s].",
@@ -735,7 +735,7 @@ void BatchNormKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         est_var->dims()[0],
         C,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The first dimension of variance must equal to the number"
             "of Channels, which is [%d]. But received: the first dimension of"
             "variance is [%d], the dimensions of variance is [%s].",
@@ -825,7 +825,7 @@ void BatchNormKernel(const Context &ctx,
           auto *inv_var_ptr = inv_var.data<BatchNormParamType<T>>();
           const int threads = 512 > C ? C : 512;
           const int blocks = (C + 511) / 512;
-          InverseVariance<T><<<blocks, threads>>>(
+          InverseVariance<T><<<blocks, threads, 0, ctx.stream()>>>(
               est_var->template data<BatchNormParamType<T>>(),
               epsilon,
               C,
@@ -1156,7 +1156,7 @@ void BatchNormKernel(const Context &ctx,
         }
         PADDLE_ENFORCE_NOT_NULL(
             reserve_space,
-            phi::errors::NotFound(
+            common::errors::NotFound(
                 "The argument ReserveSpace of batch_norm op is not found."));
         // --------------- cudnn batchnorm workspace ---------------
         PADDLE_ENFORCE_GPU_SUCCESS(

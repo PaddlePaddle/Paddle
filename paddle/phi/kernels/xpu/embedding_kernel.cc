@@ -32,9 +32,9 @@ void EmbeddingKernel(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       (std::is_same<Context, XPUContext>::value),
       true,
-      phi::errors::PreconditionNotMet("Unsupported place! only support "
-                                      "xpu place , please check your "
-                                      "place."));
+      common::errors::PreconditionNotMet("Unsupported place! only support "
+                                         "xpu place , please check your "
+                                         "place."));
 
   int64_t ids_numel = ids_t->numel();
 
@@ -47,7 +47,7 @@ void EmbeddingKernel(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       ids_numel <= std::numeric_limits<int32_t>::max(),
       true,
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "Number of ids greater than int32_t::max , please check "
           "number of ids in LookupTableV2XPUKernel."));
 

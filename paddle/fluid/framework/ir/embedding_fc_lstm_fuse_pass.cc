@@ -70,12 +70,12 @@ static int BuildFusion(Graph* graph,
 
     // Multiply embeddings with Weights
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
     const std::string& embeddings = patterns::UniqueKey("Embeddings");
     auto* embeddings_var = scope->Var(embeddings);
     PADDLE_ENFORCE_NOT_NULL(
         embeddings_var,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Embeddings variable's pointer cannot be nullptr."));
     auto* embeddings_tensor = embeddings_var->GetMutable<phi::DenseTensor>();
     // Get WeightX size: [single_embedding, fc_size]
@@ -84,7 +84,7 @@ static int BuildFusion(Graph* graph,
     auto* embedding_var = scope->FindVar(W->Name());
     PADDLE_ENFORCE_NOT_NULL(
         embedding_var,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Embedding variable's pointer cannot be nullptr."));
     const auto& embedding_tensor = embedding_var->Get<phi::DenseTensor>();
 
@@ -101,9 +101,9 @@ static int BuildFusion(Graph* graph,
 
     // Adding biases to GEMM result to be
     auto* lstm_bias_var = scope->FindVar(bias->Name());
-    PADDLE_ENFORCE_NOT_NULL(
-        lstm_bias_var,
-        phi::errors::InvalidArgument("Lstm bias var ptr cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(lstm_bias_var,
+                            common::errors::InvalidArgument(
+                                "Lstm bias var ptr cannot be nullptr."));
     const auto& lstm_bias_tensor = lstm_bias_var->Get<phi::DenseTensor>();
 
     auto alpha = 1.0f;

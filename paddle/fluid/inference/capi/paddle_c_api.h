@@ -247,12 +247,6 @@ PADDLE_CAPI_EXPORT extern void PD_SetCpuMathLibraryNumThreads(
 PADDLE_CAPI_EXPORT extern int PD_CpuMathLibraryNumThreads(
     const PD_AnalysisConfig* config);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableMkldnnQuantizer(
-    PD_AnalysisConfig* config);
-
-PADDLE_CAPI_EXPORT extern bool PD_MkldnnQuantizerEnabled(
-    const PD_AnalysisConfig* config);
-
 PADDLE_CAPI_EXPORT extern void PD_EnableMkldnnBfloat16(
     PD_AnalysisConfig* config);
 

@@ -278,7 +278,7 @@ class FusedAttentionPassCache {
     if (var_name_to_ir_node_cache_.count(name)) {
       return var_name_to_ir_node_cache_.find(name)->second;
     }
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The key (%d) of FusedAttentionCache does not exist.", name));
   }
 
@@ -286,7 +286,7 @@ class FusedAttentionPassCache {
     if (!var_name_to_ir_node_cache_.count(name)) {
       var_name_to_ir_node_cache_.insert({name, node});
     } else {
-      PADDLE_THROW(phi::errors::AlreadyExists(
+      PADDLE_THROW(common::errors::AlreadyExists(
           "The key (%d) of FusedAttentionCache already exist.", name));
     }
   }

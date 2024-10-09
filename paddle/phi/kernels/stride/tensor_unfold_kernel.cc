@@ -28,9 +28,9 @@ void TensorUnfoldKernel(const Context& dev_ctx,
                         int64_t step,
                         DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   if (axis < 0) {
     axis += input.dims().size();
@@ -44,13 +44,13 @@ void TensorUnfoldKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(
       size,
       max_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "paddle.unfold size(%d) must be less than shape[axis](%d).",
           size,
           max_size));
   PADDLE_ENFORCE_GT(step,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "paddle.unfold step must be greater than 0"));
 
   std::vector<int64_t> shape(input_dims.size() + 1);

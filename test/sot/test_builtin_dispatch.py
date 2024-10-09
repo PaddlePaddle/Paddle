@@ -311,8 +311,7 @@ class TestHasattr(TestCaseBase):
         self.assert_results(layer_hasattr, x)
 
 
-class WeakrefableObject:
-    ...
+class WeakrefableObject: ...
 
 
 def weakref_breakgraph(obj):

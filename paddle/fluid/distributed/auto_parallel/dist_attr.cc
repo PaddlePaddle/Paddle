@@ -430,7 +430,7 @@ std::string OperatorDistAttr::serialize_to_string() {
   proto.SerializeToString(&data);
   PADDLE_ENFORCE_EQ(to_proto().SerializeToString(&data),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Failed to serialize op dist attr to string."));
   return data;
 }
@@ -439,7 +439,7 @@ void OperatorDistAttr::parse_from_string(const std::string& data) {
   OperatorDistAttrProto proto;
   PADDLE_ENFORCE_EQ(proto.ParseFromString(data),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Failed to parse op dist attr from string."));
   from_proto(proto);
 }

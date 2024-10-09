@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -23,7 +24,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import _as_list
-from paddle.pir_utils import test_with_pir_api
 
 
 @skip_check_grad_ci(
@@ -42,7 +42,8 @@ class TestCholeskyOp(OpTest):
         self._input_shape = (2, 32, 32)
         self._upper = True
         self.init_config()
-        self.trans_dims = list(range(len(self._input_shape) - 2)) + [
+        self.trans_dims = [
+            *range(len(self._input_shape) - 2),
             len(self._input_shape) - 1,
             len(self._input_shape) - 2,
         ]
@@ -63,13 +64,19 @@ class TestCholeskyOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
             places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # use small size since Jacobian gradients is time consuming
@@ -169,11 +176,17 @@ class TestDygraph(unittest.TestCase):
 
 class TestCholeskySingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place, with_out=False):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

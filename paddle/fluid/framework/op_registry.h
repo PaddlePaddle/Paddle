@@ -95,7 +95,7 @@ struct OperatorRegistrar : public Registrar {
     PADDLE_ENFORCE_EQ(
         OpInfoMap::Instance().Has(op_type),
         false,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Operator '%s' is registered more than once.", op_type));
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");

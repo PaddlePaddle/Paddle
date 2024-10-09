@@ -23,6 +23,7 @@ from .convert_operators import (  # noqa: F401
     convert_logical_not as Not,
     convert_logical_or as Or,
     convert_shape as Shape,
+    convert_super as WrapSuper,
     convert_var_dtype as AsDtype,
     convert_while_loop as While,
     create_bool_as_type,

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import random
 import unittest
 from itertools import product
@@ -19,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -36,14 +36,19 @@ class TestCartesianProdAPIBase(unittest.TestCase):
         self.c_np = np.random.random(self.c_shape).astype(self.dtype_np)
         self.d_np = np.empty(0, self.dtype_np)
 
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 
     def init_setting(self):
         self.dtype_np = 'float32'
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -167,7 +172,6 @@ class TestCartesianProdAPIFP16(unittest.TestCase):
         self.d_np = np.empty(0, self.dtype_np)
         self.place = core.CUDAPlace(0)
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -251,7 +255,6 @@ class TestCartesianProdAPIBF16(unittest.TestCase):
         self.d_np = np.empty(0, self.dtype_np)
         self.place = core.CUDAPlace(0)
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()

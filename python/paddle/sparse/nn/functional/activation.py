@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 __all__ = []
 
 from paddle import _C_ops
-from paddle.base.framework import dygraph_only, in_dynamic_or_pir_mode
+from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 
 if TYPE_CHECKING:
@@ -152,7 +152,6 @@ def softmax(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
         return out
 
 
-@dygraph_only
 def relu6(x: Tensor, name: str | None = None) -> Tensor:
     """
     sparse relu6 activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -178,10 +177,12 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.nn.functional.relu6(sparse_x)
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_relu6(x)
 
 
-@dygraph_only
 def leaky_relu(
     x: Tensor, negative_slope: float = 0.01, name: str | None = None
 ) -> Tensor:
@@ -216,4 +217,7 @@ def leaky_relu(
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.nn.functional.leaky_relu(sparse_x, 0.5)
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_leaky_relu(x, negative_slope)

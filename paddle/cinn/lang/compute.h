@@ -25,7 +25,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/poly/schedule.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace lang {
 

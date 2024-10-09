@@ -123,7 +123,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     if (transpose_qkv_wb) {
       PADDLE_ENFORCE_EQ(y_dim.size(),
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dimensions of qkv_weight must be 2 if enable"
                             "transpose_qkv_wb: (dim_embed, 3 * dim_embed),"
                             "but received dimensions of"
@@ -131,13 +131,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                             y_dim.size()));
       PADDLE_ENFORCE_GT(num_heads,
                         0,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The num_heads must be provided and greater than 0 "
                             "if enable transpose_qkv_wb, but we got %d.",
                             num_heads));
       PADDLE_ENFORCE_EQ(y_dim[0] % num_heads,
                         0,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "First dim of qkv_w must be divisible by num heads "
                             "if enable transpose_qkv_wb, but receive first "
                             "dim of qkv_w is %d and num_heads is %d.",
@@ -146,7 +146,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       if (ctx->Attrs().Get<int>("ring_id") == -1) {
         PADDLE_ENFORCE_EQ(y_dim[0] * 3,
                           y_dim[1],
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The dimensions of qkv_weight must be 2"
                               "(dim_embed, 3 * dim_embed)."));
       } else {
@@ -158,21 +158,21 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     } else {
       PADDLE_ENFORCE_EQ(y_dim.size(),
                         4,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dimensions of qkv_weight must be 4 if not"
                             "enable transpose_qkv_wb: (3, num_head, dim_head, "
                             "dim_embed), but received [%d]",
                             y_dim.size()));
       PADDLE_ENFORCE_EQ(y_dim[0],
                         3,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "First dim of qkv_w must be 3 if disable "
                             "transpose_qkv_wb, but we got %d.",
                             y_dim[0]));
       if (ctx->Attrs().Get<int>("ring_id") == -1) {
         PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
                           y_dim[3],
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The dimensions of qkv_weight must be 4"
                               "(3, num_head, dim_head, dim_embed),"
                               "and must satisfy the limitations: "
@@ -185,15 +185,15 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
-        phi::errors::InvalidArgument("The dimensions of x must be 3"
-                                     "(batch_size, seq_len, dim_embed),"
-                                     "but received dimensions of"
-                                     "Input is [%d]",
-                                     x_dim.size()));
+        common::errors::InvalidArgument("The dimensions of x must be 3"
+                                        "(batch_size, seq_len, dim_embed),"
+                                        "but received dimensions of"
+                                        "Input is [%d]",
+                                        x_dim.size()));
 
     PADDLE_ENFORCE_EQ(x_dim[2],
                       hidden_size,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the dimension of x_dim[2] and y_dim[3] "
                           "(y_dim[1] if enable transpose_qkv_w) "
                           "must be equal. But received: the shape "
@@ -244,23 +244,23 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           c_dim.size(),
           5,
-          phi::errors::InvalidArgument("The CacheKV must be 5 dims, but got %d",
-                                       c_dim.size()));
+          common::errors::InvalidArgument(
+              "The CacheKV must be 5 dims, but got %d", c_dim.size()));
       PADDLE_ENFORCE_EQ(c_dim[0],
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The first dim of CacheKV must be 2, but got %d",
                             c_dim[0]));  // 2
       PADDLE_ENFORCE_EQ(c_dim[1],
                         x_dim[0],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The second dim of CacheKV must be equal with "
                             "batch size %d, but got %d",
                             x_dim[0],
                             c_dim[1]));  // batch_size
       PADDLE_ENFORCE_EQ(c_dim[2],
                         num_heads,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
                             num_heads,
@@ -271,14 +271,14 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GE(
             c_dim[3],
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The forth dim of CacheKV must be greater than 0, but got %d",
                 c_dim[3]));  // cache_seq_len
       }
 
       PADDLE_ENFORCE_EQ(c_dim[4],
                         dim_head,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The fifth dim of CacheKV must be equal with head "
                             "size %d, but got %d",
                             dim_head,
@@ -399,7 +399,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'epsilon' in Op(LayerNorm) should be between"
                                 "0.0 and 0.001, But received [%s].",
                                 epsilon));
@@ -412,7 +412,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f,
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "'attn_dropout_rate' must be between 0.0 and 1.0."));
         });
     AddAttr<bool>("is_test",
@@ -448,7 +448,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train",
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
@@ -458,7 +458,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
     AddAttr<bool>("dropout_fix_seed",
@@ -478,7 +478,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train",
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
@@ -488,7 +488,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const float &ln_epsilon) {
           PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'epsilon' of the second LayerNorm in Fused "
                                 "attention op should be between"
                                 "0.0 and 0.001, But received [%s].",
@@ -539,7 +539,7 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"),
                       false,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == false) {

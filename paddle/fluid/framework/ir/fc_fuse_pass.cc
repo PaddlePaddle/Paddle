@@ -89,7 +89,7 @@ FCFusePass::FCFusePass() {
 
 void FCFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("fc_fuse", graph);
 
   int found_fc_count = 0;

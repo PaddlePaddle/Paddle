@@ -11,19 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
-from typing import Dict, Union
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
-from paddle.nn import Layer
 
-from .factory import QuanterFactory
 from .wrapper import ObserveWrapper
 
+if TYPE_CHECKING:
+    from paddle.nn import Layer
+
+    from .factory import QuanterFactory
+
+
 # TODO: Implement quanted layer and fill the mapping dict
-DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {
+DEFAULT_QAT_LAYER_MAPPINGS: dict[Layer, Layer] = {
     nn.quant.Stub: nn.quant.stub.QuanterStub,
     nn.Linear: nn.quant.qat.QuantedLinear,
     nn.Conv2D: nn.quant.qat.QuantedConv2D,
@@ -41,16 +46,18 @@ class SingleLayerConfig:
         weight(QuanterFactory): The factory to create instance of quanter used to quantize weights.
     """
 
-    def __init__(self, activation: QuanterFactory, weight: QuanterFactory):
+    def __init__(
+        self, activation: QuanterFactory, weight: QuanterFactory
+    ) -> None:
         self._activation = activation
         self._weight = weight
 
     @property
-    def activation(self):
+    def activation(self) -> QuanterFactory:
         return self._activation
 
     @property
-    def weight(self):
+    def weight(self) -> QuanterFactory:
         return self._weight
 
     def __str__(self):
@@ -64,8 +71,8 @@ class QuantConfig:
     the strategies of quantization.
 
     Args:
-        activation(QuanterFactory): The global quantizer used to quantize the activations.
-        weight(QuanterFactory): The global quantizer used to quantize the weights.
+        activation(QuanterFactory | None): The global quantizer used to quantize the activations.
+        weight(QuanterFactory | None): The global quantizer used to quantize the weights.
 
     Examples:
         .. code-block:: python
@@ -82,7 +89,9 @@ class QuantConfig:
 
     """
 
-    def __init__(self, activation: QuanterFactory, weight: QuanterFactory):
+    def __init__(
+        self, activation: QuanterFactory | None, weight: QuanterFactory | None
+    ) -> None:
         if activation is None and weight is None:
             self._global_config = None
         else:
@@ -98,18 +107,18 @@ class QuantConfig:
 
     def add_layer_config(
         self,
-        layer: Union[Layer, list],
-        activation: QuanterFactory = None,
-        weight: QuanterFactory = None,
-    ):
+        layer: Layer | list[Layer],
+        activation: QuanterFactory | None = None,
+        weight: QuanterFactory | None = None,
+    ) -> None:
         r"""
         Set the quantization config by layer. It has the highest priority among
         all the setting methods.
 
         Args:
-            layer(Union[Layer, list]): One or a list of layers.
-            activation(QuanterFactory): Quanter used for activations.
-            weight(QuanterFactory): Quanter used for weights.
+            layer(Layer|list[Layer]]): One or a list of layers.
+            activation(QuanterFactory | None): Quanter used for activations. Default is None.
+            weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
             .. code-block:: python
@@ -147,18 +156,18 @@ class QuantConfig:
 
     def add_name_config(
         self,
-        layer_name: Union[str, list],
-        activation: QuanterFactory = None,
-        weight: QuanterFactory = None,
-    ):
+        layer_name: str | list[str],
+        activation: QuanterFactory | None = None,
+        weight: QuanterFactory | None = None,
+    ) -> None:
         r"""
         Set the quantization config by full name of layer. Its priority is
         lower than `add_layer_config`.
 
         Args:
-            layer_name(Union[str, list]): One or a list of layers' full name.
-            activation(QuanterFactory): Quanter used for activations.
-            weight(QuanterFactory): Quanter used for weights.
+            layer_name(str|list[str]): One or a list of layers' full name.
+            activation(QuanterFactory | None): Quanter used for activations. Default is None.
+            weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
             .. code-block:: python
@@ -195,20 +204,20 @@ class QuantConfig:
 
     def add_type_config(
         self,
-        layer_type: Union[type, list],
-        activation: QuanterFactory = None,
-        weight: QuanterFactory = None,
-    ):
+        layer_type: type[Layer] | list[type[Layer]],
+        activation: QuanterFactory | None = None,
+        weight: QuanterFactory | None = None,
+    ) -> None:
         r"""
         Set the quantization config by the type of layer. The `layer_type` should be
         subclass of `paddle.nn.Layer`. Its priority is lower than `add_layer_config`
         and `add_name_config`.
 
         Args:
-            layer_type(Union[type, list]): One or a list of layers' type. It should be subclass of
+            layer_type(type[Layer] | list[type[Layer]]): One or a list of layers' type. It should be subclass of
             `paddle.nn.Layer`. Python build-in function `type()` can be used to get the type of a layer.
-            activation(QuanterFactory): Quanter used for activations.
-            weight(QuanterFactory): Quanter used for weights.
+            activation(QuanterFactory | None): Quanter used for activations. Default is None.
+            weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
             .. code-block:: python
@@ -245,7 +254,9 @@ class QuantConfig:
                     _element, activation=activation, weight=weight
                 )
 
-    def add_qat_layer_mapping(self, source: type, target: type):
+    def add_qat_layer_mapping(
+        self, source: type[Layer], target: type[Layer]
+    ) -> None:
         r"""
         Add rules converting layers to simulated quantization layers
         before quantization-aware training. It will convert layers
@@ -254,18 +265,19 @@ class QuantConfig:
         mapping is provided by property `default_qat_layer_mapping`.
 
         Args:
-            source(type): The type of layers that will be converted.
-            target(type): The type of layers that will be converted to.
+            source(type[Layer]): The type of layers that will be converted.
+            target(type[Layer]): The type of layers that will be converted to.
 
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> from paddle.nn import Conv2D
                 >>> from paddle.quantization import QuantConfig
                 >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
-                >>> class CustomizedQuantedConv2D:
+                >>> class CustomizedQuantedConv2D(paddle.nn.Layer):
                 ...     def forward(self, x):
                 ...         pass
                 ...         # add some code for quantization simulation
@@ -275,19 +287,19 @@ class QuantConfig:
             source, paddle.nn.Layer
         ), "The source layer to be placed should be a subclass of paddle.nn.Layer"
         assert isinstance(target, type) and issubclass(
-            source, paddle.nn.Layer
+            target, paddle.nn.Layer
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
         self._customized_qat_layer_mapping[source] = target
 
-    def add_customized_leaf(self, layer_type: type):
+    def add_customized_leaf(self, layer_type: type[Layer]) -> None:
         r"""
         Declare the customized layer as leaf of model for quantization.
         The leaf layer is quantized as one layer. The sublayers of
         leaf layer will not be quantized.
 
         Args:
-            layer_type(type): The type of layer to be declared as leaf.
+            layer_type(type[Layer]): The type of layer to be declared as leaf.
 
         Examples:
             .. code-block:: python
@@ -302,7 +314,7 @@ class QuantConfig:
         self._customized_leaves.append(layer_type)
 
     @property
-    def customized_leaves(self):
+    def customized_leaves(self) -> list[type[Layer]]:
         r"""
         Get all the customized leaves.
         """
@@ -362,11 +374,11 @@ class QuantConfig:
         return ObserveWrapper(_observer, layer)
 
     @property
-    def qat_layer_mappings(self):
+    def qat_layer_mappings(self) -> dict[Layer, Layer]:
         return self._qat_layer_mapping
 
     @property
-    def default_qat_layer_mapping(self):
+    def default_qat_layer_mapping(self) -> dict[Layer, Layer]:
         return DEFAULT_QAT_LAYER_MAPPINGS
 
     @property

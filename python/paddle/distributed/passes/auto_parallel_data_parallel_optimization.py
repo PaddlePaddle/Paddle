@@ -207,7 +207,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def _scale_backward_initial_grad(self):
         block = default_main_program().global_block()
-        dp_degree = len(list(self._group_to_grad_name_map.keys())[0].ranks)
+        dp_degree = len(next(iter(self._group_to_grad_name_map.keys())).ranks)
 
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_loss_grad_op(op):

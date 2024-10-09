@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -21,7 +22,6 @@ from scipy.special import psi
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestDigammaOp(OpTest):
@@ -102,12 +102,17 @@ class TestDigammaAPI(unittest.TestCase):
         paddle.enable_static()
         # prepare test attrs
         self.dtypes = ["float32", "float64"]
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
         self._shape = [8, 3, 32, 32]
 
-    @test_with_pir_api
     def test_in_static_mode(self):
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(dtype)

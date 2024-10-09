@@ -48,7 +48,7 @@ class PassResultInfoForRuntime {
     PADDLE_ENFORCE_EQ(
         map.count(predictor_id) && map[predictor_id].count(pass_name),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Not find predictor_id %d and pass_name %s",
             predictor_id,
             pass_name));

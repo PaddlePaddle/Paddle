@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,4 +17,6 @@
 
 #ifdef CINN_WITH_HIP
 CINN_USE_REGISTER(cinn_hip_host_api)
+CINN_USE_REGISTER(hip_intrinsics)
+CINN_USE_REGISTER(hip_intrinsics_reduce)
 #endif

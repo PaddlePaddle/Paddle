@@ -266,14 +266,14 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
   BuildFCPattern(pattern, concat_out);
 
-#define GET_NODE(id, pattern)                                        \
-  PADDLE_ENFORCE_GT(                                                 \
-      subgraph.count(pattern.RetrieveNode(#id)),                     \
-      0,                                                             \
-      phi::errors::NotFound("Pattern has no node called %s.", #id)); \
-  auto* id = subgraph.at(pattern.RetrieveNode(#id));                 \
-  PADDLE_ENFORCE_NOT_NULL(                                           \
-      id, phi::errors::NotFound("Subgraph has no node %s.", #id));
+#define GET_NODE(id, pattern)                                           \
+  PADDLE_ENFORCE_GT(                                                    \
+      subgraph.count(pattern.RetrieveNode(#id)),                        \
+      0,                                                                \
+      common::errors::NotFound("Pattern has no node called %s.", #id)); \
+  auto* id = subgraph.at(pattern.RetrieveNode(#id));                    \
+  PADDLE_ENFORCE_NOT_NULL(                                              \
+      id, common::errors::NotFound("Subgraph has no node %s.", #id));
 
   int fuse_count{0};
 

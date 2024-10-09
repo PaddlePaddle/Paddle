@@ -70,7 +70,7 @@ inline void StridedTensorCopy(const phi::DenseTensor& input,
                     out);
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Place type is not supported when `strided_copy` kernel is called."));
   }
 }
@@ -108,7 +108,7 @@ inline void StridedTensorFill(const phi::DenseTensor& x,
         "fill", fill_key, fill_signature, false, *dev_ctx, x, value, out);
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Place type is not supported when `fill` kernel is called."));
   }
 }
@@ -148,7 +148,7 @@ inline void StridedTensorContiguous(const phi::DenseTensor& input,
                     out);
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Place type is not supported when `contiguous` kernel is called."));
   }
 }

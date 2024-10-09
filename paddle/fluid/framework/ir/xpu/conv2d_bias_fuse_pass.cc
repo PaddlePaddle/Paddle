@@ -162,7 +162,7 @@ ScaleFusePattern::ScaleFusePattern(PDPattern* pattern,
 void Conv2dBiasFusePass::TransFcBias(ir::Graph* graph,
                                      const std::string& mul_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   GraphPatternDetector gpd;
   patterns::FcBiasPattern pattern(gpd.mutable_pattern(), name_scope_, mul_type);
@@ -199,7 +199,7 @@ void Conv2dBiasFusePass::TransFcBias(ir::Graph* graph,
 
 void Conv2dBiasFusePass::FoldConv2dBias(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   GraphPatternDetector gpd;
   patterns::Conv2dBiasPattern pattern(gpd.mutable_pattern(), name_scope_);
@@ -254,7 +254,7 @@ void Conv2dBiasFusePass::FuseScaleOps(ir::Graph* graph) const {
 
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
     // get attrs of scale from ele_mul && ele_add
     const auto& ele_mul_y_t =
         scope->GetVar(ele_mul_y->Name())->GetMutable<phi::DenseTensor>();
@@ -262,18 +262,18 @@ void Conv2dBiasFusePass::FuseScaleOps(ir::Graph* graph) const {
     PADDLE_ENFORCE_EQ(
         ele_mul_y_t_len,
         1,
-        phi::errors::InvalidArgument("the size(%ld) of ele_mul y tensor "
-                                     "must equal 1",
-                                     ele_mul_y_t_len));
+        common::errors::InvalidArgument("the size(%ld) of ele_mul y tensor "
+                                        "must equal 1",
+                                        ele_mul_y_t_len));
     const auto& ele_add_y_t =
         scope->GetVar(ele_add_y->Name())->GetMutable<phi::DenseTensor>();
     auto ele_add_y_t_len = ele_add_y_t->numel();
     PADDLE_ENFORCE_EQ(
         ele_add_y_t_len,
         1,
-        phi::errors::InvalidArgument("the size(%ld) of ele_add y tensor "
-                                     "must equal 1",
-                                     ele_mul_y_t_len));
+        common::errors::InvalidArgument("the size(%ld) of ele_add y tensor "
+                                        "must equal 1",
+                                        ele_mul_y_t_len));
     auto tensor_type = ele_mul_y_t->dtype();
     float scale_val_ = 1.f;
     float bias_val_ = 0.f;
@@ -311,7 +311,7 @@ void Conv2dBiasFusePass::FuseScaleOps(ir::Graph* graph) const {
 
 void Conv2dBiasFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   // for conv2d + scale fuse
   FuseScaleOps(graph);

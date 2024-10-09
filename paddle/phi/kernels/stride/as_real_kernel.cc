@@ -25,9 +25,9 @@ void AsRealStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   auto out_stride_v = common::vectorize(x.strides());
   for (auto& v : out_stride_v) {
@@ -41,9 +41,9 @@ void AsRealStridedKernel(const Context& dev_ctx,
   } else if (x.dtype() == DataType::COMPLEX128) {
     out->set_type(DataType::FLOAT64);
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("as_real is not supported data type (%s).",
-                                   DataTypeToString(x.dtype())));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "as_real is not supported data type (%s).",
+        DataTypeToString(x.dtype())));
   }
   out->set_offset(x.offset());
   out->ResetHolder(x.Holder());

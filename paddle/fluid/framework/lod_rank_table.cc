@@ -25,7 +25,7 @@ void LoDRankTable::Reset(const LoD& lod, size_t level) {
   PADDLE_ENFORCE_LT(
       level,
       lod.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Cannot reset LoD since the level %d is less than lod size %d.",
           level,
           lod.size()));

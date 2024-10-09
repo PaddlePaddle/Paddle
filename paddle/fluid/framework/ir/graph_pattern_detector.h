@@ -183,7 +183,7 @@ struct PDNode {
         type_(type) {
     PADDLE_ENFORCE_NOT_NULL(
         teller_,
-        phi::errors::NotFound("invalid teller is set, teller is null"));
+        common::errors::NotFound("invalid teller is set, teller is null"));
   }
 
   PDNode(PDNode&& other) = default;
@@ -458,15 +458,15 @@ static std::string UniqueKey(const std::string& repr) {
 // var: variable.
 // arg: the argument declared by PATTERN_DECL_NODE in a pattern definition.
 // pat: the pattern object.
-#define GET_IR_NODE_FROM_SUBGRAPH(var, arg, pat)                          \
-  PADDLE_ENFORCE_NE(subgraph.count(pat.arg##_n()),                        \
-                    0UL,                                                  \
-                    phi::errors::NotFound("Node not found for PDNode %s", \
-                                          pat.arg##_repr()));             \
-  Node* var = subgraph.at(pat.arg##_n());                                 \
-  PADDLE_ENFORCE_NOT_NULL(                                                \
-      var,                                                                \
-      phi::errors::NotFound("node %s not exists in the sub-graph", #arg));
+#define GET_IR_NODE_FROM_SUBGRAPH(var, arg, pat)                             \
+  PADDLE_ENFORCE_NE(subgraph.count(pat.arg##_n()),                           \
+                    0UL,                                                     \
+                    common::errors::NotFound("Node not found for PDNode %s", \
+                                             pat.arg##_repr()));             \
+  Node* var = subgraph.at(pat.arg##_n());                                    \
+  PADDLE_ENFORCE_NOT_NULL(                                                   \
+      var,                                                                   \
+      common::errors::NotFound("node %s not exists in the sub-graph", #arg));
 
 // The base class of all the patterns.
 struct PatternBase {

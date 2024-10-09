@@ -20,7 +20,6 @@ from utils import check_output, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import static
-from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -400,9 +399,11 @@ def optional_inplace_vector_dynamic_add(
         [t.numpy() for t in outy] if outy is not None else None,
         out.numpy(),
         x.grad.numpy(),
-        [y.grad.numpy() for y in inputs]
-        if np_inputs is not None and inputs[0].grad is not None
-        else None,
+        (
+            [y.grad.numpy() for y in inputs]
+            if np_inputs is not None and inputs[0].grad is not None
+            else None
+        ),
     )
 
 
@@ -527,7 +528,6 @@ class TestCustomOptionalJit(unittest.TestCase):
             np.random.random((3, 2)).astype("float32"),
         ]
 
-    @test_with_pir_api
     def test_optional_static_add(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -590,7 +590,6 @@ class TestCustomOptionalJit(unittest.TestCase):
                     check_output(custom_out, pd_out, "out")
                     check_output(custom_x_grad, pd_x_grad, "x_grad")
 
-    @test_with_pir_api
     def test_optional_inplace_static_add(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -662,7 +661,6 @@ class TestCustomOptionalJit(unittest.TestCase):
                     check_output(custom_x_grad, pd_x_grad, "x_grad")
                     check_output(custom_y_grad, pd_y_grad, "y_grad")
 
-    @test_with_pir_api
     def test_optional_vector_static_add(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -725,7 +723,6 @@ class TestCustomOptionalJit(unittest.TestCase):
                     check_output(custom_out, pd_out, "out")
                     check_output(custom_x_grad, pd_x_grad, "x_grad")
 
-    @test_with_pir_api
     def test_optional_inplace_vector_static_add(self):
         for device in self.devices:
             for dtype in self.dtypes:

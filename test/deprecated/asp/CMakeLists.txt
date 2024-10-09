@@ -4,7 +4,6 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-list(REMOVE_ITEM TEST_OPS "test_fleet_with_asp_static_deprecated")
 list(REMOVE_ITEM TEST_OPS "test_fleet_with_asp_dynamic_deprecated")
 list(REMOVE_ITEM TEST_OPS "test_fleet_with_asp_sharding_deprecated")
 
@@ -12,8 +11,6 @@ if(WITH_DISTRIBUTE)
   if(WITH_GPU OR WITH_XPU)
     py_test_modules(test_fleet_with_asp_dynamic_deprecated MODULES
                     test_fleet_with_asp_dynamic_deprecated ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_with_asp_static_deprecated MODULES
-                    test_fleet_with_asp_static_deprecated ENVS ${dist_ENVS})
   endif()
 endif()
 

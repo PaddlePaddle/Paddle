@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
@@ -20,6 +24,12 @@ from paddle.distributed.communication.group import (
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
+    from paddle.distributed.communication.reduce import _ReduceOp
 
 
 def _reduce_in_dygraph(
@@ -76,13 +86,13 @@ def _reduce_in_static_mode(
 
 
 def reduce(
-    tensor,
-    dst=0,
-    op=ReduceOp.SUM,
-    group=None,
-    sync_op=True,
-    use_calc_stream=False,
-):
+    tensor: Tensor,
+    dst: int = 0,
+    op: _ReduceOp = ReduceOp.SUM,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destination device.
@@ -92,7 +102,7 @@ def reduce(
             float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
         dst (int, optional): Rank of the destination device. If none is given, use `0` as default.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
-        group (Group, optional): Communicate in which group. If none is given, use the global group as default.
+        group (Group|None, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.
@@ -117,7 +127,7 @@ def reduce(
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> task = dist.stream.reduce(data, dst=0, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = data.numpy()
             >>> print(out)
             >>> # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)

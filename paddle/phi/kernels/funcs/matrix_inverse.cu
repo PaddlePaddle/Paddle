@@ -116,7 +116,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
   for (int i = 0; i < batch_size; ++i) {
     PADDLE_ENFORCE_EQ(info[i],
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "For batch [%d]: U(%d, %d) is zero, singular U. "
                           "Please check the matrix value and change it to a "
                           "non-singular matrix",

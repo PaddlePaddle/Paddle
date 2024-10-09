@@ -163,7 +163,7 @@ void DeserializePDTensorsToFile(const std::string &path,
   PADDLE_ENFORCE_EQ(
       is_present,
       true,
-      phi::errors::InvalidArgument("Cannot open %s to read", path));
+      common::errors::InvalidArgument("Cannot open %s to read", path));
   std::ifstream fin(path, std::ios::binary);
   DeserializePDTensorsToStream(fin, tensors);
   fin.close();
@@ -213,7 +213,7 @@ void DeserializeShapeRangeInfo(
     const std::string &path, paddle::inference::proto::ShapeRangeInfos *info) {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    PADDLE_THROW(phi::errors::NotFound("File [%s] is not found.", path));
+    PADDLE_THROW(common::errors::NotFound("File [%s] is not found.", path));
   }
   google::protobuf::io::FileInputStream *is =
       new google::protobuf::io::FileInputStream(fd);

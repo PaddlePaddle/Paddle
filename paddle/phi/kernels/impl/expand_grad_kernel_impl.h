@@ -84,16 +84,16 @@ void ExpandGradKernel(const Context& ctx,
 
   int dims = reduce_dims_vec.size();
 
-  PADDLE_ENFORCE_GE(
-      dims,
-      0,
-      phi::errors::InvalidArgument("The rank of the input 'Out@GRAD' for "
-                                   "expand_v2_grad op must be greater than or "
-                                   "equal to 0, but the value received is %d.",
-                                   dims));
+  PADDLE_ENFORCE_GE(dims,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The rank of the input 'Out@GRAD' for "
+                        "expand_v2_grad op must be greater than or "
+                        "equal to 0, but the value received is %d.",
+                        dims));
   PADDLE_ENFORCE_LE(dims,
                     MAX_RANK_SUPPORTED,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The rank of the input 'Out@GRAD' for "
                         "expand_v2_grad op must be less than or equal "
                         "to %d, but the value received is %d.",
@@ -137,7 +137,7 @@ void ExpandGradKernel(const Context& ctx,
           ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support tensor with rank being between 1 and %d. But "
           "received tensor's rank = %d.",
           MAX_RANK_SUPPORTED,

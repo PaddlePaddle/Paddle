@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.distributed.utils.stream_utils import ExecutionStreamType
 
 from ..process_group import new_process_group
 from .base_reshard_func import (
@@ -49,6 +50,10 @@ class PToSReshardFunction(ReshardFunction):
             src_reduce_type == paddle.base.core.ReduceType.kRedSum
         ), f"The p to s reshard func only support sum op, but received {src_reduce_type}"
 
+        chunk_id = -1
+        if src_value.get_defining_op().dist_attr:
+            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+
         split_axis = dst_dist_attr.dims_mapping.index(0)
         if split_axis != 0:
             perm = list(range(0, len(src_value.shape)))
@@ -76,15 +81,18 @@ class PToSReshardFunction(ReshardFunction):
 
         num_of_process = len(src_mesh.process_ids)
         group = new_process_group(sorted(src_mesh.process_ids))
-        dst_value = paddle._C_ops.c_reducescatter(
-            src_value, group.id, num_of_process, True
+        dst_value = paddle._C_ops.reduce_scatter(
+            src_value, group.id, num_of_process
+        )
+        dst_value.get_defining_op().set_execution_stream(
+            ExecutionStreamType.DefaultStream.value
         )
 
         # set dist type and dist attr
         dst_value.set_type(dst_type)
         dst_value.get_defining_op().dist_attr = (
             paddle.base.libpaddle.pir.create_op_dist_attribute(
-                src_mesh, [src_dist_attr], [dst_dist_attr]
+                src_mesh, [src_dist_attr], [dst_dist_attr], chunk_id
             )
         )
 

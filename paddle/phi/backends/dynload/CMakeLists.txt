@@ -25,6 +25,7 @@ if(WITH_ROCM)
     APPEND
     HIP_SRCS
     rocblas.cc
+    hipblasLt.cc
     miopen.cc
     hiprand.cc
     hipfft.cc
@@ -83,6 +84,10 @@ endif()
 
 if(WITH_FLASHATTN)
   list(APPEND DYNLOAD_COMMON_SRCS flashattn.cc)
+endif()
+
+if(WITH_PSCORE)
+  list(APPEND DYNLOAD_COMMON_SRCS afs_api.cc)
 endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)

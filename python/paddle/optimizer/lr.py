@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import Any, Callable, Literal, Sequence, TypedDict
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypedDict
 
 import numpy
 import numpy.typing as npt
@@ -32,6 +32,9 @@ from paddle.base.framework import (
     in_dygraph_mode,
 )
 from paddle.base.layer_helper import LayerHelper
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 __all__ = [
     'LRScheduler',

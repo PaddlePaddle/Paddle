@@ -244,30 +244,30 @@ void WarprnntKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       input.dims().size(),
       4,
-      phi::errors::InvalidArgument("The rank of Input(Logits) should be 4 "
-                                   "but received %d. ",
-                                   input.dims().size()));
+      common::errors::InvalidArgument("The rank of Input(Logits) should be 4 "
+                                      "but received %d. ",
+                                      input.dims().size()));
 
   PADDLE_ENFORCE_EQ(
       label.dims().size(),
       2,
-      phi::errors::InvalidArgument("The rank of Input(Label) should be 2 "
-                                   "but received %d. ",
-                                   label.dims().size()));
+      common::errors::InvalidArgument("The rank of Input(Label) should be 2 "
+                                      "but received %d. ",
+                                      label.dims().size()));
 
   PADDLE_ENFORCE_EQ(input_lengths.dims().size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The rank of Input(LogitsLength) should be 1 "
                         "but received %d. ",
                         input_lengths.dims().size()));
 
-  PADDLE_ENFORCE_EQ(
-      label_lengths.dims().size(),
-      1,
-      phi::errors::InvalidArgument("The rank of Input(LabelLength) should be 1 "
-                                   "but received %d. ",
-                                   label_lengths.dims().size()));
+  PADDLE_ENFORCE_EQ(label_lengths.dims().size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(LabelLength) should be 1 "
+                        "but received %d. ",
+                        label_lengths.dims().size()));
 
   size_t B, Tmax, Umax, D;
   B = input.dims()[0];
@@ -277,7 +277,7 @@ void WarprnntKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(B,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The first dimension of Input(Logits) is B should be "
                         "greater than zero "
                         "but received %d. ",
@@ -285,7 +285,7 @@ void WarprnntKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(Tmax,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The second dimension of Input(Logits) is T should be "
                         "greater than zero "
                         "but received %d. ",
@@ -293,7 +293,7 @@ void WarprnntKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(Umax,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The third dimension of Input(Logits) is U should be "
                         "greater than zero "
                         "but received %d. ",
@@ -301,7 +301,7 @@ void WarprnntKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(D,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The forth dimension of Input(Logits) is D should be "
                         "greater than zero "
                         "but received %d. ",

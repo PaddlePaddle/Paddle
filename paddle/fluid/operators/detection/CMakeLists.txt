@@ -28,8 +28,7 @@ function(detection_library TARGET_NAME)
       PARENT_SCOPE)
 endfunction()
 
-detection_library(anchor_generator_op SRCS anchor_generator_op.cc
-                  anchor_generator_op.cu)
+detection_library(anchor_generator_op SRCS anchor_generator_op.cc)
 
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)

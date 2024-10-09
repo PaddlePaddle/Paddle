@@ -29,11 +29,11 @@ class DistributedPushSparseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input(Ids) of PushSparseOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Output(Outs) of PushSparseOp should not be null."));
 
     auto ids_dims = ctx->GetInputsDim("Ids");
@@ -41,7 +41,7 @@ class DistributedPushSparseOp : public framework::OperatorWithKernel {
     for (auto &ids_dim : ids_dims) {
       PADDLE_ENFORCE_EQ(ids_dim.size(),
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dimension of the 'Ids' tensor must be 2."));
     }
 

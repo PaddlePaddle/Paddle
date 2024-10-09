@@ -52,7 +52,7 @@ class ResUnitPassCache {
       var_map_.insert({key, value});
       mtx.unlock();
     } else {
-      PADDLE_THROW(phi::errors::AlreadyExists(
+      PADDLE_THROW(common::errors::AlreadyExists(
           "The key (%d) of ResUnitPassCache already exist.", key));
     }
   }

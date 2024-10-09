@@ -119,7 +119,7 @@ void invokeMergeLayernorm(T *output,
                           int n,
                           cudaStream_t stream) {
   if ((W % 2 != 0) || (H % 2 != 0)) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "H(W) of merge layernorm should be a multiple of 2."));
   }
   dim3 grid(W / 2, H / 2, batch);
@@ -226,15 +226,15 @@ bool SkipMergeLayernormPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument("The input of MergeLayernorm "
-                                   "plugin shoule not be nullptr."));
+      common::errors::InvalidArgument("The input of MergeLayernorm "
+                                      "plugin shoule not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
@@ -256,7 +256,7 @@ nvinfer1::DataType SkipMergeLayernormPluginDynamic::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The MergeLayernorm only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
@@ -295,7 +295,7 @@ int SkipMergeLayernormPluginDynamic::enqueue(
   PADDLE_ENFORCE_EQ(
       input_resolution * input_resolution,
       input_dims.d[1],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The MergeLayernorm TRT Plugin get invalid input_resolution %d",
           input_resolution));
 
@@ -328,7 +328,7 @@ int SkipMergeLayernormPluginDynamic::enqueue(
         dim,
         stream);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The MergeLayernorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;

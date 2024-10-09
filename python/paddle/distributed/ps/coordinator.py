@@ -176,9 +176,9 @@ class FLClientBase(abc.ABC):
             logger.info(f"fl-ps > persist_vars_list: {persist_vars_name}")
 
             if dump_fields_path is not None:
-                self.main_program._fleet_opt[
-                    'dump_fields_path'
-                ] = dump_fields_path
+                self.main_program._fleet_opt['dump_fields_path'] = (
+                    dump_fields_path
+                )
             if dump_fields is not None:
                 self.main_program._fleet_opt["dump_fields"] = dump_fields
             if dump_param is not None:

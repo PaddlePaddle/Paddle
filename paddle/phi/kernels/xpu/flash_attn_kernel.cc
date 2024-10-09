@@ -189,14 +189,15 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_XPU_XRE5
   if (return_softmax == true) {
-    PADDLE_THROW(phi::errors::Unimplemented("return_softmax should be false"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("return_softmax should be false"));
   }
 
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
   PADDLE_ENFORCE_EQ(dims.size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
@@ -255,11 +256,11 @@ void FlashAttnKernel(const Context& ctx,
     if (mask_dims.size() == 3 || (mask_dims[1] == 1 && mask_dims.size() == 4)) {
       fa_layout |= AttnQKVLayout_t::BIAS_BLL;
     } else {
-      PADDLE_ENFORCE_EQ(
-          mask_dims.size(),
-          4,
-          phi::errors::InvalidArgument("flash_attn_fwd requires mask's shape "
-                                       "like [b,l,l] or [b, h, l, l]"));
+      PADDLE_ENFORCE_EQ(mask_dims.size(),
+                        4,
+                        common::errors::InvalidArgument(
+                            "flash_attn_fwd requires mask's shape "
+                            "like [b,l,l] or [b, h, l, l]"));
     }
     if (attn_mask->dtype() == phi::DataType::FLOAT32) {
       bias_data = attn_mask->data<float>();
@@ -333,7 +334,7 @@ void FlashAttnKernel(const Context& ctx,
       );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnKernel"));
 #endif
 }

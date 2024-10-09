@@ -39,21 +39,22 @@ void BeamSearchOpKernel(const Context &dev_ctx,
 
   PADDLE_ENFORCE_NOT_NULL(
       scores,
-      phi::errors::NotFound("Input(scores) of BeamSearchOp is not found."));
+      common::errors::NotFound("Input(scores) of BeamSearchOp is not found."));
   PADDLE_ENFORCE_NOT_NULL(
       pre_ids,
-      phi::errors::NotFound("Input(pre_ids) of BeamSearchOp is not found."));
+      common::errors::NotFound("Input(pre_ids) of BeamSearchOp is not found."));
   PADDLE_ENFORCE_NOT_NULL(
       pre_scores,
-      phi::errors::NotFound("Input(pre_scores) of BeamSearchOp is not found."));
+      common::errors::NotFound(
+          "Input(pre_scores) of BeamSearchOp is not found."));
 
   PADDLE_ENFORCE_NOT_NULL(
       selected_ids,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Output(selected_ids) of BeamSearchOp is not found."));
   PADDLE_ENFORCE_NOT_NULL(
       selected_scores,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Output(selected_scores) of BeamSearchOp is not found."));
 
   phi::math::BeamSearchFunctor<Context, T> alg;

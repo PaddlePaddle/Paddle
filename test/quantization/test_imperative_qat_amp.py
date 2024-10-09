@@ -225,7 +225,10 @@ class TestImperativeQatAmp(unittest.TestCase):
         input_spec = [
             paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')
         ]
-        paddle.jit.save(layer=model, path=self.save_path, input_spec=input_spec)
+        with paddle.pir_utils.OldIrGuard():
+            paddle.jit.save(
+                layer=model, path=self.save_path, input_spec=input_spec
+            )
         print(f'Quantized model saved in {{{self.save_path}}}')
 
         end_time = time.time()

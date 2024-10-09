@@ -141,7 +141,7 @@ struct ArrayAttributeStorage : public AttributeStorage {
     PADDLE_ENFORCE_LT(
         index,
         size_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The index (%d) must be less than size (%d).", index, size_));
     return data_[index];
   }

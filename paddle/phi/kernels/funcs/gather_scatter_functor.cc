@@ -92,7 +92,7 @@ struct cpu_gather_scatter_functor {
     auto src_dims = src.dims();
     if (self_size == 0 || src_size == 0 || index_size == 0) {
       VLOG(3) << "zero size input found";
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "self_size, src_size, index_size cannot be 0");
       return;
     }

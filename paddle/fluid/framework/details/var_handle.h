@@ -63,7 +63,7 @@ struct VarHandleBase {
   void AddOutput(OpHandleBase* out, ir::Node* node) {
     if (pending_ops_.find(out) == pending_ops_.end()) {
       PADDLE_ENFORCE_NOT_NULL(out,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "The output added to VarHandle %s is NULL.",
                                   this->Node()->Name()));
       pending_ops_.insert(out);
@@ -136,7 +136,7 @@ struct VarHandle : public VarHandleBase {
     PADDLE_ENFORCE_EQ(
         HasEvent(),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The cuda event is not set, maybe InitCUDA() is not called."));
     return event_;
   }

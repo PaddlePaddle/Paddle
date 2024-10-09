@@ -42,21 +42,21 @@ bool FunctionProto::Match(const ir::Call *op) const {
 }
 
 void FunctionProto::AssertMatch(const ir::Call *op) const {
-  PADDLE_ENFORCE_EQ(
-      name,
-      op->name,
-      phi::errors::InvalidArgument("function proto's op name check failed"));
-  PADDLE_ENFORCE_EQ(
-      ret_type,
-      op->type(),
-      phi::errors::InvalidArgument("function proto's op type check failed"));
+  PADDLE_ENFORCE_EQ(name,
+                    op->name,
+                    ::common::errors::InvalidArgument(
+                        "function proto's op name check failed"));
+  PADDLE_ENFORCE_EQ(ret_type,
+                    op->type(),
+                    ::common::errors::InvalidArgument(
+                        "function proto's op type check failed"));
   PADDLE_ENFORCE_EQ(op->read_args.size(),
                     readonly_arg_types.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "function proto's readonly arg types check failed"));
   PADDLE_ENFORCE_EQ(op->write_args.size(),
                     mutable_arg_types.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "function proto's mutable arg types check failed"));
 
   auto get_type = [](Expr u) {
@@ -73,7 +73,7 @@ void FunctionProto::AssertMatch(const ir::Call *op) const {
       PADDLE_ENFORCE_EQ(
           get_type(op->read_args[i]),
           readonly_arg_types[i],
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "function proto's readonly arg types check failed"));
     }
   }
@@ -83,7 +83,7 @@ void FunctionProto::AssertMatch(const ir::Call *op) const {
     } else {
       PADDLE_ENFORCE_EQ(get_type(op->write_args[i]),
                         mutable_arg_types[i],
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "function proto's mutable arg types check failed"));
     }
   }
@@ -91,23 +91,32 @@ void FunctionProto::AssertMatch(const ir::Call *op) const {
 
 void FunctionProto::CheckValid() {
   if (ret_type.is_void()) {
-    CHECK(!mutable_arg_types.empty())
-        << "A void function should have at least one mutable argument to "
-           "output something";
+    PADDLE_ENFORCE_EQ(
+        !mutable_arg_types.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "A void function should have at least one mutable argument to "
+            "output something."));
   } else {
-    CHECK(mutable_arg_types.empty())
-        << "A function with return should not have mutable argument";
+    PADDLE_ENFORCE_EQ(
+        mutable_arg_types.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "A function with return should not have mutable argument."));
   }
 }
 
 FunctionProto::shape_inference_t FunctionProto::ShapeFollowNthArgument(int n) {
   return [=](const std::vector<Expr> &args, int value_offset) {
-    PADDLE_ENFORCE_LT(
-        n,
-        args.size(),
-        phi::errors::InvalidArgument("The argument index is out of range"));
+    PADDLE_ENFORCE_LT(n,
+                      args.size(),
+                      ::common::errors::InvalidArgument(
+                          "The argument index is out of range"));
     auto x = args[n].as_tensor();
-    CHECK(x);
+    PADDLE_ENFORCE_NOT_NULL(
+        x,
+        ::common::errors::InvalidArgument(
+            "The argument at index (%d) must be a tensor.", n));
     return x->shape;
   };
 }

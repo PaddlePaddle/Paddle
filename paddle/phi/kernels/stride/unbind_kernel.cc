@@ -28,9 +28,9 @@ void UnbindStridedKernel(const Context& dev_ctx,
                          int axis,
                          std::vector<DenseTensor*> outs) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   int64_t num = static_cast<int64_t>(outs.size());
   int64_t start = 0;

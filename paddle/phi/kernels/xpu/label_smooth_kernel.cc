@@ -26,7 +26,7 @@ void LabelSmoothKernel(const Context& ctx,
   auto ptr = ctx.template Alloc<T>(out);
   if (prior_dist.is_initialized()) {
     PADDLE_THROW(
-        phi::errors::External("XPU doesn't support dist label smooth"));
+        common::errors::External("XPU doesn't support dist label smooth"));
   } else {
     int r = xpu::label_smooth<T>(ctx.x_context(),
                                  label.data<T>(),
@@ -37,10 +37,10 @@ void LabelSmoothKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
-        phi::errors::External("XPU API(label_smooth) return wrong "
-                              "value[%d %s]",
-                              r,
-                              XPUAPIErrorMsg[r]));
+        common::errors::External("XPU API(label_smooth) return wrong "
+                                 "value[%d %s]",
+                                 r,
+                                 XPUAPIErrorMsg[r]));
   }
 }
 }  // namespace phi

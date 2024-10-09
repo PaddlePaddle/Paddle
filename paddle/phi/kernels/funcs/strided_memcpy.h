@@ -61,7 +61,7 @@ inline void CopyWithContext(const Context& ctx,
   memory_utils::Copy(dst_place, dst, src_place, src, num, ctx.stream());
 #else
   PADDLE_THROW(
-      phi::errors::PreconditionNotMet("Paddle is not compiled with GPU."));
+      common::errors::PreconditionNotMet("Paddle is not compiled with GPU."));
 #endif
 }
 
@@ -97,7 +97,7 @@ inline void StridedNumelCopyWithAxis(const Context& ctx,
 
   PADDLE_ENFORCE_EQ(src_stride_numel.size(),
                     dst_stride_numel.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Source and destination tensor should have the same "
                         "dimension size, but source tensor dimension size is "
                         "%u, destination tensor size is %u.",
@@ -109,7 +109,7 @@ inline void StridedNumelCopyWithAxis(const Context& ctx,
       PADDLE_ENFORCE_EQ(
           src_stride_numel[i] / src_stride_numel[axis],
           dst_stride_numel[i] / dst_stride_numel[axis],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Source and destination tensor should have the same number of "
               "elements except the specified axis, but the source elements "
               "number is %d, destination elements number is %d.",
@@ -121,7 +121,7 @@ inline void StridedNumelCopyWithAxis(const Context& ctx,
       PADDLE_ENFORCE_EQ(
           src_stride_numel[i],
           dst_stride_numel[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Source and destination tensor should have the same number of "
               "elements except the specified axis, but the source elements "
               "number is %d, destination elements number is %d.",

@@ -90,7 +90,7 @@ def train(
         net_conf = conv_net
 
     if parallel:
-        raise NotImplementedError()
+        raise NotImplementedError
     else:
         prediction, avg_loss, acc = net_conf(img, label)
 

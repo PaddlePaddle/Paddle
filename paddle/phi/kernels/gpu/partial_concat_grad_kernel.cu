@@ -59,7 +59,7 @@ void PartialConcatGradOpCUDAKernel(const Context &dev_ctx,
 
   PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input of partial concat should not be null."));
   // all parameters
   auto batch_size = ins[0]->dims()[0];

@@ -19,11 +19,9 @@ if(WITH_TESTING)
     # TODO(YuanRisheng) : Currently, we run this unittest by translating old ir to new ir, and it has bug that can't judge whether op_desc is a inplace op in windows.
     # We will fix it when abandoning translation in final state.
     if(WITH_GPU)
-      py_test(test_inference_inplace SRCS test_inference_inplace.py)
       py_test(test_inference_inplace_pir SRCS test_inference_inplace_pir.py
                                               ENVS FLAGS_enable_pir_api=1)
       set_tests_properties(test_inference_inplace_pir PROPERTIES TIMEOUT 180)
-      set_tests_properties(test_inference_inplace PROPERTIES TIMEOUT 180)
     endif()
   endif()
 

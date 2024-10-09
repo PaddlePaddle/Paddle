@@ -17,6 +17,7 @@ import os
 import queue
 import sys
 import traceback
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -30,6 +31,9 @@ from ..multiprocess_utils import (
 )
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .flat import _flatten_batch
+
+if TYPE_CHECKING:
+    from paddle.io import Dataset
 
 
 class _IterableDatasetStopIteration:
@@ -77,7 +81,7 @@ class ParentWatchDog:
 _worker_info = None
 
 
-def get_worker_info() -> WorkerInfo | None:
+def get_worker_info() -> WorkerInfo:
     """
     Get DataLoader worker process information function, this function is
     used to split data copy in worker process for IterableDataset
@@ -105,7 +109,7 @@ def get_worker_info() -> WorkerInfo | None:
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class SplitedIterableDataset(IterableDataset):
+            >>> class SplitedIterableDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
@@ -118,8 +122,8 @@ def get_worker_info() -> WorkerInfo | None:
             ...         else:
             ...             per_worker = int(
             ...                 math.ceil((self.end - self.start) / float(
-            ...                     worker_info.num_workers)))  # type: ignore[attr-defined]
-            ...             worker_id = worker_info.id  # type: ignore[attr-defined]
+            ...                     worker_info.num_workers)))
+            ...             worker_id = worker_info.id
             ...             iter_start = self.start + worker_id * per_worker
             ...             iter_end = min(iter_start + per_worker, self.end)
             ...
@@ -157,6 +161,11 @@ def get_worker_info() -> WorkerInfo | None:
 
 
 class WorkerInfo:
+    num_workers: int
+    id: int
+    dataset: Dataset[Any]
+    seed: int
+
     __initialized = False
 
     def __init__(self, **kwargs):
@@ -390,9 +399,11 @@ def _worker_loop(
                         return lodtensor
 
                     tensor_list = [
-                        numpy2lodtensor(b)
-                        if isinstance(b, np.ndarray)
-                        else b.get_tensor()
+                        (
+                            numpy2lodtensor(b)
+                            if isinstance(b, np.ndarray)
+                            else b.get_tensor()
+                        )
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))

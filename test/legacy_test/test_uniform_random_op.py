@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -22,7 +23,6 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.framework import convert_np_dtype_to_dtype_
-from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -201,7 +201,7 @@ class TestUniformRandomBF16Op(TestUniformRandomOp):
 
 
 class TestUniformRandomOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -254,7 +254,13 @@ class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
 
 class TestUniformRandomOpSelectedRows(unittest.TestCase):
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
@@ -306,7 +312,7 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpApi(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         paddle.enable_static()
         paddle.seed(10)
@@ -333,14 +339,12 @@ class TestUniformRandomOpApi(unittest.TestCase):
             y = linear(x)
 
             place = base.CPUPlace()
-            x_tensor = base.create_lod_tensor(
-                np.random.rand(3, 16).astype("float32"), [[1, 2]], place
-            )
+            x_data = np.random.rand(3, 16).astype("float32")
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             ret = exe.run(
                 paddle.static.default_main_program(),
-                feed={'x': x_tensor},
+                feed={'x': x_data},
                 fetch_list=[y],
                 return_numpy=False,
             )
@@ -348,7 +352,7 @@ class TestUniformRandomOpApi(unittest.TestCase):
 
 
 class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
-    @test_with_pir_api
+
     def test_attr_tensor_API(self):
         paddle.enable_static()
         startup_program = base.Program()
@@ -366,7 +370,6 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
             outs = exe.run(train_program, fetch_list=[ret])
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_attr_tensorlist_int32_API(self):
         paddle.enable_static()
         startup_program = base.Program()
@@ -408,7 +411,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
-    @test_with_pir_api
+
     def test_attr_tensor_API(self):
         paddle.enable_static()
         _seed = 10
@@ -438,7 +441,13 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
 
 class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
@@ -469,7 +478,13 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
 
 class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
@@ -510,7 +525,7 @@ class TestUniformRandomDygraphMode(unittest.TestCase):
 
 
 class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -544,7 +559,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
 
 
 class TestUniformAlias(unittest.TestCase):
-    @test_with_pir_api
+
     def test_alias(self):
         paddle.uniform([2, 3], min=-5.0, max=5.0)
         paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
@@ -557,7 +572,7 @@ class TestUniformAlias(unittest.TestCase):
 
 
 class TestUniformOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()

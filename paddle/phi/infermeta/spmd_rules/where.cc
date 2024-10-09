@@ -29,13 +29,13 @@ SpmdInfo WhereInferSpmd(const DistMetaTensor& condition,
   int cond_ndim = cond_shape.size();
   const auto& cond_dist_attr_src = condition.dist_attr();
   std::vector<int64_t> cond_dims_mapping = cond_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      cond_ndim,
-      cond_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   cond_ndim,
-                                   cond_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(cond_ndim,
+                    cond_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        cond_ndim,
+                        cond_dims_mapping.size()));
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::string cond_axes = alphabet.substr(0, cond_ndim);
@@ -44,21 +44,21 @@ SpmdInfo WhereInferSpmd(const DistMetaTensor& condition,
   int x_ndim = x_shape.size();
   const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      x_ndim,
-      x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(x_ndim,
+                    x_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        x_ndim,
+                        x_dims_mapping.size()));
 
   PADDLE_ENFORCE_GE(
       cond_ndim,
       x_ndim,
-      phi::errors::InvalidArgument("The condition's rank [%d] and x's "
-                                   "rank [%d] are not matched.",
-                                   cond_ndim,
-                                   x_ndim));
+      common::errors::InvalidArgument("The condition's rank [%d] and x's "
+                                      "rank [%d] are not matched.",
+                                      cond_ndim,
+                                      x_ndim));
 
   std::string x_axes = alphabet.substr(cond_ndim - x_ndim, x_ndim);
 
@@ -66,21 +66,21 @@ SpmdInfo WhereInferSpmd(const DistMetaTensor& condition,
   int y_ndim = y_shape.size();
   const auto& y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      y_ndim,
-      y_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   y_ndim,
-                                   y_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(y_ndim,
+                    y_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        y_ndim,
+                        y_dims_mapping.size()));
 
   PADDLE_ENFORCE_GE(
       cond_ndim,
       y_ndim,
-      phi::errors::InvalidArgument("The condition's rank [%d] and y's "
-                                   "rank [%d] are not matched.",
-                                   cond_ndim,
-                                   y_ndim));
+      common::errors::InvalidArgument("The condition's rank [%d] and y's "
+                                      "rank [%d] are not matched.",
+                                      cond_ndim,
+                                      y_ndim));
 
   std::string y_axes = alphabet.substr(cond_ndim - y_ndim, y_ndim);
 
@@ -137,13 +137,13 @@ SpmdInfo WhereInferSpmdReverse(const DistMetaTensor& condition,
   int cond_ndim = cond_shape.size();
   const auto& cond_dist_attr_src = condition.dist_attr();
   std::vector<int64_t> cond_dims_mapping = cond_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      cond_ndim,
-      cond_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   cond_ndim,
-                                   cond_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(cond_ndim,
+                    cond_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        cond_ndim,
+                        cond_dims_mapping.size()));
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::string cond_axes = alphabet.substr(0, cond_ndim);
@@ -155,17 +155,18 @@ SpmdInfo WhereInferSpmdReverse(const DistMetaTensor& condition,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor x's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor x's rank [%d] and Input's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
-  PADDLE_ENFORCE_GE(cond_ndim,
-                    x_ndim,
-                    phi::errors::InvalidArgument("The x's rank [%d] and x's "
-                                                 "rank [%d] are not matched.",
-                                                 cond_ndim,
-                                                 x_ndim));
+  PADDLE_ENFORCE_GE(
+      cond_ndim,
+      x_ndim,
+      common::errors::InvalidArgument("The x's rank [%d] and x's "
+                                      "rank [%d] are not matched.",
+                                      cond_ndim,
+                                      x_ndim));
 
   std::string x_axes = alphabet.substr(cond_ndim - x_ndim, x_ndim);
 
@@ -176,17 +177,18 @@ SpmdInfo WhereInferSpmdReverse(const DistMetaTensor& condition,
   PADDLE_ENFORCE_EQ(
       y_ndim,
       y_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor y's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   y_ndim,
-                                   y_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor y's rank [%d] and Input's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      y_ndim,
+                                      y_dims_mapping.size()));
 
-  PADDLE_ENFORCE_GE(cond_ndim,
-                    y_ndim,
-                    phi::errors::InvalidArgument("The y's rank [%d] and y's "
-                                                 "rank [%d] are not matched.",
-                                                 cond_ndim,
-                                                 y_ndim));
+  PADDLE_ENFORCE_GE(
+      cond_ndim,
+      y_ndim,
+      common::errors::InvalidArgument("The y's rank [%d] and y's "
+                                      "rank [%d] are not matched.",
+                                      cond_ndim,
+                                      y_ndim));
 
   std::string y_axes = alphabet.substr(cond_ndim - y_ndim, y_ndim);
 
@@ -195,13 +197,13 @@ SpmdInfo WhereInferSpmdReverse(const DistMetaTensor& condition,
   const auto& out_dist_attr_src = output.dist_attr();
   const std::vector<int64_t>& out_dims_mapping =
       out_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      out_ndim,
-      out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor output's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   cond_ndim,
-                                   cond_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(out_ndim,
+                    out_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor output's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        cond_ndim,
+                        cond_dims_mapping.size()));
 
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{cond_axes, out_dist_attr_src.dims_mapping()}});
@@ -252,13 +254,13 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
   int cond_ndim = cond_shape.size();
   const auto& cond_dist_attr_src = condition.dist_attr();
   std::vector<int64_t> cond_dims_mapping = cond_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      cond_ndim,
-      cond_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   cond_ndim,
-                                   cond_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(cond_ndim,
+                    cond_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        cond_ndim,
+                        cond_dims_mapping.size()));
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::string cond_axes = alphabet.substr(0, cond_ndim);
@@ -270,17 +272,18 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor x's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor x's rank [%d] and Input's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
-  PADDLE_ENFORCE_GE(cond_ndim,
-                    x_ndim,
-                    phi::errors::InvalidArgument("The x's rank [%d] and x's "
-                                                 "rank [%d] are not matched.",
-                                                 cond_ndim,
-                                                 x_ndim));
+  PADDLE_ENFORCE_GE(
+      cond_ndim,
+      x_ndim,
+      common::errors::InvalidArgument("The x's rank [%d] and x's "
+                                      "rank [%d] are not matched.",
+                                      cond_ndim,
+                                      x_ndim));
 
   std::string x_axes = alphabet.substr(cond_ndim - x_ndim, x_ndim);
 
@@ -291,17 +294,18 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
   PADDLE_ENFORCE_EQ(
       y_ndim,
       y_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor y's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   y_ndim,
-                                   y_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor y's rank [%d] and Input's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      y_ndim,
+                                      y_dims_mapping.size()));
 
-  PADDLE_ENFORCE_GE(cond_ndim,
-                    y_ndim,
-                    phi::errors::InvalidArgument("The y's rank [%d] and y's "
-                                                 "rank [%d] are not matched.",
-                                                 cond_ndim,
-                                                 y_ndim));
+  PADDLE_ENFORCE_GE(
+      cond_ndim,
+      y_ndim,
+      common::errors::InvalidArgument("The y's rank [%d] and y's "
+                                      "rank [%d] are not matched.",
+                                      cond_ndim,
+                                      y_ndim));
 
   std::string y_axes = alphabet.substr(cond_ndim - y_ndim, y_ndim);
 
@@ -310,13 +314,13 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
   const auto& out_grad_dist_attr_src = out_grad.dist_attr();
   std::vector<int64_t> out_grad_dims_mapping =
       out_grad_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      out_grad_ndim,
-      out_grad_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor output's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_grad_ndim,
-                                   out_grad_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(out_grad_ndim,
+                    out_grad_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor output's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        out_grad_ndim,
+                        out_grad_dims_mapping.size()));
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   axes_sharding_info.emplace_back(cond_axes, cond_dims_mapping);

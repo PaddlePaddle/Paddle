@@ -193,7 +193,7 @@ class TestDygraphDeepCF(unittest.TestCase):
         num_users = -1
         num_items = -1
         with open(self.data_path, 'r') as f:
-            for l in f.readlines():
+            for l in f:
                 uid, iid, rating = (int(v) for v in l.split('\t'))
                 num_users = max(num_users, uid + 1)
                 num_items = max(num_items, iid + 1)

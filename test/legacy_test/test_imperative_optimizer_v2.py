@@ -23,7 +23,6 @@ from paddle import base
 from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
-from paddle.pir_utils import test_with_pir_api
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -71,10 +70,10 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         self.batch_num = 20
 
     def get_optimizer_dygraph(self, parameter_list):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_optimizer(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def reader_decorator(self, reader):
         def _reader_simple():
@@ -848,7 +847,7 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     # should fix: may fail in CI-windows
-    @test_with_pir_api
+
     def _test_lamb(self):
         self._check_mlp()
 

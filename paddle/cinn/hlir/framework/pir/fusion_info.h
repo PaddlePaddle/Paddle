@@ -91,7 +91,7 @@ class FusionOpInfo {
 };
 
 class FusionInfo {
-  using IntArgsMap = std::map<int, CINNKernelInfo::ArgDimIdx>;
+  using IntArgsMap = std::map<int, CINNKernelInfo::SymbolArgBindInfo>;
 
  public:
   explicit FusionInfo(const OpLoweringGroup &group);

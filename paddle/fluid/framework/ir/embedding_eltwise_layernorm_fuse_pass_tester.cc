@@ -84,13 +84,13 @@ TEST(EmbeddingElewiseLayernormFusePass, basic) {
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
                     num_nodes_after + 28,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The number of nodes before and after the fuse does "
                         "not meet expectations"));
   PADDLE_ENFORCE_EQ(
       num_fused_nodes_after,
       2,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The number of fusion nodes does not meet expectations after fuse"));
 }
 

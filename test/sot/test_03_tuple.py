@@ -65,6 +65,31 @@ def tuple_index_tensor(x: paddle.Tensor, y: tuple[paddle.Tensor]):
     return y.index(x)
 
 
+@check_no_breakgraph
+def tuple_compare():
+    # TODO(SigureMo): support gt, ge, lt, le
+    l1 = (1, 2, 3)
+    l2 = (1, 2, 3)
+    l3 = (1, 2, 4)
+    return l1 == l2, l1 == l3, l1 != l2, l1 != l3
+
+
+@check_no_breakgraph
+def tuple_add():
+    l0 = (1, 2, 3)
+    l1 = (4, 5, 6)
+    return l0 + l1
+
+
+@check_no_breakgraph
+def tuple_inplace_add():
+    l0 = (1, 2, 3)
+    l1 = l0
+    l2 = (4, 5, 6)
+    l0 += l2
+    return l0, l1
+
+
 class TestBuildTuple(TestCaseBase):
     def test_build_tuple(self):
         self.assert_results(build_tuple, 1, paddle.to_tensor(2))
@@ -87,6 +112,15 @@ class TestTupleMethods(TestCaseBase):
         b = paddle.to_tensor(2)
         self.assert_results(tuple_count_tensor, a, (a, b, a, b))
         self.assert_results(tuple_index_tensor, b, (b, b, b, a))
+
+    def test_tuple_compare(self):
+        self.assert_results(tuple_compare)
+
+    def test_tuple_add(self):
+        self.assert_results(tuple_add)
+
+    def test_tuple_inplace_add(self):
+        self.assert_results(tuple_inplace_add)
 
 
 if __name__ == "__main__":

@@ -47,7 +47,7 @@ void FusionSeqPoolCVMConcatKernel(const Context& dev_ctx,
   int w = static_cast<int>(ins[0]->numel() / x0_dims[0]);
   PADDLE_ENFORCE_EQ(y_dims[1] % w,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The output of dims[1] should be dividable of w"));
   phi::jit::seq_pool_attr_t attr(w, phi::jit::SeqPoolType::kSum);
   if (pooltype == "AVERAGE") {
@@ -65,13 +65,13 @@ void FusionSeqPoolCVMConcatKernel(const Context& dev_ctx,
     auto x_lod = ins[i]->lod()[0];
     const T* src = ins[i]->data<T>();
     T* dst = y_data + i * w;
-    PADDLE_ENFORCE_EQ(
-        static_cast<int>(ins[i]->numel() / x_dims[0]),
-        w,
-        phi::errors::InvalidArgument("Width of all inputs should be equal."));
+    PADDLE_ENFORCE_EQ(static_cast<int>(ins[i]->numel() / x_dims[0]),
+                      w,
+                      common::errors::InvalidArgument(
+                          "Width of all inputs should be equal."));
     PADDLE_ENFORCE_EQ(x_lod.size(),
                       bs + 1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Batchsize of all inputs should be equal."));
     for (size_t j = 0; j < bs; ++j) {
       attr.h = static_cast<int>(x_lod[j + 1] - x_lod[j]);

@@ -23,6 +23,8 @@ from typing import (
     List,
     Literal,
     Protocol,
+    Set,
+    Tuple,
     TypeVar,
     Union,
     overload,
@@ -54,7 +56,7 @@ if TYPE_CHECKING:
     from paddle.static import Operator, Program
 
     _AmpLevelLiteral = Literal["O0", "OD", "O1", "O2"]
-    _CustomList: TypeAlias = Union[list[str], tuple[str, ...], set[str]]
+    _CustomList: TypeAlias = Union[List[str], Tuple[str, ...], Set[str]]
 
     class _OptimizerLike(Protocol):
         def minimize(
@@ -63,17 +65,13 @@ if TYPE_CHECKING:
             startup_program: Program,
             parameters: list[Tensor],
             no_grad_set: set[Tensor],
-        ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
-            ...
+        ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]: ...
 
-        def step(self) -> None:
-            ...
+        def step(self) -> None: ...
 
-        def set_state_dict(self, state_dict: dict[str, Tensor]) -> None:
-            ...
+        def set_state_dict(self, state_dict: dict[str, Tensor]) -> None: ...
 
-        def clear_grad(self, set_to_zero: bool) -> None:
-            ...
+        def clear_grad(self, set_to_zero: bool) -> None: ...
 
 
 _ModelsT = TypeVar("_ModelsT", "Layer", List["Layer"])
@@ -234,7 +232,10 @@ def _is_custom_device_bfloat16_supported() -> bool:
     Judge whether current custom device support bfloat16 amp.
     """
     place = _current_expected_place()
-    return place.get_device_type() == 'npu'
+    return (
+        place.get_device_type() == 'npu'
+        or place.get_device_type() == 'intel_hpu'
+    )
 
 
 def need_keep_fp32(layer: Layer, dtype: str) -> bool:
@@ -705,6 +706,18 @@ def amp_guard(
 
             # set amp op list
             original_white_list, original_black_list = tracer._get_amp_op_list()
+
+            # TODO(zhangyuqin1998): In auto parallel align mode, ensure lookup_table_v2 runs in FP32.
+            # By default, lookup_table_v2 is in the white_list, and runs in BF16/BF16.
+            # Users can add lookup_table_v2 to the amp_custom_black_list but cannot remove it from the default white_list.
+            # If lookup_table_v2 appears in both the white_list and black_list, AMP will select it in BF16/BF16.
+            # Therefore, in auto parallel align mode, add lookup_table_v2 to the black_list and ensure it is not in the white_list.
+            from paddle.distributed import in_auto_parallel_align_mode
+
+            if in_auto_parallel_align_mode():
+                _black_list.add("lookup_table_v2")
+                if "lookup_table_v2" in _white_list:
+                    _white_list.remove("lookup_table_v2")
             tracer._set_amp_op_list(_white_list, _black_list)
 
             # TODO(zhiqiu) set amp related flags automatically in this guard
@@ -784,8 +797,7 @@ def amp_decorate(
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = ...,
-) -> tuple[_ModelsT, _OptimizersT]:
-    ...
+) -> tuple[_ModelsT, _OptimizersT]: ...
 
 
 @overload
@@ -800,8 +812,7 @@ def amp_decorate(
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = ...,
-) -> _ModelsT:
-    ...
+) -> _ModelsT: ...
 
 
 @dygraph_only
@@ -1111,8 +1122,7 @@ def decorate(
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = ...,
-) -> tuple[_ModelsT, _OptimizersT]:
-    ...
+) -> tuple[_ModelsT, _OptimizersT]: ...
 
 
 @overload
@@ -1127,8 +1137,7 @@ def decorate(
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = ...,
-) -> _ModelsT:
-    ...
+) -> _ModelsT: ...
 
 
 def decorate(
@@ -1218,6 +1227,7 @@ def decorate(
     if paddle.framework.in_pir_mode():
         assert not isinstance(models, (list, tuple))
         assert not isinstance(optimizers, (list, tuple))
+        amp_global_state().use_master_grad = master_grad
         if level in ['O0', 'OD', 'O1']:
             if optimizers is None:
                 return models

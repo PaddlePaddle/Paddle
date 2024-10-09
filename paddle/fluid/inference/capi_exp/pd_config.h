@@ -553,21 +553,6 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGetCpuMathLibraryNumThreads(
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnOp(
     __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
 ///
-/// \brief Turn on OneDNN quantization.
-///
-/// \param[in] pd_config config
-///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnQuantizer(
-    __pd_keep PD_Config* pd_config);
-///
-/// \brief A boolean state telling whether the OneDNN quantization is enabled.
-///
-/// \param[in] pd_config config
-/// \return Whether the OneDNN quantization is enabled.
-///
-PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnQuantizerEnabled(
-    __pd_keep PD_Config* pd_config);
-///
 /// \brief Turn on OneDNN bfloat16.
 ///
 /// \param[in] pd_config config

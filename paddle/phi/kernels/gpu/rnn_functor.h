@@ -235,7 +235,7 @@ class RNNDescriptors {
     PADDLE_ENFORCE_EQ(
         weights_size_,
         sizeof(T) * weight_numel_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The cudnn rnn and setting weight size should be same."));
     // ------------------- cudnn weight descriptors ---------------------
     auto layout = phi::backends::gpu::DataLayout::kNCHW;

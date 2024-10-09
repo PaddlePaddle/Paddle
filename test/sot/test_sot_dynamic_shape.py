@@ -22,7 +22,10 @@ from test_case_base import (
 )
 
 import paddle
-from paddle.jit.sot.utils import with_allow_dynamic_shape_guard
+from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils import (
+    with_allow_dynamic_shape_guard,
+)
 
 
 def dynamic_shape_input_func1(x):
@@ -53,6 +56,24 @@ def dynamic_shape_access_inner_var_shape(x):
 
 def dynamic_shape_in_list(x, shape):
     return x.reshape(shape)
+
+
+class CustomConv(paddle.nn.Conv2D):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @paddle.jit.to_static(full_graph=False)
+    def forward(self, x):
+        return paddle.nn.functional.conv2d(
+            x,
+            self.weight,
+            self.bias,
+            [self._stride[0] + 1, self._stride[1]],
+            self._padding,
+            self._dilation,
+            self._groups,
+            self._data_format,
+        )
 
 
 class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
@@ -123,23 +144,43 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 )
                 self.assertEqual(ctx.translate_count, 2)
 
-    # def test_dynamic_shape_in_list(self):
-    #     with with_allow_dynamic_shape_guard(
-    #         True
-    #     ), test_instruction_translator_cache_context() as ctx:
-    #         self.assert_results(
-    #             dynamic_shape_in_list,
-    #             paddle.randn([1, 4, 5]),
-    #             [4, 5],
-    #         )
-    #         self.assertEqual(ctx.translate_count, 1)
-    #         for i in range(2, 6):
-    #             self.assert_results(
-    #                 dynamic_shape_in_list,
-    #                 paddle.randn([i, 4, 5]),
-    #                 [i * 4, 5],
-    #             )
-    #             self.assertEqual(ctx.translate_count, 2)
+    def test_dynamic_shape_cast(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            func1 = check_no_breakgraph(lambda n: bool(n))
+            func2 = check_no_breakgraph(lambda n: int(n))
+            func3 = check_no_breakgraph(lambda n: float(n))
+            for func in [func1, func2, func3]:
+                self.assert_results(func, 1)
+                self.assert_results(func, 2)
+
+    def test_dynamic_shape_in_list(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            self.assert_results(
+                dynamic_shape_in_list,
+                paddle.randn([1, 4, 5]),
+                [4, 5],
+            )
+            self.assertEqual(ctx.translate_count, 1)
+            for i in range(2, 6):
+                self.assert_results(
+                    dynamic_shape_in_list,
+                    paddle.randn([i, 4, 5]),
+                    [i * 4, 5],
+                )
+                self.assertEqual(ctx.translate_count, 2)
+
+    def test_dynamic_shape_fallback(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            for i in range(1, 5):
+                conv = CustomConv(3, 3, 3, stride=i)
+                conv(paddle.randn([1, 3, 224, 224]))
+                self.assertEqual(ctx.translate_count, i)
 
 
 if __name__ == '__main__':

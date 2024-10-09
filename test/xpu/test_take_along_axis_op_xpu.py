@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -38,7 +39,9 @@ class XPUTestTakeAlongAxis(XPUOpTestWrapper):
             self.dtype = self.in_type
 
             self.init_config()
-            xnp = np.random.random(self.x_shape).astype(self.dtype)
+            xnp = np.random.random(self.x_shape).astype(
+                self.dtype if self.dtype != np.uint16 else np.float32
+            )
             self.target = np.take_along_axis(xnp, self.index, self.axis)
             broadcast_shape_list = list(self.x_shape)
             broadcast_shape_list[self.axis] = self.index.shape[self.axis]
@@ -47,7 +50,11 @@ class XPUTestTakeAlongAxis(XPUOpTestWrapper):
                 self.index, self.broadcast_shape
             )
             self.inputs = {
-                'Input': xnp,
+                'Input': (
+                    xnp
+                    if self.dtype != np.uint16
+                    else convert_float_to_uint16(xnp)
+                ),
                 'Index': self.index_broadcast,
             }
             self.attrs = {'Axis': self.axis}
@@ -109,6 +116,14 @@ class XPUTestTakeAlongAxis(XPUOpTestWrapper):
                 self.index_type
             )
             self.axis = 1
+
+    class TestCase6(TestXPUTakeAlongAxisOp):
+        def init_config(self):
+            self.in_type = np.uint16
+            self.x_shape = (1, 10, 100)
+            self.index_type = np.int64
+            self.index = np.array([[[0, 1, 3, 5, 13]]]).astype(self.index_type)
+            self.axis = 2
 
 
 class XPUTestTakeAlongAxisAPI(unittest.TestCase):

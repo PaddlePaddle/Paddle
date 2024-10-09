@@ -50,15 +50,15 @@ class EngineIOConverter {
                            void* out,
                            size_t max_size,
                            cudaStream_t* stream) {
-    PADDLE_ENFORCE_NOT_NULL(
-        stream,
-        phi::errors::InvalidArgument("The input stream must not be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(stream,
+                            common::errors::InvalidArgument(
+                                "The input stream must not be nullptr."));
     auto* converter = Registry<EngineIOConverter>::Global().Lookup(
         op_type, "default" /* default_type */);
     PADDLE_ENFORCE_NOT_NULL(
         converter,
-        phi::errors::Unimplemented("The %s in is not supported yet.",
-                                   op_type.c_str()));
+        common::errors::Unimplemented("The %s in is not supported yet.",
+                                      op_type.c_str()));
     converter->SetStream(stream);
     (*converter)(in, out, max_size);
   }
@@ -68,15 +68,15 @@ class EngineIOConverter {
                             phi::DenseTensor* out,
                             size_t max_size,
                             cudaStream_t* stream) {
-    PADDLE_ENFORCE_NOT_NULL(
-        stream,
-        phi::errors::InvalidArgument("The input stream must not be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(stream,
+                            common::errors::InvalidArgument(
+                                "The input stream must not be nullptr."));
     auto* converter = Registry<EngineIOConverter>::Global().Lookup(
         op_type, "default" /* default_type */);
     PADDLE_ENFORCE_NOT_NULL(
         converter,
-        phi::errors::Unimplemented("The %s in not supported yet.",
-                                   op_type.c_str()));
+        common::errors::Unimplemented("The %s in not supported yet.",
+                                      op_type.c_str()));
     converter->SetStream(stream);
     (*converter)(in, out, max_size);
   }

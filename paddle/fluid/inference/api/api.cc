@@ -66,7 +66,7 @@ PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
     if (other.length() && other.data())
       memcpy(data_, other.data(), other.length());
     else if (other.length())
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Invalid argument, null pointer data with length %u is passed",
           other.length()));
 
@@ -96,7 +96,7 @@ void PaddleBuf::Resize(size_t length) {
     length_ = length;
     memory_owned_ = true;
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "The memory is allocated externally, can not Resized"));
   }
 }
@@ -113,7 +113,7 @@ void PaddleBuf::Free() {
     PADDLE_ENFORCE_GT(
         length_,
         0UL,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The memory used in PaddleBuf %d should be greater than 0",
             length_));
     delete[] static_cast<char *>(data_);
@@ -146,7 +146,7 @@ void UpdateDllFlag(const char *name, const char *value) {
   PADDLE_ENFORCE_EQ(
       success,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail to update flag: %s, please make sure the flag exists.", name));
 }
 

@@ -151,7 +151,7 @@ class SimpleNetPipe(PipelineLayer):
         super().__init__(
             layers=self.descs,
             loss_fn=[MSEPipe(), LossNet(), L1Pipe()],
-            **kwargs
+            **kwargs,
         )
 
 

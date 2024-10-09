@@ -17,7 +17,7 @@ import numbers
 import os
 import time
 import warnings
-from typing import TYPE_CHECKING, Any, Iterator, Literal, Sequence, TypedDict
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -27,6 +27,9 @@ from paddle.utils import try_import
 from .progressbar import ProgressBar
 
 if TYPE_CHECKING:
+    from typing import Any, Literal, TypedDict
+
+    from collection.abc import Iterator, Sequence
     from typing_extensions import TypeAlias
 
     from .model import Model
@@ -67,16 +70,16 @@ def config_callbacks(
         _cbks if isinstance(_cbks, (list, tuple)) else [_cbks]
     )
     if not any(isinstance(k, ProgBarLogger) for k in cbks) and verbose:
-        cbks = [ProgBarLogger(log_freq, verbose=verbose)] + cbks
+        cbks = [ProgBarLogger(log_freq, verbose=verbose), *cbks]
 
     if not any(isinstance(k, ModelCheckpoint) for k in cbks):
-        cbks = cbks + [ModelCheckpoint(save_freq, save_dir)]
+        cbks = [*cbks, ModelCheckpoint(save_freq, save_dir)]
 
     for k in cbks:
         if isinstance(k, EarlyStopping):
             k.save_dir = save_dir
     if not any(isinstance(k, LRScheduler) for k in cbks):
-        cbks = cbks + [LRScheduler()]
+        cbks = [*cbks, LRScheduler()]
 
     cbk_list = CallbackList(cbks)
     cbk_list.set_model(model)

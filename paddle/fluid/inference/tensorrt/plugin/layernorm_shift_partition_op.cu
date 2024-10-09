@@ -553,15 +553,15 @@ bool LayernormShiftPartitionPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument("The input of LayernormShiftPartition "
-                                   "plugin shoule not be nullptr."));
+      common::errors::InvalidArgument("The input of LayernormShiftPartition "
+                                      "plugin shoule not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
@@ -584,7 +584,7 @@ nvinfer1::DataType LayernormShiftPartitionPluginDynamic::getOutputDataType(
   PADDLE_ENFORCE_EQ(
       index,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The LayernormShiftPartition only has one input, so the "
           "index value should be 0, but get %d.",
           index));
@@ -599,7 +599,7 @@ nvinfer1::DimsExprs LayernormShiftPartitionPluginDynamic::getOutputDimensions(
   PADDLE_ENFORCE_EQ(
       output_index,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "There is only one output of the LayernormShiftPartition, "
           "so the index should be zero,"
           "but it's (%d)",
@@ -607,7 +607,7 @@ nvinfer1::DimsExprs LayernormShiftPartitionPluginDynamic::getOutputDimensions(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Input of the LayernormShiftPartition should be 1, but we found "
           "it has (%d) inputs",
           nb_inputs));
@@ -639,7 +639,7 @@ int LayernormShiftPartitionPluginDynamic::enqueue(
   PADDLE_ENFORCE_EQ(
       input_resolution_ * input_resolution_,
       input_dims.d[1],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The LayernormShiftPartition‘s input_resolution is wrong (%d)",
           input_dims.d[1]));
   if (input_type == nvinfer1::DataType::kFLOAT) {
@@ -673,7 +673,7 @@ int LayernormShiftPartitionPluginDynamic::enqueue(
         eps_,
         stream);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The LayerNorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;

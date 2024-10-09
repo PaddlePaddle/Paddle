@@ -35,10 +35,10 @@ SpmdInfo OneHotInferSpmd(const DistMetaTensor& x, int num_classes) {
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping_src.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping_src.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping_src.size()));
 
   std::vector<int64_t> out_dims_mapping(x_dims_mapping_src);
   out_dims_mapping.emplace_back(-1);

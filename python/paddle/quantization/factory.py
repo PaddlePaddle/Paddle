@@ -11,19 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 import abc
 import inspect
 from functools import partial
+from typing import TYPE_CHECKING, Any, Callable
 
-from paddle.nn import Layer
+if TYPE_CHECKING:
+    from paddle.nn import Layer
 
-from .base_quanter import BaseQuanter
+    from .base_quanter import BaseQuanter
 
 
 class ClassWithArguments(metaclass=abc.ABCMeta):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._args = args
         self._kwargs = kwargs
 
@@ -55,7 +57,7 @@ class QuanterFactory(ClassWithArguments):
     the arguments used to create quanter instance.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.partial_class = None
 
@@ -73,7 +75,9 @@ class QuanterFactory(ClassWithArguments):
 ObserverFactory = QuanterFactory
 
 
-def quanter(class_name):
+def quanter(
+    class_name: str,
+) -> Callable[[type[BaseQuanter]], type[BaseQuanter]]:
     r"""
     Annotation to declare a factory class for quanter.
 
@@ -83,6 +87,7 @@ def quanter(class_name):
     Examples:
         .. code-block:: python
 
+            >>> # type: ignore
             >>> # doctest: +SKIP('need 2 file to run example')
             >>> # Given codes in ./customized_quanter.py
             >>> from paddle.quantization import quanter
@@ -102,7 +107,7 @@ def quanter(class_name):
 
     """
 
-    def wrapper(target_class):
+    def wrapper(target_class: type[BaseQuanter]) -> type[BaseQuanter]:
         init_function_str = f"""
 def init_function(self, *args, **kwargs):
     super(type(self), self).__init__(*args, **kwargs)

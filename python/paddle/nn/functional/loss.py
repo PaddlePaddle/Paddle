@@ -14,15 +14,17 @@
 
 from __future__ import annotations
 
+import functools
 import math
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+import operator
+from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
-from ...base.data_feeder import check_variable_and_dtype
+from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
     _current_expected_place,
     core,
@@ -34,6 +36,7 @@ from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Callable, TypeAlias
 
     from paddle import Tensor
@@ -109,7 +112,8 @@ def dice_loss(
         input.shape[:-1] == label.shape[:-1]
     ), "All dimensions should be equal except the last one."
     assert (
-        input.numel() > 0 and label.numel() > 0
+        functools.reduce(operator.mul, input.shape) != 0
+        and functools.reduce(operator.mul, label.shape) != 0
     ), "Any dimension of input and label cannot be equal to 0."
 
     label = paddle.squeeze(label, [-1])
@@ -288,7 +292,19 @@ def base_softmax_with_cross_entropy(
              (got input_dims{input_dims}, label_dims{label_dims})'
         )
     if input_dims - 1 == label_dims:
-        label = paddle.unsqueeze(label, axis=axis)
+        batch_size = label.shape[0]
+        new_shape = [batch_size, logits.shape[1]]
+        label = paddle.reshape(label, new_shape)
+
+        # origin function
+        # -------
+        # label = paddle.unsqueeze(label, axis)
+        # ------
+
+        # notice : dim of label [-1,2,10] while logits is [-1,1] ,if use unsquezee
+        # logits [-1,1]->[-1,1,1], but input need 1 != 2 so change
+        # the modified function make logits [-1,1] -> [-1,2] (uncertain)
+        # another possible modify [-1,1] -> [-1,2,1]
     if in_dynamic_or_pir_mode():
         softmax, loss = _C_ops.cross_entropy_with_softmax(
             logits,
@@ -559,24 +575,9 @@ def edit_distance(
 
     # remove some tokens from input and labels
     if ignored_tokens is not None and len(ignored_tokens) > 0:
-        erased_input = helper.create_variable_for_type_inference(dtype="int64")
-        erased_label = helper.create_variable_for_type_inference(dtype="int64")
-
-        helper.append_op(
-            type="sequence_erase",
-            inputs={"X": [input]},
-            outputs={"Out": [erased_input]},
-            attrs={"tokens": ignored_tokens},
+        raise ValueError(
+            f'Expected ignored_tokens is None (got {ignored_tokens})'
         )
-        input = erased_input
-
-        helper.append_op(
-            type="sequence_erase",
-            inputs={"X": [label]},
-            outputs={"Out": [erased_label]},
-            attrs={"tokens": ignored_tokens},
-        )
-        label = erased_label
 
     if in_dynamic_mode():
         return _C_ops.edit_distance(
@@ -829,6 +830,19 @@ def binary_cross_entropy_with_logits(
         )
 
     if in_dynamic_or_pir_mode():
+        if in_pir_mode():
+            check_type(
+                logit,
+                'logit',
+                paddle.pir.Value,
+                'binary_cross_entropy_with_logits',
+            )
+            check_type(
+                label,
+                'label',
+                paddle.pir.Value,
+                'binary_cross_entropy_with_logits',
+            )
         one = _C_ops.full(
             [1],
             1.0,
@@ -2176,8 +2190,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: Literal[True] = ...,
     reduction: _ReduceMode | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -2191,8 +2204,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: Literal[False] = ...,
     reduction: _ReduceMode | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -2206,8 +2218,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: bool = ...,
     reduction: _ReduceMode | None = ...,
-) -> Tensor | tuple[Tensor, Tensor]:
-    ...
+) -> Tensor | tuple[Tensor, Tensor]: ...
 
 
 def margin_cross_entropy(
@@ -2519,8 +2530,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: Literal[True] = ...,
     axis: int = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -2532,8 +2542,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: Literal[False] = ...,
     axis: int = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -2545,8 +2554,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: bool = ...,
     axis: int = ...,
-) -> Tensor | tuple[Tensor, Tensor]:
-    ...
+) -> Tensor | tuple[Tensor, Tensor]: ...
 
 
 @deprecated(
@@ -4539,7 +4547,7 @@ def adaptive_log_softmax_with_loss(
     output = paddle.zeros([batch_size], dtype=input.dtype)
     gather_inds = paddle.empty([batch_size], dtype=label.dtype)
 
-    cutoff_values = [0] + cutoffs
+    cutoff_values = [0, *cutoffs]
     for i in range(len(cutoff_values) - 1):
         low_idx = cutoff_values[i]
         high_idx = cutoff_values[i + 1]

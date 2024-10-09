@@ -39,22 +39,22 @@ bool SkipGroupnormActPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of SkipGroupnormAct plugin shoule not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
       return ((in.type == nvinfer1::DataType::kHALF) &&
               (in.format == nvinfer1::PluginFormat::kHWC8));
     } else {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "SkipGroupnormAct TRT Plugin is fp16 only so far"));
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -72,15 +72,15 @@ nvinfer1::DataType SkipGroupnormActPluginDynamic::getOutputDataType(
   PADDLE_ENFORCE_EQ(
       index,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The SkipGroupnormAct Plugin only has one input, so the "
           "index value should be 0, but get %d.",
           index));
-  PADDLE_ENFORCE_EQ(
-      (input_types[0] == nvinfer1::DataType::kFLOAT ||
-       input_types[0] == nvinfer1::DataType::kHALF),
-      true,
-      phi::errors::InvalidArgument("The input type should be half or float"));
+  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
+                     input_types[0] == nvinfer1::DataType::kHALF),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The input type should be half or float"));
 
   return input_types[0];
 }
@@ -230,7 +230,7 @@ void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
   // Make sure the values are as we expect.
   PADDLE_ENFORCE_EQ(params.c % params.cPerBlock,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The groupNormNDHWCSum of SkipGroupnormAct Plugin got "
                         "wrong parameters"
                         "params.c %% params.cPerBlock should be 0, but get %d.",
@@ -238,7 +238,7 @@ void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
   PADDLE_ENFORCE_EQ(
       params.dhw % params.dhwPerBlock,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The groupNormNDHWCSum of SkipGroupnormAct Plugin got wrong "
           "parameters"
           "params.dhw  %% params.dhwPerBlock should be 0, but get %d.",
@@ -247,7 +247,7 @@ void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
   PADDLE_ENFORCE_EQ(
       params.cPerBlock % params.cPerGroup,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The groupNormNDHWCSum of SkipGroupnormAct Plugin got wrong "
           "parameters"
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
@@ -278,7 +278,7 @@ void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
       skipGroupNormNDHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The function groupNormNDHWCSum of SkipGroupnormAct TRT Plugin "
           "encounter error"));
   }
@@ -363,7 +363,7 @@ void skipGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
   PADDLE_ENFORCE_EQ(
       params.c % params.cPerBlock,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The groupNormNDHWCScale of SkipGroupnormAct Plugin got "
           "wrong parameters"
           "params.c %% params.cPerBlock should be 0, but get %d.",
@@ -372,7 +372,7 @@ void skipGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
   PADDLE_ENFORCE_EQ(
       params.cPerBlock % params.cPerGroup,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The groupNormNDHWCScale of SkipGroupnormAct Plugin got wrong "
           "parameters"
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
@@ -403,7 +403,7 @@ void skipGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
       skipGroupNormNDHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The function groupNormNDHWCSum of SkipGroupnormAct TRT Plugin "
           "encounter error"));
   }
@@ -419,7 +419,7 @@ int SkipGroupnormActPluginDynamic::enqueue(
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. SkipGroupnormAct-->fp32";
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The SkipGroupnormAct TRT Plugin's only support fp16 input"));
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. SkipGroupnormAct-->fp16";
@@ -491,7 +491,7 @@ int SkipGroupnormActPluginDynamic::enqueue(
 
   } else {
     // input not fp16
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The SkipGroupnormAct TRT Plugin's only support fp16 input"));
   }
   return cudaGetLastError() != cudaSuccess;

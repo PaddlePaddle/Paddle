@@ -22,30 +22,30 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnsqueezeInferKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const IntArray& axes,
-                          DenseTensor* out);
-
-template <typename T, typename Context>
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
-                     DenseTensor* out,
-                     DenseTensor* xshape);
+                     DenseTensor* out);
 
-template <typename Context>
-void UnsqueezeInferStridedKernel(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const IntArray& axes,
-                                 DenseTensor* out);
+template <typename T, typename Context>
+void UnsqueezeWithXShapeKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const IntArray& axes,
+                               DenseTensor* out,
+                               DenseTensor* xshape);
 
 template <typename Context>
 void UnsqueezeStridedKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const IntArray& axes,
-                            DenseTensor* out,
-                            DenseTensor* xshape);
+                            DenseTensor* out);
+
+template <typename Context>
+void UnsqueezeWithXShapeStridedKernel(const Context& dev_ctx,
+                                      const DenseTensor& x,
+                                      const IntArray& axes,
+                                      DenseTensor* out,
+                                      DenseTensor* xshape);
 
 template <typename T, typename Context>
 void Unsqueeze(const Context& dev_ctx,
@@ -55,7 +55,7 @@ void Unsqueeze(const Context& dev_ctx,
                DenseTensor* xshape UNUSED) {
   MetaTensor meta_out(out);
   UnsqueezeInferMeta(x, axes, &meta_out);
-  UnsqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
+  UnsqueezeKernel<T, Context>(dev_ctx, x, axes, out);
 }
 
 }  // namespace phi

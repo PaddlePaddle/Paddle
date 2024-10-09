@@ -55,6 +55,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
                                         int64_t axis = -1);
 
 SpmdInfo SwiGLUInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y);
+SpmdInfo AssignInferSpmd(const DistMetaTensor& x);
 
 SpmdInfo SwiGLUInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& y,

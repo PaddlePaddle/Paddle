@@ -82,7 +82,7 @@ struct BeamSearchDecodeFunctor {
   template <typename T>
   void apply_mix() const {
     if (std::is_same<bool, T>::value) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "beam search decode op does not support bool!"));
 
     } else {
@@ -126,7 +126,7 @@ void BeamSearchDecodeOpKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       step_num,
       0UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "beam search steps, which is the"
           "size of Input(Ids) TensorArray. beam search steps should "
           "be larger than 0, but received %d. ",
@@ -135,7 +135,7 @@ void BeamSearchDecodeOpKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       source_num,
       0UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "source_num is the sequence number of the"
           "first decoding step, indicating by Input(Ids)[0].lod[0].size. "
           "The number of source_num should be larger than"
@@ -147,7 +147,7 @@ void BeamSearchDecodeOpKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         tmp,
         2UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "For the i step in beam search steps,"
             "the size of Input(Ids)[i].lod() should larger than 2,"
             "but received %d. ",

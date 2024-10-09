@@ -38,9 +38,9 @@ class TestFleetExecutor(unittest.TestCase):
 
     def test_dist_executor_on_multi_devices(self):
         os.environ["PADDLE_TRAINER_ID"] = "0"
-        os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"
-        ] = "127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002,127.0.0.1:7003,127.0.0.1:7004,127.0.0.1:7005,127.0.0.1:7006,127.0.0.1:7007"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = (
+            "127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002,127.0.0.1:7003,127.0.0.1:7004,127.0.0.1:7005,127.0.0.1:7006,127.0.0.1:7007"
+        )
         strategy = fleet.DistributedStrategy()
         strategy.sharding_configs = {
             "dp_degree": 2,

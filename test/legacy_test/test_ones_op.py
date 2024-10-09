@@ -45,35 +45,13 @@ class ApiOnesTest(unittest.TestCase):
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
-    def test_base_ones(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            ones = paddle.ones(shape=[10], dtype="int64")
+            ones = paddle.ones(shape=10, dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
-
-
-class ApiOnesZerosError(unittest.TestCase):
-    def test_errors(self):
-        def test_error1():
-            with paddle.static.program_guard(paddle.static.Program()):
-                ones = paddle.ones(shape=10, dtype="int64")
-
-        self.assertRaises(TypeError, test_error1)
-
-        def test_error2():
-            with paddle.static.program_guard(paddle.static.Program()):
-                ones = paddle.ones(shape=10)
-
-        self.assertRaises(TypeError, test_error2)
-
-        def test_error3():
-            with paddle.static.program_guard(paddle.static.Program()):
-                ones = paddle.ones(shape=10, dtype="int64")
-
-        self.assertRaises(TypeError, test_error3)
 
 
 if __name__ == "__main__":

@@ -42,7 +42,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     PADDLE_ENFORCE_GT(
         momentum_ops.size(),
         static_cast<size_t>(0),
-        phi::errors::InvalidArgument("Momentum ops must not be empty."));
+        common::errors::InvalidArgument("Momentum ops must not be empty."));
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
@@ -58,7 +58,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           mu,
           PADDLE_GET_CONST(float, momentum_op->Op()->GetAttr("mu")),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "All momentum Op's attr(mu) must be same, but there are two "
               "different "
               "value: %f, %f.",
@@ -67,7 +67,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           use_nesterov,
           PADDLE_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "All momentum Op's attr(use_nesterov) must be same, but there "
               "are two different value: %d, %d.",
               use_nesterov,
@@ -78,7 +78,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
           PADDLE_GET_CONST(int,
                            momentum_op->Op()->GetAttr(
                                OpProtoAndCheckerMaker::OpRoleAttrName())),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "All momentum Op's attr(op_role) must be same, but there are two "
               "different "
               "value: %d, %d.",

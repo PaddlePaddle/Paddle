@@ -100,7 +100,7 @@ void SToPReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
     SToPReshardFunction s_to_p_func;
     PADDLE_ENFORCE(
         s_to_p_func.IsSuitable(tmp_result, out_dist_attr),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invoke the s to p reshard function is not valid from %s to %s.",
             tmp_result.dist_attr(),
             out_dist_attr));

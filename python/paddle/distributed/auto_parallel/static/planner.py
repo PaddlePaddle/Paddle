@@ -645,9 +645,9 @@ class MCMC(SearchAlgorithm):
                 )
 
     def change_process_mesh(self, op, changed_process_mesh, vars, dist_context):
-        dist_context.get_op_dist_attr_for_program(
-            op
-        ).process_mesh = changed_process_mesh
+        dist_context.get_op_dist_attr_for_program(op).process_mesh = (
+            changed_process_mesh
+        )
         for var_name in op.output_arg_names:
             dist_context.get_tensor_dist_attr_for_program(
                 vars[var_name]

@@ -182,7 +182,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   if (!target_box.lod().empty()) {
     PADDLE_ENFORCE_EQ(target_box.lod().size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input(TargetBox) of BoxCoder operator "
                           "supports LoD with only one level. But received "
                           "level = %d",
@@ -191,19 +191,19 @@ void BoxCoderKernel(const Context &dev_ctx,
   if (prior_box_var) {
     PADDLE_ENFORCE_EQ(variance.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input 'PriorBoxVar' and attribute 'variance' "
                           "of BoxCoder operator should not be used at the "
                           "same time."));
   }
   if (!(variance.empty())) {
-    PADDLE_ENFORCE_EQ(
-        static_cast<int>(variance.size()),
-        4,
-        phi::errors::InvalidArgument("Size of attribute 'variance' of BoxCoder "
-                                     "operator should be 4. But received "
-                                     "size = %d",
-                                     variance.size()));
+    PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()),
+                      4,
+                      common::errors::InvalidArgument(
+                          "Size of attribute 'variance' of BoxCoder "
+                          "operator should be 4. But received "
+                          "size = %d",
+                          variance.size()));
   }
 
   auto code_type = phi::funcs::GetBoxCodeType(code_type_str);

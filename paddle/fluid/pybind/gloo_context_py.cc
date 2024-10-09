@@ -32,8 +32,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/platform/gloo_context.h"
+#include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 
 namespace paddle::pybind {
 

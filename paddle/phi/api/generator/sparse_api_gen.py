@@ -344,6 +344,10 @@ class SparseAPI(ForwardAPI):
 {self.gene_infer_meta(kernel_output_names, '')}
 {kernel_context_code}
     phi_kernel(&kernel_context);
+    if (FLAGS_benchmark) {{
+        dev_ctx->Wait();
+        std::cout << \"{self.api} kernel run finish.\" << std::endl;
+    }}
   {return_code}"""
 
     def get_condition_code(self, kernel_name):
@@ -401,7 +405,7 @@ class SparseAPI(ForwardAPI):
         return f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
 {kernel_dispatch_code}
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
           "The kernel of ({self.api}) for input tensors is unimplemented, please check the type of input tensors."));
 }}
 """
@@ -441,6 +445,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/multiary.h"
 
 COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(benchmark);
 """
 
 

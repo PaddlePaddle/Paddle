@@ -218,7 +218,7 @@ class Ast3ToGAst(AstToGAst):
             self._visit(node.arg),
             gast.Param(),
             self._visit(node.annotation),
-            *extra_args  # type_comment
+            *extra_args,  # type_comment
         )
         ast.copy_location(new_node, node)
         return new_node
@@ -453,7 +453,7 @@ class GAstToAst3(GAstToAst):
             new_node = ast.arguments(
                 [self._make_arg(arg) for arg in node.posonlyargs],
                 [self._make_arg(n) for n in node.args],
-                *extra_args
+                *extra_args,
             )
         else:
             new_node = ast.arguments(

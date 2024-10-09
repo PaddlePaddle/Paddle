@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -29,6 +29,8 @@ from paddle.framework import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import TypeGuard
 
     from paddle import Tensor

@@ -179,9 +179,11 @@ class ResNet(paddle.nn.Layer):
                 bottleneck_block = self.add_sublayer(
                     'bb_%d_%d' % (block, i),
                     BottleneckBlock(
-                        num_channels=num_channels[block]
-                        if i == 0
-                        else num_filters[block] * 4,
+                        num_channels=(
+                            num_channels[block]
+                            if i == 0
+                            else num_filters[block] * 4
+                        ),
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
                         shortcut=shortcut,

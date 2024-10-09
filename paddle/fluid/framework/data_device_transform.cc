@@ -25,8 +25,8 @@ void TransDataDevice(const phi::DenseTensor &in,
   PADDLE_ENFORCE_NE(
       in.place().GetType(),
       dst_place.GetType(),
-      phi::errors::Unavailable("Currently, model parallelism is only "
-                               "supported between CPU and CUDA."));
+      common::errors::Unavailable("Currently, model parallelism is only "
+                                  "supported between CPU and CUDA."));
 
   // NOTE(zhiqiu): Special case for CPU->NPU, avoid stream sync.
   if (phi::is_cpu_place(in.place())) {

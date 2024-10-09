@@ -36,6 +36,7 @@ class GroupCompilationContext {
         CX86_module_builder_(cinn::common::UniqName("module"),
                              common::DefaultHostTarget()) {}
 
+  const pir::OpLoweringGroupPtr& GetGroup() const { return group_; }
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
   void PrepareModuleBuilder();
   std::string PrintPredicate2Funcs() const;

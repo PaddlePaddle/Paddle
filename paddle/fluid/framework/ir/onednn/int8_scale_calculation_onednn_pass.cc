@@ -106,7 +106,7 @@ void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
     ir::Graph* graph, const std::string& conv_type) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init("int8_scale_calculation_onednn_pass", graph);
   GraphPatternDetector gpd;

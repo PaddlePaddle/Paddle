@@ -23,14 +23,14 @@ namespace ir {
 
 class Graph;
 
-#define GET_NODE(id, pattern)                                               \
-  PADDLE_ENFORCE_NE(                                                        \
-      subgraph.count(pattern.RetrieveNode(#id)),                            \
-      0,                                                                    \
-      phi::errors::InvalidArgument("Pattern has no Node called %s.", #id)); \
-  auto* id = subgraph.at(pattern.RetrieveNode(#id));                        \
-  PADDLE_ENFORCE_NOT_NULL(                                                  \
-      id, phi::errors::InvalidArgument("Subgraph has no node %s.", #id));
+#define GET_NODE(id, pattern)                                                  \
+  PADDLE_ENFORCE_NE(                                                           \
+      subgraph.count(pattern.RetrieveNode(#id)),                               \
+      0,                                                                       \
+      common::errors::InvalidArgument("Pattern has no Node called %s.", #id)); \
+  auto* id = subgraph.at(pattern.RetrieveNode(#id));                           \
+  PADDLE_ENFORCE_NOT_NULL(                                                     \
+      id, common::errors::InvalidArgument("Subgraph has no node %s.", #id));
 
 DepthwiseConvMKLDNNPass::DepthwiseConvMKLDNNPass() {  // NOLINT
   AddOpCompat(OpCompat("depthwise_conv2d"))
@@ -75,7 +75,7 @@ DepthwiseConvMKLDNNPass::DepthwiseConvMKLDNNPass() {  // NOLINT
 
 void DepthwiseConvMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("depthwise_conv_onednn_pass", graph);
   GraphPatternDetector gpd;
 

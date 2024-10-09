@@ -45,7 +45,7 @@ class ProcessGroupWithoutStream : public ProcessGroup {
       int64_t offset,
       int64_t numel,
       bool sync_op) override {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroupWithoutStream (%s) does not support all_gather.",
         GetBackendName()));
   }
@@ -65,7 +65,7 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                                            int64_t offset,
                                            int64_t numel,
                                            bool sync_op) override {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroupWithoutStream (%s) does not support recv.",
         GetBackendName()));
   }
@@ -85,7 +85,7 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                                            int64_t offset,
                                            int64_t numel,
                                            bool sync_op) override {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroupWithoutStream (%s) does not support send.",
         GetBackendName()));
   }

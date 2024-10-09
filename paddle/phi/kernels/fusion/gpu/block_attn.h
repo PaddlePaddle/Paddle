@@ -23,6 +23,14 @@
 
 COMMON_DECLARE_bool(use_xqa_optim);
 
+#ifdef PADDLE_WITH_HIP
+#define GPU(str) hip##str
+#define GPUMultiProcessorCount hipDeviceAttributeMultiprocessorCount
+#else
+#define GPU(str) cuda##str
+#define GPUMultiProcessorCount cudaDevAttrMultiProcessorCount
+#endif
+
 namespace phi {
 namespace fusion {
 
@@ -101,7 +109,7 @@ template <typename T,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) || defined(PADDLE_WITH_HIP)
   const int bi = blockIdx.y;
   int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
@@ -319,7 +327,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     if (QK_VECS_PER_WARP <= WARP_SIZE) {
 #pragma unroll
       for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+        qk += __shfl_xor(qk, mask);
+#else
         qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+#endif
       }
     }
   }
@@ -418,7 +430,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+    qk_max = fmaxf(qk_max, __shfl_xor(qk_max, mask));
+#else
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+#endif
   }
 
   const int warp = tid / WARP_SIZE;
@@ -430,13 +446,27 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   __syncthreads();
 
+#ifdef PADDLE_WITH_HIP
+  qk_max = -FLT_MAX;
+  qk_max = red_smem[lane];
+#else
   qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
+#endif
+
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+    qk_max = fmaxf(qk_max, __shfl_xor(qk_max, mask));
+#else
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+#endif
   }
 
+#ifdef PADDLE_WITH_HIP
+  qk_max = __shfl(qk_max, 0);
+#else
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
+#endif
 
   float sum = 0.f;
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
@@ -587,7 +617,7 @@ template <typename T,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) || defined(PADDLE_WITH_HIP)
   const int bi = blockIdx.y;
   const int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
@@ -813,7 +843,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
     if (QK_VECS_PER_WARP <= WARP_SIZE) {
 #pragma unroll
       for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+        qk += __shfl_xor(qk, mask);
+#else
         qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+#endif
       }
     }
   }
@@ -933,9 +967,14 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   for (int local_hi = 0; local_hi < GQA_SUB_PARTITION_SIZE; local_hi++) {
 #pragma unroll
     for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
-      qk_maxs[local_hi] =
-          fmaxf(qk_maxs[local_hi],
-                __shfl_xor_sync(uint32_t(-1), qk_maxs[local_hi], mask));
+      qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi],
+#ifdef PADDLE_WITH_HIP
+                                __shfl_xor(qk_maxs[local_hi], mask));
+#else
+                                __shfl_xor_sync(
+                                    uint32_t(-1), qk_maxs[local_hi], mask));
+
+#endif
     }
 
     if (lane_id == 0) {
@@ -944,16 +983,30 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
 
     __syncthreads();
 
+#ifdef PADDLE_WITH_HIP
+    qk_maxs[local_hi] = -FLT_MAX;
+    qk_maxs[local_hi] = red_smem[lane_id];
+#else
     qk_maxs[local_hi] =
         lane_id < WARPS_PER_BLOCK ? red_smem[lane_id] : -FLT_MAX;
+#endif
+
 #pragma unroll
     for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-      qk_maxs[local_hi] =
-          fmaxf(qk_maxs[local_hi],
-                __shfl_xor_sync(uint32_t(-1), qk_maxs[local_hi], mask));
+      qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi],
+#ifdef PADDLE_WITH_HIP
+                                __shfl_xor(qk_maxs[local_hi], mask));
+#else
+                                __shfl_xor_sync(
+                                    uint32_t(-1), qk_maxs[local_hi], mask));
+#endif
     }
 
+#ifdef PADDLE_WITH_HIP
+    qk_maxs[local_hi] = __shfl(qk_maxs[local_hi], 0);
+#else
     qk_maxs[local_hi] = __shfl_sync(uint32_t(-1), qk_maxs[local_hi], 0);
+#endif
 
     float sum = 0.f;
     for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
@@ -1165,6 +1218,80 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
   return max(logits_table_sz, red_sz);
 }
 
+#ifdef PADDLE_WITH_HIP
+#define BLHAG_LAUNCH_KERNEL(T,                                             \
+                            Dh,                                            \
+                            Dh_MAX,                                        \
+                            THDS_PER_KEY,                                  \
+                            THDS_PER_VALUE,                                \
+                            THDS_PER_BLOCK,                                \
+                            BLOCK_SIZE,                                    \
+                            CACHE_TYPE,                                    \
+                            stream,                                        \
+                            load_func,                                     \
+                            store_func)                                    \
+  size_t smem_sz =                                                         \
+      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);   \
+  constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                    Dh,                    \
+                                                    Dh_MAX,                \
+                                                    THDS_PER_KEY,          \
+                                                    THDS_PER_VALUE,        \
+                                                    THDS_PER_BLOCK,        \
+                                                    BLOCK_SIZE,            \
+                                                    CACHE_TYPE,            \
+                                                    decltype(load_func),   \
+                                                    decltype(store_func)>; \
+  if (smem_sz > 0xc000) {                                                  \
+    hipFuncSetAttribute((const void *)kernel_fn,                           \
+                        hipFuncAttributeMaxDynamicSharedMemorySize,        \
+                        smem_sz);                                          \
+  }                                                                        \
+  dim3 grid(params.q_num_head, params.batch_size);                         \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
+      params, load_func, store_func);
+
+// For GQA specific optimization (use xqa)
+#define BLHA_LAUNCH_GQA_KERNEL(T,                                           \
+                               Dh,                                          \
+                               Dh_MAX,                                      \
+                               THDS_PER_KEY,                                \
+                               THDS_PER_VALUE,                              \
+                               THDS_PER_BLOCK,                              \
+                               BLOCK_SIZE,                                  \
+                               CACHE_TYPE,                                  \
+                               GQA_PARTITION_SIZE,                          \
+                               GQA_SUB_PARTITION_SIZE,                      \
+                               stream,                                      \
+                               load_func,                                   \
+                               store_func)                                  \
+  size_t smem_sz = gqa_smem_size_in_bytes<T, GQA_SUB_PARTITION_SIZE>(       \
+      params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);                          \
+  constexpr int GQA_NUM_SUB_PARTITIONS =                                    \
+      GQA_PARTITION_SIZE / GQA_SUB_PARTITION_SIZE;                          \
+  constexpr auto kernel_fn =                                                \
+      gqa_block_attention_kernel<T,                                         \
+                                 Dh,                                        \
+                                 Dh_MAX,                                    \
+                                 THDS_PER_KEY,                              \
+                                 THDS_PER_VALUE,                            \
+                                 THDS_PER_BLOCK,                            \
+                                 BLOCK_SIZE,                                \
+                                 CACHE_TYPE,                                \
+                                 GQA_PARTITION_SIZE,                        \
+                                 GQA_SUB_PARTITION_SIZE,                    \
+                                 GQA_NUM_SUB_PARTITIONS,                    \
+                                 decltype(load_func),                       \
+                                 decltype(store_func)>;                     \
+  if (smem_sz > 0xc000) {                                                   \
+    hipFuncSetAttribute((const void *)kernel_fn,                            \
+                        hipFuncAttributeMaxDynamicSharedMemorySize,         \
+                        smem_sz);                                           \
+  }                                                                         \
+  dim3 grid(params.kv_num_head *GQA_NUM_SUB_PARTITIONS, params.batch_size); \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
+      params, load_func, store_func);
+#else
 #define BLHAG_LAUNCH_KERNEL(T,                                             \
                             Dh,                                            \
                             Dh_MAX,                                        \
@@ -1235,6 +1362,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
   dim3 grid(params.kv_num_head *GQA_NUM_SUB_PARTITIONS, params.batch_size); \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
       params, load_func, store_func);
+#endif
 
 template <typename T,
           int Dh,
@@ -1247,7 +1375,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc>
 void dispatch_blha_impl_kernel(const Block_AttN_params<T> &params,
-                               const cudaStream_t &stream,
+                               const GPU(Stream_t) & stream,
                                LoadFunc load_func,
                                StoreFunc store_func) {
   VLOG(1) << "group wise";
@@ -1275,7 +1403,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc>
 void dispatch_blha_gqa_kernel(const Block_AttN_params<T> &params,
-                              const cudaStream_t &stream,
+                              const GPU(Stream_t) & stream,
                               LoadFunc load_func,
                               StoreFunc store_func) {
   if (params.gqa_num_per_partitions == 1 || !FLAGS_use_xqa_optim) {
@@ -1318,6 +1446,36 @@ void dispatch_blha_gqa_kernel(const Block_AttN_params<T> &params,
                            stream,
                            load_func,
                            store_func)
+  } else if (params.gqa_num_per_partitions == 6) {
+    constexpr int THDS_PER_BLOCK = 1024;
+    BLHA_LAUNCH_GQA_KERNEL(T,
+                           Dh,
+                           Dh_MAX,
+                           THREADS_PER_KEY,
+                           THREADS_PER_VALUE,
+                           THDS_PER_BLOCK,
+                           BlockSize,
+                           CACHE_TYPE,
+                           6,
+                           2,
+                           stream,
+                           load_func,
+                           store_func)
+  } else if (params.gqa_num_per_partitions == 7) {
+    constexpr int THDS_PER_BLOCK = 1024;
+    BLHA_LAUNCH_GQA_KERNEL(T,
+                           Dh,
+                           Dh_MAX,
+                           THREADS_PER_KEY,
+                           THREADS_PER_VALUE,
+                           THDS_PER_BLOCK,
+                           BlockSize,
+                           CACHE_TYPE,
+                           7,
+                           1,
+                           stream,
+                           load_func,
+                           store_func)
   } else if (params.gqa_num_per_partitions == 8) {
     constexpr int THDS_PER_BLOCK = 1024;
     BLHA_LAUNCH_GQA_KERNEL(T,
@@ -1334,9 +1492,9 @@ void dispatch_blha_gqa_kernel(const Block_AttN_params<T> &params,
                            load_func,
                            store_func)
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("gqa_num_per_partitions = %d is unsupport!",
-                                   params.gqa_num_per_partitions));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "gqa_num_per_partitions = %d is unsupport!",
+        params.gqa_num_per_partitions));
   }
 }
 
@@ -1349,7 +1507,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc>
 void dispatch_blha_impl(const Block_AttN_params<T> &params,
-                        const cudaStream_t &stream,
+                        const GPU(Stream_t) & stream,
                         LoadFunc load_func,
                         StoreFunc store_func,
                         const int use_cachekv_int8) {
@@ -1387,7 +1545,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc>
 void dispatch_blha_impl_key_and_thread(const Block_AttN_params<T> &params,
-                                       const cudaStream_t &stream,
+                                       const GPU(Stream_t) & stream,
                                        LoadFunc load_func,
                                        StoreFunc store_func,
                                        const int use_cachekv_int8) {
@@ -1397,7 +1555,7 @@ void dispatch_blha_impl_key_and_thread(const Block_AttN_params<T> &params,
 
 template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
 void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
-                                  const cudaStream_t &stream,
+                                  const GPU(Stream_t) & stream,
                                   LoadFunc load_func,
                                   StoreFunc store_func,
                                   const int use_cachekv_int8) {
@@ -1415,8 +1573,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
           params, stream, load_func, store_func, use_cachekv_int8);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented("block_size = %d is unsupport!",
-                                              params.block_size));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "block_size = %d is unsupport!", params.block_size));
   }
 }
 
@@ -1441,8 +1599,8 @@ void dispatch_blha_impl_headsize(const phi::GPUContext &dev_ctx,
           params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     default:
-      PADDLE_THROW(
-          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+      PADDLE_THROW(common::errors::Unimplemented("Dim_head = %d is unsupport!",
+                                                 dim_head));
   }
 }
 
@@ -1484,6 +1642,7 @@ void blha(const phi::GPUContext &dev_ctx,
           const int timestep,
           const int rotary_emb_dims,
           float inv_sqrt_dh,
+          const float rope_theta,
           const bool add_qkv_bias = true,
           const bool neox_rotary_style = false,
           const int quant_round_type = 1,
@@ -1573,6 +1732,8 @@ void blha(const phi::GPUContext &dev_ctx,
   params.timestep = timestep + pre_cache_length;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
+  params.rope_theta = rope_theta;
+
   VLOG(3) << "batch_size: " << batch_size << " q_num_head: " << q_num_head
           << " kv_num_head: " << kv_num_head << " block_size: " << block_size
           << " timestep: " << timestep;
@@ -1587,7 +1748,7 @@ void blha(const phi::GPUContext &dev_ctx,
                   out_tensor);
 }
 
-inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
+inline GPU(Error_t) GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
@@ -1601,39 +1762,40 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
                     std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
                                       sm_count * max_thread_per_multiprocessor /
                                           kBlockSize * kNumWaves));
-  return cudaSuccess;
+  return GPU(Success);
 }
 
 template <class Func>
-inline cudaError_t GetNumBlocks(Func func,
-                                int64_t block_size,
-                                size_t dynamic_smem_size,
-                                int64_t max_blocks,
-                                int64_t waves,
-                                int *num_blocks) {
+inline GPU(Error_t) GetNumBlocks(Func func,
+                                 int64_t block_size,
+                                 size_t dynamic_smem_size,
+                                 int64_t max_blocks,
+                                 int64_t waves,
+                                 int *num_blocks) {
   int dev;
   {
-    cudaError_t err = cudaGetDevice(&dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t) err = GPU(GetDevice)(&dev);
+    if (err != GPU(Success)) {
       return err;
     }
   }
   int sm_count;
   {
-    cudaError_t err =
-        cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t)
+    err = GPU(DeviceGetAttribute)(&sm_count, GPUMultiProcessorCount, dev);
+    if (err != GPU(Success)) {
       return err;
     }
   }
   int max_active_blocks;
   {
-    cudaError_t err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+    GPU(Error_t)
+    err = GPU(OccupancyMaxActiveBlocksPerMultiprocessor)(
         &max_active_blocks, func, block_size, dynamic_smem_size);
   }
   *num_blocks = std::max<int>(
       1, std::min<int64_t>(max_blocks, sm_count * max_active_blocks * waves));
-  return cudaSuccess;
+  return GPU(Success);
 }
 
 template <typename T, int VecSize = 1>
@@ -1697,11 +1859,31 @@ __global__ void cache_int8_kernel(
     phi::Load<T, VecSize>(&qkv[ori_idx], &src_vec);
 
     const uint32_t cache_idx = hi;
+#ifdef PADDLE_WITH_HIP
+    T scale;
+    if constexpr (kernel_dtype_is_same<T, half>::value) {
+      scale = qkv_id == 0 ? __float2half(cache_k_scales[cache_idx])
+                          : __float2half(cache_v_scales[cache_idx]);
+    } else {
+      scale = qkv_id == 0 ? static_cast<T>(cache_k_scales[cache_idx])
+                          : static_cast<T>(cache_v_scales[cache_idx]);
+    }
+#else
     const T scale =
         qkv_id == 0 ? cache_k_scales[cache_idx] : cache_v_scales[cache_idx];
+#endif
 #pragma unroll
     for (uint32_t i = 0; i < VecSize; i++) {
+#ifdef PADDLE_WITH_HIP
+      float quant_value;
+      if constexpr (kernel_dtype_is_same<T, half>::value) {
+        quant_value = __half2float(scale * src_vec[i]);
+      } else {
+        quant_value = static_cast<float>(scale * src_vec[i]);
+      }
+#else
       float quant_value = static_cast<float>(scale * src_vec[i]);
+#endif
       if (round_type == 0) {
         quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
       } else {
@@ -1846,7 +2028,16 @@ __global__ void write_pre_cache_int8_to_cache(
 
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
+#ifdef PADDLE_WITH_HIP
+      float quant_value;
+      if constexpr (kernel_dtype_is_same<T, half>::value) {
+        quant_value = scale * __half2float(src_vec[i]);
+      } else {
+        quant_value = scale * static_cast<float>(src_vec[i]);
+      }
+#else
       float quant_value = scale * static_cast<float>(src_vec[i]);
+#endif
       if (round_type == 0) {
         quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
       } else {
@@ -2095,7 +2286,15 @@ __global__ void quant_write_cache_int8_kernel(
   InVec abs_max_vec;
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
+#ifdef PADDLE_WITH_HIP
+    if constexpr (kernel_dtype_is_same<T, half>::value) {
+      abs_max_vec[i] = __float2half(0.0f);
+    } else {
+      abs_max_vec[i] = static_cast<T>(0.0f);
+    }
+#else
     abs_max_vec[i] = 0.0f;
+#endif
   }
 
   uint8_t *dst_ptr;
@@ -2133,7 +2332,15 @@ __global__ void quant_write_cache_int8_kernel(
 
   __shared__ float quant_scale;
   if (threadIdx.x == 0) {
+#ifdef PADDLE_WITH_HIP
+    if constexpr (kernel_dtype_is_same<T, half>::value) {
+      quant_scale = 127.0f / __half2float(abs_max_val);
+    } else {
+      quant_scale = 127.0f / static_cast<float>(abs_max_val);
+    }
+#else
     quant_scale = 127.0f / static_cast<float>(abs_max_val);
+#endif
   }
 
   __syncthreads();
@@ -2541,7 +2748,7 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadEmbT sin_emb_vec;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   const int half_lastdim = last_dim / 2;
-  const int offset = (q_num_head + kv_num_head) * last_dim;
+  const int offset = (q_num_head + kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
@@ -2976,7 +3183,7 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadEmbT sin_emb_vec;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   const int half_lastdim = last_dim / 2;
-  const int offset = (q_num_head + 2 * kv_num_head) * last_dim;
+  const int offset = (q_num_head + 2 * kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
@@ -3395,7 +3602,7 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadEmbT sin_emb_vec;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   const int half_lastdim = last_dim / 2;
-  const int offset = (q_num_head + 2 * kv_num_head) * last_dim;
+  const int offset = (q_num_head + 2 * kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
@@ -3741,7 +3948,7 @@ void qkv_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -3833,10 +4040,10 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
                                                 const int seq_len,
                                                 const int pre_cache_length,
                                                 const int token_num,
-                                                const int head_num,
+                                                const int q_head_num,
+                                                const int kv_head_num,
                                                 const int size_per_head) {
-  const int32_t hidden_size = head_num * size_per_head;
-  const int32_t fused_hidden_size = 3 * hidden_size;
+  const int fused_hidden_size = (q_head_num + 2 * kv_head_num) * size_per_head;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
@@ -3854,22 +4061,33 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
     if (seq_lens[target_batch_id] == 0) continue;
     const int32_t seq_id = ori_token_idx % seq_len;
 
-    const int32_t qkv_id = bias_idx / hidden_size;
-    const int32_t head_id = (linear_index % hidden_size) / size_per_head;
+    const int32_t head_id = bias_idx / size_per_head;
     const int32_t size_id = linear_index % size_per_head;
 
     const int tmp_max_len_this_time =
-        max_len_this_time + (qkv_id == 0 ? 0 : pre_cache_length);
-    const int tmp_seq_id = qkv_id == 0 ? seq_id : seq_id + pre_cache_length;
-    const int write_idx =
-        target_batch_id * head_num * tmp_max_len_this_time * size_per_head +
-        head_id * tmp_max_len_this_time * size_per_head +
-        tmp_seq_id * size_per_head + size_id;
-    if (qkv_id == 0) {
+        max_len_this_time + (head_id < q_head_num ? 0 : pre_cache_length);
+    const int tmp_seq_id =
+        head_id < q_head_num ? seq_id : seq_id + pre_cache_length;
+
+    if (head_id < q_head_num) {
+      const int write_idx =
+          target_batch_id * q_head_num * tmp_max_len_this_time * size_per_head +
+          head_id * tmp_max_len_this_time * size_per_head +
+          tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &q_buf[write_idx]);
-    } else if (qkv_id == 1) {
+    } else if (head_id < q_head_num + kv_head_num) {
+      const int write_idx =
+          target_batch_id * kv_head_num * tmp_max_len_this_time *
+              size_per_head +
+          (head_id - q_head_num) * tmp_max_len_this_time * size_per_head +
+          tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &k_buf[write_idx]);
     } else {
+      const int write_idx = target_batch_id * kv_head_num *
+                                tmp_max_len_this_time * size_per_head +
+                            (head_id - q_head_num - kv_head_num) *
+                                tmp_max_len_this_time * size_per_head +
+                            tmp_seq_id * size_per_head + size_id;
       phi::Store<T, VecSize>(src_vec, &v_buf[write_idx]);
     }
   }
@@ -3888,16 +4106,18 @@ void qkv_transpose_split(
     const int *seq_lens,
     const int token_num,
     const int batch_size,
-    const int head_num,
+    const int q_head_num,
+    const int kv_head_num,
     const int max_len_this_time,
     const int seq_len,
     const int pre_cache_length,
     const int size_per_head) {
-  int32_t elem_cnt = token_num * head_num * size_per_head * 3;
+  int32_t elem_cnt = token_num * (q_head_num + kv_head_num * 2) * size_per_head;
+
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -3918,11 +4138,12 @@ void qkv_transpose_split(
                                                       seq_len,
                                                       pre_cache_length,
                                                       token_num,
-                                                      head_num,
+                                                      q_head_num,
+                                                      kv_head_num,
                                                       size_per_head);
   if (pre_key_cache) {
     // stage 2: write pre_cache to kv_buf
-    elem_cnt = batch_size * head_num * pre_cache_length * size_per_head * 2;
+    elem_cnt = batch_size * q_head_num * pre_cache_length * size_per_head * 2;
     pack_num = elem_cnt / PackSize;
     GetNumBlocks(pack_num, &grid_size);
     write_pre_cahe_to_kv_buffer<T, PackSize>
@@ -3933,7 +4154,7 @@ void qkv_transpose_split(
                                                         seq_lens,
                                                         batch_size,
                                                         pre_cache_length,
-                                                        head_num,
+                                                        kv_head_num,
                                                         size_per_head,
                                                         max_len_this_time,
                                                         elem_cnt);
@@ -4013,7 +4234,7 @@ void GetDecoderTensor(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dim_head % PackSize,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, PackSize));
   int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -4101,7 +4322,7 @@ void InitValue(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       numel % PackSize,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "numel=%d must be divisible by vec_size=%d", numel, PackSize));
   const int pack_num = numel / PackSize;
   const int blocksize = 128;
@@ -4172,7 +4393,7 @@ void InvokeTransposeRemovePadding(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       head_dim % PackSize,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", head_dim, PackSize));
   const int32_t pack_num = elem_cnt / PackSize;
   const int32_t block_size = 128;
@@ -4198,7 +4419,7 @@ static void VLOGMatrix(const T *mat_d,
                        int max_num = 10) {
   num = num < max_num ? num : max_num;
   std::vector<T> tmp(num);
-  cudaMemcpy(tmp.data(), mat_d, sizeof(T) * num, cudaMemcpyDeviceToHost);
+  GPU(Memcpy)(tmp.data(), mat_d, sizeof(T) * num, GPU(MemcpyDeviceToHost));
 
   std::stringstream ss;
 

@@ -15,21 +15,21 @@
 # isort: skip_file
 
 from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any, Sequence
-
+from typing import TYPE_CHECKING, Any
 import os
 import copy
+import concurrent
 import re
-
 import setuptools
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 
+
 from .extension_utils import (
     add_compile_flag,
     find_cuda_home,
+    find_ccache_home,
     find_rocm_home,
     normalize_extension_kwargs,
 )
@@ -64,8 +64,12 @@ from .extension_utils import (
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
 from ...base import core
+from concurrent.futures import ThreadPoolExecutor
+
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from types import ModuleType
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
@@ -81,6 +85,8 @@ CUDA_HOME = find_cuda_home()
 if core.is_compiled_with_rocm():
     ROCM_HOME = find_rocm_home()
     CUDA_HOME = ROCM_HOME
+
+CCACHE_HOME = find_ccache_home()
 
 
 def setup(**attr: Any) -> None:
@@ -415,6 +421,7 @@ class BuildExtension(build_ext):
             self._valid_clang_compiler()
 
         self._check_abi()
+        current_extension_builder = self
 
         # Note(Aurelius84): If already compiling source before, we should check whether
         # cflags have changed and delete the built shared library to re-compile the source
@@ -431,11 +438,9 @@ class BuildExtension(build_ext):
             self.compiler._cpp_extensions += ['.cu', '.cuh']
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
-        else:
-            original_compile = self.compiler._compile
 
-        def unix_custom_single_compiler(
-            obj, src, ext, cc_args, extra_postargs, pp_opts
+        def unix_custom_compile_single_file(
+            self, obj, src, ext, cc_args, extra_postargs, pp_opts
         ):
             """
             Monkey patch mechanism to replace inner compiler to custom compile process on Unix platform.
@@ -445,7 +450,7 @@ class BuildExtension(build_ext):
             src = os.path.abspath(src)
             cflags = copy.deepcopy(extra_postargs)
             try:
-                original_compiler = self.compiler.compiler_so
+                original_compiler = self.compiler_so
                 # nvcc or hipcc compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
@@ -453,9 +458,12 @@ class BuildExtension(build_ext):
                             ROCM_HOME is not None
                         ), "Not found ROCM runtime, \
                             please use `export ROCM_PATH= XXX` to specify it."
-
-                        hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
-                        self.compiler.set_executable('compiler_so', hipcc_cmd)
+                        if CCACHE_HOME is not None:
+                            hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
+                            hipcc_cmd = f'{CCACHE_HOME} {hipcc_cmd}'
+                        else:
+                            hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
+                        self.set_executable('compiler_so', hipcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
                             cflags = cflags['hipcc']
@@ -464,17 +472,27 @@ class BuildExtension(build_ext):
                             CUDA_HOME is not None
                         ), "Not found CUDA runtime, \
                             please use `export CUDA_HOME= XXX` to specify it."
-
-                        nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
-                        self.compiler.set_executable('compiler_so', nvcc_cmd)
+                        if CCACHE_HOME is not None:
+                            nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                            nvcc_cmd = f'{CCACHE_HOME} {nvcc_cmd}'
+                        else:
+                            nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                        self.set_executable('compiler_so', nvcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
                             cflags = cflags['nvcc']
 
                     cflags = prepare_unix_cudaflags(cflags)
                 # cxx compile Cpp source
-                elif isinstance(cflags, dict):
-                    cflags = cflags['cxx']
+                else:
+                    if CCACHE_HOME is not None:
+                        # self.set_executable('compiler_so', [CCACHE_HOME, *self.executables['compiler_so']])
+                        self.set_executable(
+                            'compiler_so', [CCACHE_HOME, *self.compiler_so]
+                        )
+
+                    if isinstance(cflags, dict):
+                        cflags = cflags['cxx']
 
                 # Note(qili93): HIP require some additional flags for CMAKE_C_FLAGS
                 if core.is_compiled_with_rocm():
@@ -490,19 +508,77 @@ class BuildExtension(build_ext):
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(cflags, ['-D_GLIBCXX_USE_CXX11_ABI=1'])
                 # Append this macro only when jointly compiling .cc with .cu
-                if not is_cuda_file(src) and self.contain_cuda_file:
+                if (
+                    not is_cuda_file(src)
+                    and current_extension_builder.contain_cuda_file
+                ):
                     if core.is_compiled_with_rocm():
                         cflags.append('-DPADDLE_WITH_HIP')
                     else:
                         cflags.append('-DPADDLE_WITH_CUDA')
 
                 add_std_without_repeat(
-                    cflags, self.compiler.compiler_type, use_std17=True
+                    cflags, self.compiler_type, use_std17=True
                 )
-                original_compile(obj, src, ext, cc_args, cflags, pp_opts)
+                self._compile(obj, src, ext, cc_args, cflags, pp_opts)
+            except Exception as e:
+                print(f'{src} compile failed, {e}')
             finally:
                 # restore original_compiler
-                self.compiler.set_executable('compiler_so', original_compiler)
+                self.set_executable('compiler_so', original_compiler)
+
+        def unix_custom_single_compiler(
+            self,
+            sources,
+            output_dir=None,
+            macros=None,
+            include_dirs=None,
+            debug=False,
+            extra_preargs=None,
+            extra_postargs=None,
+            depends=None,
+        ):
+            # A concrete compiler class can either override this method
+            # entirely or implement _compile().
+            macros, objects, extra_postargs, pp_opts, build = (
+                self._setup_compile(
+                    output_dir,
+                    macros,
+                    include_dirs,
+                    sources,
+                    depends,
+                    extra_postargs,
+                )
+            )
+            cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
+            # Create a thread pool
+            worke_number = min(os.cpu_count(), len(objects))
+            with ThreadPoolExecutor(max_workers=worke_number) as executor:
+                # Submit all compilation tasks to the thread pool.
+                futures = {
+                    executor.submit(
+                        unix_custom_compile_single_file,
+                        copy.copy(self),
+                        obj,
+                        build[obj][0],
+                        build[obj][1],
+                        cc_args,
+                        extra_postargs,
+                        pp_opts,
+                    ): obj
+                    for obj in objects
+                }
+
+                for future in concurrent.futures.as_completed(futures):
+                    obj = futures[future]
+                    try:
+                        future.result()
+                    except Exception as exc:
+                        print(f'{obj!r} generated an exception: {exc}')
+                    else:
+                        print(f'{obj} is compiled')
+            # Return *all* object filenames, not just the ones we just built.
+            return objects
 
         def win_custom_single_compiler(
             sources,
@@ -565,12 +641,18 @@ class BuildExtension(build_ext):
                     else:
                         cflags = []
 
-                    cflags = prepare_win_cudaflags(cflags) + ['--use-local-env']
+                    cflags = [*prepare_win_cudaflags(cflags), '--use-local-env']
                     for flag in MSVC_COMPILE_FLAGS:
-                        cflags = ['-Xcompiler', flag] + cflags
-                    cmd = (
-                        [nvcc_cmd, '-c', src, '-o', obj] + include_list + cflags
-                    )
+                        cflags = ['-Xcompiler', flag, *cflags]
+                    cmd = [
+                        nvcc_cmd,
+                        '-c',
+                        src,
+                        '-o',
+                        obj,
+                        *include_list,
+                        *cflags,
+                    ]
                 elif isinstance(self.cflags, dict):
                     cflags = MSVC_COMPILE_FLAGS + self.cflags['cxx']
                     cmd += cflags
@@ -635,9 +717,11 @@ class BuildExtension(build_ext):
 
         # customized compile process
         if self.compiler.compiler_type == 'msvc':
+            original_compile = self.compiler.compile
             self.compiler.compile = win_custom_single_compiler
         else:
-            self.compiler._compile = unix_custom_single_compiler
+            original_compile = self.compiler.__class__.compile
+            self.compiler.__class__.compile = unix_custom_single_compiler
 
         self.compiler.object_filenames = object_filenames_with_cuda(
             self.compiler.object_filenames, self.build_lib
@@ -646,6 +730,11 @@ class BuildExtension(build_ext):
 
         print("Compiling user custom op, it will cost a few seconds.....")
         build_ext.build_extensions(self)
+
+        if self.compiler.compiler_type == 'msvc':
+            self.compiler.compile = original_compile
+        else:
+            self.compiler.__class__.compile = original_compile
 
         # Reset runtime library path on MacOS platform
         so_path = self.get_ext_fullpath(self.extensions[0]._full_name)
@@ -673,8 +762,8 @@ class BuildExtension(build_ext):
         """
         Make sure to use Clang as compiler on Mac platform
         """
-        compiler_infos = ['clang'] + CLANG_COMPILE_FLAGS
-        linker_infos = ['clang'] + CLANG_LINK_FLAGS
+        compiler_infos = ['clang', *CLANG_COMPILE_FLAGS]
+        linker_infos = ['clang', *CLANG_LINK_FLAGS]
         self.compiler.set_executables(
             compiler=compiler_infos,
             compiler_so=compiler_infos,

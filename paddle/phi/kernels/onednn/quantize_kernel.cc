@@ -36,10 +36,10 @@ void QuantOpKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_NE(scale,
                     0.0f,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Quantization scale must be different than 0.0f"));
   PADDLE_ENFORCE(quantization_shift <= 255 && quantization_shift >= 0,
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "Quantization shift must be lower or equal to ",
                      "255 and greater or equal to 0, but got %f",
                      quantization_shift));

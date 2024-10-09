@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -45,7 +46,13 @@ class TestUniformRandomInplaceOpDtype(unittest.TestCase):
             tensor_fp64.uniform_()
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:
@@ -218,7 +225,13 @@ class TestUniformRandomInplaceOpError(unittest.TestCase):
 
 class TestUniformRandomInplaceOpEmptyTensor(unittest.TestCase):
     def test_uniform_random_inplace_op_empty_tensor(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if base.core.is_compiled_with_cuda():
             places.append('gpu')
         test_shapes = [(200, 0), (0, 200)]
@@ -248,7 +261,13 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             uniform_grad = tensor_b.grad.numpy()
             self.assertTrue((uniform_grad == 0).all())
 
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:

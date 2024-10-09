@@ -95,6 +95,7 @@ class TestMultiplexOp_complex128(TestMultiplexOp):
 
 
 class TestMultiplexOpError(unittest.TestCase):
+
     def test_errors(self):
         with base.program_guard(base.Program(), base.Program()):
             x1 = paddle.static.data(name='x1', shape=[None, 2], dtype='int64')

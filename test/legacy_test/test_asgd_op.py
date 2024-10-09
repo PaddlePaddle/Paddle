@@ -220,6 +220,25 @@ class TestASGDV2(unittest.TestCase):
         asgd.clear_gradients()
 
 
+class TestASGDV2WeightDecay(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+
+        asgd = paddle.optimizer.ASGD(
+            learning_rate=0.001,
+            batch_num=2,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+        out = linear(a)
+        out.backward()
+        asgd.step()
+        asgd.clear_gradients()
+
+
 class TestASGDMultiPrecision(unittest.TestCase):
     def dygraph_asgd_mp(self, mp):
         paddle.disable_static()
@@ -252,49 +271,107 @@ class TestASGDMultiPrecision(unittest.TestCase):
 
     def static_asgd_mp(self, mp):
         paddle.enable_static()
-        paddle.seed(10)
-        np.random.seed(10)
-        exe = paddle.static.Executor('gpu')
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.ASGD(batch_num=2, multi_precision=mp)
+        with paddle.pir_utils.OldIrGuard():
+            paddle.seed(10)
+            np.random.seed(10)
+            exe = paddle.static.Executor('gpu')
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            optimizer = paddle.optimizer.ASGD(batch_num=2, multi_precision=mp)
 
-        if mp:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
-                use_fp16_guard=False,
-            )
-        with paddle.static.program_guard(train_program, startup_program):
             if mp:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16'
+                optimizer = paddle.static.amp.decorate(
+                    optimizer,
+                    init_loss_scaling=128.0,
+                    use_dynamic_loss_scaling=True,
+                    use_pure_fp16=True,
+                    use_fp16_guard=False,
                 )
-            else:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32'
-                )
-            hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
-            optimizer.minimize(loss)
-        exe.run(startup_program)
+            with paddle.static.program_guard(train_program, startup_program):
+                if mp:
+                    data = paddle.static.data(
+                        shape=[2, 2], name='X', dtype='float16'
+                    )
+                else:
+                    data = paddle.static.data(
+                        shape=[2, 2], name='X', dtype='float32'
+                    )
+                hidden = paddle.static.nn.fc(x=data, size=10)
+                loss = paddle.mean(hidden)
+                optimizer.minimize(loss)
+            exe.run(startup_program)
 
-        if mp:
-            optimizer.amp_init(
-                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
-            )
-            x = np.random.random(size=(2, 2)).astype('float16')
-        else:
-            x = np.random.random(size=(2, 2)).astype('float32')
-        out = []
-        for idx in range(5):
-            (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
-            )
-            out.append(loss_data)
-        return out
+            if mp:
+                optimizer.amp_init(
+                    place=paddle.CUDAPlace(0),
+                    scope=paddle.static.global_scope(),
+                )
+                x = np.random.random(size=(2, 2)).astype('float16')
+            else:
+                x = np.random.random(size=(2, 2)).astype('float32')
+            out = []
+            for idx in range(5):
+                (loss_data,) = exe.run(
+                    train_program, feed={"X": x}, fetch_list=[loss.name]
+                )
+                out.append(loss_data)
+            return out
+
+    def pir_asgd_mp(self, mp):
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            paddle.seed(10)
+            np.random.seed(10)
+            exe = paddle.static.Executor('gpu')
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(train_program, startup_program):
+                model = paddle.nn.Linear(2, 10)
+                optimizer = paddle.optimizer.ASGD(
+                    batch_num=2,
+                    multi_precision=mp,
+                    parameters=model.parameters(),
+                )
+                if mp:
+                    model, optimizer = paddle.amp.decorate(
+                        models=model,
+                        optimizers=optimizer,
+                        level='O2',
+                    )
+                    scaler = paddle.amp.GradScaler(
+                        init_loss_scaling=1024, use_dynamic_loss_scaling=True
+                    )
+                    data = paddle.static.data(
+                        shape=[2, 2], name='X', dtype='float16'
+                    )
+                    with paddle.amp.auto_cast(
+                        level='O2', dtype='float16', use_promote=True
+                    ):
+                        output = model(data)
+                        loss = paddle.mean(output)
+                    scaled = scaler.scale(loss)
+                    scaler.minimize(optimizer, scaled)
+                else:
+                    data = paddle.static.data(
+                        shape=[2, 2], name='X', dtype='float32'
+                    )
+                    output = model(data)
+                    loss = paddle.mean(output)
+                    optimizer.minimize(loss)
+            exe.run(startup_program)
+
+            if mp:
+                x = np.random.random(size=(2, 2)).astype('float16')
+            else:
+                x = np.random.random(size=(2, 2)).astype('float32')
+            out = []
+            for idx in range(5):
+                (loss_data,) = exe.run(
+                    train_program, feed={"X": x}, fetch_list=[loss]
+                )
+                out.append(loss_data)
+            return out
 
     def test_main(self):
         if not paddle.is_compiled_with_cuda():
@@ -322,6 +399,16 @@ class TestASGDMultiPrecision(unittest.TestCase):
             np.testing.assert_allclose(
                 output1_st[idx].astype('float32'),
                 output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test pir graph mode"
+        output1_pir = self.pir_asgd_mp(mp=True)
+        output2_pir = self.pir_asgd_mp(mp=False)
+        for idx in range(len(output1_st)):
+            np.testing.assert_allclose(
+                output1_pir[idx].astype('float32'),
+                output2_pir[idx].astype('float32'),
                 rtol=1e-05,
                 atol=0.1,
             )
@@ -427,7 +514,7 @@ class TestASGDValidation:
             for param in model.parameters():
                 d_validation[param.name] = np.zeros(param.shape)
                 ys_validation[param.name] = np.zeros(
-                    [self.batch_num] + param.shape
+                    [self.batch_num, *param.shape]
                 )
 
             for i in range(5):
@@ -455,9 +542,9 @@ class TestASGDValidation:
                         - y_validation[param.name]
                         + grad_validation[param.name]
                     )
-                    ys_validation[param.name][
-                        i % self.batch_num
-                    ] = grad_validation[param.name]
+                    ys_validation[param.name][i % self.batch_num] = (
+                        grad_validation[param.name]
+                    )
                     n_validation[param.name] = min(i + 1, self.batch_num)
                     param_validation[param.name] = (
                         param_validation[param.name]

@@ -95,7 +95,7 @@ struct CINNValuePack : public Shared<_CINNValuePack_> {
   CINNValue& back() {
     PADDLE_ENFORCE_GT((*operator->()).size(),
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of the array should greater than 0."));
     return (*operator->())[size() - 1];
   }
@@ -103,7 +103,7 @@ struct CINNValuePack : public Shared<_CINNValuePack_> {
   const CINNValue& back() const {
     PADDLE_ENFORCE_GT((*operator->()).size(),
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of the array should greater than 0."));
     return (*operator->())[size() - 1];
   }

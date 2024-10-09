@@ -11,11 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 #include "glog/logging.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+
 namespace pir {
 /**
  * IMPORTANT!!!
@@ -57,6 +60,8 @@ namespace pir {
 // which is json array with json object(NAME and ATTR_TYPE)
 #define ATTRS "A"
 #define OPRESULTS_ATTRS "OA"
+#define DIST_ATTRS "DA"
+#define QUANT_ATTRS "QA"
 
 // value's key:
 //  value's type which should be pir::Type's json object(ID or ID and DATA).
@@ -70,16 +75,29 @@ namespace pir {
 
 // type/attr's contents which is json::array.
 #define DATA "D"
+// float/double data with nan, inf, -inf
+#define VOILD_DATA "VD"
 
 // NULL_TYPE
 #define NULL_TYPE "NULL"
 
 // special op compress
-
 #define PARAMETEROP "p"
 
-std::pair<std::string, std::string> getContentSplitByDot(
+// actions for patch
+#define DELETE "DEL"
+#define ADD "ADD"
+#define UPDATE "UPD"
+#define NEW_NAME "NN"
+#define ADD_ATTRS "ADD_A"
+#define ADD_OPRESULTS_ATTRS "ADD_OA"
+#define PATCH "patch"
+
+std::pair<std::string, std::string> GetContentSplitByDot(
     const std::string& str);
+
+std::vector<std::string> GetOpDistAttr();
+std::vector<std::string> GetOpQuantAttr();
 
 void GetCompressOpName(std::string* op_name);
 

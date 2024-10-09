@@ -53,7 +53,7 @@ class AutoTuner:
 
             self.algo = CustomizeSearch(tuner_cfg)
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         self.history_cfgs = []
         self.resume_cfgs = []

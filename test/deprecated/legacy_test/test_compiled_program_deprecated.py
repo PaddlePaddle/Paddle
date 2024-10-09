@@ -15,13 +15,69 @@
 import sys
 import unittest
 
+import numpy as np
+from simple_nets import simple_fc_net
+
 sys.path.append("../../legacy_test")
+from test_imperative_base import new_program_scope
 
 import paddle
 from paddle import base
 from paddle.base import core
 
 paddle.enable_static()
+
+
+class TestCompiledProgram(unittest.TestCase):
+    def setUp(self):
+        self.seed = 100
+        self.img = np.random.random(size=(16, 784)).astype('float32')
+        self.label = np.random.randint(
+            low=0, high=10, size=[16, 1], dtype=np.int64
+        )
+        paddle.enable_static()
+        with new_program_scope():
+            paddle.seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
+            place = (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+            exe = base.Executor(place)
+
+            loss = simple_fc_net()
+            exe.run(base.default_startup_program())
+
+            (loss_data,) = exe.run(
+                base.default_main_program(),
+                feed={"image": self.img, "label": self.label},
+                fetch_list=[loss],
+            )
+            self.loss = float(loss_data)
+
+    def test_compiled_program_base(self):
+        paddle.enable_static()
+        with new_program_scope():
+            paddle.seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
+            place = (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+            exe = base.Executor(place)
+
+            loss = simple_fc_net()
+            exe.run(base.default_startup_program())
+            compiled_prog = base.CompiledProgram(base.default_main_program())
+
+            (loss_data,) = exe.run(
+                compiled_prog,
+                feed={"image": self.img, "label": self.label},
+                fetch_list=[loss],
+            )
+            np.testing.assert_array_equal(float(loss_data), self.loss)
 
 
 class TestCompiledProgramError(unittest.TestCase):

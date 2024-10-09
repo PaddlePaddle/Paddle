@@ -32,8 +32,8 @@
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #endif  // PADDLE_WITH_CUDA
-
 #ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/dynload/hipblasLt.h"
 #include "paddle/phi/backends/dynload/rocsparse.h"
 #endif
 
@@ -181,7 +181,7 @@ void InitGpuProperties(Place place,
       (local_cuda_version / 10 < compile_cuda_version / 10) &&
           (local_cudnn_major < compile_cudnn_major),
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The installed Paddle is compiled with CUDA%d/cuDNN%d,"
           "but CUDA/cuDNN version in your machine is CUDA%d/cuDNN%d. "
           "which will cause serious incompatible bug. "
@@ -255,6 +255,8 @@ void DestroyBlasHandle(blasHandle_t handle) {
 void InitBlasLtHandle(blasLtHandle_t* blaslt_handle) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
   phi::dynload::cublasLtCreate(blaslt_handle);
+#elif defined(PADDLE_WITH_HIP)
+  phi::dynload::hipblasLtCreate(blaslt_handle);
 #endif
 }
 
@@ -262,6 +264,11 @@ void DestroyBlasLtHandle(blasLtHandle_t handle) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
   if (handle != nullptr) {
     phi::dynload::cublasLtDestroy(handle);
+    handle = nullptr;
+  }
+#elif defined(PADDLE_WITH_HIP)
+  if (handle != nullptr) {
+    phi::dynload::hipblasLtDestroy(handle);
     handle = nullptr;
   }
 #endif

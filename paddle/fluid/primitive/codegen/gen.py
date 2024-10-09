@@ -62,6 +62,7 @@ BACKENDS_BLACK_LIST = [
     "full",
     "partial_send",
     "push_dense",
+    "comm_init_all",
 ]
 
 # prim op with one input and one output, with no attribute
@@ -88,11 +89,15 @@ BINARY_PRIM_VJP_OPS = [
     'elementwise_pow_grad',
     'maximum_grad',
     'reduce_as_grad',
+    'dot_grad',
 ]
 
 OTHER_PRIM_VJP_OPS = [
     'assign_grad',
+    'atan_grad',
+    'atan2_grad',
     'cumsum_grad',
+    'cumprod_grad',
     'sum_grad',
     'cast_grad',
     'reshape_grad',
@@ -101,10 +106,12 @@ OTHER_PRIM_VJP_OPS = [
     'transpose_grad',
     'concat_grad',
     'expand_grad',
+    'expm1_grad',
     'gather_grad',
     'gather_nd_grad',
     'pad_grad',
     'prod_grad',
+    'put_along_axis_grad',
     'max_grad',
     'masked_select_grad',
     'scale_grad',
@@ -115,12 +122,15 @@ OTHER_PRIM_VJP_OPS = [
     'tile_grad',
     'topk_grad',
     'unsqueeze_grad',
+    'where_grad',
+    'logcumsumexp_grad',
 ]
 
 # whole vjp list of primitive op vjp
 PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
+    'bce_loss_grad',
     'batch_norm_grad',
     'dropout_grad',
     'gelu_grad',
@@ -136,6 +146,7 @@ CUSTOM_VJP = [
     'sigmoid_grad',
     'silu_grad',
     'softmax_grad',
+    'softsign_grad',
     'sqrt_grad',
     'stack_grad',
     'swiglu',
@@ -356,12 +367,12 @@ def extend_compat_info(apis, compats):
                 ):
                     support_tensor_attrs_names.append(attr_name)
         if len(support_tensor_attrs_names) > 0:
-            for api in [fwd_api] + backward_apis:
+            for api in [fwd_api, *backward_apis]:
                 attrs = api["attrs"]
                 for attr in attrs:
                     if attr['name'] in support_tensor_attrs_names:
                         attr['support_tensor'] = True
-        for api in [fwd_api] + backward_apis:
+        for api in [fwd_api, *backward_apis]:
             attrs = api["attrs"]
             for attr in attrs:
                 if attr['name'] in compat_attrs_data_type:
@@ -394,12 +405,12 @@ def process_backward_invoke_info(apis):
             api['invoke']['args'] = ', '.join(args)
 
 
-def process_optional_output_info(apis):
+def process_optional_inplace_output_info(apis):
     for api in apis:
         inputs_dict = to_named_dict(api['inputs'])
         for output in api['outputs']:
             if not api['is_fwd']:
-                output['optional'] = False
+                return
             else:
                 if (
                     api.get("inplace", None)
@@ -511,16 +522,18 @@ def gen(
         for api in revs + ir_revs + fused_revs + sparse_revs
     ]
     apis = [
-        {**api, **{'is_prim': True}}
-        if api['name'] in prims
-        else {**api, **{'is_prim': False}}
+        (
+            {**api, **{'is_prim': True}}
+            if api['name'] in prims
+            else {**api, **{'is_prim': False}}
+        )
         for api in apis
     ]
 
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
-    process_optional_output_info(apis)
+    process_optional_inplace_output_info(apis)
 
     apis = [
         {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}

@@ -17,7 +17,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def quant_helper(
@@ -696,7 +695,6 @@ class TestlayernormStaticOp(unittest.TestCase):
             )
         return out_s, paddle_naive_layernorm_out, paddle_naive_residual_out
 
-    @test_with_pir_api
     def test_layernorm_fp16(self):
         if (
             not paddle.is_compiled_with_cuda()
@@ -714,7 +712,6 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
-    @test_with_pir_api
     def test_layernorm_int8(self):
         if (
             not paddle.is_compiled_with_cuda()
@@ -731,7 +728,6 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=2,
         )
 
-    @test_with_pir_api
     def test_residual_bias_add(self):
         if (
             not paddle.is_compiled_with_cuda()
@@ -755,7 +751,6 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
-    @test_with_pir_api
     def test_residual_bias_add_layernorm_fp16(self):
         if (
             not paddle.is_compiled_with_cuda()
@@ -789,7 +784,6 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
-    @test_with_pir_api
     def test_residual_bias_add_layernorm_int8(self):
         if (
             not paddle.is_compiled_with_cuda()
@@ -1141,7 +1135,6 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
             )
         return out_s, paddle_naive_layernorm_out, paddle_naive_residual_out
 
-    @test_with_pir_api
     def test_layernorm(self):
         paddle_layernorm, paddle_naive_layernorm = self.check_layernorm(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float32'
@@ -1154,7 +1147,6 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
             atol=1e-3,
         )
 
-    @test_with_pir_api
     def test_residual_bias_add(self):
         if (
             not paddle.is_compiled_with_cuda()
@@ -1178,7 +1170,6 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
             atol=1e-3,
         )
 
-    @test_with_pir_api
     def test_residual_bias_add_layernorm(self):
         if (
             not paddle.is_compiled_with_cuda()

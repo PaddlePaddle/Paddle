@@ -146,7 +146,7 @@ void (*getActFunc(KernelType type))(const T*, T*, int) {  // NOLINT
   } else if (type == kVIdentity) {
     return VIdentity<T>;
   }
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Act JIT kernel do not support type: %s.", type));
   return nullptr;
 }
@@ -406,7 +406,7 @@ void EmbSeqPool(const T* table,
   PADDLE_ENFORCE_EQ(
       attr->table_width * attr->index_width,
       attr->out_width,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The attribute table_width * index_width of EmbSeqPool should "
           "be equal to out_width. But table_width * index_width is %d and "
           "out_width is %d.",
@@ -417,7 +417,7 @@ void EmbSeqPool(const T* table,
     PADDLE_ENFORCE_LT(
         idx[i],
         attr->table_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The idx should be lower than the attribute table_height of "
             "EmbSeqPool. But %dth of idx is %d and table_height is %d.",
             i,
@@ -425,7 +425,7 @@ void EmbSeqPool(const T* table,
             attr->table_height));
     PADDLE_ENFORCE_GE(idx[i],
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The idx should be equal to or larger than "
                           "the 0. But %dth of idx is %d.",
                           i,
@@ -473,7 +473,7 @@ void Sgd(const T* lr,
          const sgd_attr_t* attr) {
   PADDLE_ENFORCE_EQ(attr->param_width,
                     attr->grad_width,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The attribute param_width of Sgd should be "
                         "equal to the attribute grad_width. But param_width "
                         "is %d and grad_width is %d.",
@@ -481,7 +481,7 @@ void Sgd(const T* lr,
                         attr->grad_width));
   PADDLE_ENFORCE_LE(attr->selected_rows_size,
                     attr->grad_height,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The attribute selected_rows_size of Sgd should be "
                         "equal to or less than the attribute grad_height. "
                         "But selected_rows_size is %d and grad_height is %d.",
@@ -491,7 +491,7 @@ void Sgd(const T* lr,
     auto h_idx = rows[i];
     PADDLE_ENFORCE_LT(h_idx,
                       attr->param_height,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The rows of Sgd should be "
                           "less than the attribute. But %dth of rows "
                           "is %d and grad_width is %d.",
@@ -501,11 +501,11 @@ void Sgd(const T* lr,
     PADDLE_ENFORCE_GE(
         h_idx,
         0,
-        phi::errors::InvalidArgument("The rows of Sgd should be "
-                                     "larger than 0. But %dth of rows "
-                                     "is %d.",
-                                     i,
-                                     h_idx));
+        common::errors::InvalidArgument("The rows of Sgd should be "
+                                        "larger than 0. But %dth of rows "
+                                        "is %d.",
+                                        i,
+                                        h_idx));
     for (int64_t j = 0; j < attr->grad_width; ++j) {
       out[h_idx * attr->grad_width + j] =
           param[h_idx * attr->grad_width + j] -

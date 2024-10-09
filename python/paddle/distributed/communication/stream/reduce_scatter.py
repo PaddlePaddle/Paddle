@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 import paddle.distributed as dist
 from paddle import framework
@@ -21,6 +25,14 @@ from paddle.distributed.communication.group import (
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
+    from paddle.distributed.communication.reduce import _ReduceOp
 
 
 def _reduce_scatter_tensor_in_dygraph(
@@ -102,13 +114,13 @@ def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
 
 
 def reduce_scatter(
-    tensor,
-    tensor_or_tensor_list,
-    op=ReduceOp.SUM,
-    group=None,
-    sync_op=True,
-    use_calc_stream=False,
-):
+    tensor: Tensor,
+    tensor_or_tensor_list: Tensor | Sequence[Tensor],
+    op: _ReduceOp = ReduceOp.SUM,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Reduce, then scatter a tensor (or a tensor list) across devices.
@@ -119,7 +131,7 @@ def reduce_scatter(
         tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter.
             If it is a tensor, it should be correctly-sized. If it is a list, it should contain correctly-sized tensors.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
-        group (Group, optional): Communicate in which group. If none is given, use the global group as default.
+        group (Group|None, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.

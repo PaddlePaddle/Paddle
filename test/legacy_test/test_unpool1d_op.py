@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 paddle.seed(2022)
@@ -61,7 +61,13 @@ def unpool1dmax_forward_naive(
 
 class TestUnpool1DOpAPI_dygraph(unittest.TestCase):
     def test_case(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -86,7 +92,13 @@ class TestUnpool1DOpAPI_dygraph(unittest.TestCase):
 
 class TestUnpool1DOpAPI_dygraph2(unittest.TestCase):
     def test_case(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -111,7 +123,13 @@ class TestUnpool1DOpAPI_dygraph2(unittest.TestCase):
 
 class TestUnpool1DOpAPI_dygraph3(unittest.TestCase):
     def test_case(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -137,7 +155,13 @@ class TestUnpool1DOpAPI_dygraph3(unittest.TestCase):
 
 class TestUnpool1DOpAPI_dygraph4(unittest.TestCase):
     def test_case(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -166,7 +190,13 @@ class TestUnpool1DOpAPI_dygraph4(unittest.TestCase):
 
 class TestUnpool1DOpAPI_dygraph5(unittest.TestCase):
     def test_case(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -194,10 +224,16 @@ class TestUnpool1DOpAPI_dygraph5(unittest.TestCase):
 
 
 class TestUnpool1DOpAPI_static(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case(self):
         paddle.enable_static()
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:

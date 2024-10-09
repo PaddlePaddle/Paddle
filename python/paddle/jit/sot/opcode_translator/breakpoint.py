@@ -128,9 +128,9 @@ class BreakpointManager(metaclass=Singleton):
         cur_exe = self.executors[self.activate]
         lines, start_line = inspect.getsourcelines(cur_exe._code)
         cur_line = cur_exe._current_line
-        lines[
-            cur_line - start_line + 1 : cur_line - start_line + 1
-        ] = "  ^^^^^ HERE  \n"
+        lines[cur_line - start_line + 1 : cur_line - start_line + 1] = (
+            "  ^^^^^ HERE  \n"
+        )
         print("\033[31mSource Code is: \033[0m")
         print("".join(lines))
 

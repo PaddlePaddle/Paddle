@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -180,7 +179,7 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_scale=224,
                 rois_num=rois_num,
             )
-            fetch_list = multi_rois + [restore_ind] + rois_num_per_level
+            fetch_list = [*multi_rois, restore_ind, *rois_num_per_level]
             output_stat = self.get_static_graph_result(
                 feed={'rois': rois_np, 'rois_num': rois_num_np},
                 fetch_list=fetch_list,
@@ -210,7 +209,7 @@ class TestDistributeFpnProposals(LayerTest):
                 rois_num=rois_num_dy,
             )
             print(type(multi_rois_dy))
-            output_dy = multi_rois_dy + [restore_ind_dy] + rois_num_per_level_dy
+            output_dy = [*multi_rois_dy, restore_ind_dy, *rois_num_per_level_dy]
             output_dy_np = []
             for output in output_dy:
                 output_np = output.numpy()
@@ -218,7 +217,6 @@ class TestDistributeFpnProposals(LayerTest):
                     output_dy_np.append(output_np)
         return output_dy_np
 
-    @test_with_pir_api
     def test_distribute_fpn_proposals(self):
         rois_np = np.random.rand(10, 4).astype('float32')
         rois_num_np = np.array([4, 6]).astype('int32')

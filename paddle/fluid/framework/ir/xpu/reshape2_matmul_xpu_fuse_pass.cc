@@ -247,7 +247,7 @@ void Reshape2MatmulXPUFusePass::FuseReshape2Matmul(ir::Graph* graph) const {
 
 void Reshape2MatmulXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   FuseReshape2Matmul(graph);
@@ -300,7 +300,7 @@ void MapMatmulV2ToMatmulXPUPass::MapMatmulV2ToMatmul(ir::Graph* graph) const {
 
 void MapMatmulV2ToMatmulXPUPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   MapMatmulV2ToMatmul(graph);
@@ -353,7 +353,7 @@ void Squeeze2MatmulXPUFusePass::FuseSqueeze2Matmul(ir::Graph* graph) const {
 
 void Squeeze2MatmulXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   FuseSqueeze2Matmul(graph);

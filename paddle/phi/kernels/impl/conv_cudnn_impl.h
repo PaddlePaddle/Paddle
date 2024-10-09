@@ -52,7 +52,7 @@ static inline bool IsVoltaOrLater(const phi::GPUContext& dev_ctx) {
 //     case phi::DataLayout::NDHWC:
 //       return CUDNN_TENSOR_NHWC;  // add, liyamei
 //     default:
-//       PADDLE_THROW(phi::errors::Unimplemented(
+//       PADDLE_THROW(common::errors::Unimplemented(
 //           "CUDNN has no equivalent dataLayout for input order."));
 //   }
 //   return CUDNN_TENSOR_NCHW;

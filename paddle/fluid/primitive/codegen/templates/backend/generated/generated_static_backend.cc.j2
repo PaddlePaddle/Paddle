@@ -81,7 +81,7 @@ auto op_res_{{i}} = std::get<{{i}}>(op_res);
       {% if outputs[i].typename == 'Tensor' and not outputs[i].optional %}
 Tensor {{outputs[i].name}}(std::make_shared<LazyTensor>(op_res_{{i}}));
       {% elif outputs[i].typename == 'Tensor' and outputs[i].optional %}
-paddle::optional<Tensor> {{outputs[i].name}};
+paddle::optional<Tensor> {{outputs[i].name}} = paddle::make_optional<Tensor>(Tensor());
 if(op_res_{{i}}){
   {{outputs[i].name}} = paddle::make_optional<Tensor>(Tensor(std::make_shared<LazyTensor>(op_res_{{i}}.get())));
 }

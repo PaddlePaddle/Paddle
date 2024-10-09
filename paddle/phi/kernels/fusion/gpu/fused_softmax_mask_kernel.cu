@@ -162,21 +162,21 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(query_seq_len,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input x's second last dim must be large than 1 but "
                         "received the second last dimension of x is %d",
                         query_seq_len));
 
   PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len < 8192,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input x's last dim must be between [32, 8192) "
                         "received the last dimension of x is %d",
                         key_seq_len));
 
   PADDLE_ENFORCE_EQ(mask_dim[1],
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input mask's second dim must be 1 "
                         "received the second dimension of mask is %d",
                         mask_dim[1]));
@@ -187,7 +187,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         x_dim[idx],
         mask_dim[idx],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input x's %dth dim should be equal with input mask's %dth dim "
             "but "
             "received the %dth dimension of x and mask are not equal "
@@ -216,7 +216,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       query_seq_len % batches_per_block,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The query seq len (third dim of input X) must can divide the "
           "number of batches per block. The query seq len is %d, while "
           "the number of batches per block is %d.",

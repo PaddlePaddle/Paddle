@@ -32,14 +32,14 @@ void StridedCopyKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input shape(%s) must be equal with out shape(%s).",
                         input.dims(),
                         out->dims()));
 
   PADDLE_ENFORCE_EQ(input.numel(),
                     out->numel(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input numel(%d) must be equal with out numel(%d).",
                         input.numel(),
                         out->numel()));
@@ -50,7 +50,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const float*>(input.data<T>());
     auto output_data = reinterpret_cast<float*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -68,7 +68,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const int64_t*>(input.data<T>());
     auto output_data = reinterpret_cast<int64_t*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -88,7 +88,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const XPUFLOAT16*>(input.data<T>());
     auto output_data = reinterpret_cast<XPUFLOAT16*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -109,7 +109,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const XPUFLOAT16*>(input.data<T>());
     auto output_data = reinterpret_cast<XPUFLOAT16*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -130,7 +130,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const XPUFLOAT16*>(input.data<T>());
     auto output_data = reinterpret_cast<XPUFLOAT16*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -150,7 +150,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
     auto output_data = reinterpret_cast<int8_t*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -168,7 +168,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
     auto output_data = reinterpret_cast<int8_t*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -186,7 +186,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const int32_t*>(input.data<T>());
     auto output_data = reinterpret_cast<int32_t*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -205,7 +205,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto input_data = reinterpret_cast<const int64_t*>(input.data<T>());
     auto output_data = reinterpret_cast<int64_t*>(out->data<T>());
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -225,7 +225,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto output_data = reinterpret_cast<bool*>(out->data<T>());
 
     PADDLE_ENFORCE_NOT_NULL(output_data,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "StridedCopyKernel's out tensor must complete "
                                 "mutable data before call kernel."));
     if (input.numel() == 1) {
@@ -240,7 +240,7 @@ void StridedCopyKernel(const Context& dev_ctx,
                                   common::vectorize<int64_t>(out->strides()));
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Received unsupported dtype : %s.", input.dtype()));
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_copy");

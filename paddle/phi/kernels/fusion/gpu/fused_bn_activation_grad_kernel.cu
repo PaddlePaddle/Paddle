@@ -58,9 +58,10 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
   using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
   using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-  PADDLE_ENFORCE_EQ(is_gpu_place,
-                    true,
-                    phi::errors::PreconditionNotMet("It must use CUDAPlace."));
+  PADDLE_ENFORCE_EQ(
+      is_gpu_place,
+      true,
+      common::errors::PreconditionNotMet("It must use CUDAPlace."));
   double epsilon1 = static_cast<double>(epsilon);
 
   const auto *d_y = &y_grad;
@@ -69,7 +70,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 
   PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5,
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The Input dim size should be between 2 and 5"));
   int N, C, H, W, D;
   const phi::DataLayout data_layout = phi::DataLayout::kNHWC;
@@ -84,18 +85,18 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       d_scale && d_bias,
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Both the scale grad and the bias grad must not be null."));
   dev_ctx.template Alloc<BatchNormParamType>(d_scale);
   dev_ctx.template Alloc<BatchNormParamType>(d_bias);
   PADDLE_ENFORCE_EQ(
       scale.dims().size(),
       1UL,
-      phi::errors::PreconditionNotMet("The scale only has one dimension."));
+      common::errors::PreconditionNotMet("The scale only has one dimension."));
   PADDLE_ENFORCE_EQ(
       scale.dims()[0],
       C,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The size of scale is equal to the channel of Input(X)."));
 
   if ((N * H * W * D) == 1) {
@@ -107,7 +108,8 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
       auto &dev = *dev_ctx.eigen_device();
       phi::funcs::ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented("Unsupported activation type"));
+      PADDLE_THROW(
+          common::errors::Unimplemented("Unsupported activation type"));
     }
     phi::funcs::SetConstant<phi::GPUContext, BatchNormParamType> functor;
     functor(dev_ctx, d_scale, static_cast<BatchNormParamType>(0));
@@ -214,7 +216,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "The fused_batch_norm_act operator is not supported on GPU "
       "when CUDNN version < 7.4.1"));
 #endif

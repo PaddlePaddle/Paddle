@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.nn.initializer as I
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestDeformConv2D(TestCase):
@@ -50,7 +49,7 @@ class TestDeformConv2D(TestCase):
         self.weight = np.random.uniform(
             -1,
             1,
-            (self.out_channels, self.in_channels // self.groups) + filter_shape,
+            (self.out_channels, self.in_channels // self.groups, *filter_shape),
         ).astype(self.dtype)
         if not self.no_bias:
             self.bias = np.random.uniform(-1, 1, (self.out_channels,)).astype(
@@ -87,17 +86,20 @@ class TestDeformConv2D(TestCase):
         self.input_shape = (
             self.batch_size,
             self.in_channels,
-        ) + self.spatial_shape
+            *self.spatial_shape,
+        )
 
         self.offset_shape = (
             self.batch_size,
             self.deformable_groups * 2 * filter_shape[0] * filter_shape[1],
-        ) + out_shape
+            *out_shape,
+        )
 
         self.mask_shape = (
             self.batch_size,
             self.deformable_groups * filter_shape[0] * filter_shape[1],
-        ) + out_shape
+            *out_shape,
+        )
 
         self.input = np.random.uniform(-1, 1, self.input_shape).astype(
             self.dtype
@@ -211,7 +213,6 @@ class TestDeformConv2D(TestCase):
 
         return out_v1, out_v2
 
-    @test_with_pir_api
     def _test_identity(self):
         self.prepare()
         static_dcn_v1, static_dcn_v2 = self.static_graph_case_dcn()
@@ -321,7 +322,7 @@ class TestDeformConv2DWithGroups(TestDeformConv2D):
 
 
 class TestDeformConv2DError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_input_error(self):
         def test_input_rank_error():
             paddle.enable_static()

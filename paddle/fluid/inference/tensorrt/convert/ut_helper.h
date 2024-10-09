@@ -53,8 +53,8 @@ void RandomizeTensor(phi::DenseTensor* tensor,
   PADDLE_ENFORCE_GT(
       num_elements,
       0UL,
-      phi::errors::PermissionDenied("RandomizeTensor only can be used for "
-                                    "tensor which dims is not zero."));
+      common::errors::PermissionDenied("RandomizeTensor only can be used for "
+                                       "tensor which dims is not zero."));
 
   phi::CPUPlace cpu_place;
   phi::DenseTensor temp_tensor;
@@ -87,7 +87,7 @@ class TRTConvertValidation {
         max_batch_size_(max_batch_size) {
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_),
                       0,
-                      phi::errors::External("cudaStreamCreate error."));
+                      common::errors::External("cudaStreamCreate error."));
     TensorRTEngine::ConstructionParams params;
     params.max_batch_size = max_batch_size;
     params.max_workspace_size = workspace_size;
@@ -169,7 +169,7 @@ class TRTConvertValidation {
     // Execute Fluid Op
     PADDLE_ENFORCE_LE(batch_size,
                       max_batch_size_,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Runtime batch_size should be less than or equal to "
                           "max_batch_size_. "
                           "But received batch_size:%d, max_batch_size_:%d",

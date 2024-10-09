@@ -42,7 +42,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
                               DenseTensor* dx) {
   PADDLE_ENFORCE_GE(ctx.GetComputeCapability(),
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         ctx.GetComputeCapability()));
@@ -51,7 +51,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
   // Allocate output tensors
@@ -63,7 +63,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       channel_last,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "NCHW layout is currently not supported for max pooling bwd."));
   const std::string padding_algorithm = "EXPLICIT";
 
@@ -111,7 +111,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
         {"saved_idx", 0}, {"dout", 1}, {"dx", 2}};
     PADDLE_ENFORCE_GT(_uid.count(name),
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The tensor name %s is unknown. "
                           "Should be in one of [saved_idx, dout, dx].",
                           name));

@@ -220,7 +220,7 @@ SqueezeExcitationFusePattern::SqueezeExcitationFusePattern(
 
 void SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null. "));
+      graph, common::errors::PreconditionNotMet("graph should not be null. "));
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
@@ -286,7 +286,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     auto* block = pool2d->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     framework::OpDesc fused_op_desc(block);
     fused_op_desc.SetType("squeeze_excitation_block");
@@ -312,14 +312,14 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
       std::stringstream ss;
       ss << "Error: Dims of excitation mul1 weight is: " << mul_1_w_dims
          << ", but get dims of excitation mul2 weight is: " << mul_2_w_dims;
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(common::errors::InvalidArgument(ss.str()));
     }
     std::vector<int16_t> encode_filter_int16;
     encode_filter_int16.resize(mul_1_w_len + mul_2_w_len);
 
     PADDLE_ENFORCE_EQ(mul_1_w_dims[1] % mul_1_w_dims[0] == 0,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Reduction ratio of excitation is not an integer."
                           "Received mul_1_w_dims[1]: %d, mul_1_w_dims[0]: %d",
                           mul_1_w_dims[1],

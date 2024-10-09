@@ -66,7 +66,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
            *reinterpret_cast<phi::DenseTensor*>(out_tensor.impl().get()))
         .Resize(out_dims);
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Custom Device c_embedding ids only support int32 or int64."));
   }
 }

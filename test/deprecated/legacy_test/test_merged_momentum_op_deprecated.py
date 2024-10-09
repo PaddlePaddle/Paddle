@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from collections import OrderedDict
 
@@ -373,7 +374,13 @@ class TestMergedMomentum(unittest.TestCase):
                 np.testing.assert_allclose(out1, out2, rtol=1e-05, atol=1e-07)
 
     def get_places(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         return places
@@ -455,7 +462,13 @@ class TestMergedMomentum2(unittest.TestCase):
                 np.testing.assert_allclose(out3, out4, rtol=1e-05, atol=1e-07)
 
     def get_places(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         return places

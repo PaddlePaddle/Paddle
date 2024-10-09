@@ -33,8 +33,8 @@ using paddle::platform::NodeTrees;
 using paddle::platform::OperatorSupplementEvent;
 using paddle::platform::OperatorSupplementEventNode;
 using paddle::platform::RuntimeTraceEvent;
-using paddle::platform::TracerEventType;
-using paddle::platform::TracerMemEventType;
+using phi::TracerEventType;
+using phi::TracerMemEventType;
 
 TEST(NodeTreesTest, LogMe_case0) {
   std::list<HostTraceEvent> host_events;

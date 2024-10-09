@@ -36,10 +36,10 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
   VLOG(6) << "SoftmaxInferSpmd Inputs: "
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
@@ -106,10 +106,10 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -159,19 +159,19 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
 
   PADDLE_ENFORCE_EQ(out_grad.dims().size(),
                     out_grad.dist_attr().dims_mapping().size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor out_grad's rank [%d] and out_grad's "
                         "dims_mapping size [%d] are not matched.",
                         out_grad.dims().size(),
                         out_grad.dist_attr().dims_mapping().size()));
 
-  PADDLE_ENFORCE_GE(
-      out_grad.dist_attr().dims_mapping().size(),
-      axis,
-      phi::errors::InvalidArgument("The Tensor out_grad's rank [%d] must be "
-                                   "greater than axis [%d].",
-                                   out_grad.dist_attr().dims_mapping().size(),
-                                   axis));
+  PADDLE_ENFORCE_GE(out_grad.dist_attr().dims_mapping().size(),
+                    axis,
+                    common::errors::InvalidArgument(
+                        "The Tensor out_grad's rank [%d] must be "
+                        "greater than axis [%d].",
+                        out_grad.dist_attr().dims_mapping().size(),
+                        axis));
 
   // To keeping consistent with forward propagation, sharding on softmax_axis
   // is not supported now, the axis should be resharded as replicated.

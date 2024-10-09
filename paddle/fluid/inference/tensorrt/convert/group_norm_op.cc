@@ -59,48 +59,26 @@ class GroupNormOpConverter : public OpConverter {
     bool with_int8 = engine_->WithInt8();
     // when int8 is on, allow fall back to fp16
     if (with_int8) with_fp16 = true;
-    if (engine_->with_dynamic_shape()) {
-      int gn_num = groups;
-      std::vector<int64_t> mean_shape({gn_num});
-      std::vector<int64_t> variance_shape({gn_num});
-      plugin::GroupNormPluginDynamic* plugin =
-          new plugin::GroupNormPluginDynamic(
-              static_cast<const float*>(scale_weights.get().values),
-              scale_weights.get().count,
-              static_cast<const float*>(bias_weights.get().values),
-              bias_weights.get().count,
-              epsilon,
-              groups,
-              mean_shape,
-              variance_shape,
-              with_silu,
-              with_fp16,
-              with_int8);
-      nvinfer1::ILayer* groupnorm_layer =
-          engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
-      auto output_name = op_desc.Output("Y")[0];
-      ReplenishLayerAndOutput(
-          groupnorm_layer, "group_norm", {output_name}, test_mode);
-    } else {
-      int gn_num = input_itensor->getDimensions().d[0] * groups;
-      std::vector<int64_t> mean_shape({gn_num});
-      std::vector<int64_t> variance_shape({gn_num});
-      plugin::GroupNormPlugin* plugin = new plugin::GroupNormPlugin(
-          static_cast<const float*>(scale_weights.get().values),
-          scale_weights.get().count,
-          static_cast<const float*>(bias_weights.get().values),
-          bias_weights.get().count,
-          epsilon,
-          groups,
-          mean_shape,
-          variance_shape,
-          with_fp16);
-      nvinfer1::ILayer* groupnorm_layer =
-          engine_->AddPlugin(&input_itensor, 1, plugin);
-      auto output_name = op_desc.Output("Y")[0];
-      ReplenishLayerAndOutput(
-          groupnorm_layer, "group_norm", {output_name}, test_mode);
-    }
+    int gn_num = groups;
+    std::vector<int64_t> mean_shape({gn_num});
+    std::vector<int64_t> variance_shape({gn_num});
+    plugin::GroupNormPluginDynamic* plugin = new plugin::GroupNormPluginDynamic(
+        static_cast<const float*>(scale_weights.get().values),
+        scale_weights.get().count,
+        static_cast<const float*>(bias_weights.get().values),
+        bias_weights.get().count,
+        epsilon,
+        groups,
+        mean_shape,
+        variance_shape,
+        with_silu,
+        with_fp16,
+        with_int8);
+    nvinfer1::ILayer* groupnorm_layer =
+        engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
+    auto output_name = op_desc.Output("Y")[0];
+    ReplenishLayerAndOutput(
+        groupnorm_layer, "group_norm", {output_name}, test_mode);
   }
 };
 

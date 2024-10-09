@@ -33,7 +33,7 @@ void PartialSumKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x.size() > 0,
       true,
-      phi::errors::InvalidArgument("The input should not be null."));
+      common::errors::InvalidArgument("The input should not be null."));
 
   auto* out_t = dev_ctx.template Alloc<T>(out);
   auto batch_size = x[0]->dims()[0];
@@ -64,7 +64,7 @@ void PartialSumGradientOpKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x.size() > 0,
       true,
-      phi::errors::InvalidArgument("The input should not be null."));
+      common::errors::InvalidArgument("The input should not be null."));
   auto batch_size = x[0]->dims()[0];
   if (length == -1) {
     length = x[0]->dims()[1] - start_index;

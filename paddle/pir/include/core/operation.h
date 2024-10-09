@@ -77,7 +77,8 @@ class IR_API alignas(8) Operation final
                            const std::vector<pir::Type> &output_types,
                            pir::OpInfo op_info,
                            size_t num_regions = 0,
-                           const std::vector<Block *> &successors = {});
+                           const std::vector<Block *> &successors = {},
+                           bool verify = true);
   static Operation *Create(OperationArgument &&op_argument);
 
   ///
@@ -183,7 +184,7 @@ class IR_API alignas(8) Operation final
   operator Block::ConstIterator() const { return position_; }
   void MoveTo(Block *block, Block::Iterator position);
 
-  void Print(std::ostream &os);
+  void Print(std::ostream &os) const;
   pir::OpInfo info() const { return info_; }
   std::string name() const;
 
@@ -206,7 +207,7 @@ class IR_API alignas(8) Operation final
   bool use_empty();
 
   template <typename T>
-  T dyn_cast() {
+  T dyn_cast() const {
     return CastUtil<T>::call(this);
   }
 
@@ -255,7 +256,7 @@ class IR_API alignas(8) Operation final
 
   template <typename To, typename Enabler = void>
   struct CastUtil {
-    static To call(Operation *op) {
+    static To call(const Operation *op) {
       throw("Can't dyn_cast to To, To should be a Op or Trait or Interface");
     }
   };
@@ -268,7 +269,7 @@ class IR_API alignas(8) Operation final
   struct CastUtil<
       To,
       typename std::enable_if<std::is_base_of<OpBase, To>::value>::type> {
-    static To call(Operation *op) { return To::dyn_cast(op); }
+    static To call(const Operation *op) { return To::dyn_cast(op); }
   };
 
   AttributeMap attributes_;
@@ -287,12 +288,14 @@ class IR_API alignas(8) Operation final
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
   const uint32_t num_successors_ = 0;
-  const uint64_t id_;
+  const uint64_t id_ = -1;
 
   detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};
   Block *parent_{nullptr};
   Block::Iterator position_;
 };
+
+IR_API std::ostream &operator<<(std::ostream &os, const Operation &op);
 
 }  // namespace pir

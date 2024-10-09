@@ -31,11 +31,11 @@ void MultiplyRawKernel(const Context& dev_ctx,
                        const DenseTensor& y,
                        int axis,
                        SelectedRows* out) {
-  PADDLE_ENFORCE_EQ(
-      common::product(y.dims()),
-      1,
-      phi::errors::InvalidArgument("For MultiplyKernel, if X is Sparse, Y must "
-                                   "contain only one element."));
+  PADDLE_ENFORCE_EQ(common::product(y.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "For MultiplyKernel, if X is Sparse, Y must "
+                        "contain only one element."));
   out->set_rows(x.rows());
   out->set_height(x.height());
   auto z = out->mutable_value();

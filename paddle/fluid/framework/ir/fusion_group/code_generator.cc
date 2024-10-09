@@ -56,7 +56,7 @@ std::string CodeGenerator::Generate(SubGraph* subgraph) {
 static bool HasInput(Node* n, std::string name) {
   PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected node %p to be an operator node.", n));
   std::vector<std::string> input_names = n->Op()->InputNames();
   std::unordered_set<std::string> input_names_set(input_names.begin(),
@@ -67,7 +67,7 @@ static bool HasInput(Node* n, std::string name) {
 static Node* GetInputVar(Node* n, const std::string& name) {
   PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected node %p to be an operator node.", n));
   for (auto* in : n->inputs) {
     if (in->Name() == name) {
@@ -80,7 +80,7 @@ static Node* GetInputVar(Node* n, const std::string& name) {
 static Node* GetOutputVar(Node* n, const std::string& name) {
   PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected node %p to be an operator node.", n));
   for (auto* out : n->outputs) {
     if (out->Name() == name) {
@@ -118,7 +118,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
             PADDLE_ENFORCE_NE(
                 var_ids.find(input_var),
                 var_ids.end(),
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "Input(%s) of operation %s is not set.", name, op->Type()));
             input_ids.push_back(var_ids[input_var]);
           }
@@ -139,7 +139,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
         PADDLE_ENFORCE_NE(
             var_ids.find(output_var),
             var_ids.end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Output(%s) of operation %s is not set.", name, op->Type()));
         output_ids.push_back(var_ids[output_var]);
         if (!subgraph->SaveIntermediateOut() &&
@@ -252,7 +252,7 @@ std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
         PADDLE_ENFORCE_EQ(
             dtypes[id],
             dtype,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "In fusion group, Same Node id must have same date type"));
       }
     }
@@ -264,7 +264,7 @@ std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
         PADDLE_ENFORCE_EQ(
             dtypes[id],
             dtype,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "In fusion group, Same Node id must have same date type"));
       }
     }

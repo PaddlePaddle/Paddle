@@ -45,7 +45,7 @@ PD_Stream PD_DeviceContextGetStream(const PD_DeviceContext* ctx,
     return nullptr;
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Only support Custom/CPU/GPU/XPU DeviceContext"));
   }
 }

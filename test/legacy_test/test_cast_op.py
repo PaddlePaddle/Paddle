@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -22,7 +23,6 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 def cast_wrapper(x, out_dtype=None):
@@ -190,7 +190,7 @@ class TestCastOpFp32ToBf16(OpTest):
 
 
 class TestCastOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -220,7 +220,6 @@ class TestCastDoubleGradCheck(unittest.TestCase):
     def cast_wrapper(self, x):
         return paddle.cast(x[0], 'float64')
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -241,7 +240,13 @@ class TestCastDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -253,7 +258,6 @@ class TestCastTripleGradCheck(unittest.TestCase):
     def cast_wrapper(self, x):
         return paddle.cast(x[0], 'float64')
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -274,7 +278,13 @@ class TestCastTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -294,6 +304,20 @@ class TestCastInplaceContinuous(unittest.TestCase):
             x.cast_("float32")
             np.testing.assert_array_equal(target.numpy(), x.numpy())
 
+        run(paddle.CPUPlace())
+
+    def test_api_pir(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
+            target = x.cast("int64")
+            x.cast_(paddle.int64)
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+            target = x.cast("float32")
+            x.cast_(paddle.float32)
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+
+        paddle.set_flags({"FLAGS_enable_pir_api": True})
         run(paddle.CPUPlace())
 
 

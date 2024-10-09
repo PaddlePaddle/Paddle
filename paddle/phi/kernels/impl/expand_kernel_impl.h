@@ -43,12 +43,12 @@ void Expand(const Context& ctx,
     PADDLE_ENFORCE_NE(
         expand_shape[i],
         0,
-        phi::errors::InvalidArgument("The expanded size cannot be zero."));
+        common::errors::InvalidArgument("The expanded size cannot be zero."));
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           expand_shape[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The expanded size (%d) for non-existing dimensions must be "
               "positive for expand_v2 op.",
               expand_shape[i]));
@@ -58,7 +58,7 @@ void Expand(const Context& ctx,
         PADDLE_ENFORCE_EQ(
             vec_in_dims[i],
             expand_shape[i],
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The value (%d) of the non-singleton dimension does not match"
                 " the corresponding value (%d) in shape for expand_v2 op.",
                 vec_in_dims[i],
@@ -71,7 +71,7 @@ void Expand(const Context& ctx,
       PADDLE_ENFORCE_EQ(
           expand_shape[i],
           -1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When the value in shape is negative for expand_v2 op, "
               "only -1 is supported, but the value received is %d.",
               expand_shape[i]));
@@ -116,14 +116,14 @@ void ExpandKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       rank,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2 op must be positive, "
           "but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
       MAX_RANK_SUPPORTED,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2 op must be less than "
           "or equal to %d, but the value received is %d.",
           MAX_RANK_SUPPORTED,
@@ -133,7 +133,7 @@ void ExpandKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       shape_size,
       rank,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number (%d) of elements of 'shape' for expand_v2 op must be "
           "greater than or equal to the rank (%d) of the input 'X'.",
           shape_size,
@@ -141,7 +141,7 @@ void ExpandKernel(const Context& ctx,
   PADDLE_ENFORCE_LE(
       shape_size,
       MAX_RANK_SUPPORTED,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number (%d) of elements of 'shape' for expand_v2 op must be "
           "less than or equal to %d.",
           shape_size,

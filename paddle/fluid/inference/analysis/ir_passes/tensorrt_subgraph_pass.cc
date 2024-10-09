@@ -64,7 +64,7 @@ void OutputProcess(framework::ir::Graph *graph,
   } else if (precision == phi::DataType::FLOAT32) {
     return;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "mixed_precision currently not supported dtype %d, we now only support "
         "fp16 and bf16.",
         static_cast<int>(precision)));
@@ -237,7 +237,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               inference::tensorrt::TRTEngineManager>::Global()
               .Has(name),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "TRTEngineManager should has engine %s, but not found.", name));
       paddle::inference::Singleton<
           inference::tensorrt::TRTEngineManager>::Global()
@@ -305,7 +305,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   PADDLE_ENFORCE_EQ(
       subgraph.empty(),
       false,
-      phi::errors::PreconditionNotMet("The subgraph should not be empty."));
+      common::errors::PreconditionNotMet("The subgraph should not be empty."));
 
   framework::ProgramDesc *program_desc =
       Get<framework::ProgramDesc *>("program");
@@ -596,7 +596,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   for (auto name : output_names) {
     PADDLE_ENFORCE_NE(output_name_map.count(name),
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The output_name_map should have %s", name));
     output_mapping.push_back(output_name_map[name]);
     renamed_output_rank.push_back(origin_name_output_rank[name]);
@@ -626,12 +626,12 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
   PADDLE_ENFORCE_EQ(output_mapping.empty(),
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The output_mapping should not be empty."));
   PADDLE_ENFORCE_EQ(
       !block_desc.Proto()->vars().empty(),
       true,
-      phi::errors::PreconditionNotMet("the block has no var-desc"));
+      common::errors::PreconditionNotMet("the block has no var-desc"));
 
   // Get pass attrs.
   auto use_varseqlen = Get<bool>("use_varseqlen");

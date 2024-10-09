@@ -165,7 +165,7 @@ class TestFusedAttention(unittest.TestCase):
         out = layer(x, mask, use_ref)
         loss = out.mean()
         loss.backward()
-        vars_need_gradients = [('out', x)] + list(layer.named_parameters())
+        vars_need_gradients = [('out', x), *layer.named_parameters()]
         numpy_values = [out.numpy()]
         for i, (name, var) in enumerate(vars_need_gradients):
             tmp = var.grad.numpy()

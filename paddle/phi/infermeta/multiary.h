@@ -495,7 +495,8 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaTensor* residual_out,
                              MetaTensor* mean,
-                             MetaTensor* variance);
+                             MetaTensor* variance,
+                             MetaConfig config = MetaConfig());
 
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
@@ -908,11 +909,6 @@ void RmsNormInferMeta(const MetaTensor& x,
                       MetaTensor* residual_out,
                       MetaTensor* inv_var);
 
-void RmsNormGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& norm_weight,
-                          MetaTensor* x_grad,
-                          MetaTensor* norm_weight_grad);
-
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
                       const MetaTensor& grad,
@@ -1157,14 +1153,18 @@ void FusedConvInferMeta(const MetaTensor& input,
                         MetaTensor* out,
                         MetaConfig config = MetaConfig());
 
-void MoeInferMeta(const MetaTensor& x,
-                  const MetaTensor& gate,
-                  const MetaTensor& bmm0,
-                  const MetaTensor& bias0,
-                  const MetaTensor& bmm1,
-                  const MetaTensor& bias1,
-                  const std::string& act_type,
-                  MetaTensor* out);
+void FusedMoeInferMeta(const MetaTensor& X,
+                       const MetaTensor& gate_weight,
+                       const MetaTensor& ffn1_weight,
+                       const MetaTensor& ffn1_scale,
+                       const MetaTensor& ffn1_bias,
+                       const MetaTensor& ffn2_weight,
+                       const MetaTensor& ffn2_scale,
+                       const MetaTensor& ffn2_bias,
+                       const std::string& quant_method,
+                       const int moe_topk,
+                       const bool norm_topk_prob,
+                       MetaTensor* out);
 
 void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& key,

@@ -193,7 +193,7 @@ def reader(batch_size, fn, dim):
     else:
         shape = [dim]
 
-    shape = [batch_size] + shape
+    shape = [batch_size, *shape]
     dim = dim * batch_size
 
     for line in open(fn, 'r'):
@@ -345,9 +345,9 @@ def try_load_model_vars(
                     feed_tensors.append(
                         np.array(
                             np.random.random(
-                                tuple(
-                                    [batch_size]
-                                    + list(feed_config.feeded_vars_dims[i])
+                                (
+                                    batch_size,
+                                    *list(feed_config.feeded_vars_dims[i]),
                                 )
                             ),
                             dtype=feed_config.feeded_vars_types[i],
@@ -356,9 +356,9 @@ def try_load_model_vars(
                 elif var.lod_level == 1:
                     t = np.array(
                         np.random.random(
-                            tuple(
-                                [batch_size]
-                                + list(feed_config.feeded_vars_dims[i])
+                            (
+                                batch_size,
+                                *list(feed_config.feeded_vars_dims[i]),
                             )
                         ),
                         dtype=feed_config.feeded_vars_types[i],
@@ -476,14 +476,16 @@ def parse_program(program, output_dir):
     # all vars
     all_vars = list(program.list_vars())
     output["all_vars"] = [
-        {
-            'name': str(v.name),
-            'shape': str(v.shape),
-            'lod_level': int(v.lod_level),
-            'dtype': str(v.dtype),
-        }
-        if v.type not in feed_fetch_type_list
-        else {'name': str(v.name), 'type': str(v.type)}
+        (
+            {
+                'name': str(v.name),
+                'shape': str(v.shape),
+                'lod_level': int(v.lod_level),
+                'dtype': str(v.dtype),
+            }
+            if v.type not in feed_fetch_type_list
+            else {'name': str(v.name), 'type': str(v.type)}
+        )
         for v in all_vars
     ]
     with open(os.path.join(output_dir, all_vars_out_fn), 'w') as f:

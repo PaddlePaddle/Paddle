@@ -1080,7 +1080,7 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "During the multiheadMatmul pass, The scope should not be null."));
 
   int fusion_count = BuildFusionV2(graph, name_scope_, scope);
@@ -1101,20 +1101,20 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
         }
       } else {
         PADDLE_THROW(
-            phi::errors::Fatal("Use transformer'varseqlen need "
-                               "embedding_eltwise_layernorm_fuse_pass or "
-                               "preln_embedding_eltwise_layernorm_fuse_"
-                               "pass. please use no_varseqlen"));
+            common::errors::Fatal("Use transformer'varseqlen need "
+                                  "embedding_eltwise_layernorm_fuse_pass or "
+                                  "preln_embedding_eltwise_layernorm_fuse_"
+                                  "pass. please use no_varseqlen"));
       }
     } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
-          phi::errors::Fatal("Use transformer'varseqlen need config: "
-                             "use_varseqlen, set pos_id, set "
-                             "mask_id. Or not use varseqlen, do not set "
-                             "pos_id. Please "
-                             "reconfig"));
+          common::errors::Fatal("Use transformer'varseqlen need config: "
+                                "use_varseqlen, set pos_id, set "
+                                "mask_id. Or not use varseqlen, do not set "
+                                "pos_id. Please "
+                                "reconfig"));
     }
     graph->Set(kMultiheadMatmulPass, new bool(true));
   }
@@ -1494,7 +1494,7 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "During the multiheadMatmul pass, The scope should not be null."));
 
   int fusion_count = BuildFusionV3(graph, name_scope_, scope);
@@ -1515,20 +1515,20 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
         }
       } else {
         PADDLE_THROW(
-            phi::errors::Fatal("Use transformer'varseqlen need "
-                               "embedding_eltwise_layernorm_fuse_pass or "
-                               "preln_embedding_eltwise_layernorm_fuse_"
-                               "pass. please use no_varseqlen"));
+            common::errors::Fatal("Use transformer'varseqlen need "
+                                  "embedding_eltwise_layernorm_fuse_pass or "
+                                  "preln_embedding_eltwise_layernorm_fuse_"
+                                  "pass. please use no_varseqlen"));
       }
     } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
-          phi::errors::Fatal("Use transformer'varseqlen need config: "
-                             "use_varseqlen, set pos_id, set "
-                             "mask_id. Or not use varseqlen, do not set "
-                             "pos_id. Please "
-                             "reconfig"));
+          common::errors::Fatal("Use transformer'varseqlen need config: "
+                                "use_varseqlen, set pos_id, set "
+                                "mask_id. Or not use varseqlen, do not set "
+                                "pos_id. Please "
+                                "reconfig"));
     }
     graph->Set(kMultiheadMatmulPass, new bool(true));
   }

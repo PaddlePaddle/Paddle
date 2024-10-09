@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <random>
 #include <vector>
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -66,11 +67,16 @@ inline std::vector<int> shuffle_int_vector(int n) {
   return ret;
 }
 
-#define CUDA_CHECK(cmd)                                                       \
-  do {                                                                        \
-    cudaError_t e = cmd;                                                      \
-    CHECK(e == cudaSuccess) << "Cuda failure " << __FILE__ << ":" << __LINE__ \
-                            << " " << cudaGetErrorString(e) << std::endl;     \
+#define CUDA_CHECK(cmd)                                            \
+  do {                                                             \
+    cudaError_t e = cmd;                                           \
+    PADDLE_ENFORCE_EQ(                                             \
+        e == cudaSuccess,                                          \
+        true,                                                      \
+        common::errors::InvalidArgument("CUDA error at %s:%s: %s", \
+                                        __FILE__,                  \
+                                        __LINE__,                  \
+                                        cudaGetErrorString(e)));   \
   } while (0)
 
 class CudaDeviceRestorer {
@@ -92,8 +98,9 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
   size_t total{0};
   cudaSetDevice(gpu_id);
   auto err = cudaMemGetInfo(&avail, &total);
-  PADDLE_ENFORCE_EQ(
-      err, cudaSuccess, phi::errors::InvalidArgument("cudaMemGetInfo failed!"));
+  PADDLE_ENFORCE_EQ(err,
+                    cudaSuccess,
+                    common::errors::InvalidArgument("cudaMemGetInfo failed!"));
   VLOG(0) << "update gpu memory on device " << gpu_id << ", "
           << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
@@ -110,18 +117,20 @@ inline void debug_gpu_memory_info(const char* desc) {
 
   int device_num = 0;
   auto err = cudaGetDeviceCount(&device_num);
-  PADDLE_ENFORCE_EQ(err,
-                    cudaSuccess,
-                    phi::errors::InvalidArgument("cudaGetDeviceCount failed!"));
+  PADDLE_ENFORCE_EQ(
+      err,
+      cudaSuccess,
+      common::errors::InvalidArgument("cudaGetDeviceCount failed!"));
 
   size_t avail{0};
   size_t total{0};
   for (int i = 0; i < device_num; ++i) {
     cudaSetDevice(i);
     auto err = cudaMemGetInfo(&avail, &total);
-    PADDLE_ENFORCE_EQ(err,
-                      cudaSuccess,
-                      phi::errors::InvalidArgument("cudaMemGetInfo failed!"));
+    PADDLE_ENFORCE_EQ(
+        err,
+        cudaSuccess,
+        common::errors::InvalidArgument("cudaMemGetInfo failed!"));
     VLOG(0) << "update gpu memory on device " << i << ", "
             << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
             << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
@@ -136,18 +145,20 @@ inline void show_gpu_mem(const char* desc) {
 
   int device_num = 0;
   auto err = cudaGetDeviceCount(&device_num);
-  PADDLE_ENFORCE_EQ(err,
-                    cudaSuccess,
-                    phi::errors::InvalidArgument("cudaGetDeviceCount failed!"));
+  PADDLE_ENFORCE_EQ(
+      err,
+      cudaSuccess,
+      common::errors::InvalidArgument("cudaGetDeviceCount failed!"));
 
   size_t avail{0};
   size_t total{0};
   for (int i = 0; i < device_num; ++i) {
     cudaSetDevice(i);
     auto err = cudaMemGetInfo(&avail, &total);
-    PADDLE_ENFORCE_EQ(err,
-                      cudaSuccess,
-                      phi::errors::InvalidArgument("cudaMemGetInfo failed!"));
+    PADDLE_ENFORCE_EQ(
+        err,
+        cudaSuccess,
+        common::errors::InvalidArgument("cudaMemGetInfo failed!"));
     VLOG(0) << "[" << desc << "] hbm on device " << i << ", "
             << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
             << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g";

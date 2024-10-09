@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def npairloss(anchor, positive, labels, l2_reg=0.002):
@@ -59,7 +58,6 @@ class TestNpairLossOp(unittest.TestCase):
             np.array(tensor), np_array, rtol=1e-05, atol=atol, err_msg=msg
         )
 
-    @test_with_pir_api
     def test_npair_loss(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -129,7 +127,7 @@ class TestNpairLossOp(unittest.TestCase):
 
 
 class TestNpairLossOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

@@ -292,7 +292,7 @@ void SegmentPoolCUDAGradFunctor(const phi::GPUContext& ctx,
                            in_grad->data<T>(),
                            h);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported segment pooling grad operation, Only MAX, MIN "
         "available, but got %s.",
         pooltype));
@@ -392,7 +392,7 @@ class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
                              h,
                              pool);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
           "available, but got %s.",
           pooltype));
@@ -431,7 +431,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
     } else if (pooltype == "SUM") {
       phi::funcs::GPUGather<T, IndexT>(dev_ctx, out_grad, segments, in_grad);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
           "available, but got %s.",
           pooltype));

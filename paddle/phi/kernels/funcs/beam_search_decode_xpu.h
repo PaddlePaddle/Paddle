@@ -48,7 +48,7 @@ inline int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
   PADDLE_ENFORCE_EQ(
       r,
       xpu::Error_t::SUCCESS,
-      phi::errors::External("Execute function SetMeta failed by [%d]", r));
+      common::errors::External("Execute function SetMeta failed by [%d]", r));
 
   if (flag == 0) {
     auto cpu_place = phi::CPUPlace();
@@ -92,7 +92,7 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
 
   PADDLE_ENFORCE_EQ(r,
                     xpu::Error_t::SUCCESS,
-                    phi::errors::External(
+                    common::errors::External(
                         "Execute function CopyTensorByXPU failed by [%d]", r));
 
   return xpu::Error_t::SUCCESS;
@@ -121,7 +121,7 @@ struct BeamSearchDecodeXPUFunctor {
           PADDLE_ENFORCE_EQ(
               r,
               xpu::Error_t::SUCCESS,
-              phi::errors::External(
+              common::errors::External(
                   "Execute function CopyTensorByXPU failed by [%d]", r));
         }
 
@@ -139,7 +139,7 @@ struct BeamSearchDecodeXPUFunctor {
           PADDLE_ENFORCE_EQ(
               r,
               xpu::Error_t::SUCCESS,
-              phi::errors::External(
+              common::errors::External(
                   "Execute function CopyTensorByType failed by [%d]", r));
         }
 
@@ -152,7 +152,7 @@ struct BeamSearchDecodeXPUFunctor {
   template <typename T>
   void apply_xpu() const {
     if (std::is_same<bool, T>::value) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "beam search decode op does not support bool!"));
     } else {
       BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);

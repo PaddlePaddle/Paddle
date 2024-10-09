@@ -25,7 +25,7 @@ namespace ir {
 
 void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("map_op_to_another_pass", graph);
 
   int found_count = 0;

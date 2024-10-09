@@ -29,31 +29,34 @@ namespace pir {
 class OpLoweringGroup;
 class BackendResource final {
  public:
-  BackendResource(const Target& target,
-                  const std::string& host_fn_name,
-                  const std::string& infer_fn_name,
-                  const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map)
+  BackendResource(
+      const Target& target,
+      const std::string& host_fn_name,
+      const std::string& infer_fn_name,
+      const std::map<int, CINNKernelInfo::SymbolArgBindInfo>& symbol_args_map)
       : host_fn_name_(host_fn_name),
         infer_fn_name_(infer_fn_name),
-        int_args_map_(int_args_map) {
+        symbol_args_map_(symbol_args_map) {
     backend_compiler_ = backends::Compiler::Create(target);
   }
 
   void* GetHostFuncPtr() const;
   void* GetInferFuncPtr() const;
   void* GetCX86HostFuncPtr() const;
-  const std::map<int, CINNKernelInfo::ArgDimIdx>& GetIntArgsMap() const {
-    return int_args_map_;
+  const std::map<int, CINNKernelInfo::SymbolArgBindInfo>& GetSymbolArgsMap()
+      const {
+    return symbol_args_map_;
   }
   const std::shared_ptr<backends::Compiler>& GetBackendCompiler() const {
     return backend_compiler_;
   }
   pir::CINNKernelInfo GenerateKernelInfo() const;
+  const std::string& GetHostFuncName() const { return host_fn_name_; }
 
  private:
   std::string host_fn_name_;
   std::string infer_fn_name_;
-  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map_;
+  std::map<int, CINNKernelInfo::SymbolArgBindInfo> symbol_args_map_;
 
   std::shared_ptr<backends::Compiler> backend_compiler_{nullptr};
 };
@@ -67,6 +70,14 @@ class CompilationResult final {
 
   void SetBackendResource(const std::shared_ptr<BackendResource>& other) {
     backend_resource_ = other;
+  }
+
+  const std::string& GetHostFuncName() const {
+    PADDLE_ENFORCE_NOT_NULL(GetBackendResource(),
+                            ::common::errors::PreconditionNotMet(
+                                "Found backend_resource_ is nullptr, please "
+                                "call SetBackendResource first."));
+    return GetBackendResource()->GetHostFuncName();
   }
 
   pir::CINNKernelInfo GetKernelInfo() {

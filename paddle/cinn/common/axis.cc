@@ -19,7 +19,7 @@
 #include "paddle/cinn/poly/dim.h"
 #include "paddle/cinn/poly/domain.h"
 #include "paddle/cinn/poly/stage.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -69,7 +69,12 @@ std::vector<ir::Var> GenDefaultAxis(int naxis) {
   std::vector<ir::Var> axis;
   for (int i = 0; i < naxis; i++) {
     axis.emplace_back(cinn::common::axis_name(i));
-    CHECK(axis.back()->type().valid());
+    PADDLE_ENFORCE_EQ(axis.back()->type().valid(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The type of axis at index %d is invalid. Please "
+                          "ensure each axis has a valid type.",
+                          i));
   }
   return axis;
 }

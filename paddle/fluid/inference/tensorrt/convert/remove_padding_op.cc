@@ -28,7 +28,7 @@ class RemovePadding : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "remove_padding_op: If you want to use transformer, must "
           "be with dynamic shape"));
     }
@@ -49,7 +49,8 @@ class RemovePadding : public OpConverter {
       VLOG(3) << "with_interleaved data format: Remove padding of "
                  "transformer'input: Padding -> VarSeqlen.";
       if (!op_desc.HasAttr("out_threshold")) {
-        PADDLE_THROW(phi::errors::Fatal("use with_interleaved must be int8."));
+        PADDLE_THROW(
+            common::errors::Fatal("use with_interleaved must be int8."));
       }
       float out_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));

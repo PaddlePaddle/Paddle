@@ -187,7 +187,8 @@ void GroupNormInferMeta(const MetaTensor& x,
                         const std::string& data_layout,
                         MetaTensor* y,
                         MetaTensor* mean,
-                        MetaTensor* variance);
+                        MetaTensor* variance,
+                        MetaConfig config = MetaConfig());
 
 void LayerNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
@@ -229,6 +230,12 @@ void MatchMatrixTensorInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* tmp,
                                 MetaConfig config = MetaConfig());
+
+void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
+                                 const MetaTensor& atol,
+                                 const MetaTensor& rtol,
+                                 bool hermitian,
+                                 MetaTensor* out);
 
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,

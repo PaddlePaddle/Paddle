@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -53,7 +54,12 @@ class TestRemoveUselessScalePattern(PassTest):
         self.check_pass_correct()
 
     def setUp(self):
-        self.places.append(paddle.CPUPlace())
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -99,7 +105,12 @@ class TestRemoveRedundantScalePattern(PassTest):
         self.check_pass_correct()
 
     def setUp(self):
-        self.places.append(paddle.CPUPlace())
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -131,7 +142,12 @@ class TestRemoveUselessCastPattern(PassTest):
         self.check_pass_correct()
 
     def setUp(self):
-        self.places.append(paddle.CPUPlace())
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -164,7 +180,12 @@ class TestRemoveUselessConcatPattern(PassTest):
         self.check_pass_correct()
 
     def setUp(self):
-        self.places.append(paddle.CPUPlace())
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -204,7 +225,12 @@ class TestRemoveRedundantCastPattern(PassTest):
         self.check_pass_correct()
 
     def setUp(self):
-        self.places.append(paddle.CPUPlace())
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -257,7 +283,12 @@ class TestDeleteDropoutOpPatternPattern(PassTest):
         self.check_pass_correct()
 
     def setUp(self):
-        self.places.append(paddle.CPUPlace())
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 

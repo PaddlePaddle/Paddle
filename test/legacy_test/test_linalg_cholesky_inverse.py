@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,7 +20,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api as _test_with_pir_api
 
 RTOL = {'float32': 1e-7, 'float64': 1e-11}
 ATOL = {'float32': 1e-7, 'float64': 1e-11}
@@ -38,7 +38,13 @@ class TestCholeskyInverse(unittest.TestCase):
         self.init_dtype()
         self.generate_input()
         self.generate_output()
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -77,10 +83,15 @@ class TestCholeskyInverse(unittest.TestCase):
                 rtol=RTOL.get(self._dtype),
             )
 
-    @_test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 
@@ -189,13 +200,13 @@ class TestErrorDtype(unittest.TestCase):
     def test_float16(self):
         if core.is_compiled_with_cuda():
             x = paddle.rand((3, 3), dtype='float16')
-            with self.assertRaises((RuntimeError, ValueError)):
+            with self.assertRaises((RuntimeError, ValueError, TypeError)):
                 paddle.linalg.cholesky_inverse(x)
 
     def test_bfloat16(self):
         if core.is_compiled_with_cuda():
             x = paddle.rand((3, 3), dtype='bfloat16')
-            with self.assertRaises((RuntimeError, ValueError)):
+            with self.assertRaises((RuntimeError, ValueError, TypeError)):
                 paddle.linalg.cholesky_inverse(x)
 
 

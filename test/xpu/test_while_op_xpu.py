@@ -101,7 +101,10 @@ class TestWhileOp(unittest.TestCase):
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             self.simple_net()
-            binary = base.compiler.CompiledProgram(main_program)
+            if paddle.framework.in_pir_mode():
+                binary = main_program
+            else:
+                binary = base.compiler.CompiledProgram(main_program)
 
             xpu_place = paddle.XPUPlace(0)
             exe = Executor(xpu_place)

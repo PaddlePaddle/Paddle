@@ -708,7 +708,7 @@ class Transformer(Layer):
     ):
         def expand_to_beam_size(tensor, beam_size):
             tensor = paddle.reshape(
-                tensor, [tensor.shape[0], 1] + list(tensor.shape[1:])
+                tensor, [tensor.shape[0], 1, *list(tensor.shape[1:])]
             )
             tile_dims = [-1] * len(tensor.shape)
             tile_dims[1] = beam_size

@@ -143,7 +143,7 @@ class CPPPassWrapper(PassBase):
 
     @property
     def cpp_name(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @property
     def cpp_attr_types(self):

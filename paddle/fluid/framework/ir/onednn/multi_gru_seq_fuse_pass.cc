@@ -47,11 +47,12 @@ std::vector<std::string> JoinInputs(Node* op1,
 void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Fusing two consecutive multi_gru ops.";
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument cannot be NULL."));
   FusePassBase::Init(name_scope_, graph);
   PADDLE_ENFORCE_NOT_NULL(
-      param_scope(), phi::errors::InvalidArgument("Scope cannot be nullptr."));
+      param_scope(),
+      common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::MultiGruSeq pattern{gpd.mutable_pattern(), name_scope_};

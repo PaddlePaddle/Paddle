@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 import os
-from typing import Set
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import numpy as np
 
@@ -30,6 +32,16 @@ from paddle.base.core import (
 )
 from paddle.base.log_helper import get_logger
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
+    from typing_extensions import Unpack
+
+    from paddle import Tensor
+
+    class _WhiteList(TypedDict):
+        white_list: set[str]
+
+
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -42,7 +54,7 @@ Tensor = PaddleInferTensor
 Predictor = PaddleInferPredictor
 
 
-def tensor_copy_from_cpu(self, data):
+def tensor_copy_from_cpu(self, data: npt.NDArray[Any] | list[str]) -> None:
     '''
     Support input type check based on tensor.copy_from_cpu.
     '''
@@ -56,7 +68,7 @@ def tensor_copy_from_cpu(self, data):
         )
 
 
-def tensor_share_external_data(self, data):
+def tensor_share_external_data(self, data: Tensor) -> None:
     '''
     Support input type check based on tensor.share_external_data.
     '''
@@ -84,9 +96,9 @@ def convert_to_mixed_precision(
     mixed_precision: PrecisionType,
     backend: PlaceType,
     keep_io_types: bool = True,
-    black_list: Set[str] = set(),
-    **kwargs,
-):
+    black_list: set[str] = set(),
+    **kwargs: Unpack[_WhiteList],
+) -> None:
     '''
     Convert a fp32 model to mixed precision model.
 
@@ -98,6 +110,7 @@ def convert_to_mixed_precision(
         mixed_precision: The precision, e.g. PrecisionType.Half.
         backend: The backend, e.g. PlaceType.GPU.
         keep_io_types: Whether the model input and output dtype remains unchanged.
+            Default is True.
         black_list: Operators that do not convert precision.
         kwargs: Supported keys including 'white_list'.
             - white_list: Operators that do convert precision.

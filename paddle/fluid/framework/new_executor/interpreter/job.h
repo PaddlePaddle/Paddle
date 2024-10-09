@@ -39,7 +39,7 @@ class Job final {
     PADDLE_ENFORCE_GE(
         micro_batch_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The micro_batch_id should be greater or equal to 0."));
     micro_batch_id_ = micro_batch_id;
   }
@@ -47,7 +47,7 @@ class Job final {
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
     PADDLE_ENFORCE_EQ(skip_gc_vars_.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "skip_gc_vars_ can only be initialized once, now "
                           "skip_gc_vars_ is not empty, "
                           "do not call SetSkipGcVars method repeatedly."));

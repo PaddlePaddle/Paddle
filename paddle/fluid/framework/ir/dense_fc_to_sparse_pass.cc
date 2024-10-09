@@ -67,7 +67,7 @@ DenseFCToSparsePass::DenseFCToSparsePass() {
 
 void DenseFCToSparsePass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
 
   std::string name_scope = "dense_fc_to_sparse_pass";
   FusePassBase::Init(name_scope, graph);

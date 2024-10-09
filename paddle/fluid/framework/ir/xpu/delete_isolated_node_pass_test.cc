@@ -122,12 +122,12 @@ TEST(delete_isolated_node_pass, basic) {
   pass0->Apply(graph->GetSubGraph(1));
   int weight_node_num =
       WeightNodeNum(graph.get()) + WeightNodeNum(graph->GetSubGraph(1));
-  PADDLE_ENFORCE_EQ(
-      weight_node_num,
-      6,
-      phi::errors::PreconditionNotMet("Graph should have 6 weight node after "
-                                      "fc_xpu_fuse_pass, but actually has %d.",
-                                      weight_node_num));
+  PADDLE_ENFORCE_EQ(weight_node_num,
+                    6,
+                    common::errors::PreconditionNotMet(
+                        "Graph should have 6 weight node after "
+                        "fc_xpu_fuse_pass, but actually has %d.",
+                        weight_node_num));
 
   auto pass1 = PassRegistry::Instance().Get("delete_isolated_node_pass");
   pass1->Apply(graph.get());
@@ -135,14 +135,14 @@ TEST(delete_isolated_node_pass, basic) {
       WeightNodeNum(graph.get()) + WeightNodeNum(graph->GetSubGraph(1));
   PADDLE_ENFORCE_EQ(weight_node_num,
                     4,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Graph should have 4 weight node after "
                         "delete_isolated_node_pass, but actually has %d.",
                         weight_node_num));
   int weight_tensor_num = WeightTensorNum(scope);
   PADDLE_ENFORCE_EQ(weight_tensor_num,
                     2,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Scope should have 2 weight tensor after "
                         "delete_isolated_node_pass, but actually has %d.",
                         weight_tensor_num));
@@ -152,7 +152,7 @@ TEST(delete_isolated_node_pass, basic) {
       auto while_in_names = node->Op()->Inputs().at("X");
       PADDLE_ENFORCE_EQ(while_in_names.size(),
                         3,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "While op should have 3 input after "
                             "delete_isolated_node_pass, but actually has %d.",
                             while_in_names.size()));
@@ -169,7 +169,7 @@ TEST(delete_isolated_node_pass, basic) {
     auto* var1 = scope1.FindVar(name);
     PADDLE_ENFORCE(
         var0 == var1,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Variables with the same name in two scopes is different."));
   }
 }

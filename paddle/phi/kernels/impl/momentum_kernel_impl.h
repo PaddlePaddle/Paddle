@@ -434,7 +434,7 @@ void MomentumDenseImpl(const Context& ctx,
                        (master_param_out != nullptr));
     PADDLE_ENFORCE_EQ(has_master,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The Input(MasterParam) and Output(MasterParamOut) "
                           "should not be null when "
                           "the attr `multi_precision` is true"));
@@ -546,7 +546,7 @@ void MomentumSparseImpl(const Context& ctx,
                        (master_param_out != nullptr));
     PADDLE_ENFORCE_EQ(has_master,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The Input(MasterParam) and Output(MasterParamOut) "
                           "should not be null when "
                           "the attr `multi_precision` is true"));

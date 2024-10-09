@@ -235,7 +235,7 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   PADDLE_ENFORCE_EQ(
       groups,
       1,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "Group concolution using CUDNNv8 API unsupported for now"));
 
   T* input_data = const_cast<T*>(input_tensor->data<T>());
@@ -328,7 +328,7 @@ void ConvCudnnKernel(const Context& ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
@@ -462,7 +462,7 @@ void ConvCudnnKernel(const Context& ctx,
                                           &transformed_input);
       } break;
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "ConvOp only support tensors with 4 or 5 dimensions."));
     }
 

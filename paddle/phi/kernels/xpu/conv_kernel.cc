@@ -43,7 +43,7 @@ void ConvKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       data_format == "NDHWC",
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           ("XPU does not support data_format is NDHWC in conv op.")));
 
   phi::DDim in_data_dims =

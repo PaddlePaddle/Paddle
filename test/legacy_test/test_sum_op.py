@@ -29,7 +29,6 @@ from paddle import base, enable_static
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def sum_wrapper(X, use_mkldnn=False):
@@ -165,7 +164,13 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         return var
 
     def test_w_is_selected_rows(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -395,7 +400,7 @@ class TestSumBF16Op(OpTest):
 
 
 class API_Test_Add_n(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         with base.program_guard(base.Program(), base.Program()):
             input0 = paddle.tensor.fill_constant(
@@ -466,7 +471,7 @@ class API_Test_Add_n(unittest.TestCase):
 
 
 class TestRaiseSumError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -498,7 +503,7 @@ class TestRaiseSumError(unittest.TestCase):
 
 
 class TestRaiseSumsError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -581,7 +586,6 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         pd_out.backward()
         self.assertEqual(self.x.gradient().shape, tuple(self.x.shape))
 
-    @test_with_pir_api
     def test_static_and_infer(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -658,7 +662,6 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -691,7 +694,13 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -702,7 +711,6 @@ class TestAddNTripleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -736,7 +744,13 @@ class TestAddNTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -747,7 +761,6 @@ class TestSumDoubleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -768,7 +781,13 @@ class TestSumDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -779,7 +798,6 @@ class TestSumTripleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -800,7 +818,13 @@ class TestSumTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -809,27 +833,30 @@ class TestSumTripleGradCheck(unittest.TestCase):
 
 class TestSumAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-        with warnings.catch_warnings(record=True) as context:
-            warnings.simplefilter("always")
-            paddle.enable_static()
-            helper = LayerHelper("sum")
-            data = paddle.static.data(
-                name='data', shape=[32, 32], dtype='float32'
-            )
-            out = helper.create_variable_for_type_inference(dtype=data.dtype)
-            attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
-            os.environ["FLAGS_print_extra_attrs"] = '1'
-            helper.append_op(
-                type="reduce_sum",
-                inputs={'X': data},
-                outputs={'Out': out},
-                attrs=attrs,
-            )
-            self.assertTrue(
-                "op reduce_sum's attr reduce_all = True is not the default value: False"
-                in str(context[-1].message)
-            )
-            os.environ["FLAGS_print_extra_attrs"] = '0'
+        with paddle.pir_utils.OldIrGuard():
+            with warnings.catch_warnings(record=True) as context:
+                warnings.simplefilter("always")
+                paddle.enable_static()
+                helper = LayerHelper("sum")
+                data = paddle.static.data(
+                    name='data', shape=[32, 32], dtype='float32'
+                )
+                out = helper.create_variable_for_type_inference(
+                    dtype=data.dtype
+                )
+                attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
+                os.environ["FLAGS_print_extra_attrs"] = '1'
+                helper.append_op(
+                    type="reduce_sum",
+                    inputs={'X': data},
+                    outputs={'Out': out},
+                    attrs=attrs,
+                )
+                self.assertTrue(
+                    "op reduce_sum's attr reduce_all = True is not the default value: False"
+                    in str(context[-1].message)
+                )
+                os.environ["FLAGS_print_extra_attrs"] = '0'
 
 
 if __name__ == "__main__":

@@ -18,10 +18,10 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/allocation/best_fit_allocator.h"
-#include "paddle/fluid/memory/allocation/cuda_allocator.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/allocation/best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_allocator.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 namespace paddle {
 namespace memory {

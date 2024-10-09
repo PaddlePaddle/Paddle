@@ -109,7 +109,7 @@ MatmulV2ScaleFusePass::MatmulV2ScaleFusePass() {
 
 void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "matmul_scale_fuse";
   FusePassBase::Init(name_scope, graph);
 
@@ -169,7 +169,7 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
 
 void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "matmul_v2_scale_fuse";
   FusePassBase::Init(name_scope, graph);
 

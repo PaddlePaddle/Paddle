@@ -52,7 +52,7 @@ std::shared_ptr<gloo::transport::Device> CreateDefaultDevice() {
   PADDLE_ENFORCE_EQ(
       ret,
       0,
-      phi::errors::Fatal("Get hostname error for createDefaultDevice."));
+      common::errors::Fatal("Get hostname error for createDefaultDevice."));
   ::addrinfo* result;
   result = phi::distributed::tcputils::get_addr_info(
       hostname.data(), "", 0, AF_UNSPEC);

@@ -27,7 +27,7 @@ inline BoxCodeType GetBoxCodeType(const std::string &type) {
   PADDLE_ENFORCE_EQ(
       (type == "encode_center_size") || (type == "decode_center_size"),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The 'code_type' attribute in BoxCoder"
           " must be 'encode_center_size' or 'decode_center_size'. "
           "But received 'code_type' is %s",

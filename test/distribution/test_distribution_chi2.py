@@ -147,13 +147,11 @@ class TestChi2Sample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': ()
-                + tuple(paddle.squeeze(self._paddle_chi2.df).shape),
+                'expect': tuple(paddle.squeeze(self._paddle_chi2.df).shape),
             },
             {
                 'input': (2, 2),
-                'expect': (2, 2)
-                + tuple(paddle.squeeze(self._paddle_chi2.df).shape),
+                'expect': (2, 2, *paddle.squeeze(self._paddle_chi2.df).shape),
             },
         ]
         for case in cases:

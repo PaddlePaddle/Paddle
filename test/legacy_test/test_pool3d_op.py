@@ -71,7 +71,7 @@ def pool3D_forward_naive(
             paddings = [0, 0, 0, 0, 0, 0]
             if ceil_mode is not False:
                 raise ValueError(
-                    "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode)"
+                    'When Attr(pool_padding) is "VALID", Attr(ceil_mode)'
                     " must be False. "
                     "Received ceil_mode: True."
                 )

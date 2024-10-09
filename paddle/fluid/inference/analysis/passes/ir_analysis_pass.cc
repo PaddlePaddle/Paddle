@@ -33,7 +33,7 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   PADDLE_ENFORCE_GT(
       graph->Nodes().size(),
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The graph nodes size should be greater than 0, but got 0"));
   argument->SetMainGraph(graph.release());
   CollectFusionStatis(argument);

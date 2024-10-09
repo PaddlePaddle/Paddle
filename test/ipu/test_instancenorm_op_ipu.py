@@ -72,7 +72,7 @@ class TestBase(IPUOpTest):
                 num_features=self.feed_shape[0][1],
                 weight_attr=True,
                 bias_attr=True,
-                **self.attrs
+                **self.attrs,
             )(x)
             self.fetch_list = [out.name]
 

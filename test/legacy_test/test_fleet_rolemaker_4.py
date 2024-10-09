@@ -25,9 +25,9 @@ class TestCloudRoleMaker(unittest.TestCase):
     def setUp(self):
         """Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"
-        ] = "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = (
+            "127.0.0.1:36001,127.0.0.2:36001"
+        )
 
     def test_pslib_1(self):
         """Test cases for pslib."""

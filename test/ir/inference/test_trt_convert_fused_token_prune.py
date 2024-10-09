@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -30,13 +32,13 @@ class TrtConvertFusedTokenPruneTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_attn_or_mask(attrs: List[Dict[str, Any]]):
+        def generate_attn_or_mask(attrs: list[dict[str, Any]]):
             return np.ones([4, 12, 64, 64]).astype(np.float32)
 
-        def generate_x(attrs: List[Dict[str, Any]]):
+        def generate_x(attrs: list[dict[str, Any]]):
             return np.random.random([4, 64, 76]).astype(np.float32)
 
-        def generate_new_mask(attrs: List[Dict[str, Any]]):
+        def generate_new_mask(attrs: list[dict[str, Any]]):
             return np.random.random([4, 12, 32, 32]).astype(np.float32)
 
         for keep_first_token in [True, False]:
@@ -86,7 +88,7 @@ class TrtConvertFusedTokenPruneTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "attn": [4, 12, 64, 64],

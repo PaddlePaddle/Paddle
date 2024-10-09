@@ -18,7 +18,6 @@
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -63,7 +62,7 @@ void CondInterceptor::PrepareDeps() {
 bool CondInterceptor::GetCondResult() {
   PADDLE_ENFORCE_LT(cur_scope_id_,
                     microbatch_scopes_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Step out of range. There are %ld "
                         "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
@@ -72,9 +71,9 @@ bool CondInterceptor::GetCondResult() {
       microbatch_scopes_[cur_scope_id_]->FindVar(node_->cond_var());
   PADDLE_ENFORCE(
       cond_var,
-      phi::errors::NotFound("Condition variable %s not exists in scope %ld",
-                            node_->cond_var(),
-                            cur_scope_id_));
+      common::errors::NotFound("Condition variable %s not exists in scope %ld",
+                               node_->cond_var(),
+                               cur_scope_id_));
   const auto& cond_tensor = cond_var->Get<phi::DenseTensor>();
   bool res = false;
   if (phi::is_gpu_place(cond_tensor.place())) {
@@ -94,8 +93,8 @@ bool CondInterceptor::GetCondResult() {
   } else if (phi::is_cpu_place(cond_tensor.place())) {
     res = cond_tensor.data<bool>()[0];
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Unsupport device for cond interceptor."));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Unsupport device for cond interceptor."));
   }
   return res;
 }
@@ -139,7 +138,7 @@ void CondInterceptor::Compute(int64_t gen_step) {
   } else {
     PADDLE_ENFORCE_NE(scope_id_to_gen_step_.find(cur_scope_id_),
                       scope_id_to_gen_step_.end(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Can not find scope id %ld in scope_id_to_gen_step",
                           cur_scope_id_));
     VLOG(3) << "Finish loop in scope " << cur_scope_id_ << " with "
@@ -175,7 +174,7 @@ void CondInterceptor::Run(const InterceptorMessage& msg) {
     PADDLE_ENFORCE_NE(
         scope_id_to_gen_step_.find(scope_id),
         scope_id_to_gen_step_.end(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Can not find scope id %ld in scope_id_to_gen_step", scope_id));
     // Keep the message in order with scope_id
     // message with scope 3 never send before scope 1.
@@ -204,9 +203,9 @@ void CondInterceptor::Run(const InterceptorMessage& msg) {
           ready_scope_ids.emplace_back(iter->first);
         } else if (iter->second > gen_step) {
           PADDLE_THROW(
-              phi::errors::Fatal("Some error may occur. Scope %ld's "
-                                 "gen_step is much larger than previous.",
-                                 iter->first));
+              common::errors::Fatal("Some error may occur. Scope %ld's "
+                                    "gen_step is much larger than previous.",
+                                    iter->first));
         } else {
           break;
         }

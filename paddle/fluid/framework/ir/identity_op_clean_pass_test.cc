@@ -37,7 +37,7 @@ TEST(identity_op_clean_pass, assign) {
   PADDLE_ENFORCE_EQ(
       assign_num,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should have 0 assign after identity_op_clean_pass, "
           "but actually has %d.",
           assign_num));
@@ -61,7 +61,7 @@ TEST(identity_op_clean_pass, scale) {
   PADDLE_ENFORCE_EQ(
       scale_num,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should have 0 scale op after identity_op_clean_pass, "
           "but actually has %d.",
           scale_num));
@@ -85,7 +85,7 @@ TEST(identity_op_clean_pass, cast) {
   PADDLE_ENFORCE_EQ(
       cast_num,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should have 0 cast after identity_op_clean_pass, "
           "but actually has %d.",
           cast_num));
@@ -107,7 +107,7 @@ TEST(identity_op_clean_pass, concat) {
   PADDLE_ENFORCE_EQ(
       concat_num,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should have 0 concat after identity_op_clean_pass, "
           "but actually has %d.",
           concat_num));

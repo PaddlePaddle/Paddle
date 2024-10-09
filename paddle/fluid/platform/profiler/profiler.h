@@ -22,10 +22,10 @@
 #include <memory>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/profiler/cpu_utilization.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
+#include "paddle/phi/core/platform/profiler/cpu_utilization.h"
 
 COMMON_DECLARE_int64(host_trace_level);
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -20,7 +21,6 @@ from op_test import OpTest
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 SEED = 2049
@@ -166,10 +166,15 @@ class TestMatrixRankAPI(unittest.TestCase):
         rank_pd = paddle.linalg.matrix_rank(x_pd, tol, hermitian=False)
         np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 

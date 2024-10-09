@@ -111,11 +111,11 @@ TEST(RemoveAssignGather, basic) {
   auto gather_num = GetNumOpNodes(graph, "gather");
   PADDLE_ENFORCE_EQ(assign_num,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "assign op should be removed from the graph."));
   PADDLE_ENFORCE_EQ(gather_num,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "gather op should be removed from the graph."));
 }
 
@@ -162,7 +162,7 @@ TEST(FusedMultiTransformerXPUPass, context_stage) {
   PADDLE_ENFORCE_EQ(
       num_nodes_after,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After the fuse_multi_transformer_layer_pass, "
           "The node num in graph should be 1, but the result is %d",
           num_nodes_after));
@@ -212,7 +212,7 @@ TEST(FusedMultiTransformerXPUPass, decoder_stage) {
   PADDLE_ENFORCE_EQ(
       num_nodes_after,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After the fuse_multi_transformer_layer_pass, "
           "The node num in graph should be 1, but the result is %d",
           num_nodes_after));

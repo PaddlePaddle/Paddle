@@ -14,7 +14,3 @@ endif()
 if(WITH_IPU)
   add_subdirectory(ipu)
 endif()
-
-if(WITH_CUSTOM_DEVICE)
-  add_subdirectory(custom)
-endif()

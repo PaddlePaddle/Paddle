@@ -38,9 +38,9 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         tensor_map_.count(tensor_name),
         0,
-        phi::errors::NotFound("Not found tensor. The drr tensor [%s] must "
-                              "exist in pattern graph to be obtained.",
-                              tensor_name));
+        common::errors::NotFound("Not found tensor. The drr tensor [%s] must "
+                                 "exist in pattern graph to be obtained.",
+                                 tensor_name));
     return tensor_map_.at(tensor_name);
   }
 
@@ -48,7 +48,7 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         operation_map_.count(op_call),
         0,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Not found operation. The drr operation [%s] must exist in the "
             "pattern graph to be obtained.",
             op_call->name()));
@@ -65,7 +65,7 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         iter,
         tensor_map_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Not found tensor. The drr tensor [%s] is not found in the map, "
             "unable to obtain the corresponding IrValue.",
             tensor_name));
@@ -77,7 +77,7 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         iter,
         attr_map_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Not found attr. The drr attr [%s] is not found in the map, unable "
             "to obtain the corresponding Attribute.",
             attr_name));

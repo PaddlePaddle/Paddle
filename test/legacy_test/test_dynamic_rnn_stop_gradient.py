@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -79,7 +79,6 @@ class TestDynRNNStopGradient(unittest.TestCase):
         self.batch_size = 2
         self.beam_size = 2
 
-    @test_with_pir_api
     def run_main(self, place):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
@@ -95,7 +94,13 @@ class TestDynRNNStopGradient(unittest.TestCase):
                     np.testing.assert_array_equal(value1, value2)
 
     def test_check_main(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if base.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 

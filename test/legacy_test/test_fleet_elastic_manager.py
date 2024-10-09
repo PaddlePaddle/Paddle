@@ -124,9 +124,9 @@ class TestElasticManager(unittest.TestCase):
         os.environ['FLAGS_START_PORT'] = "6001"
 
         hosts = ["10.10.10.1:6001", "10.10.10.2:6001"]
-        os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001"
+        os.environ['PADDLE_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001"
+        )
 
         self.assertEqual(elastic._match(hosts), True)
 
@@ -153,12 +153,12 @@ class TestElasticManager(unittest.TestCase):
         args = Argument()
         args.ips = "10.10.10.1,10.10.10.2,10.10.10.3,10.10.10.4"
         os.environ['FLAGS_START_PORT'] = "6001"
-        os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001,10.10.10.4:6001"
-        os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001,10.10.10.4:6001"
+        os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001,10.10.10.4:6001"
+        )
+        os.environ['PADDLE_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001,10.10.10.4:6001"
+        )
         elastic = ElasticManager(args, self.etcd_client)
         hosts = ["10.10.10.1:6001", "10.10.10.2:6001"]
         self.assertEqual(elastic._match(hosts), False)
@@ -178,12 +178,12 @@ class TestElasticManager(unittest.TestCase):
         self.assertEqual(elastic._match(hosts), False)
 
         args.ips = "10.10.10.1,10.10.10.2"
-        os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001"
-        os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001"
+        os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001"
+        )
+        os.environ['PADDLE_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001"
+        )
         elastic = ElasticManager(args, self.etcd_client)
         hosts = ["10.10.10.1:6001", "10.10.10.2:6001"]
         self.assertEqual(elastic._match(hosts), True)
@@ -210,12 +210,12 @@ class TestElasticManager(unittest.TestCase):
         os.environ['FLAGS_START_PORT'] = "6001"
         os.environ['PADDLE_ELASTIC_NP'] = "2"
         os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
-        os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001"
-        os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001"
+        os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001"
+        )
+        os.environ['PADDLE_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001"
+        )
         elastic = ElasticManager(args, self.etcd_client)
         # add 10.10.10.3:6001
         os.environ['PADDLE_TRAINER_ID'] = "0"
@@ -258,12 +258,12 @@ class TestElasticManager(unittest.TestCase):
 
         os.environ['FLAGS_START_PORT'] = "6001"
         os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
-        os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001"
-        os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.2:6001"
+        os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001"
+        )
+        os.environ['PADDLE_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.2:6001"
+        )
         elastic = ElasticManager(args, self.etcd_client)
         # add 10.10.10.3:6001
         elastic.curr_host = "10.10.10.1:6001"
@@ -282,15 +282,15 @@ class TestElasticManager(unittest.TestCase):
         #######################
         # elastic, scale in #
         #######################
-        os.environ[
-            'PADDLE_TRAINERS'
-        ] = "10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3"
-        os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'
-        ] = "10.10.10.0:6000,10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001"
-        os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'
-        ] = "10.10.10.0:6000,10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001"
+        os.environ['PADDLE_TRAINERS'] = (
+            "10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3"
+        )
+        os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = (
+            "10.10.10.0:6000,10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001"
+        )
+        os.environ['PADDLE_TRAINER_ENDPOINTS'] = (
+            "10.10.10.0:6000,10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001"
+        )
         os.environ['POD_IP'] = "10.10.10.1"
         os.environ['TRAINER_PORTS_NUM'] = "4"
         os.environ['PADDLE_TRAINER_ID'] = "1"
@@ -316,15 +316,15 @@ class TestElasticManager(unittest.TestCase):
         )
 
         ############
-        os.environ[
-            'PADDLE_TRAINERS'
-        ] = "10.10.10.1,10.10.10.1,10.10.10.1,10.10.10.1"
-        os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.1:6002,10.10.10.1:6003,10.10.10.1:6004"
-        os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'
-        ] = "10.10.10.1:6001,10.10.10.1:6002,10.10.10.1:6003,10.10.10.1:6004"
+        os.environ['PADDLE_TRAINERS'] = (
+            "10.10.10.1,10.10.10.1,10.10.10.1,10.10.10.1"
+        )
+        os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.1:6002,10.10.10.1:6003,10.10.10.1:6004"
+        )
+        os.environ['PADDLE_TRAINER_ENDPOINTS'] = (
+            "10.10.10.1:6001,10.10.10.1:6002,10.10.10.1:6003,10.10.10.1:6004"
+        )
         os.environ['POD_IP'] = "10.10.10.1"
         os.environ['TRAINER_PORTS_NUM'] = "4"
         os.environ['PADDLE_PORT'] = "6001"

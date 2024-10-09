@@ -20,7 +20,6 @@ import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base, nn
-from paddle.pir_utils import test_with_pir_api
 
 
 class Conv1DTestCase(unittest.TestCase):
@@ -60,9 +59,9 @@ class Conv1DTestCase(unittest.TestCase):
 
     def setUp(self):
         input_shape = (
-            (self.batch_size, self.num_channels) + self.spartial_shape
+            (self.batch_size, self.num_channels, *self.spartial_shape)
             if not self.channel_last
-            else (self.batch_size,) + self.spartial_shape + (self.num_channels,)
+            else (self.batch_size, *self.spartial_shape, self.num_channels)
         )
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
@@ -73,7 +72,8 @@ class Conv1DTestCase(unittest.TestCase):
         self.weight_shape = weight_shape = (
             self.num_filters,
             self.num_channels // self.groups,
-        ) + tuple(filter_size)
+            *filter_size,
+        )
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )
@@ -144,7 +144,6 @@ class Conv1DTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
-    @test_with_pir_api
     def _test_equivalence(self, place):
         result1 = self.functional(place)
         with dg.guard(place):

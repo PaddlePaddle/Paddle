@@ -15,6 +15,7 @@
 import os
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 import unittest
 
@@ -182,9 +183,9 @@ class TestPSPassWithBow(unittest.TestCase):
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"
-        ] = "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = (
+            "127.0.0.1:36001,127.0.0.2:36001"
+        )
         os.environ["TRAINING_ROLE"] = "PSERVER"
 
         role = role_maker.PaddleCloudRoleMaker()

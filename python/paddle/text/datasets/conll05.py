@@ -292,9 +292,7 @@ class Conll05st(Dataset):
         wf.close()
         tf.close()
 
-    def __getitem__(
-        self, idx: int
-    ) -> tuple[
+    def __getitem__(self, idx: int) -> tuple[
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],

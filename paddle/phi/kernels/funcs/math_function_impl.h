@@ -75,7 +75,7 @@ void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(out->numel(),
                     size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of output tensor "
                         "should be equal to the size of input tensor column"
                         " dimension. Expected output size=%d, but received %d",
@@ -103,7 +103,7 @@ class ColwiseSum<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         out->numel(),
         size,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of output tensor "
             "should be equal to the size of input tensor column"
             " dimension. Expected output size=%d, but received %d",
@@ -130,14 +130,15 @@ void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& context,
                                                const phi::DenseTensor& input,
                                                phi::DenseTensor* out) {
   auto in_dims = input.dims();
-  PADDLE_ENFORCE_EQ(in_dims.size(),
-                    2U,
-                    phi::errors::InvalidArgument("The rank of input tensor "
-                                                 "should be 2, but received %d",
-                                                 in_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      2U,
+      common::errors::InvalidArgument("The rank of input tensor "
+                                      "should be 2, but received %d",
+                                      in_dims.size()));
   PADDLE_ENFORCE_EQ(out->numel(),
                     in_dims[0],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of output tensor "
                         "should be equal to the size of input tensor row"
                         " dimension. Expected output size=%d, but received %d",
@@ -163,15 +164,15 @@ class RowwiseMean<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
         2U,
-        phi::errors::InvalidArgument("The rank of input tensor "
-                                     "should be 2, but received %d",
-                                     in_dims.size()));
+        common::errors::InvalidArgument("The rank of input tensor "
+                                        "should be 2, but received %d",
+                                        in_dims.size()));
     auto height = in_dims[0];
     auto size = in_dims[1];
     PADDLE_ENFORCE_EQ(
         out->numel(),
         height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of output tensor "
             "should be equal to the size of input tensor row"
             " dimension. Expected output size=%d, but received %d",
@@ -196,14 +197,15 @@ void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                                               const phi::DenseTensor& input,
                                               phi::DenseTensor* out) {
   auto in_dims = input.dims();
-  PADDLE_ENFORCE_EQ(in_dims.size(),
-                    2U,
-                    phi::errors::InvalidArgument("The rank of input tensor "
-                                                 "should be 2, but received %d",
-                                                 in_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      2U,
+      common::errors::InvalidArgument("The rank of input tensor "
+                                      "should be 2, but received %d",
+                                      in_dims.size()));
   PADDLE_ENFORCE_EQ(out->numel(),
                     in_dims[0],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of output tensor "
                         "should be equal to the size of input tensor row"
                         " dimension. Expected output size=%d, but received %d",
@@ -229,15 +231,15 @@ class RowwiseSum<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
         2U,
-        phi::errors::InvalidArgument("The rank of input tensor "
-                                     "should be 2, but received %d",
-                                     in_dims.size()));
+        common::errors::InvalidArgument("The rank of input tensor "
+                                        "should be 2, but received %d",
+                                        in_dims.size()));
     auto height = in_dims[0];
     auto size = in_dims[1];
     PADDLE_ENFORCE_EQ(
         out->numel(),
         height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of output tensor "
             "should be equal to the size of input tensor row"
             " dimension. Expected output size=%d, but received %d",

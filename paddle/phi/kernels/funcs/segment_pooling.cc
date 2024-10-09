@@ -42,7 +42,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
         if (segment_ids[idx] == curent_id) continue;
         PADDLE_ENFORCE_GE(segment_ids[idx],
                           curent_id,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The segment ids should be sorted, but got "
                               "segment_ids[%d]:%d > segment_ids[%d]:%d.",
                               idx - 1,
@@ -68,7 +68,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
       } else if (pooltype == "MIN") {
         out_e.device(place) = in_e.minimum(reduce_dim);
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Unsupported segment pooling type, only MEAN, SUM, MAX, MIN "
             "available, but got %s.",
             pooltype));
@@ -101,7 +101,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
         if (segment_ids[idx] == curent_id) continue;
         PADDLE_ENFORCE_GE(segment_ids[idx],
                           curent_id,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The segment ids should be sorted, but got "
                               "segment_ids[%d]:%d > segment_ids[%d]:%d.",
                               idx - 1,
@@ -131,7 +131,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
             (in_e == out_e.broadcast(bcast)).template cast<T>() *
             out_g_e.broadcast(bcast);
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Unsupported segment pooling type, only MEAN, SUM, MAX, MIN "
             "available, but got %s.",
             pooltype));

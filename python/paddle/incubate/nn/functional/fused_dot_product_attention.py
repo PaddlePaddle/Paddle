@@ -12,24 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from paddle import Tensor, _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def cudnn_flash_attention(
-    q,
-    k,
-    v,
-    bias=None,
-    cu_seqlen_q=None,
-    cu_seqlen_k=None,
-    scaling_factor=1.0,
-    dropout_prob=0.0,
-    training=True,
-    mask_type=None,
-    bias_type=None,
-    name=None,
-):
+    q: Tensor,
+    k: Tensor,
+    v: Tensor,
+    bias: Tensor | None = None,
+    cu_seqlen_q: Tensor | None = None,
+    cu_seqlen_k: Tensor | None = None,
+    scaling_factor: float = 1.0,
+    dropout_prob: float = 0.0,
+    training: bool = True,
+    mask_type: str | None = None,
+    bias_type: str | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Fused Dot Product Attention. This is a fusion operator to compute scaled dot product attention in transformer
     model architecture. This operator only supports running on Ampere and Hopper GPU and need cudnn version >= 8906.
@@ -128,13 +130,13 @@ def fused_dot_product_attention(
     query: Tensor,
     key: Tensor,
     value: Tensor,
-    attn_mask: Tensor = None,
+    attn_mask: Tensor | None = None,
     dropout_p: float = 0.0,
     is_causal: bool = False,
-    scaling_factor: float = None,
+    scaling_factor: float | None = None,
     training: bool = True,
-    name: str = None,
-):
+    name: str | None = None,
+) -> Tensor:
     r"""
     Fused Dot Product Attention. This is a fusion operator to compute scaled dot product attention in transformer
     model architecture. This operator only supports running on Ampere and Hopper GPU and need cudnn version >= 8906.

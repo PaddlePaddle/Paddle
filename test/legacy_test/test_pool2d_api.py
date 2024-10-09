@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 
@@ -28,13 +29,18 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn.functional import avg_pool2d, lp_pool2d, max_pool2d
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestPool2D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -765,7 +771,6 @@ class TestPool2D_API(unittest.TestCase):
             result = lp_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-    @test_with_pir_api
     def test_pool2d_static(self):
         paddle.enable_static()
         for place in self.places:

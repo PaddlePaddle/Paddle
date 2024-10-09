@@ -36,7 +36,7 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   int customized_value = key.customized_type_value_;
   PADDLE_ENFORCE_LT(customized_value,
                     (1 << OpKernelType::kCustomizeBits),
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Too many custom OpKernel attribute values, expected "
                         "maximum value is %d, received value is %d.",
                         (1 << OpKernelType::kCustomizeBits),
@@ -45,7 +45,7 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   cur_loc += OpKernelType::kCustomizeBits;
   PADDLE_ENFORCE_LT(cur_loc,
                     64,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Too many OpKernel attribute values, expected maximum "
                         "value is 64, received value is %d.",
                         cur_loc));

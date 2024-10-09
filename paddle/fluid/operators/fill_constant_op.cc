@@ -33,7 +33,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GE(
             shape[i],
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
                 "than 0. But received: shape[%u] = %d; shape = [%s].",
                 i,
@@ -96,7 +96,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
           kt.set_backend(phi::Backend::XPU);
           break;
         default:
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(common::errors::Unimplemented(
               "Could NOT determine the place of variable, place_type = %d .",
               place_type));
       }

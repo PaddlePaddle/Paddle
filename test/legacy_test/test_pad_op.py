@@ -24,9 +24,9 @@ from test_attribute_var import UnittestBase
 from utils import static_guard
 
 import paddle
+import paddle.distributed as dist
 from paddle.base import core
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def pad_wrapper(x, paddings, pad_value):
@@ -71,12 +71,14 @@ class TestPadOp(OpTest):
             check_prim=True,
             check_pir=True,
             check_prim_pir=True,
+            check_auto_parallel=self.check_auto_parallel,
         )
 
     def initTestCase(self):
         self.shape = (16, 16)
         self.paddings = [(0, 1), (2, 3)]
         self.pad_value = 0.0
+        self.check_auto_parallel = False
 
 
 class TestCase1(TestPadOp):
@@ -84,6 +86,7 @@ class TestCase1(TestPadOp):
         self.shape = (2, 3, 4, 5)
         self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
         self.pad_value = 0.5
+        self.check_auto_parallel = False
 
 
 class TestCase2(TestPadOp):
@@ -91,6 +94,7 @@ class TestCase2(TestPadOp):
         self.shape = (5, 5, 5)
         self.paddings = [(0, 0), (0, 0), (1, 2)]
         self.pad_value = 1.0
+        self.check_auto_parallel = False
 
 
 class TestCase3(TestPadOp):
@@ -98,6 +102,31 @@ class TestCase3(TestPadOp):
         self.shape = 100
         self.paddings = [(0, 1)]
         self.pad_value = 0.9
+        self.check_auto_parallel = False
+
+
+class TestCase4(TestPadOp):
+    def initTestCase(self):
+        self.shape = (10, 10)
+        self.paddings = [(0, 1), (2, 3)]
+        self.pad_value = 1.0
+
+        self.check_auto_parallel = True
+        self.placements = {
+            'X': [dist.Replicate()],
+        }
+
+
+class TestCase5(TestPadOp):
+    def initTestCase(self):
+        self.shape = (10, 10)
+        self.paddings = [(0, 0), (2, 3)]
+        self.pad_value = 1.0
+
+        self.check_auto_parallel = True
+        self.placements = {
+            'X': [dist.Shard(0)],
+        }
 
 
 # ----------------Pad Fp16----------------
@@ -129,10 +158,12 @@ create_test_fp16(TestPadOp)
 create_test_fp16(TestCase1)
 create_test_fp16(TestCase2)
 create_test_fp16(TestCase3)
+create_test_fp16(TestCase4)
+create_test_fp16(TestCase5)
 
 
 class TestPadOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -156,7 +187,6 @@ class TestPaddingValueTensor(UnittestBase):
         self.shapes = [[2, 4]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
-    @test_with_pir_api
     def test_static(self):
         with static_guard():
             main_prog = paddle.static.Program()
@@ -242,7 +272,7 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
 
 
 class TestPaddingValueTensor3(unittest.TestCase):
-    @test_with_pir_api
+
     def test_static(self):
         with static_guard():
             np_x = np.random.random((16, 16)).astype("float32")
@@ -313,6 +343,220 @@ class TestPadBP16Op(OpTest):
             check_pir=True,
             check_prim_pir=True,
         )
+
+
+class TestPadOrder2N(unittest.TestCase):
+    def init_case(self):
+        self.shape = [2, 3]
+        self.paddings = [(0, 1), (1, 0)]
+        self.pad_value = 0.5
+
+    def test_order_dygraph(self):
+        self.init_case()
+        place = paddle.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+
+        paddle.disable_static(place)
+        x_np = np.random.random(self.shape).astype('float32')
+        paddings_np = self.paddings.copy()
+        x = paddle.to_tensor(x_np)
+        paddings = list(np.array(self.paddings).flatten())
+
+        # pad_from_left_axis
+        out_np = np.pad(
+            x_np, paddings_np, mode="constant", constant_values=self.pad_value
+        )
+        out = paddle.nn.functional.pad(
+            x,
+            paddings,
+            mode='constant',
+            value=self.pad_value,
+            pad_from_left_axis=True,
+        )
+        np.testing.assert_array_equal(out, out_np)
+
+        # pad_from_right_axis:
+        paddings_np.reverse()
+        out_np = np.pad(
+            x_np, paddings_np, mode="constant", constant_values=self.pad_value
+        )
+        out = paddle.nn.functional.pad(
+            x,
+            paddings,
+            mode='constant',
+            value=self.pad_value,
+            pad_from_left_axis=False,
+        )
+        np.testing.assert_array_equal(out, out_np)
+
+        paddle.enable_static()
+
+    def test_order_static(self):
+        self.init_case()
+        place = paddle.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        x_np = np.random.random(self.shape).astype('float32')
+        paddings_np = self.paddings.copy()
+        paddings = list(np.array(self.paddings).flatten())
+
+        with static_guard():
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name="x", shape=self.shape, dtype="float32"
+                )
+                y_pad_from_left_axis = paddle.nn.functional.pad(
+                    x,
+                    paddings,
+                    mode='constant',
+                    value=self.pad_value,
+                    pad_from_left_axis=True,
+                )
+                y_pad_from_right_axis = paddle.nn.functional.pad(
+                    x,
+                    paddings,
+                    mode='constant',
+                    value=self.pad_value,
+                    pad_from_left_axis=False,
+                )
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+            res = exe.run(
+                main_prog,
+                feed={"x": x_np},
+                fetch_list=[y_pad_from_left_axis, y_pad_from_right_axis],
+            )
+            pd_out_pad_from_left_axis, pd_out_pad_from_right_axis = res
+            out_np_pad_from_left_axis = np.pad(
+                x_np,
+                paddings_np,
+                mode="constant",
+                constant_values=self.pad_value,
+            )
+            paddings_np.reverse()
+            out_np_pad_from_right_axis = np.pad(
+                x_np,
+                paddings_np,
+                mode="constant",
+                constant_values=self.pad_value,
+            )
+            np.testing.assert_array_equal(
+                pd_out_pad_from_left_axis, out_np_pad_from_left_axis
+            )
+            np.testing.assert_array_equal(
+                pd_out_pad_from_right_axis, out_np_pad_from_right_axis
+            )
+
+
+# test padding order for cases when length of padding is not 2(N-2) or 2N
+class TestPadOrder(unittest.TestCase):
+    def init_case(self):
+        self.shape = [2, 3]
+        self.paddings = [(0, 1)]
+        self.pad_value = 0.5
+
+    def test_order_dygraph(self):
+        self.init_case()
+        place = paddle.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+
+        paddle.disable_static(place)
+        x_np = np.random.random(self.shape).astype('float32')
+        paddings_np = self.paddings.copy()
+        paddings_np += [(0, 0)] * (len(self.shape) - len(paddings_np))
+
+        x = paddle.to_tensor(x_np)
+        paddings = list(np.array(self.paddings).flatten())
+
+        # pad from last axis by default
+        paddings_np.reverse()
+        out_np = np.pad(
+            x_np, paddings_np, mode="constant", constant_values=self.pad_value
+        )
+        out = paddle.nn.functional.pad(
+            x, paddings, mode='constant', value=self.pad_value
+        )
+        np.testing.assert_array_equal(out, out_np)
+
+    def test_order_static(self):
+        self.init_case()
+        place = paddle.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+
+        paddle.disable_static(place)
+        x_np = np.random.random(self.shape).astype('float32')
+        paddings_np = self.paddings.copy()
+        paddings_np += [(0, 0)] * (len(self.shape) - len(paddings_np))
+        paddings = list(np.array(self.paddings).flatten())
+
+        with static_guard():
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name="x", shape=self.shape, dtype="float32"
+                )
+                y = paddle.nn.functional.pad(
+                    x, paddings, mode='constant', value=self.pad_value
+                )
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+            res = exe.run(main_prog, feed={"x": x_np}, fetch_list=[y])
+            paddings_np.reverse()
+            out_np = np.pad(
+                x_np,
+                paddings_np,
+                mode="constant",
+                constant_values=self.pad_value,
+            )
+            np.testing.assert_array_equal(res[0], out_np)
+
+
+class TestPadOrder2N3D(TestPadOrder2N):
+    def init_case(self):
+        self.shape = [2, 3, 4]
+        self.paddings = [(0, 1), (2, 3), (2, 1)]
+        self.pad_value = 0.5
+
+
+class TestPadOrder2N4D(TestPadOrder2N):
+    def init_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
+        self.pad_value = 0.5
+
+
+class TestPadOrder2N5D(TestPadOrder2N):
+    def init_case(self):
+        self.shape = [1, 2, 3, 4, 5]
+        self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1), (1, 0)]
+        self.pad_value = 0.5
+
+
+class TestPadOrder1(TestPadOrder):
+    def init_case(self):
+        self.shape = [2, 3, 4]
+        self.paddings = [(0, 1), (2, 3)]
+        self.pad_value = 0.5
+
+
+class TestPadOrder2(TestPadOrder):
+    def init_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.paddings = [(0, 1), (2, 3), (2, 1)]
+        self.pad_value = 0.5
+
+
+class TestPadOrder3(TestPadOrder):
+    def init_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.paddings = [(0, 1)]
+        self.pad_value = 0.5
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     } else if (var->IsType<phi::SelectedRows>()) {
       emb_dim = var->Get<phi::SelectedRows>().value().dims()[1];
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Expected type of `W` must be Tensor, SelectedRows.But got "
           "unsupport type: %s.",
           framework::ToTypeName(var->Type())));

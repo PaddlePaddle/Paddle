@@ -23,7 +23,7 @@ std::vector<DDim> InferShapeContext::GetReaderDims(
   const std::vector<std::string> &arg_names = Inputs(name);
   PADDLE_ENFORCE_EQ(arg_names.size(),
                     1UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Reader input '%s' should hold one element, but now it "
                         "holds %d elements.",
                         name,
@@ -36,7 +36,7 @@ void InferShapeContext::SetReaderDims(const std::string &name,
   const std::vector<std::string> &arg_names = Outputs(name);
   PADDLE_ENFORCE_EQ(arg_names.size(),
                     1UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Reader output '%s' should hold one element, but now "
                         "it holds %d elements.",
                         name,

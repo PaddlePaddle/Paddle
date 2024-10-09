@@ -1010,9 +1010,9 @@ class PsDescBuilder:
                 table_proto.type == the_one_ps_pb2.PS_SPARSE_TABLE
                 and table_proto.common is not None
             ):
-                self.sparse_table_maps[
-                    table_proto.common.table_name
-                ] = table_proto.table_id
+                self.sparse_table_maps[table_proto.common.table_name] = (
+                    table_proto.table_id
+                )
 
         self.service._set(
             self.ps_desc.server_param.downpour_server_param.service_param
@@ -1046,9 +1046,9 @@ class TheOnePSRuntime(RuntimeBase):
         self.context["origin_startup_programs"] = context.get(
             'origin_startup_programs', [context['origin_startup_program']]
         )
-        self.context[
-            'is_heter_ps_mode'
-        ] = self.role_maker._is_heter_parameter_server_mode
+        self.context['is_heter_ps_mode'] = (
+            self.role_maker._is_heter_parameter_server_mode
+        )
         self.is_heter_ps_mode = self.context['is_heter_ps_mode']
         self.context['trainer'] = TrainerRuntimeConfig(
             context['valid_strategy']
@@ -1182,9 +1182,9 @@ class TheOnePSRuntime(RuntimeBase):
 
         def sync_strategy_envs():
             kwargs = {}
-            kwargs[
-                "pserver_endpoints"
-            ] = self.role_maker._get_pserver_endpoints()
+            kwargs["pserver_endpoints"] = (
+                self.role_maker._get_pserver_endpoints()
+            )
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 

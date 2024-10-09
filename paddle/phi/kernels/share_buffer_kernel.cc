@@ -30,7 +30,7 @@ void ShareBufferKernel(const Context &dev_ctx UNUSED,
   PADDLE_ENFORCE_EQ(
       x.size(),
       out.size(),
-      phi::errors::PermissionDenied(
+      common::errors::PermissionDenied(
           "The input(X) and Output(out) should have the same size, but got "
           "size of Input(X) is %d and size of Output(out) is %d.",
           x.size(),

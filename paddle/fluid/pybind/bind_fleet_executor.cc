@@ -145,7 +145,7 @@ py::dtype DistModelTypeToNumpyDType(DistModelDataType dtype) {
       dt = py::dtype::of<phi::dtype::float16>();
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, INT8, "
           "FLOAT16 and FLOAT32."));
   }
@@ -257,7 +257,7 @@ void BindFleetExecutor(py::module* m) {
               auto size = self.length() / sizeof(phi::dtype::float16);
               l = py::cast(std::vector<phi::dtype::float16>(data, data + size));
             } else {
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported data type. Now only supports INT32, INT64, "
                   "FLOAT16 and FLOAT32."));
             }

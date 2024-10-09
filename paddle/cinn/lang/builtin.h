@@ -19,6 +19,7 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace lang {

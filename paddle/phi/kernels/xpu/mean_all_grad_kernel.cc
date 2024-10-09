@@ -32,7 +32,7 @@ void MeanAllGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       OG->numel(),
       1,
-      phi::errors::InvalidArgument("Mean Gradient should be scalar"));
+      common::errors::InvalidArgument("Mean Gradient should be scalar"));
   auto dev_version =
       phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
   if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {

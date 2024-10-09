@@ -126,7 +126,7 @@ void ExpandOp::Build(pir::Builder& builder,
 
   PADDLE_ENFORCE_NE(attributes.find("shape"),
                     attributes.end(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "'shape' Attribute is expected for ExpandOp. "));
   std::vector<int64_t> shape =
       attributes.at("shape")
@@ -137,7 +137,7 @@ void ExpandOp::Build(pir::Builder& builder,
   PADDLE_ENFORCE_NE(
       attributes.find("mkldnn_data_type"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'mkldnn_data_type' Attribute is expected for ExpandOp. "));
   std::string mkldnn_data_type = attributes.at("mkldnn_data_type")
                                      .dyn_cast<pir::StrAttribute>()
@@ -198,14 +198,14 @@ void ExpandOp::VerifySig() {
     PADDLE_ENFORCE_EQ(
         input_size,
         2u,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size %d of inputs must be equal to 2.", input_size));
     PADDLE_ENFORCE_EQ((*this)
                           ->operand_source(0)
                           .type()
                           .isa<paddle::dialect::DenseTensorType>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Type validation failed for the 0th input, got %s.",
                           (*this)->operand_source(0).type()));
     if (auto vec_type =
@@ -214,7 +214,7 @@ void ExpandOp::VerifySig() {
         PADDLE_ENFORCE_EQ(
             vec_type[i].isa<paddle::dialect::DenseTensorType>(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Type validation failed for the 1th input, got %s.",
                 (*this)->operand_source(1).type()));
       }
@@ -224,7 +224,7 @@ void ExpandOp::VerifySig() {
                             .type()
                             .isa<paddle::dialect::DenseTensorType>(),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Type validation failed for the 1th input, got %s.",
                             (*this)->operand_source(1).type()));
     }
@@ -235,11 +235,11 @@ void ExpandOp::VerifySig() {
     PADDLE_ENFORCE_GT(
         attributes.count("mkldnn_data_type"),
         0,
-        phi::errors::InvalidArgument("mkldnn_data_type does not exist."));
+        common::errors::InvalidArgument("mkldnn_data_type does not exist."));
     PADDLE_ENFORCE_EQ(
         attributes.at("mkldnn_data_type").isa<pir::StrAttribute>(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Type of attribute: mkldnn_data_type is not pir::StrAttribute."));
   }
   VLOG(4) << "Verifying outputs:";
@@ -248,12 +248,12 @@ void ExpandOp::VerifySig() {
     PADDLE_ENFORCE_EQ(
         output_size,
         1u,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: ExpandOp.";
@@ -273,7 +273,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
           "AttributeMap pointer in InferMeta function is nullptr."));
   PADDLE_ENFORCE_EQ(input_values.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
 
@@ -285,7 +285,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
         "paddle::dialect::AllocatedDenseTensorType"));
   }
@@ -310,7 +310,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
     shape = phi::IntArray(std::vector<int64_t>(shape_size, -2));
     shape.SetFromTensor(true);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support VectorType or DenseTensorType"));
   }
 

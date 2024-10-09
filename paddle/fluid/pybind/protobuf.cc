@@ -50,7 +50,7 @@ static pybind11::bytes SerializeMessage(
   std::string retv;
   PADDLE_ENFORCE_EQ(self.Proto()->SerializePartialToString(&retv),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
   return retv;
 }
@@ -77,7 +77,7 @@ pybind11::bytes SerializeProgramDesc(
 
   PADDLE_ENFORCE_EQ(copy.Proto()->SerializePartialToString(&retv),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
   return retv;
 }
@@ -87,7 +87,7 @@ static void DeserializeMessage(T *self, const std::string &str) {
   PADDLE_ENFORCE_EQ(
       self->Proto()->ParsePartialFromString(str),
       true,
-      phi::errors::InvalidArgument("Failed to parse pb from string"));
+      common::errors::InvalidArgument("Failed to parse pb from string"));
   return;
 }
 
@@ -123,7 +123,7 @@ void BindProgramDesc(pybind11::module *m) {
              PADDLE_ENFORCE_EQ(
                  desc->ParseFromString(data),
                  true,
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "Failed to parse ProgramDesc from binary string."));
            })
       .def(

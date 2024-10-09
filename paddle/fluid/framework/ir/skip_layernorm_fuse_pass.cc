@@ -97,7 +97,7 @@ namespace paddle::framework::ir {
 
 void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
   int found_subgraph_count = 0;
 

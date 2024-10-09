@@ -135,8 +135,8 @@ class TestWeightDecay(unittest.TestCase):
     def check_weight_decay(
         self, place, model, use_parallel_exe=False, use_reduce=False
     ):
-        main_prog = base.framework.Program()
-        startup_prog = base.framework.Program()
+        main_prog = base.Program()
+        startup_prog = base.Program()
         paddle.seed(1)
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
             data = paddle.static.data(
@@ -171,26 +171,29 @@ class TestWeightDecay(unittest.TestCase):
         return loss
 
     def test_weight_decay(self):
-        model = partial(bow_net, is_sparse=False)
-        for place in get_places():
-            loss = self.check_weight_decay(place, model, use_parallel_exe=False)
-
-            # TODO(zcd): should test use_reduce=True
-            loss2 = self.check_weight_decay(
-                place, model, use_parallel_exe=True, use_reduce=False
-            )
-
-            for i in range(len(loss)):
-                self.assertTrue(
-                    np.isclose(a=loss[i], b=loss2[i], rtol=5e-5),
-                    "Expect "
-                    + str(loss[i])
-                    + "\n"
-                    + "But Got"
-                    + str(loss2[i])
-                    + " in class "
-                    + self.__class__.__name__,
+        with paddle.pir_utils.OldIrGuard():
+            model = partial(bow_net, is_sparse=False)
+            for place in get_places():
+                loss = self.check_weight_decay(
+                    place, model, use_parallel_exe=False
                 )
+
+                # TODO(zcd): should test use_reduce=True
+                loss2 = self.check_weight_decay(
+                    place, model, use_parallel_exe=True, use_reduce=False
+                )
+
+                for i in range(len(loss)):
+                    self.assertTrue(
+                        np.isclose(a=loss[i], b=loss2[i], rtol=5e-5),
+                        "Expect "
+                        + str(loss[i])
+                        + "\n"
+                        + "But Got"
+                        + str(loss2[i])
+                        + " in class "
+                        + self.__class__.__name__,
+                    )
 
 
 if __name__ == '__main__':

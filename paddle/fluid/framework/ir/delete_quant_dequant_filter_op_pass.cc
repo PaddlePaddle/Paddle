@@ -111,10 +111,11 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         break;
       }
     }
-    PADDLE_ENFORCE_GT(arg_name.size(),
-                      0,
-                      phi::errors::InvalidArgument("can not find the input %s.",
-                                                   quant_dequant_op_out_name));
+    PADDLE_ENFORCE_GT(
+        arg_name.size(),
+        0,
+        common::errors::InvalidArgument("can not find the input %s.",
+                                        quant_dequant_op_out_name));
     // any_op2_desc->SetAttr("enable_int8", true);
     any_op2_desc->SetAttr("bit_length", bit_length);
 
@@ -136,14 +137,14 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       PADDLE_ENFORCE_EQ(
           quant_axis == 0 || quant_axis == 1,
           true,
-          phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                       "the received is %d",
-                                       quant_axis));
+          common::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                          "the received is %d",
+                                          quant_axis));
 
       // To Do @Wangzheee: use "OutScale" to quant_dequant
       /*auto scales_name = quant_dequant_op->Op()->Output("OutScale");
       PADDLE_ENFORCE_EQ(scales_name.size(), 1,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Scales size in channel-wise quant dequantize op "
                             "should be 1, got %d.",
                             scales_name.size()));
@@ -151,7 +152,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
           scope->FindVar(scales_name[0])->Get<phi::DenseTensor>();
       PADDLE_ENFORCE(
           phi::is_cpu_place(channel_scale_tensor.place()),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Channel scale tensor's place should be CPU."));
       // compute the channel wise abs max of the weight tensor
 
@@ -189,7 +190,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       for (int i = 0; i < channel; i++) {
         PADDLE_ENFORCE_NE(weight_scale[i],
                           0,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Weight scale should be nonzero, but get zero."));
         weight_scale[i] = weight_scale[i] / static_cast<float>(range);
       }
@@ -202,11 +203,11 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       }
       PADDLE_ENFORCE_NE(abs_max_weight,
                         0,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Weight scale should be nonzero, but get zero"));
       weight_scale.push_back(abs_max_weight / static_cast<float>(range));
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported quantize_dequantize op type: %s", dequant_type));
     }
 

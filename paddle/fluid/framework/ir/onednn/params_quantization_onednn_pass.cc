@@ -138,7 +138,7 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
     // get scope to interact with tensors
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     // If not a quantized OP
     if (!platform::HasOpINT8DataType(conv_op->Op())) {
@@ -166,7 +166,7 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
 
 void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init(name_scope_, graph);
   QuantizeConv(graph, "fused_conv2d", true /*with_residual_data*/);

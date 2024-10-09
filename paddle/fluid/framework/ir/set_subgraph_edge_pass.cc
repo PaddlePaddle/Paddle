@@ -36,7 +36,7 @@ void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
   }
 
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
 
   VLOG(3) << "Running set_subgraph_edge_pass.";
   if (graph->IsMainGraph()) {
@@ -54,8 +54,8 @@ void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
   auto *scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::InvalidArgument("Scope in SetSubgraphEdge should not be "
-                                   "null."));
+      common::errors::InvalidArgument("Scope in SetSubgraphEdge should not be "
+                                      "null."));
   // Create pattern
   patterns::SubgraphEdgePattern pattern(gpd.mutable_pattern(), pattern_name);
 
@@ -123,7 +123,7 @@ void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
       if (subgraph_node) {
         subgraph_node->SetSubgraphOutput();
       } else {
-        PADDLE_THROW(phi::errors::Fatal("Subgraph don't have block node."));
+        PADDLE_THROW(common::errors::Fatal("Subgraph don't have block node."));
       }
     }
     found_count++;

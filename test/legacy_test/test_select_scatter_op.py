@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import copy
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle.framework import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -30,12 +30,18 @@ class TestSelectScatterAPI(unittest.TestCase):
         self.shape = [2, 3, 4]
         self.type = np.float32
         self.x_np = np.random.random(self.shape).astype(self.type)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 1
         self.index = 1
         self.value_shape = [2, 4]
         self.value_np = np.random.random(self.value_shape).astype(self.type)
         self.x_feed = copy.deepcopy(self.x_np)
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -44,7 +50,6 @@ class TestSelectScatterAPI(unittest.TestCase):
             for j in range(4):
                 out_ref[i, index, j] = value_np[i, j]
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
 
@@ -96,12 +101,18 @@ class TestSelectScatterAPICase2(TestSelectScatterAPI):
         self.shape = [2, 3, 4, 5]
         self.type = np.float64
         self.x_np = np.random.random(self.shape).astype(self.type)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 2
         self.index = 1
         self.value_shape = [2, 3, 5]
         self.value_np = np.random.random(self.value_shape).astype(self.type)
         self.x_feed = copy.deepcopy(self.x_np)
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -118,12 +129,18 @@ class TestSelectScatterAPICase3(TestSelectScatterAPI):
         self.shape = [2, 3, 4, 5, 6]
         self.type = np.int32
         self.x_np = np.random.random(self.shape).astype(self.type)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 2
         self.index = 1
         self.value_shape = [2, 3, 5, 6]
         self.value_np = np.random.random(self.value_shape).astype(self.type)
         self.x_feed = copy.deepcopy(self.x_np)
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -140,12 +157,18 @@ class TestSelectScatterAPIError(unittest.TestCase):
         np.random.seed(0)
         self.shape = [2, 3, 4]
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 1
         self.index = 1
         self.value_shape = [2, 4]
         self.value_np = np.random.random(self.value_shape).astype(np.float32)
         self.x_feed = copy.deepcopy(self.x_np)
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 

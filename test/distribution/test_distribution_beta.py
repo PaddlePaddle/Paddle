@@ -99,12 +99,15 @@ class TestBeta(unittest.TestCase):
         cases = [
             {
                 'input': [],
-                'expect': [] + paddle.squeeze(self._paddle_beta.alpha).shape,
+                'expect': list(paddle.squeeze(self._paddle_beta.alpha).shape),
             },
             {
                 'input': [2, 3],
-                'expect': [2, 3]
-                + paddle.squeeze(self._paddle_beta.alpha).shape,
+                'expect': [
+                    2,
+                    3,
+                    *paddle.squeeze(self._paddle_beta.alpha).shape,
+                ],
             },
         ]
         for case in cases:

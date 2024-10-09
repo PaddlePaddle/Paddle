@@ -190,7 +190,7 @@ class SetValueGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LT(
         in_dims.size(),
         7,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The dimension of set_value_grad operator's input should be less "
             "than 7, but received dimension is %d.",
             in_dims.size()));

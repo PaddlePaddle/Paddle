@@ -73,7 +73,7 @@ void CVMCUDAKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         batch_size,
         lod[lod.size() - 1],
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Input(X)'s dim[0] must be equal to last element of lod"));
     CvmComputeKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                            PADDLE_CUDA_NUM_THREADS,

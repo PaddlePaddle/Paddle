@@ -81,7 +81,7 @@ class Node {
   VarDesc* Var() const {
     PADDLE_ENFORCE_EQ(IsVar(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Node(%s) must be kVariable type, but not %d.",
                           name_,
                           static_cast<int>(type_)));
@@ -91,7 +91,7 @@ class Node {
   OpDesc* Op() const {
     PADDLE_ENFORCE_EQ(IsOp(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Node(%s) must be kOperation type, but not %d.",
                           name_,
                           static_cast<int>(type_)));
@@ -115,7 +115,7 @@ class Node {
     try {
       return *paddle::any_cast<T*>(wrapper_);
     } catch (paddle::bad_any_cast&) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Invalid wrapper type error, expected %s, actual %s.",
           typeid(T).name(),
           wrapper_type_.name()));
@@ -147,7 +147,7 @@ class Node {
     PADDLE_ENFORCE_EQ(
         type_ == Type::kVariable && var_desc_,
         true,
-        phi::errors::InvalidArgument("Node must be type of variable."));
+        common::errors::InvalidArgument("Node must be type of variable."));
     name_ = new_name;
     var_desc_->SetName(new_name);
   }
@@ -156,7 +156,7 @@ class Node {
     PADDLE_ENFORCE_EQ(
         type_ == Type::kOperation && op_desc_,
         true,
-        phi::errors::InvalidArgument("Node must be type of variable."));
+        common::errors::InvalidArgument("Node must be type of variable."));
     name_ = new_name;
     op_desc_->SetType(new_name);
   }
@@ -167,7 +167,7 @@ class Node {
     PADDLE_ENFORCE_EQ(
         type_ == Type::kVariable && var_desc_,
         true,
-        phi::errors::InvalidArgument("Node must be type of variable."));
+        common::errors::InvalidArgument("Node must be type of variable."));
     return block_id_;
   }
 

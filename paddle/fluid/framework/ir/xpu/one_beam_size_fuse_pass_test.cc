@@ -83,11 +83,11 @@ TEST(RemoveAssignGather, basic) {
   auto gather_num = GetNumOpNodes(graph, "gather");
   PADDLE_ENFORCE_EQ(assign_num,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "assign op should be removed from the graph."));
   PADDLE_ENFORCE_EQ(gather_num,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "gather op should be removed from the graph."));
 }
 
@@ -121,7 +121,7 @@ TEST(FoldShapeAssociatedOps, basic) {
   PADDLE_ENFORCE_EQ(
       ops_num,
       2,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "graph should only have 2 op nodes, but received %d.", ops_num));
 }
 
@@ -158,7 +158,7 @@ TEST(RemoveBeamSearchAssociatedOps, basic) {
   auto beam_search_num = GetNumOpNodes(graph, "beam_search");
   PADDLE_ENFORCE_EQ(beam_search_num,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "beam_search op should be removed from the graph."));
 }
 
@@ -185,7 +185,7 @@ TEST(RemoveWriteReadArrayOps, basic) {
                         GetNumOpNodes(graph, "read_from_array");
   PADDLE_ENFORCE_EQ(write_read_num,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "write_to_array and read_from_array ops should be "
                         "removed from the graph."));
 }
@@ -210,7 +210,7 @@ TEST(RemoveGatherOps, basic) {
   auto gather_num = GetNumOpNodes(graph, "gather");
   PADDLE_ENFORCE_EQ(gather_num,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "gather op should be removed from the graph."));
 }
 

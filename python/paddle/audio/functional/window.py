@@ -10,13 +10,19 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+from __future__ import annotations
+
 import math
-from typing import List, Tuple, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import paddle
-from paddle import Tensor
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    from ..features.layers import _WindowLiteral
 
 
 class WindowFunctionRegister:
@@ -39,7 +45,7 @@ window_function_register = WindowFunctionRegister()
 
 
 @window_function_register.register()
-def _cat(x: List[Tensor], data_type: str) -> Tensor:
+def _cat(x: list[Tensor], data_type: str) -> Tensor:
     l = []
     for t in x:
         if np.isscalar(t) and not isinstance(t, str):
@@ -50,7 +56,7 @@ def _cat(x: List[Tensor], data_type: str) -> Tensor:
 
 
 @window_function_register.register()
-def _acosh(x: Union[Tensor, float]) -> Tensor:
+def _acosh(x: Tensor | float) -> Tensor:
     if isinstance(x, float):
         return math.log(x + math.sqrt(x**2 - 1))
     return paddle.log(x + paddle.sqrt(paddle.square(x) - 1))
@@ -102,7 +108,7 @@ def _general_gaussian(
 
 @window_function_register.register()
 def _general_cosine(
-    M: int, a: float, sym: bool = True, dtype: str = 'float64'
+    M: int, a: list[float], sym: bool = True, dtype: str = 'float64'
 ) -> Tensor:
     """Compute a generic weighted sum of cosine terms window.
     This function is consistent with scipy.signal.windows.general_cosine().
@@ -333,7 +339,7 @@ def _cosine(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
 
 
 def get_window(
-    window: Union[str, Tuple[str, float]],
+    window: _WindowLiteral | tuple[_WindowLiteral, float],
     win_length: int,
     fftbins: bool = True,
     dtype: str = 'float64',
@@ -383,6 +389,6 @@ def get_window(
     except KeyError as e:
         raise ValueError("Unknown window type.") from e
 
-    params = (win_length,) + args
+    params = (win_length, *args)
     kwargs = {'sym': sym}
     return winfunc(*params, dtype=dtype, **kwargs)

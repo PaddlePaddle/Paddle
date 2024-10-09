@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -23,7 +24,6 @@ from test_sum_op import TestReduceOPTensorAxisBase
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -45,6 +45,30 @@ class TestMeanOp(OpTest):
         self.op_type = "mean"
         self.python_api = paddle.mean
         self.public_python_api = paddle.mean
+        self.dtype = np.float64
+        self.init_dtype_type()
+        self.init_prim_type()
+        self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
+class TestMeanAllOp(OpTest):
+    def setUp(self):
+        self.op_type = "mean_all"
+        self.python_api = paddle.mean_all
+        self.public_python_api = paddle.mean_all
         self.dtype = np.float64
         self.init_dtype_type()
         self.init_prim_type()
@@ -89,6 +113,26 @@ class TestMeanOp_ZeroDim(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
+class TestMeanAllOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "mean_all"
+        self.python_api = paddle.mean_all
+        self.dtype = np.float64
+        self.public_python_api = paddle.mean_all
+        self.init_prim_type()
+        self.inputs = {'X': np.random.random([]).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
 class TestMeanOp_ZeroDim_Prim(TestMeanOp_ZeroDim):
     def init_prim_type(self):
         self.prim_op_type = "prim"
@@ -104,7 +148,6 @@ class TestMeanOpError(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -258,7 +301,6 @@ class TestReduceMeanOpPrim(TestReduceMeanOp):
     def init_prim_type(self):
         self.prim_op_type = "prim"
 
-    @test_with_pir_api
     def test_check_output(self):
         if self.dtype != 'float16':
             self.check_output(check_prim_pir=True, check_pir=True)
@@ -270,7 +312,6 @@ class TestReduceMeanOpPrim(TestReduceMeanOp):
                 check_pir=True,
             )
 
-    @test_with_pir_api
     def test_check_grad(self):
         if self.dtype != 'float16':
             self.check_grad(
@@ -556,7 +597,6 @@ class TestMeanAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -651,7 +691,6 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
     def mean_wrapper(self, x):
         return paddle.mean(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -672,7 +711,13 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -683,7 +728,6 @@ class TestMeanTripleGradCheck(unittest.TestCase):
     def mean_wrapper(self, x):
         return paddle.mean(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -704,7 +748,13 @@ class TestMeanTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

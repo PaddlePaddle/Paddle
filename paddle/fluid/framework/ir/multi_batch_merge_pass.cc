@@ -83,8 +83,8 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
     if (!node->IsOp()) continue;
     PADDLE_ENFORCE_NOT_NULL(
         node->Op(),
-        phi::errors::InvalidArgument("Node(%s) must hold op description.",
-                                     node->Name()));
+        common::errors::InvalidArgument("Node(%s) must hold op description.",
+                                        node->Name()));
     int op_role = PADDLE_GET_CONST(
         int,
         node->Op()->GetAttr(
@@ -109,9 +109,9 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
       lr_ops.push_back(node);
     } else {  // NOLINT
       PADDLE_THROW(
-          phi::errors::InvalidArgument("Invalid op role(%d), in node(%s).",
-                                       static_cast<int>(op_role),
-                                       node->Name()));
+          common::errors::InvalidArgument("Invalid op role(%d), in node(%s).",
+                                          static_cast<int>(op_role),
+                                          node->Name()));
     }
   }
 

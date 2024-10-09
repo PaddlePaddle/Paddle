@@ -74,7 +74,10 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, ',', &data);
-      CHECK_EQ(data.size(), static_cast<size_t>(8));
+      PADDLE_ENFORCE_EQ(data.size(),
+                        static_cast<size_t>(8),
+                        common::errors::InvalidArgument(
+                            "The size of data should be euqal to 8. "));
       // load src_word
       std::vector<int64_t> src_word_data;
       split_to_int64(data[0], ' ', &src_word_data);

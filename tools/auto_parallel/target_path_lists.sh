@@ -14,8 +14,9 @@
 # limitations under the License.
 
 target_lists_for_semi_auto_ci=(
-    "python/paddle/distributed"
-    "paddle/fluid/distributed"
+    "python/paddle/distributed/auto_parallel"
+    "python/paddle/distributed/checkpoint"
+    "paddle/fluid/distributed/auto_parallel"
     "paddle/fluid/framework/new_executor"
     "paddle/fluid/pybind/auto_parallel_py.cc"
     "paddle/fluid/pybind/auto_parallel_py.h"
@@ -28,7 +29,9 @@ target_lists_for_semi_auto_ci=(
     "paddle/fluid/ir_adaptor/"
     "paddle/fluid/pir/dialect"
     "paddle/fluid/pir/transforms"
-    "paddle/pir"
+    "paddle/fluid/pir/serialize_deserialize"
+    "test/auto_parallel/hybrid_strategy/semi_auto_llama_save_load.py"
+    "python/paddle/base/executor.py"
 )
 
 target_lists_for_dygraph_ci=(

@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 random.seed(2021)
 
@@ -47,9 +46,13 @@ def find_output_shape(input_list):
 def make_inputs_outputs(input_shapes, dtype, is_bfloat16=False):
     """Automatically generate formatted inputs and outputs from input_shapes"""
     input_list = [
-        (np.random.random(shape) + 1j * np.random.random(shape)).astype(dtype)
-        if dtype == 'complex64' or dtype == 'complex128'
-        else np.random.random(shape).astype(dtype)
+        (
+            (np.random.random(shape) + 1j * np.random.random(shape)).astype(
+                dtype
+            )
+            if dtype == 'complex64' or dtype == 'complex128'
+            else np.random.random(shape).astype(dtype)
+        )
         for shape in input_shapes
     ]
     output_shape = find_output_shape(input_list)
@@ -254,7 +257,7 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
         self.dtype = 'float32'
 
     def test_api(self):
-        @test_with_pir_api
+
         def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()

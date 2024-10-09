@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 
 namespace pir {
 class Value;

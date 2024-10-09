@@ -171,7 +171,7 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
       tensor->dtype(),
       TensorSetConstantXPU<float>(tensor, value, tensor->place()));
 #else
-  PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with XPU!"));
+  PADDLE_THROW(common::errors::PreconditionNotMet("Not compiled with XPU!"));
 #endif
 }
 
@@ -179,7 +179,7 @@ template <>
 void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
                                             float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("IPUPlace is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("IPUPlace is not supported"));
 }
 
 template <>
@@ -204,7 +204,7 @@ void set_constant_with_place<phi::CustomPlace>(
                tensor->dtype(),
                tensor);
 #else
-  PADDLE_THROW(phi::errors::Unimplemented("CustomPlace is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("CustomPlace is not supported"));
 #endif
 }
 
@@ -284,7 +284,7 @@ struct RowwiseAdd<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         vector.numel(),
         size,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input vector size"
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
@@ -292,7 +292,7 @@ struct RowwiseAdd<phi::CPUContext, T> {
             vector.numel()));
     PADDLE_ENFORCE_EQ(out_dims,
                       in_dims,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The output tensor shape should be same as the input"
                           " tensor shape. Expected output tensor shape: %s,"
                           " but received %s",

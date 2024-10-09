@@ -20,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def get_broadcast_shape(shp1, shp2):
@@ -115,7 +114,8 @@ def compute_graph_send_ue_recv_for_sum(inputs, attributes):
     gather_x = x[src_index]
     out_shp = [
         x.shape[0],
-    ] + get_broadcast_shape(x.shape[1:], y.shape[1:])
+        *get_broadcast_shape(x.shape[1:], y.shape[1:]),
+    ]
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.
@@ -138,7 +138,8 @@ def compute_graph_send_ue_recv_for_mean(inputs, attributes):
     gather_x = x[src_index]
     out_shp = [
         x.shape[0],
-    ] + get_broadcast_shape(x.shape[1:], y.shape[1:])
+        *get_broadcast_shape(x.shape[1:], y.shape[1:]),
+    ]
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.
@@ -168,7 +169,8 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
     gather_x = x[src_index]
     out_shp = [
         x.shape[0],
-    ] + get_broadcast_shape(x.shape[1:], y.shape[1:])
+        *get_broadcast_shape(x.shape[1:], y.shape[1:]),
+    ]
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.
@@ -1002,7 +1004,6 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
             err_msg=f'two value is                        {np_add}\n{res_add}, check diff!',
         )
 
-    @test_with_pir_api
     def test_out_size_tensor_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

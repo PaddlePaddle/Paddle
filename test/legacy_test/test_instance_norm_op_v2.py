@@ -22,7 +22,6 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def instance_norm_wrapper(
@@ -81,7 +80,16 @@ def _reference_instance_norm_grad(x, scale, mean, var):
 
 class TestInstanceNorm(unittest.TestCase):
     def test_error(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu("instance_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):
@@ -116,7 +124,16 @@ class TestInstanceNorm(unittest.TestCase):
                 self.assertRaises(ValueError, error3d)
 
     def test_dygraph(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu("instance_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):
@@ -141,10 +158,18 @@ class TestInstanceNorm(unittest.TestCase):
             y2 = compute_v2(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         with static_guard():
-            places = [base.CPUPlace()]
+            places = []
+            if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+                '1',
+                'true',
+                'on',
+            ] or not (
+                core.is_compiled_with_cuda()
+                and core.op_support_gpu("instance_norm")
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda() and core.op_support_gpu(
                 "instance_norm"
             ):

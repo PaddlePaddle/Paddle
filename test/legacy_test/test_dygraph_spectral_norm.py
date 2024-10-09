@@ -40,7 +40,7 @@ class TestDygraphSpectralNorm(unittest.TestCase):
             data_name = desc[0]
             data_shape = desc[1]
             data_value = np.random.random(
-                size=[self.batch_size] + data_shape
+                size=[self.batch_size, *data_shape]
             ).astype('float32')
             self.data[data_name] = data_value
 
