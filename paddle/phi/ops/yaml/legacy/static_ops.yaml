@@ -69,6 +69,7 @@
     func : arange_tensor
   data_transform :
     skip_transform : start, end, step
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : assign
   args : (Tensor x)

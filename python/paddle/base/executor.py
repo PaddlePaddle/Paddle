@@ -629,7 +629,7 @@ def _to_name_str(var):
         elif isinstance(var, Operator):
             return str(id(var))
         elif isinstance(var, Value):
-            return str(id(var))
+            return str(var.id)
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
