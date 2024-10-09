@@ -249,19 +249,20 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
 bool EyeOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   std::vector<symbol::DimExpr> out_shape;
+  symbol::DimExpr num_columns_dim;
+  symbol::DimExpr num_rows_dim;
   if (op->operand_source(0)) {
     const auto &num_rows_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(0));
     if (num_rows_shape_or_data.data().has_value()) {
-      symbol::DimExpr num_rows_dim =
+      num_rows_dim =
           symbol::DimExpr(num_rows_shape_or_data.data().value().at(0));
     } else {
-      symbol::DimExpr num_rows_dim =
-          symbol::DimExpr(infer_context->GetNextSymName());
+      num_rows_dim = symbol::DimExpr(infer_context->GetNextSymName());
     }
   } else if (op->HasAttribute("num_rows")) {
     int num_rows_int = op->attribute<pir::Int64Attribute>("num_rows").data();
-    symbol::DimExpr num_rows_dim = symbol::DimExpr(num_rows_int);
+    num_rows_dim = symbol::DimExpr(num_rows_int);
   } else {
     PADDLE_THROW(
         common::errors::InvalidArgument("The num_rows must be set for Eyeop."));
@@ -271,19 +272,18 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
     const auto &num_columns_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     if (num_columns_shape_or_data.data().has_value()) {
-      symbol::DimExpr num_columns_dim =
+      num_columns_dim =
           symbol::DimExpr(num_columns_shape_or_data.data().value().at(0));
     } else {
-      symbol::DimExpr num_columns_dim =
-          symbol::DimExpr(infer_context->GetNextSymName());
+      num_columns_dim = symbol::DimExpr(infer_context->GetNextSymName());
     }
   } else if (op->HasAttribute("num_columns")) {
     int num_columns_int =
         op->attribute<pir::Int64Attribute>("num_columns").data();
     if (num_columns_int == -1) {
-      symbol::DimExpr num_columns_dim = num_rows_dim
+      num_columns_dim = num_rows_dim;
     } else {
-      symbol::DimExpr num_columns_dim = symbol::DimExpr(num_columns_int);
+      num_columns_dim = symbol::DimExpr(num_columns_int);
     }
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
