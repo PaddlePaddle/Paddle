@@ -85,11 +85,8 @@ class TestDoubleGrad(unittest.TestCase):
         self.assertEqual(12, out[0])
 
 
-from paddle.pir_utils import test_with_pir_api
-
-
 class TestGradientWithPrune(unittest.TestCase):
-    @test_with_pir_api
+
     def test_prune(self):
         with paddle.base.scope_guard(paddle.static.Scope()):
             x = paddle.static.data(name='x', shape=[3], dtype='float32')

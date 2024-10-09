@@ -62,7 +62,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_mul_op$|\
 ^test_bmn$|\
 ^test_memory_efficient_attention$|\
-^test_fuse_gemm_epilogue_pass$|\
+^test_fuse_gemm_epilogue_pass_deprecated$|\
 ^test_tril_triu_op$|\
 ^test_train_step_resnet18_adam$|\
 ^test_train_step_resnet18_sgd$|\

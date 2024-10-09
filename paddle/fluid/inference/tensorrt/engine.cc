@@ -427,7 +427,18 @@ void TensorRTEngine::FreezeNetwork() {
 #else
   ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
+  PADDLE_ENFORCE_NOT_NULL(
+      ihost_memory_,
+      common::errors::Fatal(
+          "Build TensorRT serialized network failed! Please recheck "
+          "you configurations related to paddle-TensorRT."));
+
   infer_runtime_.reset(createInferRuntime(&logger_));
+  PADDLE_ENFORCE_NOT_NULL(
+      infer_runtime_,
+      common::errors::Fatal("Build TensorRT runtime failed! Please recheck "
+                            "you configurations related to paddle-TensorRT."));
+
   infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
       ihost_memory_->data(), ihost_memory_->size()));
 #endif

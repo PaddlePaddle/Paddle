@@ -2399,7 +2399,8 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaTensor* residual_out,
                              MetaTensor* mean,
-                             MetaTensor* variance) {
+                             MetaTensor* variance,
+                             MetaConfig config) {
   std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
   auto x_dims_size = x_dims_vec.size();
 
@@ -2412,17 +2413,18 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= static_cast<int32_t>(x.dims()[i]);
   }
-
-  if (norm_weight) {
-    PADDLE_ENFORCE_EQ(normalized_dims,
-                      norm_weight.dims()[0],
-                      common::errors::InvalidArgument(
-                          "The normalized size of Input(X) must equal to be"
-                          "the size of Weight, but received"
-                          "normalized size of Input(X) is [%d], received size"
-                          "of Weight is [%d]",
-                          normalized_dims,
-                          norm_weight.dims()[0]));
+  if (config.is_runtime) {
+    if (norm_weight) {
+      PADDLE_ENFORCE_EQ(normalized_dims,
+                        norm_weight.dims()[0],
+                        common::errors::InvalidArgument(
+                            "The normalized size of Input(X) must equal to be"
+                            "the size of Weight, but received"
+                            "normalized size of Input(X) is [%d], received size"
+                            "of Weight is [%d]",
+                            normalized_dims,
+                            norm_weight.dims()[0]));
+    }
   }
 
   auto out_dims = common::make_ddim(x_dims_vec);

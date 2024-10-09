@@ -71,6 +71,7 @@ from .pir_pass import (
     apply_partition_pass,
     check_chunk_id,
     complete_chunk_id,
+    fuse_attention_ffn_qkv_pass,
     pipeline_pass,
     remove_unuseful_comm_op_pass,
 )
@@ -330,6 +331,8 @@ class Engine:
                 paddle.framework.set_flags({'FLAGS_enable_pir_in_executor': 1})
 
         self.enable_job_schedule_profiler = False
+
+        self.fused_ffn_qkv = None
 
     # get dist input spec from shard dataloader
     def _prepare_data_spec_from_dataloader(self, dataloader):
@@ -702,6 +705,19 @@ class Engine:
         mix_fw_program = self._fwd_main_progs[mode]
         startup_program = self._startup_progs[mode]
 
+        # TODO(zhangbo) Open fused_ffn/fused_attention_qkv pass
+        if os.getenv("FLAGS_enable_fused_ffn_qkv_pass") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
+                startup_program,
+                mix_fw_program,
+                self.concrete_program,
+                mode="all",
+            )
+
         forward_op_start_idx = 0
         backward_op_start_idx = -1
         opt_op_start_idx = -1
@@ -716,7 +732,9 @@ class Engine:
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"
         ):
-            complete_chunk_id(dist_program, self._strategy.pipeline)
+            complete_chunk_id(
+                dist_program, startup_program, self._strategy.pipeline
+            )
 
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:

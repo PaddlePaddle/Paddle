@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def call_TripletMarginLoss_layer(
@@ -195,7 +194,7 @@ def calc_triplet_margin_loss(
 
 
 class TestTripletMarginLoss(unittest.TestCase):
-    @test_with_pir_api
+
     def test_TripletMarginLoss(self):
         shape = (2, 2)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
@@ -314,7 +313,6 @@ class TestTripletMarginLoss(unittest.TestCase):
         )
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_TripletMarginLoss_swap(self):
         reduction = 'mean'
         place = paddle.CPUPlace()
@@ -399,7 +397,6 @@ class TestTripletMarginLoss(unittest.TestCase):
         )
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_TripletMarginLoss_p(self):
         p = 3
         shape = (2, 2)
