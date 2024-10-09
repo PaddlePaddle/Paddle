@@ -128,6 +128,10 @@ def squared_l2_norm_net(x):
     return paddle._C_ops.squared_l2_norm(x)
 
 
+def bmm_net(x, y):
+    return paddle.bmm(x, y)
+
+
 def elu_net(x):
     return paddle.nn.functional.elu(x, 1.0)
 
@@ -582,6 +586,40 @@ class TestPrimHuberLoss(TestPrimTwo):
         self.y = np.random.uniform(0, 1.0, self.y_shape).astype(self.dtype_y)
         self.net = huber_loss_net
         self.necessary_ops = "pd_op.huber_loss"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBmm1(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [30, 40, 50]
+        self.y_shape = [30, 50, 60]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None, 50]
+        self.init_y_shape = [None, None, 60]
+        self.x = np.random.random(self.x_shape).astype(self.dtype_x)
+        self.y = np.random.random(self.y_shape).astype(self.dtype_y)
+        self.net = bmm_net
+        self.necessary_ops = "pd_op.bmm"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBmm2(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [30, 40, 50]
+        self.y_shape = [30, 50, 60]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [30, None, None]
+        self.init_y_shape = [None, None, 60]
+        self.x = np.random.random(self.x_shape).astype(self.dtype_x)
+        self.y = np.random.random(self.y_shape).astype(self.dtype_y)
+        self.net = bmm_net
+        self.necessary_ops = "pd_op.bmm"
         self.enable_cinn = False
         self.tol = 1e-6
 

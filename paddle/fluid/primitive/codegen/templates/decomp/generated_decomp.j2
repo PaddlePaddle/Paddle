@@ -15,6 +15,7 @@ namespace paddle {
 namespace dialect {
 using IntArray = paddle::experimental::IntArray;
 {% macro sig(fwd_name, class_name, inputs, attrs, outputs) %}
+
 {% set input_names=[] %}
 {% set attr_names=[] %}
 {% set output_names=[] %}
@@ -72,7 +73,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::Decomp(pir::Operation* op) 
     {% if attrs %}
       {% for item in attrs %}
       {% do attr_names.append(item.name) %}
-      {% if item.typename == "Scalar" and item.support_tensor %}
+      {% if item.typename.startswith("Scalar") and item.support_tensor %}
 
   Tensor {{item.name}}_(std::make_shared<primitive::LazyTensor>(op_obj.{{item.name}}()));
 

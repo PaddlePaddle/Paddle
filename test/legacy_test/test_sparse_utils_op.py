@@ -125,6 +125,37 @@ class TestSparseCreate(unittest.TestCase):
         coo = paddle.sparse.sparse_coo_tensor(indices, values)
         assert [2, 2] == coo.shape
 
+    def test_create_csr_no_shape(self):
+        # 2D sparse tensor
+        crows = [0, 2, 3, 5]
+        clos = [1, 3, 2, 0, 1]
+        values = [1.0, 2.0, 3.0, 4.0, 5.0]
+        crows = paddle.to_tensor(crows, dtype='int32')
+        clos = paddle.to_tensor(clos, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 4] == csr.shape
+
+        # 3D sparse tensor
+        crows = [0, 2, 2, 0, 1, 1, 0, 0, 0]
+        clos = [0, 1, 1]
+        values = [1, 2, 5]
+        crows = paddle.to_tensor(crows, dtype='int32')
+        clos = paddle.to_tensor(clos, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 2, 2] == csr.shape
+
+        # 3D sparse tensor
+        crows = [0, 1, 2, 0, 1, 1, 0, 1, 2]
+        clos = [0, 2, 1, 0, 1]
+        values = [1, 2, 3, 4, 5]
+        crows = paddle.to_tensor(crows, dtype='int32')
+        clos = paddle.to_tensor(clos, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 2, 3] == csr.shape
+
 
 class TestSparseConvert(unittest.TestCase):
     def test_to_sparse_coo(self):
@@ -488,6 +519,16 @@ class TestCsrError(unittest.TestCase):
             sparse_x = paddle.sparse.sparse_csr_tensor(
                 crows, cols, values, shape
             )
+
+    def test_error_crows(self):
+        with self.assertRaises(ValueError):
+            crows = [0, 2, 2, 0, 1, 1, 0, 0, 0, 0]
+            clos = [0, 1, 1]
+            values = [1, 2, 5]
+            crows = paddle.to_tensor(crows, dtype='int32')
+            clos = paddle.to_tensor(clos, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            coo = paddle.sparse.sparse_csr_tensor(crows, clos, values)
 
 
 devices = []

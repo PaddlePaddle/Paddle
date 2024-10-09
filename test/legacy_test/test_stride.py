@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import DygraphPirGuard, test_with_dygraph_pir
+from paddle.pir_utils import DygraphPirGuard
 
 
 def ref_view_as_real(x):
@@ -752,7 +752,7 @@ class TestStrideGPU(TestStride):
 
 
 class TestToStaticCheck(unittest.TestCase):
-    @test_with_dygraph_pir
+
     def test_error(self):
         @paddle.jit.to_static(full_graph=True)
         def func1():
@@ -818,7 +818,6 @@ class TestToStaticCheck(unittest.TestCase):
 
             func2()
 
-    @test_with_dygraph_pir
     def test_no_error(self):
         @paddle.jit.to_static(full_graph=True)
         def func1():
