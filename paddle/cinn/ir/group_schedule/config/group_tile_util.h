@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,17 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/rocm_helper.h"
-#else
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_helper.h"
-#include "paddle/fluid/platform/device/gpu/cuda/cusparse_helper.h"
-#endif
+#include "paddle/cinn/ir/ir.h"
 
-#define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
+namespace cinn {
+namespace ir {
 
-#endif
+// Check whether we can apply grid reduce in this group.
+// We can apply grid reduce if there is exactly one reduce, and whose result is
+// not broadcasted before output.
+bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
+                           const std::vector<int64_t>& reduce_axis);
+
+}  // namespace ir
+}  // namespace cinn

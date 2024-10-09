@@ -98,6 +98,48 @@ TEST(StandaloneExecutor, run) {
   EXPECT_EQ(res3, true);
 }
 
+TEST(StandaloneExecutor, run_error) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
+
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Builder builder = pir::Builder(ctx, program.block());
+
+  paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
+
+  paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT64, phi::CPUPlace());
+
+  auto add_op =
+      builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
+
+  std::string out_name = "add_out";
+  builder.Build<pir::ShadowOutputOp>(add_op->result(0), out_name);
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  for (auto op : kernel_program->block()->ops()) {
+    op->erase_attribute("origin_id");
+  }
+
+  auto place = phi::CPUPlace();
+  Scope scope;
+
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+
+  test_core.SetSkipGcVars({out_name});
+
+  try {
+    test_core.Run({});
+  } catch (std::exception& e) {
+    bool is_catch =
+        std::string(e.what()).find("InvalidArgumentError") != std::string::npos;
+    EXPECT_EQ(is_catch, true);
+  }
+}
+
 TEST(StandaloneExecutor, run_feed_tensor) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program(ctx);

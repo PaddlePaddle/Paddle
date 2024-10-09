@@ -62,12 +62,12 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   PADDLE_ENFORCE_EQ(
       blocks.size(),
       1,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An Error occurred in the schedule primite <%s>.\n"
           "[Error info] The rf_loop is required to have only one child block, "
           "but got %d!\n"
-          "[Error info] The Expr of current schedule is: %s.",
-          primitive,
+          "[Expr info] The Expr of current schedule is: %s.",
+          primitive.c_str(),
           blocks.size(),
           module_expr_.GetExprs()));
   Expr original_block = blocks.at(0);
@@ -80,12 +80,12 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   PADDLE_ENFORCE_GT(
       original_loops.size(),
       0,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An Error occurred in the schedule primite <%s>.\n"
           "[Error info] The size of original_loops should be great than 0, but "
           "got %d!\n"
-          "[Error info] The Expr of current schedule is: %s.",
-          primitive,
+          "[Expr info] The Expr of current schedule is: %s.",
+          primitive.c_str(),
           original_loops.size(),
           module_expr_.GetExprs()));
   VLOG(3) << "before FactorizeReduction, original computational body of the "
