@@ -87,7 +87,7 @@ op_library(load_combine_op DEPS string_array)
 op_library(activation_op SRCS activation_op.cc DEPS ${OP_HEADER_DEPS})
 
 if (WITH_GPU OR WITH_ROCM)
-    op_library(sync_batch_norm_op DEPS processgroup_comm_utils phi common)
+    op_library(sync_batch_norm_op DEPS processgroup_comm_utils)
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
