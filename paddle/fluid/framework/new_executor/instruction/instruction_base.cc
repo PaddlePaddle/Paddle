@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle::framework {
