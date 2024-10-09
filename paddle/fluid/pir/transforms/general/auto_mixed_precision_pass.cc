@@ -84,14 +84,14 @@ class AutoMixedPrecisionPass : public pir::Pass {
             "required!"
             "Use Set method to set the scope attribute."));
 
-    PADDLE_ENFORCE_EQ(
-        Has("__enable_low_precision_io__"),
-        true,
-        common::errors::InvalidArgument(
-            "Pass initialize failed."
-            "When using AutoMixedPrecisionPass, enable_low_precision_io attribute is "
-            "required!"
-            "Use Set method to set the scope attribute."));
+    PADDLE_ENFORCE_EQ(Has("__enable_low_precision_io__"),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Pass initialize failed."
+                          "When using AutoMixedPrecisionPass, "
+                          "enable_low_precision_io attribute is "
+                          "required!"
+                          "Use Set method to set the scope attribute."));
 
     PADDLE_ENFORCE_EQ(
         Has("__mixed_black_list__"),

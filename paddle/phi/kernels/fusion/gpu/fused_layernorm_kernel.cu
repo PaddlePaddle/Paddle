@@ -575,10 +575,10 @@ struct TryDispatchLayerNormBlockSMemImplPackSize {
              const int64_t rows,
              const int64_t cols,
              const double epsilon,
-             ComputeType* mean,
-             ComputeType* inv_variance,
-             ComputeType col_divisor,
-             bool* success) {
+             ComputeType *
+                 mean,
+             ComputeType *
+                 inv_variance, ComputeType col_divisor, bool* success) {
     if (cols % 4 == 0 && CanPackAs<LOAD>(load, 4) &&
         CanPackAs<STORE>(store, 4)) {
       return TryDispatchLayerNormBlockSMemImplBlockSize<LOAD,
@@ -755,8 +755,8 @@ struct DispatchLayerNormBlockUncachedImplPackSize {
              const int64_t rows,
              const int64_t cols,
              const double epsilon,
-             ComputeType* mean,
-             ComputeType* inv_variance) {
+             ComputeType *
+                 mean, ComputeType * inv_variance) {
     if (cols % 4 == 0 && CanPackAs<LOAD>(load, 4) &&
         CanPackAs<STORE>(store, 4)) {
       return LaunchLayerNormBlockUncachedImpl<LOAD, STORE, ComputeType, 4>(
