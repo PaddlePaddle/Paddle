@@ -1223,7 +1223,7 @@ class _ExecutorCache:
                 decomp.decompose_dist_program(program)
 
         if core._enable_auto_recompute():
-            print("apply auto_recompute in executor", flush=True)
+            logging.info("apply auto_recompute in executor")
             program = decomp.auto_recompute_pir_program(program, None)
 
         if in_cinn_mode():
