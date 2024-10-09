@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -24,13 +25,13 @@
 
 namespace phi {
 
-#define HANDLE_DIM(NDIM, RDIM)                                         \
+#define HANDLE_DIM(NDIM, RDIM, X)                                      \
   if (ndim == NDIM && rdim == RDIM) {                                  \
-    funcs::ReduceFunctor<Context, T, NDIM, RDIM, LogsumexpFunctor<T>>( \
-        dev_ctx, x, out, axis, keepdim);                               \
+    funcs::ReduceFunctor<Context, U, NDIM, RDIM, LogsumexpFunctor<U>>( \
+        dev_ctx, X, out, axis, keepdim);                               \
   }
 
-template <typename T>
+template <typename T, class Enable = void>
 struct LogsumexpFunctor {
   template <typename Context, typename X, typename Y, typename Dim>
   void operator()(const Context& place, X* x, Y* y, const Dim& dim) {
@@ -60,6 +61,37 @@ struct LogsumexpFunctor {
   }
 };
 
+template <typename T>
+struct LogsumexpFunctor<
+    T,
+    typename std::enable_if<std::is_integral<T>::value>::type> {
+  template <typename Context, typename X, typename Y, typename Dim>
+  void operator()(const Context& place, X* x, Y* y, const Dim& dim) {
+    auto x_dim = x->dimensions();
+    auto t_dim = x_dim;
+    for (int i = 0; i < static_cast<int>(dim.size()); i++) {
+      t_dim[dim[i]] = 1;
+    }
+
+    auto r_dim = x_dim;
+    for (int i = 0; i < static_cast<int>(r_dim.size()); i++) {
+      r_dim[i] = 1;
+    }
+    for (int i = 0; i < static_cast<int>(dim.size()); i++) {
+      r_dim[dim[i]] = x_dim[dim[i]];
+    }
+
+    auto x_u = (*x).template cast<float>();
+    auto y_dim = y->dimensions();
+    auto x_max = x_u.maximum(dim).eval();
+    y->device(place) =
+        (x_max +
+         (x_u - x_max.reshape(t_dim).broadcast(r_dim)).exp().sum(dim).log())
+            .reshape(y_dim)
+            .template cast<float>();
+  }
+};
+
 template <typename T, typename Context>
 void LogsumexpKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -72,8 +104,6 @@ void LogsumexpKernel(const Context& dev_ctx,
   std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
     axis.push_back(static_cast<int64_t>(t));
   });
-  dev_ctx.template Alloc<T>(out);
-
   reduce_all = recompute_reduce_all(x, axis, reduce_all);
 
   auto x_dim = x.dims();
@@ -83,10 +113,12 @@ void LogsumexpKernel(const Context& dev_ctx,
                       errors::InvalidArgument(
                           "The dims of Input(X) should be greater than 0."));
   }
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+  dev_ctx.template Alloc<U>(out);
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
     auto input = phi::EigenVector<T>::Flatten(x);
-    auto output = phi::EigenScalar<T>::From(*out);
+    auto output = phi::EigenScalar<U>::From(*out);
     auto& place = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
     LogsumexpFunctor<T>()(place, &input, &output, reduce_dim);
@@ -98,23 +130,32 @@ void LogsumexpKernel(const Context& dev_ctx,
           "Unsupported dimensions, please keep maximum dimensions of input "
           "data less than 4."));
     }
-
-    // comments for accelerating compiling temporarily.
-    // HANDLE_DIM(6, 5);
-    // HANDLE_DIM(6, 4);
-    // HANDLE_DIM(6, 3);
-    // HANDLE_DIM(6, 2);
-    // HANDLE_DIM(6, 1);
-    // HANDLE_DIM(5, 4);
-    // HANDLE_DIM(5, 3);
-    // HANDLE_DIM(5, 2);
-    // HANDLE_DIM(5, 1);
-    HANDLE_DIM(4, 3);
-    HANDLE_DIM(4, 2);
-    HANDLE_DIM(4, 1);
-    HANDLE_DIM(3, 2);
-    HANDLE_DIM(3, 1);
-    HANDLE_DIM(2, 1);
+    if (std::is_integral<T>::value) {
+      auto tmp_x = phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+      HANDLE_DIM(4, 3, tmp_x);
+      HANDLE_DIM(4, 2, tmp_x);
+      HANDLE_DIM(4, 1, tmp_x);
+      HANDLE_DIM(3, 2, tmp_x);
+      HANDLE_DIM(3, 1, tmp_x);
+      HANDLE_DIM(2, 1, tmp_x);
+    } else {
+      // comments for accelerating compiling temporarily.
+      // HANDLE_DIM(6, 5, x);
+      // HANDLE_DIM(6, 4, x);
+      // HANDLE_DIM(6, 3, x);
+      // HANDLE_DIM(6, 2, x);
+      // HANDLE_DIM(6, 1, x);
+      // HANDLE_DIM(5, 4, x);
+      // HANDLE_DIM(5, 3, x);
+      // HANDLE_DIM(5, 2, x);
+      // HANDLE_DIM(5, 1, x);
+      HANDLE_DIM(4, 3, x);
+      HANDLE_DIM(4, 2, x);
+      HANDLE_DIM(4, 1, x);
+      HANDLE_DIM(3, 2, x);
+      HANDLE_DIM(3, 1, x);
+      HANDLE_DIM(2, 1, x);
+    }
   }
 }
 

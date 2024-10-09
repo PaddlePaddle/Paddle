@@ -28,7 +28,10 @@ def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
         axis = tuple(axis)
     if reduce_all:
         axis = None
-    out = np.log(np.exp(x).sum(axis=axis, keepdims=keepdim))
+    M = np.max(x, axis=axis, keepdims=True)
+    out = np.log(np.exp(x - M).sum(axis=axis, keepdims=keepdim)) + np.max(
+        x, axis=axis, keepdims=keepdim
+    )
     return out
 
 
@@ -49,9 +52,16 @@ def logsumexp_op_grad(x, axis=None, keepdim=False, reduce_all=False):
     return x_grad
 
 
-def logsumexp_ref_grad(x):
-    sum = np.exp(x).sum()
-    return np.exp(x) / sum
+def logsumexp_ref_grad(x, axis=None, keepdim=False, reduce_all=False):
+    if isinstance(axis, int):
+        axis = (axis,)
+    elif isinstance(axis, list):
+        axis = tuple(axis)
+    if reduce_all:
+        axis = None
+    M = np.max(x, axis=axis, keepdims=True)
+    sum = np.exp(x - M).sum(axis=axis, keepdims=True)
+    return np.exp(x - M) / sum
 
 
 class TestLogsumexp(OpTest):
@@ -105,7 +115,68 @@ class TestLogsumexp(OpTest):
         return dy * np.exp(x - y)
 
 
+class TestLogsumexpInt(TestLogsumexp):
+    def setUp(self):
+        self.op_type = 'logsumexp'
+        self.python_api = logsumexp_wrapper
+        self.shape = [2, 3, 4, 5]
+        self.dtype = 'int64'
+        self.axis = [-1]
+        self.keepdim = False
+        self.reduce_all = False
+        self.set_attrs()
+
+        np.random.seed(10)
+        x = np.random.randint(-100000, 100000, self.shape).astype(self.dtype)
+        out = ref_logsumexp(x, self.axis, self.keepdim, self.reduce_all)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+        self.user_defined_grads = None
+        self.user_defined_grad_outputs = None
+        self.set_attrs_addition()
+
+    def test_check_output(self):
+        out_ref = self.outputs['Out']
+        paddle.disable_static()
+        x = self.inputs['X']
+        tensor_x = paddle.to_tensor(x)
+        out_pad = logsumexp_wrapper(
+            tensor_x, self.axis, self.keepdim, self.reduce_all
+        )
+        paddle.enable_static()
+        np.testing.assert_allclose(
+            out_pad.numpy(), out_ref, rtol=1e-03, atol=1e-08
+        )
+
+    def test_check_grad(self):
+        self.__class__.dtype = self.dtype
+        ref_x = self.inputs['X'].astype(np.float32)
+        ref_x_grad = logsumexp_ref_grad(
+            ref_x, self.axis, self.keepdim, self.reduce_all
+        )
+        x = self.inputs['X']
+        x_grad = logsumexp_op_grad(x, self.axis, self.keepdim, self.reduce_all)
+        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-05)
+
+
+class TestLogsumexpInt2(TestLogsumexpInt):
+    def set_attrs(self):
+        self.dtype = 'int32'
+
+
 class TestLogsumexp_ZeroDim(TestLogsumexp):
+    def set_attrs(self):
+        self.shape = []
+        self.axis = []
+
+
+class TestLogsumexpInt_ZeroDim(TestLogsumexpInt):
     def set_attrs(self):
         self.shape = []
         self.axis = []
@@ -116,7 +187,17 @@ class TestLogsumexp_shape(TestLogsumexp):
         self.shape = [4, 5, 6]
 
 
+class TestLogsumexpInt_shape(TestLogsumexpInt):
+    def set_attrs(self):
+        self.shape = [4, 5, 6]
+
+
 class TestLogsumexp_axis(TestLogsumexp):
+    def set_attrs(self):
+        self.axis = [0, -1]
+
+
+class TestLogsumexpInt_axis(TestLogsumexpInt):
     def set_attrs(self):
         self.axis = [0, -1]
 
@@ -131,7 +212,17 @@ class TestLogsumexp_axis_all(TestLogsumexp):
             self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
 
 
+class TestLogsumexpInt_axis_all(TestLogsumexpInt):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+
+
 class TestLogsumexp_keepdim(TestLogsumexp):
+    def set_attrs(self):
+        self.keepdim = True
+
+
+class TestLogsumexpInt_keepdim(TestLogsumexpInt):
     def set_attrs(self):
         self.keepdim = True
 
@@ -144,6 +235,11 @@ class TestLogsumexp_reduce_all(TestLogsumexp):
         if paddle.base.core.is_compiled_with_rocm():
             self.user_defined_grads = [self.calc_grad()]
             self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
+
+
+class TestLogsumexpInt_reduce_all(TestLogsumexpInt):
+    def set_attrs(self):
+        self.reduce_all = True
 
 
 class TestLogsumexp_FP32(TestLogsumexp):
@@ -226,19 +322,11 @@ class TestLogsumexpBF16Op(TestLogsumexp):
         pass
 
 
-class TestLogsumexpError(unittest.TestCase):
-
-    def test_errors(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            self.assertRaises(TypeError, paddle.logsumexp, 1)
-            x1 = paddle.static.data(name='x1', shape=[120], dtype="int32")
-            self.assertRaises(TypeError, paddle.logsumexp, x1)
-
-
 class TestLogsumexpAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 3, 4, 5]
-        self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        self.dtype = "float32"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.base.core.is_compiled_with_cuda()
@@ -248,7 +336,7 @@ class TestLogsumexpAPI(unittest.TestCase):
     def api_case(self, axis=None, keepdim=False):
         out_ref = ref_logsumexp(self.x, axis, keepdim)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', self.shape)
+            x = paddle.static.data('X', self.shape, self.dtype)
             out = paddle.logsumexp(x, axis, keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -278,6 +366,30 @@ class TestLogsumexpAPI(unittest.TestCase):
         for out in [out1, out2, out3]:
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
+
+
+class TestLogsumexpAPI2(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [3, 2, 4, 5]
+        self.dtype = "int32"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.base.core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+
+class TestLogsumexpAPI3(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [3, 4, 2, 5]
+        self.dtype = "int64"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.base.core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
 
 
 # Test logsumexp bug

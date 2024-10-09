@@ -18,5 +18,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/logsumexp_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    logsumexp, CPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {}
+PD_REGISTER_KERNEL(logsumexp,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LogsumexpKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
