@@ -1907,9 +1907,8 @@ void batch_norm_grad(const Tensor& x,
             nhwc_x_grad = scale.get() * nhwc_x_grad;
           }
           auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
-          if (need_cast) {
-            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
-          }
+          nchw_x_grad = ConverToOrig<T>(nchw_x_grad, x.dtype());
+
           set_output<T>(nchw_x_grad, x_grad);
         } else {
           auto part1 = rsqrt_var;
@@ -1950,9 +1949,7 @@ void batch_norm_grad(const Tensor& x,
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
-          if (need_cast) {
-            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
-          }
+          nchw_x_grad = ConverToOrig<T>(nchw_x_grad, x.dtype());
           set_output<T>(nchw_x_grad, x_grad);
         }
       }
@@ -1976,9 +1973,7 @@ void batch_norm_grad(const Tensor& x,
           if (scale) {
             x_grad_data = scale.get() * x_grad_data;
           }
-          if (need_cast) {
-            x_grad_data = cast<T>(x_grad_data, x.dtype());
-          }
+          x_grad_data = ConverToOrig<T>(x_grad_data, x.dtype());
           set_output<T>(x_grad_data, x_grad);
         } else {
           auto part1 = rsqrt_var;
@@ -2019,9 +2014,8 @@ void batch_norm_grad(const Tensor& x,
               out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
-          if (need_cast) {
-            x_grad_data = cast<T>(x_grad_data, x.dtype());
-          }
+          x_grad_data = ConverToOrig<T>(x_grad_data, x.dtype());
+
           set_output<T>(x_grad_data, x_grad);
         }
         if (scale_grad) {
