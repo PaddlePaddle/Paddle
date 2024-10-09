@@ -872,13 +872,9 @@ phi::DenseTensor from_blob(void* data,
                            phi::DataType dtype,
                            const phi::Place& place,
                            const Deleter& deleter) {
-  PADDLE_ENFORCE_NOT_NULL(
-      data, common::errors::InvalidArgument("data can not be nullptr."));
-
   auto meta = phi::DenseTensorMeta(dtype, shape, strides);
-  size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
-  phi::Allocation::DeleterFnPtr f = nullptr;
 
+  phi::Allocation::DeleterFnPtr f = nullptr;
   if (deleter) {
     auto g = [deleter, src](phi::Allocation* p) {
       if (src->manager_ctx) {
@@ -894,7 +890,18 @@ phi::DenseTensor from_blob(void* data,
     f = DeleterBridge;
   }
 
-  auto alloc = std::make_shared<phi::Allocation>(data, size, f, place);
+  // Calculate the number of elements of underlying storage
+  size_t size = 1;
+  for (auto i = 0; i < shape.size(); ++i) {
+    if (shape[i] == 0) {
+      size = 0;
+      break;
+    }
+    size += strides[i] * (shape[i] - 1);
+  }
+
+  auto alloc =
+      std::make_shared<phi::Allocation>(data, size * SizeOf(dtype), f, place);
   return phi::DenseTensor(alloc, meta);
 }
 
