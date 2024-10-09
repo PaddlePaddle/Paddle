@@ -2915,7 +2915,7 @@
     func : llm_int8_linear
     data_type : x
   optional: bias
-  traits : paddle::dialect::ForwardOnlyTrai
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : log
   args : (Tensor x)
