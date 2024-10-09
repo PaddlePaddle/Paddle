@@ -297,6 +297,8 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     func->args = op->args;
     func->body = Visit(&op->body);
     func->temp_bufs = op->temp_bufs;
+    func->temp_spaces = op->temp_spaces;
+    func->num_output_tensors = op->num_output_tensors;
 
     func->device_api = op->device_api;
 
