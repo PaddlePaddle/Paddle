@@ -42,8 +42,6 @@ class CinnJitInstruction::FnPtrImpl {
       : cinn_kernel_info_(cinn_kernel_info) {}
 
   void InitFuncArgs(const std::vector<phi::DenseTensor*>& kernel_tensor_args) {
-    func_args_.clear();
-
     // 1. Create placeholders for tensor args
     for (size_t i = 0; i < kernel_tensor_args.size(); ++i) {
       auto* buffer = new cinn_buffer_t();
@@ -88,6 +86,18 @@ class CinnJitInstruction::FnPtrImpl {
       func_args_.emplace_back(std::visit(GetSymbolArg, binding_info));
     }
 
+    // 3. Create placeholders and tensors for temp_space args
+    temp_space_args_offset_ = func_args_.size();
+    for (int64_t size : cinn_kernel_info_.temp_space_sizes) {
+      auto* buffer = new cinn_buffer_t();
+      func_args_.emplace_back(buffer);
+      auto& tensor = temp_space_tensors_.emplace_back();
+      tensor.set_type(phi::DataType::UINT8);
+      if (size >= 0) {
+        tensor.Resize({size});
+      }
+    }
+
     if (VLOG_IS_ON(4)) {
       VLOG(4) << "Run func_args_ size: " << func_args_.size();
       for (const auto& args : func_args_) {
@@ -105,6 +115,10 @@ class CinnJitInstruction::FnPtrImpl {
     for (size_t i = 0; i < kernel_tensor_args.size(); ++i) {
       cinn_pod_value_to_buffer_p(&(func_args_[i]))->memory =
           reinterpret_cast<uint8_t*>(kernel_tensor_args[i]->data());
+    }
+    for (size_t i = 0; i < temp_space_tensors_.size(); ++i) {
+      cinn_pod_value_to_buffer_p(&(func_args_[temp_space_args_offset_ + i]))
+          ->memory = reinterpret_cast<uint8_t*>(temp_space_tensors_[i].data());
     }
 
     // Launch host kernel
@@ -161,7 +175,11 @@ class CinnJitInstruction::FnPtrImpl {
     for (int i = 0; i < output_tensor_size; ++i) {
       output_tensor_shapes[i] = reinterpret_cast<int64_t*>(
           malloc(kernel_tensor_args[input_tensor_size + i]->dims().size() *
-                 sizeof(int64_t*)));
+                 sizeof(int64_t)));
+    }
+    std::vector<int64_t> temp_space_sizes(temp_space_tensors_.size());
+    for (int i = 0; i < temp_space_tensors_.size(); ++i) {
+      output_tensor_shapes.push_back(&temp_space_sizes[i]);
     }
 
     // Launch infer_shape_fn_ptr to infer shape of output tensor
@@ -177,13 +195,33 @@ class CinnJitInstruction::FnPtrImpl {
       kernel_tensor_args[input_tensor_size + i]->Resize(dim);
       free(output_tensor_shapes[i]);
     }
+    for (int i = 0; i < temp_space_tensors_.size(); ++i) {
+      int64_t size = temp_space_sizes[i];
+      temp_space_tensors_[i].Resize({size});
+    }
     VLOG(6) << "End InferShape: " << cinn_kernel_info_.fn_name;
+  }
+
+  void FreeFuncArgs() {
+    for (auto& arg : func_args_) {
+      if (arg.type_code() == ::cinn_type_code<cinn_buffer_t*>()) {
+        delete cinn_pod_value_to_buffer_p(&arg);
+      }
+    }
+    func_args_.clear();
+    temp_space_tensors_.clear();
+  }
+
+  std::vector<phi::DenseTensor>& GetTempSpaceTensors() {
+    return temp_space_tensors_;
   }
 
  private:
   CINNKernelInfo cinn_kernel_info_;
 
   std::vector<cinn_pod_value_t> func_args_;
+  std::vector<phi::DenseTensor> temp_space_tensors_;
+  size_t temp_space_args_offset_;
 };
 
 CinnJitInstruction::CinnJitInstruction(
@@ -193,7 +231,9 @@ CinnJitInstruction::CinnJitInstruction(
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
-  fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
+  auto& cinn_kernel_info = jit_kernel_op.cinn_kernel_info();
+  fn_ptr_impl_ = std::make_shared<FnPtrImpl>(cinn_kernel_info);
+
   op_ = op;
   input_tensor_size = op->num_operands();
   output_tensor_size = op->num_results();
@@ -241,6 +281,12 @@ CinnJitInstruction::CinnJitInstruction(
     }
     tensor->Resize(alloc_tensor_type.dims());
   }
+
+  for (int64_t size : cinn_kernel_info.temp_space_sizes) {
+    if (size < 0) {
+      need_update_shape = true;
+    }
+  }
 }
 
 void CinnJitInstruction::Run() {
@@ -254,6 +300,7 @@ void CinnJitInstruction::Run() {
         static_cast<void*>(static_cast<phi::GPUContext*>(dev_ctx_)->stream());
   }
 
+  // 1. prepare kernel argmuments
   fn_ptr_impl_->InitFuncArgs(tensor_args_);
 
   if (FLAGS_cinn_bucket_compile && need_update_shape) {
@@ -263,9 +310,15 @@ void CinnJitInstruction::Run() {
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
     dev_ctx_->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
+  for (auto& tenser : fn_ptr_impl_->GetTempSpaceTensors()) {
+    dev_ctx_->Alloc(&tenser, tenser.dtype());
+  }
 
   // 2. exexute kernel
   fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
+
+  // 3. release resource
+  fn_ptr_impl_->FreeFuncArgs();
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";
