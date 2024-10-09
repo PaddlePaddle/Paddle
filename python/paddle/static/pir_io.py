@@ -326,10 +326,11 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
 
     fetch_vars_tuple = []
     for i, var in enumerate(clone_fetch_vars):
-        if "name" in var.get_defining_op().attrs():
-            fetch_vars_tuple.append(
-                (var, var.get_defining_op().attrs()['name'])
-            )
+        scale_op = var.get_defining_op()
+        if scale_op.name() == "pd_op.scale":
+            orig_var = scale_op.operand_source(0)
+        if orig_var.has_name:
+            fetch_vars_tuple.append((orig_var, orig_var.name))
         else:
             fetch_vars_tuple.append((var, "fetch_name_" + str(i)))
     with paddle.static.program_guard(copy_program):
