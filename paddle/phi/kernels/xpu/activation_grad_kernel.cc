@@ -728,7 +728,8 @@ PD_REGISTER_KERNEL(square_grad,
                    ALL_LAYOUT,
                    phi::SquareGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(swish_grad,
                    XPU,

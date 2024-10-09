@@ -52,5 +52,10 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    log_softmax_grad, XPU, ALL_LAYOUT, phi::LogSoftmaxGradKernel, float) {}
+PD_REGISTER_KERNEL(log_softmax_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LogSoftmaxGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
