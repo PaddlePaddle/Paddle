@@ -21,7 +21,6 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSvdOp(OpTest):
@@ -295,7 +294,6 @@ class TestSvdAPI(unittest.TestCase):
         gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
         np.testing.assert_allclose(s, gt_s, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = []

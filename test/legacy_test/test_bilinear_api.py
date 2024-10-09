@@ -19,11 +19,10 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestBilinearAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()

@@ -22,7 +22,6 @@ import numpy as np
 import paddle
 from paddle import base, regularizer
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestL1Decay(unittest.TestCase):
@@ -162,7 +161,6 @@ class TestRegularizer(unittest.TestCase):
             param_sum = self.run_program(place, [data, label])
         return param_sum
 
-    @test_with_pir_api
     def test_repeated_regularization(self):
         l1 = paddle.regularizer.L1Decay(coeff=0.1)
         l2 = paddle.regularizer.L2Decay(coeff=0.01)
