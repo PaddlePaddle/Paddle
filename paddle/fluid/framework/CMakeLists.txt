@@ -272,16 +272,6 @@ if(WITH_ONEDNN)
 endif()
 
 cc_library(
-  transfer_scope_cache
-  SRCS transfer_scope_cache.cc
-  DEPS scope framework_proto device_context)
-
-cc_library(
-  unused_var_check
-  SRCS unused_var_check.cc
-  DEPS glog no_need_buffer_vars_inference)
-
-cc_library(
   op_kernel_type
   SRCS op_kernel_type.cc
   DEPS device_context phi common)
@@ -307,7 +297,8 @@ endif()
 if(WITH_XPU)
   cc_library(
     operator
-    SRCS operator.cc
+    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
+         infershape_utils.cc
     DEPS xpu_op_list
          op_info
          proto_desc
@@ -320,13 +311,10 @@ if(WITH_XPU)
          shape_inference
          data_transform
          lod_tensor
-         transfer_scope_cache
          op_kernel_type
          op_call_stack
-         unused_var_check
          detail_op_handle
          phi_utils
-         infershape_utils
          phi
          common
          op_compat_infos
@@ -334,7 +322,8 @@ if(WITH_XPU)
 else()
   cc_library(
     operator
-    SRCS operator.cc
+    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
+         infershape_utils.cc
     DEPS op_info
          proto_desc
          device_context
@@ -346,13 +335,10 @@ else()
          shape_inference
          data_transform
          lod_tensor
-         transfer_scope_cache
          op_kernel_type
          op_call_stack
-         unused_var_check
          detail_op_handle
          phi_utils
-         infershape_utils
          phi
          common
          op_compat_infos
@@ -881,19 +867,6 @@ cc_library(
   op_compatible_info
   SRCS op_compatible_info.cc
   DEPS string_helper proto_desc)
-
-cc_library(
-  infershape_utils
-  SRCS infershape_utils.cc
-  DEPS lod_tensor
-       selected_rows_utils
-       attribute
-       var_type_traits
-       phi
-       common
-       phi_utils
-       op_info
-       shape_inference)
 
 # Get the current working branch
 execute_process(
