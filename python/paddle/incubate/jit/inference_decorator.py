@@ -142,8 +142,8 @@ class InferenceEngine:
         import paddle.distributed as dist
 
         n_ranks = dist.get_world_size()
-        local_rank: int = dist.ParallelEnv().dev_id
         if n_ranks > 1:
+            local_rank: int = dist.ParallelEnv().dev_id
             self.save_model_dir = os.path.join(
                 self.save_model_dir, f"{n_ranks}_{local_rank}"
             )
