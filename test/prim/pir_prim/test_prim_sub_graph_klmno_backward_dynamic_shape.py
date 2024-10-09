@@ -108,7 +108,7 @@ def multiply_net(x, y):
     return x * y
 
 
-class TestPrimLayerNormWithGrad1(TestPrimThreeWithGrad):
+class TestNormGrad1(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -127,7 +127,7 @@ class TestPrimLayerNormWithGrad1(TestPrimThreeWithGrad):
         self.tol = 1e-3
 
 
-class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
+class TestNormGrad2(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -140,7 +140,7 @@ class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
         self.tol = 1e-3
 
 
-class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
+class TestNormGrad3(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -159,7 +159,7 @@ class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
         self.tol = 1e-3
 
 
-class TestPrimLayerNormWithGrad4(TestPrimBaseWithGrad):
+class TestNormGrad4(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
