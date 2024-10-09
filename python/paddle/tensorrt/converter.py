@@ -180,17 +180,19 @@ class PaddleToTensorRTConverter:
                     continue
                 define_op_name = source.get_defining_op().name()
                 if define_op_name == "builtin.combine":
+                    operand_list = []
                     for combined_operand in source.get_defining_op().operands():
                         combined_source = combined_operand.source()
                         combined_source_id = combined_source.id
                         if combined_source_id in value_to_trt_tensor:
-                            operands.append(
+                            operand_list.append(
                                 value_to_trt_tensor[combined_source_id]
                             )
                         else:
                             raise RuntimeError(
                                 f'{combined_source_id} not found in value_to_trt_tensor'
                             )
+                    operands.append(operand_list)
                 else:
                     source_id = source.id
                     if source_id in value_to_trt_tensor:
