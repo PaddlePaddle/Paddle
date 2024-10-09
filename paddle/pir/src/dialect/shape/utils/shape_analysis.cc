@@ -736,21 +736,21 @@ symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(
 
 pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() {
   pir::PrintHooks print_hook;
-  print_hook.op_print_hook = [&](Operation* op, IrPrinter& printer) {
+  print_hook.op_print_hook = [&](const Operation& op, IrPrinter& printer) {
     printer.IrPrinter::PrintOperation(op);
     printer.os << " { ";
-    for (uint32_t i = 0; i < op->num_results(); ++i) {
-      if (context_.HasShapeOrDataForValue(op->result(i))) {
-        printer.os << "(" << this->GetShapeOrDataForValue(op->result(i)) << ")";
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      if (context_.HasShapeOrDataForValue(op.result(i))) {
+        printer.os << "(" << this->GetShapeOrDataForValue(op.result(i)) << ")";
       } else {
         printer.os << "()";
       }
-      if (i < op->num_results() - 1) {
+      if (i < op.num_results() - 1) {
         printer.os << ", ";
       }
     }
     printer.os << " }";
-    printer.os << "\t(op_" << op->id() << ")";
+    printer.os << "\t(op_" << op.id() << ")";
   };
   return print_hook;
 }

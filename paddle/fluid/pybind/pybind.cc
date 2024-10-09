@@ -87,7 +87,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
@@ -133,6 +132,7 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/monitor.h"
 #include "paddle/phi/core/platform/profiler.h"
@@ -172,9 +172,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/device/custom/custom_device_resource_pool.h"
 #endif
 
@@ -1266,7 +1266,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PADDLE_ENFORCE_NOT_NULL(
         dlMTensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "from_dlpack received an invalid capsule. "
             "Note that DLTensor capsules can be consumed only once, "
             "so you might have already constructed a tensor from it once."));
