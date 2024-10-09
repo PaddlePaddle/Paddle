@@ -170,7 +170,7 @@ std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
   os << "Group id: " << group.group_id() << ", func_name: " << group.FuncName()
      << "\n";
   for (auto* op : group.ops()) {
-    printer.PrintOperation(op);
+    printer.PrintOperation(*op);
     PrintSymbolDims(*op);
     os << "\n";
   }
