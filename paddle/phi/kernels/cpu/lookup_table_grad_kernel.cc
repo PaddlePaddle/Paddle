@@ -74,7 +74,7 @@ void LookupTableGradKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_LT(
           ids_data[i],
           N,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Variable value (input) of OP(fluid.layers.embedding) "
               "expected >= 0 and < %ld, but got %ld. Please check input "
               "value.",
@@ -83,7 +83,7 @@ void LookupTableGradKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_GE(
           ids_data[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Variable value (input) of OP(fluid.layers.embedding) "
               "expected >= 0 and < %ld, but got %ld. Please check input"
               "value.",
@@ -146,7 +146,7 @@ void LookupTableSparseGradKernel(
       common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
   PADDLE_ENFORCE_EQ(d_table_value->dims(),
                     d_output_dims_2d,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "ShapeError: The shape of lookup_table@Grad and "
                         "output@Grad should be same. "
                         "But received lookup_table@Grad's shape = [%s], "
