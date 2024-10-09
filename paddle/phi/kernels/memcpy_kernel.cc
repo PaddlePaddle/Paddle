@@ -31,8 +31,10 @@ void MemcpyH2DKernel(const Context& dev_ctx,
                      int dst_place_type,
                      DenseTensor* out) {
   if (!x.initialized()) {
+    out->set_meta(x.meta());
     return;
   }
+
   PADDLE_ENFORCE_GE(
       dst_place_type,
       0,
@@ -51,10 +53,6 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
-  if (!x.initialized()) {
-    return;
-  }
-
   switch (dst_place_type) {
     case 0:
       Copy(dev_ctx, x, CPUPlace(), false, out);
@@ -128,6 +126,16 @@ void MemcpyKernel(const Context& dev_ctx,
     case 2: /* CUDAPinnedPlace */
       dev_ctx.Alloc(out, x.dtype(), 0, true);
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
+      break;
+#elif defined(PADDLE_WITH_XPU)
+    case 3:  // XPUPlace
+      dev_ctx.Alloc(out, x.dtype());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      break;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    case 4:  // CustomPlace
+      dev_ctx.Alloc(out, x.dtype());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
       break;
 #endif
     default:
