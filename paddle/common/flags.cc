@@ -1371,7 +1371,7 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
 
 PHI_DEFINE_EXPORTED_bool(
     enable_append_iters_in_fusion,
-    false,
+    true,
     "Whether enable use append iters transform in cinn fusion.");
 
 PHI_DEFINE_EXPORTED_bool(
@@ -1386,7 +1386,7 @@ PHI_DEFINE_EXPORTED_bool(
 
 PHI_DEFINE_EXPORTED_bool(
     enable_all_trivial_sink,
-    true,
+    false,
     "Whether enable sink all trivial pattren first in cinn fusion.");
 
 PHI_DEFINE_EXPORTED_bool(enable_anchor_fusion,
