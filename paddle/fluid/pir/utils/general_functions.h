@@ -17,8 +17,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/include/core/parameter.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/pass/pass.h"
 
@@ -46,7 +46,7 @@ using Scope = paddle::framework::Scope;
 
 /**
  * @brief Copy a DenseTensor to another.
- * default dst_plaxce is CPU
+ * default dst_plaxce is CPU.
  *
  * @param const phi::DenseTensor& src
  * @param phi::DenseTensor* dst
@@ -54,12 +54,15 @@ using Scope = paddle::framework::Scope;
  *
  * @return
  */
-void DensorTensorCopy(const phi::DenseTensor& src,
-                      phi::DenseTensor* dst,
-                      const phi::Place& dst_place = phi::CPUPlace());
+void TensorCopySync(const phi::DenseTensor& src,
+                    phi::DenseTensor* dst,
+                    const phi::Place& dst_place = phi::CPUPlace());
 
 /**
  * @brief Cast a DenseTensor to fp32.
+ * world_size represents the maximum number of devices, defaulting to 1.
+ * The result is either stored in 'out' or overwritten in 'in' if 'out' is
+ * nullptr.
  *
  * @param phi::DenseTensor* in
  * @param phi::DenseTensor* out
@@ -78,18 +81,20 @@ void DenseTensorCastToFp32(phi::DenseTensor* in,
  *
  * @return pir::Type
  */
-pir::Type TranslateToIrDataType(phi::DenseTensor* tensor);
+pir::Type TranslateToIrDataType(phi::DataType dtype);
 
 /**
- * @brief Get the Parameter from an Operation.
+ * @brief Create an Operation by name.
+ * This method is typically used to directly construct operations under the
+ * namespaces `pd_op.xxx` and `custom_op.xxx`.
  *
- * @param Operation* op
- * @param const std::string& name
+ * @param const std::string& op_name
+ * @param const std::vector<pir::Value>& inputs
+ * @param const pir::AttributeMap& attrs
+ * @param const pir::PatternRewriter& rewriter
  *
- * @return Parameter*
+ * @return pir::Operation*
  */
-Parameter* GetParameter(Operation* op, const std::string& name);
-
 pir::Operation* CreateOpeartionByName(const std::string& op_name,
                                       const std::vector<pir::Value>& inputs,
                                       const pir::AttributeMap& attrs,

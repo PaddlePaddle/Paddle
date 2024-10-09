@@ -34,12 +34,12 @@
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/operation_utils.h"
-#include "paddle/pir/include/core/parameter.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/assign_kernel.h"
@@ -83,9 +83,9 @@ void GetUsedExternalValueImpl(
 
 namespace pir {
 
-void DensorTensorCopy(const phi::DenseTensor& src,
-                      phi::DenseTensor* dst,
-                      const phi::Place& dst_place) {
+void TensorCopySync(const phi::DenseTensor& src,
+                    phi::DenseTensor* dst,
+                    const phi::Place& dst_place) {
   paddle::framework::TensorCopySync(src, dst_place, dst);
 }
 
@@ -127,22 +127,16 @@ void DenseTensorCastToFp32(phi::DenseTensor* in,
     phi::ScaleKernel<float, phi::CPUContext>(
         *cpu_ctx, *out_ptr, 1.0f / world_size, 0.f, false, out_ptr);
   }
+  if (out == nullptr) {
+    phi::AssignKernel(*cpu_ctx, *in, out_ptr);
+  }
 }
 
-pir::Type TranslateToIrDataType(phi::DenseTensor* tensor) {
+pir::Type TranslateToIrDataType(phi::DataType dtype) {
   // Get Meta
   pir::IrContext* ctx = pir::IrContext::Instance();
-  pir::Type data_type =
-      paddle::dialect::TransToIrDataType(tensor->dtype(), ctx);
+  pir::Type data_type = paddle::dialect::TransToIrDataType(dtype, ctx);
   return data_type;
-}
-
-Parameter* GetParameter(Operation* op, const std::string& name) {
-  Parameter* param = op->GetParentProgram()->GetParameter(name);
-  if (param == nullptr) {
-    PADDLE_THROW(common::errors::NotFound("Parameter %s not found.", name));
-  }
-  return param;
 }
 
 pir::Operation* CreateOpeartionByName(const std::string& op_name,
