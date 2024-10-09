@@ -23,15 +23,23 @@ class TestLoadStateDictFromUrl(unittest.TestCase):
         self.weight_path = '/paddle/test_zty/test/resnet18.pdparams'
 
     def test_load_state_dict_from_url(self):
-        #Compare using load_state_dict_from_url to download and load an uncompressed weight file and a compressed weight file(ZIP)
-        weight1=paddle.hapi.hub.load_state_dict_from_url(url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams', model_dir="./test/test1")
+        # Compare using load_state_dict_from_url to download and load an uncompressed weight file and a compressed weight file(ZIP)
+        weight1 = paddle.hapi.hub.load_state_dict_from_url(
+            url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams',
+            model_dir="./test/test1",
+        )
         model1 = resnet18(pretrained=False)
         model1.set_state_dict(weight1)
-        weight2=paddle.hapi.hub.load_state_dict_from_url(url='https://x2paddle.bj.bcebos.com/resnet18.zip', model_dir="./test/test2")
+        weight2 = paddle.hapi.hub.load_state_dict_from_url(
+            url='https://x2paddle.bj.bcebos.com/resnet18.zip',
+            model_dir="./test/test2",
+        )
         model2 = resnet18(pretrained=False)
         model2.set_state_dict(weight2)
         are_parameters_equal = True
-        for (name1, param1), (name2, param2) in zip(model1.named_parameters(), model2.named_parameters()):
+        for (name1, param1), (name2, param2) in zip(
+            model1.named_parameters(), model2.named_parameters()
+        ):
             if name1 != name2 or not paddle.allclose(param1, param2):
                 are_parameters_equal = False
                 break
