@@ -25,7 +25,6 @@ from paddle.framework import core
 class TestEinsumSPMDRule(unittest.TestCase):
 
     def setUp(self):
-        self.rule = core.get_phi_spmd_rule("einsum")
         self.init_data()
 
     def init_data(self):
@@ -67,7 +66,8 @@ class TestEinsumSPMDRule(unittest.TestCase):
         self.output_grad = DistTensorSpec(self.output_shape, tensor_dist_attr)
 
     def run_infer_forward(self):
-        return self.rule.infer_forward(self.inputs, False, 3)
+        rule = core.get_phi_spmd_rule("einsum")
+        return rule.infer_forward(self.inputs, False, 3)
 
     def test_infer_forward(self):
         self.build_inputs()
@@ -91,7 +91,8 @@ class TestEinsumSPMDRule(unittest.TestCase):
         )
 
     def run_infer_backward(self):
-        return self.rule.infer_backward(self.inputs, self.output_grad, False)
+        rule = core.get_phi_spmd_rule("einsum")
+        return rule.infer_backward(self.inputs, self.output_grad, False)
 
     def test_infer_backward(self):
         self.build_inputs()
@@ -147,7 +148,8 @@ class TestEinsumSPMDRule2(TestEinsumSPMDRule):
         ]
 
     def run_infer_forward(self):
-        return self.rule.infer_forward(self.inputs, True)
+        rule = core.get_phi_spmd_rule("einsum")
+        return rule.infer_forward(self.inputs, True, 6)
 
 
 class TestEinsumSPMDRule3(TestEinsumSPMDRule):
@@ -174,7 +176,8 @@ class TestEinsumSPMDRule3(TestEinsumSPMDRule):
         ]
 
     def run_infer_forward(self):
-        return self.rule.infer_forward(self.inputs, True)
+        rule = core.get_phi_spmd_rule("einsum")
+        return rule.infer_forward(self.inputs, True, 6)
 
 
 class TestEinsumSPMDRule4(TestEinsumSPMDRule):
@@ -201,7 +204,8 @@ class TestEinsumSPMDRule4(TestEinsumSPMDRule):
         ]
 
     def run_infer_forward(self):
-        return self.rule.infer_forward(self.inputs, True)
+        rule = core.get_phi_spmd_rule("einsum")
+        return rule.infer_forward(self.inputs, True, 2)
 
 
 if __name__ == "__main__":
