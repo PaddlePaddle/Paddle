@@ -3909,8 +3909,8 @@ function clang-tidy_check() {
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
 
-    # check_error=$(python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
-    python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
+    exec 3>&1 4>&2
+    check_error=$(python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
     -clang-tidy-binary=clang-tidy \
     -extra-arg=-Wno-unknown-warning-option \
     -extra-arg=-Wno-pessimizing-move \
@@ -3934,8 +3934,7 @@ function clang-tidy_check() {
     -extra-arg=-Wno-overloaded-virtual  \
     -extra-arg=-Wno-defaulted-function-deleted  \
     -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
-    -extra-arg=-Wno-return-type-c-linkage
-    # -extra-arg=-Wno-return-type-c-linkage 2>&1)
+    -extra-arg=-Wno-return-type-c-linkage 2>&1 1>&3 3>&- 4>&-)
 
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
