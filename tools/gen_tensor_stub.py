@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from functools import cached_property, lru_cache
 from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol
 
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, get_overloads
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -221,7 +221,9 @@ class TensorGen:
                 method_code += f"@{decorator}\n"
 
             method_code += f"def {func.signature}:\n"
-            if func.doc:
+            # do NOT insert docs from overload methods,
+            # because we always add a plain method
+            if func.doc and func.decorators != ["overload"]:
                 method_code += f'{INDENT}r"""\n'
                 method_code += with_indent(func.doc, 1)
                 method_code += "\n"
@@ -511,6 +513,37 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
             or inspect.ismethod(member)
             or inspect.ismethoddescriptor(member)
         ):
+            # try to get overloads
+            overload_signatures = []
+            try:
+                _overloads = get_overloads(member)
+                if _overloads:
+                    for f in _overloads:
+                        _sig = inspect.signature(f)
+                        overload_signatures.append(
+                            [id(f), f"{name}{_sig}".replace("Ellipsis", "...")]
+                        )
+
+                overload_decorator = ["overload"] if overload_signatures else []
+                overload_signatures = overload_signatures or [
+                    [member_id, member_signature]
+                ]
+
+                for _member_id, _sig in overload_signatures:
+                    members[_member_id] = Member(
+                        _member_id,
+                        name,
+                        "method",
+                        [],
+                        overload_decorator,
+                        func_sig_to_method_sig(_sig),
+                        member_doc_cleaned,
+                    )
+
+            except:
+                pass
+
+            # add original method
             members[member_id] = Member(
                 member_id,
                 name,
