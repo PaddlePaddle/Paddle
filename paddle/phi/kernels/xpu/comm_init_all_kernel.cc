@@ -16,8 +16,8 @@
 #include "glog/logging.h"
 #include "paddle/phi/core/kernel_registry.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/platform/collective_helper.h"
-#include "paddle/phi/core/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace phi {

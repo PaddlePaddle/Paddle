@@ -947,10 +947,11 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   {
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr) {
-      phi::RecordEvent infershape_event("infer_shape",
-                                        phi::TracerEventType::OperatorInner,
-                                        1,
-                                        phi::EventRole::kInnerOp);
+      phi::RecordEvent infershape_event(
+          "infer_shape",
+          platform::TracerEventType::OperatorInner,
+          1,
+          phi::EventRole::kInnerOp);
 
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
@@ -990,7 +991,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     // guaranteed in most of the time.
   } else {
     phi::RecordEvent compute_event("compute",
-                                   phi::TracerEventType::OperatorInner,
+                                   platform::TracerEventType::OperatorInner,
                                    1,
                                    phi::EventRole::kInnerOp);
 
@@ -1043,7 +1044,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
 
   if (!instr_node.InplaceBackMap().empty()) {
     phi::RecordEvent inplaceback_event(
-        "InplaceVarsBack", phi::TracerEventType::UserDefined, 10);
+        "InplaceVarsBack", platform::TracerEventType::UserDefined, 10);
     auto& m = instr_node.InplaceBackMap();
     // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
     for (auto& p : m) {
@@ -1159,7 +1160,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
 
   auto* op = instr_node.OpBase();
   phi::RecordEvent instruction_event(
-      op->Type(), phi::TracerEventType::Operator, 1);
+      op->Type(), platform::TracerEventType::Operator, 1);
 
   SetDeviceId(instr_node.DeviceContext().GetPlace());
 
@@ -1322,7 +1323,7 @@ void ProgramInterpreter::ExecuteInstructionList(
 void ProgramInterpreter::RunNextInstructions(
     const Instruction& instr, SchedulingQueue* reserved_next_ops) {
   phi::RecordEvent record(
-      "RunNextInstructions", phi::TracerEventType::UserDefined, 10);
+      "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
 
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id
@@ -1385,7 +1386,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
   phi::RecordEvent record(
-      "RecordStreamForGC", phi::TracerEventType::UserDefined, 10);
+      "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
   auto TensorRecordStream = [](phi::DenseTensor& tensor,
                                const gpuStream_t& stream) {
@@ -1486,7 +1487,8 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 }
 
 void ProgramInterpreter::CheckGC(const Instruction& instr) {
-  phi::RecordEvent record("CheckGC", phi::TracerEventType::UserDefined, 10);
+  phi::RecordEvent record(
+      "CheckGC", platform::TracerEventType::UserDefined, 10);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (instr.need_record_stream_for_gc_) {
     RecordStreamForGC(instr);
@@ -1648,7 +1650,7 @@ void ProgramInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node.EventsToWait()) {
       phi::RecordEvent record(
-          "RecordStreamEvent", phi::TracerEventType::UserDefined, 10);
+          "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
       VLOG(3) << "Record event on default stream in jit_input_var at op: "
               << instr_node.OpBase()->Type();
       event.event_->Record(default_dev_ctx);

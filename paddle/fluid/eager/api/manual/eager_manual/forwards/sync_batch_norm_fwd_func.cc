@@ -47,7 +47,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
           << "sync_batch_norm_";
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
-      "sync_batch_norm_ dygraph", phi::TracerEventType::Operator, 1);
+      "sync_batch_norm_ dygraph",
+      paddle::platform::TracerEventType::Operator,
+      1);
 
   // AMP Logic
 
@@ -209,7 +211,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   if (require_any_grad) {
     phi::RecordEvent node_creation_record_event(
         "sync_batch_norm_ node_creation",
-        phi::TracerEventType::OperatorInner,
+        paddle::platform::TracerEventType::OperatorInner,
         1);
 
     egr::EagerUtils::PassStopGradient(false,
@@ -387,7 +389,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
           << "sync_batch_norm_";
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
-      "sync_batch_norm_ dygraph", phi::TracerEventType::Operator, 1);
+      "sync_batch_norm_ dygraph",
+      paddle::platform::TracerEventType::Operator,
+      1);
 
   // AMP Logic
 
@@ -549,7 +553,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   if (require_any_grad) {
     phi::RecordEvent node_creation_record_event(
         "sync_batch_norm_ node_creation",
-        phi::TracerEventType::OperatorInner,
+        paddle::platform::TracerEventType::OperatorInner,
         1);
 
     egr::EagerUtils::PassStopGradient(false,

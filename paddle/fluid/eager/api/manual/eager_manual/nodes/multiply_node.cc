@@ -50,7 +50,9 @@ MultiplyGradNode::operator()(
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
   phi::RecordEvent node_execution_inner(
-      "Local_MultiplyGradNode", phi::TracerEventType::OperatorInner, 1);
+      "Local_MultiplyGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
 
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
@@ -175,7 +177,7 @@ MultiplyGradNode::operator()(
     if (trace_backward) {
       phi::RecordEvent node_creation_record_event(
           "multiply_grad node_creation",
-          phi::TracerEventType::OperatorInner,
+          paddle::platform::TracerEventType::OperatorInner,
           1);
 
       // Node Construction
@@ -265,7 +267,9 @@ MultiplyDoubleGradNode::operator()(
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
   phi::RecordEvent node_execution_inner(
-      "Local_MultiplyDoubleGradNode", phi::TracerEventType::OperatorInner, 1);
+      "Local_MultiplyDoubleGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
 
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
@@ -536,7 +540,9 @@ MultiplyGradNode::operator()(
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
   phi::RecordEvent node_execution_inner(
-      "Local_MultiplyGradNode", phi::TracerEventType::OperatorInner, 1);
+      "Local_MultiplyGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
 
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
