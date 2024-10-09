@@ -3934,8 +3934,8 @@ function clang-tidy_check() {
     -extra-arg=-Wno-overloaded-virtual  \
     -extra-arg=-Wno-defaulted-function-deleted  \
     -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
-    # -extra-arg=-Wno-return-type-c-linkage 2>&1)
     -extra-arg=-Wno-return-type-c-linkage
+    # -extra-arg=-Wno-return-type-c-linkage 2>&1)
 
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
