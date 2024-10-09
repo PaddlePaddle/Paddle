@@ -248,34 +248,54 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
 
 bool EyeOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
-  const auto num_rows_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto num_columns_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  std::vector<symbol::DimExpr> out_dims;
-  symbol::DimExpr rows;
-  symbol::DimExpr columns;
-  if (!num_rows_shape_or_data.data().has_value()) {
-    rows = symbol::DimExpr(infer_context->GetNextSymName());
-  } else {
-    rows =
-        symbol::DimExpr((num_rows_shape_or_data.data()->at(0)).Get<int64_t>());
-  }
-  if (!num_columns_shape_or_data.data().has_value()) {
-    columns = symbol::DimExpr(infer_context->GetNextSymName());
-  } else {
-    auto columns = symbol::DimExpr(
-        (num_columns_shape_or_data.data()->at(0)).Get<int64_t>());
-    if (columns == symbol::DimExpr(-1)) {
-      columns = rows;
+  std::vector<symbol::DimExpr> out_shape;
+  if (op->operand_source(0)) {
+    const auto &num_rows_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    if (num_rows_shape_or_data.data().has_value()) {
+      symbol::DimExpr num_rows_dim =
+          symbol::DimExpr(num_rows_shape_or_data.data().value().at(0));
+    } else {
+      symbol::DimExpr num_rows_dim =
+          symbol::DimExpr(infer_context->GetNextSymName());
     }
+  } else if (op->HasAttribute("num_rows")) {
+    int num_rows_int = op->attribute<pir::Int64Attribute>("num_rows").data();
+    symbol::DimExpr num_rows_dim = symbol::DimExpr(num_rows_int);
+  } else {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The num_rows must be set for Eyeop."));
   }
-  out_dims.emplace_back(rows);
-  out_dims.emplace_back(columns);
+
+  if (op->operand_source(1)) {
+    const auto &num_columns_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    if (num_columns_shape_or_data.data().has_value()) {
+      symbol::DimExpr columns =
+          symbol::DimExpr(num_columns_shape_or_data.data().value().at(0));
+    } else {
+      symbol::DimExpr columns =
+          symbol::DimExpr(infer_context->GetNextSymName());
+    }
+  } else if (op->HasAttribute("num_columns")) {
+    int num_columns_int =
+        op->attribute<pir::Int64Attribute>("num_columns").data();
+    if (num_columns_int == -1) {
+      symbol::DimExpr num_columns_dim = num_rows_dim
+    } else {
+      symbol::DimExpr num_columns_dim = symbol::DimExpr(num_columns_int);
+    }
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The num_columns must be set for Eyeop."));
+  }
+  out_shape.emplace_back(rows);
+  out_shape.emplace_back(columns);
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
   return true;
 }
 bool FeedOpInferSymbolicShape(pir::Operation *op,

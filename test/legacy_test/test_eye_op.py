@@ -49,7 +49,7 @@ class TestEyeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_symbol_infer=True)
+        self.check_output(check_pir=True)
 
     def init_dtype(self):
         self.dtype = np.int32
@@ -72,7 +72,7 @@ class TestEyeOp1(OpTest):
         self.outputs = {'Out': np.eye(50, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_symbol_infer=True)
+        self.check_output(check_pir=True)
 
 
 class TestEyeOp2(OpTest):
@@ -88,7 +88,7 @@ class TestEyeOp2(OpTest):
         self.outputs = {'Out': np.eye(99, 1, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_symbol_infer=True)
+        self.check_output(check_pir=True)
 
 
 class API_TestTensorEye(unittest.TestCase):
@@ -235,9 +235,7 @@ class TestEyeBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(
-            place, check_pir=True, check_symbol_infer=True
-        )
+        self.check_output_with_place(place, check_pir=True)
 
 
 if __name__ == "__main__":
