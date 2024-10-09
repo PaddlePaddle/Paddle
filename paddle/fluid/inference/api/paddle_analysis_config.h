@@ -597,20 +597,6 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableLowPrecisionIO(bool x = true);
 
   ///
-  /// \brief Set MixedBlackList for low precision.
-  ///
-  /// \param black_list_ unordered_set for AutoMixedPrecisionPass black_list.
-  ///
-  void SetMixedBlackList(const std::unordered_set<std::string>& black_list_ = {});
-
-  ///
-  /// \brief Set MixedWhiteList for low precision.
-  ///
-  /// \param white_list_ unordered_set for AutoMixedPrecisionPass white_list.
-  ///
-  void SetMixedWhiteList(const std::unordered_set<std::string>& white_list_ = {});
-
-  ///
   /// \brief Control whether to specify the inputs' names.
   /// The ZeroCopyTensor type has a name member, assign it with the
   /// corresponding

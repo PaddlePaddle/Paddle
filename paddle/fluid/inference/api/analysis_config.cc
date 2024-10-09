@@ -806,26 +806,6 @@ void AnalysisConfig::EnableLowPrecisionIO(bool x) {
   enable_low_precision_io_ = x;
 }
 
-void AnalysisConfig::SetMixedBlackList(const std::unordered_set<std::string>& black_list_){
-  PADDLE_ENFORCE_EQ(
-      enable_gpu_mixed_,
-      true,
-      common::errors::InvalidArgument(
-          "To enable low precision io, please call EnableUseGPU() to specify "
-          "precision mode as low precision."));
-  mixed_black_list_=black_list_;
-}
-
-void AnalysisConfig::SetMixedWhiteList(const std::unordered_set<std::string>& white_list_){
-  PADDLE_ENFORCE_EQ(
-      enable_gpu_mixed_,
-      true,
-      common::errors::InvalidArgument(
-          "To enable low precision io, please call EnableUseGPU() to specify "
-          "precision mode as low precision."));
-  mixed_white_list_=white_list_;
-}
-
 void AnalysisConfig::SetTRTDynamicShapeInfo(
     std::map<std::string, std::vector<int>> min_input_shape,
     std::map<std::string, std::vector<int>> max_input_shape,
