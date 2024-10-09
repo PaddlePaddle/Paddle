@@ -16,7 +16,7 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/gen_comm_id_helper.h"
 #endif
 
