@@ -236,9 +236,8 @@ class ShuffleChannelDetectPass : public pir::PatternRewritePass {
 namespace pir {
 
 std::unique_ptr<Pass> CreateShuffleChannelDetectPass() {
-  // pd_op.matmul + pd_op.transpose + pd_op.reshape -> onednn_op.fused_matmul
-  // pd_op.fused_matmul + pd_op.transpose + pd_op.reshape ->
-  // onednn_op.fused_matmul
+  // pd_op.reshape + pd_op.transpose + pd_op.reshape ->
+  // onednn_op.shuffle_channel
   return std::make_unique<ShuffleChannelDetectPass>();
 }
 }  // namespace pir

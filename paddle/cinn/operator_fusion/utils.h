@@ -89,7 +89,7 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   std::stringstream ss;
   pir::IrPrinter printer(ss);
   for (const auto* op : ops) {
-    printer.PrintOperation(const_cast<pir::Operation*>(op));
+    printer.PrintOperation(*op);
     ss << "(" << op << ")"
        << "\n";
   }
@@ -273,11 +273,9 @@ struct ValueDimHash {
 static std::vector<symbol::DimExpr> GetDimExprsFromValue(pir::Value value) {
   const auto& value_dims = GetAllValueDimFromValue(value);
 
-  VLOG(4) << "Start Print:";
   std::function<symbol::DimExpr(ValueDim)> func =
       [](const ValueDim& value_dim) {
         const auto& symbolic_dim = value_dim.GetSymbolicDim();
-        VLOG(4) << symbolic_dim;
         return symbolic_dim;
       };
   return MapVector(value_dims, func);

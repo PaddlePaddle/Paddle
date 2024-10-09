@@ -154,6 +154,32 @@ class TestReduceFusion(unittest.TestCase):
 
         self.compare_result(func, None, init)
 
+    def test_reduce_horizontal_fusion_with_same_loop_but_different_reduce_dim(
+        self,
+    ):
+        def func(x):
+            a = paddle.max(x, axis=[2])
+            b = paddle.sum(x, axis=[1, 2])
+            return a, b
+
+        def init():
+            x = paddle.rand((64, 128, 96), dtype='float32')
+            return (x,)
+
+        self.compare_result(func, None, init)
+
+    def test_RT_fusion_with_different_fake_reduce_dim(self):
+        def func(x):
+            a = paddle.max(x, axis=[0, 1])
+            b = paddle.expand(a, shape=[128, 96])
+            return b
+
+        def init():
+            x = paddle.rand((64, 128, 96), dtype='float32')
+            return (x,)
+
+        self.compare_result(func, None, init)
+
 
 if __name__ == "__main__":
     unittest.main()

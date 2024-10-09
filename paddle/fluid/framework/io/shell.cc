@@ -18,7 +18,7 @@
 
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/timer.h"
 
 namespace paddle {
 namespace framework {

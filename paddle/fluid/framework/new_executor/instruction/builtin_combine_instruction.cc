@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
 namespace paddle {
@@ -25,6 +26,8 @@ BuiltinCombineInstruction::BuiltinCombineInstruction(
     ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place) {
   op_ = op;
+
+  SetKernelType(AnalyseOpFuncType(op, place));
 
   InitInputsOutputsIds(op, *value_exe_info);
 

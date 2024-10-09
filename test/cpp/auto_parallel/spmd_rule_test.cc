@@ -1971,6 +1971,289 @@ TEST(Flatten, Ctor) {
   check_dim_mapping(spmd_grad.second[0], {0, -1, 1, -1});
 }
 
+TEST(Conv2dSPMDRuleInferForward, Ctor) {
+  // build input data class
+  std::vector<int64_t> input_shape = {2, 4, 8, 8};
+  std::vector<int64_t> filter_shape = {10, 4, 3, 3};
+
+  std::vector<int64_t> mesh_shape = {2, 2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::vector<std::string> dim_names = {"dp", "mp", "pp"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr input_dist_attr = TensorDistAttr();
+  input_dist_attr.set_process_mesh(process_mesh);
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  input_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false, false, false}));
+
+  TensorDistAttr filter_dist_attr = TensorDistAttr();
+  filter_dist_attr.set_process_mesh(process_mesh);
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  filter_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false, false, false}));
+
+  phi::distributed::DistMetaTensor input(common::make_ddim(input_shape),
+                                         input_dist_attr);
+  phi::distributed::DistMetaTensor filter(common::make_ddim(filter_shape),
+                                          filter_dist_attr);
+
+  // test 1
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+  auto infered_dist_attrs = phi::distributed::Conv2dInferSpmd(input, filter);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1, -1});
+
+  // test 2
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+  infered_dist_attrs = phi::distributed::Conv2dInferSpmd(input, filter);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {-1, 0, -1, -1});
+
+  // test 3
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({1, -1, -1, -1}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+  infered_dist_attrs = phi::distributed::Conv2dInferSpmd(input, filter);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, 1, -1, -1});
+
+  // test 4
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0, -1, -1}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+
+  infered_dist_attrs = phi::distributed::Conv2dInferSpmd(input, filter);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {-1, 0, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {-1, 0, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {-1, -1, -1, -1});
+  EXPECT_EQ(is_partial(infered_dist_attrs.second[0]), true);
+
+  // test 5
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 2, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({1, 2, -1, -1}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+
+  infered_dist_attrs = phi::distributed::Conv2dInferSpmd(input, filter);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {0, 2, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {1, 2, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, 1, -1, -1});
+  EXPECT_EQ(is_partial(infered_dist_attrs.second[0]), true);
+}
+
+TEST(Conv2dSPMDRuleInferBackward, Ctor) {
+  // build input data class
+  std::vector<int64_t> input_shape = {2, 4, 8, 8};
+  std::vector<int64_t> filter_shape = {10, 4, 3, 3};
+  std::vector<int64_t> output_shape = {2, 10, 6, 6};
+
+  std::vector<int64_t> mesh_shape = {2, 2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::vector<std::string> dim_names = {"dp", "mp", "pp"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr input_dist_attr = TensorDistAttr();
+  input_dist_attr.set_process_mesh(process_mesh);
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  input_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false, false, false}));
+
+  TensorDistAttr filter_dist_attr = TensorDistAttr();
+  filter_dist_attr.set_process_mesh(process_mesh);
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  filter_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false, false, false}));
+
+  TensorDistAttr output_dist_attr = TensorDistAttr();
+  output_dist_attr.set_process_mesh(process_mesh);
+  output_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  output_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false, false, false}));
+
+  phi::distributed::DistMetaTensor input(common::make_ddim(input_shape),
+                                         input_dist_attr);
+  phi::distributed::DistMetaTensor filter(common::make_ddim(filter_shape),
+                                          filter_dist_attr);
+  phi::distributed::DistMetaTensor output(common::make_ddim(output_shape),
+                                          output_dist_attr);
+
+  auto infered_dist_attrs =
+      phi::distributed::Conv2dInferSpmdReverse(input, filter, output);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, 1, -1, -1});
+}
+
+TEST(Conv2dGradSPMDRule, Ctor) {
+  // build input data class
+  std::vector<int64_t> input_shape = {2, 4, 8, 8};
+  std::vector<int64_t> filter_shape = {10, 4, 3, 3};
+  std::vector<int64_t> output_grad_shape = {2, 10, 6, 6};
+
+  std::vector<int64_t> mesh_shape = {2, 2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::vector<std::string> dim_names = {"dp", "mp", "pp"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr input_dist_attr = TensorDistAttr();
+  input_dist_attr.set_process_mesh(process_mesh);
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  input_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false, false, false}));
+
+  TensorDistAttr filter_dist_attr = TensorDistAttr();
+  filter_dist_attr.set_process_mesh(process_mesh);
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  filter_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false, false, false}));
+
+  TensorDistAttr output_grad_dist_attr = TensorDistAttr();
+  output_grad_dist_attr.set_process_mesh(process_mesh);
+  output_grad_dist_attr.set_dims_mapping(
+      std::vector<int64_t>({-1, -1, -1, -1}));
+  output_grad_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false, false, false}));
+
+  phi::distributed::DistMetaTensor input(common::make_ddim(input_shape),
+                                         input_dist_attr);
+  phi::distributed::DistMetaTensor filter(common::make_ddim(filter_shape),
+                                          filter_dist_attr);
+  phi::distributed::DistMetaTensor output_grad(
+      common::make_ddim(output_grad_shape), output_grad_dist_attr);
+
+  // test 1
+  auto infered_dist_attrs =
+      phi::distributed::Conv2dGradInferSpmd(input, filter, output_grad);
+  EXPECT_EQ(infered_dist_attrs.first.size(), (size_t)3);
+  EXPECT_EQ(infered_dist_attrs.second.size(), (size_t)2);
+  check_dim_mapping(infered_dist_attrs.first[0], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[2], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[1], {-1, -1, -1, -1});
+  EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), false);
+  VLOG(4) << "test 1 done";
+
+  // test 2
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  output_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+  output_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim(output_grad_shape), output_grad_dist_attr);
+  infered_dist_attrs =
+      phi::distributed::Conv2dGradInferSpmd(input, filter, output_grad);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[2], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[1], {-1, -1, -1, -1});
+  EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), false);
+
+  // test 3
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
+  output_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0, -1, -1}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+  output_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim(output_grad_shape), output_grad_dist_attr);
+  infered_dist_attrs =
+      phi::distributed::Conv2dGradInferSpmd(input, filter, output_grad);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[2], {-1, 0, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {-1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[1], {0, -1, -1, -1});
+  EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), false);
+
+  // test 4
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({1, -1, -1, -1}));
+  output_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+  output_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim(output_grad_shape), output_grad_dist_attr);
+  infered_dist_attrs =
+      phi::distributed::Conv2dGradInferSpmd(input, filter, output_grad);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {1, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[2], {0, 1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[1], {1, -1, -1, -1});
+  EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), false);
+
+  // test 5
+  input_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 2, -1, -1}));
+  filter_dist_attr.set_dims_mapping(std::vector<int64_t>({1, 2, -1, -1}));
+  output_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  output_grad_dist_attr.set_partial_status(std::vector<int64_t>({2}));
+
+  input = phi::distributed::DistMetaTensor(common::make_ddim(input_shape),
+                                           input_dist_attr);
+  filter = phi::distributed::DistMetaTensor(common::make_ddim(filter_shape),
+                                            filter_dist_attr);
+  output_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim(output_grad_shape), output_grad_dist_attr);
+
+  infered_dist_attrs =
+      phi::distributed::Conv2dGradInferSpmd(input, filter, output_grad);
+
+  check_dim_mapping(infered_dist_attrs.first[0], {0, 2, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[1], {1, 2, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[2], {0, 1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[0], {0, 2, -1, -1});
+  check_dim_mapping(infered_dist_attrs.second[1], {1, 2, -1, -1});
+  EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), true);
+}
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle

@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -102,7 +101,6 @@ class CheckDy2StWithDygraphMixin:
 
 
 class TestClosure(Dy2StTestBase, CheckDy2StWithDygraphMixin):
-    @test_legacy_and_pt_and_pir
     def test_simple_closure(self):
         simple_closure = create_simple_closure()
         x = paddle.to_tensor(1.0)
@@ -110,25 +108,21 @@ class TestClosure(Dy2StTestBase, CheckDy2StWithDygraphMixin):
 
 
 class TestSuperCall(Dy2StTestBase, CheckDy2StWithDygraphMixin):
-    @test_legacy_and_pt_and_pir
     def test_super_call_without_argument_in_forward(self):
         model = SuperCallWithoutArgumentInForward()
         x = paddle.to_tensor(1.0)
         self.check_fn(model, x)
 
-    @test_legacy_and_pt_and_pir
     def test_super_call_without_argument_in_control_flow(self):
         model = SuperCallWithoutArgumentInControlFlow()
         x = paddle.to_tensor(1.0)
         self.check_fn(model, x)
 
-    @test_legacy_and_pt_and_pir
     def test_user_defined_super_call_without_argument(self):
         model = UserDefinedSuperCallWithoutArgument()
         x = paddle.to_tensor(1.0)
         self.check_fn(model, x)
 
-    @test_legacy_and_pt_and_pir
     def test_super_call_with_argument(self):
         model = SuperCallWithArgument()
         x = paddle.to_tensor(1.0)
@@ -136,7 +130,6 @@ class TestSuperCall(Dy2StTestBase, CheckDy2StWithDygraphMixin):
 
 
 class TestRecursiveCall(Dy2StTestBase, CheckDy2StWithDygraphMixin):
-    @test_legacy_and_pt_and_pir
     def test_recursive_call(self):
         x = 5
         self.check_fn(recursive_call, x)

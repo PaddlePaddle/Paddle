@@ -19,26 +19,46 @@ limitations under the License. */
 #include <mutex>
 #include <unordered_map>
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+#else
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
+#endif
 
-#if CUDA_VERSION >= 11060
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
+    defined(PADDLE_WITH_HIP)
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/backends/dynload/cublasLt.h"
-#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/utils/optional.h"
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#include "paddle/phi/backends/dynload/cublasLt.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/dynload/hipblasLt.h"
+#include "paddle/phi/backends/gpu/rocm/rocm_helper.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.hip.h"
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#define GPU(str) hip##str
+#define BLASLT_CONSTANT(str) HIP##str
+#else
+#define GPU(str) cu##str
+#define BLASLT_CONSTANT(str) CU##str
+#endif
 
 COMMON_DECLARE_int64(cublaslt_exhaustive_search_times);
 
@@ -56,19 +76,19 @@ class GemmEpilogueAlgoCache {
   GemmEpilogueAlgoCache(GemmEpilogueAlgoCache const&) = delete;
   void operator=(GemmEpilogueAlgoCache const&) = delete;
 
-  cublasLtMatmulAlgo_t* GetGemmAlgo(cublasLtHandle_t lt_handle,
-                                    cublasLtMatmulDesc_t op_desc,
-                                    cublasLtMatrixLayout_t a_desc,
-                                    cublasLtMatrixLayout_t b_desc,
-                                    cublasLtMatrixLayout_t c_desc,
-                                    const void* alpha,
-                                    const void* beta,
-                                    const void* a,
-                                    const void* b,
-                                    void* c,
-                                    cudaStream_t stream,
-                                    void* workspace,
-                                    size_t workspace_size) {
+  GPU(blasLtMatmulAlgo_t) * GetGemmAlgo(GPU(blasLtHandle_t) lt_handle,
+                                        GPU(blasLtMatmulDesc_t) op_desc,
+                                        GPU(blasLtMatrixLayout_t) a_desc,
+                                        GPU(blasLtMatrixLayout_t) b_desc,
+                                        GPU(blasLtMatrixLayout_t) c_desc,
+                                        const void* alpha,
+                                        const void* beta,
+                                        const void* a,
+                                        const void* b,
+                                        void* c,
+                                        gpuStream_t stream,
+                                        void* workspace,
+                                        size_t workspace_size) {
     if (search_times_ <= 0) return nullptr;
 
     int64_t seed = 0;
@@ -79,7 +99,7 @@ class GemmEpilogueAlgoCache {
     HashMatrixLayoutDesc_(b_desc, &seed, hash_fn);
     HashMatrixLayoutDesc_(c_desc, &seed, hash_fn);
 
-    cublasLtMatmulAlgo_t ret;
+    GPU(blasLtMatmulAlgo_t) ret;
     {
       std::lock_guard<std::mutex> lock(cache_mutex_);
       auto it = map_.find(seed);
@@ -88,30 +108,30 @@ class GemmEpilogueAlgoCache {
       }
     }
 
-    cublasLtMatmulPreference_t preference;
+    GPU(blasLtMatmulPreference_t) preference;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatmulPreferenceCreate(&preference));
+        phi::dynload::GPU(blasLtMatmulPreferenceCreate)(&preference));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatmulPreferenceSetAttribute(
+        phi::dynload::GPU(blasLtMatmulPreferenceSetAttribute)(
             preference,
-            CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+            BLASLT_CONSTANT(BLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES),
             &workspace_size,
             sizeof(workspace_size)));
 
     int returned_results = 0;
-    std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
+    std::vector<GPU(blasLtMatmulHeuristicResult_t)> heuristic_results(
         requested_algo_count_);
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatmulAlgoGetHeuristic(lt_handle,
-                                                     op_desc,
-                                                     a_desc,
-                                                     b_desc,
-                                                     c_desc,
-                                                     c_desc,
-                                                     preference,
-                                                     requested_algo_count_,
-                                                     heuristic_results.data(),
-                                                     &returned_results));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulAlgoGetHeuristic)(
+        lt_handle,
+        op_desc,
+        a_desc,
+        b_desc,
+        c_desc,
+        c_desc,
+        preference,
+        requested_algo_count_,
+        heuristic_results.data(),
+        &returned_results));
 
     PADDLE_ENFORCE_GT(
         returned_results,
@@ -119,7 +139,7 @@ class GemmEpilogueAlgoCache {
         common::errors::Unavailable("No GEMM epilogue algorithm support!"));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatmulPreferenceDestroy(preference));
+        phi::dynload::GPU(blasLtMatmulPreferenceDestroy)(preference));
 
     int best_algo_idx = -1;
     float best_algo_time = 0;
@@ -127,24 +147,25 @@ class GemmEpilogueAlgoCache {
     // Run 100 times for warmup
     int warmup_algo_idx = 0;
     for (int t = 0; t < 100; t++) {
-      cublasStatus_t status =
-          phi::dynload::cublasLtMatmul(lt_handle,
-                                       op_desc,
-                                       alpha,
-                                       a,
-                                       a_desc,
-                                       b,
-                                       b_desc,
-                                       beta,
-                                       c,
-                                       c_desc,
-                                       c,
-                                       c_desc,
-                                       &heuristic_results[warmup_algo_idx].algo,
-                                       workspace,
-                                       workspace_size,
-                                       stream);
-      if (status != CUBLAS_STATUS_SUCCESS) {
+      GPU(blasStatus_t)
+      status = phi::dynload::GPU(blasLtMatmul)(
+          lt_handle,
+          op_desc,
+          alpha,
+          a,
+          a_desc,
+          b,
+          b_desc,
+          beta,
+          c,
+          c_desc,
+          c,
+          c_desc,
+          &heuristic_results[warmup_algo_idx].algo,
+          workspace,
+          workspace_size,
+          stream);
+      if (status != BLASLT_CONSTANT(BLAS_STATUS_SUCCESS)) {
         t = -1;
         warmup_algo_idx += 1;
         if (warmup_algo_idx == requested_algo_count_) {
@@ -154,40 +175,51 @@ class GemmEpilogueAlgoCache {
       }
     }
 
-    cudaEvent_t start_event, stop_event;
+    gpuEvent_t start_event, stop_event;
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreate(&start_event));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreate(&stop_event));
+#else  // PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&start_event));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&stop_event));
+#endif
 
     for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
       float curr_time = 0;
       for (int check_idx = 0; check_idx < search_times_; check_idx++) {
         float time = 0;
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_event, stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(gpuEventRecord(start_event, stream));
 
-        cublasStatus_t status =
-            phi::dynload::cublasLtMatmul(lt_handle,
-                                         op_desc,
-                                         alpha,
-                                         a,
-                                         a_desc,
-                                         b,
-                                         b_desc,
-                                         beta,
-                                         c,
-                                         c_desc,
-                                         c,
-                                         c_desc,
-                                         &heuristic_results[algo_idx].algo,
-                                         workspace,
-                                         workspace_size,
-                                         stream);
+        GPU(blasStatus_t)
+        status =
+            phi::dynload::GPU(blasLtMatmul)(lt_handle,
+                                            op_desc,
+                                            alpha,
+                                            a,
+                                            a_desc,
+                                            b,
+                                            b_desc,
+                                            beta,
+                                            c,
+                                            c_desc,
+                                            c,
+                                            c_desc,
+                                            &heuristic_results[algo_idx].algo,
+                                            workspace,
+                                            workspace_size,
+                                            stream);
 
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(stop_event, stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(stop_event));
+        PADDLE_ENFORCE_GPU_SUCCESS(gpuEventRecord(stop_event, stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(gpuEventSynchronize(stop_event));
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            hipEventElapsedTime(&time, start_event, stop_event));
+#else  // PADDLE_WITH_CUDA
         PADDLE_ENFORCE_GPU_SUCCESS(
             cudaEventElapsedTime(&time, start_event, stop_event));
+#endif
         curr_time += time;
-        if (status != CUBLAS_STATUS_SUCCESS) {
+        if (status != BLASLT_CONSTANT(BLAS_STATUS_SUCCESS)) {
           curr_time = 3.40282e+038;  // Max Value of float
           break;
         }
@@ -200,8 +232,8 @@ class GemmEpilogueAlgoCache {
       }
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(start_event));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(stop_event));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuEventDestroy(start_event));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuEventDestroy(stop_event));
 
     if (best_algo_idx == -1) {
       PADDLE_THROW(
@@ -224,44 +256,44 @@ class GemmEpilogueAlgoCache {
       : search_times_(search_times) {
     map_.clear();
   }
-  std::unordered_map<int64_t, cublasLtMatmulAlgo_t> map_;
+  std::unordered_map<int64_t, GPU(blasLtMatmulAlgo_t)> map_;
   int search_times_;
   const int requested_algo_count_ = 10;
   std::mutex cache_mutex_;
 
-  void HashMatmulDesc_(cublasLtMatmulDesc_t desc,
+  void HashMatmulDesc_(GPU(blasLtMatmulDesc_t) desc,
                        int64_t* seed,
                        const std::hash<int64_t>& hash_fn) {
     size_t size_to_write;
     int trans_a, trans_b;
     uint32_t epilogue;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescGetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescGetAttribute)(
         desc,
-        CUBLASLT_MATMUL_DESC_TRANSA,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_TRANSA),
         &trans_a,
         sizeof(trans_a),
         &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(trans_a));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescGetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescGetAttribute)(
         desc,
-        CUBLASLT_MATMUL_DESC_TRANSB,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_TRANSB),
         &trans_b,
         sizeof(trans_b),
         &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(trans_b));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescGetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescGetAttribute)(
         desc,
-        CUBLASLT_MATMUL_DESC_EPILOGUE,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_EPILOGUE),
         &epilogue,
         sizeof(epilogue),
         &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(epilogue));
   }
 
-  void HashMatrixLayoutDesc_(cublasLtMatrixLayout_t desc,
+  void HashMatrixLayoutDesc_(GPU(blasLtMatrixLayout_t) desc,
                              int64_t* seed,
                              const std::hash<int64_t>& hash_fn) {
     size_t size_to_write;
@@ -270,40 +302,58 @@ class GemmEpilogueAlgoCache {
     uint64_t row, col;
     int64_t ld, batch_offset;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutGetAttribute(
-        desc,
-        CUBLASLT_MATRIX_LAYOUT_TYPE,
-        &dtype,
-        sizeof(dtype),
-        &size_to_write));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatrixLayoutGetAttribute)(
+            desc,
+            BLASLT_CONSTANT(BLASLT_MATRIX_LAYOUT_TYPE),
+            &dtype,
+            sizeof(dtype),
+            &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(dtype));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutGetAttribute(
-        desc,
-        CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
-        &batch,
-        sizeof(batch),
-        &size_to_write));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatrixLayoutGetAttribute)(
+            desc,
+            BLASLT_CONSTANT(BLASLT_MATRIX_LAYOUT_BATCH_COUNT),
+            &batch,
+            sizeof(batch),
+            &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(batch));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutGetAttribute(
-        desc, CUBLASLT_MATRIX_LAYOUT_ROWS, &row, sizeof(row), &size_to_write));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatrixLayoutGetAttribute)(
+            desc,
+            BLASLT_CONSTANT(BLASLT_MATRIX_LAYOUT_ROWS),
+            &row,
+            sizeof(row),
+            &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(row));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutGetAttribute(
-        desc, CUBLASLT_MATRIX_LAYOUT_COLS, &col, sizeof(col), &size_to_write));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatrixLayoutGetAttribute)(
+            desc,
+            BLASLT_CONSTANT(BLASLT_MATRIX_LAYOUT_COLS),
+            &col,
+            sizeof(col),
+            &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(col));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutGetAttribute(
-        desc, CUBLASLT_MATRIX_LAYOUT_LD, &ld, sizeof(ld), &size_to_write));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatrixLayoutGetAttribute)(
+            desc,
+            BLASLT_CONSTANT(BLASLT_MATRIX_LAYOUT_LD),
+            &ld,
+            sizeof(ld),
+            &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(ld));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutGetAttribute(
-        desc,
-        CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
-        &batch_offset,
-        sizeof(batch_offset),
-        &size_to_write));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatrixLayoutGetAttribute)(
+            desc,
+            BLASLT_CONSTANT(BLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET),
+            &batch_offset,
+            sizeof(batch_offset),
+            &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(batch_offset));
   }
 
@@ -314,16 +364,26 @@ class GemmEpilogueAlgoCache {
   }
 };
 
-static cublasLtEpilogue_t GetEpilogueType(const std::string& activation,
-                                          bool enable_auxiliary) {
+static GPU(blasLtEpilogue_t)
+    GetEpilogueType(const std::string& activation, bool enable_auxiliary) {
   if (activation == "relu") {
+#ifdef PADDLE_WITH_HIP
+    if (enable_auxiliary) {
+      PADDLE_THROW(
+          common::errors::Unimplemented("HIPBLASLT_EPILOGUE_RELU_AUX_BIAS is "
+                                        "not supported on HIP platform."));
+    } else {
+      return HIPBLASLT_EPILOGUE_RELU_BIAS;
+    }
+#else
     return enable_auxiliary ? CUBLASLT_EPILOGUE_RELU_AUX_BIAS
                             : CUBLASLT_EPILOGUE_RELU_BIAS;
+#endif
   } else if (activation == "gelu") {
-    return enable_auxiliary ? CUBLASLT_EPILOGUE_GELU_AUX_BIAS
-                            : CUBLASLT_EPILOGUE_GELU_BIAS;
+    return enable_auxiliary ? BLASLT_CONSTANT(BLASLT_EPILOGUE_GELU_AUX_BIAS)
+                            : BLASLT_CONSTANT(BLASLT_EPILOGUE_GELU_BIAS);
   } else if (activation == "none") {
-    return CUBLASLT_EPILOGUE_BIAS;
+    return BLASLT_CONSTANT(BLASLT_EPILOGUE_BIAS);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The activation attribute of fused_gemm_epilogue op should be"
@@ -357,34 +417,47 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
   bool enable_auxiliary = reserve_space == nullptr ? false : true;
   auto* out_data = out->data<T>();
 
+#ifdef PADDLE_WITH_HIP
+  hipDataType_t mat_type = phi::backends::gpu::ToHipBlasLtDataType<T>();
+  hipDataType_t scale_type = phi::backends::gpu::ToHipBlasLtDataType<MT>();
+#else
   cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
   cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+#endif
+  GPU(blasComputeType_t) compute_type = BLASLT_CONSTANT(BLAS_COMPUTE_32F);
   if (std::is_same<T, double>::value) {
-    compute_type = CUBLAS_COMPUTE_64F;
+    compute_type = BLASLT_CONSTANT(BLAS_COMPUTE_64F);
   }
 
-  cublasLtMatmulDesc_t operation_desc = NULL;
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescCreate(
+  GPU(blasLtMatmulDesc_t) operation_desc = NULL;
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescCreate)(
       &operation_desc, compute_type, scale_type));
-  cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
-  cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
-      operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transx, sizeof(transx)));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
-      operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy, sizeof(transy)));
-
-  cublasLtEpilogue_t epiloque_func =
-      GetEpilogueType(activation, enable_auxiliary);
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+  GPU(blasOperation_t)
+  transx = trans_x ? BLASLT_CONSTANT(BLAS_OP_T) : BLASLT_CONSTANT(BLAS_OP_N);
+  GPU(blasOperation_t)
+  transy = trans_y ? BLASLT_CONSTANT(BLAS_OP_T) : BLASLT_CONSTANT(BLAS_OP_N);
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
       operation_desc,
-      CUBLASLT_MATMUL_DESC_EPILOGUE,
+      BLASLT_CONSTANT(BLASLT_MATMUL_DESC_TRANSB),
+      &transx,
+      sizeof(transx)));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
+      operation_desc,
+      BLASLT_CONSTANT(BLASLT_MATMUL_DESC_TRANSA),
+      &transy,
+      sizeof(transy)));
+
+  GPU(blasLtEpilogue_t)
+  epiloque_func = GetEpilogueType(activation, enable_auxiliary);
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
+      operation_desc,
+      BLASLT_CONSTANT(BLASLT_MATMUL_DESC_EPILOGUE),
       &epiloque_func,
       sizeof(epiloque_func)));
   const T* bias_data = bias->data<T>();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
       operation_desc,
-      CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+      BLASLT_CONSTANT(BLASLT_MATMUL_DESC_BIAS_POINTER),
       &bias_data,
       sizeof(bias_data)));
 
@@ -404,42 +477,42 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
 
     void* aux_data = reserve_space->data();
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
         operation_desc,
-        CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER),
         &aux_data,
         sizeof(aux_data)));
     int64_t aux_ld = N;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
         operation_desc,
-        CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_EPILOGUE_AUX_LD),
         &aux_ld,
         sizeof(aux_ld)));
   }
 
-  cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
+  GPU(blasLtMatrixLayout_t) x_desc = NULL, y_desc = NULL, out_desc = NULL;
   if (trans_x) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, M, K, M));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
+        &x_desc, mat_type, M, K, M));
   } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, K, M, K));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
+        &x_desc, mat_type, K, M, K));
   }
   if (trans_y) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, K, N, K));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
+        &y_desc, mat_type, K, N, K));
   } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, N, K, N));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
+        &y_desc, mat_type, N, K, N));
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cublasLtMatrixLayoutCreate(&out_desc, mat_type, N, M, N));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
+      &out_desc, mat_type, N, M, N));
 
-  cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
+  GPU(blasLtHandle_t) lt_handle = dev_ctx.cublaslt_handle();
   // NOTE(zengjinle): I do not know whether the 4MB workspace size is
   // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
   size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-  cudaStream_t stream = dev_ctx.stream();
+  gpuStream_t stream = dev_ctx.stream();
   auto workspace = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       workspace_size,
@@ -464,29 +537,31 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
                                                             stream,
                                                             workspace->ptr(),
                                                             workspace_size);
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmul(lt_handle,
-                                                          operation_desc,
-                                                          &alpha,
-                                                          y_data,
-                                                          y_desc,
-                                                          x_data,
-                                                          x_desc,
-                                                          &beta,
-                                                          out_data,
-                                                          out_desc,
-                                                          out_data,
-                                                          out_desc,
-                                                          algo,
-                                                          workspace->ptr(),
-                                                          workspace_size,
-                                                          stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmul)(lt_handle,
+                                                             operation_desc,
+                                                             &alpha,
+                                                             y_data,
+                                                             y_desc,
+                                                             x_data,
+                                                             x_desc,
+                                                             &beta,
+                                                             out_data,
+                                                             out_desc,
+                                                             out_data,
+                                                             out_desc,
+                                                             algo,
+                                                             workspace->ptr(),
+                                                             workspace_size,
+                                                             stream));
 
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cublasLtMatmulDescDestroy(operation_desc));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutDestroy(y_desc));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutDestroy(x_desc));
+      phi::dynload::GPU(blasLtMatmulDescDestroy)(operation_desc));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cublasLtMatrixLayoutDestroy(out_desc));
+      phi::dynload::GPU(blasLtMatrixLayoutDestroy)(y_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::GPU(blasLtMatrixLayoutDestroy)(x_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::GPU(blasLtMatrixLayoutDestroy)(out_desc));
 }
 
 struct BwdFusedEpilogueSetter {
@@ -496,7 +571,12 @@ struct BwdFusedEpilogueSetter {
     if (activation_grad == "none") {
       return kMatmulGrad;
     } else if (activation_grad == "relu_grad") {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_THROW(common::errors::Unimplemented(
+          "relu_grad is not supported on HIP platform."));
+#else
       return kMatmulReluGrad;
+#endif
     } else if (activation_grad == "gelu_grad") {
       return kMatmulGeluGrad;
     } else {
@@ -591,17 +671,22 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
 }
 
 static constexpr auto BoolToCuBlasEnum(bool transpose) {
-  return transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
+  return transpose ? BLASLT_CONSTANT(BLAS_OP_T) : BLASLT_CONSTANT(BLAS_OP_N);
 }
 
-static cublasLtEpilogue_t GetEpilogueGradType(
-    const std::string& activation_grad) {
+static GPU(blasLtEpilogue_t)
+    GetEpilogueGradType(const std::string& activation_grad) {
   if (activation_grad == "none") {
-    return CUBLASLT_EPILOGUE_DEFAULT;
+    return BLASLT_CONSTANT(BLASLT_EPILOGUE_DEFAULT);
   } else if (activation_grad == "relu_grad") {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_THROW(common::errors::Unimplemented(
+        "relu_grad is not supported on HIP platform."));
+#else
     return CUBLASLT_EPILOGUE_DRELU;
+#endif
   } else if (activation_grad == "gelu_grad") {
-    return CUBLASLT_EPILOGUE_DGELU;
+    return BLASLT_CONSTANT(BLASLT_EPILOGUE_DGELU);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The activation_grad attribute of fused_gemm_epilogue op should "
@@ -635,28 +720,34 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
 
   using Trait = FusedGEMMGradTrait<TransX, TransY>;
 
+#ifdef PADDLE_WITH_HIP
+  hipDataType_t mat_type = phi::backends::gpu::ToHipBlasLtDataType<T>();
+  hipDataType_t scale_type = phi::backends::gpu::ToHipBlasLtDataType<MT>();
+#else
   cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
   cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+#endif
+  GPU(blasComputeType_t) compute_type = BLASLT_CONSTANT(BLAS_COMPUTE_32F);
   if (std::is_same<T, double>::value) {
-    compute_type = CUBLAS_COMPUTE_64F;
+    compute_type = BLASLT_CONSTANT(BLAS_COMPUTE_64F);
   }
 
-  cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
+  GPU(blasLtHandle_t) lt_handle = dev_ctx.cublaslt_handle();
   // NOTE(zengjinle): I do not know whether the 4MB workspace size is
   // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
   size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-  cudaStream_t stream = dev_ctx.stream();
+  gpuStream_t stream = dev_ctx.stream();
 
   MT alpha = static_cast<MT>(1.0);
   MT beta_dx = use_addto_dx ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
   MT beta_dy = use_addto_dy ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
 
-  cublasLtMatrixLayout_t dout_desc = nullptr, dout_trans_desc = nullptr;
-  cublasLtMatrixLayout_t x_desc = nullptr, x_trans_desc = nullptr;
-  cublasLtMatrixLayout_t y_desc = nullptr, y_trans_desc = nullptr;
-  cublasLtMatrixLayout_t dx_desc = nullptr, dy_desc = nullptr;
-  cublasLtMatmulDesc_t dx_operation_desc = nullptr, dy_operation_desc = nullptr;
+  GPU(blasLtMatrixLayout_t) dout_desc = nullptr, dout_trans_desc = nullptr;
+  GPU(blasLtMatrixLayout_t) x_desc = nullptr, x_trans_desc = nullptr;
+  GPU(blasLtMatrixLayout_t) y_desc = nullptr, y_trans_desc = nullptr;
+  GPU(blasLtMatrixLayout_t) dx_desc = nullptr, dy_desc = nullptr;
+  GPU(blasLtMatmulDesc_t)
+  dx_operation_desc = nullptr, dy_operation_desc = nullptr;
 
   DEFINE_PADDLE_SCOPE_GUARD([&] {
     auto descs = {dout_desc,
@@ -670,18 +761,18 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
     for (auto desc : descs) {
       if (desc) {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cublasLtMatrixLayoutDestroy(desc));
+            phi::dynload::GPU(blasLtMatrixLayoutDestroy)(desc));
       }
     }
 
     if (dx_operation_desc) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasLtMatmulDescDestroy(dx_operation_desc));
+          phi::dynload::GPU(blasLtMatmulDescDestroy)(dx_operation_desc));
     }
 
     if (dy_operation_desc) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasLtMatmulDescDestroy(dy_operation_desc));
+          phi::dynload::GPU(blasLtMatmulDescDestroy)(dy_operation_desc));
     }
   });
 
@@ -695,20 +786,20 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
   // dx = func(dout, y)
   if (dx) {
     constexpr auto kXGradAIsDZ = (Trait::kXGradA == FusedGEMMGradInType::kDZ);
-    cublasLtMatrixLayout_t *dx_dout_desc, *dx_y_desc;
+    GPU(blasLtMatrixLayout_t) * dx_dout_desc, *dx_y_desc;
 
     if (TransX) {
       dx_dout_desc = &dout_trans_desc;
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutCreate(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
           dx_dout_desc, mat_type, z_row, z_col, z_row));
     } else {
       dx_dout_desc = &dout_desc;
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutCreate(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
           dx_dout_desc, mat_type, z_col, z_row, z_col));
     }
 
     dx_y_desc = &y_trans_desc;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
         dx_y_desc, mat_type, y_col, y_row, y_col));
 
     auto& a_desc = kXGradAIsDZ ? (*dx_dout_desc) : (*dx_y_desc);
@@ -716,47 +807,51 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
     auto a_trans = BoolToCuBlasEnum(Trait::kXGradATrans);
     auto b_trans = BoolToCuBlasEnum(Trait::kXGradBTrans);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutCreate(
-        &dx_desc,
-        phi::backends::gpu::ToCudaDataType<DXT>(),
-        x_col,
-        x_row,
-        x_col));
+#ifdef PADDLE_WITH_HIP
+    hipDataType_t dx_blaslt_type =
+        phi::backends::gpu::ToHipBlasLtDataType<DXT>();
+#else
+    cudaDataType_t dx_blaslt_type = phi::backends::gpu::ToCudaDataType<DXT>();
+#endif
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
+        &dx_desc, dx_blaslt_type, x_col, x_row, x_col));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescCreate)(
         &dx_operation_desc, compute_type, scale_type));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
         dx_operation_desc,
-        CUBLASLT_MATMUL_DESC_TRANSB,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_TRANSB),
         &a_trans,
         sizeof(a_trans)));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
         dx_operation_desc,
-        CUBLASLT_MATMUL_DESC_TRANSA,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_TRANSA),
         &b_trans,
         sizeof(b_trans)));
 
-    cublasLtEpilogue_t epiloque_func_for_dx =
-        GetEpilogueGradType(activation_grad);
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+    GPU(blasLtEpilogue_t)
+    epiloque_func_for_dx = GetEpilogueGradType(activation_grad);
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
         dx_operation_desc,
-        CUBLASLT_MATMUL_DESC_EPILOGUE,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_EPILOGUE),
         &epiloque_func_for_dx,
         sizeof(epiloque_func_for_dx)));
 
     if (activation_grad != "none") {
       auto* aux_data = reserve_space->data();
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
-          dx_operation_desc,
-          CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
-          &aux_data,
-          sizeof(aux_data)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
+              dx_operation_desc,
+              BLASLT_CONSTANT(BLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER),
+              &aux_data,
+              sizeof(aux_data)));
       int64_t aux_ld = TransX ? M : K;
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
-          dx_operation_desc,
-          CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
-          &aux_ld,
-          sizeof(aux_ld)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
+              dx_operation_desc,
+              BLASLT_CONSTANT(BLASLT_MATMUL_DESC_EPILOGUE_AUX_LD),
+              &aux_ld,
+              sizeof(aux_ld)));
     }
 
     auto dx_workspace = memory_utils::Alloc(
@@ -785,45 +880,46 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
                                                       dx_workspace->ptr(),
                                                       workspace_size);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmul(lt_handle,
-                                                            dx_operation_desc,
-                                                            &alpha,
-                                                            b_data,
-                                                            b_desc,
-                                                            a_data,
-                                                            a_desc,
-                                                            &beta_dx,
-                                                            dx_data,
-                                                            dx_desc,
-                                                            dx_data,
-                                                            dx_desc,
-                                                            algo,
-                                                            dx_workspace->ptr(),
-                                                            workspace_size,
-                                                            stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatmul)(lt_handle,
+                                        dx_operation_desc,
+                                        &alpha,
+                                        b_data,
+                                        b_desc,
+                                        a_data,
+                                        a_desc,
+                                        &beta_dx,
+                                        dx_data,
+                                        dx_desc,
+                                        dx_data,
+                                        dx_desc,
+                                        algo,
+                                        dx_workspace->ptr(),
+                                        workspace_size,
+                                        stream));
   }
 
   // dy = func(dout, x)
   if (dy) {
     constexpr auto kYGradAIsDZ = (Trait::kYGradA == FusedGEMMGradInType::kDZ);
 
-    cublasLtMatrixLayout_t *dy_dout_desc = nullptr, *dy_x_desc = nullptr;
+    GPU(blasLtMatrixLayout_t)* dy_dout_desc = nullptr, *dy_x_desc = nullptr;
     if (TransX) {
       dy_dout_desc = &dout_trans_desc;
       if (dout_trans_desc == nullptr) {
-        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutCreate(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
             dy_dout_desc, mat_type, z_row, z_col, z_row));
       }
     } else {
       dy_dout_desc = &dout_desc;
       if (dout_desc == nullptr) {
-        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutCreate(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
             dy_dout_desc, mat_type, z_col, z_row, z_col));
       }
     }
 
     dy_x_desc = &x_trans_desc;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
         dy_x_desc, mat_type, x_col, x_row, x_col));
 
     auto& a_desc = kYGradAIsDZ ? (*dy_dout_desc) : (*dy_x_desc);
@@ -831,52 +927,55 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
     auto a_trans = BoolToCuBlasEnum(Trait::kYGradATrans);
     auto b_trans = BoolToCuBlasEnum(Trait::kYGradBTrans);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatrixLayoutCreate(
-        &dy_desc,
-        phi::backends::gpu::ToCudaDataType<DYT>(),
-        y_col,
-        y_row,
-        y_col));
+#ifdef PADDLE_WITH_HIP
+    hipDataType_t dy_blaslt_type =
+        phi::backends::gpu::ToHipBlasLtDataType<DXT>();
+#else
+    cudaDataType_t dy_blaslt_type = phi::backends::gpu::ToCudaDataType<DXT>();
+#endif
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
+        &dy_desc, dy_blaslt_type, y_col, y_row, y_col));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescCreate)(
         &dy_operation_desc, compute_type, scale_type));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
         dy_operation_desc,
-        CUBLASLT_MATMUL_DESC_TRANSB,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_TRANSB),
         &a_trans,
         sizeof(a_trans)));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
         dy_operation_desc,
-        CUBLASLT_MATMUL_DESC_TRANSA,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_TRANSA),
         &b_trans,
         sizeof(b_trans)));
 
-    cublasLtEpilogue_t epiloque_func_for_dy;
+    GPU(blasLtEpilogue_t) epiloque_func_for_dy;
     if (dbias == nullptr) {
-      epiloque_func_for_dy = CUBLASLT_EPILOGUE_DEFAULT;
+      epiloque_func_for_dy = BLASLT_CONSTANT(BLASLT_EPILOGUE_DEFAULT);
     } else {
       if (TransY) {
-        epiloque_func_for_dy = CUBLASLT_EPILOGUE_BGRADB;
+        epiloque_func_for_dy = BLASLT_CONSTANT(BLASLT_EPILOGUE_BGRADB);
       } else {
-        epiloque_func_for_dy = CUBLASLT_EPILOGUE_BGRADA;
+        epiloque_func_for_dy = BLASLT_CONSTANT(BLASLT_EPILOGUE_BGRADA);
       }
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
         dy_operation_desc,
-        CUBLASLT_MATMUL_DESC_EPILOGUE,
+        BLASLT_CONSTANT(BLASLT_MATMUL_DESC_EPILOGUE),
         &epiloque_func_for_dy,
         sizeof(epiloque_func_for_dy)));
 
     if (dbias) {
       auto* dbias_data =
           dev_ctx.Alloc<DYT>(dbias, dbias->numel() * sizeof(DYT));
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
-          dy_operation_desc,
-          CUBLASLT_MATMUL_DESC_BIAS_POINTER,
-          &dbias_data,
-          sizeof(dbias_data)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::GPU(blasLtMatmulDescSetAttribute)(
+              dy_operation_desc,
+              BLASLT_CONSTANT(BLASLT_MATMUL_DESC_BIAS_POINTER),
+              &dbias_data,
+              sizeof(dbias_data)));
     }
 
     auto dy_workspace = memory_utils::Alloc(
@@ -904,22 +1003,23 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
                                                       dy_workspace->ptr(),
                                                       workspace_size);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmul(lt_handle,
-                                                            dy_operation_desc,
-                                                            &alpha,
-                                                            b_data,
-                                                            b_desc,
-                                                            a_data,
-                                                            a_desc,
-                                                            &beta_dy,
-                                                            dy_data,
-                                                            dy_desc,
-                                                            dy_data,
-                                                            dy_desc,
-                                                            algo,
-                                                            dy_workspace->ptr(),
-                                                            workspace_size,
-                                                            stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatmul)(lt_handle,
+                                        dy_operation_desc,
+                                        &alpha,
+                                        b_data,
+                                        b_desc,
+                                        a_data,
+                                        a_desc,
+                                        &beta_dy,
+                                        dy_data,
+                                        dy_desc,
+                                        dy_data,
+                                        dy_desc,
+                                        algo,
+                                        dy_workspace->ptr(),
+                                        workspace_size,
+                                        stream));
   }
 }
 

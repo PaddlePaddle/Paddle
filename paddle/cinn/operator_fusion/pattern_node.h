@@ -66,7 +66,7 @@ struct PatternNode {
       ss << "\n anchor: ";
       auto anchor_op =
           std::get<AnchorPattern>(stmt_pattern_).anchor().defining_op();
-      printer.PrintOperation(const_cast<pir::Operation*>(anchor_op));
+      printer.PrintOperation(*anchor_op);
     }
     ss << "\nOps in pattern:" << std::endl;
     ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));

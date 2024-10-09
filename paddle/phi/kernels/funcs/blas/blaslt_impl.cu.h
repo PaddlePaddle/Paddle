@@ -1241,8 +1241,10 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
   }
 };
 #else
+#ifndef PADDLE_WITH_HIP
 // A void structure just for successfully compile.
 struct MatmulPlanner {};
+#endif
 #endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
 }  // namespace funcs

@@ -26,6 +26,7 @@
 - gather_nd
 - log
 - max
+- min
 - maximum
 - minimum
 - prod

@@ -149,7 +149,7 @@ void EmbeddingGradKernel(const Context& ctx,
     functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "emebdding input only support int16, int32 and int64"));
+        "embedding input only support int16, int32 and int64"));
   }
 }
 
@@ -253,7 +253,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
   } else if (input.dtype() == phi::DataType::INT16) {
     functor.template apply<int16_t>();
     PADDLE_THROW(common::errors::Unimplemented(
-        "emebdding input only support int16, int32 and int64"));
+        "embedding input only support int16, int32 and int64"));
   }
 }
 

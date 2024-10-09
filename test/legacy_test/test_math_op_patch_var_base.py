@@ -479,6 +479,26 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = -a
             np.testing.assert_array_equal(res.numpy(), -a_np)
 
+    def test_abs(self):
+        # test for real number
+        a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            res = abs(a)
+            np.testing.assert_array_equal(res.numpy(), np.abs(a_np))
+
+    def test_abs_complex(self):
+        # test for complex number
+        a_np = np.random.uniform(-1, 1, self.shape).astype(
+            self.dtype
+        ) + 1j * np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            res = abs(a)
+            np.testing.assert_allclose(
+                res.numpy(), np.abs(a_np), rtol=2e-7, atol=0.0
+            )
+
     def test_float_int_long(self):
         with base.dygraph.guard():
             a = paddle.to_tensor(np.array([100.1]))
