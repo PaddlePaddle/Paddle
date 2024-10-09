@@ -26,7 +26,7 @@
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_op_list.h"
+#include "paddle/phi/core/platform/onednn_op_list.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"

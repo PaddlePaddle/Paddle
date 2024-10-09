@@ -30,10 +30,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/pybind/complex.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
@@ -985,7 +985,7 @@ inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
 }
 
 inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
-                                  py::object copy = py::none()) {
+                                 py::object copy = py::none()) {
   if (!tensor.IsInitialized()) {
     return py::array();
   }
@@ -1013,7 +1013,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
       framework::TransToProtoVarType(tensor.dtype()));
 
   if (!is_gpu_tensor && !is_xpu_tensor && !is_custom_device_tensor) {
-    if (!copy.is_none()&& !copy) {
+    if (!copy.is_none() && !copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()),
                        py_dims,
