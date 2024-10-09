@@ -18,12 +18,17 @@ import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
+    cast_tensor,
     get_axes_for_reduce_op,
     get_positive_dim,
     get_shape_tensor_element,
     has_dynamic_shape,
+    trt_equal,
+    trt_floor_div,
+    trt_less,
     trt_max,
     trt_min,
+    trt_mul,
     trt_sub,
     trt_sum,
 )
@@ -346,3 +351,88 @@ def slice_converter(network, paddle_op, inputs):
         output_tensor = reshape_layer.get_output(0)
 
     return output_tensor
+
+
+@converter_registry.register("pd_op.split_with_num", trt_version="8.x")
+def split_with_num_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    input_shape_size = len(input_tensor.shape)
+
+    # Handle the case where axis is of type pir::Value
+    axis_op = paddle_op.operands()[1].source().get_defining_op()
+    if axis_op.name() == "pd_op.full":
+        axis_value = axis_op.attrs()["value"]
+        axis_tensor = add_1D_constant_layer(network, axis_value)
+    else:
+        axis_tensor = inputs[1]
+        axis_tensor = cast_tensor(network, axis_tensor, trt.int32)
+
+    num_splits = paddle_op.attrs().get("num")
+    num_splits_tensor = add_1D_constant_layer(network, num_splits)
+
+    # Get the dynamic shape of the input tensor
+    input_shape_tensor = network.add_shape(input_tensor).get_output(0)
+
+    # Handle negative axis index
+    input_shape_size_tensor = add_1D_constant_layer(network, input_shape_size)
+    zero_tensor = add_1D_constant_layer(network, 0)
+
+    is_negative_axis = trt_less(network, axis_tensor, zero_tensor)
+    is_negative_axis_int = cast_tensor(network, is_negative_axis, trt.int32)
+
+    axis_adjustment = trt_mul(
+        network, is_negative_axis_int, input_shape_size_tensor
+    )
+
+    axis_tensor = trt_sum(network, axis_tensor, axis_adjustment)
+
+    # Get the size of the dimension specified by axis
+    input_axis_size = network.add_gather(
+        input_shape_tensor, axis_tensor, axis=0
+    ).get_output(0)
+
+    # Compute the size of each split
+    split_size = trt_floor_div(network, input_axis_size, num_splits_tensor)
+
+    outputs = []
+    for idx in range(num_splits):
+        idx_tensor = add_1D_constant_layer(network, idx)
+        offset = trt_floor_div(network, idx_tensor, split_size)
+
+        # Create mask
+        indices = np.arange(input_shape_size, dtype=np.int32)
+        indices_tensor = network.add_constant(
+            [input_shape_size], indices
+        ).get_output(0)
+
+        mask = trt_equal(network, indices_tensor, axis_tensor)
+        mask_int = cast_tensor(network, mask, trt.int32)
+
+        # Calculate start_tensor
+        offset_broadcast = trt_mul(network, offset, mask_int)
+        start_tensor = offset_broadcast
+
+        # Calculate size_tensor
+        size_tensor = trt_mul(network, split_size, mask_int)
+
+        # Get the sizes of other dimensions
+        ones_tensor = network.add_constant(
+            [input_shape_size], np.ones([input_shape_size], dtype=np.int32)
+        ).get_output(0)
+        other_dims_mask = trt_sub(network, ones_tensor, mask_int)
+        other_dims = trt_mul(network, input_shape_tensor, other_dims_mask)
+        size_tensor = trt_sum(network, size_tensor, other_dims)
+
+        # Create Slice layer
+        slice_layer = network.add_slice(
+            input_tensor,
+            [0] * input_shape_size,
+            [0] * input_shape_size,
+            [1] * input_shape_size,
+        )
+        slice_layer.set_input(1, start_tensor)
+        slice_layer.set_input(2, size_tensor)
+
+        outputs.append(slice_layer.get_output(0))
+
+    return outputs
