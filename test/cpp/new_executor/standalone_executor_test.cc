@@ -26,7 +26,7 @@
 
 USE_OP_ITSELF(fill_constant);
 USE_OP_ITSELF(uniform_random);
-USE_OP(lookup_table);
+USE_OP_ITSELF(lookup_table);
 USE_OP_ITSELF(transpose2);
 USE_OP_ITSELF(reshape2);
 USE_OP_ITSELF(split);

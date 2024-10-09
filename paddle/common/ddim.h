@@ -234,6 +234,9 @@ TEST_API DDim stride(const DDim& ddim);
 
 TEST_API DDim stride_numel(const DDim& ddim);
 
+TEST_API bool AreDimsWithDynamicShapeCompatible(const DDim& dim1,
+                                                const DDim& dim2);
+
 TEST_API DDim ComputeCompatibleDim(const DDim& dim1, const DDim& dim2);
 
 }  // namespace common

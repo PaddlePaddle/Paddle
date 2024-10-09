@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {

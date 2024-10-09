@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/nvtx.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace platform {
