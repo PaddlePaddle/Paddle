@@ -214,6 +214,34 @@ def squeeze_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
+@converter_registry.register("pd_op.cast", trt_version="8.x")
+@converter_registry.register("pd_op.cast_", trt_version="8.x")
+def cast_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    out_dtype = int(paddle_op.attrs().get("dtype"))
+    # Reference paddle/phi/common/data_type.h enum DataType
+    if out_dtype == 1:
+        out_dtype = trt.bool
+    elif out_dtype == 7:
+        out_dtype = trt.int32
+    elif out_dtype == 9:
+        out_dtype = trt.int32
+    elif out_dtype == 10:
+        out_dtype = trt.float32
+    elif out_dtype == 11:
+        out_dtype = trt.float32
+    elif out_dtype == 15:
+        out_dtype = trt.float16
+    else:
+        raise RuntimeError(
+            f"cast converter currently doesn't support dtype: {out_dtype}"
+        )
+    cast_layer = network.add_identity(input_tensor)
+    cast_layer.set_output_type(0, out_dtype)
+    cast_layer.get_output(0).dtype = out_dtype
+    return cast_layer.get_output(0)
+
+
 @converter_registry.register("pd_op.slice", trt_version="8.x")
 def slice_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]

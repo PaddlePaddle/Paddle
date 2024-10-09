@@ -539,6 +539,7 @@
     func : matmul_with_flatten
     data_type : x
   backward : matmul_with_flatten_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_rank
   args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)

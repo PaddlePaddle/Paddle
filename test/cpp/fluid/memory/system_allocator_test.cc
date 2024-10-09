@@ -18,8 +18,8 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 
 COMMON_DECLARE_bool(use_pinned_memory);
 
