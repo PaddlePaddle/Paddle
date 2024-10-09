@@ -41,8 +41,11 @@ class CEmbeddingNet(nn.Layer):
     def forward(self, x):
         x = paddle.to_tensor(x, dtype="int32")
         out = self.embedding(x)
-        t = paddle.ones([BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
+        out = out.astype(self.embedding.weight.dtype)
+        out = paddle.transpose(out, [1, 0, 2])
+        t = paddle.randn([SEQ_LEN, BATCH_SIZE, HIDDEN_SIZE])
         out = out * t
+        out = paddle.transpose(out, [1, 0, 2])
         return out
 
 
@@ -64,11 +67,14 @@ class EmbeddingNet(nn.Layer):
 
     def forward(self, x):
         out = self.embedding(x)
+        out = out.astype(self.embedding.weight.dtype)
+        out = paddle.transpose(out, [1, 0, 2])
         out = dist.reshard(
             out, self.mesh_, [dist.Replicate(), dist.Replicate()]
         )
-        t = paddle.ones([BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
+        t = paddle.randn([SEQ_LEN, BATCH_SIZE, HIDDEN_SIZE])
         out = out * t
+        out = paddle.transpose(out, [1, 0, 2])
         return out
 
 
@@ -158,6 +164,7 @@ class TestSimpleNetForSemiAutoParallel:
             meshes=[self.mesh],
         )
 
+        self.set_random_seed(self._seed)
         dy2static_layer_use_pass = EmbeddingNet(self.mesh)
         dy2static_opt_use_pass = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=dy2static_layer_use_pass.parameters()
@@ -169,6 +176,7 @@ class TestSimpleNetForSemiAutoParallel:
             True,
         )
 
+        self.set_random_seed(self._seed)
         dy2static_layer = EmbeddingNet(self.mesh)
         dy2static_opt = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=dy2static_layer.parameters()
@@ -177,15 +185,13 @@ class TestSimpleNetForSemiAutoParallel:
             dy2static_layer, dy2static_opt, dist_dataloader, False
         )
 
+        self.set_random_seed(self._seed)
         dy_layer = CEmbeddingNet(self.mesh)
         dy_opt = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=dy_layer.parameters()
         )
         dy_losses = self.run_dynamic(dy_layer, dy_opt, data_loader)
 
-        print("dy2static_losses_use_pass:", dy2static_losses_use_pass)
-        print("dy2static_losses:", dy2static_losses)
-        print("dy_losses:", dy_losses)
         np.testing.assert_allclose(
             dy2static_losses_use_pass, dy2static_losses, atol=1e-7
         )
