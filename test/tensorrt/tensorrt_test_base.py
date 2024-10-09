@@ -63,14 +63,18 @@ class TensorRTBaseTest(unittest.TestCase):
                             input_dynamic_shape.extend(
                                 input_shape_without_dynamic_dim
                             )
+                            input_shape = input_dynamic_shape
                         else:
-                            static_shape = []
-                            actual_shape = sub_arg_value.shape[0:]
-                            static_shape.extend(actual_shape)
+                            input_shape = []
+                            input_shape_without_dynamic_dim = (
+                                sub_arg_value.shape[0:]
+                            )
+                            input_shape.extend(input_shape_without_dynamic_dim)
+
                         input_dtype = sub_arg_value.dtype
                         input_data = paddle.static.data(
                             name=sub_arg_name,
-                            shape=static_shape,
+                            shape=input_shape,
                             dtype=input_dtype,
                         )
                         new_list_args.append(input_data)
@@ -166,14 +170,6 @@ class TensorRTBaseTest(unittest.TestCase):
             min_shape_data = dict()  # noqa: C408
             max_shape_data = dict()  # noqa: C408
             for feed_name in self.program_config["feed_list"]:
-                if (
-                    feed_name not in self.min_shape.keys()
-                    and feed_name not in self.max_shape.keys()
-                ):
-                    min_shape_data[feed_name] = self.api_args[feed_name]
-                    max_shape_data[feed_name] = self.api_args[feed_name]
-                    continue
-
                 if isinstance(self.api_args[feed_name], dict):
                     # shape_tensor
                     if (
@@ -187,6 +183,7 @@ class TensorRTBaseTest(unittest.TestCase):
                             max_shape_data[sub_feed_name] = sub_feed_value
                             continue
                     else:
+                        # not shape_tensor
                         for i in range(len(self.min_shape[feed_name])):
                             sub_feed_name = feed_name + str(i)
                             min_shape_data[sub_feed_name] = np.random.randn(
@@ -200,6 +197,7 @@ class TensorRTBaseTest(unittest.TestCase):
                                 self.api_args[feed_name][sub_feed_name].dtype
                             )
                 else:
+                    # shape_tensor is list
                     if (
                         feed_name not in self.min_shape.keys()
                         and feed_name not in self.max_shape.keys()
