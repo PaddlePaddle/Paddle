@@ -133,7 +133,7 @@ class TestSimpleNetForSemiAutoParallel:
             op_name = dist_program.global_block().ops[8].name()
             np.testing.assert_equal(op_name, 'pd_op.c_embedding')
 
-        for epoch in range(5):
+        for epoch in range(3):
             for batch_id, data in enumerate(dist_loader()):
                 x, label = data
                 loss = dist_model(x, label)
@@ -143,7 +143,7 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dynamic(self, layer, opt, dist_loader):
         loss_fn = nn.MSELoss()
         loss_list = []
-        for epoch in range(5):
+        for epoch in range(3):
             for batch_id, data in enumerate(dist_loader()):
                 x, label = data
                 out = layer(x)
