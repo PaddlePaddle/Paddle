@@ -77,7 +77,7 @@ class ContainerOpInterface : public OpInterfaceBase<ContainerOpInterface> {
   TuplePushOp tuple_push_op();
   TuplePopOp tuple_pop_op();
   /// Constructor
-  ContainerOpInterface(pir::Operation* op, Concept* impl)
+  ContainerOpInterface(const pir::Operation* op, Concept* impl)
       : OpInterfaceBase<ContainerOpInterface>(op), impl_(impl) {}
 
  private:

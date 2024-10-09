@@ -18,9 +18,9 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace platform {

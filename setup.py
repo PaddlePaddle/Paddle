@@ -1742,10 +1742,22 @@ def get_headers():
                 paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
             )
         )
-        + list(  # serialize and deserialize interface headers
+        + list(  # op yaml parser interface headers
             find_files(
                 'op_yaml_info_parser.h',
                 paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # pir op utils interface headers
+            find_files(
+                'utils.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # ir translator interface headers
+            find_files(
+                'op_compat_info.h',
+                paddle_source_dir + '/paddle/fluid/ir_adaptor/translator/',
             )
         )
     )

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace platform {

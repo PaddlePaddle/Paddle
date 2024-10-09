@@ -155,7 +155,11 @@ std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(pir::Operation* op) {
   const auto& [input_value, output_value] = broad_cast_value.value();
   const int input_rank = GetRank(input_value);
   const int output_rank = GetRank(output_value);
-  CHECK_GE(output_rank, input_rank);
+  PADDLE_ENFORCE_GE(output_rank,
+                    input_rank,
+                    ::common::errors::PreconditionNotMet(
+                        "[Error info] The ouput_rank should "
+                        "be greater or equal to input_rank."));
 
   // Compare axis one by one, from back to front.
   // The rule of broadcasting:
