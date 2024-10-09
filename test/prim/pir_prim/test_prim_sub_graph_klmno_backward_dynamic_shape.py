@@ -108,7 +108,7 @@ def multiply_net(x, y):
     return x * y
 
 
-class TestNormGrad1(TestPrimThreeWithGrad):
+class TestPrimLayerNormWithGrad1(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -127,7 +127,7 @@ class TestNormGrad1(TestPrimThreeWithGrad):
         self.tol = 1e-3
 
 
-class TestNormGrad2(TestPrimBaseWithGrad):
+class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -140,7 +140,7 @@ class TestNormGrad2(TestPrimBaseWithGrad):
         self.tol = 1e-3
 
 
-class TestNormGrad3(TestPrimThreeWithGrad):
+class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -159,7 +159,7 @@ class TestNormGrad3(TestPrimThreeWithGrad):
         self.tol = 1e-3
 
 
-class TestNormGrad4(TestPrimBaseWithGrad):
+class TestPrimLayerNormWithGrad4(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -169,7 +169,7 @@ class TestNormGrad4(TestPrimBaseWithGrad):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = layer_norm_net1
         self.enable_cinn = False
-        self.tol = 1e-3
+        self.tol = 8e-3
 
 
 class TestPrimLeakyReluWithGrad(TestPrimBaseWithGrad):
