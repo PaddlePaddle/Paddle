@@ -21,6 +21,42 @@ import paddle
 from paddle import _C_ops
 
 
+class TestCast0TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.cast
+        self.api_args = {
+            "x": np.random.randn(7, 3).astype(np.float32),
+            "out_dtype": np.bool_,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [3, 3]}
+        self.max_shape = {"x": [10, 3]}
+
+
+class TestCast1TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.cast
+        self.api_args = {
+            "x": np.random.randn(7, 3).astype(np.float16),
+            "out_dtype": np.int32,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [3, 3]}
+        self.max_shape = {"x": [10, 3]}
+
+
+class TestCast2TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.cast
+        self.api_args = {
+            "x": np.random.randn(7, 3).astype(np.float32),
+            "out_dtype": np.int64,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [3, 3]}
+        self.max_shape = {"x": [10, 3]}
+
+
 class TestConcatTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.concat
