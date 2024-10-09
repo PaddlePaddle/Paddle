@@ -2187,6 +2187,7 @@ TEST(Conv2dGradSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1, -1});
   check_dim_mapping(infered_dist_attrs.second[1], {-1, -1, -1, -1});
   EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), false);
+  EXPECT_EQ(is_partial(infered_dist_attrs.second[1]), true);
 
   // test 3
   input_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1, -1}));
@@ -2208,6 +2209,7 @@ TEST(Conv2dGradSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {-1, -1, -1, -1});
   check_dim_mapping(infered_dist_attrs.second[1], {0, -1, -1, -1});
   EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), false);
+  EXPECT_EQ(is_partial(infered_dist_attrs.second[0]), true);
 
   // test 4
   input_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
@@ -2229,6 +2231,8 @@ TEST(Conv2dGradSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1, -1});
   check_dim_mapping(infered_dist_attrs.second[1], {1, -1, -1, -1});
   EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), false);
+  EXPECT_EQ(is_partial(infered_dist_attrs.second[0]), true);
+  EXPECT_EQ(is_partial(infered_dist_attrs.second[1]), true);
 
   // test 5
   input_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 2, -1, -1}));
@@ -2252,6 +2256,8 @@ TEST(Conv2dGradSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {0, 2, -1, -1});
   check_dim_mapping(infered_dist_attrs.second[1], {1, 2, -1, -1});
   EXPECT_EQ(is_partial(infered_dist_attrs.first[2]), true);
+  EXPECT_EQ(is_partial(infered_dist_attrs.second[0]), true);
+  EXPECT_EQ(is_partial(infered_dist_attrs.second[1]), true);
 }
 
 }  // namespace auto_parallel
