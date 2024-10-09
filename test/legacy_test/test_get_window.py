@@ -60,7 +60,6 @@ class TestAudioFuncitons(unittest.TestCase):
             rtol=0.0001,
         )
 
-    
     @parameterize([1, 512])
     def test_window_and_exception(self, n_fft: int):
         window_scipy_gaussain = signal.windows.gaussian(n_fft, std=7)
@@ -71,7 +70,10 @@ class TestAudioFuncitons(unittest.TestCase):
             window_scipy_gaussain, dtype=window_paddle_gaussian.dtype
         )
         paddle.allclose(
-            window_scipy_gaussain, window_paddle_gaussian, atol=0.0001, rtol=0.0001
+            window_scipy_gaussain,
+            window_paddle_gaussian,
+            atol=0.0001,
+            rtol=0.0001,
         )
 
         window_scipy_general_gaussain = signal.windows.general_gaussian(
@@ -81,10 +83,14 @@ class TestAudioFuncitons(unittest.TestCase):
             ('general_gaussian', 1, 7), n_fft, False
         )
         window_scipy_general_gaussain = paddle.to_tensor(
-            window_scipy_general_gaussain, dtype=window_paddle_general_gaussian.dtype
+            window_scipy_general_gaussain,
+            dtype=window_paddle_general_gaussian.dtype,
         )
         paddle.allclose(
-            window_scipy_gaussain, window_paddle_gaussian, atol=0.0001, rtol=0.0001
+            window_scipy_gaussain,
+            window_paddle_gaussian,
+            atol=0.0001,
+            rtol=0.0001,
         )
 
         window_scipy_exp = signal.windows.exponential(n_fft)
