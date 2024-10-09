@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/sync_comm_stream_kernel_impl.h"
+#pragma once
 
-PD_REGISTER_KERNEL(sync_comm_stream,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SyncCommStreamKernel,
-                   float,
-                   double) {}
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
+
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateAddShadowOutputAfterDeadParameterPass();
+
+}  // namespace pir
