@@ -49,14 +49,6 @@ class LLVMIRVisitor : public ir::IRVisitorRequireReImpl<llvm::Value *> {
 #undef __m
 };
 
-/**
- * Tell whether a variable called \p \var_name will lowered to a pointer type in
- * LLVM.
- * @param var_name name of the variable.
- * @return a boolean.
- */
-bool LLVM_WillVarLowerAsPointer(const std::string &var_name);
-
 class SymbolTable {
  public:
   SymbolTable() = default;

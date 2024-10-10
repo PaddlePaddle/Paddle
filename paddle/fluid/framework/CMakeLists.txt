@@ -82,10 +82,6 @@ add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
 
-#ddim lib
-proto_library(framework_proto SRCS framework.proto)
-proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
-
 proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(
   op_def_api
@@ -104,11 +100,6 @@ foreach(OP_DEF_FILE ${OP_DEF_FILES})
        "{\"${OP_NAME}\",R\"(${OP_DEF_CONTENT})\"},\n")
 endforeach()
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt "{\"\",\"\"}};\n}")
-
-proto_library(heter_service_proto SRCS heter_service.proto)
-proto_library(data_feed_proto SRCS data_feed.proto)
-proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
-              data_feed_proto)
 
 cc_library(
   string_array
@@ -574,7 +565,6 @@ if(WITH_DISTRIBUTE)
            data_set.cc
       DEPS fleet_wrapper
            op_registry
-           device_context
            scope
            framework_proto
            trainer_desc_proto
@@ -588,7 +578,6 @@ if(WITH_DISTRIBUTE)
            lod_rank_table
            feed_fetch_method
            feed_hook
-           collective_helper
            ${GLOB_DISTRIBUTE_DEPS}
            graph_to_program_pass
            variable_helper

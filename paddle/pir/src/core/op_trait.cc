@@ -20,7 +20,7 @@
 
 namespace {
 
-void VerifySameOperandsShapeTrait(pir::Operation *op) {
+void VerifySameOperandsShapeTrait(const pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsShapeTrait for : " << op->name();
 
   PADDLE_ENFORCE_GT(
@@ -47,7 +47,7 @@ void VerifySameOperandsShapeTrait(pir::Operation *op) {
           op->name()));
 }
 
-void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
+void VerifySameOperandsAndResultShapeTrait(const pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsAndResultShapeTrait for : " << op->name();
 
   PADDLE_ENFORCE_GT(
@@ -90,7 +90,7 @@ void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
           op->name()));
 }
 
-void VerifySameOperandsElementTypeTrait(pir::Operation *op) {
+void VerifySameOperandsElementTypeTrait(const pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsElementTypeTrait for : " << op->name();
 
   PADDLE_ENFORCE_GT(
@@ -114,7 +114,7 @@ void VerifySameOperandsElementTypeTrait(pir::Operation *op) {
   }
 }
 
-void VerifySameOperandsAndResultElementTypeTrait(pir::Operation *op) {
+void VerifySameOperandsAndResultElementTypeTrait(const pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsAndResultElementTypeTrait for : "
            << op->name();
 
@@ -161,7 +161,7 @@ void VerifySameOperandsAndResultElementTypeTrait(pir::Operation *op) {
   }
 }
 
-void VerifySameOperandsAndResultTypeTrait(pir::Operation *op) {
+void VerifySameOperandsAndResultTypeTrait(const pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsAndResultTypeTrait for : " << op->name();
 
   PADDLE_ENFORCE_GT(
@@ -222,7 +222,7 @@ void VerifySameOperandsAndResultTypeTrait(pir::Operation *op) {
   }
 }
 
-void VerifySameTypeOperandsTrait(pir::Operation *op) {
+void VerifySameTypeOperandsTrait(const pir::Operation *op) {
   VLOG(10) << "Verify SameTypeOperandsTrait for : " << op->name();
 
   // For zero or only one operand.
@@ -242,7 +242,7 @@ void VerifySameTypeOperandsTrait(pir::Operation *op) {
   }
 }
 
-void VerifyOneResultTrait(pir::Operation *op) {
+void VerifyOneResultTrait(const pir::Operation *op) {
   PADDLE_ENFORCE_EQ(
       op->num_results(),
       1,

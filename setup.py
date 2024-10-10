@@ -1760,6 +1760,32 @@ def get_headers():
                 paddle_source_dir + '/paddle/fluid/ir_adaptor/translator/',
             )
         )
+        + list(
+            find_files(
+                'infer_symbolic_shape.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape',
+            )
+        )
+        + list(
+            find_files(
+                'vjp.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface',
+            )
+        )
+        + list(
+            find_files(
+                'lexer.h',
+                paddle_source_dir + '/paddle/pir/src/core/parser',
+            )
+        )
+        + list(
+            find_files(
+                'token.h',
+                paddle_source_dir + '/paddle/pir/src/core/parser',
+            )
+        )
     )
 
     jit_layer_headers = [
