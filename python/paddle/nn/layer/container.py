@@ -341,8 +341,8 @@ class ParameterDict(Layer):
             ...             {f"t{i}": paddle.create_parameter(shape=[2, 2], dtype='float32') for i in range(num_stacked_param)})
             ...
             ...     def forward(self, x):
-            ...         for i, (key, p) in enumerate(self.params):
-            ...             x = paddle.matmul(x, p)
+            ...         for i, key in enumerate(self.params):
+            ...             x = paddle.matmul(x, self.params[key])
             ...         return x
             ...
             >>> x = paddle.uniform(shape=[5, 2], dtype='float32')
