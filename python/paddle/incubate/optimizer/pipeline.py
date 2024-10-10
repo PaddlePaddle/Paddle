@@ -956,7 +956,7 @@ class PipelineOptimizer:
                                     self._op_role_key: op_role,
                                     'use_calc_stream': True,
                                     'ring_id': 0,
-                                    # if recv_v2, num&id attr is not in op_attrs, will not insert
+                                    # if p_recv, num&id attr is not in op_attrs, will not insert
                                     'nranks': self.mp_degree,
                                     'rank': self.mp_rank,
                                 },
@@ -1550,7 +1550,6 @@ class PipelineOptimizer:
                 block = prog.block(0)
                 for op in block.ops:
                     if (
-                        # op.type == "recv_v2"
                         op.type == "p_recv"
                         or op.type == "create_py_reader"
                         or op.type == "read"
@@ -1736,7 +1735,6 @@ class PipelineOptimizer:
                 op.type != "partial_recv"
                 and op.type != "partial_allgather"
                 and op.type != "nop"
-                # and op.type != "recv_v2"
                 and op.type != "p_recv"
             ):
                 continue
