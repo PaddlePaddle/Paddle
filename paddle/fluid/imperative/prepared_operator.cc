@@ -29,10 +29,14 @@
 #include "paddle/phi/core/platform/onednn_op_list.h"
 #endif
 #include "paddle/common/flags.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
@@ -241,6 +245,45 @@ PreparedOp PrepareImpl(
   if (has_phi_kernel) {
     VLOG(6) << kernel_signature;
     phi_kernel_name = kernel_signature.name;
+
+    if (phi_kernel_name == "c_concat") {
+      auto ring_id_attr = attrs.at("ring_id");
+      int ring_id = PADDLE_GET(int, ring_id_attr);
+      auto map = distributed::ProcessGroupMapFromGid::getInstance();
+      if (map->has(ring_id)) {
+        distributed::ProcessGroup* pg = map->get(ring_id);
+        auto group_key = static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
+                             ->GetGroupKey(place);
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        if (comm_context_manager.Has(group_key)) {
+          auto comm_context = comm_context_manager.Get(group_key);
+          auto default_stream =
+              static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
+          dev_ctx =
+              static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+                  ->GetDevContext();
+          dev_ctx->SetCommContext(comm_context);
+          auto use_calc_stream_attr = attrs.at("use_calc_stream");
+          bool use_calc_stream = PADDLE_GET(bool, use_calc_stream_attr);
+          if (phi::is_gpu_place(place) && use_calc_stream) {
+            static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                default_stream, false);
+            auto& instance =
+                paddle::memory::allocation::AllocatorFacade::Instance();
+            dev_ctx->SetAllocator(
+                instance
+                    .GetAllocator(
+                        place, static_cast<phi::GPUContext*>(dev_ctx)->stream())
+                    .get());
+          }
+        }
+      } else {
+        VLOG(3) << "ring_id " << ring_id
+                << " not found in comm_context_manager for op "
+                << phi_kernel_name;
+      }
+    }
 
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
