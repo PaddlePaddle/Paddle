@@ -181,6 +181,10 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   const bool GetNCCLCommInitOption() { return nccl_comm_init_option_; }
 
+  std::string GetGroupKey(const Place& place) {
+    return place_to_group_key_.at(place.DebugString());
+  }
+
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
