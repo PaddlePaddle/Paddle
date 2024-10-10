@@ -397,9 +397,7 @@ class ParameterDict(Layer):
     def update(
         self,
         parameters: (
-            ParameterDict
-            | Mapping[str, Tensor]
-            | Sequence[tuple[str, Tensor]]
+            ParameterDict | Mapping[str, Tensor] | Sequence[tuple[str, Tensor]]
         ),
     ) -> None:
         """Update a given parameter at the end of the dict.
