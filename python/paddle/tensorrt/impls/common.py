@@ -44,6 +44,7 @@ def dropout_converter(network, paddle_op, inputs):
         scale=scale_weights,
         power=power_weights,
     )
+
     return scale_layer.get_output(0)
 
 
