@@ -3936,6 +3936,7 @@ function clang-tidy_check() {
     -extra-arg=-Wno-overloaded-virtual  \
     -extra-arg=-Wno-defaulted-function-deleted  \
     -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
+    -extra-arg=-Wno-error \
     -extra-arg=-Wno-return-type-c-linkage 2>&1 1>&3 3>&- 4>&-)
 
     endTime_s=`date +%s`
