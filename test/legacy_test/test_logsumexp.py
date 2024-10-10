@@ -373,23 +373,51 @@ class TestLogsumexpAPI2(TestLogsumexpAPI):
         self.shape = [3, 2, 4, 5]
         self.dtype = "int32"
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def api_case(self, axis=None, keepdim=False):
+        out_ref = ref_logsumexp(self.x, axis, keepdim)
+        x_grad_ref = logsumexp_ref_grad(self.x, axis, keepdim)
+        for place in self.places:
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.shape, self.dtype)
+                out = paddle.logsumexp(x, axis, keepdim)
+                exe = paddle.static.Executor(place)
+                res = exe.run(feed={'X': self.x}, fetch_list=[out])
+            np.testing.assert_allclose(res[0], out_ref, rtol=1e-05)
+
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            x.stop_gradient = False
+            out = paddle.logsumexp(x, axis, keepdim)
+            out.backward()
+            x_grad = x.grad.numpy()
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+            np.testing.assert_allclose(x_grad, x_grad_ref, rtol=1e-05)
+            paddle.enable_static()
+
+    def test_alias(self):
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.to_tensor(self.x)
+        out1 = paddle.logsumexp(x)
+        out2 = paddle.tensor.logsumexp(x)
+        out3 = paddle.tensor.math.logsumexp(x)
+        out_ref = ref_logsumexp(self.x)
+        for out in [out1, out2, out3]:
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+        paddle.enable_static()
 
 
-class TestLogsumexpAPI3(TestLogsumexpAPI):
+class TestLogsumexpAPI3(TestLogsumexpAPI2):
     def setUp(self):
         self.shape = [3, 4, 2, 5]
         self.dtype = "int64"
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
 
 # Test logsumexp bug
