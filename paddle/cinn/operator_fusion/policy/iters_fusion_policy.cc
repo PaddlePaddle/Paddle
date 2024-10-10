@@ -26,6 +26,11 @@ bool ItersFusionPolicy::CanFuseSource2Target(const PatternNodePtr& source,
   VLOG(4) << "Search iters transform route from "
           << source->fusion_iters().DebugStr() << " to "
           << target->fusion_iters().DebugStr();
+  if (source->fusion_iters().loop_iters.empty() ||
+      target->fusion_iters().loop_iters.empty()) {
+    VLOG(4) << "Pattern with empty loop iters can't be fused.";
+    return false;
+  }
   const auto iters_transforms =
       SearchItersTransformRoute(source->fusion_iters(), target->fusion_iters());
   if (iters_transforms != std::nullopt) {
