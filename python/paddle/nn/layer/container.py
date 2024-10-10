@@ -338,7 +338,7 @@ class ParameterDict(Layer):
             ...         super().__init__()
             ...         # create ParameterDict with iterable Parameters
             ...         self.params = paddle.nn.ParameterDict(
-            ...             {'t' + str(i): paddle.create_parameter(shape=[2, 2], dtype='float32') for i in range(num_stacked_param)})
+            ...             {f"t{i}": paddle.create_parameter(shape=[2, 2], dtype='float32') for i in range(num_stacked_param)})
             ...
             ...     def forward(self, x):
             ...         for i, (key, p) in enumerate(self.params):
@@ -371,7 +371,7 @@ class ParameterDict(Layer):
         self,
         parameters: (
             ParameterDict
-            | typing.Mapping[str, Tensor]
+            | Mapping[str, Tensor]
             | Sequence[tuple[str, Tensor]]
             | None
         ) = None,
@@ -393,13 +393,13 @@ class ParameterDict(Layer):
 
     def __iter__(self) -> Iterator[tuple[str, Tensor]]:
         with param_guard(self._parameters):
-            return iter(self._parameters.items())
+            return iter(self._parameters)
 
     def update(
         self,
         parameters: (
             ParameterDict
-            | typing.Mapping[str, Tensor]
+            | Mapping[str, Tensor]
             | Sequence[tuple[str, Tensor]]
         ),
     ) -> None:
@@ -420,11 +420,7 @@ class ParameterDict(Layer):
             for i, kv in enumerate(parameters):
                 if len(kv) != 2:
                     raise ValueError(
-                        "The length of the "
-                        + str(i)
-                        + "'s element in parameters is "
-                        + str(len(kv))
-                        + ", which must be 2."
+                        f"The length of the {i}'s element in parameters is {len(kv)}, which must be 2."
                     )
                 self.add_parameter(kv[0], kv[1])
 
