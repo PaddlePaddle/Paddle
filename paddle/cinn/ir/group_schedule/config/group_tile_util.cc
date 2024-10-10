@@ -74,7 +74,8 @@ bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
     // reduce iter vars.
     auto expr_store = analyzer::GetStoreOfSBlock(expr_block);
     for (auto& index_expr : expr_store.As<ir::Store>()->indices) {
-      if (reduce_iter_vars.count(index_expr.as_var_ref()->name) > 0) {
+      if (index_expr.is_var() &&
+          reduce_iter_vars.count(index_expr.as_var_ref()->name) > 0) {
         return true;
       }
     }
