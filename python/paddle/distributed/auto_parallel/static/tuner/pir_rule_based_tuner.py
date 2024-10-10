@@ -1286,7 +1286,7 @@ def match_pattern(pattern, pir_program):
             # print(f"comparing op: {src.name()}, with {tgt.name()}")
             # print(f"comparing op {src.name()}")
             # skip comparing data_op
-            if src.name() == "pd_op.data":
+            if src.name() == "pd_op.data" or src.name() == "builtin.parameter":
                 return
             # compare op
             if not _compare_op_node(src, tgt):
