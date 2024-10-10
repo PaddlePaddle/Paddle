@@ -565,7 +565,6 @@ if(WITH_DISTRIBUTE)
            data_set.cc
       DEPS fleet_wrapper
            op_registry
-           device_context
            scope
            framework_proto
            trainer_desc_proto
@@ -579,7 +578,6 @@ if(WITH_DISTRIBUTE)
            lod_rank_table
            feed_fetch_method
            feed_hook
-           collective_helper
            ${GLOB_DISTRIBUTE_DEPS}
            graph_to_program_pass
            variable_helper
