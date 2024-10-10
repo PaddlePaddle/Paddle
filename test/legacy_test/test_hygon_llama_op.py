@@ -846,7 +846,7 @@ class TestMatMulV2Op(OpTest):
                 place,
                 ['X', 'Y'],
                 'Out',
-                max_relative_error=0.1,
+                max_relative_error=1e-2,
                 check_cinn=(
                     self.check_cinn if hasattr(self, 'check_cinn') else True
                 ),
