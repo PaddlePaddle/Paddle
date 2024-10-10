@@ -52,6 +52,15 @@ set(PHI_DEPS
     utf8proc
     common)
 
+list(
+  APPEND
+  PHI_DEPS
+  framework_proto
+  pass_desc_proto
+  data_feed_proto
+  trainer_desc_proto
+  heter_service_proto)
+
 set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
 
 if(WITH_GPU)
