@@ -391,9 +391,8 @@ class ParameterDict(Layer):
     def __len__(self) -> int:
         return len(self._parameters)
 
-    def __iter__(self) -> Iterator[tuple[str, Tensor]]:
-        with param_guard(self._parameters):
-            return iter(self._parameters)
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._parameters)
 
     def update(
         self,
