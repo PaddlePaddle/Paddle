@@ -39,7 +39,7 @@ class MyLayer(paddle.nn.Layer):
         )
 
     def forward(self, x):
-        for i, (key, _) in enumerate(self.params):
+        for i, key in enumerate(self.params):
             x = paddle.matmul(x, self.params[key])
         return x
 
