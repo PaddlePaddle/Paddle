@@ -86,6 +86,16 @@ ShardableAxesSignature CreateDefaultSignature(pir::Operation* op) {
   return result;
 }
 
+ShardableAxesSignature CreateDefaultTrivialSignature(pir::Operation* op) {
+  PADDLE_ENFORCE_EQ(op->num_results(),
+                    1,
+                    ::common::errors::PreconditionNotMet(
+                        "op->num_results() should be equal 1."));
+  ShardableAxesSignature result = CreateDefaultSignature(op);
+  result.loop = result.outputs.back();
+  return result;
+}
+
 std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
     pir::Operation* op) {
   if (op->num_results() != 1) {
@@ -94,16 +104,16 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
     return CreateDefaultSignature(op);
   }
   if (op->isa<cinn::dialect::ReshapeOp>()) {
-    return CreateDefaultSignature(op);
+    return CreateDefaultTrivialSignature(op);
   }
   if (op->name() == "cinn_op.generate_shape") {
     return CreateDefaultSignature(op);
   }
   if (op->name() == "cinn_op.reshape") {
-    return CreateDefaultSignature(op);
+    return CreateDefaultTrivialSignature(op);
   }
   if (op->name() == "pd_op.reshape") {
-    return CreateDefaultSignature(op);
+    return CreateDefaultTrivialSignature(op);
   }
   return std::nullopt;
 }
@@ -327,6 +337,8 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
     result = CreateSignatureForTranspose(op);
   } else if (op->name() == "cinn_op.slice") {
     result = CreateSignatureForSlice(op);
+  } else if (kind == hlir::framework::kInjective) {
+    result = CreateDefaultTrivialSignature(op);
   } else {
     result = CreateDefaultSignature(op);
   }
