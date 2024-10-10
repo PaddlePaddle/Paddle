@@ -99,6 +99,11 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
 endif()
 
+if(NOT WITH_ROCM)
+  list(REMOVE_ITEM TEST_OPS test_hygon_llama_op)
+  list(REMOVE_ITEM TEST_OPS test_flash_attention_hip)
+endif
+
 if(NOT WITH_NCCL)
   list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
 endif()
