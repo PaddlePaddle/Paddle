@@ -1029,6 +1029,35 @@ class TestAdamOpV2(unittest.TestCase):
             adam.step()
         paddle.enable_static()
 
+    def test_adam_with_old_ir(self):
+        """TODO(megemini): old ir not used anymore"""
+        with paddle.pir_utils.OldIrGuard():
+            paddle.enable_static()
+            paddle.seed(10)
+            np.random.seed(10)
+            exe = paddle.static.Executor()
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            optimizer = paddle.optimizer.Adam(amsgrad=self.amsgrad)
+
+            with paddle.static.program_guard(train_program, startup_program):
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32'
+                )
+                hidden_layer = paddle.nn.Linear(2, 10)
+                hidden = hidden_layer(data)
+                loss = paddle.mean(hidden)
+                optimizer.minimize(loss)
+            exe.run(startup_program)
+            x = np.random.random(size=(2, 2)).astype('float32')
+            out = []
+            for _ in range(5):
+                (loss_data,) = exe.run(
+                    train_program, feed={"X": x}, fetch_list=[loss]
+                )
+                out.append(loss_data)
+            return out
+
 
 class TestAdamOpV2AMSGrad(TestAdamOpV2):
     def setUp(self):
