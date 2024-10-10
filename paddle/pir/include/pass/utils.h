@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include "paddle/common/layout.h"
+#include "paddle/pir/include/core/value.h"
 
-KernelSignature FeedOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("feed", {"X"}, {"col"}, {"Out"});
-}
+namespace pir {
 
-}  // namespace phi
+void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout);
 
-PD_REGISTER_ARG_MAPPING_FN(feed, phi::FeedOpArgumentMapping);
+}  // namespace pir
