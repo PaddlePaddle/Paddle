@@ -262,3 +262,63 @@ def cast_tensor(network, input_tensor, dtype):
     layer = network.add_identity(input_tensor)
     layer.set_output_type(0, dtype)
     return layer.get_output(0)
+
+
+def build_start_tensor(network, rank, axis_tensor, offset):
+    # Create indices_tensor [0, 1, ..., rank-1]
+    indices = np.arange(rank, dtype=np.int32)
+    indices_tensor = network.add_constant([rank], indices).get_output(0)
+
+    # Create mask: mask = (indices == axis_tensor)
+    mask = network.add_elementwise(
+        indices_tensor, axis_tensor, trt.ElementWiseOperation.EQUAL
+    ).get_output(0)
+    mask_int = cast_tensor(network, mask, trt.int32)
+
+    # Calculate start_tensor = mask_int * offset
+    start_tensor = network.add_elementwise(
+        mask_int, offset, trt.ElementWiseOperation.PROD
+    ).get_output(0)
+
+    return start_tensor
+
+
+def build_size_tensor(
+    network, rank, axis_tensor, size_value, input_shape_tensor
+):
+    # Create indices_tensor [0, 1, ..., rank-1]
+    indices = np.arange(rank, dtype=np.int32)
+    indices_tensor = network.add_constant([rank], indices).get_output(0)
+
+    # Create mask: mask = (indices == axis_tensor)
+    mask = network.add_elementwise(
+        indices_tensor, axis_tensor, trt.ElementWiseOperation.EQUAL
+    ).get_output(0)
+    mask_int = cast_tensor(network, mask, trt.int32)
+
+    # Create ones_tensor
+    ones_tensor = network.add_constant(
+        [rank], np.ones([rank], dtype=np.int32)
+    ).get_output(0)
+
+    # Calculate inverse_mask = ones_tensor - mask_int
+    inverse_mask = network.add_elementwise(
+        ones_tensor, mask_int, trt.ElementWiseOperation.SUB
+    ).get_output(0)
+
+    # Calculate size_tensor = mask_int * size_value + inverse_mask * input_shape_tensor
+    size_value_broadcast = network.add_elementwise(
+        mask_int, size_value, trt.ElementWiseOperation.PROD
+    ).get_output(0)
+
+    input_shape_broadcast = network.add_elementwise(
+        inverse_mask, input_shape_tensor, trt.ElementWiseOperation.PROD
+    ).get_output(0)
+
+    size_tensor = network.add_elementwise(
+        size_value_broadcast,
+        input_shape_broadcast,
+        trt.ElementWiseOperation.SUM,
+    ).get_output(0)
+
+    return size_tensor

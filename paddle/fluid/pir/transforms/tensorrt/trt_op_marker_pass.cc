@@ -794,12 +794,16 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
       return false;
     }
 
-    paddle::dialect::FullOp full_op =
-        pir::GetDefiningOpForInput(op, 2)->dyn_cast<paddle::dialect::FullOp>();
-    if (!full_op) {
-      VLOG(3) << "Can not find full op";
+    pir::Value axis_tensor = op.operand_source(2);
+    if (!axis_tensor) {
+      VLOG(3) << "pd_op.split can not find axis input";
       return false;
-    } else {
+    }
+    auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
+    if (pir::GetDefiningOpForInput(op, 2)->isa<paddle::dialect::FullOp>()) {
+      paddle::dialect::FullOp full_op =
+          pir::GetDefiningOpForInput(op, 2)
+              ->dyn_cast<paddle::dialect::FullOp>();
       auto axis = full_op->attribute<paddle::dialect::ScalarAttribute>("value")
                       .data()
                       .to<int>();
@@ -807,29 +811,25 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
                          .type()
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dims();
-      auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
 
-      paddle::dialect::FullIntArrayOp full_sections_op =
-          pir::GetDefiningOpForInput(op, 1)
-              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-      if (!full_sections_op) {
-        VLOG(3) << "Can not find FullIntArrayOp";
-        return false;
-      }
-
-      auto sections = full_sections_op->attribute<pir::ArrayAttribute>("value");
-
-      std::vector<int64_t> output_lengths;
-      for (const auto &attr : sections.AsVector()) {
-        output_lengths.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
-      }
       axis += (axis < 0) ? x_shape.size() : 0;
 
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
         return false;
       }
+    }
 
+    if (pir::GetDefiningOpForInput(op, 1)
+            ->isa<paddle::dialect::FullIntArrayOp>()) {
+      paddle::dialect::FullIntArrayOp full_sections_op =
+          pir::GetDefiningOpForInput(op, 1)
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+      auto sections = full_sections_op->attribute<pir::ArrayAttribute>("value");
+      std::vector<int64_t> output_lengths;
+      for (const auto &attr : sections.AsVector()) {
+        output_lengths.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+      }
       if (output_lengths.size() != out_vector_type.size()) {
         VLOG(3) << "The output_length should be equal to the output size.";
         return false;
