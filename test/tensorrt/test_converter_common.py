@@ -20,25 +20,42 @@ from tensorrt_test_base import TensorRTBaseTest
 from paddle import _C_ops
 
 
-def dropout_wrapper(x, p):
+def dropout_wrapper(x, p, mode):
     out = _C_ops.dropout(
         x,
         None,
         p,
         True,
-        "upscale_in_train",
+        mode,
         0,
         True,
     )
     return out
 
 
-class TestDropoutTRTPattern(TensorRTBaseTest):
+class TestDropoutWithUpscaleModeTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = dropout_wrapper
         self.api_args = {
             "x": np.random.random([1, 2, 3]).astype("float32"),
             "p": 0,
+            "mode": "upscale_in_train",
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 2, 3]}
+        self.max_shape = {"x": [10, 2, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestDropoutWithDowngradeModeTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = dropout_wrapper
+        self.api_args = {
+            "x": np.random.random([1, 2, 3]).astype("float32"),
+            "p": 0,
+            "mode": "downgrade_in_infer",
         }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 2, 3]}

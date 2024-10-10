@@ -24,16 +24,16 @@ def dropout_converter(network, paddle_op, inputs):
     input_x = inputs[0]
     p_defining_op = paddle_op.operands()[2].source().get_defining_op()
     dropout_prob = p_defining_op.attrs()["value"]
-    downgrade_in_infer = dropout_prob = paddle_op.attrs().get("mode")
+    downgrade_in_infer = paddle_op.attrs().get("mode")
 
     if downgrade_in_infer == "upscale_in_train":
         shuffle_layer = network.add_shuffle(input_x)
         return shuffle_layer.get_output(0)
 
-    weight_data = np.array([1 - dropout_prob])
+    weight_data = np.array([1 - dropout_prob]).astype("float32")
     scale_weights = trt.Weights(weight_data)
-    shift_weights = trt.Weights(np.array([0]))
-    power_weights = trt.Weights(np.array([0]))
+    shift_weights = trt.Weights(np.array([0]).astype("float32"))
+    power_weights = trt.Weights(np.array([1]).astype("float32"))
 
     scale_layer = network.add_scale(
         input_x,
