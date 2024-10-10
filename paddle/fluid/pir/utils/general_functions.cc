@@ -23,13 +23,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-
 #include "paddle/pir/include/core/builtin_op.h"
-#include "paddle/pir/include/core/builtin_type.h"
-#include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace {
 
@@ -164,29 +162,6 @@ bool ValueIsPersistable(const pir::Value& value) {
     }
   }
   return true;
-}
-
-void SetNewLayoutForValue(pir::Value value,
-                          const common::DataLayout& new_layout) {
-  if (!value || !value.type()) {
-    return;
-  }
-  auto tensor_type = value.type().dyn_cast<pir::DenseTensorType>();
-  if (!tensor_type) {
-    return;
-  }
-  auto old_layeut = tensor_type.data_layout();
-  if (old_layeut == new_layout) {
-    return;
-  }
-
-  auto new_tensor_type = pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                                   tensor_type.dtype(),
-                                                   tensor_type.dims(),
-                                                   new_layout,
-                                                   tensor_type.lod(),
-                                                   tensor_type.offset());
-  value.set_type(new_tensor_type);
 }
 
 }  // namespace pir

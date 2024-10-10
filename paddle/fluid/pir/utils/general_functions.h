@@ -17,9 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/common/layout.h"
 #include "paddle/pir/include/core/type.h"
-#include "paddle/pir/include/core/value.h"
 
 namespace pir {
 
@@ -108,14 +106,5 @@ std::vector<Value> GetUsedExternalValue(const Block& block);
  * @return bool
  */
 bool ValueIsPersistable(const pir::Value& value);
-
-/**
- * @brief Set the layout of an value.
- *
- * @param pir::Value the value to be process
- * @param const DataLayout& new layout
- *
- */
-void SetNewLayoutForValue(pir::Value value, const common::DataLayout& layout);
 
 }  // namespace pir
