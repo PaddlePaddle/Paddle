@@ -327,52 +327,6 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.shape = [2, 3, 4, 5]
         self.dtype = "float32"
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-
-    def api_case(self, axis=None, keepdim=False):
-        out_ref = ref_logsumexp(self.x, axis, keepdim)
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', self.shape, self.dtype)
-            out = paddle.logsumexp(x, axis, keepdim)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x}, fetch_list=[out])
-        np.testing.assert_allclose(res[0], out_ref, rtol=1e-05)
-
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x)
-        out = paddle.logsumexp(x, axis, keepdim)
-        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
-        paddle.enable_static()
-
-    def test_api(self):
-        self.api_case()
-        self.api_case(2)
-        self.api_case([-1])
-        self.api_case([2, -3])
-        self.api_case((0, 1, -1))
-        self.api_case(keepdim=True)
-
-    def test_alias(self):
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x)
-        out1 = paddle.logsumexp(x)
-        out2 = paddle.tensor.logsumexp(x)
-        out3 = paddle.tensor.math.logsumexp(x)
-        out_ref = ref_logsumexp(self.x)
-        for out in [out1, out2, out3]:
-            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
-        paddle.enable_static()
-
-
-class TestLogsumexpAPI2(TestLogsumexpAPI):
-    def setUp(self):
-        self.shape = [3, 2, 4, 5]
-        self.dtype = "int32"
-        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.places = [paddle.CPUPlace()]
         if paddle.base.core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
@@ -398,6 +352,14 @@ class TestLogsumexpAPI2(TestLogsumexpAPI):
             np.testing.assert_allclose(x_grad, x_grad_ref, rtol=1e-05)
             paddle.enable_static()
 
+    def test_api(self):
+        self.api_case()
+        self.api_case(2)
+        self.api_case([-1])
+        self.api_case([2, -3])
+        self.api_case((0, 1, -1))
+        self.api_case(keepdim=True)
+
     def test_alias(self):
         paddle.disable_static(paddle.CPUPlace())
         x = paddle.to_tensor(self.x)
@@ -410,14 +372,126 @@ class TestLogsumexpAPI2(TestLogsumexpAPI):
         paddle.enable_static()
 
 
-class TestLogsumexpAPI3(TestLogsumexpAPI2):
+class TestLogsumexpAPIInt(TestLogsumexpAPI):
     def setUp(self):
-        self.shape = [3, 4, 2, 5]
+        self.shape = [3, 2, 4, 5]
+        self.dtype = "int32"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+
+class TestLogsumexpAPIInt2(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [3, 4, 2]
+        self.dtype = "int32"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_api(self):
+        self.api_case()
+        self.api_case(2)
+        self.api_case([-1])
+        self.api_case([2, -2])
+        self.api_case((0, 1, -1))
+        self.api_case(keepdim=True)
+
+
+class TestLogsumexpAPIInt3(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [3, 4]
         self.dtype = "int64"
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.places = [paddle.CPUPlace()]
         if paddle.base.core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+
+    def test_api(self):
+        self.api_case()
+        self.api_case(1)
+        self.api_case([-1])
+        self.api_case((0, -1))
+        self.api_case(keepdim=True)
+
+
+class TestLogsumexpAPIInt4(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [8]
+        self.dtype = "int64"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_api(self):
+        self.api_case()
+        self.api_case(0)
+        self.api_case([-1])
+        self.api_case(keepdim=True)
+
+
+class TestLogsumexpAPI2(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [3, 2, 4, 5]
+        self.dtype = "float64"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+
+class TestLogsumexpAPI3(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [3, 4, 2]
+        self.dtype = "float32"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_api(self):
+        self.api_case()
+        self.api_case(2)
+        self.api_case([-1])
+        self.api_case([2, -2])
+        self.api_case((0, 1, -1))
+        self.api_case(keepdim=True)
+
+
+class TestLogsumexpAPI4(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [3, 4]
+        self.dtype = "float32"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_api(self):
+        self.api_case()
+        self.api_case(1)
+        self.api_case([-1])
+        self.api_case((0, -1))
+        self.api_case(keepdim=True)
+
+
+class TestLogsumexpAPI5(TestLogsumexpAPI):
+    def setUp(self):
+        self.shape = [8]
+        self.dtype = "float64"
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_api(self):
+        self.api_case()
+        self.api_case(0)
+        self.api_case([-1])
+        self.api_case(keepdim=True)
 
 
 # Test logsumexp bug
