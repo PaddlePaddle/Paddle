@@ -31,7 +31,7 @@ def ref_var(x, axis=None, unbiased=True, keepdim=False):
 
 class TestVarAPI(unittest.TestCase):
     def setUp(self):
-        self.dtype = 'float64'
+        self.dtype = 'float32' if paddle.is_compiled_with_musa() else 'float64'
         self.shape = [1, 3, 4, 10]
         self.axis = [1, 3]
         self.keepdim = False

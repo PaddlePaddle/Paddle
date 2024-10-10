@@ -27,7 +27,12 @@ PD_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
+#ifdef PADDLE_WITH_MUSA
+static constexpr int kNumCUDAThreads = 1024;
+#else
 static constexpr int kNumCUDAThreads = 512;
+#endif
+
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {

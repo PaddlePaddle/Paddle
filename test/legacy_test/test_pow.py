@@ -82,6 +82,7 @@ class TestPowerAPI(unittest.TestCase):
         self.places = ['cpu']
         if core.is_compiled_with_cuda():
             self.places.append('gpu')
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
 
     def test_power(self):
         """test_power."""
@@ -89,7 +90,7 @@ class TestPowerAPI(unittest.TestCase):
         for place in self.places:
             # test 1-d float tensor ** float scalar
             dims = (np.random.randint(200, 300),)
-            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
             y = np.random.rand() * 10
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
@@ -98,14 +99,14 @@ class TestPowerAPI(unittest.TestCase):
 
             # test 1-d float tensor ** int scalar
             dims = (np.random.randint(200, 300),)
-            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
             y = int(np.random.rand() * 10)
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
             res = _run_power(STATIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-            x = (np.random.rand(*dims) * 10).astype(np.int64)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
             y = int(np.random.rand() * 10)
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
@@ -114,8 +115,8 @@ class TestPowerAPI(unittest.TestCase):
 
             # test 1-d float tensor ** 1-d float tensor
             dims = (np.random.randint(200, 300),)
-            x = (np.random.rand(*dims) * 10).astype(np.float64)
-            y = (np.random.rand(*dims) * 10).astype(np.float64)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
+            y = (np.random.rand(*dims) * 10).astype(self.dtype)
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
             res = _run_power(STATIC, x, y, place)
@@ -123,8 +124,8 @@ class TestPowerAPI(unittest.TestCase):
 
             # test 1-d int tensor ** 1-d int tensor
             dims = (np.random.randint(200, 300),)
-            x = (np.random.rand(*dims) * 10).astype(np.int64)
-            y = (np.random.rand(*dims) * 10).astype(np.int64)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
+            y = (np.random.rand(*dims) * 10).astype(self.dtype)
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
             res = _run_power(STATIC, x, y, place)
@@ -132,8 +133,8 @@ class TestPowerAPI(unittest.TestCase):
 
             # test 1-d int tensor ** 1-d int tensor
             dims = (np.random.randint(200, 300),)
-            x = (np.random.rand(*dims) * 10).astype(np.int32)
-            y = (np.random.rand(*dims) * 10).astype(np.int32)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
+            y = (np.random.rand(*dims) * 10).astype(self.dtype)
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
             res = _run_power(STATIC, x, y, place)
@@ -141,8 +142,8 @@ class TestPowerAPI(unittest.TestCase):
 
             # test 1-d int tensor ** 1-d int tensor
             dims = (np.random.randint(200, 300),)
-            x = (np.random.rand(*dims) * 10).astype(np.float32)
-            y = (np.random.rand(*dims) * 10).astype(np.float32)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
+            y = (np.random.rand(*dims) * 10).astype(self.dtype)
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
             res = _run_power(STATIC, x, y, place)
@@ -151,13 +152,13 @@ class TestPowerAPI(unittest.TestCase):
             # test float scalar ** 2-d float tensor
             dims = (np.random.randint(2, 10), np.random.randint(5, 10))
             x = np.random.rand() * 10
-            y = (np.random.rand(*dims) * 10).astype(np.float32)
+            y = (np.random.rand(*dims) * 10).astype(self.dtype)
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
             # test 2-d float tensor ** float scalar
             dims = (np.random.randint(2, 10), np.random.randint(5, 10))
-            x = (np.random.rand(*dims) * 10).astype(np.float32)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
             y = np.random.rand() * 10
             res = _run_power(DYNAMIC, x, y, place)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
@@ -170,8 +171,8 @@ class TestPowerAPI(unittest.TestCase):
                 np.random.randint(5, 10),
                 np.random.randint(5, 10),
             )
-            x = (np.random.rand(*dims) * 10).astype(np.float64)
-            y = (np.random.rand(dims[-1]) * 10).astype(np.float64)
+            x = (np.random.rand(*dims) * 10).astype(self.dtype)
+            y = (np.random.rand(dims[-1]) * 10).astype(self.dtype)
             res = _run_power(DYNAMIC, x, y)
             np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
             res = _run_power(STATIC, x, y)

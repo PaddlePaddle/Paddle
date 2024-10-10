@@ -145,7 +145,9 @@ elseif(WITH_ROCM)
   target_link_libraries(phi ${PHI_DEPS})
 elseif(WITH_MUSA)
   musa_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
-  target_link_libraries(phi ${PHI_DEPS})  
+  target_compile_options(phi PRIVATE -Wno-unused-variable)
+  target_compile_options(phi PRIVATE -Wno-unused-but-set-variable)
+  target_link_libraries(phi ${PHI_DEPS})
 elseif(WITH_XPU_KP)
   xpu_library(
     phi ${PHI_BUILD_TYPE}

@@ -17,6 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "gtest/internal/gtest-internal.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -24,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flags.h"
+#include "paddle/phi/common/memory_utils.h"
 
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
@@ -91,6 +94,27 @@ class CudnnDataType<phi::dtype::bfloat16> {
 };
 
 template <>
+class CudnnDataType<unsigned char> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::UINT8;
+};
+
+
+
+template <>
+class CudnnDataType<signed char> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::INT8;
+};
+
+template <>
+class CudnnDataType<short> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::INT16;
+};
+
+
+template <>
 class CudnnDataType<phi::dtype::float16> {
  public:
   static const dynload::Tensor::Type type = dynload::Tensor::Type::HALF;
@@ -105,6 +129,19 @@ class CudnnDataType<phi::dtype::float16> {
     static ScalingParamType v = 0.0;
     return &v;
   }
+};
+
+
+template <>
+class CudnnDataType<int> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::INT32;
+};
+
+template <>
+class CudnnDataType<int64_t> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::INT64;
 };
 
 template <>
@@ -137,6 +174,12 @@ class CudnnDataType<double> {
     static ScalingParamType v = 0.0;
     return &v;
   }
+};
+
+template <>
+class CudnnDataType<bool> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::BOOL;
 };
 
 inline dynload::Tensor::Format GetCudnnTensorFormat(
@@ -209,6 +252,26 @@ class ScopedTensorDescriptor {
                                      const int groups = 1) {
     desc_.SetAddr(tensor.data());
     descriptor<T>(order, dims, groups);
+    return desc_;
+  }
+
+  template <typename T>
+  inline dynload::Tensor& descriptor_with_stride(const phi::DenseTensor& tensor,
+                                     const DataLayout& order,
+                                     const std::vector<int>& dims,
+                                     const int groups = 1) {
+    desc_.SetAddr(tensor.data());
+
+    std::vector<int64_t> strides(common::vectorize(tensor.strides()));
+    std::vector<int64_t> dims_with_group(dims.begin(), dims.end());
+    if (groups > 1) {
+      dims_with_group[1] = dims_with_group[1] / groups;
+    }
+    desc_.SetNdInfo(static_cast<int>(dims_with_group.size()),
+                    dims_with_group.data(),
+                    strides.data());
+    desc_.SetType(CudnnDataType<T>::type);
+    desc_.SetFormat(dynload::Tensor::Format::NCHW);
     return desc_;
   }
 
@@ -309,6 +372,71 @@ class ScopedSoftmaxDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedSoftmaxDescriptor);
 };
 
+class ScopedMatMulDescriptor {
+ public:
+  ScopedMatMulDescriptor() {}
+  ~ScopedMatMulDescriptor() PADDLE_MAY_THROW {}
+
+  inline dynload::MatMul& descriptor(const bool trans_left,
+                                     const bool trans_right) {
+    desc_.SetTranspose(trans_left, trans_right);
+    return desc_;
+  }
+
+  dynload::MatMul& desc() { return desc_; }
+
+ private:
+  dynload::MatMul desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedMatMulDescriptor);
+};
+
+class ScopedBatchMatmulDescriptor {
+ public:
+  ScopedBatchMatmulDescriptor() {}
+  ~ScopedBatchMatmulDescriptor() PADDLE_MAY_THROW {}
+
+  inline dynload::BatchMatMul& descriptor(const bool trans_left,
+                                          const bool trans_right) {
+    desc_.SetTranspose(trans_left, trans_right);
+    return desc_;
+  }
+
+  dynload::BatchMatMul& desc() { return desc_; }
+
+ private:
+  dynload::BatchMatMul desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedBatchMatmulDescriptor);
+};
+
+class ScaledDotProductAttention{
+  public:
+  ScaledDotProductAttention(){}
+  ~ScaledDotProductAttention() PADDLE_MAY_THROW{}
+  dynload::ScaledDotProductAttention desc_;
+ private:
+  DISABLE_COPY_AND_ASSIGN(ScaledDotProductAttention);
+};
+
+class ScopedUnaryDescriptor{
+  public:
+  ScopedUnaryDescriptor(){}
+  ~ScopedUnaryDescriptor() PADDLE_MAY_THROW{}
+  dynload::Unary desc_;
+ private:
+  DISABLE_COPY_AND_ASSIGN(ScopedUnaryDescriptor);
+};
+
+
+class ScopedBinaryDescriptor{
+  public:
+  ScopedBinaryDescriptor(){}
+  ~ScopedBinaryDescriptor() PADDLE_MAY_THROW{}
+  dynload::Binary desc_;
+ private:
+  DISABLE_COPY_AND_ASSIGN(ScopedBinaryDescriptor);
+};
+
+
 static void Coalesce1ToLastDims(std::vector<int>& tensor_dims) {
   const int ndims = tensor_dims.size();
   if (ndims < 3) return;
@@ -331,6 +459,48 @@ static dynload::MemoryHandler InternalMemAlloc(size_t s) {
     PADDLE_ENFORCE_GPU_SUCCESS(musaMalloc(&data, s));
   }
   return dynload::MemoryHandler(data, InternalMemFree);
+}
+
+template<class Context>
+struct InternalMalloc {
+  InternalMalloc(const Context& ctx) : stream(reinterpret_cast<phi::StreamId>(ctx.stream())), place(ctx.GetPlace()) {}
+  InternalMalloc(const InternalMalloc& alloc) : stream(alloc.stream), place(alloc.place) {}
+  dynload::MemoryHandler operator() (size_t s) {
+    memory_handle = std::move(phi::memory_utils::Alloc(place, s, stream));
+    return dynload::MemoryHandler(memory_handle->ptr(), [](void* ptr) {}); 
+  }
+  phi::Stream stream;
+  phi::GPUPlace place;
+  Allocator::AllocationPtr memory_handle;
+};
+
+template <>
+inline dynload::Tensor& ScopedTensorDescriptor::descriptor_with_stride<phi::dtype::complex<float>>(const phi::DenseTensor& tensor,
+                                   const DataLayout& order,
+                                   const std::vector<int>& dims,
+                                   const int groups) {
+  auto __summary__ = phi::ErrorSummary("does not support");
+  auto __message__ = ::paddle::string::Sprintf(
+      "",
+      __summary__.error_message());
+  __THROW_ERROR_INTERNAL__(
+      phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+  return desc_;
+}
+
+
+template <>
+inline dynload::Tensor& ScopedTensorDescriptor::descriptor_with_stride<phi::dtype::complex<double>>(const phi::DenseTensor& tensor,
+                                   const DataLayout& order,
+                                   const std::vector<int>& dims,
+                                   const int groups) {
+  auto __summary__ = phi::ErrorSummary("does not support");
+  auto __message__ = ::paddle::string::Sprintf(
+      "",
+      __summary__.error_message());
+  __THROW_ERROR_INTERNAL__(
+      phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+  return desc_;
 }
 
 }  // namespace gpu

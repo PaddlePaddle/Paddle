@@ -56,7 +56,7 @@ class TestSumOp(OpTest):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def init_kernel_type(self):
-        self.dtype = np.float64
+        self.dtype = np.float32 if paddle.is_compiled_with_musa() else np.float64
 
     def test_check_output(self):
         self.check_output(
@@ -82,7 +82,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         self.height = 10
         self.row_numel = 12
         self.rows = [0, 1, 2, 3, 4, 5, 6]
-        self.dtype = np.float64
+        self.dtype = np.float32 if paddle.is_compiled_with_musa() else np.float64
         self.init_kernel_type()
 
     def check_with_place(self, place, inplace):
@@ -256,7 +256,7 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         self.height = 10
         self.row_numel = 12
         self.rows = [0, 1, 2, 2, 4, 5, 6]
-        self.dtype = np.float64
+        self.dtype = np.float32 if paddle.is_compiled_with_musa() else np.float64
 
     def check_with_place(self, place, inplace):
         scope = core.Scope()
@@ -568,7 +568,8 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
     def init_data(self):
         self.pd_api = paddle.sum
         self.np_api = np.sum
-        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.dtype= 'float32' if paddle.is_compiled_with_musa() else 'float64'
+        self.x = paddle.randn([10, 5, 9, 9], dtype=self.dtype)
         self.np_axis = np.array((1, 2), dtype='int64')
         self.tensor_axis = paddle.to_tensor(self.np_axis, dtype='int64')
 
@@ -639,7 +640,8 @@ class TestSumWithTensorAxis1(TestReduceOPTensorAxisBase):
     def init_data(self):
         self.pd_api = paddle.sum
         self.np_api = np.sum
-        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.dtype = 'float32' if paddle.is_compiled_with_musa() else 'float64'
+        self.x = paddle.randn([10, 5, 9, 9], dtype=self.dtype)
         self.np_axis = np.array([0, 1, 2], dtype='int64')
         self.tensor_axis = [
             0,

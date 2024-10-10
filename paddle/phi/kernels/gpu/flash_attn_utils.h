@@ -25,7 +25,7 @@
 
 namespace phi {
 
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_FLASHATTN_MUSA)
 static std::pair<uint64_t, uint64_t> GenerateRNGState(
     const GPUContext& ctx,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
@@ -271,6 +271,7 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   }
 };
 
+#ifndef PADDLE_WITH_FLASHATTN_MUSA
 static void CheckFlashAttnStatus(const bool status) {
   PADDLE_ENFORCE_EQ(status,
                     true,
@@ -278,6 +279,7 @@ static void CheckFlashAttnStatus(const bool status) {
                         "Error in Flash-Attention, detail information is: %s",
                         phi::dynload::flash_attn_error()));
 }
+#endif
 #endif
 
 static void RaiseNotSupportedError() {

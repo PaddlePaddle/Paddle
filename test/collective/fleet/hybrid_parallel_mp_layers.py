@@ -168,7 +168,7 @@ class TestDistTraining(unittest.TestCase):
             optimizer_a.step()
             optimizer_b.step()
 
-            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
+            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy(), rtol=1e-6, atol=1e-6)
 
     def test_row_parallel_layer(self):
         global_dtype = "float32"

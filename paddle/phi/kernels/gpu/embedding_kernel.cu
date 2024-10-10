@@ -34,18 +34,16 @@ __global__ void EmbeddingFW(T *output,
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
-#ifndef __MUSACC__
-    if (PaddingFlag == false || id != padding_idx) {
-      PADDLE_ENFORCE(id >= 0,
-                     "Id should no less than 0 but received an id value: %lld.",
-                     id);
-      PADDLE_ENFORCE(
-          id < N,
-          "Id should smaller than %lld but received an id value: %lld.",
-          N,
-          id);
+  if (PaddingFlag == false || id != padding_idx) {
+    PADDLE_ENFORCE(id >= 0,
+                    "Id should no less than 0 but received an id value: %lld.",
+                    id);
+    PADDLE_ENFORCE(
+        id < N,
+        "Id should smaller than %lld but received an id value: %lld.",
+        N,
+        id);
     }
-#endif
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += blockDim.x) {

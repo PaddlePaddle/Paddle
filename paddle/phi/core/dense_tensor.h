@@ -197,6 +197,11 @@ class TEST_API DenseTensor : public TensorBase,
     meta_.offset = 0;
   }
 
+  void transpose_dim1_and_dim2_for_4d_tensor(){
+    this->meta_.dims={this->dims()[0],this->dims()[2],this->dims()[1],this->dims()[3]};
+    this->meta_.strides={this->strides()[0],this->strides()[2],this->strides()[1],this->strides()[3]};
+  }
+
  private:
   friend class DenseTensorUtils;
   friend class phi::distributed::DistTensor;

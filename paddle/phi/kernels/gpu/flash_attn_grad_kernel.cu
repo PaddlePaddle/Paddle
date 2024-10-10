@@ -21,9 +21,38 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 
+
+#ifdef PADDLE_WITH_FLASHATTN_MUSA
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
+#include "paddle/common/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
+#include "paddle/phi/kernels/impl/tril_triu_kernel_impl.h"
+#endif
+
 PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
+#ifdef PADDLE_WITH_FLASHATTN_MUSA
+using ScaledDotProductAttention =
+    phi::backends::gpu::ScaledDotProductAttention;
+using ScopedTensorDescriptor =
+    phi::backends::gpu::ScopedTensorDescriptor;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+
+inline bool is_pad_mask(const DenseTensor& mask, const DenseTensor& query) {
+  return mask.dims().size() == 2 && mask.dims()[0] == query.dims()[0] &&
+      mask.dims()[1] == query.dims()[2];
+}
+
+template <typename T, typename Context>
+void ContiguousKernel(const Context& dev_ctx,
+                      const DenseTensor& input,
+                      DenseTensor* out);
+#endif
 
 int get_num_split() {
   // 0 for an internal heuristic, which is optimal
@@ -281,6 +310,116 @@ void FlashAttnGradKernel(const Context& ctx,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
       params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
+#elif defined(PADDLE_WITH_FLASHATTN_MUSA)
+  ctx.template Alloc<T>(dq);
+  ctx.template Alloc<T>(dk);
+  ctx.template Alloc<T>(dv);
+  ScaledDotProductAttention sdpa;  
+  
+  DenseTensor trans_q(q);
+  trans_q.transpose_dim1_and_dim2_for_4d_tensor();
+
+  DenseTensor trans_k(k);
+  trans_k.transpose_dim1_and_dim2_for_4d_tensor();
+
+  DenseTensor trans_v(v);
+  trans_v.transpose_dim1_and_dim2_for_4d_tensor();
+
+  //[batch_size, seq_len, num_heads, head_dim] in paddle, but [bs, num, seq_len, hd] in mudnn and pytorch
+  //dq_temp, dk_temp, dv_temp are used for mudnn, in the end they will be transposed and copy to dq, dk, dv
+  DenseTensor dq_temp(*dq);
+  dq_temp.transpose_dim1_and_dim2_for_4d_tensor();
+
+  DenseTensor dk_temp(*dk);
+  dk_temp.transpose_dim1_and_dim2_for_4d_tensor();
+
+  DenseTensor dv_temp(*dv);
+  dv_temp.transpose_dim1_and_dim2_for_4d_tensor();
+
+  DenseTensor trans_dout(dout);
+  trans_dout.transpose_dim1_and_dim2_for_4d_tensor();
+
+  DenseTensor trans_out(out);
+  trans_out.transpose_dim1_and_dim2_for_4d_tensor();
+
+  ScopedTensorDescriptor con_mask_scoped_desc;
+  DenseTensor con_mask;
+  dynload::Tensor musa_mask;
+
+  if(attn_mask.get_ptr() && !causal){
+    sdpa.desc_.SetMaskMode(is_pad_mask(*attn_mask.get_ptr(), trans_q));
+    con_mask.Resize(attn_mask.get_ptr()->dims());
+    phi ::ContiguousKernel<T, Context>(
+          ctx, *attn_mask.get_ptr(), &con_mask);
+    musa_mask = con_mask_scoped_desc.descriptor<T>(
+          con_mask, GPUDNNDataLayout::kNCHW, common::vectorize<int>(con_mask.dims()));  
+  }else{
+    con_mask.Resize(common::make_ddim({0}));
+    ctx.template Alloc<float>(&con_mask);
+    musa_mask = con_mask_scoped_desc.descriptor<float>(
+          con_mask, GPUDNNDataLayout::kNCHW, common::vectorize<int>(con_mask.dims()));      
+  }
+
+  auto q_head_dim = trans_q.dims()[3]; // head_dim
+  auto q_seq_len = trans_q.dims()[2]; // seq_len
+  auto q_head_num = trans_q.dims()[1]; // head_num
+  auto batch_size = trans_q.dims()[0]; // batch_size
+  auto kv_seq_len = trans_k.dims()[2];
+  sdpa.desc_.SetEmbedDim(q_head_num * q_head_dim);
+  sdpa.desc_.SetHeadsNum(q_head_num);
+  sdpa.desc_.SetTraining(true);
+  sdpa.desc_.SetCausal(causal);
+
+  DenseTensor dropout_mask;
+  dropout_mask.Resize(common::make_ddim({0}));
+  ctx.template Alloc<T>(&dropout_mask);
+
+  ScopedTensorDescriptor out_scoped_desc;
+  ScopedTensorDescriptor dq_temp_scoped_desc;
+  ScopedTensorDescriptor dk_temp_scoped_desc;
+  ScopedTensorDescriptor dv_temp_scoped_desc;
+  ScopedTensorDescriptor trans_q_scoped_desc;
+  ScopedTensorDescriptor trans_k_scoped_desc;
+  ScopedTensorDescriptor trans_v_scoped_desc;
+  ScopedTensorDescriptor logsumexp_scoped_desc;
+  ScopedTensorDescriptor dout_scoped_desc;
+  ScopedTensorDescriptor dropout_mask_scoped_desc;
+
+  auto& musa_output = out_scoped_desc.descriptor_with_stride<T>(
+      trans_out, GPUDNNDataLayout::kNCHW, common::vectorize<int>(trans_out.dims()));
+  auto& musa_grad_query = dq_temp_scoped_desc.descriptor_with_stride<T>(
+      dq_temp, GPUDNNDataLayout::kNCHW, common::vectorize<int>(dq_temp.dims()));
+  auto& musa_grad_key = dk_temp_scoped_desc.descriptor_with_stride<T>(
+      dk_temp, GPUDNNDataLayout::kNCHW, common::vectorize<int>(dk_temp.dims()));
+  auto& musa_grad_value = dv_temp_scoped_desc.descriptor_with_stride<T>(
+      dv_temp, GPUDNNDataLayout::kNCHW, common::vectorize<int>(dv_temp.dims()));
+  auto& musa_q = trans_q_scoped_desc.descriptor_with_stride<T>(
+      trans_q, GPUDNNDataLayout::kNCHW, common::vectorize<int>(trans_q.dims()));
+  auto& musa_k = trans_k_scoped_desc.descriptor_with_stride<T>(
+      trans_k, GPUDNNDataLayout::kNCHW, common::vectorize<int>(trans_k.dims()));
+  auto& musa_v = trans_v_scoped_desc.descriptor_with_stride<T>(
+      trans_v, GPUDNNDataLayout::kNCHW, common::vectorize<int>(trans_v.dims()));
+  auto& musa_logsumexp = logsumexp_scoped_desc.descriptor_with_stride<float>(
+      softmax_lse, GPUDNNDataLayout::kNCHW, common::vectorize<int>(softmax_lse.dims()));
+  auto& musa_grad_output = dout_scoped_desc.descriptor_with_stride<T>(
+      trans_dout, GPUDNNDataLayout::kNCHW, common::vectorize<int>(trans_dout.dims()));
+  auto& musa_dropout_mask = dropout_mask_scoped_desc.descriptor_with_stride<T>(
+      dropout_mask, GPUDNNDataLayout::kNCHW, common::vectorize<int>(dropout_mask.dims()));
+  
+  sdpa.desc_.RunFlashBwd(
+      *ctx.cudnn_handle(),
+      musa_grad_query,
+      musa_grad_key,
+      musa_grad_value,
+      musa_grad_output,
+      musa_q,
+      musa_k,
+      musa_v,
+      musa_mask,
+      musa_output,
+      musa_logsumexp,
+      musa_dropout_mask,
+      backends::gpu::InternalMalloc<Context>(ctx));
 #else
   RaiseNotSupportedError();
 #endif

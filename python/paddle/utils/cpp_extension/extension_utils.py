@@ -94,6 +94,12 @@ if core.is_compiled_with_rocm():
         '-DEIGEN_USE_GPU',
         '-DEIGEN_USE_HIP',
     ]
+elif core.is_compiled_with_musa():
+    COMMON_MCC_FLAGS = [
+        '-DPADDLE_WITH_MUSA',
+        '-DEIGEN_USE_GPU',
+        '-DEIGEN_USE_MUSA',
+    ]    
 else:
     COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
 
@@ -391,6 +397,13 @@ def prepare_unix_cudaflags(cflags):
             + cflags
             + get_rocm_arch_flags(cflags)
         )
+    elif core.is_compiled_with_musa():
+        cflags = (
+            COMMON_MCC_FLAGS
+            + ['-fPIC']
+            + cflags
+            + get_musa_arch_flags(cflags)
+        )
     else:
         cflags = (
             COMMON_NVCC_FLAGS
@@ -447,6 +460,12 @@ def get_rocm_arch_flags(cflags):
     cflags = cflags + ['-fno-gpu-rdc', '-amdgpu-target=gfx906']
     return cflags
 
+def get_musa_arch_flags(cflags):
+    """
+    For MUSA platform
+    """
+    cflags = cflags + ['--cuda-gpu-arch=mp_22']
+    return cflags
 
 def _get_base_path():
     """
@@ -595,6 +614,8 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         if use_cuda:
             if core.is_compiled_with_rocm():
                 extra_link_args.append('-lamdhip64')
+            elif core.is_compiled_with_musa():
+                extra_link_args.append('-lmusart')
             else:
                 extra_link_args.append('-lcudart')
 
@@ -736,6 +757,37 @@ def find_rocm_home():
     return rocm_home
 
 
+def find_musa_home():
+    """
+    Use heuristic method to find musa path
+    """
+    musa_home = os.environ.get('MUSA_HOME') or os.environ.get('MUSA_PATH')
+
+    # step 2.  find path by `which nvcc`
+    if musa_home is None:
+        which_cmd = 'where' if IS_WINDOWS else 'which'
+        try:
+            with open(os.devnull, 'w') as devnull:
+                mcc_path = subprocess.check_output(
+                    [which_cmd, 'mcc'], stderr=devnull
+                )
+                mcc_path = mcc_path.decode()
+                mcc_path = mcc_path.rstrip('\r\n')
+
+                # for example: /opt/rocm/bin/hipcc
+                musa_home = os.path.dirname(os.path.dirname(mcc_path))
+        except:
+            musa_home = "/usr/local/musa"
+    # step 3. check whether path is valid
+    if (
+        musa_home
+        and not os.path.exists(musa_home)
+        and core.is_compiled_with_musa()
+    ):
+        musa_home = None
+
+    return musa_home
+
 def find_cuda_includes():
     """
     Use heuristic method to find cuda include path
@@ -762,6 +814,19 @@ def find_rocm_includes():
     return [os.path.join(rocm_home, 'include')]
 
 
+
+def find_musa_includes():
+    """
+    Use heuristic method to find musa include path
+    """
+    musa_home = find_musa_home()
+    if musa_home is None:
+        raise ValueError(
+            "Not found MUSA runtime, please use `export MUSA_PATH= XXX` to specific it."
+        )
+
+    return [os.path.join(musa_home, 'include')]
+
 def find_paddle_includes(use_cuda=False):
     """
     Return Paddle necessary include dir path.
@@ -775,6 +840,9 @@ def find_paddle_includes(use_cuda=False):
         if core.is_compiled_with_rocm():
             rocm_include_dir = find_rocm_includes()
             include_dirs.extend(rocm_include_dir)
+        elif core.is_compiled_with_musa():
+            musa_include_dir = find_musa_includes()
+            include_dirs.extend(musa_include_dir)
         else:
             cuda_include_dir = find_cuda_includes()
             include_dirs.extend(cuda_include_dir)
@@ -855,6 +923,18 @@ def find_rocm_libraries():
 
     return rocm_lib_dir
 
+def find_musa_libraries():
+    """
+    Use heuristic method to find rocm dynamic lib path
+    """
+    musa_home = find_musa_home()
+    if musa_home is None:
+        raise ValueError(
+            "Not found ROCM runtime, please use `export ROCM_PATH=XXX` to specific it."
+        )
+    rocm_lib_dir = [os.path.join(musa_home, 'lib')]
+
+    return rocm_lib_dir
 
 def find_paddle_libraries(use_cuda=False):
     """
@@ -867,6 +947,9 @@ def find_paddle_libraries(use_cuda=False):
         if core.is_compiled_with_rocm():
             rocm_lib_dir = find_rocm_libraries()
             paddle_lib_dirs.extend(rocm_lib_dir)
+        elif core.is_compiled_with_musa():
+            musa_lib_dir = find_musa_libraries()
+            paddle_lib_dirs.extend(musa_lib_dir)     
         else:
             cuda_lib_dir = find_cuda_libraries()
             paddle_lib_dirs.extend(cuda_lib_dir)
@@ -887,7 +970,7 @@ def add_compile_flag(extra_compile_args, flags):
 
 
 def is_cuda_file(path):
-    cuda_suffix = {'.cu'}
+    cuda_suffix = {'.cu','.mu'}
     items = os.path.splitext(path)
     assert len(items) > 1
     return items[-1] in cuda_suffix

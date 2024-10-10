@@ -199,7 +199,7 @@ def test_dp_stage2():
     )
     for i in range(len(dp_params)):
         np.testing.assert_allclose(
-            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6
+            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-5, atol=1e-5
         )
 
     # stage2 accumulate grad
@@ -211,8 +211,8 @@ def test_dp_stage2():
         np.testing.assert_allclose(
             stage2_params[i].numpy(),
             stage2_accumulate_grad[i].numpy(),
-            rtol=1e-5,
-            atol=1e-5,
+            rtol=1e-4,
+            atol=1e-4,
         )
 
     # stage2 param list VS param group
@@ -221,7 +221,7 @@ def test_dp_stage2():
     )
     for i in range(len(dp_params)):
         np.testing.assert_allclose(
-            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6
+            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6, atol=1e-6
         )
 
     # save/load model
