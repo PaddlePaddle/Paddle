@@ -3934,6 +3934,7 @@ function clang-tidy_check() {
     -extra-arg=-Wno-overloaded-virtual  \
     -extra-arg=-Wno-defaulted-function-deleted  \
     -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
+    -extra-arg=-Wno-error \
     -extra-arg=-Wno-return-type-c-linkage 2>&1 1>&3 3>&- 4>&-)
 
     endTime_s=`date +%s`
@@ -3942,7 +3943,7 @@ function clang-tidy_check() {
     echo "Check Time: $[ $endTime_s - $startTime_s ]s"
 
     echo -e '\n************************************************************************************'
-    # if [ ${check_error} != 0 ];then
+    if [ ${check_error} != 0 ];then
         echo "Your PR code style clang-tidy check failed."
         echo "Please install clang-tidy locally:"
         echo ""
@@ -3957,9 +3958,9 @@ function clang-tidy_check() {
         fi
         echo "For more information, please refer to our codestyle check guide:"
         echo "https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/git_guides/codestyle_check_guide_cn.html"
-    # else
-    #     echo "Your PR code style clang-tidy check passed."
-    # fi
+    else
+        echo "Your PR code style clang-tidy check passed."
+    fi
     echo -e '************************************************************************************\n'
 
     trap : 0
