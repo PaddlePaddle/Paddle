@@ -129,9 +129,11 @@ class PirInterpreter : public InterpreterBaseImpl {
   void UpdateSyncOpNum();
   void UpdateNcclOpNum();
   void UpdateOneDNNOpNum();
+
   void AnalyseExecuteOrderForTrace(
       std::map<size_t, std::set<size_t>> op_downstream_map,
       InstructionSchedulingPriorityLess compare);
+  void AnalyzeForceSyncOps();
   void ConstructEventForJitInput();
   void CalculateLastLiveOps();
 

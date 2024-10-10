@@ -554,6 +554,48 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 np.testing.assert_array_equal(res, a_np)
                 np.testing.assert_array_equal(res, b_np)
 
+    def test_abs(self):
+        # test for real number
+        x_np = np.random.uniform(-1, 1, [10, 1024]).astype(np.float32)
+        res = abs(x_np)
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(
+                    name='x', shape=[10, 1024], dtype="float32"
+                )
+                a = abs(x)
+                b = x.__abs__()
+                (a_np, b_np) = exe.run(
+                    main_program,
+                    feed={"x": x_np},
+                    fetch_list=[a, b],
+                )
+                np.testing.assert_array_equal(res, a_np)
+                np.testing.assert_array_equal(res, b_np)
+
+    def test_abs_complex(self):
+        # test for complex number
+        x_np = np.random.uniform(-1, 1, [10, 1024]).astype(
+            np.float32
+        ) + 1j * np.random.uniform(-1, 1, [10, 1024]).astype(np.float32)
+        res = abs(x_np)
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(
+                    name='x', shape=[10, 1024], dtype="complex64"
+                )
+                a = abs(x)
+                b = x.__abs__()
+                (a_np, b_np) = exe.run(
+                    main_program,
+                    feed={"x": x_np},
+                    fetch_list=[a, b],
+                )
+                np.testing.assert_allclose(res, a_np, rtol=2e-7, atol=0.0)
+                np.testing.assert_allclose(res, b_np, rtol=2e-7, atol=0.0)
+
     def test_builtin_type_conversion(self):
         with paddle.pir_utils.IrGuard():
             _, _, program_guard = new_program()

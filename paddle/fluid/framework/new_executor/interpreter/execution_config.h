@@ -26,7 +26,6 @@ namespace interpreter {
 
 struct ExecutionConfig {
   bool create_local_scope{true};
-
   bool used_for_cinn{false};
   bool used_for_control_flow_op{false};
   bool used_for_jit{false};
@@ -35,6 +34,10 @@ struct ExecutionConfig {
   size_t device_num_threads{0};
   size_t host_num_threads{0};
 
+  std::set<std::pair<int, std::string>>
+      force_sync_ops;  // set{pair<op_id, name>}, -1 matches any op_id, ""
+                       // matches any name
+
   std::set<std::string> force_root_scope_vars;
   std::set<std::string> jit_input_vars;
   std::set<std::string> skip_gc_vars;
@@ -42,6 +45,9 @@ struct ExecutionConfig {
   void AnalyzeThreadPoolConfig(const phi::Place& place, size_t op_num);
   void Log(int log_level);
 };
+
+std::set<std::pair<int, std::string>> GetForceSyncOps(
+    int micro_batch_id, const std::string& job_name);
 
 }  // namespace interpreter
 }  // namespace framework
