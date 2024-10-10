@@ -1844,10 +1844,9 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Enable xqa optim in block_multihead_attention kernel (GQA).");
 
-PHI_DEFINE_EXPORTED_bool(
-    cuda_gemm,
-    false,
-    "Enable speed up int8 gemm calculations when m<=4");
+PHI_DEFINE_EXPORTED_bool(cuda_gemm,
+                         false,
+                         "Enable speed up int8 gemm calculations when m<=4");
 
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT

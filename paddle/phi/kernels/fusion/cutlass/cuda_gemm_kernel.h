@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace fusion {
@@ -20,11 +21,10 @@ namespace cutlass_internal {
 
 template <typename T, typename Context>
 void CudaGemm(const Context& ctx,
-                             const DenseTensor& input,
-                             const DenseTensor& w,
-                             DenseTensor* output);
+              const DenseTensor& input,
+              const DenseTensor& w,
+              DenseTensor* output);
 
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi
-

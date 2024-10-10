@@ -21,20 +21,19 @@ namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
-typedef struct
-{
-    void const* act;
-    void const* weight;
-    void* output;
-    int32_t m, n, k;
-    int inputType;
-    int outputType;
-    cudaStream_t stream;
+typedef struct {
+  void const* act;
+  void const* weight;
+  void* output;
+  int32_t m, n, k;
+  int inputType;
+  int outputType;
+  cudaStream_t stream;
 } GemmParams;
 
-// Below functions are provided by cutlass, they are called by phi.
+// Below functions are provided, they are called by phi.
 extern "C" bool cudaGemmDispatcher(GemmParams params);
 
-} // namespace cutlass_internal
-} // namespace fusion
-} // namespace phi
+}  // namespace cutlass_internal
+}  // namespace fusion
+}  // namespace phi
