@@ -309,7 +309,6 @@ set(op_dialect_deps
     type_info
     string_helper
     global_utils
-    pir_general_functions
     amp)
 if(WITH_ROCM)
   set(op_dialect_deps ${op_dialect_deps} global_utils)
