@@ -137,6 +137,7 @@ class SymbolicOperationTracker(Tracker):
         codegen.gen_call_method(len(self.inputs) - 1)
 
     def trace_value_from_frame(self):
+        # TODO(zrr1999): use operator instead of magic method
         obj_tracer = self.inputs[0].tracker.trace_value_from_frame()
         args_placeholders = ", ".join(["{}"] * (len(self.inputs) - 1))
         expr = f"{{}}.{self.method_name}({args_placeholders})"
