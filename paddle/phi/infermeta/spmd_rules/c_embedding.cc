@@ -94,7 +94,7 @@ SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
   auto axis_to_dim_map = ShardingMergeForTensors(
       {{x_axes, x_dims_mapping}, {weight_axes, weight_dims_mapping}}, false);
 
-  // Step2.2: infer output's dims mapping
+  // Step2.2: infer output's dims mapping.
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
@@ -119,8 +119,7 @@ SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
   out_dist_attr.set_partial_status(partial_on_dims);
 
   VLOG(4) << "CEmbeddingInferSpmdBase:\n"
-          << "Einsum notation: [" << x_axes << "," << weight_axes << " --> "
-          << out_axes << "]. " << std::endl
+          << "Einsum notation: [" << x_axes << "," << weight_axes << "]. "
           << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
           << str_join(x_dims_mapping) << "], dst_dims_mapping: ["
           << str_join(x_dist_attr_dst.dims_mapping()) << "]\n W shape: ["
@@ -211,12 +210,11 @@ SpmdInfo CEmbeddingGradInferSpmdBase(const DistMetaTensor& weight,
   // back to first inputs.
   t0 = DistMetaTensor(t0.dims(), t0_dist_attr);
   const auto& t0_dims = t0.dist_attr().dims_mapping();
-  if (x_dst.dist_attr().dims_mapping() !=
-      std::vector<int64_t>(t0_dims.begin(), t0_dims.end() - 1)) {
-    TensorDistAttr t0_new(t0.dist_attr());
-    t0_new.set_dims_mapping(
-        std::vector<int64_t>(t0_dims.begin(), t0_dims.end() - 1));
-    x_dst = DistMetaTensor(x_dst.dims(), t0_new);
+  std::vector<int64_t> new_dims_mapping(t0_dims.begin(), t0_dims.end() - 1);
+  if (x_dst.dist_attr().dims_mapping() != new_dims_mapping) {
+    TensorDistAttr t1(t0.dist_attr());
+    t1.set_dims_mapping(new_dims_mapping);
+    x_dst = DistMetaTensor(x_dst.dims(), t1);
   }
   out_grad_dst = DistMetaTensor(out_grad_dst.dims(), out_grad_dst_dist_attr);
   w_grad = DistMetaTensor(w_grad.dims(), w_grad_dist_attr);
