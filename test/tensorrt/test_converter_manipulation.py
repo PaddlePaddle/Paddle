@@ -295,7 +295,7 @@ def split_api(input, num_or_sections, dim):
     return _C_ops.split(input, num_or_sections, dim)
 
 
-class TestSplitWithDynamicSectionsTRTPattern(TensorRTBaseTest):
+class TestSplitDynamicSectionsTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = split_api
         self.api_args = {
@@ -311,7 +311,7 @@ class TestSplitWithDynamicSectionsTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-class TestSplitWithDynamicSectionsAndAxisTRTPattern(TensorRTBaseTest):
+class TestSplitDynamicSectionsAndAxisTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = split_api
         self.api_args = {
