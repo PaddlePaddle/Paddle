@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-SpmdInfo CoalesceTensorInferSpmd(const std::vector<DistMetaTensor>& input,
+SpmdInfo CoalesceTensorInferSpmd(const std::vector<DistMetaTensor>& inputs,
                                  DataType dtype,
                                  bool copy_data,
                                  bool set_constant,
@@ -28,30 +28,19 @@ SpmdInfo CoalesceTensorInferSpmd(const std::vector<DistMetaTensor>& input,
                                  const std::vector<int64_t>& concated_shapes,
                                  const std::vector<int64_t>& concated_ranks) {
   PADDLE_ENFORCE_GT(
-      input.size(),
+      inputs.size(),
       0u,
       common::errors::InvalidArgument("CoalesceTensor input can't be empty."));
-  auto dist_attr = input[0].dist_attr();
-  std::vector<TensorDistAttr> input_attrs{dist_attr};
-  auto partial_status = dist_attr.partial_status();
+  auto dist_attr = inputs[0].dist_attr();
+  std::vector<TensorDistAttr> inputs_attrs;
   auto mesh = dist_attr.process_mesh();
-  for (size_t idx = 1u; idx < input.size(); ++idx) {
-    auto& sub_dist_attr = input[idx].dist_attr();
-    PADDLE_ENFORCE_EQ(
-        mesh,
-        sub_dist_attr.process_mesh(),
-        common::errors::InvalidArgument(
-            "All input of CoalesceTensor mush have the same mesh."));
-    if (partial_status != sub_dist_attr.partial_status()) {
-      partial_status.clear();
-    }
-    input_attrs.push_back(sub_dist_attr);
+  for (auto input : inputs) {
+    inputs_attrs.push_back(input.dist_attr());
   }
   TensorDistAttr fused_out_dist_attr;
   fused_out_dist_attr.set_process_mesh(mesh);
   fused_out_dist_attr.set_dims_mapping({-1});
-  fused_out_dist_attr.set_partial_status(partial_status);
-  return {{input_attrs}, {input_attrs, fused_out_dist_attr}};
+  return {{inputs_attrs}, {inputs_attrs, fused_out_dist_attr}};
 }
 
 }  // namespace distributed
