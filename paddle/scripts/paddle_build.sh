@@ -2708,6 +2708,7 @@ set -x
 
 function hybrid_paddlex() {
     # PaddleX test
+    export DEVICE=($(echo $HIP_VISIBLE_DEVICES | tr "," "\n"))
     unset HIP_VISIBLE_DEVICES
     git clone --depth=1000 https://gitee.com/paddlepaddle/PaddleX.git
     cd PaddleX
@@ -2721,7 +2722,6 @@ function hybrid_paddlex() {
 
     # train Reset50
     echo "Start Reset50"
-    export DEVICE=($(echo $HIP_VISIBLE_DEVICES | tr "," "\n"))
     python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
     -o Global.mode=train \
     -o Global.dataset_dir=./dataset/cls_flowers_examples \
@@ -2745,11 +2745,11 @@ function hybrid_paddlex() {
     -o Global.device="gpu:0,1"
 
     # inference DeepLabv3+
-    python main.py -c paddlex/configs/semantic_segmentation/Deeplabv3_Plus-R50.yaml \
-    -o Global.mode=predict \
-    -o Predict.model_dir="./deeplabv3p_output/best_model/model/" \
-    -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_semantic_segmentation_001.jpg" \
-    -o Global.device="gpu:${DEVICE[0]}"
+    #python main.py -c paddlex/configs/semantic_segmentation/Deeplabv3_Plus-R50.yaml \
+    #-o Global.mode=predict \
+    #-o Predict.model_dir="./deeplabv3p_output/best_model/model/" \
+    #-o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_semantic_segmentation_001.jpg" \
+    #-o Global.device="gpu:${DEVICE[0]}"
     echo "End DeepLabv3+"
 
 }
