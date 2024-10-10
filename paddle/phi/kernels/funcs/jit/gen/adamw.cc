@@ -168,13 +168,16 @@ void AdamWJitCode::genCode() {
   postCode();
 }
 
-class AdamWCreator : public JitCodeCreator<int> {
+class AdamWCreator : public JitCodeCreator<adamw_attr_t> {
  public:
-  bool CanBeUsed(const int& attr) const override {
+  bool CanBeUsed(const adamw_attr_t& attr) const override {
     return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f);
   }
-  size_t CodeSize(const int& attr) const override { return 96 + 32 * 8; }
-  std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {
+  size_t CodeSize(const adamw_attr_t& attr) const override {
+    return 96 + 32 * 8;
+  }
+  std::unique_ptr<GenBase> CreateJitCode(
+      const adamw_attr_t& attr) const override {
     return make_unique<AdamWJitCode>(attr, CodeSize(attr));
   }
 };

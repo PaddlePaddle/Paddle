@@ -26,14 +26,14 @@ namespace gen {
 
 class AdamWJitCode : public JitCode {
  public:
-  explicit AdamWJitCode(const int& attr,
+  explicit AdamWJitCode(const adamw_attr_t& attr,
                         size_t code_size = 256 * 1024,
                         void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr) {
     this->genCode();
   }
 
-  DECLARE_JIT_CODE(AdamJitCode);
+  DECLARE_JIT_CODE(AdamWJitCode);
   void genCode() override;
   void loadArgs();
   void setTailOpmask();
