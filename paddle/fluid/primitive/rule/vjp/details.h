@@ -2751,6 +2751,100 @@ void atan_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void swish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    const Tensor one = full_scalar<T>(1.0, x.dtype());
+    const Tensor sig = sigmoid<T>(x);
+    Tensor res = out_grad * sig * (one + x * (one - sig));
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void fmax_grad(const Tensor& x,
+               const Tensor& y,
+               const Tensor& out_grad,
+               Tensor* x_grad,
+               Tensor* y_grad) {
+  const Tensor nan_x = isnan<T>(x);
+  const Tensor nan_y = isnan<T>(y);
+  Tensor mask_x = backend::logical_or<T>(nan_y, greater_equal<T>(x, y));
+  Tensor mask_y = backend::logical_not<T>(mask_x);
+
+  if (x_grad) {
+    Tensor dx = cast<T>(mask_x, out_grad.dtype()) * out_grad;
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      dx = reduce_as<T>(dx, x);
+    } else {
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        Tensor dx_reduce_res =
+            dx.sum(common::vectorize(reduce_dim), x.dtype(), false);
+        dx = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+      }
+    }
+    set_output<T>(dx, x_grad);
+  }
+
+  if (y_grad) {
+    Tensor dy = cast<T>(mask_y, out_grad.dtype()) * out_grad;
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
+      dy = reduce_as<T>(dy, x);
+    } else {
+      if (out_grad.dims() != y.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        Tensor dy_reduce_res =
+            dy.sum(common::vectorize(reduce_dim), y.dtype(), false);
+        dy = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+      }
+    }
+    set_output<T>(dy, y_grad);
+  }
+}
+
+template <typename T>
+void fmin_grad(const Tensor& x,
+               const Tensor& y,
+               const Tensor& out_grad,
+               Tensor* x_grad,
+               Tensor* y_grad) {
+  const Tensor nan_x = isnan<T>(x);
+  const Tensor nan_y = isnan<T>(y);
+  Tensor mask_x = backend::logical_or<T>(nan_y, less_equal<T>(x, y));
+  Tensor mask_y = backend::logical_not<T>(mask_x);
+
+  if (x_grad) {
+    Tensor dx = cast<T>(mask_x, out_grad.dtype()) * out_grad;
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      dx = reduce_as<T>(dx, x);
+    } else {
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        Tensor dx_reduce_res =
+            dx.sum(common::vectorize(reduce_dim), x.dtype(), false);
+        dx = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+      }
+    }
+    set_output<T>(dx, x_grad);
+  }
+
+  if (y_grad) {
+    Tensor dy = cast<T>(mask_y, out_grad.dtype()) * out_grad;
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
+      dy = reduce_as<T>(dy, x);
+    } else {
+      if (out_grad.dims() != y.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        Tensor dy_reduce_res =
+            dy.sum(common::vectorize(reduce_dim), y.dtype(), false);
+        dy = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+      }
+    }
+    set_output<T>(dy, y_grad);
+  }
+}
+
+template <typename T>
 void dot_grad(const Tensor& x,
               const Tensor& y,
               const Tensor& out_grad,
