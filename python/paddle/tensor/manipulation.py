@@ -4415,7 +4415,11 @@ def chunk(
 
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
-        chunks(int): The number of tensor to be split along the certain axis.
+        chunks(int): The number of tensor to be split along the certain axis. If the ``x.shape[axis]`` is not divisible
+            by ``chunk``, the returned tensors will have the same shape except the last one. In this case, the number of
+            element in the returned tensors except the last one along ``axis`` is :math::`ceil(x.shape[axis] / chunks)`.
+            It should be noticed that such division may not be possible, and if so, this function will return fewer than
+            the specified number of chunks.
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
@@ -4443,8 +4447,68 @@ def chunk(
             >>> # out0.shape [3, 3, 5]
             >>> # out1.shape [3, 3, 5]
             >>> # out2.shape [3, 3, 5]
+
+
+            >>> # x.shape[axis] is not divisible by chunk
+            >>> for out in paddle.chunk(paddle.arange(11), 6):
+            ...     print(out)
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 3])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [4, 5])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [6, 7])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [8, 9])
+            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [10])
+
+
+            >>> # x.shape[axis] is not divisible by chunk
+            >>> for out in paddle.chunk(paddle.arange(12), 6):
+            ...     print(out)
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 3])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [4, 5])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [6, 7])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [8, 9])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [10, 11])
+
+
+            >>> # x.shape[axis] is not divisible by chunk
+            >>> for out in paddle.chunk(paddle.arange(13), 6):
+            ...     print(out)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [3, 4, 5])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [6, 7, 8])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [9 , 10, 11])
+            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [12])
     """
     check_type(chunks, 'chunks', (int), 'chunk')
+    if isinstance(axis, int) and x.shape[axis] % chunks != 0:
+        num_element = x.shape[axis] // chunks + 1
+        split_indices = [
+            (i + 1) * num_element for i in range(x.shape[axis] // num_element)
+        ]
+        if split_indices[-1] == x.shape[axis]:
+            del split_indices[-1]
+        return tensor_split(
+            x, num_or_indices=split_indices, axis=axis, name=name
+        )
+
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
 
