@@ -155,6 +155,10 @@ class TestGenerationPipeline(unittest.TestCase):
             )
 
         train_dataloader._inner_dataloader.start()
+        print("----------engine.main_program,----------")
+        print(
+            engine.main_program,
+        )
         try:
             engine._executor.run(
                 engine.main_program, use_program_cache=False, return_numpy=False
