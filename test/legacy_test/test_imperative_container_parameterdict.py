@@ -24,7 +24,7 @@ from paddle import base
 class MyLayer(paddle.nn.Layer):
     def __init__(self, num_stacked_param):
         super().__init__()
-        # create ParameterList with iterable Parameters
+        # create ParameterDict with iterable Parameters
         self.params = self.paddle_imperative_ParameterDict(num_stacked_param)
 
     def paddle_imperative_ParameterDict(self, num_stacked_param):
