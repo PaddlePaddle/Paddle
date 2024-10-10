@@ -94,7 +94,7 @@ SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
   auto axis_to_dim_map = ShardingMergeForTensors(
       {{x_axes, x_dims_mapping}, {weight_axes, weight_dims_mapping}}, false);
 
-  // Step2.2: infer output's dims mapping.
+  // Step2.2: infer output's dims mapping
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
