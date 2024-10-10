@@ -34,6 +34,12 @@ def verify_dist_block(block):
         if op.name() == "dist_op.shard_tensor":
             raise RuntimeError("Block still contain shard_tensor_op.")
         if op.dist_attr is None:
+            # Note (luchang): Temp fix, remove unused parameter 'op'.
+            # Will be removed in the future.
+            if op.name() == "builtin.parameter":
+                if op.result(0).use_empty():
+                    op.erase()
+                    continue
             raise RuntimeError(
                 f"The op {op} does not have OperatorDistAttr after Mix2Dist Pass."
             )

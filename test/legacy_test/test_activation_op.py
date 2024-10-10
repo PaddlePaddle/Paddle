@@ -5224,7 +5224,9 @@ def ref_swish(x):
 class TestSwish(TestActivation):
     def setUp(self):
         self.op_type = "swish"
+        self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.swish
+        self.public_python_api = paddle.nn.functional.swish
         self.init_dtype()
         self.init_shape()
 
@@ -5244,7 +5246,11 @@ class TestSwish(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_prim_pir=True,
         )
 
 

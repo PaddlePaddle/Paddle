@@ -71,6 +71,7 @@ DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
 DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
 DEFINE_GENERAL_PATTERN(Shape, paddle::dialect::ShapeOp)
 DEFINE_GENERAL_PATTERN(Expand, paddle::dialect::ExpandOp)
+DEFINE_GENERAL_PATTERN(ExpandAs, paddle::dialect::ExpandAsOp)
 DEFINE_GENERAL_PATTERN(Sigmoid, paddle::dialect::SigmoidOp)
 DEFINE_GENERAL_PATTERN(Sqrt, paddle::dialect::SqrtOp)
 DEFINE_GENERAL_PATTERN(Hardsigmoid, paddle::dialect::HardsigmoidOp)
@@ -637,21 +638,48 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
     }
 
     auto axes_attr = op->attribute<pir::ArrayAttribute>("axes");
-
     std::vector<int64_t> axes;
     for (const auto &attr : axes_attr.AsVector()) {
       axes.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
     }
-    pir::Value input = op.operand_source(0);
 
-    auto inputs = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto inputs_shape = inputs.dims();
-    if (axes.size() !=
-        static_cast<std::vector<int64_t>::size_type>(inputs_shape.size())) {
-      VLOG(3) << "The shape of attributes of the slice operator axes "
-                 "and starts are not equal.";
+    size_t starts_size = axes.size();
+    size_t ends_size = axes.size();
+    if (pir::GetDefiningOpForInput(op, 1)
+            ->isa<paddle::dialect::FullIntArrayOp>()) {
+      paddle::dialect::FullIntArrayOp full_int_array_op_start =
+          pir::GetDefiningOpForInput(op, 1)
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+      auto starts_attr =
+          full_int_array_op_start->attribute<pir::ArrayAttribute>("value");
+      std::vector<int64_t> starts;
+      for (const auto &attr : starts_attr.AsVector()) {
+        starts.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+      }
+      starts_size = starts.size();
+    }
+
+    if (pir::GetDefiningOpForInput(op, 2)
+            ->isa<paddle::dialect::FullIntArrayOp>()) {
+      paddle::dialect::FullIntArrayOp full_int_array_op_end =
+          pir::GetDefiningOpForInput(op, 2)
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+      auto ends_attr =
+          full_int_array_op_end->attribute<pir::ArrayAttribute>("value");
+      std::vector<int64_t> ends;
+      for (const auto &attr : ends_attr.AsVector()) {
+        ends.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+      }
+      ends_size = ends.size();
+    }
+    if (starts_size != axes.size() || ends_size != axes.size()) {
+      VLOG(3) << "The size of axes and starts are not equal. "
+                 "Axes size: "
+              << axes.size() << ", Starts size: " << starts_size
+              << ", Ends size: " << ends_size;
       return false;
     }
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -1281,6 +1309,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Gelu)
     ADD_PATTERN(Shape)
     ADD_PATTERN(Expand)
+    ADD_PATTERN(ExpandAs)
     ADD_PATTERN(Sigmoid)
     ADD_PATTERN(Sqrt)
     ADD_PATTERN(Hardsigmoid)

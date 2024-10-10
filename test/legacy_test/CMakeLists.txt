@@ -15,11 +15,6 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
-###### start ######
-list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
-###### end ######
-
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 list(REMOVE_ITEM TEST_OPS test_householder_product)
 list(REMOVE_ITEM TEST_OPS test_conv2d_op_depthwise_conv)
