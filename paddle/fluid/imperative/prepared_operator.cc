@@ -204,8 +204,7 @@ PreparedOp PrepareImpl(
       }
     } else {
       VLOG(3) << "ring_id " << ring_id
-              << " not found in comm_context_manager for op "
-              << phi_kernel_name;
+              << " not found in comm_context_manager";
     }
   }
 #endif
