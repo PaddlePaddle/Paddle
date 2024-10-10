@@ -802,7 +802,7 @@ void CompareAccuracy(
             "[Error info] avg_acc_ref - avg_acc_quant must be less than or "
             "equal to FLAGS_quantized_accuracy.\n"
             "[Condition info] Please check your input data."));
-  }  // test
+  }
 }
 
 void CompareDeterministic(
