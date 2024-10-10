@@ -65,7 +65,6 @@ void FusionItersManager::StoreIter2DimExprForValue(const pir::Value& value) {
 }
 
 FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
-  VLOG(4) << "[ItersFusion] Get ItersSignature for: " << op->name();
   const auto& axes = axes_info_->GetModifiedSignature(op);
   PADDLE_ENFORCE_EQ(
       axes.inputs.size(),
@@ -77,11 +76,6 @@ FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
       op->num_results(),
       ::common::errors::InvalidArgument("The number of output_iters should be "
                                         "equal to the number of results."));
-  PADDLE_ENFORCE_GT(
-      axes.loop.axis_names.size(),
-      0,
-      ::common::errors::InvalidArgument("The number of loop_axis should be "
-                                        "greater than 0."));
   if (axes.reduce_size > 0) {
     PADDLE_ENFORCE_LE(
         axes.reduce_size,
