@@ -45,6 +45,22 @@ class TestLoadStateDictFromUrl(unittest.TestCase):
                 break
         assert are_parameters_equal
 
+        # Test whether the model loads properly when the model_dir is empty
+        weight3 = paddle.hapi.hub.load_state_dict_from_url(
+            url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams',
+            file_name="resnet18.pdparams",
+        )
+        model3 = resnet18(pretrained=False)
+        model3.set_state_dict(weight3)
+        are_parameters_equal = True
+        for (name1, param1), (name2, param2) in zip(
+            model1.named_parameters(), model3.named_parameters()
+        ):
+            if name1 != name2 or not paddle.allclose(param1, param2):
+                are_parameters_equal = False
+                break
+        assert are_parameters_equal
+
 
 if __name__ == '__main__':
     unittest.main()

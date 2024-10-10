@@ -432,4 +432,4 @@ def _get_paddle_home():
             os.path.join(os.getenv('XDG_CACHE_HOME', '~/.cache'), 'paddle'),
         )
     )
-    return paddle_home
+    return '.' + paddle_home
