@@ -245,28 +245,6 @@ def trt_equal(network, a, b):
     return layer.get_output(0)
 
 
-def get_shape_with_dynamic_shape(network, shape, input_val):
-    input_shape = network.add_shape(input_val).get_output(0)
-    scale_layer = network.add_constant(
-        input_shape.shape, np.ascontiguousarray(shape, dtype=np.int32)
-    )
-    scale_res = scale_layer.get_output(0)
-
-    length = input_shape.shape[0]
-    zero_layer = network.add_constant(
-        input_shape.shape, trt.Weights(np.zeros(length, dtype=np.int32))
-    )
-
-    condition_val = add_elementwise_layer(
-        network,
-        scale_res,
-        zero_layer.get_output(0),
-        trt.ElementWiseOperation.LESS,
-    )
-    select_layer = network.add_select(condition_val, input_shape, scale_res)
-    return select_layer.get_output(0)
-
-
 def cast_tensor(network, input_tensor, dtype):
     layer = network.add_identity(input_tensor)
     layer.set_output_type(0, dtype)
