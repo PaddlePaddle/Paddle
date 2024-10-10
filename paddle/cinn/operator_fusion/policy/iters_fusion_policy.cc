@@ -236,16 +236,12 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
   auto source_iters = squeezed_source.loop_iters;
   const auto target_iters = target.loop_iters;
 
-  PADDLE_ENFORCE_EQ(
-      ToSet(source_iters).size(),
-      source_iters.size(),
-      ::common::errors::InvalidArgument(
-          "The source iters should not contain duplicate elements."));
-  PADDLE_ENFORCE_EQ(
-      ToSet(target_iters).size(),
-      target_iters.size(),
-      ::common::errors::InvalidArgument(
-          "The target iters should not contain duplicate elements."));
+  // TODO(huangjiyi): Append iters when target contains duplicate elements
+  if (ToSet(source_iters).size() != source_iters.size() ||
+      ToSet(target_iters).size() != target_iters.size()) {
+    VLOG(4) << "The source or target iters contain duplicate elements.";
+    return std::nullopt;
+  }
 
   // 1. Apply IdentityItersTransform if source iters are equal to target
   if (source_iters == target_iters) {
