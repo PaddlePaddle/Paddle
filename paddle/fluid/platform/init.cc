@@ -25,10 +25,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cupti.h"
 #endif
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/os_info.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
 
 #ifdef PADDLE_WITH_XPU

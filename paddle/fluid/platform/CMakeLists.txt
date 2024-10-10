@@ -67,11 +67,6 @@ cc_library(
        phi
        common)
 
-cc_library(
-  collective_helper
-  SRCS collective_helper.cc
-  DEPS framework_proto device_context phi common)
-
 # Manage all device event library
 set(DEVICE_EVENT_LIBS)
 
