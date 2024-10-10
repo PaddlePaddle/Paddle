@@ -3558,6 +3558,7 @@
   output : Tensor(out)
   infer_meta :
     func : PNormInferMeta
+    spmd_rule: PNormInferSpmd
   kernel :
     func : p_norm
   backward : p_norm_grad

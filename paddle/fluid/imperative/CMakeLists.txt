@@ -93,12 +93,11 @@ if(NOT WIN32)
     cc_library(
       imperative_all_reduce
       SRCS all_reduce.cc
-      DEPS collective_helper device_context selected_rows_utils tensor)
+      DEPS phi selected_rows_utils tensor)
     cc_library(
       nccl_context
       SRCS nccl_context.cc
-      DEPS collective_helper device_context imperative_all_reduce
-           var_type_traits)
+      DEPS phi imperative_all_reduce var_type_traits)
     if(WITH_NCCL)
       nv_library(
         reducer
@@ -116,7 +115,7 @@ if(NOT WIN32)
     cc_library(
       bkcl_context
       SRCS bkcl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
+      DEPS phi tensor var_type_traits)
     cc_library(
       reducer
       SRCS reducer.cc
@@ -126,7 +125,7 @@ if(NOT WIN32)
     cc_library(
       xccl_context
       SRCS xccl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
+      DEPS phi tensor var_type_traits)
     if(NOT
        (WITH_NCCL
         OR WITH_RCCL
@@ -145,7 +144,7 @@ if(NOT WIN32)
     cc_library(
       heter_ccl_context
       SRCS heter_ccl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
+      DEPS phi tensor var_type_traits)
   endif()
   cc_library(
     data_loader
@@ -156,7 +155,7 @@ if(WITH_GLOO)
   cc_library(
     imperative_gloo_context
     SRCS gloo_context.cc
-    DEPS collective_helper device_context tensor var_type_traits)
+    DEPS phi tensor var_type_traits)
   if(WIN32
      OR (NOT
          (WITH_NCCL
