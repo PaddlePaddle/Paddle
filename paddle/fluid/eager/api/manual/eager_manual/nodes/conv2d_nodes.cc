@@ -80,6 +80,13 @@ Conv2dGradNodeFinal::operator()(
       (out_metas[1].empty() || out_metas[1][0].IsStopGradient())
           ? nullptr
           : &returns[1][0];
+
+  // Set DistAttr of Out Tensor for semi-auto parallel
+  if (IsRunAutoParallel()) {
+    egr::EagerUtils::SetGradOutputDistAttr(
+        out_metas, {0, 1}, api_output_0, api_output_1);
+  }
+
   // Runtime check if we need next grad
   bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
 
