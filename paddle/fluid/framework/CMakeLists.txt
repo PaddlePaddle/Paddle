@@ -109,7 +109,7 @@ cc_library(
 cc_library(
   data_type
   SRCS data_type.cc
-  DEPS framework_proto)
+  DEPS phi)
 
 cc_library(
   tensor
@@ -119,7 +119,7 @@ cc_library(
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS phi common tensor framework_proto version)
+  DEPS phi common tensor version)
 
 cc_library(
   garbage_collector
@@ -134,7 +134,7 @@ cc_library(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope phi common)
+  DEPS scope phi common)
 
 # every source file that includes "dnnl.h" must depends on onednn
 # or, the first one should depends on onednn
@@ -217,7 +217,6 @@ cc_library(
   data_transform
   SRCS data_transform.cc
   DEPS tensor
-       framework_proto
        selected_rows_utils
        data_device_transform
        data_type_transform
@@ -228,21 +227,21 @@ cc_library(
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto phi common)
+  DEPS phi common)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
-  DEPS framework_proto)
+  DEPS phi)
 
 cc_library(
   op_version_registry
   SRCS op_version_registry.cc
-  DEPS op_version_proto framework_proto)
+  DEPS op_version_proto phi)
 
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute ops_extra_info glog auto_parallel_proto)
+  DEPS phi attribute ops_extra_info glog auto_parallel_proto)
 cc_library(
   no_need_buffer_vars_inference
   SRCS no_need_buffer_vars_inference.cc
@@ -250,7 +249,7 @@ cc_library(
 cc_library(
   op_info
   SRCS op_info.cc
-  DEPS attribute framework_proto no_need_buffer_vars_inference)
+  DEPS attribute phi no_need_buffer_vars_inference)
 cc_library(
   shape_inference
   SRCS shape_inference.cc
@@ -265,7 +264,7 @@ endif()
 cc_library(
   transfer_scope_cache
   SRCS transfer_scope_cache.cc
-  DEPS scope framework_proto device_context)
+  DEPS scope phi)
 
 cc_library(
   unused_var_check
@@ -502,9 +501,8 @@ cc_library(
 
 set(NAIVE_EXECUTOR_DEPS
     op_registry
-    device_context
     scope
-    framework_proto
+    phi
     glog
     lod_rank_table
     feed_fetch_method
@@ -636,12 +634,7 @@ if(WITH_DISTRIBUTE)
            device_worker_factory.cc
            data_set.cc
       DEPS op_registry
-           device_context
            scope
-           framework_proto
-           data_feed_proto
-           heter_service_proto
-           trainer_desc_proto
            glog
            index_sampler
            index_wrapper
@@ -657,7 +650,6 @@ if(WITH_DISTRIBUTE)
            feed_hook
            graph_to_program_pass
            variable_helper
-           heter_service_proto
            fleet
            heter_server
            ${${EXTERNAL_BRPC_DEPS}}
@@ -710,12 +702,7 @@ if(WITH_DISTRIBUTE)
            device_worker_factory.cc
            data_set.cc
       DEPS op_registry
-           device_context
            scope
-           framework_proto
-           data_feed_proto
-           heter_service_proto
-           trainer_desc_proto
            glog
            lod_rank_table
            framework_io
@@ -768,12 +755,7 @@ elseif(WITH_PSLIB)
          device_worker_factory.cc
          data_set.cc
     DEPS op_registry
-         device_context
          scope
-         framework_proto
-         data_feed_proto
-         heter_service_proto
-         trainer_desc_proto
          glog
          lod_rank_table
          framework_io
@@ -813,12 +795,7 @@ else()
          device_worker_factory.cc
          data_set.cc
     DEPS op_registry
-         device_context
          scope
-         framework_proto
-         data_feed_proto
-         heter_service_proto
-         trainer_desc_proto
          glog
          lod_rank_table
          framework_io
@@ -855,11 +832,11 @@ cc_library(
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto auto_parallel_proto proto_desc)
+  DEPS phi auto_parallel_proto proto_desc)
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS phi common device_context)
+  DEPS phi)
 
 cc_library(
   dlpack_tensor
@@ -908,7 +885,6 @@ cc_library(
   SRCS custom_operator.cc
   DEPS tensor
        attribute
-       framework_proto
        op_registry
        operator
        string_helper
