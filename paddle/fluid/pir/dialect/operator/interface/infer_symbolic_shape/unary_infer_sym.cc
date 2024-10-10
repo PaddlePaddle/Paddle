@@ -793,7 +793,7 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
 
   PADDLE_ENFORCE_EQ(in_shape.size(),
                     x_shape.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of elements (%d) of attribute 'shape' for "
                         "CropTensor must be equal to the number of "
                         "dimensions (%d) of the input.",
@@ -802,7 +802,7 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_EQ(
       offsets.size(),
       x_shape.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of elements (%d) of attribute 'offsets' for "
           "CropTensor must be equal to the number of "
           "dimensions (%d) of the input.",
@@ -2586,7 +2586,7 @@ bool PartialSumOpInferSymbolicShape(
   int inputs_num = xs_shapes.size();
   PADDLE_ENFORCE_GT(inputs_num,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "ShapeError: Input tensors count should > 0. But "
                         "received inputs' length is 0."));
   if (inputs_num == 1) {
@@ -2598,10 +2598,10 @@ bool PartialSumOpInferSymbolicShape(
 
   for (int i = 0; i < inputs_num; i++) {
     const std::vector<symbol::DimExpr> x_shape = xs_shapes[i].shape();
-    PADDLE_ENFORCE_EQ(
-        x_shape.size(),
-        2,
-        phi::errors::InvalidArgument("Only support two dimensions input now."));
+    PADDLE_ENFORCE_EQ(x_shape.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "Only support two dimensions input now."));
 
     if (i > 0) {
       infer_context->AddEqualCstr(x_shape[0], batch_size);

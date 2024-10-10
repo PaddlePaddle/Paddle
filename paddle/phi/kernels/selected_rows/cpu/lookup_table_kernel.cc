@@ -67,7 +67,7 @@ void LookupTableKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_GE(
           ids[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Variable value (input) of OP(fluid.layers.embedding) "
               "expected >= 0. But received %ld",
               ids[i]));
@@ -95,14 +95,14 @@ void LookupTableKernel(const Context &dev_ctx,
         PADDLE_ENFORCE_GE(
             ids[i],
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0. But received %ld",
                 ids[i]));
         PADDLE_ENFORCE_GE(
             id_index,
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "the input key should be exists. But received %d.", id_index));
 
         if (input_data_type == phi::DataType::INT8 ||

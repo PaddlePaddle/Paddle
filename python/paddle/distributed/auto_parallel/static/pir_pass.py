@@ -24,6 +24,7 @@ from paddle.base.framework import auto_complete_op_role
 from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.passes.pass_base import PassContext, new_pass
+from paddle.distributed.passes.pass_utils import infer_chunk_id
 
 from .mix_to_dist_pass import dist_skip_op_list
 from .process_group import get_process_group
@@ -811,7 +812,7 @@ def _set_process_mesh_and_chunk_id(op, process_mesh, chunk_id, set_mesh):
     )
 
 
-def complete_chunk_id(dist_program, pipeline_strategy):
+def complete_chunk_id(dist_program, startup_program, pipeline_strategy):
     if not pipeline_strategy.enable:
         return
 
@@ -975,6 +976,14 @@ def complete_chunk_id(dist_program, pipeline_strategy):
     # Step6: add reshard op between pipeline chunks
     apply_partition_pass(dist_program)
 
+    for op in startup_program.global_block().ops:
+        if op.name() == "builtin.set_parameter":
+            param_name = op.str_attr("parameter_name")
+            startup_param = op.operand_source(0)
+            param = dist_program.get_parameter_value_by_name(param_name)
+            if param.dist_attr():
+                startup_param.update_dist_attr(param.dist_attr())
+
 
 def check_chunk_id(dist_program):
     all_ops = dist_program.global_block().ops
@@ -993,21 +1002,22 @@ def check_chunk_id(dist_program):
                     all_used_ops = op.result(0).all_used_ops()
                     for used_op in all_used_ops:
                         if used_op.dist_attr.chunk_id != -1:
-                            op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
-                                op.dist_attr.process_mesh,
-                                op.dist_attr.operands(),
-                                op.dist_attr.results(),
-                                used_op.dist_attr.chunk_id,
+                            op.dist_attr = copy_op_attr_with_new_member(
+                                op.dist_attr,
+                                new_chunk_id=used_op.dist_attr.chunk_id,
                             )
                             break
-                    if op.dist_attr.chunk_id == -1:
-                        raise ValueError(
-                            f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
-                        )
+
                 else:
-                    raise ValueError(
-                        f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                    op_chunk_id = infer_chunk_id(idx, all_ops)
+                    op.dist_attr = copy_op_attr_with_new_member(
+                        op.dist_attr, new_chunk_id=op_chunk_id
                     )
+
+            if op.dist_attr.chunk_id == -1:
+                raise ValueError(
+                    f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                )
 
 
 def check_order(op_list, order):
