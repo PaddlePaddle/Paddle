@@ -1,7 +1,7 @@
 cc_library(
   host_tracer
   SRCS host_tracer.cc
-  DEPS framework_proto phi common var_type_traits)
+  DEPS phi common var_type_traits)
 cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc

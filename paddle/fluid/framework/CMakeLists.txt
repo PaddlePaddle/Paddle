@@ -550,7 +550,6 @@ if(WITH_DISTRIBUTE)
       DEPS fleet_wrapper
            op_registry
            scope
-           framework_proto
            trainer_desc_proto
            glog
            framework_io
