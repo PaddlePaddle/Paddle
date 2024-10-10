@@ -211,9 +211,48 @@ void InferSymbolicShapeContext::AddEqualCstr(const symbol::DimExpr& lhs,
   constraints_manager_.AddEqCstr(lhs, rhs);
 }
 
+void InferSymbolicShapeContext::AddEqualCstr(
+    const std::vector<symbol::DimExpr>& lhs,
+    const std::vector<symbol::DimExpr>& rhs) {
+  PADDLE_ENFORCE_EQ(
+      lhs.size(),
+      rhs.size(),
+      common::errors::InvalidArgument(
+          "Mismatch in dimensions: the size of the left-hand side (lhs) is %d, "
+          "but the right-hand side (rhs) is %d. Both sides must have the same "
+          "number "
+          "of dimensions to add a constraint.",
+          lhs.size(),
+          rhs.size()));
+  for (size_t i = 0; i < lhs.size(); i++) {
+    AddEqualCstr(lhs[i], rhs[i]);
+  }
+}
+
 bool InferSymbolicShapeContext::IsEqual(const symbol::DimExpr& lhs,
                                         const symbol::DimExpr& rhs) const {
   return constraints_manager_.IsEqual(lhs, rhs);
+}
+
+bool InferSymbolicShapeContext::IsEqual(
+    const std::vector<symbol::DimExpr>& lhs,
+    const std::vector<symbol::DimExpr>& rhs) const {
+  PADDLE_ENFORCE_EQ(lhs.size(),
+                    rhs.size(),
+                    common::errors::InvalidArgument(
+                        "Dimension mismatch: The left-hand side (lhs) has %d "
+                        "dimensions, while the "
+                        "right-hand side (rhs) has %d dimensions. Both sides "
+                        "must have an equal number "
+                        "of dimensions for comparison.",
+                        lhs.size(),
+                        rhs.size()));
+  for (size_t i = 0; i < lhs.size(); i++) {
+    if (!IsEqual(lhs[i], rhs[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void InferSymbolicShapeContext::AddGreatThanOneCstr(

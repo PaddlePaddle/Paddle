@@ -101,7 +101,13 @@ class IR_API InferSymbolicShapeContext {
 
   void AddEqualCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 
+  void AddEqualCstr(const std::vector<symbol::DimExpr>& lhs,
+                    const std::vector<symbol::DimExpr>& rhs);
+
   bool IsEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const;
+
+  bool IsEqual(const std::vector<symbol::DimExpr>& lhs,
+               const std::vector<symbol::DimExpr>& rhs) const;
 
   void AddGreatThanOneCstr(const symbol::DimExpr& dim_expr);
 
