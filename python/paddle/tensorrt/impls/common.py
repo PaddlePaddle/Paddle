@@ -18,6 +18,7 @@ import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import get_shape_tensor_element
 from paddle.tensorrt.register import converter_registry
+from paddle.tensorrt.util import get_trt_version_list
 
 
 @converter_registry.register("pd_op.dropout", trt_version="8.x")
@@ -59,7 +60,8 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     out_d = paddle_op.attrs().get("out_d")
     scale_attr = paddle_op.attrs().get("scale")
 
-    trt_major, trt_minor, trt_patch = trt.__version__.split(".")
+    trt_major = get_trt_version_list()[0]
+    trt_minor = get_trt_version_list()[1]
     trt_version_float = float(f"{trt_major}.{trt_minor}")
 
     resize_layer = network.add_resize(input_tensor)
@@ -173,7 +175,8 @@ def nearest_interp_converter(network, paddle_op, inputs):
     scale_attr = paddle_op.attrs().get("scale")
 
     # Parse TensorRT version
-    trt_major, trt_minor, trt_patch = trt.__version__.split(".")
+    trt_major = get_trt_version_list()[0]
+    trt_minor = get_trt_version_list()[1]
     trt_version_float = float(f"{trt_major}.{trt_minor}")
 
     # Create Resize layer

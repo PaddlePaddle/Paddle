@@ -110,3 +110,8 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed, scope=None):
             )
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
     return exe_program
+
+
+def get_trt_version_list():
+    version = trt.__version__
+    return list(map(int, version.split('.')))
