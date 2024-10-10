@@ -19,13 +19,12 @@ if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     process_group_nccl
     SRCS process_group_nccl.cc common.cc
-    DEPS process_group phi common collective_helper device_context
-         ${DEVICE_EVENT_LIBS})
+    DEPS process_group phi ${DEVICE_EVENT_LIBS})
 
   cc_library(
     async_load
     SRCS async_load.cc
-    DEPS device_context phi common ${DEVICE_EVENT_LIBS})
+    DEPS phi ${DEVICE_EVENT_LIBS})
 
 endif()
 
@@ -33,21 +32,21 @@ if(WITH_XPU_BKCL)
   cc_library(
     process_group_bkcl
     SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
-    DEPS process_group phi common collective_helper device_context)
+    DEPS process_group phi)
 endif()
 
 if(WITH_MPI)
   cc_library(
     process_group_mpi
     SRCS process_group_mpi.cc mpi_tools.cc common.cc
-    DEPS collective_helper device_context)
+    DEPS phi)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
   cc_library(
     process_group_custom
     SRCS process_group_custom.cc custom_ccl_tools.cc common.cc
-    DEPS process_group phi common collective_helper device_context)
+    DEPS process_group phi)
 endif()
 
 set(COMM_UTILS_DEPS process_group)
