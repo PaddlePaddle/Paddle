@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.passes.pass_utils import find_var_used_op_chunk_id
+from paddle.distributed.passes.pass_utils import (
+    AutoParallelStreamType,
+    find_var_used_op_chunk_id,
+)
 
 from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction
@@ -73,6 +76,9 @@ class SameStatusReshardFunction(ReshardFunction):
                         src_mesh, [src_dist_attr], [], chunk_id
                     )
                 )
+                new_op.set_execution_stream(
+                    AutoParallelStreamType.CALC_STREAM.value
+                )
                 break
 
             elif dst == cur_global_rank:
@@ -104,6 +110,9 @@ class SameStatusReshardFunction(ReshardFunction):
                 )
                 recv_value.set_type(dst_type)
                 is_send = False
+                new_op.set_execution_stream(
+                    AutoParallelStreamType.CALC_STREAM.value
+                )
                 break
 
         if is_send:

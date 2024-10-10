@@ -19,6 +19,7 @@ from legacy_test.test_collective_base import (
 
 import paddle
 from paddle import base
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 
 paddle.enable_static()
 
@@ -45,7 +46,9 @@ class TestCollectiveSendRecvDynamicShape(TestCollectiveRunnerBase):
                         'peer': 1,
                     },
                 )
-                send_op.dist_attr.execution_stream = "default"
+                send_op.dist_attr.execution_stream = (
+                    AutoParallelStreamType.CALC_STREAM.value
+                )
             else:
                 recv_op = main_prog.global_block().append_op(
                     type="p_recv",
@@ -56,7 +59,9 @@ class TestCollectiveSendRecvDynamicShape(TestCollectiveRunnerBase):
                         'dtype': tindata.dtype,
                     },
                 )
-                recv_op.dist_attr.execution_stream = "default"
+                recv_op.dist_attr.execution_stream = (
+                    AutoParallelStreamType.CALC_STREAM.value
+                )
             return tindata
 
 
