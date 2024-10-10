@@ -20,6 +20,7 @@
 
 #include <math.h>
 #include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
@@ -42,25 +43,6 @@ void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     by_pass<T>(out_grad, x_grad);
   }
-}
-
-template <typename T>
-Tensor ConverToMT(const Tensor& x) {
-  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
-                   x.dtype() == phi::DataType::BFLOAT16;
-  if (need_cast) {
-    return cast<T>(x, phi::DataType::FLOAT32);
-  }
-  return x;
-}
-
-template <typename T>
-Tensor ConverToOrig(const Tensor& out, phi::DataType input_dtype) {
-  bool need_cast = out.dtype() != input_dtype;
-  if (need_cast) {
-    return cast<T>(out, input_dtype);
-  }
-  return out;
 }
 
 template <typename T>
@@ -348,82 +330,46 @@ void gelu_grad(const Tensor& x,
                bool approximate,
                Tensor* x_grad) {
   if (!x_grad) return;
-  // Promote to fp32 when the input type is fp16 for keeping consistent with
-  // phi kernel
+  // Automatically promote to fp32 when the input type is fp16 for keeping
+  // consistent with phi kernel
 
-  if (is_half_dtype(x.dtype())) {
-    auto promoted_x = cast<T>(x, phi::DataType::FLOAT32);
-    auto promoted_out_grad = cast<T>(out_grad, phi::DataType::FLOAT32);
-    if (approximate) {
-      float kbeta = M_SQRT2 * M_2_SQRTPI * 0.5;
-      float kkappa = 0.044715;
-      Tensor kbeta_ = full_scalar<T>(kbeta, promoted_x.dtype());
-      Tensor kkappa_ = full_scalar<T>(kkappa, promoted_x.dtype());
+  auto promoted_x = ConverToMT<T>(x);
+  auto promoted_out_grad = ConverToMT<T>(out_grad);
+  if (approximate) {
+    float kbeta = M_SQRT2 * M_2_SQRTPI * 0.5;
+    float kkappa = 0.044715;
+    Tensor kbeta_ = full_scalar<T>(kbeta, promoted_x.dtype());
+    Tensor kkappa_ = full_scalar<T>(kkappa, promoted_x.dtype());
 
-      auto x_sq = promoted_x * promoted_x;
-      auto x_cube = x_sq * promoted_x;
-      auto inner = kbeta_ * (promoted_x + kkappa_ * x_cube);
-      auto tanh_inner = tanh<T>(inner);
+    auto x_sq = promoted_x * promoted_x;
+    auto x_cube = x_sq * promoted_x;
+    auto inner = kbeta_ * (promoted_x + kkappa_ * x_cube);
+    auto tanh_inner = tanh<T>(inner);
 
-      auto left = scale<T>(promoted_x, 0.5);
-      auto right = scale<T>(tanh_inner, 1., 1.);
+    auto left = scale<T>(promoted_x, 0.5);
+    auto right = scale<T>(tanh_inner, 1., 1.);
 
-      auto left_derivative = scale<T>(right, 0.5);
+    auto left_derivative = scale<T>(right, 0.5);
 
-      auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
-      auto inner_derivative = kbeta_ * (scale<T>(3 * kkappa_ * x_sq, 1., 1.));
-      auto right_derivative = left * tanh_derivative * inner_derivative;
+    auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
+    auto inner_derivative = kbeta_ * (scale<T>(3 * kkappa_ * x_sq, 1., 1.));
+    auto right_derivative = left * tanh_derivative * inner_derivative;
 
-      set_output<T>(
-          cast<T>(promoted_out_grad * (left_derivative + right_derivative),
-                  x.type()),
-          x_grad);
-    } else {
-      float kalpha = M_SQRT1_2;
-      float kbeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
-      Tensor kalpha_ = full_scalar<T>(kalpha, promoted_x.dtype());
-      Tensor kbeta_ = full_scalar<T>(kbeta, promoted_x.dtype());
-
-      auto cdf = scale<T>(scale<T>(erf<T>(kalpha_ * promoted_x), 1., 1.), 0.5);
-      auto pdf = kbeta_ * exp<T>(scale<T>(promoted_x * promoted_x, -0.5));
-      set_output<T>(
-          cast<T>(promoted_out_grad * (cdf + promoted_x * pdf), x.type()),
-          x_grad);
-    }
+    set_output<T>(
+        ConverToOrig<T>(
+            promoted_out_grad * (left_derivative + right_derivative), x.type()),
+        x_grad);
   } else {
-    // Scale only support fp32 attr in static graph mode, use elementwise_xx
-    // when precision is over fp32.
-    if (approximate) {
-      auto kBeta = M_SQRT2 * M_2_SQRTPI * 0.5;
-      auto kKappa = 0.044715;
-      Tensor kBeta_ = full_scalar<T>(kBeta, x.dtype());
-      Tensor kKappa_ = full_scalar<T>(kKappa, x.dtype());
+    float kalpha = M_SQRT1_2;
+    float kbeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
+    Tensor kalpha_ = full_scalar<T>(kalpha, promoted_x.dtype());
+    Tensor kbeta_ = full_scalar<T>(kbeta, promoted_x.dtype());
 
-      auto x_sq = x * x;
-      auto x_cube = x_sq * x;
-      auto inner = kBeta_ * (x + kKappa_ * x_cube);
-      auto tanh_inner = tanh<T>(inner);
-
-      auto left = scale<T>(x, 0.5);
-      auto right = scale<T>(tanh_inner, 1., 1.);
-
-      auto left_derivative = scale<T>(right, 0.5);
-
-      auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
-      auto inner_derivative = kBeta_ * (scale<T>(3 * kKappa_ * x_sq, 1., 1.));
-      auto right_derivative = left * tanh_derivative * inner_derivative;
-
-      set_output<T>(out_grad * (left_derivative + right_derivative), x_grad);
-    } else {
-      auto kAlpha = M_SQRT1_2;
-      auto kBeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
-      Tensor kAlpha_ = full_scalar<T>(kAlpha, x.dtype());
-      Tensor kBeta_ = full_scalar<T>(kBeta, x.dtype());
-
-      auto cdf = scale<T>(scale<T>(erf<T>(kAlpha_ * x), 1., 1.), 0.5);
-      auto pdf = kBeta_ * exp<T>(scale<T>(x * x, -0.5));
-      set_output<T>(out_grad * (cdf + x * pdf), x_grad);
-    }
+    auto cdf = scale<T>(scale<T>(erf<T>(kalpha_ * promoted_x), 1., 1.), 0.5);
+    auto pdf = kbeta_ * exp<T>(scale<T>(promoted_x * promoted_x, -0.5));
+    set_output<T>(
+        ConverToOrig<T>(promoted_out_grad * (cdf + promoted_x * pdf), x.type()),
+        x_grad);
   }
 }
 
@@ -666,12 +612,12 @@ void add_grad(const Tensor& x,
             out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
         auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
         set_output<T>(dy_tmp, dy);
-
       } else {
         by_pass<T>(out_grad, dy);
       }
     }
   }
+
   if (dx) {
     if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_tmp = reduce_as<T>(out_grad, x);
@@ -951,13 +897,10 @@ void layer_norm_grad(const Tensor& x,
   }
 
   // cast dtype to float32 if dtype =float16 or bfloat16
-  if (x.dtype() == phi::DataType::FLOAT16 ||
-      x.dtype() == phi::DataType::BFLOAT16) {
-    x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
-    out_grad_cast = cast<T>(out_grad_cast, phi::DataType::FLOAT32);
-    if (scale_ptr) {
-      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
-    }
+  x_cast = ConverToMT<T>(x_cast);
+  out_grad_cast = ConverToMT<T>(out_grad_cast);
+  if (scale_ptr) {
+    scale_cast = ConverToMT<T>(scale_cast);
   }
 
   auto x_sub_mean = x_cast - mean_;          // M,N
@@ -983,11 +926,8 @@ void layer_norm_grad(const Tensor& x,
     auto d_mean_d_std = (1.0 / shape_2) * (d_mean + d_std);
     auto x_grad_tmp = dx_end - d_mean_d_std;
     x_grad_tmp = reshape<T>(x_grad_tmp, common::vectorize(x.dims()));
+    x_grad_tmp = ConverToOrig<T>(x_grad_tmp, x.dtype());
 
-    if (x.dtype() == phi::DataType::FLOAT16 ||
-        x.dtype() == phi::DataType::BFLOAT16) {
-      x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
-    }
     set_output<T>(x_grad_tmp, x_grad);
   }
 
@@ -997,10 +937,8 @@ void layer_norm_grad(const Tensor& x,
           (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
               .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
       scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
-      if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
-          scale_ptr->dtype() == phi::DataType::BFLOAT16) {
-        scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
-      }
+      scale_grad_tmp = ConverToOrig<T>(scale_grad_tmp, scale_ptr->dtype());
+
       set_output<T>(scale_grad_tmp, scale_grad);
     } else {
       scale_grad = nullptr;
@@ -1012,10 +950,8 @@ void layer_norm_grad(const Tensor& x,
       auto bias_grad_tmp =
           out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
       bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
-      if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
-          bias_ptr->dtype() == phi::DataType::BFLOAT16) {
-        bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
-      }
+      bias_grad_tmp = ConverToOrig<T>(bias_grad_tmp, bias_ptr->dtype());
+
       set_output<T>(bias_grad_tmp, bias_grad);
     } else {
       bias_grad = nullptr;
@@ -1121,15 +1057,11 @@ void square_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    if (out.dtype() == phi::DataType::FLOAT16 ||
-        out.dtype() == phi::DataType::BFLOAT16) {
-      Tensor out_promote = cast<T>(out, phi::DataType::FLOAT32);
-      Tensor out_grad_promote = cast<T>(out_grad, phi::DataType::FLOAT32);
-      set_output<T>(cast<T>(out_promote * out_grad_promote, out.dtype()),
-                    x_grad);
-    } else {
-      set_output<T>(out_grad * out, x_grad);
-    }
+    Tensor out_promote = ConverToMT<T>(out);
+    Tensor out_grad_promote = ConverToMT<T>(out_grad);
+
+    auto x_grad_tmp = out_promote * out_grad_promote;
+    set_output<T>(ConverToOrig<T>(x_grad_tmp, out.dtype()), x_grad);
   }
 }
 
@@ -1160,19 +1092,12 @@ void silu_grad(const Tensor& x,
                Tensor* x_grad) {
   if (x_grad) {
     auto one = full_scalar<T>(1.0, x.dtype());
-    auto org_dtype = x.dtype();
-    bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
-                     org_dtype == phi::DataType::BFLOAT16;
-    if (need_cast) {
-      auto x_cast = cast<T>(x, phi::DataType::FLOAT32);
-      auto out_cast = cast<T>(out, phi::DataType::FLOAT32);
-      auto out_grad_cast = cast<T>(out_grad, phi::DataType::FLOAT32);
-      auto res = out_grad_cast * sigmoid<T>(x_cast) * (one + x_cast - out_cast);
-      set_output<T>(cast<T>(res, org_dtype), x_grad);
-    } else {
-      auto res = out_grad * sigmoid<T>(x) * (one + x - out);
-      set_output<T>(res, x_grad);
-    }
+
+    auto x_cast = ConverToMT<T>(x);
+    auto out_cast = ConverToMT<T>(out);
+    auto out_grad_cast = ConverToMT<T>(out_grad);
+    auto res = out_grad_cast * sigmoid<T>(x_cast) * (one + x_cast - out_cast);
+    set_output<T>(ConverToOrig<T>(res, x.dtype()), x_grad);
   }
 }
 
@@ -1399,12 +1324,8 @@ void masked_select_grad(const Tensor& x,
                         const Tensor& out_grad,
                         Tensor* x_grad) {
   if (x_grad) {
-    auto promoted_x = x;
-    auto promoted_out_grad = out_grad;
-    if (is_half_dtype(x.dtype())) {
-      promoted_x = cast<T>(x, DataType::FLOAT32);
-      promoted_out_grad = cast<T>(out_grad, DataType::FLOAT32);
-    }
+    auto promoted_x = ConverToMT<T>(x);
+    auto promoted_out_grad = ConverToMT<T>(out_grad);
 
     auto x_num = 1;
     for (size_t i = 0; i < promoted_x.shape().size(); i++) {
@@ -1542,24 +1463,14 @@ void instance_norm_grad(const Tensor& x,
   const int h = x.dims()[2];
   const int w = x.dims()[3];
 
-  auto promoted_y_grad = y_grad;
-  if (x.dtype() == phi::DataType::FLOAT16 ||
-      x.dtype() == phi::DataType::BFLOAT16) {
-    promoted_y_grad = cast<T>(y_grad, phi::DataType::FLOAT32);
-  }
+  auto promoted_y_grad = ConverToMT<T>(y_grad);
 
   Tensor x_hat;
   Tensor std_inv;
   if (scale_grad || x_grad) {
-    auto promoted_x = x;
-    auto promoted_saved_mean = saved_mean;
-    auto promoted_saved_var = saved_variance;
-    if (x.dtype() == phi::DataType::FLOAT16 ||
-        x.dtype() == phi::DataType::BFLOAT16) {
-      promoted_x = cast<T>(x, phi::DataType::FLOAT32);
-      promoted_saved_mean = cast<T>(saved_mean, phi::DataType::FLOAT32);
-      promoted_saved_var = cast<T>(saved_variance, phi::DataType::FLOAT32);
-    }
+    auto promoted_x = ConverToMT<T>(x);
+    auto promoted_saved_mean = ConverToMT<T>(saved_mean);
+    auto promoted_saved_var = ConverToMT<T>(saved_variance);
     auto mean = reshape<T>(promoted_saved_mean, IntArray({n, c, 1, 1}))
                     .tile(IntArray({1, 1, h, w}));
     std_inv = reshape<T>(promoted_saved_var, IntArray({n, c, 1, 1}))
@@ -1575,11 +1486,7 @@ void instance_norm_grad(const Tensor& x,
                                    : full<T>(IntArray({c}), 1., x.dtype()),
                    IntArray({1, c, 1, 1}))
             .tile(IntArray({n, 1, h, w}));
-    auto promoted_scale = scale_data;
-    if (scale_data.dtype() == phi::DataType::FLOAT16 ||
-        scale_data.dtype() == phi::DataType::BFLOAT16) {
-      promoted_scale = cast<T>(scale_data, phi::DataType::FLOAT32);
-    }
+    auto promoted_scale = ConverToMT<T>(scale_data);
     auto result =
         (promoted_scale * std_inv) *
         (promoted_y_grad -
@@ -1588,34 +1495,19 @@ void instance_norm_grad(const Tensor& x,
          (x_hat * ((promoted_y_grad * x_hat)
                        .sum(IntArray({2, 3}), promoted_y_grad.dtype(), true) /
                    (h * w))));
-    if (x.dtype() == phi::DataType::FLOAT16 ||
-        x.dtype() == phi::DataType::BFLOAT16) {
-      set_output<T>(cast<T>(result, x.dtype()), x_grad);
-    } else {
-      set_output<T>(result, x_grad);
-    }
+    set_output<T>(ConverToOrig<T>(result, x.dtype()), x_grad);
   }
   // scale_grad = x_hat * y_grad.sum(n, h, w)
   if (scale_grad) {
     auto result = (promoted_y_grad * x_hat).sum(IntArray({0, 2, 3}));
     auto scale_dtype = scale.get_ptr() ? scale.get().dtype() : x.dtype();
-    if (scale_dtype == phi::DataType::FLOAT16 ||
-        scale_dtype == phi::DataType::BFLOAT16) {
-      set_output<T>(cast<T>(result, scale_dtype), scale_grad);
-    } else {
-      set_output<T>(result, scale_grad);
-    }
+    set_output<T>(ConverToOrig<T>(result, scale_dtype), scale_grad);
   }
   // d_bias = y_grad.sum(n, h, w)
   if (bias_grad) {
     auto result = promoted_y_grad.sum(IntArray({0, 2, 3}));
     auto scale_dtype = scale.get_ptr() ? scale.get().dtype() : x.dtype();
-    if (scale_dtype == phi::DataType::FLOAT16 ||
-        scale_dtype == phi::DataType::BFLOAT16) {
-      set_output<T>(cast<T>(result, scale_dtype), bias_grad);
-    } else {
-      set_output<T>(result, bias_grad);
-    }
+    set_output<T>(ConverToOrig<T>(result, scale_dtype), bias_grad);
   }
 }
 
@@ -1953,8 +1845,8 @@ void batch_norm_grad(const Tensor& x,
 
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
 
-  Tensor x_data = x;
-  Tensor out_grad_data = out_grad;
+  Tensor x_data = ConverToMT<T>(x);
+  Tensor out_grad_data = ConverToMT<T>(out_grad);
   auto run_var = variance_out.get();
   auto run_mean = mean_out.get();
   Tensor mean_data;
@@ -1963,15 +1855,6 @@ void batch_norm_grad(const Tensor& x,
   std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
   auto reduce_axis = IntArray(std::vector<int64_t>{0, 1, 2});
 
-  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
-                   x.dtype() == phi::DataType::BFLOAT16;
-  if (need_cast) {
-    x_data = cast<T>(x, phi::DataType::FLOAT32);
-  }
-  if (out_grad.dtype() == phi::DataType::FLOAT16 ||
-      out_grad.dtype() == phi::DataType::BFLOAT16) {
-    out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
-  }
   if (x_data.dims().size() == 2 && data_layout_ == DataLayout::kNCHW) {
     data_layout_ = DataLayout::kNHWC;
   }
@@ -2024,9 +1907,8 @@ void batch_norm_grad(const Tensor& x,
             nhwc_x_grad = scale.get() * nhwc_x_grad;
           }
           auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
-          if (need_cast) {
-            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
-          }
+          nchw_x_grad = ConverToOrig<T>(nchw_x_grad, x.dtype());
+
           set_output<T>(nchw_x_grad, x_grad);
         } else {
           auto part1 = rsqrt_var;
@@ -2067,9 +1949,7 @@ void batch_norm_grad(const Tensor& x,
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
-          if (need_cast) {
-            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
-          }
+          nchw_x_grad = ConverToOrig<T>(nchw_x_grad, x.dtype());
           set_output<T>(nchw_x_grad, x_grad);
         }
       }
@@ -2093,9 +1973,7 @@ void batch_norm_grad(const Tensor& x,
           if (scale) {
             x_grad_data = scale.get() * x_grad_data;
           }
-          if (need_cast) {
-            x_grad_data = cast<T>(x_grad_data, x.dtype());
-          }
+          x_grad_data = ConverToOrig<T>(x_grad_data, x.dtype());
           set_output<T>(x_grad_data, x_grad);
         } else {
           auto part1 = rsqrt_var;
@@ -2136,9 +2014,8 @@ void batch_norm_grad(const Tensor& x,
               out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
-          if (need_cast) {
-            x_grad_data = cast<T>(x_grad_data, x.dtype());
-          }
+          x_grad_data = ConverToOrig<T>(x_grad_data, x.dtype());
+
           set_output<T>(x_grad_data, x_grad);
         }
         if (scale_grad) {
@@ -2480,18 +2357,8 @@ void group_norm_grad(const Tensor& x,
 
   int g_num = C / groups;
 
-  Tensor x_data = x;
-  Tensor out_grad_data = out_grad;
-
-  if (x.dtype() == phi::DataType::FLOAT16 ||
-      x.dtype() == phi::DataType::BFLOAT16) {
-    x_data = cast<T>(x, phi::DataType::FLOAT32);
-  }
-
-  if (out_grad.dtype() == phi::DataType::FLOAT16 ||
-      out_grad.dtype() == phi::DataType::BFLOAT16) {
-    out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
-  }
+  Tensor x_data = ConverToMT<T>(x);
+  Tensor out_grad_data = ConverToMT<T>(out_grad);
 
   auto shape_group = std::vector<int64_t>({N, groups, g_num});
 
@@ -2525,10 +2392,8 @@ void group_norm_grad(const Tensor& x,
     Tensor d2;
     Tensor p1;
     if (scale) {
-      if (scale_data.dtype() == phi::DataType::FLOAT16 ||
-          scale_data.dtype() == phi::DataType::BFLOAT16) {
-        scale_data = cast<T>(scale_data, phi::DataType::FLOAT32);
-      }
+      scale_data = ConverToMT<T>(scale_data);
+
       d1 = (reshape<T>(sum_y_grad_mul_x * scale_data, shape_group))
                .sum(std::vector<int64_t>({2}), dtype, false);
       d2 = (reshape<T>(sum_y_grad * scale_data, shape_group))
@@ -2562,10 +2427,7 @@ void group_norm_grad(const Tensor& x,
     auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
     auto x_grad_data = tmp_1 + tmp_2;
     x_grad_data = reshape<T>(x_grad_data, x.shape());
-    if (x.dtype() == phi::DataType::FLOAT16 ||
-        x.dtype() == phi::DataType::BFLOAT16) {
-      x_grad_data = cast<T>(x_grad_data, x.dtype());
-    }
+    x_grad_data = ConverToOrig<T>(x_grad_data, x.dtype());
 
     set_output<T>(x_grad_data, x_grad);
   }
@@ -2809,6 +2671,100 @@ void atan_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void swish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    const Tensor one = full_scalar<T>(1.0, x.dtype());
+    const Tensor sig = sigmoid<T>(x);
+    Tensor res = out_grad * sig * (one + x * (one - sig));
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void fmax_grad(const Tensor& x,
+               const Tensor& y,
+               const Tensor& out_grad,
+               Tensor* x_grad,
+               Tensor* y_grad) {
+  const Tensor nan_x = isnan<T>(x);
+  const Tensor nan_y = isnan<T>(y);
+  Tensor mask_x = backend::logical_or<T>(nan_y, greater_equal<T>(x, y));
+  Tensor mask_y = backend::logical_not<T>(mask_x);
+
+  if (x_grad) {
+    Tensor dx = cast<T>(mask_x, out_grad.dtype()) * out_grad;
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      dx = reduce_as<T>(dx, x);
+    } else {
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        Tensor dx_reduce_res =
+            dx.sum(common::vectorize(reduce_dim), x.dtype(), false);
+        dx = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+      }
+    }
+    set_output<T>(dx, x_grad);
+  }
+
+  if (y_grad) {
+    Tensor dy = cast<T>(mask_y, out_grad.dtype()) * out_grad;
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
+      dy = reduce_as<T>(dy, x);
+    } else {
+      if (out_grad.dims() != y.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        Tensor dy_reduce_res =
+            dy.sum(common::vectorize(reduce_dim), y.dtype(), false);
+        dy = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+      }
+    }
+    set_output<T>(dy, y_grad);
+  }
+}
+
+template <typename T>
+void fmin_grad(const Tensor& x,
+               const Tensor& y,
+               const Tensor& out_grad,
+               Tensor* x_grad,
+               Tensor* y_grad) {
+  const Tensor nan_x = isnan<T>(x);
+  const Tensor nan_y = isnan<T>(y);
+  Tensor mask_x = backend::logical_or<T>(nan_y, less_equal<T>(x, y));
+  Tensor mask_y = backend::logical_not<T>(mask_x);
+
+  if (x_grad) {
+    Tensor dx = cast<T>(mask_x, out_grad.dtype()) * out_grad;
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      dx = reduce_as<T>(dx, x);
+    } else {
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        Tensor dx_reduce_res =
+            dx.sum(common::vectorize(reduce_dim), x.dtype(), false);
+        dx = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+      }
+    }
+    set_output<T>(dx, x_grad);
+  }
+
+  if (y_grad) {
+    Tensor dy = cast<T>(mask_y, out_grad.dtype()) * out_grad;
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
+      dy = reduce_as<T>(dy, x);
+    } else {
+      if (out_grad.dims() != y.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        Tensor dy_reduce_res =
+            dy.sum(common::vectorize(reduce_dim), y.dtype(), false);
+        dy = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+      }
+    }
+    set_output<T>(dy, y_grad);
+  }
+}
+
+template <typename T>
 void dot_grad(const Tensor& x,
               const Tensor& y,
               const Tensor& out_grad,
@@ -2852,16 +2808,10 @@ void logcumsumexp_grad(const Tensor& x,
   if (x_grad) {
     reverse = !reverse;
     Tensor tmp, lowest, x_grad_tmp;
-    Tensor x_cast = x;
-    Tensor out_cast = out;
-    Tensor out_grad_cast = out_grad;
-    bool need_cast = is_half_dtype(x.dtype());
+    Tensor x_cast = ConverToMT<T>(x);
+    Tensor out_cast = ConverToMT<T>(out);
+    Tensor out_grad_cast = ConverToMT<T>(out_grad);
 
-    if (need_cast) {
-      x_cast = cast<T>(x, DataType::FLOAT32);
-      out_cast = cast<T>(out, DataType::FLOAT32);
-      out_grad_cast = cast<T>(out_grad, DataType::FLOAT32);
-    }
     const Tensor out_grad_log = log<T>(abs<T>(out_grad_cast));
     auto out_grad_dtype = out_grad_cast.dtype();
 
@@ -2930,11 +2880,7 @@ void logcumsumexp_grad(const Tensor& x,
       x_grad_tmp = reshape<T>(out_grad_pos - out_grad_neg, x_cast.shape());
     }
 
-    if (need_cast) {
-      set_output<T>(cast<T>(x_grad_tmp, x.dtype()), x_grad);
-    } else {
-      set_output<T>(x_grad_tmp, x_grad);
-    }
+    set_output<T>(ConverToOrig<T>(x_grad_tmp, x.dtype()), x_grad);
   }
 }
 

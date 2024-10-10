@@ -17,16 +17,6 @@
     func : all_reduce
     param: [x, reduce_type]
 
-- op : all_to_all
-  args : (Tensor x, int ring_id = 0)
-  output : Tensor(out)
-  infer_meta :
-    func : AllToAllInferMeta
-    param: [x]
-  kernel :
-    func : all_to_all
-    param: [x]
-
 - op : amax
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
@@ -69,6 +59,7 @@
     func : arange_tensor
   data_transform :
     skip_transform : start, end, step
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : assign
   args : (Tensor x)
@@ -538,6 +529,7 @@
     func : matmul_with_flatten
     data_type : x
   backward : matmul_with_flatten_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_rank
   args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)

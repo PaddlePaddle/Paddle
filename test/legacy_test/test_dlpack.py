@@ -31,6 +31,7 @@ class TestDLPack(unittest.TestCase):
             self.assertTrue(
                 isinstance(out_from_dlpack, paddle.base.core.eager.Tensor)
             )
+            self.assertEqual(str(tensor.place), str(out_from_dlpack.place))
             np.testing.assert_array_equal(
                 out_from_dlpack.numpy(), np.array([1, 2, 3, 4]).astype("int")
             )
@@ -41,6 +42,7 @@ class TestDLPack(unittest.TestCase):
             t = paddle.to_tensor(numpy_data)
             dlpack = paddle.utils.dlpack.to_dlpack(t)
             out = paddle.utils.dlpack.from_dlpack(dlpack)
+            self.assertEqual(str(t.place), str(out.place))
             np.testing.assert_allclose(numpy_data, out.numpy(), rtol=1e-05)
 
     def test_dlpack_static(self):
@@ -100,7 +102,7 @@ class TestDLPack(unittest.TestCase):
                     o = paddle.utils.dlpack.from_dlpack(dlpack)
                     self.assertEqual(x.dtype, o.dtype)
                     np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
-                    self.assertEqual(type(x.place), type(o.place))
+                    self.assertEqual(str(x.place), str(o.place))
 
             complex_dtypes = ["complex64", "complex128"]
             for place in places:
@@ -114,7 +116,7 @@ class TestDLPack(unittest.TestCase):
                     o = paddle.utils.dlpack.from_dlpack(dlpack)
                     self.assertEqual(x.dtype, o.dtype)
                     np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
-                    self.assertEqual(type(x.place), type(o.place))
+                    self.assertEqual(str(x.place), str(o.place))
 
     def test_dlpack_deletion(self):
         # See Paddle issue 47171
@@ -129,6 +131,7 @@ class TestDLPack(unittest.TestCase):
                     )
                     dlpack = paddle.utils.dlpack.to_dlpack(a)
                     b = paddle.utils.dlpack.from_dlpack(dlpack)
+                    self.assertEqual(str(a.place), str(b.place))
 
     def test_to_dlpack_for_loop(self):
         # See Paddle issue 50120
@@ -154,6 +157,7 @@ class TestDLPack(unittest.TestCase):
                     y = paddle.utils.dlpack.from_dlpack(dlpack)
                     y[1:2, 2:5] = 2.0
                     np.testing.assert_allclose(x.numpy(), y.numpy())
+                    self.assertEqual(str(x.place), str(y.place))
 
     def test_to_dlpack_data_ptr_consistency(self):
         # See Paddle issue 50120
@@ -168,6 +172,7 @@ class TestDLPack(unittest.TestCase):
                     y = paddle.utils.dlpack.from_dlpack(dlpack)
 
                     self.assertEqual(x.data_ptr(), y.data_ptr())
+                    self.assertEqual(str(x.place), str(y.place))
 
     def test_to_dlpack_strides_consistency(self):
         with dygraph_guard():
@@ -182,6 +187,8 @@ class TestDLPack(unittest.TestCase):
                     y = paddle.utils.dlpack.from_dlpack(dlpack)
 
                     self.assertEqual(x_strided.strides, y.strides)
+                    self.assertEqual(str(x_strided.place), str(y.place))
+                    np.testing.assert_equal(x_strided.numpy(), y.numpy())
 
     def test_to_dlpack_from_ext_tensor(self):
         with dygraph_guard():
@@ -191,6 +198,38 @@ class TestDLPack(unittest.TestCase):
 
                 self.assertEqual(x.__array_interface__['data'][0], y.data_ptr())
                 np.testing.assert_allclose(x, y.numpy())
+
+    def test_to_dlpack_from_zero_dim(self):
+        with dygraph_guard():
+            places = [base.CPUPlace()]
+            if paddle.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                for _ in range(4):
+                    x = paddle.to_tensor(1.0, place=place)
+                    dlpack = paddle.utils.dlpack.to_dlpack(x)
+                    y = paddle.utils.dlpack.from_dlpack(dlpack)
+                    self.assertEqual(x.data_ptr(), y.data_ptr())
+                    self.assertEqual(str(x.place), str(y.place))
+                    self.assertEqual(y.shape, [])
+                    self.assertEqual(y.numel().item(), 1)
+                    np.testing.assert_array_equal(x.numpy(), y.numpy())
+
+    def test_to_dlpack_from_zero_size(self):
+        with dygraph_guard():
+            places = [base.CPUPlace()]
+            if paddle.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                for _ in range(4):
+                    x = paddle.zeros([0, 10]).to(device=place)
+                    dlpack = paddle.utils.dlpack.to_dlpack(x)
+                    y = paddle.utils.dlpack.from_dlpack(dlpack)
+                    self.assertEqual(x.data_ptr(), y.data_ptr())
+                    self.assertEqual(str(x.place), str(y.place))
+                    self.assertEqual(y.shape, [0, 10])
+                    self.assertEqual(y.numel().item(), 0)
+                    np.testing.assert_array_equal(x.numpy(), y.numpy())
 
 
 class TestRaiseError(unittest.TestCase):
