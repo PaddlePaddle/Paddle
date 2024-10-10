@@ -37,7 +37,6 @@
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-#include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/compute.h"

@@ -31,6 +31,9 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
+version = trt.__version__
+version_list = list(map(int, version.split('.')))
+
 
 def has_dynamic_shape(shape):
     return any(s == -1 for s in shape)
@@ -159,9 +162,44 @@ def add_elementwise_layer(network, paddle_op, inputs, op_type):
 
 # Create and add 1D constant layer
 def add_1D_constant_layer(network, data, dtype=np.int32):
-    constant_data = np.array([data], dtype=dtype)
+    if not isinstance(data, list):
+        data = [data]
+    constant_data = np.array(data, dtype=dtype)
     constant_layer = network.add_constant(constant_data.shape, constant_data)
     return constant_layer.get_output(0)
+
+
+# Concat not make rank changed
+def trt_concat(network, inputs, axis=0):
+    concat_layer = network.add_concatenation(inputs=inputs)
+    if axis != 0:
+        concat_layer.axis = axis
+    return concat_layer.get_output(0)
+
+
+def trt_cast(network, input, dtype):
+    identity_layer = network.add_identity(input)
+    identity_layer.set_output_type(0, dtype)
+    identity_layer.get_output(0).dtype = dtype
+    return identity_layer.get_output(0)
+
+
+def trt_shape(network, input):
+    shape_layer = network.add_shape(input)
+    if version_list[0] >= 10:  # trt_version >=10
+        return trt_cast(network, shape_layer.get_output(0), trt.int32)
+    return shape_layer.get_output(0)
+
+
+def trt_reshape(network, input, new_shape, name="", is_shape_tensor=False):
+    reshape_layer = network.add_shuffle(input)
+    if is_shape_tensor:
+        reshape_layer.set_input(1, new_shape)
+    else:
+        reshape_layer.reshape_dims = new_shape
+    if name != "":
+        reshape_layer.name = name
+    return reshape_layer.get_output(0)
 
 
 # Get element tensor of 1D shape tensor

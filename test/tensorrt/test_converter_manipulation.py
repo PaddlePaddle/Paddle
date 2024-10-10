@@ -92,6 +92,36 @@ class TestFlattenTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestExpandTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.expand
+        self.api_args = {
+            "x": np.random.randn(1, 3).astype("float32"),
+            "shape": [6, 3],
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3]}
+        self.max_shape = {"x": [6, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestExpandWithShapeTensorTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.expand
+        self.api_args = {
+            "x": np.random.randn(1, 3).astype("float32"),
+            "shape": np.array([6, 3]).astype("int32"),
+        }
+        self.program_config = {"feed_list": ["x", "shape"]}
+        self.min_shape = {"x": [1, 3]}
+        self.max_shape = {"x": [6, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 def slice_api(x, axes, starts, ends, infer_flags, decrease_axis):
     return _C_ops.slice(x, axes, starts, ends, infer_flags, decrease_axis)
 
@@ -115,6 +145,21 @@ class TestSliceWithDecreaseAxisTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestExpandWithDiffRankTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.expand
+        self.api_args = {
+            "x": np.array([1, 2, 3]).astype("float32"),
+            "shape": [2, 3],
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {}
+        self.max_shape = {}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 class TestSliceTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.slice
@@ -127,6 +172,23 @@ class TestSliceTRTPattern(TensorRTBaseTest):
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [2, 6, 64, 64]}
         self.max_shape = {"x": [8, 6, 64, 64]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestExpandAsTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.expand_as
+        self.api_args = {
+            "x": np.array([[1, 2, 3]]).astype("float32"),
+            "y": np.array([[1, 2, 3], [4, 5, 6], [1, 2, 3], [4, 5, 6]]).astype(
+                "int32"
+            ),
+        }
+        self.program_config = {"feed_list": ["x", "y"]}
+        self.min_shape = {"x": [1, 3]}
+        self.max_shape = {"x": [4, 3]}
 
     def test_trt_result(self):
         self.check_trt_result()
