@@ -19,14 +19,14 @@
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void DataKernel(const Context& ctx,
                 const std::string& name,
                 const phi::IntArray& shape,
                 phi::DataType data_type,
                 DenseTensor* out);
 
-template <typename Context>
+template <typename T, typename Context>
 void ShadowOutputKernel(const Context& ctx,
                         const DenseTensor& x,
                         DenseTensor* out);

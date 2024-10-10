@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/data_kernel.h"
 
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/data_impl.h"
 
@@ -21,21 +22,37 @@
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void DataKernel(const Context& ctx,
                 const std::string& name,
                 const phi::IntArray& shape,
                 phi::DataType data_type,
                 DenseTensor* out) {}
 
-template <typename Context>
+template <typename T, typename Context>
 void ShadowOutputKernel(const Context& ctx,
                         const DenseTensor& x,
                         DenseTensor* out) {}
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(data, ALL_LAYOUT, phi::DataKernel) {}
+PD_REGISTER_KERNEL(data,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::DataKernel,
+                   bool,
+                   uint8_t,
+                   float,
+                   int8_t,
+                   int16_t,
+                   int32_t,
+                   int64_t,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(shadow_feed,
                                          ALL_LAYOUT,
                                          phi::ShadowFeedKernel) {}
@@ -45,6 +62,5 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(shadow_feed_tensors,
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(print_kernel,
                                          ALL_LAYOUT,
                                          phi::PrintKernel) {}
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(shadow_output,
-                                         ALL_LAYOUT,
-                                         phi::ShadowOutputKernel) {}
+PD_REGISTER_KERNEL(
+    shadow_output, CPU, ALL_LAYOUT, phi::ShadowOutputKernel, float) {}
