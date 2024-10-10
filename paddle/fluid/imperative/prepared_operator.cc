@@ -246,7 +246,7 @@ PreparedOp PrepareImpl(
     VLOG(6) << kernel_signature;
     phi_kernel_name = kernel_signature.name;
 
-    if (phi_kernel_name == "c_concat") {
+    if (attrs.find("ring_id") != attrs.end()) {
       auto ring_id_attr = attrs.at("ring_id");
       int ring_id = PADDLE_GET(int, ring_id_attr);
       auto map = distributed::ProcessGroupMapFromGid::getInstance();
