@@ -1133,7 +1133,14 @@ headers = (
     list(find_files('op_yaml_info_util.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
     list(find_files('op_yaml_info_parser.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
     list(find_files('utils.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
-    list(find_files('op_compat_info.h','@PADDLE_SOURCE_DIR@/paddle/fluid/ir_adaptor/translator/')))
+    list(find_files('op_compat_info.h','@PADDLE_SOURCE_DIR@/paddle/fluid/ir_adaptor/translator/'))+
+    list(find_files('op_yaml_info_parser.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
+    list(find_files('vjp.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/"'))+
+    list(find_files('infer_symbolic_shape.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/'))+
+    #pir headers
+    list(find_files('lexer.h','@PADDLE_SOURCE_DIR@/paddle/pir/src/core/parser/'))+
+    list(find_files('token.h','@PADDLE_SOURCE_DIR@/paddle/pir/src/core/parser/')))
+
 jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
 for f in jit_layer_headers:
     headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))
