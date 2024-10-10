@@ -203,8 +203,7 @@ PreparedOp PrepareImpl(
         }
       }
     } else {
-      VLOG(3) << "ring_id " << ring_id
-              << " not found in comm_context_manager";
+        VLOG(3) << "ring_id " << ring_id << " not found in comm_context_manager";
     }
   }
 #endif
