@@ -508,42 +508,34 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
                 member_signature,
                 member_doc_cleaned,
             )
-        elif (
-            inspect.isfunction(member)
-            or inspect.ismethod(member)
-            or inspect.ismethoddescriptor(member)
-        ):
+        elif inspect.isfunction(member) or inspect.ismethod(member):
+            # `all_signatures`： list[[member id, decorators, signature]]
+            # with atleast an original method
+            all_signatures = [[member_id, [], member_signature]]
+
             # try to get overloads
-            overload_signatures = []
-            try:
-                _overloads = get_overloads(member)
-                if _overloads:
-                    for f in _overloads:
-                        _sig = inspect.signature(f)
-                        overload_signatures.append(
-                            [id(f), f"{name}{_sig}".replace("Ellipsis", "...")]
-                        )
+            _overloads = get_overloads(member)
+            for f in _overloads:
+                _sig = inspect.signature(f)
+                all_signatures.append(
+                    [
+                        id(f),
+                        ["overload"],
+                        f"{name}{_sig}".replace("Ellipsis", "..."),
+                    ]
+                )
 
-                overload_decorator = ["overload"] if overload_signatures else []
-                overload_signatures = overload_signatures or [
-                    [member_id, member_signature]
-                ]
-
-                for _member_id, _sig in overload_signatures:
-                    members[_member_id] = Member(
-                        _member_id,
-                        name,
-                        "method",
-                        [],
-                        overload_decorator,
-                        func_sig_to_method_sig(_sig),
-                        member_doc_cleaned,
-                    )
-
-            except:
-                pass
-
-            # add original method
+            for _member_id, _decorators, _sig in all_signatures:
+                members[_member_id] = Member(
+                    _member_id,
+                    name,
+                    "method",
+                    [],
+                    _decorators,
+                    func_sig_to_method_sig(_sig),
+                    member_doc_cleaned,
+                )
+        elif inspect.ismethoddescriptor(member):
             members[member_id] = Member(
                 member_id,
                 name,
@@ -555,6 +547,7 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
             )
         else:
             logging.debug(f"Skip unknown type of member: {name}, {member}")
+
     return members
 
 
