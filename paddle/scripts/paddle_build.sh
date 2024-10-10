@@ -4149,8 +4149,8 @@ function clang-tidy_check() {
     for s in "${S[@]}"; do
         count=$(grep -o "$s" $temp_file | wc -l)
         if [ $count -ge 2 ]; then
+            echo "check_error: $s"
             check_error=true
-            break
         fi
     done
     rm $temp_file
