@@ -486,7 +486,7 @@ def _pir_overlap_send_recv(program):
                 op.set_bool_attr("dynamic_shape", False)
                 op.set_bool_attr("use_calc_stream", True)
                 ring_id = op.attrs()["ring_id"]
-                op.set_execution_stream(f"set_stream_{ring_id}")
+                op.set_execution_stream(f"send_stream_{ring_id}")
                 op.set_scheduling_priority(0)
             elif op.name() == "pd_op.recv_v2":
                 op.set_bool_attr("dynamic_shape", False)
@@ -656,6 +656,8 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     """
     if enable_send_recv_overlap:
         _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program)
 
     fwd_prog = Program()
     bwd_prog = Program()
@@ -833,8 +835,7 @@ def find_var_used_op_chunk_id(var):
 def _split_program_into_forward_backward_optimize(
     main_program, enable_send_recv_overlap=False
 ):
-    if enable_send_recv_overlap:
-        _pir_overlap_send_recv(main_program)
+    _pir_overlap_send_recv(main_program)
 
     forward_complete_op_role(main_program)
     complete_ops = main_program.global_block().ops
