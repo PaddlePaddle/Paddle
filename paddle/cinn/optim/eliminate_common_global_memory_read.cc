@@ -236,6 +236,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
             "they comes from the same ScheduleBlockRealize"));
 
     for (std::size_t i = 0; i < iter_values.size(); ++i) {
+      // std::cerr << "iter vars and value " << iter_vars[i] << "\t" <<
+      // iter_values[i] << std::endl;
       var_to_sb_expr_[iter_vars[i]] = iter_values[i];
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -263,14 +265,23 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
     const auto& load_buffer = node->tensor.as_tensor_ref()->buffer;
     if (load_buffer->memory_type == ir::MemoryType::Heap) {
+      // std::cerr << "load buffer  name " << load_buffer->name << std::endl;
       std::vector<ir::Expr> tensor_indices;
       for (const auto& indice : node->indices) {
         ir::Expr new_indice = ir::ir_utils::IRCopy(indice);
+        // std::cerr << "base indice " << indice << std::endl;
         for (const auto& [var, sb_expr] : var_to_sb_expr_) {
           ReplaceVarWithExpr(&new_indice, var, ir::ir_utils::IRCopy(sb_expr));
         }
+        // std::cerr << "new indice " << new_indice << std::endl;
         tensor_indices.push_back(new_indice);
       }
+
+      // for( auto d : for_var_extents_)
+      // {
+      //   std::cerr << "d " << d.extent << std::endl;
+      // }
+
       buffer_to_indice_and_extent_[load_buffer->name].push_back(
           {tensor_indices, for_var_extents_});
     }
@@ -283,6 +294,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         ::common::errors::InvalidArgument("The input expr should be a Store"));
     const auto& store_buffer = node->tensor.as_tensor_ref()->buffer;
     if (store_buffer->memory_type == ir::MemoryType::Heap) {
+      std::cerr << "store buffer name " << store_buffer->name << std::endl;
       global_store_buffer_names_.insert(store_buffer->name);
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -326,6 +338,15 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
         node->stmts.insert(node->stmts.begin(), block);
       }
     }
+  }
+
+  void Visit(const ir::For* op, Expr* expr) override {
+    auto* node = expr->As<ir::For>();
+
+    current_for_ = node;
+    map_for_in_block_[node] = current_block_;
+
+    IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
@@ -387,6 +408,19 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
             "buffer_name %s should not be in global_buffer_to_local_buffer_",
             buffer_name));
     global_buffer_to_local_buffer_[buffer_name] = new_tensor;
+
+    std::cerr << "insert new sbr " << new_sbr << std::endl;
+
+    for (size_t i = 0; i < sb_node->iter_vars.size(); ++i) {
+      std::cerr << "iter vars " << sb_node->iter_vars[i] << std::endl;
+    }
+
+    // for( size_t i = 0; i < current_for_->loop_var.size(); ++i)
+    // {
+    //   std::cerr << "for i " <<  i << "\t" << current_for_->loop_var[i] <<
+    //   "\t" << current_for_->extent[i] << std::endl;
+    // }
+
     block_to_insert_stmts_[current_block_].push_back(new_sbr);
   }
 
@@ -406,21 +440,32 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
   std::unordered_map<ir::Block*, std::vector<ir::Expr>> block_to_insert_stmts_;
 
   ir::Block* current_block_;
+  ir::Block* insert_block_;
+  ir::For* current_for_;
   ir::ScheduleBlockRealize* current_sbr_;
+  std::unordered_map<ir::For*, ir::Block*> map_for_in_block_;
 };
 
 }  // namespace
 
 void EliminateCommonGlobalMemoryRead(Expr* e) {
   VLOG(4) << "Before EliminateCommonGlobalMemoryRead: \n" << *e;
+  std::cerr << "before process " << *e << std::endl;
+
   GlobalTensorInfoCollector collector;
   collector(e);
 
   const auto& eliminate_buffer_names = collector.GetEliminateBufferNames();
 
+  for (auto& name : eliminate_buffer_names) {
+    std::cerr << "eliminate name " << name << std::endl;
+  }
+
   CommonGlobalMemoryEliminator eliminator(eliminate_buffer_names);
   eliminator(e);
   VLOG(4) << "After EliminateCommonGlobalMemoryRead: \n" << *e;
+
+  std::cerr << "after process " << *e << std::endl;
 }
 
 }  // namespace optim
