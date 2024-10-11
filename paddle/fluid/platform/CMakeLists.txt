@@ -91,7 +91,7 @@ add_subdirectory(profiler)
 cc_library(
   init_phi
   SRCS init_phi.cc
-  DEPS init op_dialect static_prim_api)
+  DEPS init)
 
 if(TENSORRT_FOUND)
   add_subdirectory(tensorrt)
