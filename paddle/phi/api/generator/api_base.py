@@ -746,7 +746,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);"""
         )
-        if self.place_ref_tensor is None:
+        if self.place_ref_tensor is None or (
+            self.__class__.__name__ == "BackwardAPI" and "_grad" in input_name
+        ):
             self.place_ref_tensor = f"{PREFIX_TENSOR_NAME}{input_name}"
         return input_tensor_code
 
@@ -868,7 +870,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
 {code_indent}  }}"""
             )
-        if self.place_ref_tensor is None:
+        if self.place_ref_tensor is None or (
+            self.__class__.__name__ == "BackwardAPI" and "_grad" in input_name
+        ):
             self.place_ref_tensor = f"{PREFIX_TENSOR_NAME}{input_name}.at(0)"
 
         return input_tensor_code
