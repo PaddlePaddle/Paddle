@@ -711,7 +711,7 @@ bool BoxCoderOpInferSymbolicShape(
 
   PADDLE_ENFORCE_EQ(prior_box_shape.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The rank of Input PriorBox in BoxCoder operator "
                         "must be 2. But received rank = %d",
                         prior_box_shape.size()));
@@ -725,7 +725,7 @@ bool BoxCoderOpInferSymbolicShape(
 
     PADDLE_ENFORCE_EQ(prior_box_var_shape.size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The rank of Input(PriorBoxVar) in BoxCoder operator "
                           "should be 2. But received rank = %d",
                           prior_box_var_shape.size()));
@@ -738,7 +738,7 @@ bool BoxCoderOpInferSymbolicShape(
   if (code_type == "encode_center_size") {
     PADDLE_ENFORCE_EQ(target_box_shape.size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The rank of Input TargetBox in BoxCoder operator "
                           "must be 2. But received rank is %d",
                           target_box_shape.size()));
@@ -751,13 +751,13 @@ bool BoxCoderOpInferSymbolicShape(
   } else if (code_type == "decode_center_size") {
     PADDLE_ENFORCE_EQ(target_box_shape.size(),
                       3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The rank of Input TargetBox in BoxCoder operator "
                           "must be 3. But received rank is %d",
                           target_box_shape.size()));
     PADDLE_ENFORCE_EQ(axis == 0 || axis == 1,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "axis in BoxCoder operator must be 0 or 1. "
                           "But received axis = %d",
                           axis));
@@ -1542,12 +1542,127 @@ bool FlashAttnOpInferSymbolicShape(
   return true;
 }
 
-// bool FusedFeedforwardOpInferSymbolicShape(pir::Operation *op,
-//                                           pir::InferSymbolicShapeContext
-//                                           *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FusedFeedforwardOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+
+  auto RowMatrixFromVector = [](const std::vector<symbol::DimExpr> &x_shape)
+      -> std::vector<symbol::DimExpr> {
+    if (x_shape.size() > 1) {
+      return x_shape;
+    }
+    return {symbol::DimExpr(1), x_shape[0]};
+  };
+  std::vector<symbol::DimExpr> tensor_dim = RowMatrixFromVector(x_shape);
+  symbol::DimExpr height_;
+  symbol::DimExpr width_;
+  symbol::DimExpr stride_;
+  symbol::DimExpr batch_size_ = 1;
+
+  if (tensor_dim.size() == 2) {
+    height_ = tensor_dim[0];
+    width_ = tensor_dim[1];
+  } else {
+    std::vector<symbol::DimExpr> dim_vec = tensor_dim;
+    for (size_t i = 0; i < dim_vec.size() - 2; ++i) {
+      batch_size_ = batch_size_ * dim_vec[i];
+    }
+    height_ = dim_vec[dim_vec.size() - 2];
+    width_ = dim_vec[dim_vec.size() - 1];
+    stride_ = height_ * width_;
+  }
+
+  const auto &linear1_weight_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  std::vector<symbol::DimExpr> linear1_weight_dims =
+      linear1_weight_shape_or_data.shape();
+
+  std::vector<symbol::DimExpr> tmp_dim_x = x_shape;
+  tmp_dim_x.back() = linear1_weight_dims.back();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
+
+  if (!is_test) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(tmp_dim_x)});
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(9),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(tmp_dim_x)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(7),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(tmp_dim_x)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(10),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  if (!is_test) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_shape)});
+  }
+
+  std::vector<symbol::DimExpr> mean_dim =
+      std::vector<symbol::DimExpr>{batch_size_ * height_};
+
+  bool pre_layer_norm =
+      op->attribute<pir::BoolAttribute>("pre_layer_norm").data();
+
+  if (pre_layer_norm) {
+    if (!paddle::dialect::details::IsFakeValue(op->result(8))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(8),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(x_shape)});
+    }
+
+    if (!paddle::dialect::details::IsFakeValue(op->result(3))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(3),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(mean_dim)});
+    }
+
+    if (!paddle::dialect::details::IsFakeValue(op->result(4))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(4),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(mean_dim)});
+    }
+
+  } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(5))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(5),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(mean_dim)});
+    }
+
+    if (!paddle::dialect::details::IsFakeValue(op->result(6))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(6),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(mean_dim)});
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  return true;
+}
 
 // bool FusedAttentionOpInferSymbolicShape(pir::Operation *op,
 //                                         pir::InferSymbolicShapeContext
@@ -2286,7 +2401,7 @@ bool MaskedMultiheadAttention_OpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       cache_kv_shape.size(),
       5,
-      phi::errors::InvalidArgument("The cache_kv must be 5 dims."));
+      common::errors::InvalidArgument("The cache_kv must be 5 dims."));
   infer_context->AddEqualCstr(cache_kv_shape[0], symbol::DimExpr(2));
   // TODO(Luohongzhige, Buaa): add constrain for the num_head and k_num_head
 
@@ -2400,7 +2515,7 @@ bool NllLossOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &label_shape = label_shape_or_data.shape();
   PADDLE_ENFORCE_EQ(x_shape.size() == 2 || x_shape.size() == 4,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor rank of Input(X) must be 2 or 4."));
   infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
 
@@ -2408,10 +2523,10 @@ bool NllLossOpInferSymbolicShape(
     const symbol::ShapeOrDataDimExprs &w_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
     const std::vector<symbol::DimExpr> &w_shape = w_shape_or_data.shape();
-    PADDLE_ENFORCE_EQ(
-        w_shape.size(),
-        1,
-        phi::errors::InvalidArgument("Input(Weight) should be a 1D tensor."));
+    PADDLE_ENFORCE_EQ(w_shape.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "Input(Weight) should be a 1D tensor."));
 
     infer_context->AddEqualCstr(x_shape[1], w_shape[0]);
   }
@@ -2433,7 +2548,7 @@ bool NllLossOpInferSymbolicShape(
   } else if (x_shape.size() == 4) {
     PADDLE_ENFORCE_EQ(label_shape.size(),
                       3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected Input(Label) dimensions=3, received %d.",
                           label_shape.size()));
 
@@ -3638,7 +3753,7 @@ bool WeightedSampleNeighborsOpInferSymbolicShape(
       PADDLE_ENFORCE_EQ(
           input_shape.size(),
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The %s should be 1D, when it is not 2D, but we get %d",
               tensor_name,
               input_shape.size()));
