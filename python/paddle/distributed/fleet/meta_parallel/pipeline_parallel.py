@@ -1007,6 +1007,7 @@ class PipelineParallel(MetaParallelBase):
             )
             if self.is_pipeline_last_stage():
                 assert output_tensor_grad is None
+                # In align mode, we scale the grad directly after forward
                 if paddle.distributed.in_auto_parallel_align_mode():
                     output_tensor = output_tensor / _get_align_mode_scale()
                 if self.scaler:
