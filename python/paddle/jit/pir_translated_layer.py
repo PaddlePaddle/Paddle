@@ -113,6 +113,7 @@ class _PirProgramHolder:
                         name=var_name,
                         shape=org_value.shape,
                         dtype=org_value.dtype,
+                        place=paddle.base.core.Place(),
                     )
                     org_value.replace_all_uses_with(value)
                     value.get_defining_op().move_before(op)

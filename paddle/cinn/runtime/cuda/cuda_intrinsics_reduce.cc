@@ -165,6 +165,28 @@ CINN_REGISTER_HELPER(cuda_intrinsics_reduce) {
 
 #undef REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL
 
+#define REGISTER_GRID_REDUCE_FUNC_IMPL(REDUCE_TYPE, DTYPE)                   \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_grid_reduce_##REDUCE_TYPE, target) \
+      .SetRetType<DTYPE>()                                                   \
+      .AddInputType<cinn_buffer_t *>()                                       \
+      .AddInputType<int>()                                                   \
+      .End();
+
+  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_FP16_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+
+#undef REGISTER_GRID_REDUCE_FUNC_IMPL
+
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_grid_reduce_update_semaphore, target)
+      .SetRetType<bool>()
+      .AddInputType<int *>()
+      .End();
+
 #define REGISTER_BLOCK_REDUCE_FUNC_IMPL(REDUCE_TYPE, DTYPE)                   \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_block_reduce_##REDUCE_TYPE, target) \
       .SetRetType<DTYPE>()                                                    \
