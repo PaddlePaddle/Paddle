@@ -1279,6 +1279,187 @@ class MeanOpPattern : public pir::OpRewritePattern<paddle::dialect::MeanOp> {
   }
 };
 
+class BilinearInterpV2Pattern
+    : public pir::OpRewritePattern<paddle::dialect::BilinearInterpOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::BilinearInterpOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::BilinearInterpOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    const std::vector<std::string> required_attrs = {"data_format",
+                                                     "interp_method",
+                                                     "align_corners",
+                                                     "scale",
+                                                     "out_h",
+                                                     "out_w"};
+    for (const auto &attr : required_attrs) {
+      if (!op->HasAttribute(attr)) {
+        VLOG(3) << "BilinearInterpV2 " << attr << " attribute does not exist";
+        return false;
+      }
+    }
+    pir::Value size_tensor = op.operand_source(2);
+    if (size_tensor != nullptr) {
+      VLOG(3) << "The Paddle-TRT doesn't support the SizeTensor for "
+                 "BilinearInterpV2";
+      return false;
+    }
+
+    auto data_format =
+        op->attribute<pir::StrAttribute>("data_format").AsString();
+    if (data_format != "NCHW" && data_format != "NHWC") {
+      VLOG(3) << "BilinearInterpV2: data format must be NCHW or NHWC";
+      return false;
+    }
+    auto interp_method =
+        op->attribute<pir::StrAttribute>("interp_method").AsString();
+    if (interp_method != "bilinear") {
+      VLOG(3) << "The interp_method of BilinearInterpV2 is not bilinear";
+      return false;
+    }
+
+    pir::Value scale_tensor = op.operand_source(3);
+
+    bool has_scale_input = false;
+    if (scale_tensor) {
+      has_scale_input = true;
+    }
+
+    if (has_scale_input) {
+      VLOG(3) << "BilinearInterpV2 has scale input can not into trt,support "
+                 "scale attribute into trt";
+      return false;
+    }
+    if (!has_scale_input && op->HasAttribute("scale")) {
+      std::vector<float> scale;
+      auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
+      for (const auto &attr : scale_attr.AsVector()) {
+        scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+      }
+      if (scale.size() <= 1) {
+        if (!op->HasAttribute("out_h") || !op->HasAttribute("out_w")) {
+          VLOG(3) << "BilinearInterpV2 doesn't have scale_tensor and the scale "
+                     "size <=1 and without"
+                     "out_h / out_w, it will return false";
+          return false;
+        }
+        auto out_h = op->attribute<pir::Int32Attribute>("out_h").data();
+        auto out_w = op->attribute<pir::Int32Attribute>("out_w").data();
+        if (!(out_h <= 0 && out_w <= 0)) {
+          if (out_h <= 0) {
+            VLOG(3) << "BilinearInterpV2 out_h must be greater than 0 if scale "
+                       "is not set.";
+            return false;
+          }
+          if (out_w <= 0) {
+            VLOG(3) << "BilinearInterpV2 out_w must be greater than 0 if scale "
+                       "is not set.";
+            return false;
+          }
+        }
+      } else {
+        for (size_t i = 0; i < scale.size(); i++) {
+          if (scale[i] <= 0) {
+            VLOG(3) << "BilinearInterpV2  dynamic shape not support Attr(scale["
+                    << i << "]" << scale[i]
+                    << " less than 1 and Input(Scale) Vector not set.";
+            return false;
+          }
+        }
+      }
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class NearestInterV2Pattern
+    : public pir::OpRewritePattern<paddle::dialect::NearestInterpOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::NearestInterpOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::NearestInterpOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    const std::vector<std::string> required_attrs = {"data_format",
+                                                     "interp_method",
+                                                     "align_corners",
+                                                     "scale",
+                                                     "out_h",
+                                                     "out_w"};
+    for (const auto &attr : required_attrs) {
+      if (!op->HasAttribute(attr)) {
+        VLOG(3) << "NearestInterV2 " << attr << " attribute does not exist";
+        return false;
+      }
+    }
+
+    pir::Value size_tensor = op.operand_source(2);
+
+    auto data_format =
+        op->attribute<pir::StrAttribute>("data_format").AsString();
+    if (data_format != "NCHW" && data_format != "NHWC") {
+      VLOG(3) << "NearestInterV2: data format must be NCHW or NHWC";
+      return false;
+    }
+    auto interp_method =
+        op->attribute<pir::StrAttribute>("interp_method").AsString();
+    if (interp_method != "nearest") {
+      VLOG(3) << "The interp_method of NearestInterV2 is not nearest";
+      return false;
+    }
+    bool has_size_input = false;
+    if (size_tensor) {
+      has_size_input = true;
+    }
+
+#if IS_TRT_VERSION_GE(8200)
+    if (has_size_input) {
+      auto size_tensor_type = size_tensor.type();
+      if (size_tensor_type.isa<pir::VectorType>()) {
+        auto vector_type = size_tensor.type().dyn_cast<pir::VectorType>();
+        if (vector_type.size() == 2) {
+          op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+          return true;
+        }
+      }
+    }
+#endif
+
+    if (op->HasAttribute("scale")) {
+      std::vector<float> scale;
+      auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
+      for (const auto &attr : scale_attr.AsVector()) {
+        scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+      }
+      auto out_h = op->attribute<pir::Int32Attribute>("out_h").data();
+      auto out_w = op->attribute<pir::Int32Attribute>("out_w").data();
+      if (!(out_h > 0 && out_w > 0)) {
+        if (scale.size() < 2) {
+          VLOG(3) << "NearestInterV2 scale attribute size < 2";
+          return false;
+        }
+        if (scale[0] <= 0.f || scale[1] <= 0.f) {
+          VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
+                     "not set.";
+          return false;
+        }
+      }
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1352,6 +1533,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
     ps.Add(std::make_unique<ArgmaxOpPattern>(context));
     ps.Add(std::make_unique<MaxOpPattern>(context));
+    ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
+    ps.Add(std::make_unique<NearestInterV2Pattern>(context));
     return ps;
   }
 };

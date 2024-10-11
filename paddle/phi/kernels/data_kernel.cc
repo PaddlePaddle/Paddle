@@ -53,53 +53,14 @@ PD_REGISTER_KERNEL(data,
                    phi::complex64,
                    phi::complex128) {}
 
-PD_REGISTER_KERNEL(shadow_feed,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ShadowFeedKernel,
-                   bool,
-                   uint8_t,
-                   float,
-                   int8_t,
-                   int16_t,
-                   int32_t,
-                   int64_t,
-                   double,
-                   phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
-
-PD_REGISTER_KERNEL(shadow_feed_tensors,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ShadowFeedTensorsKernel,
-                   bool,
-                   uint8_t,
-                   float,
-                   int8_t,
-                   int16_t,
-                   int32_t,
-                   int64_t,
-                   double,
-                   phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
-
-PD_REGISTER_KERNEL(print_kernel,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::PrintKernel,
-                   bool,
-                   float,
-                   int32_t,
-                   int64_t,
-                   double,
-                   phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
-
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(shadow_feed,
+                                         ALL_LAYOUT,
+                                         phi::ShadowFeedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(shadow_feed_tensors,
+                                         ALL_LAYOUT,
+                                         phi::ShadowFeedTensorsKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(print_kernel,
+                                         ALL_LAYOUT,
+                                         phi::PrintKernel) {}
 PD_REGISTER_KERNEL(
     shadow_output, CPU, ALL_LAYOUT, phi::ShadowOutputKernel, float) {}
