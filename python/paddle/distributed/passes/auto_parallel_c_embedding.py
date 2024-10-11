@@ -38,9 +38,7 @@ class AutoParallelCEmbeddingPass(PassBase):
         mp_size = hcg.get_model_parallel_world_size()
         if mp_size > 1:
             return True
-        warnings.warn(
-            "The c_embedding pass is only applicable to tnesor parallel."
-        )
+        warnings.warn("c_embedding pass is only applicable to tnesor parallel.")
         return False
 
     def _check_conflict(self, other_pass):
@@ -295,7 +293,6 @@ class AutoParallelCEmbeddingPass(PassBase):
                             pre_id = op.id()
                             placements = dist_attr_new_out.placements
                         else:
-                            # without infer spmd_rule
                             results.append(dist_attr_new)
                             next_op = op.results()[0].all_used_ops()[0]
                             stack.append(next_op)
