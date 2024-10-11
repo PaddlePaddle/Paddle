@@ -1146,6 +1146,14 @@ struct PD_INFER_DECL AnalysisConfig {
   bool cinn_enabled() const;
 
   ///
+  /// \brief A boolean state telling whether the auto layout optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the auto layout optimization is turned on.
+  ///
+  bool autolayout_enabled() const;
+
+  ///
   /// \brief Set the custom passes list .
   ///
   /// \param passes The custom passes list.
