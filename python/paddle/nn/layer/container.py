@@ -319,6 +319,109 @@ class LayerDict(Layer):
                 self.add_sublayer(kv[0], kv[1])
 
 
+class ParameterDict(Layer):
+    """
+    Holds parameters in a dictionary.
+
+    ParameterDict can be indexed like a regular Python dictionary, but Parameters it contains are properly registered.
+
+    Parameters:
+        values (iterable, optional): a mapping (dictionary) of (string : Any) or an iterable of key-value pairs of type (string, Any)
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> class MyLayer(paddle.nn.Layer):
+            ...     def __init__(self, num_stacked_param):
+            ...         super().__init__()
+            ...         # create ParameterDict with iterable Parameters
+            ...         self.params = paddle.nn.ParameterDict(
+            ...             {f"t{i}": paddle.create_parameter(shape=[2, 2], dtype='float32') for i in range(num_stacked_param)})
+            ...
+            ...     def forward(self, x):
+            ...         for i, key in enumerate(self.params):
+            ...             x = paddle.matmul(x, self.params[key])
+            ...         return x
+            ...
+            >>> x = paddle.uniform(shape=[5, 2], dtype='float32')
+            >>> num_stacked_param = 4
+            >>> model = MyLayer(num_stacked_param)
+            >>> print(len(model.params))
+            4
+            >>> res = model(x)
+            >>> print(res.shape)
+            [5, 2]
+
+            >>> replaced_param = paddle.create_parameter(shape=[2, 3], dtype='float32')
+            >>> model.params['t3'] = replaced_param  # replace t3 param
+            >>> res = model(x)
+            >>> print(res.shape)
+            [5, 3]
+            >>> model.params['t4'] = paddle.create_parameter(shape=[3, 4], dtype='float32')  # append param
+            >>> print(len(model.params))
+            5
+            >>> res = model(x)
+            >>> print(res.shape)
+            [5, 4]
+    """
+
+    def __init__(
+        self,
+        parameters: (
+            ParameterDict
+            | Mapping[str, Tensor]
+            | Sequence[tuple[str, Tensor]]
+            | None
+        ) = None,
+    ) -> None:
+        super().__init__()
+        if parameters is not None:
+            self.update(parameters)
+
+    def __getitem__(self, key: str) -> Tensor:
+        with param_guard(self._parameters):
+            return self._parameters[key]
+
+    def __setitem__(self, key: str, param: Tensor) -> None:
+        assert isinstance(param, Parameter)
+        setattr(self, key, param)
+
+    def __len__(self) -> int:
+        return len(self._parameters)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._parameters)
+
+    def update(
+        self,
+        parameters: (
+            ParameterDict | Mapping[str, Tensor] | Sequence[tuple[str, Tensor]]
+        ),
+    ) -> None:
+        """Update a given parameter at the end of the dict.
+
+        Parameters:
+            parameters (Parameter): parameter to update
+        """
+        assert isinstance(parameters, Iterable), (
+            "The type of parameters is not iterable of key/value pairs, the type of sublayers is "
+            + type(parameters).__name__
+        )
+
+        if isinstance(parameters, (OrderedDict, ParameterDict, Mapping)):
+            for key, parameter in parameters.items():
+                self.add_parameter(key, parameter)
+        else:
+            for i, kv in enumerate(parameters):
+                if len(kv) != 2:
+                    raise ValueError(
+                        f"The length of the {i}'s element in parameters is {len(kv)}, which must be 2."
+                    )
+                self.add_parameter(kv[0], kv[1])
+
+
 class ParameterList(Layer):
     """ParameterList Container.
 
