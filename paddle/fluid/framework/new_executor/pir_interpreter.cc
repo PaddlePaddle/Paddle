@@ -542,7 +542,7 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.send_v2",
       "pd_op.mp_allreduce_sum",
       "pd_op.barrier",
-      "pd_op.alltoall",
+      "pd_op.all_to_all",
       "pd_op.global_gather",
       "pd_op.distributed_fused_lamb",
       "pd_op.margin_cross_entropy",
@@ -762,6 +762,33 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
                  "========================"
               << std::endl;
     std::cout << ss.str() << std::endl;
+  }
+}
+
+void PirInterpreter::AnalyzeForceSyncOps() {
+  for (auto& ins : vec_instruction_base_) {
+    ins->SetSyncAfterLaunch(FLAGS_benchmark);
+
+    // Analyze force sync op set by FLAGS_force_sync_op
+    int op_id = ins->Id();
+    std::string op_name = ins->Name();
+    std::string unused_prefix = "pd_op.";
+    auto pos = op_name.find(unused_prefix);
+    if (pos != std::string::npos) {
+      op_name.erase(pos, unused_prefix.size());
+    }
+
+    for (auto& pair : execution_config_.force_sync_ops) {
+      int sync_op_id = pair.first;
+      std::string sync_op_name = pair.second;
+      if ((sync_op_id == op_id || sync_op_id == -1) &&
+          (sync_op_name == op_name || sync_op_name == "")) {
+        VLOG(8) << "Force sync op: "
+                << "sync_op_id=" << sync_op_id << ", op_id=" << op_id
+                << ", sync_op_name=" << sync_op_name << ", op_name=" << op_name;
+        ins->SetSyncAfterLaunch(true);
+      }
+    }
   }
 }
 
@@ -1900,7 +1927,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
         instr_node->Run();
       }
 
-      if (FLAGS_benchmark) {
+      if (instr_node->IsSyncAfterLaunch()) {
         instr_node->DeviceContext().Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
@@ -2002,6 +2029,9 @@ void PirInterpreter::PreAnalysis() {
   AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
                               ir_instruction_scheduling_priority_less);
   VLOG(4) << "Done AnalyseExecuteOrderForTrace";
+
+  AnalyzeForceSyncOps();
+  VLOG(4) << "Done AnalyzeForceSyncOps";
 
   UpdateSyncOpNum();
   VLOG(4) << "Done UpdateSyncOpNum";

@@ -19,7 +19,7 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph program_utils collective_helper) #
+  DEPS graph program_utils phi) #
 cc_library(
   pass
   SRCS pass.cc
