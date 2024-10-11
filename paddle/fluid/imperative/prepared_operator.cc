@@ -201,12 +201,16 @@ PreparedOp PrepareImpl(
                       place, static_cast<phi::GPUContext*>(dev_ctx)->stream())
                   .get());
         }
+      } else {
+        VLOG(3) << "group_key " << group_key
+                << " not found in comm_context_manager";
       }
     } else {
-      VLOG(3) << "ring_id " << ring_id << " not found in comm_context_manager";
+      VLOG(3) << "ring_id " << ring_id << " not found in ProcessGroupMap";
     }
   }
 #endif
+
 #ifdef PADDLE_WITH_DNNL
   // OneDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
