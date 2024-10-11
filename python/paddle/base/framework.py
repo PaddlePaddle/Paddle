@@ -217,7 +217,7 @@ class GlobalThreadLocal(threading.local):
             set_flags(
                 {
                     "FLAGS_enable_pir_api": tmp_flags.lower()
-                    in ['n', 'no', 'f', 'false', 'off', '0']
+                    not in ['n', 'no', 'f', 'false', 'off', '0']
                 }
             )
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
