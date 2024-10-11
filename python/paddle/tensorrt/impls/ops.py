@@ -13,6 +13,9 @@
 # limitations under the License.
 import tensorrt as trt
 
+from paddle.tensorrt.converter_utils import (
+    activation_converter,
+)
 from paddle.tensorrt.register import converter_registry
 
 
@@ -27,7 +30,4 @@ def sqrt_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.sigmoid", trt_version="8.x")
 def sigmoid_converter(network, paddle_op, inputs):
-    sigmoid_layer = network.add_activation(
-        inputs[0], trt.ActivationType.SIGMOID
-    )
-    return sigmoid_layer.get_output(0)
+    return activation_converter(network, paddle_op.name(), inputs)

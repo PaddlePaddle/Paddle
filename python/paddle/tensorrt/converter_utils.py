@@ -193,3 +193,15 @@ def trt_sub(network, a, b):
 def trt_min(network, a, b):
     layer = network.add_elementwise(a, b, trt.ElementWiseOperation.MIN)
     return layer.get_output(0)
+
+
+def activation_converter(network, type, inputs):
+    if type == "pd_op.tanh":
+        layer = network.add_activation(inputs[0], trt.ActivationType.TANH)
+    elif type == "pd_op.relu":
+        layer = network.add_activation(inputs[0], trt.ActivationType.RELU)
+    elif type == "pd_op.sigmoid":
+        layer = network.add_activation(inputs[0], trt.ActivationType.SIGMOID)
+    else:
+        return None
+    return layer.get_output(0)

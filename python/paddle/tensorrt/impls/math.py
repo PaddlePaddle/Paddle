@@ -118,9 +118,3 @@ def multiply_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.PROD
     )
-
-
-@converter_registry.register("pd_op.tanh", trt_version="8.x")
-def tanh_converter(network, paddle_op, inputs):
-    tanh_layer = network.add_activation(inputs[0], trt.ActivationType.TANH)
-    return tanh_layer.get_output(0)
