@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import os
 import random
 
@@ -127,12 +128,10 @@ class TestSimpleNetForSemiAutoParallel:
         loss_list = []
         dist_model._engine._mode = "train"
         dist_model.train()
-
-        if use_pass:
-            dist_program = dist_model._engine._pir_dist_main_progs["train"]
-            op_name = dist_program.global_block().ops[8].name()
-            np.testing.assert_equal(op_name, 'pd_op.c_embedding')
-
+        dist_program = dist_model._engine._pir_dist_main_progs["train"]
+        op_name = dist_program.global_block().ops[8].name()
+        expected_op = 'pd_op.c_embedding' if use_pass else 'pd_op.embedding'
+        np.testing.assert_equal(op_name, expected_op)
         for epoch in range(3):
             for batch_id, data in enumerate(dist_loader()):
                 x, label = data
@@ -163,41 +162,36 @@ class TestSimpleNetForSemiAutoParallel:
             dataloader=data_loader,
             meshes=[self.mesh],
         )
-
         self.set_random_seed(self._seed)
         dy2static_layer_use_pass = EmbeddingNet(self.mesh)
         dy2static_opt_use_pass = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=dy2static_layer_use_pass.parameters()
         )
-        dy2static_losses_use_pass, dist_model_use_pass = self.run_dy2static(
+        loss_pass, dist_model_use_pass = self.run_dy2static(
             dy2static_layer_use_pass,
             dy2static_opt_use_pass,
             dist_dataloader,
             True,
         )
-
         self.set_random_seed(self._seed)
         dy2static_layer = EmbeddingNet(self.mesh)
         dy2static_opt = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=dy2static_layer.parameters()
         )
-        dy2static_losses, dist_model = self.run_dy2static(
+        loss_st, dist_model = self.run_dy2static(
             dy2static_layer, dy2static_opt, dist_dataloader, False
         )
-
         self.set_random_seed(self._seed)
         dy_layer = CEmbeddingNet(self.mesh)
         dy_opt = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=dy_layer.parameters()
         )
-        dy_losses = self.run_dynamic(dy_layer, dy_opt, data_loader)
-
-        np.testing.assert_allclose(
-            dy2static_losses_use_pass, dy2static_losses, atol=1e-7
-        )
-        np.testing.assert_allclose(
-            dy2static_losses_use_pass, dy_losses, atol=1e-7
-        )
+        loss_dy = self.run_dynamic(dy_layer, dy_opt, data_loader)
+        md5_pass = hashlib.md5(loss_pass.tobytes()).hexdigest()
+        md5_st = hashlib.md5(loss_st.tobytes()).hexdigest()
+        md5_dy = hashlib.md5(loss_dy.tobytes()).hexdigest()
+        np.testing.assert_equal(md5_pass, md5_st)
+        np.testing.assert_equal(md5_pass, md5_dy)
 
     def run_test_case(self):
         self.test_mp_demo_net()
