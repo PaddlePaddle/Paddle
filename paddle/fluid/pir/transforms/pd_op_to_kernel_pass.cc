@@ -3075,6 +3075,11 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
              ++use_it) {
           auto use_op = use_it->owner();
 
+          if (!use_op->isa<PhiKernelOp>()) {
+            all_use_is_scalar = false;
+            break;
+          }
+
           auto op_info = ctx->GetRegisteredOpInfo(
               use_op->dyn_cast<PhiKernelOp>().op_name());
 
