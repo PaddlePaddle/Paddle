@@ -31,6 +31,7 @@
     backend : place
   data_transform :
     support_trans_dtype : start, end, step
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : assign
   args : (Tensor x)

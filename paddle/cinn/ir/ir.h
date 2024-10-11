@@ -1012,6 +1012,32 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
+struct IndexExpr : public Expr {
+ public:
+  IndexExpr() = default;
+  IndexExpr(const IndexExpr& other) : Expr(other.ptr()) {}
+  IndexExpr(IrNode* p) : Expr(p) {}            // NOLINT
+  IndexExpr(const Expr& expr) : Expr(expr) {}  // NOLINT
+
+  explicit IndexExpr(int32_t x) : Expr(x) {}
+  explicit IndexExpr(int64_t x) : Expr(x) {}
+
+  IndexExpr& operator=(const IndexExpr& other);
+
+#define DEFINE_OPERATOR(op)               \
+  IndexExpr operator op(int64_t v) const; \
+  IndexExpr operator op(int32_t v) const; \
+  IndexExpr operator op(IndexExpr other) const;
+
+  DEFINE_OPERATOR(+)
+  DEFINE_OPERATOR(-)
+  DEFINE_OPERATOR(*)
+  DEFINE_OPERATOR(/)
+  DEFINE_OPERATOR(%)
+
+#undef DEFINE_OPERATOR
+};
+
 /**
  * \brief IterMark is a special ExprNode, which can be used to mark ther entire
  * ierator. source is a IterSum or iterator. extent is the extent of the
