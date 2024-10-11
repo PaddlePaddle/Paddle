@@ -25,10 +25,11 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 g_enable_math = None
 g_enable_flash = None
 g_enable_mem_efficient = None
+PADDLE_DISABLE_CUDNN_FA = strtobool(os.getenv('PADDLE_DISABLE_CUDNN_FA', '1'))
 
 
 def _is_hopper_device():
-    if strtobool(os.getenv('PADDLE_DISABLE_CUDNN_FA', '0')):
+    if PADDLE_DISABLE_CUDNN_FA:
         return False
 
     # 获取指定设备的属性
