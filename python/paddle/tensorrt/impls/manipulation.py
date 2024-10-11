@@ -26,7 +26,6 @@ from paddle.tensorrt.converter_utils import (
     get_shape_tensor_element,
     has_dynamic_shape,
     trt_concat,
-    trt_equal,
     trt_floor_div,
     trt_less,
     trt_max,
@@ -502,29 +501,17 @@ def split_with_num_converter(network, paddle_op, inputs):
         idx_tensor = add_1D_constant_layer(network, idx)
         offset = trt_floor_div(network, idx_tensor, split_size)
 
-        # Create mask
-        indices = np.arange(input_shape_size, dtype=np.int32)
-        indices_tensor = network.add_constant(
-            [input_shape_size], indices
-        ).get_output(0)
+        start_tensor = build_start_tensor(
+            network, input_shape_size, axis_tensor, offset
+        )
 
-        mask = trt_equal(network, indices_tensor, axis_tensor)
-        mask_int = cast_tensor(network, mask, trt.int32)
-
-        # Calculate start_tensor
-        offset_broadcast = trt_mul(network, offset, mask_int)
-        start_tensor = offset_broadcast
-
-        # Calculate size_tensor
-        size_tensor = trt_mul(network, split_size, mask_int)
-
-        # Get the sizes of other dimensions
-        ones_tensor = network.add_constant(
-            [input_shape_size], np.ones([input_shape_size], dtype=np.int32)
-        ).get_output(0)
-        other_dims_mask = trt_sub(network, ones_tensor, mask_int)
-        other_dims = trt_mul(network, input_shape_tensor, other_dims_mask)
-        size_tensor = trt_sum(network, size_tensor, other_dims)
+        size_tensor = build_size_tensor(
+            network,
+            input_shape_size,
+            axis_tensor,
+            num_splits_tensor,
+            input_shape_tensor,
+        )
 
         # Create Slice layer
         slice_layer = network.add_slice(
@@ -621,7 +608,7 @@ def split_converter(network, paddle_op, inputs):
         # If sections is a dynamic tensor
         num_sections = sections_tensor.shape[0]
         if num_sections == -1:
-            raise NotImplementedError("动态长度的 sections 当前不支持。")
+            raise NotImplementedError("dynamic sections not support")
         num_sections = int(num_sections)
 
         for idx in range(num_sections):
