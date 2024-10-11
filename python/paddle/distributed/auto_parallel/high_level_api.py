@@ -61,9 +61,18 @@ def reshard_all_inputs(layer, inputs):
             new_inputs = []
             for input in inputs:
                 if paddle.is_tensor(input):
-                    new_input = dist.reshard(
-                        input, current_mesh, [dist.Shard(0), dist.Replicate()]
-                    )
+                    if input.is_dist():
+                        new_input = dist.reshard(
+                            input,
+                            current_mesh,
+                            [dist.Shard(0), dist.Replicate()],
+                        )
+                    else:
+                        new_input = dist.shard_tensor(
+                            input,
+                            current_mesh,
+                            [dist.Shard(0), dist.Replicate()],
+                        )
                     new_inputs.append(new_input)
                 else:
                     new_inputs.append(input)
@@ -71,9 +80,14 @@ def reshard_all_inputs(layer, inputs):
             # breakpoint()
             return tuple(new_inputs)
         else:
-            new_input = dist.reshard(
-                input, current_mesh, [dist.Shard(0), dist.Replicate()]
-            )
+            if input.is_dist():
+                new_input = dist.reshard(
+                    input, current_mesh, [dist.Shard(0), dist.Replicate()]
+                )
+            else:
+                new_input = dist.shard_tensor(
+                    input, current_mesh, [dist.Shard(0), dist.Replicate()]
+                )
             return new_input
 
 
@@ -314,73 +328,6 @@ def to_distributed(model, mesh, config):
             pre_hook_helper = decoder_layer.register_forward_pre_hook(
                 reshard_all_inputs
             )
-
-    # name_to_layers = {}
-    # name_to_leaf_layers = {}
-    # for pattern_name, patterns in results.items():
-    #     pattern_program = _PIR_PATTERNS[pattern_name].pir_program
-    #     print(f"pattern_program is {pattern_program}")
-    #     patterns_layers = []
-    #     patterns_leaf_layers = []
-    #     for idx, pattern in enumerate(patterns):
-    #         pattern_layers = []
-    #         pattern_leaf_layers = []
-    #         for pattern_program_id, pir_program_id in pattern.items():
-    #             if pir_program_id in op_id_to_layer.keys():
-    #                 layer = op_id_to_layer[pir_program_id]
-    #                 if layer not in pattern_layers:
-    #                     pattern_layers.append(layer)
-    #                 if (
-    #                     layer not in pattern_leaf_layers
-    #                     and layer in leaf_layers
-    #                 ):
-    #                     pattern_leaf_layers.append(layer)
-    #         patterns_layers.append(pattern_layers)
-    #         patterns_leaf_layers.append(pattern_leaf_layers)
-    #     name_to_layers[pattern_name] = patterns_layers
-    #     name_to_leaf_layers[pattern_name] = patterns_leaf_layers
-    # # print(f"pattern corresponding layers is {name_to_layers}")
-    # # print(f"pattern corresponding leaf layers are {name_to_leaf_layers}")
-
-    # if "pp" in mesh.dim_names:
-    #     decoder_leaf_layers = name_to_leaf_layers[DECODER_LAYER_NAME]
-    #     print(f"decoder block corresponding layers are {decoder_leaf_layers}")
-    #     num_decoder_blocks = len(decoder_leaf_layers)
-    #     assert (
-    #         num_decoder_blocks == num_hidden_layers
-    #     ), "decoder pattern layers matched are incomplete"
-
-    #     pp_degree = mesh.get_dim_size("pp")
-    #     num_blocks_per_stage = num_decoder_blocks // pp_degree
-    #     for i in range(num_decoder_blocks):
-    #         pp_stage_id = get_layer_pp_info(mesh, num_decoder_blocks, i)
-    #         num_stages = len(GLOBAL_MESH)
-    #         if (i + 1) % num_blocks_per_stage == 0:
-    #             print("need to reshard to next mesh")
-    #             next_mesh = GLOBAL_MESH[(pp_stage_id + 1) % num_stages]
-    #         else:
-    #             next_mesh = GLOBAL_MESH[pp_stage_id]
-    #         print(f"for decoder layer {i}, next mesh is {next_mesh}")
-    #         last_leaf_layer_of_decoder = decoder_leaf_layers[i][-1]
-    #         last_leaf_layer_of_decoder.__setattr__("next_mesh", next_mesh)
-    #         post_hook_helper = (
-    #             last_leaf_layer_of_decoder.register_forward_post_hook(
-    #                 reshard_all_outputs
-    #             )
-    #         )
-
-    # for layer in model.sublayers():
-    #     if hasattr(layer, "pp_stage_id"):
-    #         stage_id = layer.__getattr__("pp_stage_id")
-    #         print(f"layer name is {layer._full_name}, and corresponding pp stage id is {stage_id}")
-    #     else:
-    #         print(f"layer name is {layer._full_name} has no attr pp stage id and local mesh")
-
-    #     if hasattr(layer, "local_mesh"):
-    #         local_mesh = layer.__getattr__("local_mesh")
-    #         print(f"layer name is {layer._full_name}, and corresponding local_mesh is {local_mesh}")
-    #     else:
-    #         print(f"layer name is {layer._full_name} has no attr local mesh")
 
     # # # # step7: clean layer_op recorder hooks
     for layer in model.sublayers():
