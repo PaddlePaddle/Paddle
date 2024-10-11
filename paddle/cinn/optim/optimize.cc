@@ -31,6 +31,7 @@
 #include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
+#include "paddle/cinn/optim/replace_cross_block_reduction.h"
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
 #include "paddle/cinn/optim/trans_buffer_with_dynamic_shape.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
@@ -59,6 +60,9 @@ Expr Optimize(Expr e,
   // Simplify already contains CastSimplify
   Simplify(&copied);
   ReplaceCrossThreadReduction(&copied);
+  VLOG(4) << "After Optimize ReplaceCrossThreadReduction:" << copied;
+  ReplaceCrossBlockReduction(&copied);
+  VLOG(4) << "After Optimize ReplaceCrossBlockReduction:" << copied;
   UnrollLoop(&copied);
   VLOG(4) << "After Optimize UnrollLoop:" << copied;
 
