@@ -310,12 +310,6 @@ def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         ops = program.global_block().ops
         for op in ops:
             if op.name() == "builtin.shadow_output":
-                if (
-                    op.operand_source(0)
-                    .get_defining_op()
-                    .has_attr("skip_gc_check")
-                ):
-                    continue
                 # if a value is renamed by shadow_output,
                 # it will be used by other sub_programs
                 type_to_var_names[job_type].add(op.attrs()["output_name"])
@@ -869,18 +863,6 @@ def _split_program_into_forward_backward_optimize(
                 # if this op's output is used, create the persistable
                 # var to be used in other programs.
                 result_in_opt = opt_ops[op_idx].result(idx)
-                opt_used_ops = result_in_opt.all_used_ops()
-
-                skip_gc_check = False
-                for opt_op in opt_used_ops:
-                    if opt_op.name() in [
-                        "pd_op.c_sync_comm_stream",
-                        "pd_op.conditional_block",
-                        "pd_op.data",
-                        "pd_op.while",
-                    ]:
-                        skip_gc_check = True
-                        break
 
                 if result_in_opt.use_empty() is False:
                     name = f"var_{op_idx}_{complete_ops[op_idx].name()}_{idx}"
@@ -899,12 +881,6 @@ def _split_program_into_forward_backward_optimize(
                     opt_ops[op_idx].result(idx).replace_all_uses_with(
                         new_result_var_in_opt
                     )
-
-                    if skip_gc_check:
-                        out_var = bwd_program.get_output_value_by_name(name)
-                        out_var.get_defining_op().set_bool_attr(
-                            "skip_gc_check", True
-                        )
 
             opt_ops[op_idx].erase()
         else:
