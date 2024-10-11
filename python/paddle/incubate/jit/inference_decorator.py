@@ -139,6 +139,15 @@ class InferenceEngine:
             )
         self.save_model_dir = os.path.join(self.save_model_dir, func.__name__)
 
+        import paddle.distributed as dist
+
+        n_ranks = dist.get_world_size()
+        if n_ranks > 1:
+            local_rank: int = dist.ParallelEnv().dev_id
+            self.save_model_dir = os.path.join(
+                self.save_model_dir, f"{n_ranks}_{local_rank}"
+            )
+
         self.precision_mode = kwargs.get("precision_mode")
         self.switch_ir_optim = kwargs.get("switch_ir_optim")
         self.switch_ir_debug = kwargs.get("switch_ir_debug")
@@ -164,6 +173,7 @@ class InferenceEngine:
         py_script = py_script[py_script.find("def") :]
         if used_as_at_decorator:
             assert self.arg_names[0] == "self"
+
         self.save_path = os.path.join(self.save_model_dir, "infer")
         d2s_input_info_path = self.save_path + "_d2s_input_info.txt"
         d2s_input_shapes = []
@@ -310,6 +320,7 @@ class InferenceEngine:
             input_spec=input_specs,
             full_graph=True,
         )
+
         paddle.jit.save(model, self.save_path, skip_prune_program=True)
 
         # save d2s_shapes

@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <typeindex>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
@@ -25,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/common/float8_e5m2.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {

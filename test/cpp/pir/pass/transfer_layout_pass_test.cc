@@ -29,7 +29,6 @@
 
 #include "paddle/common/layout.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -40,6 +39,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/general/transfer_layout_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
