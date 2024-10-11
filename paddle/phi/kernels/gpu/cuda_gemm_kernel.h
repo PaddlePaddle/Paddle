@@ -16,8 +16,16 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-namespace fusion {
-namespace cutlass_internal {
+
+typedef struct {
+  void const* act;
+  void const* weight;
+  void* output;
+  int32_t m, n, k;
+  int inputType;
+  int outputType;
+  cudaStream_t stream;
+} GemmParams;
 
 template <typename T, typename Context>
 void CudaGemm(const Context& ctx,
@@ -25,6 +33,4 @@ void CudaGemm(const Context& ctx,
               const DenseTensor& w,
               DenseTensor* output);
 
-}  // namespace cutlass_internal
-}  // namespace fusion
 }  // namespace phi

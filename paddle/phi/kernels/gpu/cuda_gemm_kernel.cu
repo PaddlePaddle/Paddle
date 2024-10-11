@@ -12,43 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion/cutlass/cuda_gemm/cuda_gemm.h"
-#include <stdio.h>
-#include <cub/cub.cuh>
-#include "cutlass/numeric_conversion.h"
+#include "paddle/phi/kernels/gpu/cuda_gemm_kernel.h"
+#include <glog/logging.h>
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-namespace fusion {
-namespace cutlass_internal {
-
-template <typename T>
-struct ToCutlassTypeAdapter {
-  using type = T;
-};
-
-template <>
-struct ToCutlassTypeAdapter<half> {
-  using type = cutlass::half_t;
-};
-
-#if defined(ENABLE_BF16)
-template <>
-struct ToCutlassTypeAdapter<__nv_bfloat16> {
-  using type = cutlass::bfloat16_t;
-};
-#endif
-
-#if defined(ENABLE_FP8)
-template <>
-struct ToCutlassTypeAdapter<__nv_fp8_e4m3> {
-  using type = cutlass::float_e4m3_t;
-};
-
-template <>
-struct ToCutlassTypeAdapter<__nv_fp8_e5m2> {
-  using type = cutlass::float_e5m2_t;
-};
-#endif
 
 template <typename Type, int CtaM, int CtaN, int Threads>
 __global__ void int8_gemm(int8_t const* act,
@@ -132,114 +103,9 @@ template <typename InputType,
           int32_t TILE_M,
           int32_t TILE_N,
           int32_t BLOCK_SIZE>
-__global__ void cudaCoreGemm(InputType const* __restrict__ act,
-                             InputType const* __restrict__ weight,
-                             OutputType* __restrict__ output,
-                             int32_t m,
-                             int32_t n,
-                             int32_t k) {
-  using VecType = int4;
-  static constexpr int32_t kStepK =
-      static_cast<int32_t>(128 / (8 * sizeof(InputType)));
-  static constexpr int32_t kTileK = kStepK * BLOCK_SIZE;
-  auto tileIdM = static_cast<int32_t>(blockIdx.x * TILE_M);
-  auto tileIdN = static_cast<int32_t>(blockIdx.y * TILE_N);
-  auto tid = static_cast<int32_t>(threadIdx.x);
-  float tile_a[kStepK], tile_w[TILE_N * kStepK];
-  float acc[TILE_M * TILE_N];
-
-  static_assert(kStepK % 4 == 0);
-  using CvtInputType = typename ToCutlassTypeAdapter<InputType>::type;
-  using Converter = cutlass::NumericArrayConverter<float, CvtInputType, 4>;
-  using CvtSrcType = typename Converter::source_type;
-  using CvtResType = typename Converter::result_type;
-
-  static constexpr int32_t kCvtCount =
-      static_cast<int32_t>(sizeof(VecType) / sizeof(CvtSrcType));
-
-#pragma unroll
-  for (int32_t i = 0; i < TILE_M * TILE_N; ++i) {
-    acc[i] = 0;
-  }
-  act += tileIdM * k;
-  weight += tileIdN * k;
-  output += tileIdM * n + tileIdN;
-  for (int32_t idxK = tid * kStepK; idxK < k; idxK += kTileK) {
-    for (int32_t i = 0; i < TILE_N; ++i) {
-      auto tile_w_quantized =
-          reinterpret_cast<VecType const*>(weight + i * k + idxK)[0];
-#pragma unroll
-      for (int32_t cvtIdx = 0; cvtIdx < kCvtCount; ++cvtIdx) {
-        reinterpret_cast<CvtResType*>(tile_w)[i * kCvtCount + cvtIdx] =
-            Converter::convert(
-                reinterpret_cast<CvtSrcType*>(&tile_w_quantized)[cvtIdx]);
-      }
-    }
-#pragma unroll
-    for (int32_t i = 0; i < TILE_M; ++i) {
-      auto tile_a_quantized =
-          reinterpret_cast<VecType const*>(act + i * k + idxK)[0];
-#pragma unroll
-      for (int32_t cvtIdx = 0; cvtIdx < kCvtCount; ++cvtIdx) {
-        reinterpret_cast<CvtResType*>(tile_a)[cvtIdx] = Converter::convert(
-            reinterpret_cast<CvtSrcType*>(&tile_a_quantized)[cvtIdx]);
-      }
-#pragma unroll
-      for (int32_t j = 0; j < TILE_N; ++j) {
-#pragma unroll
-        for (int32_t l = 0; l < kStepK; ++l) {
-          acc[i * TILE_N + j] =
-              fma(tile_a[l], tile_w[j * kStepK + l], acc[i * TILE_N + j]);
-        }
-      }
-    }
-  }
-
-  typedef cub::WarpReduce<float> WarpReduce;
-
-  static constexpr int32_t kWarpSize = 32;
-  static constexpr int32_t kWarpNum = BLOCK_SIZE / kWarpSize;
-  int32_t warpId = tid / kWarpSize, laneId = tid % kWarpSize;
-  __shared__ float shmem[TILE_M * TILE_N * kWarpNum];
-  __shared__ typename WarpReduce::TempStorage tempStorage[kWarpNum];
-#pragma unroll
-  for (int32_t mi = 0; mi < TILE_M; ++mi) {
-#pragma unroll
-    for (int32_t ni = 0; ni < TILE_N; ++ni) {
-      float val = WarpReduce(tempStorage[warpId]).Sum(acc[mi * TILE_N + ni]);
-      if (laneId == 0) {
-        shmem[mi * TILE_N + ni + warpId * TILE_M * TILE_N] = val;
-      }
-    }
-  }
-  __syncthreads();
-  for (int32_t ii = tid; ii < TILE_M * TILE_N; ii += BLOCK_SIZE) {
-    int32_t mid = ii / TILE_N, nid = ii % TILE_N;
-    float val = 0;
-#pragma unroll
-    for (int32_t jj = 0; jj < kWarpNum; ++jj) {
-      val += shmem[jj * TILE_M * TILE_N + ii];
-    }
-    output[mid * n + nid] = static_cast<OutputType>(val);
-  }
-}
-
-template <typename InputType,
-          typename OutputType,
-          int32_t TILE_M,
-          int32_t TILE_N,
-          int32_t BLOCK_SIZE>
 void cudaCoreGemmKernel(GemmParams const& params) {
   dim3 block(BLOCK_SIZE);
   dim3 grid(params.m / TILE_M, params.n / TILE_N);
-  //   cudaCoreGemm<InputType, OutputType, TILE_M, TILE_N, BLOCK_SIZE>
-  //       <<<grid, block, 0, params.stream>>>(
-  //           reinterpret_cast<InputType const*>(params.act),
-  //           reinterpret_cast<InputType const*>(params.weight),
-  //           reinterpret_cast<OutputType*>(params.output),
-  //           params.m,
-  //           params.n,
-  //           params.k);
   int8_gemm<OutputType, TILE_M, TILE_N, BLOCK_SIZE>
       <<<grid, block, 0, params.stream>>>(
           reinterpret_cast<InputType const*>(params.act),
@@ -277,7 +143,7 @@ bool cudaCoreGemmLauncher(GemmParams const& params) {
   return cudaCoreGemmTemplateCaller<InputType, OutputType, 1, 2, 256>(params);
 }
 
-bool cudaGemmDispatcher(GemmParams params) {
+bool cuda_gemm_func(GemmParams params) {
   bool dispatched = true;
   if (params.n % 2 != 0) {
     dispatched = false;
@@ -297,6 +163,65 @@ bool cudaGemmDispatcher(GemmParams params) {
   return dispatched;
 }
 
-}  // namespace cutlass_internal
-}  // namespace fusion
+template <typename T, typename Context>
+void CudaGemm(const Context& ctx,
+              const DenseTensor& input,
+              const DenseTensor& w,
+              DenseTensor* output) {
+  ctx.template Alloc<int32_t>(output);
+  auto input_dims = input.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "The input tensor dimensions should be 2, but got %d.",
+                        input_dims.size()));
+  auto weight_dims = w.dims();
+  PADDLE_ENFORCE_EQ(weight_dims.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "The weight tensor dimensions should be 2, but got %d.",
+                        weight_dims.size()));
+
+  auto out_dims = output->dims();
+
+  const int m = input_dims[0];
+  const int n = weight_dims[0];
+
+  PADDLE_ENFORCE_EQ(
+      input_dims[1],
+      weight_dims[1],
+      common::errors::InvalidArgument(
+          "The input dims[1] %d should be equal to weight dims[1] %d.",
+          input_dims[1],
+          weight_dims[1]));
+  const int k = weight_dims[1];
+
+  auto get_phi_dtype = [&](decltype(input.dtype()) x_type) -> int {
+    switch (x_type) {
+      case phi::DataType::INT8:
+        return 4;
+        break;
+      default:
+        return 4;
+    }
+  };
+
+  GemmParams params = {
+      reinterpret_cast<const void*>(input.data<T>()),
+      reinterpret_cast<const void*>(w.data<T>()),
+      reinterpret_cast<void*>(output->data<int32_t>()),
+      m,
+      n,
+      k,
+      get_phi_dtype(input.dtype()),
+      get_phi_dtype(input.dtype()) == 4 ? 5 : 1,
+      ctx.stream(),
+  };
+
+  if (!cuda_gemm_func(params)) {
+    PADDLE_THROW(common::errors::Fatal("cuda gemm kernel run error"));
+  }
+}
 }  // namespace phi
+
+PD_REGISTER_KERNEL(cuda_gemm, GPU, ALL_LAYOUT, phi::CudaGemm, int8_t) {}

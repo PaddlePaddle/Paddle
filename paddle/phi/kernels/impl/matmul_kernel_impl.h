@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/scale_kernel.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/funcs/cublaslt.h"
-#include "paddle/phi/kernels/fusion/cutlass/cuda_gemm_kernel.h"
+#include "paddle/phi/kernels/gpu/cuda_gemm_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/funcs/hipblaslt.h"
@@ -1859,9 +1859,9 @@ MatmulJudgeDtypeKernel(const Context& ctx,
         phi::EmptyKernel<float, Context>(
             ctx, {y.dims()[1], y.dims()[0]}, DataType::INT8, &delta);
         phi::TransposeKernel<int8_t, Context>(ctx, y, {1, 0}, &delta);
-        phi::fusion::cutlass_internal::CudaGemm<T, Context>(ctx, x, delta, out);
+        phi::CudaGemm<T, Context>(ctx, x, delta, out);
       } else {
-        phi::fusion::cutlass_internal::CudaGemm<T, Context>(ctx, x, y, out);
+        phi::CudaGemm<T, Context>(ctx, x, y, out);
       }
     }
   }
