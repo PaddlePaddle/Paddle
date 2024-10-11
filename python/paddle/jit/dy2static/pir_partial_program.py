@@ -35,6 +35,7 @@ from paddle.pir import Value, fake_value, is_fake_value
 from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
+    auto_layout_is_enabled,
     backend_guard,
     cinn_is_enabled,
     cse_is_enabled,
@@ -673,6 +674,12 @@ class PartialProgramLayer:
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
+        if auto_layout_is_enabled():
+            pm = paddle.pir.PassManager(3)
+            pm.add_pass("auto_layout_pass", {})
+            pm.add_pass("auto_layout_simplify_pass", {})
+            pm.run(self._origin_main_program)
+
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program, program_name_attr):

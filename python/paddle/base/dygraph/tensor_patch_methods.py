@@ -17,10 +17,11 @@ from __future__ import annotations
 import hashlib
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, overload
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, profiler
