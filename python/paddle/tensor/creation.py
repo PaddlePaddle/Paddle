@@ -2881,6 +2881,8 @@ def _memcpy(input, place=None, output=None) -> paddle.Tensor:
             dst_place_type = 2
         elif p.is_xpu_place():
             dst_place_type = 3
+        elif p.is_custom_place():
+            dst_place_type = 4
 
     if in_pir_mode():
         return _C_ops.memcpy(input, dst_place_type)
