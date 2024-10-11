@@ -732,7 +732,9 @@ class Engine:
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"
         ):
-            complete_chunk_id(dist_program, self._strategy.pipeline)
+            complete_chunk_id(
+                dist_program, startup_program, self._strategy.pipeline
+            )
 
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
