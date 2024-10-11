@@ -37,7 +37,7 @@ class TestCollectiveReduceAPI(TestDistBase):
         "run test when having at least 2 XPUs.",
     )
     def test_reduce(self):
-        support_types = get_xpu_op_support_types('c_reduce_sum')
+        support_types = get_xpu_op_support_types('reduce')
         for dtype in support_types:
             self.check_with_place(
                 "collective_reduce_api.py",
@@ -50,7 +50,7 @@ class TestCollectiveReduceAPI(TestDistBase):
         "run test when having at least 2 XPUs.",
     )
     def test_reduce_dygraph(self):
-        support_types = get_xpu_op_support_types('c_reduce_sum')
+        support_types = get_xpu_op_support_types('reduce')
         for dtype in support_types:
             self.check_with_place(
                 "collective_reduce_api_dygraph.py",
