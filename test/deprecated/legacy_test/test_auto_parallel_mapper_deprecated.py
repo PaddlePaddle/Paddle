@@ -607,7 +607,7 @@ class TestAutoParallelMapper(unittest.TestCase):
                 stop_gradient=False,
             )
             broadcast_op = train_program.global_block().append_op(
-                type="c_broadcast",
+                type="broadcast",
                 inputs={'X': input},
                 attrs={'ring_id': ring_id, 'root': root_id},
                 outputs={'Out': output},
