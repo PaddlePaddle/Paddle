@@ -76,7 +76,7 @@ void FusedMultiTransformerOpKernel(
   int dim_embed = input_x_dims[2];
   int bsz_seq = bsz * seq_len;
 
-  // Optional Bias input for layernorm / rmsnorm
+  // Optional Bias input for LayerNorm / RMSNorm
   auto ln_biases = ln_biases_in.get();
   auto ffn_ln_biases = ffn_ln_biases_in.get();
 
