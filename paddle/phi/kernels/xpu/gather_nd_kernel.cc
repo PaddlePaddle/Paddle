@@ -27,9 +27,8 @@ void GatherNdKernel(const Context &ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(out);
 
-  if (x.numel() == 0) {
-    return;
-  }
+  if (x.numel() == 0 || out->numel() == 0) return;
+  if (index.dims()[0] == 0 && index.numel() == 0) return;
 
   if (index.numel() == 0) {
     auto index_dims = index.dims();

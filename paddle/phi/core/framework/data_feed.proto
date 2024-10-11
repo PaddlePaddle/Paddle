@@ -1,0 +1,67 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package paddle.framework;
+
+message Slot {
+  required string name = 1;
+  required string type = 2;
+  optional bool is_dense = 3 [ default = false ];
+  optional bool is_used = 4 [ default = false ];
+  repeated int32 shape = 5; // we can define N-D phi::DenseTensor
+}
+
+message MultiSlotDesc {
+  repeated Slot slots = 1;
+  optional string uid_slot = 2;
+}
+
+message GraphConfig {
+  optional int32 walk_degree = 1 [ default = 1 ];
+  optional int32 walk_len = 2 [ default = 20 ];
+  optional int32 window = 3 [ default = 5 ];
+  optional int32 once_sample_startid_len = 4 [ default = 8000 ];
+  optional int32 sample_times_one_chunk = 5 [ default = 10 ];
+  optional int32 batch_size = 6 [ default = 1 ];
+  optional int32 debug_mode = 7 [ default = 0 ];
+  optional string first_node_type = 8;
+  optional string meta_path = 9;
+  optional bool gpu_graph_training = 10 [ default = true ];
+  optional bool sage_mode = 11 [ default = false ];
+  optional string samples = 12;
+  optional int64 train_table_cap = 13 [ default = 80000 ];
+  optional int64 infer_table_cap = 14 [ default = 80000 ];
+  optional string excluded_train_pair = 15;
+  optional string infer_node_type = 16;
+  optional bool get_degree = 17 [ default = false ];
+  optional bool weighted_sample = 18 [ default = false ];
+  optional bool return_weight = 19 [ default = false ];
+  optional string pair_label = 20;
+  optional bool is_thread_sharding = 21 [ default = false ];
+  optional int32 accumulate_num = 22 [ default = 1 ];
+}
+
+message DataFeedDesc {
+  optional string name = 1;
+  optional int32 batch_size = 2 [ default = 32 ];
+  optional MultiSlotDesc multi_slot_desc = 3;
+  optional string pipe_command = 4;
+  optional int32 thread_num = 5;
+  optional string rank_offset = 6;
+  optional int32 pv_batch_size = 7 [ default = 32 ];
+  optional int32 input_type = 8 [ default = 0 ];
+  optional string so_parser_name = 9;
+  optional GraphConfig graph_config = 10;
+}
