@@ -135,7 +135,7 @@ void divide_grad(const Tensor& x,
                  Tensor* dy) {
   if (dy) {
     // dy = -(x/y^2) * dout
-    auto dy_res = -(x / (y * y)) * out_grad;
+    auto dy_res = -out_grad * (x / y / y);
     if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape()) ||
         out_grad.dims() != y.dims()) {
       auto dy_tmp = reduce_as<T>(dy_res, y);
@@ -146,8 +146,7 @@ void divide_grad(const Tensor& x,
   }  // indicate we will compute dy
   if (dx) {
     // dx = (1/y) * dout
-    Tensor one_tensor = full_scalar<T>(1.0, y.dtype());
-    auto dx_res = one_tensor / y * out_grad;
+    auto dx_res = out_grad / y;
     if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape()) ||
         out_grad.dims() != x.dims()) {
       auto dx_tmp = reduce_as<T>(dx_res, x);

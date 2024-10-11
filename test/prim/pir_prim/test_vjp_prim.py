@@ -84,10 +84,11 @@ class TestVjpPrim(unittest.TestCase):
                     out_grads,
                     stop_gradients,
                 )
+            print(pir_program)
             reshape_op2 = pir_program.global_block().ops[-1]
-            reshape_op1 = pir_program.global_block().ops[-4]
+            reshape_op1 = pir_program.global_block().ops[-2]
             self.assertEqual(len(grad_outs), 2)
-            self.assertEqual(len(pir_program.global_block().ops), 13)
+            self.assertEqual(len(pir_program.global_block().ops), 11)
             self.assertTrue(reshape_op2.result(0).is_same(grad_outs[0][0]))
             self.assertTrue(reshape_op1.result(0).is_same(grad_outs[1][0]))
             all_op_names = [
@@ -95,15 +96,13 @@ class TestVjpPrim(unittest.TestCase):
                 "pd_op.full",
                 "pd_op.full",
                 "pd_op.divide",
-                "pd_op.multiply",
+                "pd_op.divide",
                 "pd_op.divide",
                 "pd_op.full",
                 "pd_op.scale",
                 "pd_op.multiply",
                 "pd_op.reduce_as",
-                "pd_op.full",
                 "pd_op.divide",
-                "pd_op.multiply",
             ]
             for idx, op in enumerate(pir_program.global_block().ops):
                 self.assertEqual(op.name(), all_op_names[idx])
