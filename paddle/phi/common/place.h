@@ -208,9 +208,10 @@ bool is_ipu_place(const Place&);
 TEST_API bool is_cpu_place(const Place&);
 bool is_cuda_pinned_place(const Place&);
 bool is_custom_place(const Place& p);
+bool is_accelerat_place(const Place& p);
 bool places_are_same_class(const Place&, const Place&);
 bool is_same_place(const Place&, const Place&);
-
+bool is_accelerat_allocation_type(AllocationType type);
 }  // namespace phi
 
 namespace paddle {

@@ -19,7 +19,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 
 namespace paddle {
 namespace framework {

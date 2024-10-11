@@ -629,7 +629,7 @@ def _to_name_str(var):
         elif isinstance(var, Operator):
             return str(id(var))
         elif isinstance(var, Value):
-            return str(id(var))
+            return str(var.id)
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
@@ -1220,12 +1220,11 @@ class _ExecutorCache:
 
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
-                pir_grad_var_to_var = decomp.decompose_dist_program(program)
-            if core._enable_auto_recompute():
-                print("apply auto_recompute in executor", flush=True)
-                program = decomp.auto_recompute_pir_program(
-                    program, pir_grad_var_to_var
-                )
+                decomp.decompose_dist_program(program)
+
+        if core._enable_auto_recompute():
+            logging.info("apply auto_recompute in executor")
+            program = decomp.auto_recompute_pir_program(program, None)
 
         if in_cinn_mode():
             apply_cinn_pass(program)

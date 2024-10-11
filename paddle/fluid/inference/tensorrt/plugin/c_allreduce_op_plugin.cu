@@ -16,9 +16,9 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/utils.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
