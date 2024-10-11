@@ -320,7 +320,7 @@ void _Var_::Verify() const {
                         "A valid name is required to identify the variable."));
 }
 
-IndexExpr IterMark::Make(const IndexExpr &source, const IndexExpr &extent) {
+Expr IterMark::Make(const Expr &source, const IndexExpr &extent) {
   auto *n = make_shared<IterMark>();
   n->source = source;
   n->extent = extent;
