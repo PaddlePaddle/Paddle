@@ -311,7 +311,7 @@ class TestSplitDynamicSectionsTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-class TestSplitDynamicSectionsAndAxisTRTPattern(TensorRTBaseTest):
+class TestSplitDynamicSectionAndAxisTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = split_api
         self.api_args = {
