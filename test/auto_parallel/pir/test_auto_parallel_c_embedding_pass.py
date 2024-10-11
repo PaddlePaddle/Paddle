@@ -28,10 +28,9 @@ class TestAutoParallelCEmbeddingPass(test_base.CommunicationTestDistBase):
 
     def test_mlp(self):
         envs_list = test_base.gen_product_envs_list(
-            {"dtype": "float32", "seed": "2024"}, {"backend": ["gpu"]}
+            self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
-            # self._log_dir.name = "./log"
             ckpt_path_tmp = tempfile.TemporaryDirectory()
             envs["ckpt_path"] = ckpt_path_tmp.name
             self.run_test_case(
