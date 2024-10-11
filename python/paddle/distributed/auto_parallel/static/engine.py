@@ -732,9 +732,7 @@ class Engine:
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"
         ):
-            complete_chunk_id(
-                dist_program, startup_program, self._strategy.pipeline
-            )
+            complete_chunk_id(dist_program, self._strategy.pipeline)
 
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
@@ -905,6 +903,24 @@ class Engine:
         dense_program = dist_program.clone()
         paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
         remove_unuseful_comm_op_pass(dense_program)
+
+        send_ops = {}
+        recv_ops = {}
+        for op in dist_program.global_block().ops:
+            if op.name() == "pd_op.send_v2":
+                ring_id = op.attrs()["ring_id"]
+                if ring_id not in send_ops:
+                    send_ops[ring_id] = op
+                else:
+                    op.erase()
+            elif op.name() == "pd_op.recv_v2":
+                ring_id = op.attrs()["ring_id"]
+                if ring_id not in recv_ops:
+                    recv_ops[ring_id] = op
+                else:
+                    recv_op = recv_ops[ring_id]
+                    op.result(0).replace_all_uses_with(recv_op.result(0))
+                    op.erase()
 
         if self._strategy.pipeline.enable:
             self._job_plan = pipeline_pass(
@@ -1283,6 +1299,12 @@ class Engine:
                 # pir_init_comms()
                 all_process_groups = get_all_process_groups()
                 for process_group in all_process_groups:
+                    print(
+                        "group info:",
+                        process_group.ranks,
+                        process_group.group_type,
+                    )
+                for process_group in all_process_groups:
                     process_group.instantiate()
                 pass
                 return
@@ -1296,6 +1318,12 @@ class Engine:
                     all_process_groups, self._cur_rank
                 )
             else:
+                for process_group in all_process_groups:
+                    print(
+                        "group info:",
+                        process_group.ranks,
+                        process_group.group_type,
+                    )
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
