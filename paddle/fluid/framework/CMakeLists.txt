@@ -164,7 +164,7 @@ cc_library(
 cc_library(
   device_worker
   SRCS device_worker.cc
-  DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
+  DEPS lod_tensor scope ${BRPC_DEPS})
 cc_library(
   scope_pool
   SRCS scope_pool.cc
@@ -292,12 +292,9 @@ if(WITH_XPU)
     DEPS xpu_op_list
          op_info
          proto_desc
-         device_context
          tensor
          scope
          glog
-         trainer_desc_proto
-         data_feed_proto
          shape_inference
          data_transform
          lod_tensor
@@ -316,12 +313,9 @@ else()
          infershape_utils.cc
     DEPS op_info
          proto_desc
-         device_context
          tensor
          scope
          glog
-         trainer_desc_proto
-         data_feed_proto
          shape_inference
          data_transform
          lod_tensor
@@ -550,7 +544,6 @@ if(WITH_DISTRIBUTE)
       DEPS fleet_wrapper
            op_registry
            scope
-           trainer_desc_proto
            glog
            framework_io
            heter_wrapper
@@ -564,8 +557,6 @@ if(WITH_DISTRIBUTE)
            ${GLOB_DISTRIBUTE_DEPS}
            graph_to_program_pass
            variable_helper
-           data_feed_proto
-           heter_service_proto
            ${BRPC_DEP})
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -880,7 +871,6 @@ set(FLUID_FRAMEWORK_MODULES
     proto_desc
     lod_tensor
     executor
-    data_feed_proto
     layer
     phi
     common
