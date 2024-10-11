@@ -873,7 +873,7 @@ phi::DenseTensor from_blob(void* data,
                            const phi::Place& place,
                            const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
-      data, phi::errors::InvalidArgument("data can not be nullptr."));
+      data, common::errors::InvalidArgument("data can not be nullptr."));
 
   auto meta = phi::DenseTensorMeta(dtype, shape, strides);
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
@@ -912,7 +912,7 @@ phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
   } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
     place = phi::GPUPinnedPlace();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Given Place is not supported"));
+    PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
   }
 
   ::DLDataType type = src->dl_tensor.dtype;

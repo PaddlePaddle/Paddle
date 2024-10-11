@@ -530,11 +530,11 @@ TEST(printer_test, custom_hooks) {
     printer.os << " [extra info]";
   };
   // this one overrides old printing
-  hooks.op_print_hook = [](pir::Operation *op, pir::IrPrinter &printer) {
+  hooks.op_print_hook = [](const pir::Operation &op, pir::IrPrinter &printer) {
     printer.PrintOpResult(op);
     printer.os << " :=";
 
-    printer.os << " \"" << op->name() << "\"";
+    printer.os << " \"" << op.name() << "\"";
     printer.PrintOpOperands(op);
     printer.PrintAttributeMap(op);
     printer.os << " :";

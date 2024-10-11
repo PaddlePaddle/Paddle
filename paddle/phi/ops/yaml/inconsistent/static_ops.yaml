@@ -888,25 +888,25 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed
-  args : (Tensor x)
+  args : (Tensor x,  int dst_place_type)
   output : Tensor(out)
   infer_meta:
     func: UnchangedInferMeta
     param: [x]
   kernel:
     func: shadow_feed
-    param: [x]
+    param: [x, dst_place_type]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed_tensors
-  args : (Tensor[] x)
+  args : (Tensor[] x, int dst_place_type)
   output : Tensor[](out){x.size()}
   infer_meta:
     func: UnchangedVectorInferMeta
     param: [x]
   kernel:
     func: shadow_feed_tensors
-    param: [x]
+    param: [x, dst_place_type]
 
 - op : share_data_
   args : (Tensor x)
