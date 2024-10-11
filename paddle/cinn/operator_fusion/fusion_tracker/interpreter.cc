@@ -197,9 +197,9 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
     auto exprs = std::visit(GetSplitedExprFromFusionOp(), fusion_op);
     // Insert if for append loops
     for (const auto& expr : exprs) {
-      interpreter->ret_expr.push_back(expr);
-      // interpreter->ret_expr.push_back(
-      //     ExprTransformerUtils::InsertIfForAppendVarsTransformer()(expr));
+      // interpreter->ret_expr.push_back(expr);
+      interpreter->ret_expr.push_back(
+          ExprTransformerUtils::InsertIfForAppendVarsTransformer()(expr));
     }
   }
 }

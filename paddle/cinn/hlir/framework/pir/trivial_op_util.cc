@@ -805,19 +805,31 @@ ExprTransformer InsertIfForAppendVarsTransformer() {
       VLOG(4) << "Insert If for append loop: " << var;
       conditions.push_back(ir::EQ::Make(var, var->lower_bound));
     }
-    auto last_for = (ExprSetFinderUtils::ChildFors *
-                     ExprSetFinderUtils::IsForIterVar(vars.back()))
-                        .GetSingle(root)
-                        .As<ir::For>();
-    ir::Expr new_body = last_for->body;
-    std::reverse(conditions.begin(), conditions.end());
-    for (const auto& cond : conditions) {
-      new_body = ir::IfThenElse::Make(cond, new_body);
+    auto realizes = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                     ExprSetFinderUtils::ScheduleBlockRealizeNotRoot)(root);
+    for (auto realize : realizes) {
+      auto schedule_block =
+          realize.As<ir::ScheduleBlockRealize>()->schedule_block;
+      auto new_body = schedule_block.As<ir::ScheduleBlock>()->body;
+      for (const auto& cond : conditions) {
+        new_body = ir::IfThenElse::Make(cond, new_body, ir::Expr());
+      }
+      schedule_block.As<ir::ScheduleBlock>()->body = new_body;
     }
-    if (!new_body.As<ir::Block>()) {
-      new_body = ir::Block::Make({new_body});
-    }
-    last_for->body = new_body;
+
+    // auto last_for = (ExprSetFinderUtils::ChildFors *
+    //                  ExprSetFinderUtils::IsForIterVar(vars.back()))
+    //                     .GetSingle(root)
+    //                     .As<ir::For>();
+    // ir::Expr new_body = last_for->body;
+    // std::reverse(conditions.begin(), conditions.end());
+    // for (const auto& cond : conditions) {
+    //   new_body = ir::IfThenElse::Make(cond, new_body);
+    // }
+    // if (!new_body.As<ir::Block>()) {
+    //   new_body = ir::Block::Make({new_body});
+    // }
+    // last_for->body = new_body;
     return root;
   };
   return ExprTransformer(f);
