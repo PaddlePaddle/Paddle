@@ -229,12 +229,13 @@ static PyObject* tensor__add__method(TensorObject* self,
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__add__method";
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
 
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -284,8 +285,9 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__add__", 0);
@@ -324,13 +326,12 @@ static PyObject* tensor__sub__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__sub__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
-
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -379,8 +380,9 @@ static PyObject* tensor__sub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__sub__", 0);
@@ -418,12 +420,12 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__rsub__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -472,8 +474,9 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__rsub__", 0);
@@ -511,13 +514,12 @@ static PyObject* tensor__mul__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__mul__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
-
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -568,8 +570,9 @@ static PyObject* tensor__mul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__mul__", 0);
@@ -614,13 +617,12 @@ static PyObject* tensor__div__method(TensorObject* self,
 
   VLOG(6) << "Running Eager tensor__div__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
-
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -663,8 +665,9 @@ static PyObject* tensor__div__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__div__", 0);
@@ -706,13 +709,12 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 
   VLOG(6) << "Running Eager tensor__rdiv__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
-
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -750,8 +752,9 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__rdiv__", 0);
@@ -792,12 +795,12 @@ static PyObject* tensor__gt__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__gt__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -840,8 +843,9 @@ static PyObject* tensor__gt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__gt__", 0);
@@ -883,12 +887,12 @@ static PyObject* tensor__ge__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__ge__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -931,8 +935,9 @@ static PyObject* tensor__ge__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__ge__", 0);
@@ -974,13 +979,12 @@ static PyObject* tensor__mod__method(TensorObject* self,
 
   VLOG(6) << "Running Eager tensor__mod__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
-
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1023,8 +1027,9 @@ static PyObject* tensor__mod__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__mod__", 0);
@@ -1065,12 +1070,11 @@ static PyObject* tensor__matmul__method(TensorObject* self,
 
   VLOG(6) << "Running Eager tensor__matmul__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1119,8 +1123,9 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__matmul__", 0);
@@ -1190,12 +1195,12 @@ static PyObject* tensor__lt__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__lt__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1238,8 +1243,9 @@ static PyObject* tensor__lt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__lt__", 0);
@@ -1281,12 +1287,12 @@ static PyObject* tensor__le__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__le__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1329,8 +1335,9 @@ static PyObject* tensor__le__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__le__", 0);
@@ -1371,12 +1378,11 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__floordiv__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1421,8 +1427,9 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__floordiv__", 0);
@@ -1462,12 +1469,11 @@ static PyObject* tensor__pow__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__pow__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1516,8 +1522,9 @@ static PyObject* tensor__pow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__pow__", 0);
@@ -1557,12 +1564,11 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__rpow__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1607,8 +1613,9 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__rpow__", 0);
@@ -1650,12 +1657,12 @@ static PyObject* tensor__ne__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__ne__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1698,8 +1705,9 @@ static PyObject* tensor__ne__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__ne__", 0);
@@ -1741,12 +1749,12 @@ static PyObject* tensor__eq__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__eq__method";
 
-  // Set Device ID
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-  SetDevice(place);
-
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
+
+  // Set Device ID
+  SetDevice(self_tensor.place());
+
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1789,8 +1797,9 @@ static PyObject* tensor__eq__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      other_tensor =
+          paddle::empty({}, phi::DataType::FLOAT32, self_tensor.place());
+      InitTensorWithNumpyValue(numpy_value, self_tensor.place(), &other_tensor);
     } else {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "__eq__", 0);
