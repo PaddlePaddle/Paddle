@@ -1287,6 +1287,7 @@ class TanhOpPattern : public pir::OpRewritePattern<paddle::dialect::TanhOp> {
         op.attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
+#if IS_TRT_VERSION_LT(8600)
     pir::Value x = op.operand_source(0);
     auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto x_shape = x_type.dims();
@@ -1295,6 +1296,7 @@ class TanhOpPattern : public pir::OpRewritePattern<paddle::dialect::TanhOp> {
       VLOG(3) << "Tanh op does not support 0 dim input when TensorRT < 8.6.";
       return false;
     }
+#endif
 
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
