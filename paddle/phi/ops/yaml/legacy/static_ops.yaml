@@ -17,16 +17,6 @@
     func : all_reduce
     param: [x, reduce_type]
 
-- op : all_to_all
-  args : (Tensor x, int ring_id = 0)
-  output : Tensor(out)
-  infer_meta :
-    func : AllToAllInferMeta
-    param: [x]
-  kernel :
-    func : all_to_all
-    param: [x]
-
 - op : amax
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
