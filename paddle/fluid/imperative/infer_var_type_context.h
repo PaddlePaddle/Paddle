@@ -20,10 +20,10 @@
 #include <vector>
 
 #include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
+#include "paddle/phi/core/framework/var_type_inference.h"
 
 namespace paddle {
 namespace imperative {

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"

@@ -4,7 +4,7 @@ cc_library(
   DEPS phi common)
 cc_library(
   var_helper
-  SRCS var_helper.cc type_defs.cc
+  SRCS var_helper.cc
   DEPS tensor phi common)
 if(WITH_XPU)
   cc_library(

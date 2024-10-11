@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/platform/enforce.h"
 
 namespace paddle {
 namespace platform {

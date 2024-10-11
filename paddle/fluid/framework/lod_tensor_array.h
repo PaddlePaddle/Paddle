@@ -13,10 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/phi/core/tensor_array.h"
-
-namespace paddle {
-namespace framework {}  // namespace framework
-}  // namespace paddle
+#include "paddle/phi/core/framework/lod_tensor_array.h"

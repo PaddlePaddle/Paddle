@@ -13,17 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/mixed_vector.h"
-#include "paddle/phi/core/sparse_coo_tensor.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
-
-namespace paddle {
-namespace framework {
-
-using LoD = std::vector<phi::Vector<size_t>>;
-
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/phi/core/framework/tensor.h"

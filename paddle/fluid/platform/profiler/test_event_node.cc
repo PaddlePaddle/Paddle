@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
+#include "paddle/phi/core/framework/type_defs.h"
 
 using paddle::framework::AttributeMap;
 using paddle::platform::ChromeTracingLogger;

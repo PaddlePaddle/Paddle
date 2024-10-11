@@ -28,13 +28,13 @@ limitations under the License. */
 #include "glog/logging.h"               // For VLOG()
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
-#include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
-#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/phi/core/framework/attribute.h"
+#include "paddle/phi/core/framework/op_desc.h"
+#include "paddle/phi/core/framework/scope.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/utils/test_macros.h"
 

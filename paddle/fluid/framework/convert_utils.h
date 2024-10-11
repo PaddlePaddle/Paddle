@@ -13,26 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include "paddle/common/layout.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/phi/core/utils/data_type.h"
-
-// TODO(chenweihang): this file may need to be removed
-
-namespace paddle {
-namespace framework {
-
-using DataType = phi::DataType;
-using DataLayout = phi::DataLayout;
-
-using phi::DataTypeToString;
-using phi::SizeOf;
-using phi::TransToPhiDataType;
-
-inline proto::VarType::Type TransToProtoVarType(const DataType& dtype) {
-  return static_cast<proto::VarType::Type>(phi::TransToProtoVarType(dtype));
-}
-
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/phi/core/framework/convert_utils.h"

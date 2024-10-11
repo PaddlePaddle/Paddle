@@ -18,8 +18,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/phi/api/profiler/trace_event.h"
+#include "paddle/phi/core/framework/type_defs.h"
 
 namespace paddle {
 namespace platform {

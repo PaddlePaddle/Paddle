@@ -13,39 +13,4 @@
 // limitations under the License.
 
 #pragma once
-
-#include <dlpack/dlpack.h>
-
-#include "paddle/fluid/framework/tensor.h"
-
-namespace paddle {
-namespace framework {
-
-class DLPackTensor {
- public:
-  using LaneType = decltype(::DLTensor::dtype.lanes);  // uint16_t
-  using ShapeType =
-      std::remove_reference<decltype(::DLTensor::shape[0])>::type;  // int64_t
-
-  // lanes is only used in CPU to enable vectorization
-  TEST_API explicit DLPackTensor(const phi::DenseTensor& tensor,
-                                 LaneType lanes = 1);
-
-  inline operator const ::DLTensor&() const { return t_; }
-
-  inline operator ::DLTensor&() { return t_; }
-
-  ::DLManagedTensor* ToDLManagedTensor();
-
- private:
-  ::DLTensor t_;
-
-  // The shape in DLTensor is defined as int64_t*
-  // Add this member to make TVMTensor init without heap allocation
-  ShapeType shape_[phi::DDim::kMaxRank];
-};
-
-DLManagedTensor* toDLPack(const phi::DenseTensor& src);
-
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/phi/core/framework/dlpack_tensor.h"

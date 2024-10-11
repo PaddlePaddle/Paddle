@@ -33,10 +33,10 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/flags.h"
 #include "paddle/fluid/imperative/hooks.h"
-#include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/imperative/saved_variable_wrapper_list.h"
 #include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {

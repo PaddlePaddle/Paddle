@@ -6,6 +6,7 @@ collect_srcs(
   device_mesh.cc
   process_mesh.cc
   dist_attr.cc
+  dist_attr2.cc
   dist_mapper.cc
   dist_tensor.cc
   dist_meta_tensor.cc

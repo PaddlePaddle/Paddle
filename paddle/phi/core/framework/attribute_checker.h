@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/phi/core/framework/attribute.h"
+#include "paddle/phi/core/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -250,7 +250,7 @@ class TypedAttrChecker {
                             "doesn't support phi::DenseTensor type.",
                             attr_name_));
 
-      VLOG(3) << "Found Attribute " << attr_name_ << " with type(Variable).";
+      // VLOG(3) << "Found Attribute " << attr_name_ << " with type(Variable).";
       var_info_checker_(it->second);
       return;
     }

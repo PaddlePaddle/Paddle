@@ -13,17 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include "paddle/phi/core/threadpool.h"
-
-namespace paddle {
-namespace framework {
-
-using ExceptionHandler = phi::ExceptionHandler;
-
-using ThreadPool = phi::ThreadPool;
-
-using ThreadPoolIO = phi::ThreadPoolIO;
-
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/phi/core/framework/threadpool.h"

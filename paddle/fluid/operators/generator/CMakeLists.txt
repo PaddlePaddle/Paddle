@@ -305,7 +305,7 @@ set(ops_extra_info_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator/ops_extra_info_gen.py)
 set(op_compat_yaml_file ${ops_yaml_dir}/op_compat.yaml)
 set(ops_extra_info_file
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/core/operators/ops_extra_info.cc)
 
 # generate ops extra info
 execute_process(

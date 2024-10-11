@@ -29,9 +29,9 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(reader_queue_speed_test_mode);

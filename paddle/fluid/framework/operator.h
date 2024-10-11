@@ -44,6 +44,7 @@ limitations under the License. */
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/framework/operator.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -65,45 +66,6 @@ COMMON_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {
-
-constexpr char kFakeVarName[] = "Fake_var";
-
-/// If a variable is a empty variable, that name will be used.
-constexpr char kEmptyVarName[] = "@EMPTY@";
-
-/// If a variable is a temporary variable, that name will be set in Python,
-/// but it will be convert to a unique name in scope after OpCreator.
-constexpr char kTempVarName[] = "@TEMP@";
-
-/// If a variable's name has a certain suffix, it means that the
-/// variable is the gradient of another variable.
-/// e.g. Variable "x@GRAD" is the gradient of variable "x".
-constexpr char kGradVarSuffix[] = "@GRAD";
-
-constexpr size_t kGradVarSuffixSize = 5U;
-
-/// Variables with this suffix are supposed to be filled up with zeros.
-constexpr char kZeroVarSuffix[] = "@ZERO";
-
-/// Variables with this suffix are the new Gradient.
-constexpr char kNewGradSuffix[] = "@NEWGRAD@";
-
-/// RuntimeContext is used to relate input/output names of Operator with
-/// the corresponding variables in name scope.
-/// If an Op has attribute kEnableCacheRuntimeContext, it means that in a same
-/// name scope, since the input/output names of this Op do not change in the
-/// execution, RuntimeContext could be created only at the first iteration of
-/// this Op's execution to save the elapsed time.
-constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
-
-/// If an Op has this attribute, all its kernels should calculate output
-/// variable's shape in the corresponding Compute() function. And
-/// OperatorWithKernel::RunImpl() would skip call this Op's InferShape()
-/// function in its runtime for speedup.
-/// TODO(luotao): Note that this temporal attribute would be deleted after all
-/// ops contain it.
-constexpr char kAllKernelsMustComputeRuntimeShape[] =
-    "ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE";
 
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
@@ -136,21 +98,6 @@ phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
 class ExecutionContext;
 class OperatorBase;
-
-class RuntimeContext {
- public:
-  RuntimeContext(const VariableNameMap& innames,
-                 const VariableNameMap& outnames,
-                 const Scope& scope);
-
-  RuntimeContext(const VariableValueMap& invars,
-                 const VariableValueMap& outvars)
-      : inputs(invars), outputs(outvars) {}
-
-  VariableValueMap inputs;
-  VariableValueMap outputs;
-};
-
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx);

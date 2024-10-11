@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_utils.h"
 
 #include <google/protobuf/text_format.h>
+#include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 
 namespace paddle::framework {

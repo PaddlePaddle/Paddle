@@ -19,10 +19,10 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/fluid/framework/shape_inference.h"
-#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/framework/type_defs.h"
 
 namespace paddle {
 

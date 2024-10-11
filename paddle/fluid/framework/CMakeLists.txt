@@ -102,11 +102,6 @@ endforeach()
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt "{\"\",\"\"}};\n}")
 
 cc_library(
-  string_array
-  SRCS string_array.cc
-  DEPS utf8proc phi common)
-
-cc_library(
   data_type
   SRCS data_type.cc
   DEPS framework_proto)

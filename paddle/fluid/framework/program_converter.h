@@ -13,16 +13,4 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/op_desc.h"
-
-namespace paddle {
-namespace framework {
-namespace no_scalar {
-void ConvertProgram(ProgramDesc* program);
-}  // namespace no_scalar
-
-namespace scalar {
-void ConvertProgram(ProgramDesc* program);
-}  // namespace scalar
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/phi/core/framework/program_converter.h"

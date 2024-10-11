@@ -209,25 +209,6 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
   }
 }
 
-RuntimeContext::RuntimeContext(const VariableNameMap& innames,
-                               const VariableNameMap& outnames,
-                               const Scope& scope) {
-  for (auto& var_name_item : innames) {
-    std::vector<Variable*>& input_vars = inputs[var_name_item.first];
-    input_vars.reserve(var_name_item.second.size());
-    for (auto& var_name : var_name_item.second) {
-      input_vars.push_back(scope.FindVar(var_name));
-    }
-  }
-  for (auto& var_name_item : outnames) {
-    std::vector<Variable*>& output_vars = outputs[var_name_item.first];
-    output_vars.reserve(var_name_item.second.size());
-    for (auto& var_name : var_name_item.second) {
-      output_vars.push_back(scope.FindVar(var_name));
-    }
-  }
-}
-
 RuntimeInferShapeContext::RuntimeInferShapeContext(const OperatorBase& op,
                                                    const RuntimeContext& ctx)
     : op_(op), ctx_(ctx) {}
@@ -3252,6 +3233,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::Vocab>()) {
         tensor_in = &(var->Get<framework::Vocab>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<framework::Strings>()) {
+        tensor_in = &(var->Get<framework::Strings>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::FeedList>()) {
         tensor_in = &(var->Get<framework::FeedList>());

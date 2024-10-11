@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/proto_desc.h"
+#include "paddle/phi/core/framework/proto_desc.h"
 
 #if defined(PADDLE_WITH_DGC)
 #include "paddle/fluid/framework/details/dgc_const_values.h"

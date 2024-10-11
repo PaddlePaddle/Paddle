@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_utils.h"
 
+#include "glog/logging.h"
 #include "gtest/gtest-message.h"
 #include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"

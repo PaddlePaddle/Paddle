@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
@@ -21,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
+#include "paddle/phi/core/framework/feed_fetch_type.h"
 
 namespace phi {
 
@@ -38,10 +38,6 @@ bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
   return obj->type_info() == kType;
 }
 
-template class TypeInfoTraits<phi::TensorBase, paddle::framework::RawTensor>;
-template class TypeInfoTraits<phi::TensorBase, paddle::framework::Vocab>;
-template class TypeInfoTraits<phi::TensorBase, paddle::framework::Strings>;
-template class TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>;
 template class TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::primitive::LazyTensor>;
@@ -53,5 +49,4 @@ template class TypeInfoTraits<phi::TensorBase,
                               paddle::dialect::IrSparseCooTensor>;
 template class TypeInfoTraits<phi::TensorBase,
                               paddle::dialect::IrSparseCsrTensor>;
-template class TypeInfoTraits<phi::TensorBase, paddle::framework::FetchList>;
 }  // namespace phi

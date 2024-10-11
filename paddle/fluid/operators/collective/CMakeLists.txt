@@ -31,7 +31,7 @@ register_operators(
   ${COLLECTIVE_DEPS})
 
 if(WITH_NCCL OR WITH_RCCL)
-  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common phi)
+  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} phi)
   op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
   op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()

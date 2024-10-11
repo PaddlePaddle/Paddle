@@ -28,6 +28,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/framework/data_type.h"
+#include "paddle/phi/core/framework/scope.h"
 #include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "xpu/bkcl.h"
@@ -37,6 +39,31 @@
 
 namespace paddle {
 namespace platform {
+
+inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
+  if (type == framework::proto::VarType::FP32) {
+    return BKCL_FLOAT;
+  } else if (type == framework::proto::VarType::INT64) {
+    return BKCL_INT64;
+  } else if (type == framework::proto::VarType::INT32) {
+    return BKCL_INT32;
+  } else if (type == framework::proto::VarType::FP64) {
+    return BKCL_FLOAT64;
+  } else if (type == framework::proto::VarType::FP16) {
+    return BKCL_FLOAT16;
+  } else if (type == framework::proto::VarType::BF16) {
+    return BKCL_BFLOAT16;
+  } else if (type == framework::proto::VarType::UINT8) {
+    return BKCL_UINT8;
+  } else if (type == framework::proto::VarType::BOOL) {
+    return BKCL_UINT8;
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "BKCL currently only support FP32, INT64, INT32, FP64, FP16, BF16, "
+        "UINT8 and BOOL, "
+        "other data types are not supported."));
+  }
+}
 
 inline int GetBKCLRankID(BKCLContext_t comm) {
   return reinterpret_cast<int *>(comm)[0];
@@ -208,6 +235,103 @@ inline std::string GetFlatBKCLVarName(size_t pos) {
   }
   return string::Sprintf("%s_%d", BKCL_ID_VARNAME, static_cast<int>(pos));
 }
+
+class BKCLCommunicator {
+ public:
+  BKCLCommunicator() {}
+  virtual ~BKCLCommunicator() {}
+
+  BKCLContextMap *DefaultFlatCtx() const {
+    if (flat_ctxs_.size() == 0) {
+      return nullptr;
+    }
+
+    return flat_ctxs_[0].get();
+  }
+
+  std::vector<std::unique_ptr<BKCLContextMap>> *GetFlatCtxs() {
+    return &flat_ctxs_;
+  }
+
+  BKCLContextMap *GetFlatCtx(size_t run_order) const {
+    return flat_ctxs_[run_order % flat_ctxs_.size()].get();
+  }
+
+  BKCLContextMap *GetRunEnvBKCLCtx(size_t run_order,
+                                   bool use_hierarchical_allreduce) const {
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce,
+                      false,
+                      common::errors::Unimplemented(
+                          "Hierarchical all reduce is not support for XPU"));
+    return GetFlatCtx(run_order);
+  }
+
+  /*
+   *It meets error when allreduce ophandle and sync_batch_norm_op use
+   *bkcl_all_reduce
+   *parallelly. So create a new bkcl comm for sync_batch_norm_op. And these
+   *codes should be polished with a unified bkcl management.
+   */
+  BKCLContextMap *GetSyncBatchNormCtx(framework::Scope *scope,
+                                      const std::vector<phi::Place> &places) {
+    auto *bkcl_id_var = scope->FindVar(BKCL_ID_VARNAME);
+    if (bkcl_id_var != nullptr) {
+      return DefaultFlatCtx();
+    }
+
+    if (sync_batch_norm_ctx_.get() == nullptr) {
+      sync_batch_norm_ctx_.reset(new BKCLContextMap(places));
+      sync_batch_norm_ctx_->init();
+    }
+    return sync_batch_norm_ctx_.get();
+  }
+
+  void InitFlatCtxs(const std::vector<phi::Place> &places,
+                    const std::vector<BKCLUniqueId *> &bkcl_ids,
+                    size_t trainers_num,
+                    size_t trainer_id) {
+    if (bkcl_ids.size() == 0) {
+      auto ptr = new platform::BKCLContextMap(places);
+      ptr->init();
+      VLOG(1) << "init local trainer";
+      flat_ctxs_.emplace_back(ptr);
+    } else {
+      PADDLE_ENFORCE_EQ(bkcl_ids.size(),
+                        1,
+                        common::errors::Unimplemented(
+                            "Multi-all-reduce-ring is not support for XPU"));
+      for (size_t i = 0; i < bkcl_ids.size(); i++) {
+        auto ptr = new platform::BKCLContextMap(
+            places, bkcl_ids[i], trainers_num, trainer_id);
+        ptr->init();
+        VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
+        flat_ctxs_.emplace_back(ptr);
+      }
+    }
+
+    // as Executor have no way to use BKCLComm created by ParallelExecutor,
+    // we assign all flatten contexts to BKCLCommContext to fix.
+    int nranks = static_cast<int>(trainers_num * places.size());
+    int nrings = static_cast<int>(flat_ctxs_.size());
+    for (int ring_id = 0; ring_id < nrings; ++ring_id) {
+      for (size_t p = 0; p < places.size(); ++p) {
+        int rank = trainer_id * places.size() + p;
+        int dev_id = places[p].device;
+        platform::SetXPUDeviceId(dev_id);
+        auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
+        BKCLCommContext::Instance().AssignBKCLComm(
+            ctx.comm_, nranks, rank, dev_id, ring_id);
+      }
+    }
+  }
+
+ protected:
+  // Support multi bkcl comm on default bkcl ring while BKCLContextMap can't.
+  std::vector<std::unique_ptr<BKCLContextMap>> flat_ctxs_;
+
+  // just used for sync_batch_norm op.
+  std::unique_ptr<BKCLContextMap> sync_batch_norm_ctx_;
+};
 
 }  // namespace platform
 }  // namespace paddle

@@ -13,27 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include <string>
-
-#include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/platform/enforce.h"
-
-namespace paddle {
-namespace framework {
-
-// insert python call stack & append error op for exception message
-void InsertCallStackInfo(const std::string &type,
-                         const paddle::framework::AttributeMap &attrs,
-                         platform::EnforceNotMet *exception);
-
-void InsertCallStackInfo(const std::string &type,
-                         const std::vector<std::string> &callstack_attr_str,
-                         platform::EnforceNotMet *exception);
-
-// only append error op for exception message
-void AppendErrorOpHint(const std::string &type,
-                       platform::EnforceNotMet *exception);
-
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/phi/core/framework/op_call_stack.h"

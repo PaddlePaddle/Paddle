@@ -13,35 +13,3 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/shape_inference.h"
-
-#include "paddle/fluid/platform/enforce.h"
-
-namespace paddle::framework {
-
-std::vector<DDim> InferShapeContext::GetReaderDims(
-    const std::string &name) const {
-  const std::vector<std::string> &arg_names = Inputs(name);
-  PADDLE_ENFORCE_EQ(arg_names.size(),
-                    1UL,
-                    common::errors::InvalidArgument(
-                        "Reader input '%s' should hold one element, but now it "
-                        "holds %d elements.",
-                        name,
-                        arg_names.size()));
-  return this->GetRepeatedDims(arg_names[0]);
-}
-
-void InferShapeContext::SetReaderDims(const std::string &name,
-                                      const std::vector<DDim> &dims) {
-  const std::vector<std::string> &arg_names = Outputs(name);
-  PADDLE_ENFORCE_EQ(arg_names.size(),
-                    1UL,
-                    common::errors::InvalidArgument(
-                        "Reader output '%s' should hold one element, but now "
-                        "it holds %d elements.",
-                        name,
-                        arg_names.size()));
-  return this->SetRepeatedDims(arg_names[0], dims);
-}
-
-}  // namespace paddle::framework

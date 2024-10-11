@@ -31,8 +31,8 @@
 #include "paddle/phi/backends/dynload/nvtx.h"
 #endif
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/framework/op_proto_maker.h"
+#include "paddle/phi/core/framework/operator.h"
 #include "paddle/phi/core/os_info.h"
 
 COMMON_DECLARE_bool(enable_record_memory);
