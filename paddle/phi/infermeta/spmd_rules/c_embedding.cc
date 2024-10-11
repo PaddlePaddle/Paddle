@@ -32,16 +32,6 @@ SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
                              const DistMetaTensor& x,
                              int start_index,
                              int vocab_size) {
-  return CEmbeddingInferSpmdBase(weight,
-                                 x,
-                                 static_cast<int64_t>(start_index),
-                                 static_cast<int64_t>(vocab_size));
-}
-
-SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
-                                 const DistMetaTensor& x,
-                                 int64_t start_index,
-                                 int64_t vocab_size) {
   // Step0: Verify input args based on c_embedding logic
   auto x_shape = common::vectorize(x.dims());
   auto weight_shape = common::vectorize(weight.dims());
@@ -52,7 +42,6 @@ SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> weight_dims_mapping =
       weight_dist_attr_src.dims_mapping();
-
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
@@ -73,15 +62,8 @@ SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
                         "CEmbedding table should have TWO dimension, "
                         "but got a tensor with [%d] dimension.",
                         weight_ndim));
-
   // determine parallel mode
   int64_t weight_row_axis_mapping = weight_dims_mapping[0];
-
-  VLOG(4) << "CEmbeddingSPMDRule InferForward Inputs: "
-          << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
-          << str_join(x_dims_mapping) << "]; Weight shape: ["
-          << str_join(weight_shape) << "], weight_dims_mapping: ["
-          << str_join(weight_dims_mapping) << "]; ";
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghilmnopqrstuvwxyz";
@@ -101,7 +83,6 @@ SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
   // Step2.3: merge potential conflict in inputs,
-  // update input dims mapping with merged shardings.
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(x_axes, axis_to_dim_map));
@@ -111,23 +92,19 @@ SpmdInfo CEmbeddingInferSpmdBase(const DistMetaTensor& weight,
       GetDimsMappingForAxes(weight_axes, axis_to_dim_map));
 
   // Step3: Handle Partial
-  // (TODO) support case where c_embedding table is partial at very beginning.
   std::vector<int64_t> partial_on_dims;
   if (weight_row_axis_mapping > -1) {
     partial_on_dims.push_back(weight_row_axis_mapping);
   }
   out_dist_attr.set_partial_status(partial_on_dims);
-
-  VLOG(4) << "CEmbeddingInferSpmdBase:\n"
-          << "Einsum notation: [" << x_axes << "," << weight_axes << "]. "
-          << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
-          << str_join(x_dims_mapping) << "], dst_dims_mapping: ["
-          << str_join(x_dist_attr_dst.dims_mapping()) << "]\n W shape: ["
-          << str_join(weight_shape) << "], src_dims_mapping: ["
-          << str_join(weight_dims_mapping) << "], dst_dims_mapping: ["
-          << str_join(weight_dist_attr_dst.dims_mapping())
-          << "]\n Out dims_mapping: [" << str_join(out_dims_mapping)
-          << "], partial_on_dims: [" << str_join(partial_on_dims) << "]\n\n";
+  VLOG(4) << "CEmbeddingInferSpmd:";
+  VLOG(4) << "start_index: " << start_index;
+  VLOG(4) << "vocab_size: " << vocab_size;
+  LogInputDistAttr(
+      "Weight", weight_shape, weight.dist_attr(), weight_dist_attr_dst);
+  LogInputDistAttr("X", x_shape, x.dist_attr(), x_dist_attr_dst);
+  LogOutputDistAttr("Out", out_dist_attr);
+  VLOG(4) << std::endl;
 
   return {{weight_dist_attr_dst, x_dist_attr_dst}, {out_dist_attr}};
 }
@@ -136,14 +113,6 @@ SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
                                  const DistMetaTensor& x,
                                  const DistMetaTensor& out_grad,
                                  int start_index) {
-  return CEmbeddingGradInferSpmdBase(
-      weight, x, out_grad, static_cast<int64_t>(start_index));
-}
-
-SpmdInfo CEmbeddingGradInferSpmdBase(const DistMetaTensor& weight,
-                                     const DistMetaTensor& x,
-                                     const DistMetaTensor& out_grad,
-                                     int64_t start_index) {
   PADDLE_ENFORCE_EQ(out_grad.dims().size(),
                     out_grad.dist_attr().dims_mapping().size(),
                     common::errors::InvalidArgument(
@@ -151,11 +120,6 @@ SpmdInfo CEmbeddingGradInferSpmdBase(const DistMetaTensor& weight,
                         "dims_mapping size [%d] are not matched.",
                         out_grad.dims(),
                         out_grad.dist_attr().dims_mapping().size()));
-  // Propagate sharding info using composite operators.
-  // The whole mathematical expression of CEmbeddingGrad is:
-  // w_grad = einsum('...j, ...k->jk', onehot(x, j), out_grad)
-
-  // TODO(cxxly): Simplifies the code logic of sharding propagation using
   // primitive operators.
   DistMetaTensor x_dst(x.dims(), x.dist_attr());
   DistMetaTensor w_dst(weight.dims(), weight.dist_attr());
@@ -192,7 +156,6 @@ SpmdInfo CEmbeddingGradInferSpmdBase(const DistMetaTensor& weight,
       GetDimsMappingForAxes(w_grad_axes, axis_to_dim_map);
 
   // Step2.2.3: merge potential conflict in inputs,
-  // update input dims mapping with merged shardings.
   t0_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(t0_axes, axis_to_dim_map));
   auto out_grad_dst_dist_attr =
@@ -206,8 +169,6 @@ SpmdInfo CEmbeddingGradInferSpmdBase(const DistMetaTensor& weight,
   w_grad_dist_attr.set_partial_status(partial_on_dims);
 
   // Step2.3: Update inputs info.
-  // NOTE: Reshard happened on intermediate operators must be ensure propagated
-  // back to first inputs.
   t0 = DistMetaTensor(t0.dims(), t0_dist_attr);
   const auto& t0_dims = t0.dist_attr().dims_mapping();
   std::vector<int64_t> new_dims_mapping(t0_dims.begin(), t0_dims.end() - 1);
@@ -218,27 +179,20 @@ SpmdInfo CEmbeddingGradInferSpmdBase(const DistMetaTensor& weight,
   }
   out_grad_dst = DistMetaTensor(out_grad_dst.dims(), out_grad_dst_dist_attr);
   w_grad = DistMetaTensor(w_grad.dims(), w_grad_dist_attr);
-
-  VLOG(4) << "CEmbeddingGradInferSpmdBase:\n"
-          << "Input x shape: [" << str_join(phi::vectorize(x.dims()))
-          << "], src_dims_mapping: [" << str_join(x.dist_attr().dims_mapping())
-          << "], dst_dims_mapping: ["
-          << str_join(x_dst.dist_attr().dims_mapping()) << "]\n"
-          << "Input weight shape: [" << str_join(phi::vectorize(weight.dims()))
-          << "], src_dims_mapping: ["
-          << str_join(weight.dist_attr().dims_mapping())
-          << "], dst_dims_mapping: ["
-          << str_join(w_dst.dist_attr().dims_mapping()) << "]\n"
-          << "Input out_grad shape: ["
-          << str_join(phi::vectorize(out_grad.dims()))
-          << "], src_dims_mapping: ["
-          << str_join(out_grad.dist_attr().dims_mapping())
-          << "], dst_dims_mapping: ["
-          << str_join(out_grad_dst.dist_attr().dims_mapping()) << "]\n"
-          << "Output w_grad shape: [" << str_join(phi::vectorize(w_grad.dims()))
-          << "], dims_mapping: [" << str_join(w_grad.dist_attr().dims_mapping())
-          << "]\n\n";
-
+  VLOG(4) << "CEmbeddingGradInferSpmd:";
+  VLOG(4) << "start_index: " << start_index;
+  LogInputDistAttr("Weight",
+                   phi::vectorize(weight.dims()),
+                   weight.dist_attr(),
+                   w_dst.dist_attr());
+  LogInputDistAttr(
+      "X", phi::vectorize(x.dims()), x.dist_attr(), x_dst.dist_attr());
+  LogInputDistAttr("OutGrad",
+                   phi::vectorize(out_grad.dims()),
+                   out_grad.dist_attr(),
+                   out_grad_dst.dist_attr());
+  LogOutputDistAttr("WGrad", w_grad.dist_attr());
+  VLOG(4) << std::endl;
   return {{w_dst.dist_attr(), x_dst.dist_attr(), out_grad_dst.dist_attr()},
           {w_grad.dist_attr()}};
 }
