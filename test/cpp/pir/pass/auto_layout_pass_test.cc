@@ -29,7 +29,6 @@
 
 #include "paddle/common/layout.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
