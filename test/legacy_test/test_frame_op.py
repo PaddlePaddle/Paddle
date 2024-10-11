@@ -74,7 +74,7 @@ class TestFrameOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
         paddle.disable_static()
 
     def test_check_grad_normal(self):

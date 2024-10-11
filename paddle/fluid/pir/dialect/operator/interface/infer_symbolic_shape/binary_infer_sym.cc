@@ -1421,6 +1421,36 @@ bool PriorBoxOpInferSymbolicShape(
   return true;
 }
 
+bool PruneGateByCapacityOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &expert_count_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &expert_count_shape = expert_count_shape_or_data.shape();
+  int n_expert = op->attribute<pir::Int32Attribute>("n_expert").data();
+  int n_worker = op->attribute<pir::Int32Attribute>("n_worker").data();
+  int expert_count_num_ele = 1;
+  for (int i = 0; i < expert_count_shape.size(); i++) {
+    expert_count_num_ele *= expert_count_shape[i].Get<int64_t>();
+  }
+  PADDLE_ENFORCE_EQ(
+      expert_count_num_ele,
+      n_expert * n_worker,
+      common::errors::Unavailable(
+          "The number of elements for expert_count is ( %ld ) incorrect. "
+          "Because the number of expert_count must equal the "
+          "product of n_worker ( %ld ) and n_expert ( %ld ). "
+          "Please input appropriate expert_count again!",
+          expert_count_num_ele,
+          n_worker,
+          n_expert));
+  const auto &gate_idx_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(gate_idx_shape_or_data.shape())});
+  return true;
+}
 // bool PullBoxSparseOpInferSymbolicShape(pir::Operation *op,
 //                                        pir::InferSymbolicShapeContext
 //                                        *infer_context) {
