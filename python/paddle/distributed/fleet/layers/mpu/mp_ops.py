@@ -39,15 +39,7 @@ class c_identity_eager(PyLayer):
         if skip_c_identity_dynamic:
             return tensor
         else:
-            return _legacy_C_ops.c_identity(
-                tensor,
-                'use_calc_stream',
-                True,
-                'ring_id',
-                group.id,
-                'use_model_parallel',
-                True,
-            )
+            return _C_ops.c_identity(tensor, group.id, True, True)
 
     @staticmethod
     def backward(ctx, dy):
@@ -61,19 +53,7 @@ class c_split_eager(PyLayer):
     def forward(ctx, tensor, group, rank, nranks):
         ctx.group = group
         ctx.nranks = nranks
-        return _legacy_C_ops.c_split(
-            tensor,
-            'use_calc_stream',
-            True,
-            'ring_id',
-            group.id,
-            'rank',
-            rank,
-            'nranks',
-            nranks,
-            'use_model_parallel',
-            True,
-        )
+        return _C_ops.c_split(tensor, rank, nranks, group.id, True, True)
 
     @staticmethod
     def backward(ctx, dy):
@@ -153,19 +133,7 @@ def _c_concat(tensor, group=None):
     nranks = group.nranks
 
     if in_dynamic_mode():
-        return _legacy_C_ops.c_concat(
-            tensor,
-            'ring_id',
-            ring_id,
-            'use_calc_stream',
-            True,
-            'rank',
-            rank,
-            'nranks',
-            nranks,
-            'use_model_parallel',
-            True,
-        )
+        return _C_ops.c_concat(tensor, rank, nranks, ring_id, True, True)
     else:
         op_type = 'c_concat'
         helper = LayerHelper(op_type, **locals())
@@ -266,12 +234,8 @@ class mp_allreduce_eager(PyLayer):
             group.process_group.all_reduce_on_calc_stream(tensor, op_type)
             return tensor
         else:
-            return _legacy_C_ops.c_allreduce_sum_(
-                tensor,
-                'use_calc_stream',
-                use_calc_stream,
-                'ring_id',
-                group.id,
+            return _C_ops.c_allreduce_sum_(
+                tensor, group.id, use_calc_stream, False
             )
 
     @staticmethod
@@ -279,15 +243,7 @@ class mp_allreduce_eager(PyLayer):
         if ctx.skip_c_identity_dynamic:
             return dy
         else:
-            return _legacy_C_ops.c_identity(
-                dy,
-                'use_calc_stream',
-                True,
-                'ring_id',
-                ctx.ring_id,
-                'use_model_parallel',
-                True,
-            )
+            return _C_ops.c_identity(dy, ctx.ring_id, True, True)
 
 
 def _mp_allreduce(
@@ -438,19 +394,9 @@ def _c_softmax_with_cross_entropy(
         )
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
-
     if in_dynamic_mode():
-        softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
-            logits,
-            label,
-            'ring_id',
-            ring_id,
-            'rank',
-            rank,
-            'nranks',
-            nranks,
-            'ignore_index',
-            ignore_index,
+        softmax, loss = _C_ops.c_softmax_with_cross_entropy(
+            logits, label, ignore_index, ring_id, rank, nranks
         )
         if not return_softmax:
             return loss
