@@ -893,6 +893,13 @@ class Engine:
             auto_parallel_gradient_merge_pass.apply(
                 [dist_program], [startup_program]
             )
+        if self._strategy.mp_optimization.replace_with_c_embedding:
+            auto_parallel_c_embedding_pass = new_pass(
+                "auto_parallel_c_embedding", None
+            )
+            auto_parallel_gradient_merge_pass.apply(
+                [dist_program], [startup_program]
+            )
 
         if (
             self._strategy.pipeline.enable
