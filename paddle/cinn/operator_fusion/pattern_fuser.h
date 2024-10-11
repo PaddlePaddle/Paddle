@@ -130,6 +130,14 @@ static StmtPattern MergePatternImpl(const TrivialPattern& first,
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
+static StmtPattern MergePatternImpl(const TrivialPattern& first,
+                                    const ItersPermutationPattern& second) {
+  return ItersPermutationPattern(
+      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_),
+      second.loop_dims());
+}
+
 // RR & RT
 
 static int InsertUpstreamIntoTree(const ReduceTreePattern& upstream,
@@ -283,6 +291,11 @@ static std::vector<pir::Operation*> GetOutputOpsInPattern(
                                  return std::visit(Visitor(), pattern.pattern);
                                }));
     }
+    std::vector<pir::Operation*> operator()(
+        const ItersPermutationPattern& pattern) {
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Can't get output ops for ItersPermutationPattern Currently."));
+    }
   };
   return std::visit(Visitor(), pattern);
 }
@@ -379,6 +392,12 @@ struct LoopValueDimsVisitor {
   }
   std::vector<LoopValueDims> operator()(const AnchorPattern& pattern) {
     return {GetAllValueDimFromValue(pattern.anchor())};
+  }
+
+  std::vector<LoopValueDims> operator()(
+      const ItersPermutationPattern& pattern) {
+    PADDLE_THROW(::common::errors::Unimplemented(
+        "Can't get loop value dims for ItersPermutationPattern Currently."));
   }
 };
 
@@ -538,6 +557,11 @@ struct LoopFrameworkVisitor {
     }
     return {loops, std::vector<bool>(loops.size(), false)};
   }
+
+  MaybeLoopFramework operator()(const ItersPermutationPattern& pattern) {
+    const auto loop_dims = pattern.loop_dims();
+    return {loop_dims.first, loop_dims.second};
+  }
 };
 
 static MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
@@ -620,6 +644,9 @@ static StmtPattern MergePattern(const StmtPattern& first,
         return MergePatternImpl(lhs, rhs);
       },
       [&](const TrivialPattern& lhs, const AnchorPattern& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const TrivialPattern& lhs, const ItersPermutationPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
       [&](const AnchorPattern& lhs, const AnchorPattern& rhs) {

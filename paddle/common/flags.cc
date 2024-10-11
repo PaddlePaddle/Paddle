@@ -1369,6 +1369,29 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
                          false,
                          "Whether enable fallback fusion ops in cinn.");
 
+PHI_DEFINE_EXPORTED_bool(
+    enable_append_iters_in_fusion,
+    true,
+    "Whether enable use append iters transform in cinn fusion.");
+
+PHI_DEFINE_EXPORTED_bool(
+    enable_reuse_iters_in_fusion,
+    true,
+    "Whether enable use reuse iters transform in cinn fusion.");
+
+PHI_DEFINE_EXPORTED_bool(
+    enable_transpose_iters_in_fusion,
+    true,
+    "Whether enable use transpose iters transform in cinn fusion.");
+
+PHI_DEFINE_EXPORTED_bool(
+    enable_all_trivial_sink,
+    false,
+    "Whether enable sink all trivial pattren first in cinn fusion.");
+
+PHI_DEFINE_EXPORTED_bool(enable_anchor_fusion,
+                         true,
+                         "Whether enable anchorfusion in cinn fusion.");
 /**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number

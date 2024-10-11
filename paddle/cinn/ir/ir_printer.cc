@@ -317,9 +317,9 @@ void IrPrinter::Visit(const PolyFor *x) {
   Visit(x->body);
 }
 void IrPrinter::Visit(const IfThenElse *x) {
-  str_ += "if (";
+  str_ += "if ";
   Visit(x->condition);
-  str_ += ") ";
+  str_ += " ";
   Visit(x->true_case);
 
   if (x->false_case.defined()) {
