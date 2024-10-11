@@ -56,6 +56,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/general/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
 
 COMMON_DECLARE_bool(cinn_specify_input_dynamic_dim);
@@ -99,6 +100,7 @@ void ApplyShapeOptimizationPass(
     const std::function<std::shared_ptr<::pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  pass_manager->AddPass(pir::CreateIdentityOpCleanPass());
   bool has_dynamic_shape = HasDynamicShape(*program);
   if (has_dynamic_shape) {
     if (FLAGS_cinn_specify_input_dynamic_dim) {
