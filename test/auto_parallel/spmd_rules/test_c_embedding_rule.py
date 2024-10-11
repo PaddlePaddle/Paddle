@@ -32,17 +32,14 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         table_shape = [512, 768]  # [V,H]
         x_shape = [4, 1024]  # [B,S]
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
-
         table_tensor_dist_attr = TensorDistAttr()
         table_tensor_dist_attr.process_mesh = process_mesh
         self.table_dist_tensor_spec = DistTensorSpec(
             table_shape, table_tensor_dist_attr
         )
-
         x_tensor_dist_attr = TensorDistAttr()
         x_tensor_dist_attr.process_mesh = process_mesh
         self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
-
         self.attrs = OrderedDict([('start_index', 0), ('vocab_size', -1)])
 
         # data parallel
@@ -56,11 +53,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
-
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 2)
         self.assertEqual(len(infered_output_dist_attrs), 1)
-
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, -1, -1])
@@ -76,7 +71,6 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
-
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [1, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(
@@ -88,31 +82,22 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
     def test_c_embedding_infer_backward(self):
         # backward setup
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
-
         table_shape = [512, 768]  # [V,H]
         x_shape = [4, 1024]  # [B,S]
-
         table_tensor_dist_attr = TensorDistAttr()
-        table_tensor_dist_attr.process_mesh = (
-            process_mesh  # not set the dims mapping is ok.
-        )
+        table_tensor_dist_attr.process_mesh = process_mesh
         self.table_dist_tensor_spec = DistTensorSpec(
             table_shape, table_tensor_dist_attr
         )
-
         x_tensor_dist_attr = TensorDistAttr()
-        x_tensor_dist_attr.process_mesh = (
-            process_mesh  # not set the dims mapping is ok.
-        )
+        x_tensor_dist_attr.process_mesh = process_mesh
         self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
-
-        out_shape = [4, 1024, 768]  # [B,S, H]
+        out_shape = [4, 1024, 768]  # [B,S,H]
         out_tensor_dist_attr = TensorDistAttr()
         out_tensor_dist_attr.process_mesh = process_mesh
         self.out_dist_tensor_spec = DistTensorSpec(
             out_shape, out_tensor_dist_attr
         )
-
         self.attrs = OrderedDict([('start_index', 0), ('vocab_size', -1)])
 
         # table row-wise parallel
@@ -128,11 +113,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
-
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 3)
         self.assertEqual(len(infered_output_dist_attrs), 1)
-
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [1, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1, -1, -1])
@@ -150,11 +133,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
-
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 3)
         self.assertEqual(len(infered_output_dist_attrs), 1)
-
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [1, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
         self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [0, -1, -1])
