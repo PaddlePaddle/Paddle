@@ -46,15 +46,14 @@ class SameStatusReshardFunction(ReshardFunction):
 
         cur_global_rank = paddle.distributed.get_rank()
 
-        is_send = True
         for src, dst in zip(src_mesh.process_ids, dst_mesh.process_ids):
             if src != dst:
                 new_process_group([src, dst], group_type="p2p")
                 new_process_group([dst, src], group_type="p2p")
 
+        is_send = True
         for src, dst in zip(src_mesh.process_ids, dst_mesh.process_ids):
             if src == cur_global_rank:
-                dst_local_rank = all_process_ids.index(dst)
                 chunk_id = -1
                 if src_value.get_defining_op().dist_attr:
                     chunk_id = src_value.get_defining_op().dist_attr.chunk_id
@@ -65,14 +64,11 @@ class SameStatusReshardFunction(ReshardFunction):
                     comm_group.id,
                     comm_group.ranks.index(dst),
                     True,
-                    True,
+                    False,
                 )
                 point = paddle.base.libpaddle.pir.get_current_insertion_point()
                 point.prev()
                 new_op = point.get_operation()
-                new_op.set_str_attr(
-                    "send_direction", f"{cur_global_rank}_{dst}"
-                )
                 assert new_op.name() == "pd_op.send_v2"
                 new_op.dist_attr = (
                     paddle.base.libpaddle.pir.create_op_dist_attribute(
@@ -89,22 +85,18 @@ class SameStatusReshardFunction(ReshardFunction):
                     if var.dist_attr().process_mesh == dst_mesh:
                         chunk_id = find_var_used_op_chunk_id(var)
 
-                src_local_rank = all_process_ids.index(src)
                 assert (
                     -1 not in dst_type.shape
                 ), "dynamic shape is not supported by pir-auto parallel yet."
 
-                ranks = [src, dst]
-                # ranks = sorted(ranks)
-                print("recv op:", ranks)
-                comm_group = new_process_group(ranks, group_type="p2p")
+                comm_group = new_process_group([src, dst], group_type="p2p")
                 recv_value = paddle._C_ops.recv_v2(
                     dst_type._local_shape,
                     dst_type.dtype,
                     comm_group.ranks.index(src),
                     comm_group.id,
                     True,
-                    True,
+                    False,
                 )
                 new_op = recv_value.get_defining_op()
                 new_op.dist_attr = (
