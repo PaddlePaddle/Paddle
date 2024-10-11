@@ -188,18 +188,20 @@ PreparedOp PrepareImpl(
         dev_ctx = static_cast<phi::distributed::NCCLCommContext*>(comm_context)
                       ->GetDevContext();
         dev_ctx->SetCommContext(comm_context);
-        auto use_calc_stream_attr = attrs.at("use_calc_stream");
-        bool use_calc_stream = PADDLE_GET(bool, use_calc_stream_attr);
-        if (phi::is_gpu_place(place) && use_calc_stream) {
-          static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(default_stream,
-                                                                false);
-          auto& instance =
-              paddle::memory::allocation::AllocatorFacade::Instance();
-          dev_ctx->SetAllocator(
-              instance
-                  .GetAllocator(
-                      place, static_cast<phi::GPUContext*>(dev_ctx)->stream())
-                  .get());
+        if (attrs.find("use_calc_stream") != attrs.end()) {
+          auto use_calc_stream_attr = attrs.at("use_calc_stream");
+          bool use_calc_stream = PADDLE_GET(bool, use_calc_stream_attr);
+          if (phi::is_gpu_place(place) && use_calc_stream) {
+            static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                default_stream, false);
+            auto& instance =
+                paddle::memory::allocation::AllocatorFacade::Instance();
+            dev_ctx->SetAllocator(
+                instance
+                    .GetAllocator(
+                        place, static_cast<phi::GPUContext*>(dev_ctx)->stream())
+                    .get());
+          }
         }
       } else {
         VLOG(3) << "group_key " << group_key
