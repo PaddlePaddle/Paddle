@@ -687,6 +687,7 @@ class FusedCommBuffer:
             )
 
         elif self._act == HOOK_ACTION.REDUCE_SCATTER:
+            # In align mode, we scale the grad in advance, so we need a SUM head
             if paddle.distributed.in_auto_parallel_align_mode():
                 reduce_op = paddle.distributed.ReduceOp.SUM
             shard_size = self.grad_storage._numel() // self._comm_group.nranks
