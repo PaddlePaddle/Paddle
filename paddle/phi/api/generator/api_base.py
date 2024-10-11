@@ -89,6 +89,7 @@ class BaseAPI:
                 "dense": self.gene_optional_vec_dense_input
             },
         }
+        self.place_ref_tensor = None
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['op']
@@ -745,6 +746,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);"""
         )
+        if self.place_ref_tensor is None:
+            self.place_ref_tensor = f"{PREFIX_TENSOR_NAME}{input_name}"
         return input_tensor_code
 
     def gene_selected_rows_input(
@@ -865,6 +868,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
 {code_indent}  }}"""
             )
+        if self.place_ref_tensor is None:
+            self.place_ref_tensor = f"{PREFIX_TENSOR_NAME}{input_name}.at(0)"
+
         return input_tensor_code
 
     def gene_input(self, kernel_tensor_type=None, code_indent=''):
@@ -1333,8 +1339,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 {code_indent}  // add actual_kernel_backend to select actual kernel backend after a potential falling-back to CPU
 {code_indent}  Backend actual_kernel_backend = kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
-{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);
 {input_tensors}
+{code_indent}  phi::DeviceContext* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend{f', {self.place_ref_tensor}->place().device' if self.place_ref_tensor else ''});
 {output_create}
 {pre_save_stride}
 {code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
@@ -1363,7 +1369,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {fallback_kernel_output_trans}
 {self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}
 {code_indent}  }}
-{code_indent}  dev_ctx = GetDeviceContextByBackend(kernel_backend);
+{code_indent}  dev_ctx = GetDeviceContextByBackend(kernel_backend{f', {self.place_ref_tensor}->place().device' if self.place_ref_tensor else ''});
 {transdata2strided}
 {code_indent}  {self.gene_return_code()}"""
 

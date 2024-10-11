@@ -59,7 +59,9 @@ Backend TransToPhiBackend(const phi::Place& place) {
   }
 }
 
-phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
+phi::Place TransToPhiPlace(const Backend& backend,
+                           bool set_device_id,
+                           const int8_t& device_id) {
   // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
   // always needed.
   // So, add set_device_id parameter here.
@@ -71,8 +73,11 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case phi::Backend::GPU:
     case phi::Backend::GPUDNN:
-      return phi::GPUPlace(
-          set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
+      return phi::GPUPlace(set_device_id
+                               ? (device_id == -1
+                                      ? phi::backends::gpu::GetCurrentDeviceId()
+                                      : device_id)
+                               : 0);
 #endif
 #ifdef PADDLE_WITH_DNNL
     case phi::Backend::ONEDNN:  // NOLINT
@@ -81,15 +86,24 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
 #if defined(PADDLE_WITH_XPU)
     case phi::Backend::XPU:
       return phi::XPUPlace(
-          set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
+          set_device_id
+              ? (device_id == -1 ? phi::backends::xpu::GetXPUCurrentDeviceId()
+                                 : device_id)
+              : 0);
 #endif
     case phi::Backend::KPS:
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      return phi::GPUPlace(
-          set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
+      return phi::GPUPlace(set_device_id
+                               ? (device_id == -1
+                                      ? phi::backends::gpu::GetCurrentDeviceId()
+                                      : device_id)
+                               : 0);
 #elif defined(PADDLE_WITH_XPU_KP)
       return phi::XPUPlace(
-          set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
+          set_device_id
+              ? (device_id == -1 ? phi::backends::xpu::GetXPUCurrentDeviceId()
+                                 : device_id)
+              : 0);
 #endif
     default: {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
