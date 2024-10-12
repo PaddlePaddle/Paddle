@@ -120,7 +120,6 @@ def train_mlp(
         model = GroupShardedStage2(
             model, optimizer, group=group, buffer_max_size=2**21
         )
-
         if scale_fn_test:
             param = model.parameters()[0]
             grad = paddle.rand(param.shape, dtype=param.dtype)

@@ -201,7 +201,7 @@ def test_stage3_offload():
             stage3_params[i].numpy(),
             stage3_params_offload[i].numpy(),
             rtol=1e-6,
-            atol=1e-5,
+            atol=1e-8,
         )
 
     # fp16 offload
@@ -215,6 +215,7 @@ def test_stage3_offload():
             atol=1e-2,
         )
 
+    # XPU temporarily disabled
     if paddle.is_compiled_with_cuda():
         # bfp16 offload
         nccl_version = core.nccl_version()

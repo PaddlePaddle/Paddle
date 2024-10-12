@@ -365,6 +365,7 @@ def test_stage2_stage3():
             stage3_params[i].numpy(), stage3_params_re[i].numpy(), rtol=1e-6
         )
 
+    # XPU temporarily disabled
     if paddle.is_compiled_with_cuda():
         # bfp16
         nccl_version = core.nccl_version()

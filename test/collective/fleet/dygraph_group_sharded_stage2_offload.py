@@ -58,10 +58,7 @@ def train_mlp(model, offload=False, test=False):
         dp_group=dp_group,
     )
     model = GroupShardedStage2(
-        model,
-        optimizer,
-        buffer_max_size=2**21,
-        dp_group=dp_group,
+        model, optimizer, buffer_max_size=2**21, dp_group=dp_group
     )
 
     paddle.seed(2023)
