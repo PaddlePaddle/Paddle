@@ -164,7 +164,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'barrier',
     'c_allreduce_min',
     'c_allreduce_prod',
-    'c_embedding',
     'c_identity',
     'c_reduce_sum',
     'c_softmax_with_cross_entropy',
