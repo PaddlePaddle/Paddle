@@ -202,7 +202,7 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
       for (const auto& tensor : GetOutputTensors(expr)) {
         load_tensor_names.push_back(tensor->name);
       }
-      if (AnyFirstInSecond(load_tensor_names, interpreter->output_var_names)) {
+      if (AnyFirstInSecond(load_tensor_names, interpreter->global_var_names)) {
         interpreter->ret_expr.push_back(
             ExprTransformerUtils::InsertIfForAppendVarsTransformer()(expr));
       } else {
