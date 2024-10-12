@@ -2924,25 +2924,12 @@ void logsumexp_grad(const Tensor& x,
               }
             }
           }
-          Tensor out_grad_shape = shape<T>(out_grad);
-          size_t total_shape_size = out_grad.shape().size() + axis_.size();
-          std::vector<Tensor> result_shape;
-          size_t j = 0, k = 0;
-          Tensor ones = backend::full<T>({1}, 1, x_shape.dtype());
-          for (size_t i = 0; i < total_shape_size; i++) {
-            if (j < axis_.size() && axis_[j] == int64_t(i)) {
-              result_shape.push_back(ones);
-              j++;
-            } else {
-              result_shape.push_back(get_slice<T>(out_grad_shape, int64_t(k)));
-              k++;
-            }
-          }
-          auto out_ = backend::reshape<T>(out, concat<T>(result_shape));
+
+          auto result_shape = get_unsqueeze_dims<T>(shape<T>(out_grad), axis_);
+          auto out_ = backend::reshape<T>(out, result_shape);
           auto softmax = exp<T>(x - backend::expand<T>(out_, x_shape));
 
-          auto out_grad_ =
-              backend::reshape<T>(out_grad, concat<T>(result_shape));
+          auto out_grad_ = backend::reshape<T>(out_grad, result_shape);
           x_grad_tmp = backend::expand<T>(out_grad_, x_shape) * softmax;
         } else {
           x_grad_tmp = backend::expand<T>(out_grad, x_shape) * exp<T>(x - out);
@@ -2985,9 +2972,15 @@ void logsumexp_grad(const Tensor& x,
 
 template <typename T>
 void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
-  if (!x_grad) {
-    Tensor zero_tensor = full<T>(out_grad.shape(), 0.0, out_grad.dtype());
-    set_output<T>(zero_tensor, x_grad);
+  Tensor zero;
+  if (x_grad) {
+    if (has_dynamic_shape(out_grad.shape())) {
+      zero = backend::full_with_tensor<T>(
+          shape<T>(out_grad), 0.0, out_grad.dtype());
+    } else {
+      zero = full<T>(out_grad.shape(), 0.0, out_grad.dtype());
+    }
+    set_output<T>(zero, x_grad);
   }
 }
 

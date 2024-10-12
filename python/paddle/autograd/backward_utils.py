@@ -89,8 +89,9 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.swish",
     "pd_op.tanh",
     "pd_op.topk",
-    "pd_op.unsqueeze",
     "pd_op.transpose",
+    "pd_op.trunc",
+    "pd_op.unsqueeze",
     "pd_op.where",
 ]
 

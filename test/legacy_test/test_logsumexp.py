@@ -171,24 +171,25 @@ class TestLogsumexp_FP16(TestLogsumexp):
         self.dtype = 'float16'
 
     def test_check_output(self):
-        ref_x = self.inputs['X'].astype(np.float32)
-        out_ref = ref_logsumexp(ref_x)
-        paddle.disable_static()
-        x = self.inputs['X'].astype(np.float16)
-        tensor_x = paddle.to_tensor(x)
-        out_pad = logsumexp_wrapper(tensor_x)
-        paddle.enable_static()
-        np.testing.assert_allclose(
-            out_pad.numpy(), out_ref, rtol=1e-03, atol=1e-08
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_grad(self):
-        self.__class__.dtype = self.dtype
-        ref_x = self.inputs['X'].astype(np.float32)
-        ref_x_grad = logsumexp_ref_grad(ref_x)
-        x = self.inputs['X'].astype(np.float16)
-        x_grad = logsumexp_op_grad(x)
-        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-05)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+    def set_attrs_addition(self):
+        pass
 
 
 @unittest.skipIf(
