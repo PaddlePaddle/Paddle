@@ -21,7 +21,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def reference_unique_consecutive(
@@ -231,7 +230,6 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
                 fetch_list=[result],
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -278,7 +276,6 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 fetch_list=[result],
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -327,7 +324,6 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
                 fetch_list=[result],
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

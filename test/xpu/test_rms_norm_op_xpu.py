@@ -19,7 +19,19 @@ import numpy as np
 import paddle
 
 
-def naive_rms_norm(x, gamma, beta=None, epsilon=1e-5):
+def naive_rmsnorm(
+    x,
+    gamma,
+    beta=None,
+    epsilon=1e-6,
+    begin_norm_axis=1,
+    bias=None,
+    residual=None,
+):
+    if residual is not None:
+        x = x + residual
+    if bias is not None:
+        x = x + bias
     variance = x.pow(2).mean(-1, keepdim=True)
     out = paddle.rsqrt(variance + epsilon) * x
     out = out * gamma
@@ -28,154 +40,161 @@ def naive_rms_norm(x, gamma, beta=None, epsilon=1e-5):
     return out
 
 
-def fused_rms_norm(x, gamma, beta=None, epsilon=1e-5, begin_norm_axis=1):
+def fused_rmsnorm(
+    x,
+    gamma,
+    beta=None,
+    epsilon=1e-6,
+    begin_norm_axis=1,
+    bias=None,
+    residual=None,
+):
     out = paddle.incubate.nn.functional.fused_rms_norm(
-        x, gamma, beta, epsilon, begin_norm_axis=begin_norm_axis
+        x,
+        gamma,
+        beta,
+        epsilon,
+        begin_norm_axis,
+        bias,
+        residual,
     )
     return out[0]
 
 
-def naive_residual_biasadd_rms_norm(x, residual, bias, gamma, beta, epsilon):
-    x = x + residual + bias
-    variance = x.pow(2).mean(-1, keepdim=True)
-    out = paddle.rsqrt(variance + epsilon) * x
-    out = out * gamma + beta
-    return out
+def check_allclose(out1, out2, rtol, atol):
+    if out1.dtype == paddle.bfloat16:
+        out1 = out1.astype(paddle.float32)
+        out2 = out2.astype(paddle.float32)
+    np.testing.assert_allclose(
+        out1.numpy(),
+        out2.numpy(),
+        rtol=rtol,
+        atol=atol,
+    )
 
 
 class TestRMSNormOp(unittest.TestCase):
     def setUp(self):
         np.random.seed(20)
-        batch = 32
-        cols = 256
-        self.x_np = np.random.random([batch, cols])
-        self.residual_np = np.random.random([batch, cols])
-        self.bias_np = np.random.random([cols])
+        paddle.seed(20)
+        paddle.disable_static()
+        self.set_dtype()
+        self.set_shape()
+        self.set_begin_norm_axis()
+        self.set_epsilon()
+        self.set_tolerance()
+        self.set_data()
 
-        self.norm_weight_np = np.random.random([cols])
-        self.norm_bias_np = np.random.random([cols])
+    def set_dtype(self):
+        self.dtype = paddle.float32
+
+    def set_shape(self):
+        self.rows = 32
+        self.cols = 256
+
+    def set_begin_norm_axis(self):
+        self.begin_norm_axis = 1
+
+    def set_epsilon(self):
         self.epsilon = 1e-6
-        self.quant_scale = 0.15
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
 
-    def check_rmsnorm(self, x_np, gamma_np, beta_np, dtype):
-        paddle.disable_static()
-        x = paddle.to_tensor(x_np.astype(dtype))
-        gamma = paddle.to_tensor(gamma_np.astype(dtype))
-        beta = paddle.to_tensor(beta_np.astype(dtype))
+    def set_tolerance(self):
+        self.rtol = 1e-5
+        self.atol = 1e-5
 
-        paddle_rmsnorm_out = paddle.incubate.nn.functional.fused_rms_norm(
-            x, gamma, beta, self.epsilon, begin_norm_axis=1
+    def set_data(self):
+        self.x_np = np.random.random([self.rows, self.cols])
+        self.norm_weight_np = np.random.random([self.cols])
+        self.norm_bias_np = np.random.random([self.cols])
+        self.residual_np = np.random.random([self.rows, self.cols])
+        self.bias_np = np.random.random([self.cols])
+
+        self.x = paddle.to_tensor(self.x_np).astype(self.dtype)
+        self.norm_weight = paddle.to_tensor(self.norm_weight_np).astype(
+            self.dtype
         )
-        paddle_naive_rmsnorm_out = naive_rms_norm(x, gamma, beta, self.epsilon)
-        paddle.enable_static()
-        return paddle_rmsnorm_out, paddle_naive_rmsnorm_out
+        self.x.stop_gradient = False
+        self.norm_weight.stop_gradient = False
 
-    def check_residual_bias_rmsnorm(
-        self, x_np, gamma_np, beta_np, residual_np, bias_np, dtype
-    ):
-        paddle.disable_static()
-        x = paddle.to_tensor(x_np.astype(dtype))
-        gamma = paddle.to_tensor(gamma_np.astype(dtype))
-        beta = paddle.to_tensor(beta_np.astype(dtype))
-        residual = paddle.to_tensor(residual_np.astype(dtype))
-        bias = paddle.to_tensor(bias_np.astype(dtype))
+        self.norm_bias = paddle.to_tensor(self.norm_bias_np).astype(self.dtype)
+        self.residual = paddle.to_tensor(self.residual_np).astype(self.dtype)
+        self.bias = paddle.to_tensor(self.bias_np).astype(self.dtype)
 
-        paddle_rmsnorm_out = paddle.incubate.nn.functional.fused_rms_norm(
-            x,
-            gamma,
-            beta,
+    def get_forward_output(self, func):
+        out = func(
+            self.x,
+            self.norm_weight,
+            self.norm_bias,
             self.epsilon,
-            begin_norm_axis=1,
-            bias=bias,
-            residual=residual,
+            self.begin_norm_axis,
         )
+        return out
 
-        paddle_naive_rmsnorm_out = naive_residual_biasadd_rms_norm(
-            x, residual, bias, gamma, beta, self.epsilon
+    def get_residual_bias_forward_output(self, func):
+        out = func(
+            self.x,
+            self.norm_weight,
+            self.norm_bias,
+            self.epsilon,
+            self.begin_norm_axis,
+            self.bias,
+            self.residual,
         )
-        paddle.enable_static()
-        return paddle_rmsnorm_out, paddle_naive_rmsnorm_out
+        return out
 
-    def test_rmsnorm_fp16(self):
-        paddle_rmsnorm, paddle_naive_rmsnorm = self.check_rmsnorm(
-            self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
+    def get_forward_backward_output(self, func):
+        out = func(
+            self.x,
+            self.norm_weight,
+            self.norm_bias,
+            self.epsilon,
+            self.begin_norm_axis,
         )
+        out_grad = paddle.randn([self.rows, self.cols], self.dtype)
+        paddle.autograd.backward([out], [out_grad], True)
+        return out, (self.x.grad, self.norm_weight.grad)
 
-        np.testing.assert_allclose(
-            paddle_rmsnorm[0].numpy(),
-            paddle_naive_rmsnorm.numpy(),
-            rtol=1e-3,
-            atol=1e-3,
-        )
+    def test_rmsnorm_residual_bias_forward(self):
+        naive_out = self.get_residual_bias_forward_output(naive_rmsnorm)
+        fused_out = self.get_residual_bias_forward_output(fused_rmsnorm)
+        check_allclose(naive_out, fused_out, self.rtol, self.atol)
 
-    def test_residual_bias_add_rmsnorm_fp16(self):
-        paddle_rmsnorm, paddle_naive_rmsnorm = self.check_residual_bias_rmsnorm(
-            self.x_np,
-            self.norm_weight_np,
-            self.norm_bias_np,
-            self.residual_np,
-            self.bias_np,
-            'float16',
-        )
+    def test_rmsnorm_forward_backward(self):
+        naive_out, naive_grads = self.get_forward_backward_output(naive_rmsnorm)
+        fused_out, fused_grads = self.get_forward_backward_output(fused_rmsnorm)
 
-        np.testing.assert_allclose(
-            paddle_rmsnorm[0].numpy(),
-            paddle_naive_rmsnorm.numpy(),
-            rtol=1e-3,
-            atol=1e-3,
-        )
+        # check forward
+        check_allclose(naive_out, fused_out, self.rtol, self.atol)
 
-    def test_rms_norm_backward(self):
-        def get_paddle_tensor(shape, dtype, bound=0.5):
-            tmp = paddle.uniform(shape, dtype=dtype, min=-bound, max=bound)
-            tmp.stop_gradient = False
-            return tmp
+        # check backward
+        naive_x_grad, naive_scale_grad = naive_grads
+        fused_x_grad, fused_scale_grad = fused_grads
+        check_allclose(naive_x_grad, fused_x_grad, self.rtol, self.atol)
+        check_allclose(naive_scale_grad, fused_scale_grad, self.rtol, self.atol)
 
-        def get_forward_backward(func, seed, dtype):
-            paddle.disable_static()
-            paddle.seed(seed)
-            x = get_paddle_tensor([2, 256], dtype)
-            scale = get_paddle_tensor([256], dtype)
-            out_g = paddle.randn([2, 256], dtype)
-            out = func(x, scale)
-            paddle.autograd.backward([out], [out_g], True)
-            return out, (x.grad, scale.grad)
 
-        # dtypes = [paddle.float32, paddle.bfloat16, paddle.float16]
-        # Todo(lilujia): add the bfloat16 test
-        dtypes = [paddle.float32, paddle.float16]
-        for dtype in dtypes:
-            raw_out, raw_grads = get_forward_backward(
-                naive_rms_norm, seed=2024, dtype=dtype
-            )
-            fused_out, fused_grads = get_forward_backward(
-                fused_rms_norm, seed=2024, dtype=dtype
-            )
-            # forward rtol
-            rtol = 1e-5 if dtype == paddle.float32 else 1e-2
-            np.testing.assert_allclose(
-                raw_out.astype(paddle.float32).numpy(),
-                fused_out.astype(paddle.float32).numpy(),
-                rtol=rtol,
-            )
-            # backward rtol, only check float32 grad
-            rtol = 1e-3
-            if dtype == paddle.float32:
-                raw_x_grad, raw_scale_grad = raw_grads
-                fused_x_grad, fused_scale_grad = fused_grads
-                np.testing.assert_allclose(
-                    raw_x_grad.astype(paddle.float32).numpy(),
-                    fused_x_grad.astype(paddle.float32).numpy(),
-                    rtol=rtol,
-                )
-                np.testing.assert_allclose(
-                    raw_scale_grad.astype(paddle.float32).numpy(),
-                    fused_scale_grad.astype(paddle.float32).numpy(),
-                    rtol=rtol,
-                )
+class TestRMSNormOp2(TestRMSNormOp):
+    def set_dtype(self):
+        self.dtype = paddle.float16
+
+    def set_tolerance(self):
+        self.rtol = 2e-3
+        self.atol = 2e-3
+
+
+class TestRMSNormOp3(TestRMSNormOp):
+    def set_dtype(self):
+        self.dtype = paddle.bfloat16
+
+    def set_tolerance(self):
+        self.rtol = 3e-2
+        self.atol = 3e-2
+
+
+class TestRMSNormOp4(TestRMSNormOp):
+    def set_shape(self):
+        self.rows = 1024
+        self.cols = 2048
 
 
 if __name__ == "__main__":

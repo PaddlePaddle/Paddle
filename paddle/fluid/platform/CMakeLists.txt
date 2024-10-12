@@ -1,10 +1,3 @@
-cc_library(
-  denormal
-  SRCS denormal.cc
-  DEPS)
-
-cc_library(monitor SRCS monitor.cc)
-
 if(WITH_ONEDNN)
   set(ONEDNN_CTX_DEPS onednn)
 else()
@@ -12,11 +5,6 @@ else()
 endif()
 
 add_subdirectory(device)
-
-cc_library(
-  cpu_helper
-  SRCS cpu_helper.cc
-  DEPS cblas phi common)
 
 set(dgc_deps "")
 if(WITH_DGC)
@@ -71,7 +59,6 @@ cc_library(
        xxhash
        ${STREAM_CALLBACK_DEPS}
        eigen3
-       cpu_helper
        framework_proto
        ${IPU_CTX_DEPS}
        ${ONEDNN_CTX_DEPS}
@@ -80,15 +67,8 @@ cc_library(
        phi
        common)
 
-cc_library(
-  collective_helper
-  SRCS collective_helper.cc
-  DEPS framework_proto device_context phi common)
-
 # Manage all device event library
 set(DEVICE_EVENT_LIBS)
-
-cc_library(timer SRCS timer.cc)
 
 cc_library(
   lodtensor_printer

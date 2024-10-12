@@ -102,6 +102,7 @@
   infer_meta :
     func : EmbeddingGradInferMeta
     param : [x, weight]
+    spmd_rule : CEmbeddingGradInferSpmd
   kernel :
     func : c_embedding_grad
   no_need_buffer : weight

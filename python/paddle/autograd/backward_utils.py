@@ -39,18 +39,22 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.cumprod",
     "pd_op.cumsum",
     "pd_op.divide",
+    "pd_op.dot",
     "pd_op.dropout",
     "pd_op.elementwise_pow",
     "pd_op.erf",
     "pd_op.exp",
     "pd_op.expand",
     "pd_op.floor",
+    "pd_op.fmax",
+    "pd_op.fmin",
     "pd_op.gather",
     "pd_op.gather_nd",
     "pd_op.gelu",
     "pd_op.hardswish",
     "pd_op.leaky_relu",
     "pd_op.log",
+    "pd_op.logcumsumexp",
     "pd_op.matmul",
     "pd_op.max",
     "pd_op.maximum",
@@ -81,6 +85,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.subtract",
     "pd_op.sum",
     "pd_op.swiglu",
+    "pd_op.swish",
     "pd_op.tanh",
     "pd_op.topk",
     "pd_op.unsqueeze",
@@ -313,9 +318,6 @@ def _check_vjp_dynamic_shape(op, inputs):
     for items in inputs:
         for item in items:
             if item.initialized() and -1 in item.shape:
-                warnings.warn(
-                    f"[Prim] Decomp op does not support dynamic shape -1, but got shape {item.shape} in inputs of op {op.name()} . Prim will skip its vjp op."
-                )
                 return True
 
 
