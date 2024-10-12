@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/determinant_grad_kernel.h"
+#pragma once
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/determinant_grad_kernel_impl.h"
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-PD_REGISTER_KERNEL(determinant_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::DeterminantGradKernel,
-                   float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateAutoLayoutPass();
+
+}  // namespace pir
