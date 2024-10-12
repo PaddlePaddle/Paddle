@@ -332,6 +332,18 @@ def _pir_append_gradient_merge_backward_op(
                 grad_defining_op.dist_attr.chunk_id,
             )
         )
+        # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather op
+        for used_grad_op in grad.all_used_ops():
+            if used_grad_op.name() != "pd_op.all_gather":
+                continue
+            move_to_opt_block_flag = True
+            for all_gather_result in used_grad_op.results():
+                for used_op in all_gather_result.all_used_ops():
+                    if used_op.op_role != int(OpRole.Optimize):
+                        move_to_opt_block_flag = False
+                        break
+            if move_to_opt_block_flag:
+                used_grad_op.op_role = int(OpRole.Optimize)
 
         opt_ops_use_grad = [
             op
