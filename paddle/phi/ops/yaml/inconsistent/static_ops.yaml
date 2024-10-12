@@ -1012,6 +1012,7 @@
     data_type : x
   interfaces : paddle::dialect::ParseKernelKeyInterface
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : write_to_array
   args : (Tensor i, Tensor x)
