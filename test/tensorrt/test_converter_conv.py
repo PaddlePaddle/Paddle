@@ -25,13 +25,53 @@ def conv2d_wrapper(x):
     return conv(x)
 
 
+def conv2d_python_api(x, padding="SAME", stride=(1, 1)):
+    conv = paddle.nn.Conv2D(3, 3, (3, 3), padding=padding, stride=stride)
+    return conv(x)
+
+
 class TestConv2dTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = conv2d_wrapper
-        self.api_args = {"x": np.random.random([2, 3, 8, 8]).astype("float32")}
+        self.api_args = {
+            "x": np.random.random([2, 3, 8, 8]).astype("float32"),
+        }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 3, 8, 8]}
         self.max_shape = {"x": [10, 3, 8, 8]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestConv2dPaddingAlgorithmTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = conv2d_python_api
+        self.api_args = {
+            "x": np.random.random([2, 3, 8, 8]).astype("float32"),
+            "padding": "SAME",
+            "stride": (1, 2),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 8, 8]}
+        self.max_shape = {"x": [10, 3, 8, 8]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestConv2dNHWCTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = conv2d_python_api
+
+        self.api_args = {
+            "x": np.random.random([2, 3, 8, 8]).astype("float32"),
+            "padding": "VALID",
+        }
+
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 8, 8, 3]}
+        self.max_shape = {"x": [10, 8, 8, 3]}
 
     def test_trt_result(self):
         self.check_trt_result()

@@ -231,3 +231,78 @@ def trt_sub(network, a, b):
 def trt_min(network, a, b):
     layer = network.add_elementwise(a, b, trt.ElementWiseOperation.MIN)
     return layer.get_output(0)
+
+
+def ConvertConv2d(network, paddle_op, inputs):
+    if paddle_op.name() == "pd_op.conv2d":
+        input_tensor, filter = inputs
+
+    filter_shape = paddle_op.operands()[1].source().shape
+
+    if len(filter_shape) != 4:
+        raise ValueError(
+            f"filter's dims size should be 4, but got {len(filter_shape)}"
+        )
+
+    n_output = filter_shape[0]
+    n_input = filter_shape[1]
+    filter_h = filter_shape[2]
+    filter_w = filter_shape[3]
+
+    paddings = paddle_op.attrs().get("paddings", [0, 0])
+    stride = paddle_op.attrs().get("strides", [1, 1])
+    dilation = paddle_op.attrs().get("dilations", [1, 1])
+    groups = paddle_op.attrs().get("groups", 1)
+
+    if has_dynamic_shape(input_tensor.shape):
+        assert (
+            input_tensor.shape[1] != -1
+        ), "Channel dim can't be dynamic for transpose convolution."
+
+    output_padding = paddle_op.attrs().get("output_padding", [0, 0])
+    padding_algorithm = paddle_op.attrs().get("padding_algorithm", "EXPLICIT")
+    if padding_algorithm == "VALID":
+        paddings = [0] * len(paddings)
+
+    nv_ksize = trt.DimsHW(filter_h, filter_w)
+    nv_dilations = trt.DimsHW(dilation[0], dilation[1])
+    nv_strides = trt.DimsHW(stride[0], stride[1])
+
+    if len(paddings) == 2:
+        pre_padding = trt.DimsHW(paddings[0], paddings[1])
+        post_padding = trt.DimsHW(paddings[0], paddings[1])
+    elif len(paddings) == 4:
+        pre_padding = trt.DimsHW(paddings[0], paddings[2])
+        post_padding = trt.DimsHW(paddings[1], paddings[3])
+    else:
+        raise ValueError(f"Unsupported paddings size: {len(paddings)}")
+
+    if paddle_op.name() == "pd_op.conv2d":
+        layer = network.add_convolution_nd(
+            input=input_tensor,
+            num_output_maps=n_input * groups,
+            kernel_shape=nv_ksize,
+            kernel=filter,
+            bias=None,
+        )
+
+    layer.stride_nd = nv_strides
+    layer.pre_padding = pre_padding
+
+    if output_padding:
+        post_padding[0] -= output_padding[0]
+        post_padding[0] -= output_padding[1]
+
+    if post_padding[0] < 0 or post_padding[1] < 0:
+        raise ValueError("The value PostPadding should be >= 0.")
+
+    layer.post_padding = post_padding
+    layer.num_groups = groups
+
+    if padding_algorithm == "SAME":
+        layer.padding_mode = trt.PaddingMode.SAME_UPPER
+        nv_dilations = trt.DimsHW(1, 1)
+
+    layer.dilation_nd = nv_dilations
+
+    return layer.get_output(0)
