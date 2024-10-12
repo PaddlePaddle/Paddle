@@ -326,6 +326,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         self.python_c_function_str = ""
         self.python_c_function_reg_str = ""
         self.python_c_function_declare_str = ""
+
+        # NOTE: place should be consistent with given input tensors
+        # so that kernel can be executed in different place correctly
         self.ref_place = None
 
     def CollectIsForwardOnly(self):
