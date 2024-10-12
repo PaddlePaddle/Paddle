@@ -162,7 +162,7 @@ def apply_partition_pass(program):
                 assign_out.get_defining_op().dist_attr = (
                     copy_op_attr_with_new_member(
                         assign_out.get_defining_op().dist_attr,
-                        new_chunk_id=prev_op.dist_attr.chunk_id,
+                        new_chunk_id=op.dist_attr.chunk_id,
                     )
                 )
 

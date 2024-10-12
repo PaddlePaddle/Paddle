@@ -1294,7 +1294,6 @@ class Engine:
                 all_process_groups = get_all_process_groups()
                 for process_group in all_process_groups:
                     process_group.instantiate()
-                pass
                 return
 
             # Traverse different rank programs and traverse each op of them,
