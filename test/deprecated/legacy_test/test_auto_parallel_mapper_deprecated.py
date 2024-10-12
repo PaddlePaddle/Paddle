@@ -608,9 +608,9 @@ class TestAutoParallelMapper(unittest.TestCase):
             )
             broadcast_op = train_program.global_block().append_op(
                 type="broadcast",
-                inputs={'X': input},
+                inputs={'x': input},
                 attrs={'ring_id': ring_id, 'root': root_id},
-                outputs={'Out': output},
+                outputs={'out': output},
             )
             self.assertEqual(get_comm_volume(broadcast_op, 0, 1), 400)
             self.assertIsNone(get_comm_volume(broadcast_op, 1, 0))
