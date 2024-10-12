@@ -1851,6 +1851,7 @@ MatmulJudgeDtypeKernel(const Context& ctx,
                        DenseTensor* out,
                        bool transpose_x,
                        bool transpose_y) {
+#if defined(PADDLE_WITH_CUDA)
   if (std::is_same<Context, phi::GPUContext>::value &&
       std::is_same<T, int8_t>::value) {
     if (x.dtype() == phi::DataType::INT8 && x_dims[0] <= 4 && FLAGS_cuda_gemm) {
@@ -1863,8 +1864,10 @@ MatmulJudgeDtypeKernel(const Context& ctx,
       } else {
         phi::CudaGemm<T, Context>(ctx, x, y, out);
       }
+      return;
     }
   }
+#endif
   bool try_matmul_int8 = MatMulInt8Function<Context>(
       ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
   if (try_matmul_int8) {
