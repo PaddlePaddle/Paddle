@@ -60,7 +60,7 @@ class TestConv2dPaddingAlgorithmTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-class TestConv2dNHWCTRTPattern(TensorRTBaseTest):
+class TestConv2dPaddingTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = conv2d_python_api
 
