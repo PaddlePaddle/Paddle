@@ -51,36 +51,18 @@ def train_mlp(model, offload=False, test=False):
             list(range(paddle.distributed.get_world_size()))
         )
     )
-    if paddle.is_compiled_with_xpu():
-        optimizer = GroupShardedOptimizerStage2(
-            params=optimizer._parameter_list,
-            optim=optimizer,
-            offload=offload,
-            dp_group=dp_group,
-            device="xpu",
-        )
-    else:
-        optimizer = GroupShardedOptimizerStage2(
-            params=optimizer._parameter_list,
-            optim=optimizer,
-            offload=offload,
-            dp_group=dp_group,
-        )
-    if paddle.is_compiled_with_xpu():
-        model = GroupShardedStage2(
-            model,
-            optimizer,
-            buffer_max_size=2**21,
-            dp_group=dp_group,
-            device="xpu",
-        )
-    else:
-        model = GroupShardedStage2(
-            model,
-            optimizer,
-            buffer_max_size=2**21,
-            dp_group=dp_group,
-        )
+    optimizer = GroupShardedOptimizerStage2(
+        params=optimizer._parameter_list,
+        optim=optimizer,
+        offload=offload,
+        dp_group=dp_group,
+    )
+    model = GroupShardedStage2(
+        model,
+        optimizer,
+        buffer_max_size=2**21,
+        dp_group=dp_group,
+    )
 
     paddle.seed(2023)
     np.random.seed(2023)

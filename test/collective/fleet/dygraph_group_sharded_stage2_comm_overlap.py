@@ -110,29 +110,12 @@ def train_mlp(
 
     if sharding_stage == 2:
         origin_model = model
-        if paddle.is_compiled_with_xpu():
-            optimizer = GroupShardedOptimizerStage2(
-                params=optimizer._parameter_list,
-                optim=optimizer,
-                group=group,
-                device="xpu",
-            )
-        else:
-            optimizer = GroupShardedOptimizerStage2(
-                params=optimizer._parameter_list, optim=optimizer, group=group
-            )
-        if paddle.is_compiled_with_xpu():
-            model = GroupShardedStage2(
-                model,
-                optimizer,
-                group=group,
-                buffer_max_size=2**21,
-                device="xpu",
-            )
-        else:
-            model = GroupShardedStage2(
-                model, optimizer, group=group, buffer_max_size=2**21
-            )
+        optimizer = GroupShardedOptimizerStage2(
+            params=optimizer._parameter_list, optim=optimizer, group=group
+        )
+        model = GroupShardedStage2(
+            model, optimizer, group=group, buffer_max_size=2**21
+        )
         model._set_reduce_overlap(True)
         optimizer._set_broadcast_overlap(True, model)
     else:

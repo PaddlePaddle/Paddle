@@ -104,7 +104,7 @@ class GroupShardedStage3(nn.Layer):
         optimizer,
         group=None,
         sync_buffers=False,
-        device="gpu",
+        device="xpu" if core.is_compiled_with_xpu() else "gpu",
         segment_size=2**20,
         pretrain_sync_models=True,
         offload=False,

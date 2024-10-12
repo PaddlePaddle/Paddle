@@ -74,7 +74,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         optim,
         group=None,
         offload=False,
-        device="gpu",
+        device="xpu" if core.is_compiled_with_xpu() else "gpu",
         pretrain_sync_models=True,
         dp_group=None,
         **kw,

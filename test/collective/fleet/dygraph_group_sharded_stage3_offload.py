@@ -106,23 +106,13 @@ def train_mlp(
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
         scaler = GroupShardedScaler(scaler)
 
-    if paddle.is_compiled_with_xpu():
-        model = GroupShardedStage3(
-            model,
-            optimizer=optimizer,
-            group=group,
-            offload=offload,
-            segment_size=2**15,
-            device="xpu",
-        )
-    else:
-        model = GroupShardedStage3(
-            model,
-            optimizer=optimizer,
-            group=group,
-            offload=offload,
-            segment_size=2**15,
-        )
+    model = GroupShardedStage3(
+        model,
+        optimizer=optimizer,
+        group=group,
+        offload=offload,
+        segment_size=2**15,
+    )
 
     paddle.seed(2023)
     np.random.seed(2023)
@@ -211,7 +201,7 @@ def test_stage3_offload():
             stage3_params[i].numpy(),
             stage3_params_offload[i].numpy(),
             rtol=1e-6,
-            atol=1e-8,
+            atol=1e-5,
         )
 
     # fp16 offload

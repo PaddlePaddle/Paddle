@@ -166,49 +166,21 @@ def train_mlp(
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
         scaler = GroupShardedScaler(scaler)
     if sharding_stage == 2:
-        if paddle.is_compiled_with_xpu():
-            optimizer = GroupShardedOptimizerStage2(
-                params=optimizer._parameter_list,
-                optim=optimizer,
-                group=group,
-                device="xpu",
-            )
-        else:
-            optimizer = GroupShardedOptimizerStage2(
-                params=optimizer._parameter_list, optim=optimizer, group=group
-            )
-        if paddle.is_compiled_with_xpu():
-            model = GroupShardedStage2(
-                model,
-                optimizer,
-                group=group,
-                buffer_max_size=2**21,
-                device="xpu",
-            )
-        else:
-            model = GroupShardedStage2(
-                model, optimizer, group=group, buffer_max_size=2**21
-            )
+        optimizer = GroupShardedOptimizerStage2(
+            params=optimizer._parameter_list, optim=optimizer, group=group
+        )
+        model = GroupShardedStage2(
+            model, optimizer, group=group, buffer_max_size=2**21
+        )
     elif sharding_stage == 3:
-        if paddle.is_compiled_with_xpu():
-            model = GroupShardedStage3(
-                model,
-                optimizer=optimizer,
-                group=group,
-                sync_comm=sync_comm,
-                segment_size=2**15,
-                exclude_layer=exclude_test,
-                device="xpu",
-            )
-        else:
-            model = GroupShardedStage3(
-                model,
-                optimizer=optimizer,
-                group=group,
-                sync_comm=sync_comm,
-                segment_size=2**15,
-                exclude_layer=exclude_test,
-            )
+        model = GroupShardedStage3(
+            model,
+            optimizer=optimizer,
+            group=group,
+            sync_comm=sync_comm,
+            segment_size=2**15,
+            exclude_layer=exclude_test,
+        )
 
     # check optimizer.minimize() error
     if test_minimize:

@@ -113,30 +113,13 @@ def train_mlp(
         assert sharding_stage == 2
 
     if sharding_stage == 2:
-        if paddle.is_compiled_with_xpu():
-            optimizer = GroupShardedOptimizerStage2(
-                params=optimizer._parameter_list,
-                optim=optimizer,
-                group=group,
-                device="xpu",
-            )
-        else:
-            optimizer = GroupShardedOptimizerStage2(
-                params=optimizer._parameter_list, optim=optimizer, group=group
-            )
+        optimizer = GroupShardedOptimizerStage2(
+            params=optimizer._parameter_list, optim=optimizer, group=group
+        )
 
-        if paddle.is_compiled_with_xpu():
-            model = GroupShardedStage2(
-                model,
-                optimizer,
-                group=group,
-                buffer_max_size=2**21,
-                device="xpu",
-            )
-        else:
-            model = GroupShardedStage2(
-                model, optimizer, group=group, buffer_max_size=2**21
-            )
+        model = GroupShardedStage2(
+            model, optimizer, group=group, buffer_max_size=2**21
+        )
 
         if scale_fn_test:
             param = model.parameters()[0]
@@ -169,10 +152,7 @@ def train_mlp(
     )
 
     if sharding_stage == 2:
-        if paddle.is_compiled_with_xpu():
-            model.to(device="xpu")
-        else:
-            model.to(device="gpu")
+        model.to(device="xpu" if paddle.is_compiled_with_xpu() else "gpu")
 
     for eop in range(epoch):
         model.train()
