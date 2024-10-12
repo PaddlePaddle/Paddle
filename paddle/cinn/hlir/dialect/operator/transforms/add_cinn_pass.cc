@@ -99,6 +99,10 @@ void ApplyIdentityOpCleanPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<::pir::PassManager>()>&
         CreatePassManager) {
+  // NOTE(gongshaotian):Before Paddle 3.0, useless full op and scale op are
+  // inserted at the end of the Program when export models using Paddle. This
+  // Pass is designed to address the above-mentioned issues encountered when
+  // open CINN execution in some models that cannot be reexported.
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateIdentityOpCleanPass());
   pass_manager->Run(program);
