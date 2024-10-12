@@ -545,7 +545,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
 
     // 3. insert new op at point max(max_res_idx+1, min_src_idx)
-    if (min_src_idx > max_res_idx) {
+    if (min_src_idx > max_res_idx || max_res_idx_op == nullptr) {
       rewriter.set_insertion_point(min_src_idx_op);
     } else {
       rewriter.SetInsertionPointAfter(max_res_idx_op);

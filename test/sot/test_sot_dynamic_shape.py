@@ -173,13 +173,24 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 )
                 self.assertEqual(ctx.translate_count, 2)
 
-    def test_dynamic_shape_fallback(self):
+    def test_conv_dynamic_shape_fallback(self):
         with with_allow_dynamic_shape_guard(
             True
         ), test_instruction_translator_cache_context() as ctx:
             for i in range(1, 5):
                 conv = CustomConv(3, 3, 3, stride=i)
                 conv(paddle.randn([1, 3, 224, 224]))
+                self.assertEqual(ctx.translate_count, i)
+
+    def test_pad_dynamic_shape_fallback(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            pad_func = check_no_breakgraph(
+                lambda x, n: paddle.nn.functional.pad(x, [0, n, 0, 0])
+            )
+            for i in range(1, 5):
+                self.assert_results(pad_func, paddle.randn([1, 3, 224, 224]), i)
                 self.assertEqual(ctx.translate_count, i)
 
 

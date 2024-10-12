@@ -736,6 +736,16 @@ class Engine:
                 dist_program, startup_program, self._strategy.pipeline
             )
 
+        if self._strategy.mp_optimization.replace_with_c_embedding:
+            config = {}
+            config["concrete_program"] = self.concrete_program
+            auto_parallel_c_embedding_pass = new_pass(
+                "auto_parallel_c_embedding_pass", config
+            )
+            auto_parallel_c_embedding_pass.apply(
+                [dist_program], [startup_program]
+            )
+
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
