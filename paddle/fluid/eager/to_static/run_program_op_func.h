@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
@@ -322,7 +323,22 @@ inline void pir_run_program_ad_func(
     grad_node->SetStepScope(step_scope);  // just for set useable.
 
     grad_node->SetGradOutMeta(x, /*slot id*/ 0);
-    grad_node->SetGradOutMeta(params, /*slot id*/ 1);
+
+    std::vector<paddle::Tensor> params_except_mean_variance;
+    for (const auto& tensor : params) {
+      auto p_autograd_tensor = egr::EagerUtils::nullable_autograd_meta(tensor);
+      if (p_autograd_tensor) {
+        auto sync_bn_node = std::dynamic_pointer_cast<SyncBatchNormGradNode>(
+            p_autograd_tensor->GetMutableGradNode());
+        if (!sync_bn_node) {
+          params_except_mean_variance.emplace_back(tensor);
+        }
+      } else {
+        params_except_mean_variance.emplace_back(tensor);
+      }
+    }
+
+    grad_node->SetGradOutMeta(params_except_mean_variance, /*slot id*/ 1);
 
     // TODO(@xiongkun): rewrite by new ir representation.
     // VLOG(2) << "clear_no_grad_edges.";
