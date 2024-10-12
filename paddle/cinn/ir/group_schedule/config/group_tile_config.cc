@@ -182,6 +182,8 @@ BuildPureStaticShapeConfig(
       return {{bucket_info, tile_config}};
     } else if (base_info->can_apply_grid_reduce &&
                base_info->reduce_numel > 65536) {
+      PADDLE_THROW(
+          ::common::errors::Unimplemented("Grid reduce is not supported yet."));
       BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                              /* sp_upper_bound = */ 1,
                              /* rb_lower_bound = */ 2049,
@@ -261,6 +263,8 @@ BuildPureStaticShapeConfig(
   } else if (base_info->can_apply_grid_reduce &&
              base_info->spatial_numel <= 256 &&
              base_info->reduce_numel > 65536) {
+    PADDLE_THROW(
+        ::common::errors::Unimplemented("Grid reduce is not supported yet."));
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ 256,
                            /* rb_lower_bound = */ 65537,
