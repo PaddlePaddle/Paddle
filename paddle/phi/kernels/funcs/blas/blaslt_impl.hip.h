@@ -322,50 +322,6 @@ struct MatmulDescriptor {
     }
   }
 
-  std::string GetDescResultString(std::string prefix,
-                                  bool has_algo = true) const {
-    std::ostringstream out;
-    out << prefix << " \n";
-#define GET_DESC_DATA_STRING(src)                    \
-  do {                                               \
-    out << "  " << #src << " = [";                   \
-    int num = sizeof((*src)) / sizeof(src->data[0]); \
-    for (int i = 0; i < num; ++i) {                  \
-      if (i == 0) {                                  \
-        out << src->data[i];                         \
-      } else {                                       \
-        out << ", " << src->data[i];                 \
-      }                                              \
-    }                                                \
-    out << "]\n";                                    \
-  } while (0);
-
-#define GET_ALGO_DATA_STRING(algo)                                 \
-  do {                                                             \
-    out << "  " << #algo << " = [";                                \
-    for (int i = 0; i < 16; ++i) {                                 \
-      if (i == 0) {                                                \
-        out << static_cast<int>(algo->data[i]);                    \
-      } else {                                                     \
-        out << ", " << static_cast<int>(algo->data[i]);            \
-      }                                                            \
-    }                                                              \
-    out << ", max_workspace_bytes: " << algo->max_workspace_bytes; \
-    out << "]\n";                                                  \
-  } while (0);
-
-    if (has_algo) {
-      GET_ALGO_DATA_STRING(algo);
-    }
-    GET_DESC_DATA_STRING(x_desc);
-    GET_DESC_DATA_STRING(y_desc);
-    GET_DESC_DATA_STRING(out_desc);
-    GET_DESC_DATA_STRING(op_desc);
-#undef GET_DESC_DATA_STRING
-#undef GET_ALGO_DATA_STRING
-    return out.str();
-  }
-
   void ExchangeXYDesc(bool no_exchange) {}
 
  protected:
@@ -540,8 +496,7 @@ struct CublasLtBase {
                        workspace->ptr(),
                        workspace_size);
         MatmulDescT* best_desc = new MatmulDescT(*desc);
-        VLOG(6) << best_desc->GetDescResultString(
-            "[Searched HipblasltDescriptor] ");
+        VLOG(6) << "[Searched HipblasltDescriptor] ";
 
         auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
@@ -576,13 +531,12 @@ struct CublasLtBase {
         *algo = heuristic_results.algo;
         PADDLE_ENFORCE_GPU_SUCCESS(
             dynload::hipblasLtMatmulPreferenceDestroy(preference));
-        VLOG(4) << desc->GetDescResultString(
-            "[Searched Single HipblasltDescriptor] ");
+        VLOG(4) << "[Searched Single HipblasltDescriptor] ";
       }
       VLOG(4) << "CublasLtBase<> doesn't searched";
     }
 
-    VLOG(4) << desc->GetDescResultString("[Impl HipblasltDescriptor] ");
+    VLOG(4) << "[Impl HipblasltDescriptor] ";
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::hipblasLtMatmul(hipblaslt_handle,
                                  desc->op_desc,
@@ -768,8 +722,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                            workspace /*output parameter*/,
                            workspace_size /*output parameter*/);
       MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
-      VLOG(6) << best_desc->GetDescResultString(
-          "[Searched CublasltDescriptor] ");
+      VLOG(6) << "[Searched CublasltDescriptor] ";
 
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
       cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
@@ -788,15 +741,14 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                        workspace->ptr(),
                        workspace_size);
         MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
-        VLOG(6) << best_desc->GetDescResultString(
-            "[Searched HipblasltDescriptor] ");
+        VLOG(6) << "[Searched HipblasltDescriptor] ";
 
         auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
       }
     }
 
-    VLOG(7) << desc->GetDescResultString("[Impl HipblasltDescriptor] ");
+    VLOG(7) << "[Impl HipblasltDescriptor] ";
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::hipblasLtMatmul(hipblaslt_handle,
                                  desc->op_desc,
@@ -1054,7 +1006,7 @@ struct DescriptorSetter {
     if (matmul_cache.FindSubKey(sub_key)) {
       desc = *(reinterpret_cast<DescT*>(matmul_cache.GetSubKey(sub_key)));
       desc.template SetFusedEpiloguePtr<DYT>(planner);
-      VLOG(7) << desc.GetDescResultString("[Heap HipblasltDescriptor] ");
+      VLOG(7) << "[Heap HipblasltDescriptor] ";
     } else {
       desc.template Create<T, DXT, DYT, TransX, TransY>(M,
                                                         N,
@@ -1071,8 +1023,7 @@ struct DescriptorSetter {
       if (planner != nullptr) {
         desc.template SetFusedEpiloguePtr<DYT>(planner);
       }
-      VLOG(7) << desc.GetDescResultString("[Stack HipblasltDescriptor] ",
-                                          false);
+      VLOG(7) << "[Stack HipblasltDescriptor] ";
     }
   }
 };
