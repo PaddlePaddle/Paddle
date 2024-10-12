@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"

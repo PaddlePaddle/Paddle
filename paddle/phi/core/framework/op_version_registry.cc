@@ -99,6 +99,9 @@ PassVersionCheckerRegistrar& PassVersionCheckerRegistrar::GetInstance() {
   return instance;
 }
 
+// Provide a fake registration item for pybind testing.
+#include "paddle/phi/core/framework/op_version_registry.inl"
+
 }  // namespace compatible
 }  // namespace framework
 }  // namespace paddle

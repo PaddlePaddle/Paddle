@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/framework/op_call_stack.h"
 #include <string>
+#include "glog/logging.h"
 #include "paddle/phi/core/framework/op_proto_maker.h"
 
 namespace paddle {

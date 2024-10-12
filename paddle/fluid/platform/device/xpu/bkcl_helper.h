@@ -13,5 +13,5 @@
 // limitations under the License.
 
 #pragma once
-#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/platform/device/xpu/bkcl_helper.h"

@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/framework/op_proto_maker.h"
+#include "glog/logging.h"
 #include "paddle/phi/core/operators/ops_extra_info.h"
 #include "paddle/phi/core/platform/enforce.h"
 
@@ -21,6 +22,10 @@ namespace framework {
 void OpProtoAndCheckerMaker::Validate() {
   validated_ = true;
   CheckNoDuplicatedInOutAttrs();
+}
+
+OpProtoAndCheckerMaker::~OpProtoAndCheckerMaker() {
+  CHECK(validated_) << "should call Validate after build";
 }
 
 OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddInput(

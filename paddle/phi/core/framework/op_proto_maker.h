@@ -55,9 +55,7 @@ class OpProtoAndCheckerMaker {
 
   virtual void Make() = 0;
 
-  virtual ~OpProtoAndCheckerMaker() {
-    CHECK(validated_) << "should call Validate after build";
-  }
+  virtual ~OpProtoAndCheckerMaker();
 
  protected:
   struct VariableBuilder {
