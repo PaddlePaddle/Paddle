@@ -116,13 +116,12 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
   func_bodies = OperationFusion(ops, func_bodies, group->fusion_tracker_ptr);
 
-  // std::cerr << "===========================\n";
-  // for( auto& b : func_bodies)
-  // {
-  //   std::cerr << b << std::endl;
-  // }
+  std::cerr << "===========================\n";
+  for (auto& b : func_bodies) {
+    std::cerr << b << std::endl;
+  }
 
-  // std::cerr << "===========================\n";
+  std::cerr << "===========================\n";
 
   std::shared_ptr<FusionGroupInfo> fusion_group_info =
       GetFusionGroupInfo(func_bodies);

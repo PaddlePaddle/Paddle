@@ -33,6 +33,12 @@ struct ForVarExtent {
   ir::Expr extent;
 };
 
+// struct InsertNode
+// {
+//   ir::ScheduleBlockRealize* insert_point;
+//   ir::Expr insert_expr;
+// };
+
 struct IndicesAndExtent {
   std::vector<ir::Expr> indices;
   std::vector<ForVarExtent> for_var_extents;
@@ -198,6 +204,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     std::unordered_set<std::string> global_buffer_name;
     for (const auto& [buffer_name, indice_and_extent] :
          buffer_to_indice_and_extent_) {
+      std::cerr << "buffer name !! " << buffer_name << std::endl;
       // For buffers disobey SSA principle, we don't substitute them.
       if (global_store_buffer_names_.find(buffer_name) !=
           global_store_buffer_names_.end()) {
@@ -265,7 +272,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
     const auto& load_buffer = node->tensor.as_tensor_ref()->buffer;
     if (load_buffer->memory_type == ir::MemoryType::Heap) {
-      // std::cerr << "load buffer  name " << load_buffer->name << std::endl;
+      std::cerr << "!!!!!!!!=====\n";
+      std::cerr << "load buffer  name " << load_buffer->name << std::endl;
       std::vector<ir::Expr> tensor_indices;
       for (const auto& indice : node->indices) {
         ir::Expr new_indice = ir::ir_utils::IRCopy(indice);
@@ -273,7 +281,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         for (const auto& [var, sb_expr] : var_to_sb_expr_) {
           ReplaceVarWithExpr(&new_indice, var, ir::ir_utils::IRCopy(sb_expr));
         }
-        // std::cerr << "new indice " << new_indice << std::endl;
+        std::cerr << "new indice " << new_indice << std::endl;
         tensor_indices.push_back(new_indice);
       }
 
@@ -286,6 +294,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
           {tensor_indices, for_var_extents_});
     }
   }
+
+  // void Visit(const )
 
   void Visit(const ir::Store* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::Store>();
@@ -340,14 +350,14 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     }
   }
 
-  void Visit(const ir::For* op, Expr* expr) override {
-    auto* node = expr->As<ir::For>();
+  // void Visit(const ir::For* op, Expr* expr) override {
+  //   auto* node = expr->As<ir::For>();
 
-    current_for_ = node;
-    map_for_in_block_[node] = current_block_;
+  //   current_for_ = node;
+  //   map_for_in_block_[node] = current_block_;
 
-    IRMutator<>::Visit(op, expr);
-  }
+  //   IRMutator<>::Visit(op, expr);
+  // }
 
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
     auto* node = expr->As<ir::ScheduleBlockRealize>();
@@ -356,6 +366,7 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
         ::common::errors::InvalidArgument(
             "The input expr should be a ScheduleBlockRealize"));
     current_sbr_ = node;
+    insert_block_ = current_block_;
     IRMutator<>::Visit(op, expr);
   }
 
@@ -421,7 +432,11 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     //   "\t" << current_for_->extent[i] << std::endl;
     // }
 
+    // block_to_insert_stmts_[insert_block_].push_back(new_sbr);
     block_to_insert_stmts_[current_block_].push_back(new_sbr);
+
+    // insert_nodes_.push_back( InsertNode{ insert_block_, current_sbr_,
+    // new_sbr});
   }
 
   void SubstituteGlobalTensor(ir::Load* load_node,
@@ -438,6 +453,8 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
   std::unordered_set<std::string> eliminate_buffer_names_;
   std::unordered_map<std::string, ir::Expr> global_buffer_to_local_buffer_;
   std::unordered_map<ir::Block*, std::vector<ir::Expr>> block_to_insert_stmts_;
+
+  // std::vector<InsertNode> insert_nodes_;
 
   ir::Block* current_block_;
   ir::Block* insert_block_;
@@ -456,6 +473,9 @@ void EliminateCommonGlobalMemoryRead(Expr* e) {
   collector(e);
 
   const auto& eliminate_buffer_names = collector.GetEliminateBufferNames();
+
+  std::cerr << "eliminate buffer name " << eliminate_buffer_names.size()
+            << std::endl;
 
   for (auto& name : eliminate_buffer_names) {
     std::cerr << "eliminate name " << name << std::endl;
