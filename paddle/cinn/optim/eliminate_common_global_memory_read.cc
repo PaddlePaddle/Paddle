@@ -432,8 +432,8 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     //   "\t" << current_for_->extent[i] << std::endl;
     // }
 
-    // block_to_insert_stmts_[insert_block_].push_back(new_sbr);
-    block_to_insert_stmts_[current_block_].push_back(new_sbr);
+    block_to_insert_stmts_[insert_block_].push_back(new_sbr);
+    // block_to_insert_stmts_[current_block_].push_back(new_sbr);
 
     // insert_nodes_.push_back( InsertNode{ insert_block_, current_sbr_,
     // new_sbr});
