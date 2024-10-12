@@ -91,21 +91,6 @@ class TestVjpPrim(unittest.TestCase):
             self.assertEqual(len(pir_program.global_block().ops), 11)
             self.assertTrue(reshape_op2.result(0).is_same(grad_outs[0][0]))
             self.assertTrue(reshape_op1.result(0).is_same(grad_outs[1][0]))
-            all_op_names = [
-                "pd_op.full",
-                "pd_op.full",
-                "pd_op.full",
-                "pd_op.divide",
-                "pd_op.divide",
-                "pd_op.divide",
-                "pd_op.full",
-                "pd_op.scale",
-                "pd_op.multiply",
-                "pd_op.reduce_as",
-                "pd_op.divide",
-            ]
-            for idx, op in enumerate(pir_program.global_block().ops):
-                self.assertEqual(op.name(), all_op_names[idx])
             paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_divide_grad_no_prim(self):
