@@ -15,6 +15,7 @@
 #include "paddle/cinn/ir/ir.h"
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 #include "paddle/cinn/common/cinn_value.h"
@@ -1516,5 +1517,115 @@ void Block::Verify() const {}
 
 void PrimitiveNode::Verify() const {}
 
+IndexExpr &IndexExpr::operator=(const IndexExpr &other) {
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&other);
+  return *this;
+}
+
+static std::optional<IndexExpr> SimplifyAdd(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value + rhsConst->value);
+  }
+
+  if (lhsConst && !rhsConst) {
+    return rhs + lhs;
+  }
+  if (rhsConst && rhsConst->value == 0) {
+    return lhs;
+  }
+
+  return std::nullopt;
+}
+static std::optional<IndexExpr> SimplifySub(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value - rhsConst->value);
+  }
+
+  if (rhsConst && rhsConst->value == 0) {
+    return lhs;
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<IndexExpr> SimplifyMul(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value * rhsConst->value);
+  }
+
+  if (lhsConst && !rhsConst) {
+    return rhs * lhs;
+  }
+
+  if (rhsConst) {
+    if (rhsConst->value == 0) {
+      return IndexExpr(0);
+    }
+    if (rhsConst->value == 1) {
+      return lhs;
+    }
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<IndexExpr> SimplifyDiv(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value / rhsConst->value);
+  }
+
+  if (rhsConst && rhsConst->value == 1) {
+    return lhs;
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<IndexExpr> SimplifyMod(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value % rhsConst->value);
+  }
+
+  if (rhsConst && rhsConst->value == 1) {
+    return IndexExpr(0);
+  }
+
+  return std::nullopt;
+}
+
+#define DEFINE_BINARY_OPERATOR(op, simplifyFunc, makeFunc)  \
+  IndexExpr IndexExpr::operator op(int64_t v) const {       \
+    return *this op IndexExpr(v);                           \
+  }                                                         \
+  IndexExpr IndexExpr::operator op(int32_t v) const {       \
+    return *this op IndexExpr(v);                           \
+  }                                                         \
+  IndexExpr IndexExpr::operator op(IndexExpr other) const { \
+    if (auto simplified = simplifyFunc(*this, other))       \
+      return simplified.value();                            \
+    return makeFunc(*this, other);                          \
+  }
+
+DEFINE_BINARY_OPERATOR(+, SimplifyAdd, Add::Make)
+DEFINE_BINARY_OPERATOR(-, SimplifySub, Sub::Make)
+DEFINE_BINARY_OPERATOR(*, SimplifyMul, Mul::Make)
+DEFINE_BINARY_OPERATOR(/, SimplifyDiv, Div::Make)
+DEFINE_BINARY_OPERATOR(%, SimplifyMod, Mod::Make)
+
+#undef DEFINE_BINARY_OPERATOR
 }  // namespace ir
 }  // namespace cinn
