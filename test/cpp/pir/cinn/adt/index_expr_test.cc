@@ -14,10 +14,10 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 
 namespace cinn {
 namespace common {
