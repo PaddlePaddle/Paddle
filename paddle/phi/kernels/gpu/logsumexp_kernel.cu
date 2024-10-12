@@ -19,6 +19,7 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -86,6 +87,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                      bool keepdim,
                      bool reduce_all,
                      DenseTensor* out) {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
   std::vector<int64_t> axis;
   axis.reserve(axis_in.size());
   std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
@@ -134,34 +136,69 @@ void LogsumexpKernel(const Context& dev_ctx,
   }
 
   auto outdim = common::make_ddim(outdim_vec);
-  if (compute_size <= 1024) {
-    if (perm.size() != xdim.size())
-      perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
-    for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
-    DenseTensor transpose_x;
-    if (xdim.size() == 0 ||
-        (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
-      transpose_x = x;
+  if (std::is_integral<T>::value) {
+    auto tmp_x = phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+    if (compute_size <= 1024) {
+      if (perm.size() != xdim.size())
+        perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
+      for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
+      DenseTensor transpose_x;
+      if (xdim.size() == 0 ||
+          (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
+        transpose_x = tmp_x;
+      } else {
+        transpose_x.Resize(common::make_ddim(transpose_shape));
+        dev_ctx.template Alloc<U>(&transpose_x);
+        phi::funcs::TransposeGPUKernelDriver<U>(
+            dev_ctx, tmp_x, perm, &transpose_x);
+      }
+      dev_ctx.template Alloc<U>(out);
+      using compute_type = typename ComputeType<U>::type;
+      const int64_t num_col = compute_size, num_row = other_size;
+      funcs::DispatchLogsumexpWarp<compute_type, U, Context>(
+          dev_ctx, num_row, num_col, transpose_x.data<U>(), out->data<U>());
+      out->Resize(outdim);
     } else {
-      transpose_x.Resize(common::make_ddim(transpose_shape));
-      dev_ctx.template Alloc<T>(&transpose_x);
-      phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
+      LogsumexpFallbackKernel<U, Context>(dev_ctx,
+                                          tmp_x,
+                                          axis_vec,
+                                          outdim_vec,
+                                          keeped_outdim_vec,
+                                          keepdim,
+                                          reduce_all,
+                                          out);
     }
-    dev_ctx.template Alloc<T>(out);
-    using compute_type = typename ComputeType<T>::type;
-    const int64_t num_col = compute_size, num_row = other_size;
-    funcs::DispatchLogsumexpWarp<compute_type, T, Context>(
-        dev_ctx, num_row, num_col, transpose_x.data<T>(), out->data<T>());
-    out->Resize(outdim);
+
   } else {
-    LogsumexpFallbackKernel<T, Context>(dev_ctx,
-                                        x,
-                                        axis_vec,
-                                        outdim_vec,
-                                        keeped_outdim_vec,
-                                        keepdim,
-                                        reduce_all,
-                                        out);
+    if (compute_size <= 1024) {
+      if (perm.size() != xdim.size())
+        perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
+      for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
+      DenseTensor transpose_x;
+      if (xdim.size() == 0 ||
+          (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
+        transpose_x = x;
+      } else {
+        transpose_x.Resize(common::make_ddim(transpose_shape));
+        dev_ctx.template Alloc<U>(&transpose_x);
+        phi::funcs::TransposeGPUKernelDriver<U>(dev_ctx, x, perm, &transpose_x);
+      }
+      dev_ctx.template Alloc<U>(out);
+      using compute_type = typename ComputeType<U>::type;
+      const int64_t num_col = compute_size, num_row = other_size;
+      funcs::DispatchLogsumexpWarp<compute_type, U, Context>(
+          dev_ctx, num_row, num_col, transpose_x.data<U>(), out->data<U>());
+      out->Resize(outdim);
+    } else {
+      LogsumexpFallbackKernel<U, Context>(dev_ctx,
+                                          x,
+                                          axis_vec,
+                                          outdim_vec,
+                                          keeped_outdim_vec,
+                                          keepdim,
+                                          reduce_all,
+                                          out);
+    }
   }
 }
 
@@ -173,5 +210,7 @@ PD_REGISTER_KERNEL(logsumexp,
                    phi::LogsumexpKernel,
                    float,
                    double,
+                   int,
+                   int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

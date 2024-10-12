@@ -348,6 +348,10 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
                                      MetaTensor* dscale,
                                      MetaTensor* ddy);
 
+void IntInFloatOutInferMeta(const MetaTensor& x,
+                            const MetaTensor& out,
+                            MetaTensor* x_grad);
+
 void InverseGradInferMeta(const MetaTensor& out,
                           const MetaTensor& dout,
                           MetaTensor* dx);

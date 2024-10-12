@@ -2752,8 +2752,8 @@ def logsumexp(
        logsumexp(x) = \log\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float16, float32 or float64, which
-            have no more than 4 dimensions.
+        x (Tensor): The input Tensor with data type float16, float32, float64,
+            int32 or int64, which have no more than 4 dimensions.
         axis (int|list|tuple|None, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
             tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
@@ -2798,7 +2798,10 @@ def logsumexp(
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'logsumexp'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'uint16', 'int32', 'int64'],
+            'logsumexp',
         )
 
         helper = LayerHelper('logsumexp', **locals())
