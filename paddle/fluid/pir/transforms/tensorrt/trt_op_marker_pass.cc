@@ -1416,13 +1416,9 @@ class NearestInterV2Pattern
       VLOG(3) << "The interp_method of NearestInterV2 is not nearest";
       return false;
     }
-    bool has_size_input = false;
-    if (size_tensor) {
-      has_size_input = true;
-    }
 
 #if IS_TRT_VERSION_GE(8200)
-    if (has_size_input) {
+    if (size_tensor) {
       auto size_tensor_type = size_tensor.type();
       if (size_tensor_type.isa<pir::VectorType>()) {
         auto vector_type = size_tensor.type().dyn_cast<pir::VectorType>();
