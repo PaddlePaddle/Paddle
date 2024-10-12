@@ -325,7 +325,7 @@ Expr IterMark::Make(const Expr &source, const IndexExpr &extent) {
   n->source = source;
   n->extent = extent;
   n->set_type(source.type());
-  return IndexExpr(n);
+  return Expr(n);
 }
 
 IterMark &IterMark::operator=(const IterMark &other) {
