@@ -126,7 +126,9 @@ class TEST_API DenseTensor : public TensorBase,
 
   /// \brief Test whether the allocation is allocated.
   /// return Whether the allocation is allocated.
-  bool initialized() const override { return holder_ && holder_->ptr(); }
+  bool initialized() const override {
+    return holder_ && (holder_->ptr() || phi::product(dims()) == 0);
+  }
 
   /// \brief Allocate memory with requested size from allocator.
   /// \return The mutable data pointer value of type T.
