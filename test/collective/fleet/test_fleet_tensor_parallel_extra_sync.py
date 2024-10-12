@@ -132,13 +132,13 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             'adam',
             'adam',
             'adam',
-            'c_broadcast',
+            'broadcast',
             'adam',
-            'c_broadcast',
+            'broadcast',
             'adam',
-            'c_broadcast',
+            'broadcast',
             'adam',
-            'c_broadcast',
+            'broadcast',
             'adam',
         ]
         paddle.distributed.fleet.utils.tensor_parallel_utils.add_extra_synchronization(
