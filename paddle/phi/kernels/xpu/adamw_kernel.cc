@@ -435,11 +435,11 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     moment1_out->set_storage_properties(std::move(moment1_out_sp));
 
     // for moment2
-    float moment2_max = GetAbsMax<Context>(dev_ctx,
-                                           moment2_output_for_xdnn,
-                                           buffer_for_findmax,
-                                           moment2_out->numel());
-    float moment2_scale_value = 65504.0f / moment2_max / 2.0f;
+    float moment2_max_ = GetAbsMax<Context>(dev_ctx,
+                                            moment2_output_for_xdnn,
+                                            buffer_for_findmax,
+                                            moment2_out->numel());
+    float moment2_scale_value = 65504.0f / moment2_max_ / 2.0f;
     // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
@@ -477,32 +477,36 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void AdamwDenseKernel(const Context& dev_ctx,
-                      const DenseTensor& param,
-                      const DenseTensor& grad,
-                      const DenseTensor& learning_rate,
-                      const DenseTensor& moment1,
-                      const DenseTensor& moment2,
-                      const DenseTensor& beta1_pow,
-                      const DenseTensor& beta2_pow,
-                      const paddle::optional<DenseTensor>& master_param,
-                      const paddle::optional<DenseTensor>& skip_update,
-                      const Scalar& beta1,
-                      const Scalar& beta2,
-                      const Scalar& epsilon,
-                      float lr_ratio,
-                      float coeff,
-                      bool with_decay,
-                      bool lazy_mode,
-                      int64_t min_row_size_to_use_multithread,
-                      bool multi_precision,
-                      bool use_global_beta_pow,
-                      DenseTensor* param_out,
-                      DenseTensor* moment1_out,
-                      DenseTensor* moment2_out,
-                      DenseTensor* beta1_pow_out,
-                      DenseTensor* beta2_pow_out,
-                      DenseTensor* master_param_outs) {
+void AdamwDenseKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,  // UNUSED
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    float lr_ratio,
+    float coeff,
+    bool with_decay,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    bool amsgrad,  // UNUSED
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,  // UNUSED
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
   auto dev_version =
       phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
   if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
@@ -803,11 +807,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
     moment1_out->set_storage_properties(std::move(moment1_out_sp));
 
     // for moment2
-    float moment2_max = GetAbsMax<Context>(dev_ctx,
-                                           moment2_output_for_xdnn,
-                                           buffer_for_findmax,
-                                           moment2_out->numel());
-    float moment2_scale_value = 65504.0f / moment2_max / 2.0f;
+    float moment2_max_ = GetAbsMax<Context>(dev_ctx,
+                                            moment2_output_for_xdnn,
+                                            buffer_for_findmax,
+                                            moment2_out->numel());
+    float moment2_scale_value = 65504.0f / moment2_max_ / 2.0f;
     // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
@@ -885,9 +889,9 @@ PD_REGISTER_KERNEL(adamw,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
 
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
@@ -896,7 +900,8 @@ PD_REGISTER_KERNEL(adamw,
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
   }
-  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }

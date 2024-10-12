@@ -25,12 +25,13 @@ def fused_adam_step(inputs, attributes, num):
     Simulate one step of the fused_adam optimizer
     :param inputs: dict of inputs
     :param attributes: dict of attributes
-    :return tuple: tuple of output params, moments1, moments2, beta1_pows, beta2_pows
+    :return tuple: tuple of output params, moments1, moments2, moments2_max, beta1_pows, beta2_pows
     '''
     params = inputs['Params']
     grads = inputs['Grads']
     moments1 = inputs['Moments1']
     moments2 = inputs['Moments2']
+    moments2_max = inputs['Moments2Max']
     lr = inputs['LearningRate']
     beta1_pows = inputs['Beta1Pows']
     beta2_pows = inputs['Beta2Pows']
@@ -38,6 +39,7 @@ def fused_adam_step(inputs, attributes, num):
     params_out = []
     moments1_out = []
     moments2_out = []
+    moments2_max_out = []
     beta1_pows_out = []
     beta2_pows_out = []
 
@@ -52,16 +54,37 @@ def fused_adam_step(inputs, attributes, num):
     else:
         beta2 = inputs['Beta2Tensor'][0][0]
 
+    amsgrad = attributes['amsgrad']
+
     for i in range(num):
-        moments1_out.append(beta1 * moments1[i][1] + (1 - beta1) * grads[i][1])
-        moments2_out.append(
-            beta2 * moments2[i][1] + (1 - beta2) * np.square(grads[i][1])
+        _moment1_out = beta1 * moments1[i][1] + (1 - beta1) * grads[i][1]
+        _moment2_out = beta2 * moments2[i][1] + (1 - beta2) * np.square(
+            grads[i][1]
         )
+
+        moments1_out.append(_moment1_out)
+        moments2_out.append(_moment2_out)
+
         lr_t = lr * np.sqrt(1 - beta2_pows[i][1]) / (1 - beta1_pows[i][1])
-        params_out.append(
-            params[i][1]
-            - lr_t * (moments1_out[i] / (np.sqrt(moments2_out[i]) + epsilon))
-        )
+
+        if amsgrad:
+            _moment2_max = np.maximum(_moment2_out, moments2_max[i][1])
+            moments2_max_out.append(_moment2_max)
+
+            params_out.append(
+                params[i][1]
+                - lr_t
+                * (moments1_out[i] / (np.sqrt(moments2_max_out[i]) + epsilon))
+            )
+        else:
+            _moment2_max = np.empty_like(_moment2_out)
+            moments2_max_out.append(_moment2_max)
+
+            params_out.append(
+                params[i][1]
+                - lr_t
+                * (moments1_out[i] / (np.sqrt(moments2_out[i]) + epsilon))
+            )
 
     for i in range(num):
         beta1_pows_out.append(beta1_pows[i][1] * beta1)
@@ -71,12 +94,18 @@ def fused_adam_step(inputs, attributes, num):
         params_out,
         moments1_out,
         moments2_out,
+        moments2_max_out,
         beta1_pows_out,
         beta2_pows_out,
     )
 
 
 class TestFusedAdamOp(OpTest):
+    def set_amsgrad(self):
+        self.amsgrad = False
+        # no check `Moment2MaxOut` with amsgrad is False
+        self.no_check_set = ['Moments2MaxOut']
+
     def setUp(self):
         paddle.enable_static()
 
@@ -91,12 +120,14 @@ class TestFusedAdamOp(OpTest):
         epsilon = 1e-4
         beta1_pow = beta1**10
         beta2_pow = beta2**10
+        self.set_amsgrad()
 
         self.attrs = {
             'epsilon': epsilon,
             'beta1': beta1,
             'beta2': beta2,
             "chunk_size": 32 * 2048,
+            "amsgrad": self.amsgrad,
         }
 
         for i in range(num):
@@ -126,6 +157,10 @@ class TestFusedAdamOp(OpTest):
             'Moments2': [
                 ("moments2" + str(i), inputs_list[3][i]) for i in range(num)
             ],
+            'Moments2Max': [
+                ("moments2_max" + str(i), np.zeros_like(inputs_list[0][i]))
+                for i in range(num)
+            ],
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pows': [
                 ("beta1_pows" + str(i), inputs_list[4][i]) for i in range(num)
@@ -139,6 +174,7 @@ class TestFusedAdamOp(OpTest):
             params_out,
             moments1_out,
             moments2_out,
+            moments2_max_out,
             beta1_pows_out,
             beta2_pows_out,
         ) = fused_adam_step(self.inputs, self.attrs, num)
@@ -149,6 +185,10 @@ class TestFusedAdamOp(OpTest):
             ],
             'Moments2Out': [
                 ("moments2_out" + str(i), moments2_out[i]) for i in range(num)
+            ],
+            'Moments2MaxOut': [
+                ("moments2_max_out" + str(i), moments2_max_out[i])
+                for i in range(num)
             ],
             'ParamsOut': [
                 ("params_out" + str(i), params_out[i]) for i in range(num)
@@ -166,7 +206,15 @@ class TestFusedAdamOp(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
-            self.check_output(check_dygraph=False)
+            self.check_output(
+                no_check_set=self.no_check_set, check_dygraph=False
+            )
+
+
+class TestFusedAdamOpAMSGrad(TestFusedAdamOp):
+    def set_amsgrad(self):
+        self.amsgrad = True
+        self.no_check_set = None
 
 
 if __name__ == "__main__":

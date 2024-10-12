@@ -275,15 +275,37 @@ struct AdamTuple {
   static constexpr KernelType kernel_type = kAdam;
   typedef T data_type;
   typedef adam_attr_t attr_type;
-  typedef void (*func_type)(
-      T, T, T, T, int64_t, const T*, const T*, const T*, const T*, T*, T*, T*);
+  typedef void (*func_type)(T,
+                            T,
+                            T,
+                            T,
+                            int64_t,
+                            const T*,
+                            const T*,
+                            const T*,
+                            const T*,
+                            const T*,
+                            T*,
+                            T*,
+                            T*,
+                            T*,
+                            bool);
 };
+
+typedef struct adamw_attr_s {
+  float beta1, beta2, coeff;
+  bool amsgrad;
+  adamw_attr_s() = default;
+  explicit adamw_attr_s(float beta1, float beta2, float coeff, bool amsgrad)
+      : beta1(beta1), beta2(beta2), coeff(coeff), amsgrad(amsgrad) {}
+} adamw_attr_t;
 
 template <typename T>
 struct AdamWTuple {
   static constexpr KernelType kernel_type = kAdamW;
   typedef T data_type;
-  typedef int attr_type;
+  // typedef int attr_type;
+  typedef adamw_attr_t attr_type;
   typedef void (*func_type)(T,
                             T,
                             T,
@@ -296,9 +318,12 @@ struct AdamWTuple {
                             const T*,
                             const T*,
                             const T*,
+                            const T*,
                             T*,
                             T*,
-                            T*);
+                            T*,
+                            T*,
+                            bool);
 };
 
 typedef struct matmul_attr_s {

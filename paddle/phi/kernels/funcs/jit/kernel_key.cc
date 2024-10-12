@@ -70,4 +70,10 @@ int64_t JitCodeKey<adam_attr_t>(const adam_attr_t& attr) {
   return static_cast<int64_t>(attr.beta1 + attr.beta2);
 }
 
+template <>
+int64_t JitCodeKey<adamw_attr_t>(const adamw_attr_t& attr) {
+  return static_cast<int64_t>(attr.beta1 + attr.beta2 + attr.coeff +
+                              (attr.amsgrad ? 1 : 0));
+}
+
 }  // namespace phi::jit

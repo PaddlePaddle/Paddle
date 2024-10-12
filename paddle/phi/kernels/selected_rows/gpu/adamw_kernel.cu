@@ -55,6 +55,8 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
                                          MT* mom1_out_,
                                          const MT* mom2_,
                                          MT* mom2_out_,
+                                         const MT* mom2_max_,
+                                         MT* mom2_max_out_,
                                          const MT* lr_,
                                          const T* grad_,
                                          const T* param_,
@@ -65,7 +67,8 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
                                          int64_t row_numel,
                                          int64_t row_count,
                                          bool lazy_mode,
-                                         int ndim) {
+                                         int ndim,
+                                         bool amsgrad) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   MT lr = *lr_ * lr_ratio;
 
@@ -88,8 +91,17 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
       mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
       mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-      MT denom =
-          (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+      MT denom;
+      if (amsgrad) {
+        MT mom2_max = static_cast<MT>(mom2_max_[id]);
+        MT mom2_max_ = std::max(mom2, mom2_max);
+        mom2_max_out_[id] = mom2_max_;
+
+        denom = (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) +
+                epsilon;
+      } else {
+        denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+      }
 
       p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
@@ -112,6 +124,7 @@ void AdamwDenseParamSparseGradKernel(
     const DenseTensor& learning_rate,
     const DenseTensor& moment1,
     const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
     const paddle::optional<DenseTensor>& master_param,
@@ -126,9 +139,11 @@ void AdamwDenseParamSparseGradKernel(
     int64_t min_row_size_to_use_multithread,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,
     DenseTensor* param_out,
     DenseTensor* moment1_out,
     DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
@@ -158,6 +173,13 @@ void AdamwDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    if (amsgrad) {
+      phi::Copy(dev_ctx,
+                moment2_max.get(),
+                dev_ctx.GetPlace(),
+                false,
+                moment2_max_out);
+    }
     if (!use_global_beta_pow) {
       phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
       phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
@@ -195,6 +217,11 @@ void AdamwDenseParamSparseGradKernel(
   MPDType* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                       : nullptr;
+
+  const MPDType* moment2_max_in_data =
+      amsgrad ? moment2_max.get().data<MPDType>() : nullptr;
+  MPDType* moment2_max_out_data =
+      amsgrad ? dev_ctx.template Alloc<MPDType>(moment2_max_out) : nullptr;
 
   if (grad.rows().size() == 0) {
     VLOG(3) << "grad row size is 0!!";
@@ -247,6 +274,8 @@ void AdamwDenseParamSparseGradKernel(
             dev_ctx.template Alloc<MPDType>(moment1_out),
             moment2.data<MPDType>(),
             dev_ctx.template Alloc<MPDType>(moment2_out),
+            moment2_max_in_data,
+            moment2_max_out_data,
             learning_rate.data<MPDType>(),
             grad_data,
             param.data<T>(),
@@ -257,7 +286,8 @@ void AdamwDenseParamSparseGradKernel(
             row_numel,
             grad_merge.rows().size(),
             lazy_mode,
-            ndim);
+            ndim,
+            amsgrad);
     if (!use_global_beta_pow) {
       // Update with cpu
       dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
@@ -278,6 +308,8 @@ void AdamwDenseParamSparseGradKernel(
         dev_ctx.template Alloc<MPDType>(moment1_out),
         moment2.data<MPDType>(),
         dev_ctx.template Alloc<MPDType>(moment2_out),
+        moment2_max_in_data,
+        moment2_max_out_data,
         learning_rate.data<MPDType>(),
         grad_data,
         param.data<T>(),
@@ -287,7 +319,8 @@ void AdamwDenseParamSparseGradKernel(
         rows,
         row_numel,
         grad_merge.rows().size(),
-        lazy_mode);
+        lazy_mode,
+        amsgrad);
 
     // FIXME(minqiyang): remove BinarySearch in GPU later
     funcs::ForRange<Context> for_range(dev_ctx, param.numel());
@@ -316,9 +349,9 @@ PD_REGISTER_KERNEL(adamw_dense_param_sparse_grad,
                    double,
                    phi::dtype::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
 
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -326,7 +359,8 @@ PD_REGISTER_KERNEL(adamw_dense_param_sparse_grad,
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
   }
-  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }
