@@ -129,6 +129,6 @@ cc_test(
        common
        init_phi
        op_dialect
+       op_dialect_vjp
        static_prim_api
-       primitive_backend_static_experimental
-       op_dialect_vjp)
+       primitive_backend_static_experimental)
