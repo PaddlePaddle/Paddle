@@ -834,6 +834,24 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       return pass_manager;
     };
 
+    if (config_.use_gpu() && config_.cinn_enabled()) {
+      if (!config_.custom_pass_only_) {
+        ::pir::PassManager fused_op_pm(::pir::IrContext::Instance(),
+                                       config_.pm_opt_level_);
+        const std::vector<std::string> FusedOpPasses{// Operator fusion pass
+                                                     "conv2d_bn_fuse_pass",
+                                                     "conv2d_add_act_fuse_pass",
+                                                     "conv2d_add_fuse_pass",
+                                                     "transfer_layout_pass"};
+
+        for (const auto &fused_op : FusedOpPasses) {
+          fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
+        }
+
+        fused_op_pm.Run(pir_program_.get());
+      }
+    }
+
     if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
       VLOG(4) << "[Prim] Decomp program in predictor begin.";
       DecompProgram decomp_object(pir_program_.get());
