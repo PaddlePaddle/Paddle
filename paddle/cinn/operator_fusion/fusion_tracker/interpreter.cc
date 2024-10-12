@@ -198,8 +198,16 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
     // Insert if for append loops
     for (const auto& expr : exprs) {
       // interpreter->ret_expr.push_back(expr);
-      interpreter->ret_expr.push_back(
-          ExprTransformerUtils::InsertIfForAppendVarsTransformer()(expr));
+      std::vector<std::string> load_tensor_names;
+      for (const auto& tensor : GetOutputTensors(expr)) {
+        load_tensor_names.push_back(tensor->name);
+      }
+      if (AnyFirstInSecond(load_tensor_names, interpreter->output_var_names)) {
+        interpreter->ret_expr.push_back(
+            ExprTransformerUtils::InsertIfForAppendVarsTransformer()(expr));
+      } else {
+        interpreter->ret_expr.push_back(expr);
+      }
     }
   }
 }

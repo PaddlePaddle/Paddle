@@ -86,7 +86,7 @@ template <typename A, typename B>
 B FusePatternIfConnected(A up_pattern,
                          B down_pattern,
                          std::vector<pir::Operation*> connect_ops) {
-  if (AnyTargetInCandidate(connect_ops, down_pattern.ops())) {
+  if (AnyFirstInSecond(connect_ops, down_pattern.ops())) {
     return std::get<B>(MergePatternImpl(up_pattern, down_pattern));
   } else {
     return down_pattern;

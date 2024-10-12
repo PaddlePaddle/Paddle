@@ -464,10 +464,10 @@ std::vector<U> VectorFlatMap(
 }
 
 template <typename T>
-bool AnyTargetInCandidate(const std::vector<T>& targets,
-                          const std::vector<T>& candidate) {
-  std::unordered_set<T> pool = ToUnorderedSet(candidate);
-  for (const auto& item : targets) {
+bool AnyFirstInSecond(const std::vector<T>& first,
+                      const std::vector<T>& second) {
+  std::unordered_set<T> pool = ToUnorderedSet(second);
+  for (const auto& item : first) {
     if (pool.find(item) != pool.end()) {
       return true;
     }
