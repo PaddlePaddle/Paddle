@@ -310,6 +310,20 @@ def _pir_append_gradient_merge_backward_op(
         # step2: Accumulate persistable gradient variables in main_program
         # NOTE(zhaoyingli): inplace operation must be 'a = a + b', cannot be 'a = b + a'
         grad_defining_op = grad.get_defining_op()
+
+        # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather op
+        for used_grad_op in grad.all_used_ops():
+            if used_grad_op.name() != "pd_op.all_gather":
+                continue
+            for idx in range(used_grad_op.num_results()):
+                used_result = used_grad_op.result(idx)
+                if used_result.use_empty() is False:
+                    for op in used_result.all_used_ops():
+                        if op.op_role == int(OpRole.Optimize):
+                            grad_defining_op = used_grad_op
+                            grad = used_result
+                            break
+
         paddle.pir.set_insertion_point_after(grad_defining_op)
 
         new_gradient_merge_var = main_block.add_kwarg(
