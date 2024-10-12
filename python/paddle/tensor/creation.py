@@ -2523,7 +2523,7 @@ def empty_like(
         out = _C_ops.empty(
             x.shape,
             convert_np_dtype_to_dtype_(dtype),
-            _current_expected_place(),
+            x.place,
         )
         out.stop_gradient = True
         return out
@@ -2532,7 +2532,7 @@ def empty_like(
         out = _C_ops.empty(
             shape,
             convert_np_dtype_to_dtype_(dtype),
-            _current_expected_place(),
+            core.Place(),
         )
         out.stop_gradient = True
         return out
