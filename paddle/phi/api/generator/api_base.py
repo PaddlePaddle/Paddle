@@ -752,17 +752,23 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         # NOTE: place context should be consistent with given input tensors or place
         # so that kernel can be executed in different place correctly
-        if self.__class__.__name__ == "ForwardAPI" and self.ref_place is None:
+        if (
+            self.ref_place is None
+            and self.__class__.__name__ == "ForwardAPI"
+            and input_name not in self.optional_vars
+        ):
             # use the place of first available tensor for forward op
             self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}->place()"
         elif (
-            self.__class__.__name__ == "BackwardAPI"
-            and "_grad" in input_name
-            and self.ref_place is None
+            (self.ref_place is None or "_grad" in input_name)
+            and input_name not in self.optional_vars
+            and self.__class__.__name__ == "BackwardAPI"
         ):
             # use the place of first available grad tensor for backward op
             self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}->place()"
 
+        if self.api == "svd_grad":
+            print(self.ref_place, self.optional_vars)
         return input_tensor_code
 
     def gene_selected_rows_input(
@@ -886,13 +892,17 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         # NOTE: place context should be consistent with given input tensors or place
         # so that kernel can be executed in different place correctly
-        if self.__class__.__name__ == "ForwardAPI" and self.ref_place is None:
+        if (
+            self.ref_place is None
+            and self.__class__.__name__ == "ForwardAPI"
+            and input_name not in self.optional_vars
+        ):
             # use the place of first available tensor for forward op
             self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}.at(0)->place()"
         elif (
             self.__class__.__name__ == "BackwardAPI"
-            and "_grad" in input_name
-            and self.ref_place is None
+            and input_name not in self.optional_vars
+            and (self.ref_place is None or "_grad" in input_name)
         ):
             # use the place of first available grad tensor for backward op
             self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}.at(0)->place()"
