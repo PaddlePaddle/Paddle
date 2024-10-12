@@ -3906,6 +3906,7 @@ function clang-tidy_check() {
 
     cd ${PADDLE_ROOT}
     pwd
+
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
 
@@ -4149,15 +4150,17 @@ function clang-tidy_check() {
     for s in "${S[@]}"; do
         count=$(grep -o "$s" $temp_file | wc -l)
         if [ $count -ge 2 ]; then
-            echo "check_error: $s"
+            echo "check_error: $[ $s ]"
             check_error=true
         fi
     done
+    
     rm $temp_file
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
     echo "Check Time: $[ $endTime_s - $startTime_s ]s"
+    echo "check error: $[ $check_error ]"
 
     echo -e '\n************************************************************************************'
     if [ ${check_error} != 0 ];then
