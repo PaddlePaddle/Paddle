@@ -767,8 +767,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             # use the place of first available grad tensor for backward op
             self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}->place()"
 
-        if self.api == "svd_grad":
-            print(self.ref_place, self.optional_vars)
         return input_tensor_code
 
     def gene_selected_rows_input(
