@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include <set>
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 
 namespace paddle::inference {
 

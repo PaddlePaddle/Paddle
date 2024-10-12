@@ -561,6 +561,9 @@ PD_REGISTER_SPMD_RULE(
     embedding,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(c_embedding,
+                      PD_INFER_SPMD(phi::distributed::CEmbeddingInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CEmbeddingGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     lookup_table_v2,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
@@ -699,10 +702,16 @@ PD_REGISTER_SPMD_RULE(unbind,
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
 
+// logsumexp
 PD_REGISTER_SPMD_RULE(
     logsumexp,
     PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmd),
     PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmdReverse));
+
+// p_norm
+PD_REGISTER_SPMD_RULE(p_norm,
+                      PD_INFER_SPMD(phi::distributed::PNormInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::PNormInferSpmdReverse));
 
 // pad
 PD_REGISTER_SPMD_RULE(pad,

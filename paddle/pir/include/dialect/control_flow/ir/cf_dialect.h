@@ -25,7 +25,7 @@ class ControlFlowDialect : public Dialect {
   }
   static const char *name() { return "cf"; }
   TEST_API void PrintType(Type type, std::ostream &os) const override;
-  TEST_API OpPrintFn PrintOperation(Operation *op) const override;
+  TEST_API OpPrintFn PrintOperation(const Operation &op) const override;
 
  private:
   TEST_API void initialize();
