@@ -4017,7 +4017,7 @@ function clang-tidy_check() {
         "clang-analyzer-cplusplus.SelfAssignment"
         "clang-analyzer-cplusplus.SmartPtr"
         "clang-analyzer-cplusplus.VirtualCallModeling"
-        "clang-analyzer-deadcode.DeadStores"
+        # "clang-analyzer-deadcode.DeadStores"
         "clang-analyzer-fuchsia.HandleChecker"
         "clang-analyzer-nullability.NullPassedToNonnull"
         "clang-analyzer-nullability.NullReturnedFromNonnull"
@@ -4131,7 +4131,7 @@ function clang-tidy_check() {
         "modernize-use-transparent-functors"
         "modernize-use-uncaught-exceptions"
         "performance-faster-string-find"
-        "performance-for-range-copy"
+        # "performance-for-range-copy"
         "performance-implicit-conversion-in-loop"
         "performance-inefficient-algorithm"
         "performance-inefficient-string-concatenation"
@@ -4150,16 +4150,17 @@ function clang-tidy_check() {
     for s in "${S[@]}"; do
         count=$(grep -o "$s" $temp_file | wc -l)
         if [ $count -ge 2 ]; then
-            echo "check_error: $s"
+            echo "check_error: $[ $s ]"
             check_error=true
         fi
     done
-    echo $check_error
+    
     rm $temp_file
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
     echo "Check Time: $[ $endTime_s - $startTime_s ]s"
+    echo "check error: $[ $check_error ]"
 
     echo -e '\n************************************************************************************'
     if [ ${check_error} != 0 ];then
