@@ -3906,6 +3906,7 @@ function clang-tidy_check() {
 
     cd ${PADDLE_ROOT}
     pwd
+
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
 
@@ -4149,15 +4150,17 @@ function clang-tidy_check() {
     for s in "${S[@]}"; do
         count=$(grep -o "$s" $temp_file | wc -l)
         if [ $count -ge 2 ]; then
-            echo "check_error: $s"
+            echo "check_error: $[ $s ]"
             check_error=true
         fi
     done
+    
     rm $temp_file
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
     echo "Check Time: $[ $endTime_s - $startTime_s ]s"
+    echo "check error: $[ $check_error ]"
 
     echo -e '\n************************************************************************************'
     if [ ${check_error} != 0 ];then
@@ -4201,8 +4204,6 @@ function build_pr_and_develop() {
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
 
-    clang-tidy_check
-
     git checkout $BRANCH
     dev_commit=`git log -2|grep -w 'commit'|awk '{print $2}'`
     for commit_id in $dev_commit
@@ -4235,6 +4236,7 @@ function build_pr_and_develop() {
     fi
 
     generate_api_spec "$1" "DEV"
+    clang-tidy_check
 
 }
 
