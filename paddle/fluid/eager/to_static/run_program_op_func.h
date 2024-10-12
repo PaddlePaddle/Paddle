@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
@@ -330,7 +331,9 @@ inline void pir_run_program_ad_func(
       if (p_autograd_tensor) {
         auto sync_bn_node = std::dynamic_pointer_cast<SyncBatchNormGradNode>(
             p_autograd_tensor->GetMutableGradNode());
-        if (!sync_bn_node) {
+        auto bn_node = std::dynamic_pointer_cast<BatchNormGradNode>(
+            p_autograd_tensor->GetMutableGradNode());
+        if (!sync_bn_node && !bn_node) {
           params_except_mean_variance.emplace_back(tensor);
         }
       } else {
