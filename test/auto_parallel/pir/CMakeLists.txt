@@ -25,6 +25,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     test_auto_parallel_c_embedding_pass MODULES
     test_auto_parallel_c_embedding_pass ENVS FLAGS_enable_pir_api=1
     FLAGS_dist_prim_all=1)
+  py_test_modules(
     test_auto_parallel_replace_with_parallel_cross_entropy_pass MODULES
     test_auto_parallel_replace_with_parallel_cross_entropy_pass ENVS
     FLAGS_enable_pir_api=1 FLAGS_dist_prim_all=1)
