@@ -732,7 +732,19 @@ class Engine:
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"
         ):
-            complete_chunk_id(dist_program, self._strategy.pipeline)
+            complete_chunk_id(
+                dist_program, startup_program, self._strategy.pipeline
+            )
+
+        if self._strategy.mp_optimization.replace_with_c_embedding:
+            config = {}
+            config["concrete_program"] = self.concrete_program
+            auto_parallel_c_embedding_pass = new_pass(
+                "auto_parallel_c_embedding_pass", config
+            )
+            auto_parallel_c_embedding_pass.apply(
+                [dist_program], [startup_program]
+            )
 
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
@@ -1282,7 +1294,6 @@ class Engine:
                 all_process_groups = get_all_process_groups()
                 for process_group in all_process_groups:
                     process_group.instantiate()
-                pass
                 return
 
             # Traverse different rank programs and traverse each op of them,

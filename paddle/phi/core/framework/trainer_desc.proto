@@ -1,0 +1,220 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
+import "paddle/phi/core/framework/data_feed.proto";
+import "paddle/phi/core/framework/framework.proto";
+package paddle.framework;
+
+message TrainerDesc {
+  // class name for create trainer desc
+  // the matchness of trainer name and device worker name
+  // will be checked in python API
+  optional string class_name = 1;
+  // class name for creating device worker
+  optional string device_worker_name = 2;
+  // thread number
+  optional int32 thread_num = 3;
+  // if we need to binding cpu
+  optional bool binding_cpu = 4 [ default = false ];
+  repeated string filelist = 5;
+  optional bool debug = 6 [ default = false ];
+  optional FetchConfig fetch_config = 7;
+  optional bool use_cvm = 8 [ default = false ];
+  optional bool dump_slot = 9 [ default = false ];
+  optional float scale_datanorm = 10 [ default = -1 ];
+  optional int32 mpi_rank = 11 [ default = -1 ];
+  optional string dump_fields_path = 12;
+  repeated string dump_fields = 13;
+  optional string dump_converter = 14;
+  repeated string dump_param = 15;
+  optional int32 mpi_size = 16 [ default = -1 ];
+  optional int32 dump_file_num = 17 [ default = 16 ];
+  repeated string check_nan_var_names = 18;
+  optional CopyTableConfig copy_table_config = 19;
+  // adjust ins weight
+  optional AdjustInsWeightConfig adjust_ins_weight_config = 20;
+  optional bool no_cvm = 21 [ default = false ];
+  optional bool thread_barrier = 22;
+  repeated string loss_names = 23;
+  optional bool enable_random_dump = 24 [ default = false ];
+  optional bool random_with_lineid = 25 [ default = false ];
+  optional int32 dump_interval = 26 [ default = 10000 ];
+  repeated int32 worker_places = 27;
+
+  repeated string xpu_send_list = 28;
+  repeated string xpu_recv_list = 29;
+  optional int32 xpu_start_idx = 30;
+  optional int32 xpu_end_idx = 31;
+
+  optional bool use_ps_gpu = 32 [ default = false ];
+  optional string user_define_dump_filename = 33;
+  optional bool scale_sparse_gradient_with_batch_size = 34 [ default = true ];
+
+  repeated int32 trainers = 35;
+  optional int32 trainer_id = 36;
+
+  // add for gpu
+  optional string fleet_desc = 37;
+  optional bool is_dump_in_simple_mode = 38 [ default = false ];
+  optional string dump_fields_mode = 39 [ default = "w" ];
+  optional int32 dump_num_decimals = 40 [ default = 9 ];
+  optional bool use_gpu_graph = 41 [ default = false ];
+  // device worker parameters
+  optional HogwildWorkerParameter hogwild_param = 101;
+  optional DownpourWorkerParameter downpour_param = 103;
+  optional PullDenseWorkerParameter pull_dense_param = 102;
+  optional SectionWorkerParameter section_param = 104;
+  optional HeterSectionWorkerParameter heter_section_param = 105;
+  // datafeed desc
+  optional DataFeedDesc data_desc = 201;
+}
+
+message HogwildWorkerParameter {
+  repeated string skip_ops = 1;
+  repeated string stat_var_names = 2;
+}
+
+message DownpourWorkerParameter {
+  repeated TableParameter sparse_table = 1;
+  repeated TableParameter dense_table = 2;
+  repeated string skip_ops = 3;
+  repeated ProgramConfig program_config = 4;
+  optional bool push_sparse = 5 [ default = true ];
+  optional bool push_dense = 6 [ default = true ];
+  repeated string stat_var_names = 7;
+}
+
+message SectionWorkerParameter {
+  optional SectionConfig section_config = 1;
+  optional int32 queue_size = 2 [ default = 1 ];
+  optional int64 sync_steps = 3 [ default = 1 ];
+  optional int32 start_cpu_core_id = 4 [ default = 1 ];
+  repeated string param_need_sync = 5;
+  optional int32 num_microbatches = 6;
+  optional int32 num_pipeline_stages = 7 [ default = 1 ];
+  optional int32 pipeline_stage = 8 [ default = 1 ];
+  optional int32 schedule_mode = 9 [ default = 0 ];
+}
+
+message HeterSectionWorkerParameter {
+  optional SectionConfig section_config = 1;
+  optional int32 queue_size = 2 [ default = 1 ];
+  optional int64 sync_steps = 3 [ default = 1 ];
+  optional int32 start_cpu_core_id = 4 [ default = 1 ];
+  repeated string param_need_sync = 5;
+  optional int32 num_microbatches = 6;
+  optional int32 num_pipeline_stages = 7 [ default = 1 ];
+  optional int32 pipeline_stage = 8 [ default = 1 ];
+}
+
+message SectionConfig {
+  enum Place {
+    CPUPlace = 0;
+    CUDAPlace = 1;
+    CUDAPinnedPlace = 2;
+  }
+
+  // FIXME: How to use proto::ProgramDesc
+  // required string program_desc_str = 1;
+  optional proto.ProgramDesc program_desc = 1;
+  optional Place place = 2;
+  optional int32 concurrency = 3 [ default = 1 ];
+  repeated string section_in_var_names = 4;
+  repeated string section_out_var_names = 5;
+  optional int32 place_id = 6 [ default = -1 ];
+}
+
+message FetchConfig {
+  enum Method { PRINT = 0; }
+  repeated string fetch_var_names = 1;
+  repeated string fetch_var_str_format = 2;
+  optional int32 print_period = 3 [ default = 100 ];
+  optional Method method = 4 [ default = PRINT ];
+}
+
+message AdjustInsWeightConfig {
+  optional bool need_adjust = 1 [ default = false ];
+  optional string nid_slot = 2 [ default = "" ];
+  optional float nid_adjw_threshold = 3 [ default = 0.0 ];
+  optional float nid_adjw_ratio = 4 [ default = 0.0 ];
+  optional string ins_weight_slot = 5 [ default = "" ];
+}
+
+message TableDependencyMap {
+  required int32 key = 1;
+  repeated int32 values = 2;
+}
+
+message CopyTableConfig {
+  optional bool need_copy = 1 [ default = false ];
+  optional int32 batch_num = 2 [ default = 100 ];
+  repeated int32 src_sparse_tables = 3;
+  repeated int32 dest_sparse_tables = 4;
+  repeated int32 src_dense_tables = 5;
+  repeated int32 dest_dense_tables = 6;
+  repeated string src_var_list = 7;
+  repeated string dest_var_list = 8;
+  // when dest dense table has no grad, should pull explicitly
+  optional bool dense_pull_after_copy = 9 [ default = false ];
+  // copy feasigns or copy the whole table
+  optional bool sparse_copy_by_feasign = 10 [ default = true ];
+  // table dependency for pull/push
+  optional bool enable_dependency = 11 [ default = false ];
+  repeated TableDependencyMap table_dependency_map = 12;
+}
+
+message CondTableMap {
+  required int32 key = 1;
+  required int32 value = 2;
+}
+message ProgramConfig {
+  required string program_id = 1;
+  repeated int32 push_sparse_table_id = 2;
+  repeated int32 push_dense_table_id = 3;
+  repeated int32 pull_sparse_table_id = 4;
+  repeated int32 pull_dense_table_id = 5;
+  repeated CondTableMap partial_pushdense_condtable_map = 10;
+}
+
+message PullDenseWorkerParameter {
+  // dense table only and specialized usage
+  optional int32 threshold = 1 [ default = 1 ];
+  optional int32 device_num = 2;
+  optional int32 sleep_time_ms = 3 [ default = 2 ];
+  repeated TableParameter dense_table = 4;
+}
+
+message TableParameter {
+  // dense table only
+  optional uint64 table_id = 1;
+  repeated string dense_value_name = 2;
+  repeated string dense_grad_name = 3;
+  repeated int32 push_dense_wait_times = 5;
+  // sparse table only
+  repeated string sparse_key_name = 6;
+  repeated string sparse_value_name = 7;
+  repeated string sparse_grad_name = 8;
+  repeated int32 push_sparse_wait_times = 9;
+  // sparse table only and specialized usage
+  optional int32 emb_dim = 10;
+  optional int32 fea_dim = 11;
+  optional string label_var_name = 12;
+  // if table will pull sparse to local first
+  optional bool is_local = 13 [ default = false ];
+  // if table will pull sparse asynchronously in worker
+  optional bool is_async = 14 [ default = false ];
+  optional string async_wait_op_name = 15;
+}
