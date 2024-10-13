@@ -101,8 +101,23 @@ def synchronized(func):
 
 def show_op_callstack(op):
     op_callstack = op.callstack
-    index = op_callstack.index("    outputs = static_func(*inputs)")
-    op_callstack_result = '\n'.join(op_callstack[index + 1 :])
+    index = -1
+    for i in range(len(op_callstack)):
+        # If can make sure the spaces at the beginning of the line are the same (4 spaces), it can be removed.
+        stripped_op_callstack = op_callstack[i].strip()
+        if stripped_op_callstack == "outputs = static_func(*inputs)":
+            index = i
+            break
+        elif (
+            stripped_op_callstack == "outputs = static_func(*inputs, **_kwargs)"
+        ):
+            index = i
+            break
+    op_callstack_result = (
+        f"Can not find the op_callback for {op.name()}"
+        if index == -1
+        else '\n'.join(op_callstack[index + 1 :])
+    )
     raise ValueError(
         f'In transformed code:\n\n{op_callstack_result}\n\nSorry about what\'s happened. In to_static mode, {op.name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign() before inplace input.If you certainly make sure it\'s safe, you can set env stride_in_no_check_dy2st_diff to 1.'
     )
@@ -122,8 +137,6 @@ def check_view_api_used_by_inplace(program: paddle.pir.Program) -> None:
     """
     all_vars_list = program.list_vars()
     for value in all_vars_list:
-        if len(value.all_used_ops()) == 0:
-            return
         uesd_by_stride_ops = []
         for op in value.all_used_ops()[::-1]:
             inplace_info = paddle.core.pir.get_op_inplace_info(op)
