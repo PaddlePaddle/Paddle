@@ -2755,31 +2755,37 @@ bool Pool3dOpInferSymbolicShape(pir::Operation *op,
 
 bool ProdOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  bool keepdim = GetBoolAttr(op, "keepdim");
-  bool reduce_all = GetBoolAttr(op, "reduce_all");
+  const std::vector<symbol::DimExpr> out_shape = {};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+  // bool keepdim = GetBoolAttr(op, "keepdim");
+  // bool reduce_all = GetBoolAttr(op, "reduce_all");
 
-  std::vector<int64_t> axis;
-  if (paddle::dialect::details::GetAxisFromOpInput(
-          op->operand_source(1), infer_context, &axis)) {
-    if (axis.size() == 0) {
-      reduce_all = true;
-    }
+  // std::vector<int64_t> axis;
+  // if (paddle::dialect::details::GetAxisFromOpInput(
+  //         op->operand_source(1), infer_context, &axis)) {
+  //   if (axis.size() == 0) {
+  //     reduce_all = true;
+  //   }
 
-    // return paddle::dialect::details::ReduceInferDim(
-    //     op, infer_context, axis, keepdim, reduce_all);
+  //   // return paddle::dialect::details::ReduceInferDim(
+  //   //     op, infer_context, axis, keepdim, reduce_all);
 
-    const std::vector<symbol::DimExpr> out_shape = {};
-    infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(out_shape)});
-    return true;
-  } else {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
-        "support FullIntArrayOp's result or constant DimExpr now."));
-  }
-  return false;
+  //   const std::vector<symbol::DimExpr> out_shape = {};
+  //   infer_context->SetShapeOrDataForValue(
+  //       op->result(0),
+  //       symbol::ShapeOrDataDimExprs{
+  //           symbol::TensorShapeOrDataDimExprs(out_shape)});
+  //   return true;
+  // } else {
+  //   PADDLE_THROW(common::errors::Unimplemented(
+  //       "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+  //       "support FullIntArrayOp's result or constant DimExpr now."));
+  // }
+  // return false;
 }
 
 bool QrOpInferSymbolicShape(pir::Operation *op,
