@@ -30,6 +30,11 @@ void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
+  if (!x.initialized()) {
+    out->set_meta(x.meta());
+    return;
+  }
+
   PADDLE_ENFORCE_GE(
       dst_place_type,
       0,
@@ -40,7 +45,6 @@ void MemcpyH2DKernel(const Context& dev_ctx,
       3,
       errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
                          dst_place_type));
-
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 }
 
@@ -123,6 +127,16 @@ void MemcpyKernel(const Context& dev_ctx,
       dev_ctx.Alloc(out, x.dtype(), 0, true);
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
       break;
+#elif defined(PADDLE_WITH_XPU)
+    case 3:  // XPUPlace
+      dev_ctx.Alloc(out, x.dtype());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      break;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    case 4:  // CustomPlace
+      dev_ctx.Alloc(out, x.dtype());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      break;
 #endif
     default:
       PADDLE_THROW(errors::Unimplemented(
@@ -133,79 +147,21 @@ void MemcpyKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_h2d,
-                                 CPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyH2DKernel<phi::CPUContext>) {}
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_d2h,
-                                 CPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyD2HKernel<phi::CPUContext>) {
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(memcpy_h2d,
+                                         ALL_LAYOUT,
+                                         phi::MemcpyH2DKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(memcpy_d2h,
+                                         ALL_LAYOUT,
+                                         phi::MemcpyD2HKernel) {
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
 }
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_d2h_multi_io,
-                                 CPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyD2HMultiIOKernel<phi::CPUContext>) {
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(memcpy_d2h_multi_io,
+                                         ALL_LAYOUT,
+                                         phi::MemcpyD2HMultiIOKernel) {
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
 }
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy,
-                                 CPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyKernel<phi::CPUContext>) {
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(memcpy,
+                                         ALL_LAYOUT,
+                                         phi::MemcpyKernel) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_h2d,
-                                 GPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyH2DKernel<phi::GPUContext>) {}
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_d2h,
-                                 GPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyD2HKernel<phi::GPUContext>) {
-  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
-}
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_d2h_multi_io,
-                                 GPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyD2HMultiIOKernel<phi::GPUContext>) {
-  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
-}
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy,
-                                 GPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyKernel<phi::GPUContext>) {
-  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
-}
-
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_h2d,
-                                 XPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyH2DKernel<phi::XPUContext>) {}
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_d2h,
-                                 XPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyD2HKernel<phi::XPUContext>) {
-  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
-}
-
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_d2h_multi_io,
-                                 XPU,
-                                 ALL_LAYOUT,
-                                 phi::MemcpyD2HMultiIOKernel<phi::XPUContext>) {
-  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
-}
-
-#endif

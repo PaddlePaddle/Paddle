@@ -16,6 +16,7 @@
   kernel :
     func : all_reduce
     param: [x, reduce_type]
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : amax
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
@@ -91,6 +92,7 @@
     func: BeamSearchDecodeInferMeta
   kernel:
     func: beam_search_decode
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
@@ -101,6 +103,7 @@
   kernel :
     func : broadcast
     param: [x, root]
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : comm_init_all
   args : (int[] devices={}, int ring_id=0)
@@ -111,6 +114,7 @@
   kernel :
     func : comm_init_all
     data_type : DataType::FLOAT32
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
@@ -135,6 +139,7 @@
     func : conv2d_transpose_bias
     param : [x, filter, bias, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : cross_entropy
   args: (Tensor x, Tensor label, bool soft_label = false, int ignore_index = -100)
@@ -165,6 +170,7 @@
   kernel :
     func : decode_jpeg
     param : [x, mode]
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides={1, 1}, int[] paddings={0, 0}, int[] dilations={1, 1}, int deformable_groups=1, int groups=1, int im2col_step=64)
@@ -198,6 +204,7 @@
   kernel :
     func : dist_concat
     param: [x, nranks]
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : einsum
   args : (Tensor[] x, str equation)
@@ -242,6 +249,7 @@
     func : empty
     param : [shape, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -277,6 +285,7 @@
     func : eye
     param : [num_rows, num_columns, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : fetch_barrier
   args: (Tensor[] x, int trainer_id = 0, str[] endpoints = {"127.0.0.1:6164"})
@@ -286,6 +295,7 @@
   kernel:
     func: fetch_barrier
   optional: x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : flatten
   args : (Tensor x, int start_axis, int stop_axis)
@@ -401,6 +411,7 @@
     func: hash
     param: [x, num_hash, mod_by]
     data_type: x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : legacy_bilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -448,6 +459,7 @@
     func: legacy_generate_proposals
     data_type: anchors
   optional: rpn_rois_num
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : legacy_nearest_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -499,6 +511,7 @@
     func : linspace
     param: [start, stop, number, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : lrn
   args: (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout")
@@ -542,6 +555,7 @@
     func : matrix_rank {dense -> dense},
            matrix_rank_tol {dense, dense -> dense}
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : max
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
@@ -626,6 +640,7 @@
     func : p_recv
     param : [peer, dtype, dynamic_shape]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : p_recv_array
   args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, int[] out_shape = {})
@@ -636,6 +651,7 @@
   kernel :
     func : p_recv_array
     param : [peer, dtype, out_shape]
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : p_send
   args : (Tensor x, int ring_id = 0, int peer = 0, bool dynamic_shape = false)
@@ -647,6 +663,7 @@
     func : p_send
     param : [x, peer, dynamic_shape]
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : p_send_array
   args : (Tensor x, int ring_id = 0, int peer = 0, bool dynamic_shape = false)
@@ -658,6 +675,7 @@
     func : p_send_array
     param : [x, peer, dynamic_shape]
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", bool use_cudnn = false)
@@ -701,6 +719,7 @@
     func: QuantLinearInferMeta
   kernel:
     func: quant_linear
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : randint
   args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)
@@ -724,6 +743,7 @@
     func : randperm
     param : [n, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : reduce
   args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
@@ -734,6 +754,7 @@
   kernel :
     func : reduce
     param: [x, root_id, reduce_type]
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : remainder
   args : (Tensor x, Tensor y, int axis = -1)
@@ -799,6 +820,7 @@
   kernel:
     func : shadow_output
     param : [x]
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})
@@ -807,6 +829,7 @@
     func : ShareBufferInferMeta
   kernel :
     func : share_buffer
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : softmax
   args : (Tensor x, int axis = -1)
@@ -828,6 +851,7 @@
     func: sparse_momentum
     data_type: param
   optional: master_param, master_param_out
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : squeeze
   args : (Tensor x, IntArray axis={})
@@ -894,6 +918,7 @@
     func: TransferLayoutInferMeta
   kernel:
     func: transfer_layout
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
@@ -905,6 +930,7 @@
     func : tril_indices
     param : [rows, cols, offset, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : tril_triu
   args : (Tensor x, int diagonal = 0, bool lower = false)
@@ -925,6 +951,7 @@
     func : triu_indices
     param : [row, col, offset, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : truncated_gaussian_random
   args : (int[] shape, float mean = .0f, float std = 1.0f, int seed = 0, float a = -2.0f, float b = 2.0f, DataType dtype=DataType::FLOAT32)
@@ -936,6 +963,7 @@
     func : truncated_gaussian_random
     param : [shape, mean, std, seed, a, b, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : uniform
   args : (IntArray shape = {},  DataType dtype = DataType::FLOAT32, Scalar min = -1.0f, Scalar max = 1.0f, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0f)
@@ -997,3 +1025,4 @@
   kernel:
     func: multiclass_nms
     data_type: scores
+  traits : paddle::dialect::ForwardOnlyTrait
