@@ -19,7 +19,6 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
-
 #include "paddle/common/enforce.h"
 
 namespace cinn {
@@ -264,8 +263,8 @@ ir::Expr LoopFusionHelper(const ir::Expr& src, const ir::Expr& dst) {
     const auto* dst_node = dst.As<ir::Block>();
     ir::Expr fused_block = ir::ir_utils::IRCopy(dst);
     auto* fused_block_node = fused_block.As<ir::Block>();
-    // currently support block has only one stmt.
-    if (src_node->stmts.size() > 1 || dst_node->stmts.size() > 1) {
+    // currently support blocks have equal stmt size.
+    if (src_node->stmts.size() != dst_node->stmts.size()) {
       return nullptr;
     }
     PADDLE_ENFORCE_EQ(src_node->stmts.size(),
