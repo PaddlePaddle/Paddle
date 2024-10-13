@@ -2523,7 +2523,11 @@ def empty_like(
         out = _C_ops.empty(
             x.shape,
             convert_np_dtype_to_dtype_(dtype),
-            x.place,
+            (
+                x.place
+                if isinstance(x, paddle.Tensor)
+                else _current_expected_place()
+            ),
         )
         out.stop_gradient = True
         return out
@@ -2532,7 +2536,11 @@ def empty_like(
         out = _C_ops.empty(
             shape,
             convert_np_dtype_to_dtype_(dtype),
-            core.Place(),
+            (
+                core.Place()
+                if isinstance(x, paddle.pir.Value)
+                else _current_expected_place()
+            ),
         )
         out.stop_gradient = True
         return out
