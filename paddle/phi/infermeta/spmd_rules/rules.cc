@@ -561,6 +561,9 @@ PD_REGISTER_SPMD_RULE(
     embedding,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(c_embedding,
+                      PD_INFER_SPMD(phi::distributed::CEmbeddingInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CEmbeddingGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     lookup_table_v2,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
