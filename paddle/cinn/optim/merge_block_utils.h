@@ -66,5 +66,13 @@ bool CanMergeBlocks(const ir::For* first,
                     const ir::For* second,
                     const ForEqualFunc& IsEqual);
 
+// Move schedule block src after schedule block dst.
+void MoveScheduleBlock(const std::string& src,
+                       const std::string& dst,
+                       ir::Expr* root);
+
+// Fuse two loop, src -> dst.
+ir::Expr LoopFusion(const ir::Expr& src, const ir::Expr& dst);
+
 }  // namespace optim
 }  // namespace cinn
