@@ -862,16 +862,22 @@ bool DetOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-
-  const std::vector<symbol::DimExpr> out_dims = [&] {
-    std::vector<symbol::DimExpr> out_dims = x_shape_or_data.shape();
-    out_dims.pop_back();
-    out_dims.pop_back();
-    return out_dims;
-  }();
+  const auto &x_shape = x_shape_or_data.shape();
+  int x_shape_size = x_shape.size();
+  PADDLE_ENFORCE_GE(
+      x_shape_size,
+      2,
+      common::errors::InvalidArgument("the input matrix dimension size should "
+                                      "greater than or equal to 2."));
+  infer_context->AddEqualCstr(x_shape[x_shape_size - 2],
+                              x_shape[x_shape_size - 1]);
+  std::vector<symbol::DimExpr> out_shape = x_shape;
+  out_shape.pop_back();
+  out_shape.pop_back();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
   return true;
 }
 
@@ -3183,8 +3189,8 @@ bool SlogdetOpInferSymbolicShape(
   PADDLE_ENFORCE_GE(
       x_shape_size,
       2,
-      common::errors::InvalidArgument(
-          "the input matrix dimension size should greater than 2."));
+      common::errors::InvalidArgument("the input matrix dimension size should "
+                                      "greater than or equal to 2."));
   infer_context->AddEqualCstr(x_shape[x_shape_size - 1],
                               x_shape[x_shape_size - 2]);
   std::vector<symbol::DimExpr> out_shape = {2};
