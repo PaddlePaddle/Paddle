@@ -4146,12 +4146,12 @@ function clang-tidy_check() {
         "readability-container-size-empty"
     )
 
-    check_error=false
+    check_error=0
     for s in "${S[@]}"; do
         count=$(grep -o "$s" $temp_file | wc -l)
         if [ $count -ge 2 ]; then
             echo "check_error: $[ $s ]"
-            check_error=true
+            check_error=1
         fi
     done
     
