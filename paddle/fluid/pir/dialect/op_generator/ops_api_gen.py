@@ -177,6 +177,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'dgc',
     'dpsgd',
     'embedding_grad_sparse',
+    'faster_tokenizer',
     'ftrl',
     'fused_adam_',
     'fused_batch_norm_act_',
