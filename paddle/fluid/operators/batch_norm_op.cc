@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
@@ -547,70 +546,6 @@ phi::KernelKey BatchNormDoubleGradOp::GetExpectedKernelType(
                         ctx.GetPlace());
 }
 
-class BatchNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
- public:
-  void Apply() override {
-    // inputs and outputs of batch_norm
-    paddle::Tensor x = this->GetSingleForwardInput("X");
-    paddle::Tensor scale = this->GetSingleForwardInput("Scale");
-    paddle::Tensor bias = this->GetSingleForwardInput("Bias");
-    paddle::Tensor mean = this->GetSingleForwardInput("Mean");
-    paddle::Tensor variance = this->GetSingleForwardInput("Variance");
-    paddle::Tensor y = this->GetSingleForwardOutput("Y");
-    paddle::Tensor mean_out = this->GetSingleForwardOutput("MeanOut");
-    paddle::Tensor variance_out = this->GetSingleForwardOutput("VarianceOut");
-    paddle::Tensor saved_mean = this->GetSingleForwardOutput("SavedMean");
-    paddle::Tensor saved_variance =
-        this->GetSingleForwardOutput("SavedVariance");
-    paddle::optional<paddle::Tensor> reserve_space;
-
-    paddle::Tensor y_grad = this->GetSingleOutputGrad("Y");
-    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
-    paddle::Tensor scale_grad = this->GetSingleInputGrad("Scale");
-    paddle::Tensor bias_grad = this->GetSingleInputGrad("Bias");
-
-    auto dx_ptr = this->GetOutputPtr(&x_grad);
-    std::string dx_name = this->GetOutputName(x_grad);
-    auto dscale_ptr = this->GetOutputPtr(&scale_grad);
-    std::string dscale_name = this->GetOutputName(scale_grad);
-    auto dbias_ptr = this->GetOutputPtr(&bias_grad);
-    std::string dbias_name = this->GetOutputName(bias_grad);
-
-    // attrs of batch_norm
-    auto momentum = this->Attr<float>("momentum");
-    auto epsilon = this->Attr<float>("epsilon");
-    auto data_layout = this->Attr<std::string>("data_layout");
-    auto is_test = this->Attr<bool>("is_test");
-    auto use_global_stats = this->Attr<bool>("use_global_stats");
-    auto trainable_statistics = this->Attr<bool>("trainable_statistics");
-
-    VLOG(3) << "Running batch_norm composite func";
-    prim::batch_norm_grad<prim::DescTensor>(x,
-                                            scale,
-                                            bias,
-                                            mean_out,
-                                            variance_out,
-                                            saved_mean,
-                                            saved_variance,
-                                            reserve_space,
-                                            y_grad,
-                                            momentum,
-                                            epsilon,
-                                            data_layout,
-                                            is_test,
-                                            use_global_stats,
-                                            trainable_statistics,
-                                            dx_ptr,
-                                            dscale_ptr,
-                                            dbias_ptr);
-    this->RecoverOutputName(x_grad, dx_name);
-    this->RecoverOutputName(scale_grad, dscale_name);
-    this->RecoverOutputName(bias_grad, dbias_name);
-  }
-};
-
 DECLARE_INPLACE_OP_INFERER(BatchNormDoubleGradOpInplaceInferer, {"DY", "DDY"});
 
 }  // namespace operators
@@ -627,8 +562,7 @@ REGISTER_OPERATOR(batch_norm,
                   ops::BatchNormOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::BatchNormGradMaker<paddle::framework::OpDesc>,
-                  ops::BatchNormGradMaker<paddle::imperative::OpBase>,
-                  ops::BatchNormCompositeGradOpMaker);
+                  ops::BatchNormGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(batch_norm_grad,
                   ops::BatchNormGradOp,
