@@ -19,7 +19,6 @@ import numpy as np
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.base import core
 from paddle.distributed import fleet
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 from paddle.framework import Block, Program, in_dynamic_mode
 
 
@@ -623,9 +622,6 @@ class HybridParallelInferenceHelper:
                             'ring_id': ring_id,
                         },
                     )
-                    send_op.dist_attr.execution_stream = (
-                        AutoParallelStreamType.CALC_STREAM.value
-                    )
                     extra_index_info['index'] += 1
                     var_shape = list(var.shape)
                     if var_shape[0] < 0:
@@ -645,9 +641,6 @@ class HybridParallelInferenceHelper:
                             'peer': 0,
                             'ring_id': ring_id,
                         },
-                    )
-                    recv_op.dist_attr.execution_stream = (
-                        AutoParallelStreamType.CALC_STREAM.value
                     )
                     extra_index_info['index'] += 1
 
@@ -721,9 +714,6 @@ class HybridParallelInferenceHelper:
                             'ring_id': ring_id,
                         },
                     )
-                    send_op.dist_attr.execution_stream = (
-                        AutoParallelStreamType.CALC_STREAM.value
-                    )
                 else:
                     var_shape = list(var.shape)
                     print(var_name)
@@ -742,9 +732,6 @@ class HybridParallelInferenceHelper:
                             'peer': 1,
                             'ring_id': ring_id,
                         },
-                    )
-                    recv_op.dist_attr.execution_stream = (
-                        AutoParallelStreamType.CALC_STREAM.value
                     )
                 index += 1
         block._sync_with_cpp()

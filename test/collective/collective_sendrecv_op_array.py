@@ -20,7 +20,6 @@ from legacy_test.test_collective_base import (
 
 import paddle
 from paddle import base
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 
 paddle.enable_static()
 
@@ -57,9 +56,6 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                         'peer': 1,
                     },
                 )
-                send_op.dist_attr.execution_stream = (
-                    AutoParallelStreamType.CALC_STREAM.value
-                )
             else:
                 recv_op = main_prog.global_block().append_op(
                     type="p_recv",
@@ -69,9 +65,6 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                         'ring_id': ring_id,
                         'dtype': data1.dtype,
                     },
-                )
-                recv_op.dist_attr.execution_stream = (
-                    AutoParallelStreamType.CALC_STREAM.value
                 )
             return tensor_array
 
