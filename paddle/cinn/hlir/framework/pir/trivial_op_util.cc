@@ -805,6 +805,7 @@ ExprTransformer InsertIfForAppendVarsTransformer() {
       VLOG(4) << "Insert If for append loop: " << var;
       conditions.push_back(ir::EQ::Make(var, var->lower_bound));
     }
+    std::reverse(conditions.begin(), conditions.end());
 
     auto realizes = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
                      ExprSetFinderUtils::ScheduleBlockRealizeNotRoot)(root);
@@ -818,12 +819,12 @@ ExprTransformer InsertIfForAppendVarsTransformer() {
       schedule_block.As<ir::ScheduleBlock>()->body = new_body;
     }
 
+    // // Insert if above schedule block
     // auto last_for = (ExprSetFinderUtils::ChildFors *
     //                  ExprSetFinderUtils::IsForIterVar(vars.back()))
     //                     .GetSingle(root)
     //                     .As<ir::For>();
     // ir::Expr new_body = last_for->body;
-    // std::reverse(conditions.begin(), conditions.end());
     // for (const auto& cond : conditions) {
     //   new_body = ir::IfThenElse::Make(cond, new_body);
     // }
