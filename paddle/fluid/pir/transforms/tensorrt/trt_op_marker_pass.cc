@@ -1402,7 +1402,7 @@ class NearestInterV2Pattern
       }
     }
 
-    pir::Value size_tensor = op.operand_source(2);
+   
 
     auto data_format =
         op->attribute<pir::StrAttribute>("data_format").AsString();
@@ -1418,6 +1418,7 @@ class NearestInterV2Pattern
     }
 
 #if IS_TRT_VERSION_GE(8200)
+    pir::Value size_tensor = op.operand_source(2);
     if (size_tensor) {
       auto size_tensor_type = size_tensor.type();
       if (size_tensor_type.isa<pir::VectorType>()) {
