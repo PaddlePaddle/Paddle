@@ -24,6 +24,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace pir {
 
@@ -168,9 +169,15 @@ std::string GetTypeName(const YAML::Node &action) {
 
 Json GetTypeJson(const YAML::Node &action) {
   Json json;
-  std::string dialect = DialectIdMap::Instance()->GetCompressDialectId(
-                            pir::BuiltinDialect::name()) +
-                        ".";
+  std::string builtin_dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                                    pir::BuiltinDialect::name()) +
+                                ".";
+  std::string op_dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                               paddle::dialect::OperatorDialect::name()) +
+                           ".";
+  std::string cf_dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                               pir::ControlFlowDialect::name()) +
+                           ".";
   std::string type_name = "";
   if (action.IsScalar()) {
     type_name = action.as<std::string>();
@@ -181,46 +188,46 @@ Json GetTypeJson(const YAML::Node &action) {
   }
   if (type_name == "pir::BoolType") {
     VLOG(8) << "Get BoolType name.";
-    json[ID] = dialect + pir::BoolType::name();
+    json[ID] = builtin_dialect + pir::BoolType::name();
   } else if (type_name == "pir::BFloat16Type") {
     VLOG(8) << "Get BFloat16Type name.";
-    json[ID] = dialect + pir::BFloat16Type::name();
+    json[ID] = builtin_dialect + pir::BFloat16Type::name();
   } else if (type_name == "pir::Float16Type") {
     VLOG(8) << "Get Float16Type name.";
-    json[ID] = dialect + pir::Float16Type::name();
+    json[ID] = builtin_dialect + pir::Float16Type::name();
   } else if (type_name == "pir::Float32Type") {
     VLOG(8) << "Get Float32Type name.";
-    json[ID] = dialect + pir::Float32Type::name();
+    json[ID] = builtin_dialect + pir::Float32Type::name();
   } else if (type_name == "pir::Float64Type") {
     VLOG(8) << "Get Float64Type name.";
-    json[ID] = dialect + pir::Float64Type::name();
+    json[ID] = builtin_dialect + pir::Float64Type::name();
   } else if (type_name == "pir::Int8Type") {
     VLOG(8) << "Get Int8Type name.";
-    json[ID] = dialect + pir::Int8Type::name();
+    json[ID] = builtin_dialect + pir::Int8Type::name();
   } else if (type_name == "pir::UInt8Type") {
     VLOG(8) << "Get UInt8Type name.";
-    json[ID] = dialect + pir::UInt8Type::name();
+    json[ID] = builtin_dialect + pir::UInt8Type::name();
   } else if (type_name == "pir::Int16Type") {
     VLOG(8) << "Get Int16Type name.";
-    json[ID] = dialect + pir::Int16Type::name();
+    json[ID] = builtin_dialect + pir::Int16Type::name();
   } else if (type_name == "pir::Int32Type") {
     VLOG(8) << "Get Int32Type name.";
-    json[ID] = dialect + pir::Int32Type::name();
+    json[ID] = builtin_dialect + pir::Int32Type::name();
   } else if (type_name == "pir::Int64Type") {
     VLOG(8) << "Get Int64Type name.";
-    json[ID] = dialect + pir::Int64Type::name();
+    json[ID] = builtin_dialect + pir::Int64Type::name();
   } else if (type_name == "pir::IndexType") {
     VLOG(8) << "Get IndexType name.";
-    json[ID] = dialect + pir::IndexType::name();
+    json[ID] = builtin_dialect + pir::IndexType::name();
   } else if (type_name == "pir::Complex64Type") {
     VLOG(8) << "Get Complex64Type name.";
-    json[ID] = dialect + pir::Complex64Type::name();
+    json[ID] = builtin_dialect + pir::Complex64Type::name();
   } else if (type_name == "pir::Complex128Type") {
     VLOG(8) << "Get Complex128Type name.";
-    json[ID] = dialect + pir::Complex128Type::name();
+    json[ID] = builtin_dialect + pir::Complex128Type::name();
   } else if (type_name == "pir::VectorType") {
     VLOG(8) << "Get VectorType name.";
-    json[ID] = dialect + pir::VectorType::name();
+    json[ID] = builtin_dialect + pir::VectorType::name();
     json[DATA] = Json::array();
     for (size_t i = 0; i < action["default"].size(); i++) {
       YAML::Node array_value = action["default"][i];
@@ -228,7 +235,7 @@ Json GetTypeJson(const YAML::Node &action) {
     }
   } else if (type_name == "pir::DenseTensorType") {
     VLOG(8) << "Get DenseTensorType name.";
-    json[ID] = dialect + pir::DenseTensorType::name();
+    json[ID] = builtin_dialect + pir::DenseTensorType::name();
     Json content = Json::array();
     YAML::Node tensor_value = action["default"];
     content.push_back(BuildTypeJsonPatch(tensor_value[0]));
@@ -242,6 +249,15 @@ Json GetTypeJson(const YAML::Node &action) {
 
     content.push_back(tensor_value[4].as<int>());  // offset
     json[DATA] = content;
+  } else if (type_name == "pir::StackType") {
+    VLOG(8) << "Get StackType name.";
+    json[ID] = cf_dialect + pir::StackType::name();
+  } else if (type_name == "pir::InletType") {
+    VLOG(8) << "Get InletType name.";
+    json[ID] = cf_dialect + pir::InletType::name();
+  } else if (type_name == "pir::OutletType") {
+    VLOG(8) << "Get OutletType name.";
+    json[ID] = cf_dialect + pir::OutletType::name();
   }
   return json;
 }
