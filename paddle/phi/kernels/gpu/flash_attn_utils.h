@@ -179,13 +179,6 @@ struct FlashAttnParamsBase {
     softmax_lse_dims = {batch_size, num_heads, seqlen_q_rounded};
 
     if (attn_mask_tensor) {
-#if 0
-      PADDLE_ENFORCE_NE(causal,
-                        true,
-                        common::errors::InvalidArgument(
-                            "When attn_mask is set, causal can not be true."));
-#endif
-
       PADDLE_ENFORCE_EQ(
           attn_mask->dtype(),
           q_dtype,
