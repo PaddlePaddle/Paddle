@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/bmm_grad_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
-#include "paddle/phi/kernels/bmm_grad_kernel.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
@@ -27,54 +27,7 @@ void BmmGradKernel(const Context& dev_ctx,
                    const DenseTensor& out_grad,
                    DenseTensor* x_grad,
                    DenseTensor* y_grad) {
-  /*
-  DenseTensor x_help = x;
-  DenseTensor y_help = y;
-  DenseTensor out_grad_help = out_grad;
-  ReshapeXYOutIntoMatrixSequence(
-      &x_help, &y_help, &out_grad_help, false, false);
-
-  phi::DDim dx_dims;
-  if (x_grad) {
-    dx_dims = x_grad->dims();
-    if (dx_dims != x_help.dims()) {
-      x_grad->Resize(x_help.dims());
-    }
-  }
-
-  phi::DDim dy_dims;
-  if (y_grad) {
-    dy_dims = y_grad->dims();
-    if (dy_dims != y_help.dims()) {
-      y_grad->Resize(y_help.dims());
-    }
-  }
-
-  CalcInputGrad<T, Context>(
-      dev_ctx, out_grad_help, false, y_help, true, x_grad);
-  CalcInputGrad<T, Context>(
-      dev_ctx, x_help, true, out_grad_help, false, y_grad);
-
-  if (x_grad) {
-    if (dx_dims != x_help.dims()) {
-      x_grad->Resize(dx_dims);
-    }
-  }
-  if (y_grad) {
-    if (dy_dims != y_help.dims()) {
-      y_grad->Resize(dy_dims);
-    }
-  }
-  */
-
-  MatmulGradKernel<T>(dev_ctx,
-                  x,
-                  y,
-                  out_grad,
-                  false,
-                  false,
-                  x_grad,
-                  y_grad);
+  MatmulGradKernel<T>(dev_ctx, x, y, out_grad, false, false, x_grad, y_grad);
 }
 }  // namespace phi
 

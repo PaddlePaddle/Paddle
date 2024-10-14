@@ -445,14 +445,20 @@ void FusedAttentionGradKernel(
 
     std::tie(info_d_q, info_d_k, a_1, b_1, a_2, b_2) = fc_info;
 
-    phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
-        xpu_ctx, a_1, b_1, nullptr, c_1, info_d_q, 1.0f / sqrt(head_dims), 0.f, true);
+    phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(xpu_ctx,
+                                               a_1,
+                                               b_1,
+                                               nullptr,
+                                               c_1,
+                                               info_d_q,
+                                               1.0f / sqrt(head_dims),
+                                               0.f,
+                                               true);
 
     phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
         xpu_ctx, a_2, b_2, nullptr, c_2, info_d_k, 1.0f, 0.f, true);
   }
 
-  //
   r = xpu::transpose<XPUTypeT>(xpu_ctx,
                                d_combination_qkv_ptr,
                                d_transpose_qkv_ptr,
