@@ -530,8 +530,8 @@ bool convtransposefunction(pir::Operation *op,
                                          x_shape.end() - 1);
 
   const std::vector<symbol::DimExpr> filter_data_dims = [&]() {
-      return std::vector<symbol::DimExpr>(filter_shape.begin() + 2,
-                                          filter_shape.end());
+    return std::vector<symbol::DimExpr>(filter_shape.begin() + 2,
+                                        filter_shape.end());
   }();
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
   UpdatePaddingAndDilation(&new_paddings,
@@ -545,19 +545,18 @@ bool convtransposefunction(pir::Operation *op,
   if (channel_last) {
     output_shape.push_back(filter_shape[1] * groups);
   }
-  const int offset = (channel_last ? 2 : 1); //kNHWC
+  const int offset = (channel_last ? 2 : 1);  // kNHWC
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     symbol::DimExpr filter_extent =
         new_dilations[i] * (filter_shape[i + 2] - 1) + 1;
     symbol::DimExpr infer_shape;
     if (x_shape[i + offset].Has<std::int64_t>()) {
-      if (x_shape[i + offset].Get<int64_t>()> 0) {
+      if (x_shape[i + offset].Get<int64_t>() > 0) {
         infer_shape = (x_shape[i + offset] - 1) * symbol::DimExpr(strides[i]) -
                       new_paddings[2 * i] - new_paddings[2 * i + 1] +
                       filter_extent;
       }
-    }
-    else {
+    } else {
       infer_shape = infer_context->GetNextSymName();
     }
     if (!output_size.empty()) {
@@ -637,7 +636,7 @@ bool Conv3dTransposeOpInferSymbolicShape(
 
 bool Conv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//  if ( op->attributes().find("output_size") !=  op->attributes().end()) {
+  //  if ( op->attributes().find("output_size") !=  op->attributes().end()) {
   if (op->HasAttribute("output_size")) {
     std::vector<int> out_size =
         paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
@@ -649,14 +648,16 @@ bool Conv2dTransposeOpInferSymbolicShape(
   } else {
     const auto &output_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
-    VLOG(3)<<output_shape_or_data.data().value()<<"|||"<<output_shape_or_data.shape()<<"conv2dtransposedata------------";
-    const std::vector<symbol::DimExpr> &output_size = output_shape_or_data.data().has_value()
-          ? output_shape_or_data.data().value()
-          : output_shape_or_data.shape();
-    VLOG(3)<<output_size;
+    VLOG(3) << output_shape_or_data.data().value() << "|||"
+            << output_shape_or_data.shape()
+            << "conv2dtransposedata------------";
+    const std::vector<symbol::DimExpr> &output_size =
+        output_shape_or_data.data().has_value()
+            ? output_shape_or_data.data().value()
+            : output_shape_or_data.shape();
+    VLOG(3) << output_size;
     return convtransposefunction(op, infer_context, output_size);
   }
-
 }
 
 bool Conv2dTransposeBiasOpInferSymbolicShape(
