@@ -2884,6 +2884,106 @@ void logcumsumexp_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void logsumexp_grad(const Tensor& x,
+                    const Tensor& out,
+                    const Tensor& out_grad,
+                    const IntArray& axis,
+                    bool keepdim,
+                    bool reduce_all,
+                    Tensor* x_grad) {
+  if (x_grad) {
+    int64_t axis_size = axis.size();
+    int64_t x_dim_size = x.dims().size();
+    reduce_all = false;
+
+    if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+      reduce_all = true;
+    } else {
+      reduce_all = false;
+    }
+
+    auto x_grad_tmp = Tensor();
+
+    if (has_dynamic_shape(x.shape())) {
+      Tensor x_shape = shape<T>(x);
+      if (x_dim_size == 1) {
+        x_grad_tmp = backend::expand<T>(out_grad, x_shape) * exp<T>(x - out);
+      } else {
+        if (!keepdim) {
+          auto axis_ = std::vector<int64_t>();
+          if (reduce_all) {
+            for (int64_t i = 0; i < x_dim_size; i++) {
+              axis_.push_back(i);
+            }
+          } else {
+            axis_ = axis.GetData();
+            for (int64_t i = 0; i < axis_size; i++) {
+              if (axis[i] < 0) {
+                axis_[i] = axis[i] + x_dim_size;
+              }
+            }
+          }
+
+          auto result_shape = get_unsqueeze_dims<T>(shape<T>(out_grad), axis_);
+          auto out_ = backend::reshape<T>(out, result_shape);
+          auto softmax = exp<T>(x - backend::expand<T>(out_, x_shape));
+
+          auto out_grad_ = backend::reshape<T>(out_grad, result_shape);
+          x_grad_tmp = backend::expand<T>(out_grad_, x_shape) * softmax;
+        } else {
+          x_grad_tmp = backend::expand<T>(out_grad, x_shape) * exp<T>(x - out);
+        }
+      }
+    } else {
+      std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+      if (x_dim_size == 1) {
+        x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * exp<T>(x - out);
+      } else {
+        if (!keepdim) {
+          auto axis_ = std::vector<int64_t>();
+          if (reduce_all) {
+            for (int64_t i = 0; i < x_dim_size; i++) {
+              axis_.push_back(i);
+            }
+          } else {
+            axis_ = axis.GetData();
+            for (int64_t i = 0; i < axis_size; i++) {
+              if (axis[i] < 0) {
+                axis_[i] = axis[i] + x_dim_size;
+              }
+            }
+          }
+          auto out_shape = get_unsqueeze_dims(out, axis_);
+          auto out_ = reshape<T>(out, out_shape);
+          auto softmax = exp<T>(x - expand<T>(out_, IntArray(x_dim)));
+
+          auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+          auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+          x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim)) * softmax;
+        } else {
+          x_grad_tmp = expand<T>(out_grad, IntArray(x_dim)) * exp<T>(x - out);
+        }
+      }
+    }
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
+  Tensor zero;
+  if (x_grad) {
+    if (has_dynamic_shape(out_grad.shape())) {
+      zero = backend::full_with_tensor<T>(
+          shape<T>(out_grad), 0.0, out_grad.dtype());
+    } else {
+      zero = full<T>(out_grad.shape(), 0.0, out_grad.dtype());
+    }
+    set_output<T>(zero, x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
