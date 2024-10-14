@@ -12,46 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/matmul_grad_kernel.h"
 #include "paddle/phi/kernels/bmm_grad_kernel.h"
-
-#include "paddle/phi/kernels/xpu/bmm_xpu_utils.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
-
-template <typename T, typename Context>
-void MatMul(const Context& dev_ctx,
-            const DenseTensor& a,
-            bool trans_a,
-            const DenseTensor& b,
-            bool trans_b,
-            DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  dev_ctx.template Alloc<T>(out);
-  xpu::Context* xpu_ctx = dev_ctx.x_context();
-  int fc_calc_type = FCCalcType<XPUType>();
-  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
-    MatMulXPUFunction<T, int32_t>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
-    MatMulXPUFunction<T, float>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    MatMulXPUFunction<T, int_with_ll_t>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT16) {
-    MatMulXPUFunction<T, float16>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else {
-    MatMulXPUFunction<T, int16_t>(a, b, out, trans_a, trans_b, xpu_ctx);
-  }
-}
-
-template <typename T, typename Context>
-void CalcInputGrad(const Context& dev_ctx,
-                   const DenseTensor& a,
-                   bool trans_a,
-                   const DenseTensor& b,
-                   bool trans_b,
-                   DenseTensor* out) {
-  if (out == nullptr) return;
-  MatMul<T, Context>(dev_ctx, a, trans_a, b, trans_b, out);
-}
 
 template <typename T, typename Context>
 void BmmGradKernel(const Context& dev_ctx,
@@ -60,6 +27,7 @@ void BmmGradKernel(const Context& dev_ctx,
                    const DenseTensor& out_grad,
                    DenseTensor* x_grad,
                    DenseTensor* y_grad) {
+  /*
   DenseTensor x_help = x;
   DenseTensor y_help = y;
   DenseTensor out_grad_help = out_grad;
@@ -97,8 +65,17 @@ void BmmGradKernel(const Context& dev_ctx,
       y_grad->Resize(dy_dims);
     }
   }
-}
+  */
 
+  MatmulGradKernel<T>(dev_ctx,
+                  x,
+                  y,
+                  out_grad,
+                  false,
+                  false,
+                  x_grad,
+                  y_grad);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
