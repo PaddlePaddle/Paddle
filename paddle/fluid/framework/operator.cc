@@ -1389,15 +1389,19 @@ bool OperatorWithKernel::SupportXPU() const {
       return false;
     } else {
       auto& op_kernels = kernel_iter->second;
-      return std::any_of(op_kernels.begin(),
-                         op_kernels.end(),
-                         [this](OpKernelMap::const_reference kern_pair) {
-                           return phi::is_xpu_place(kern_pair.first.place_) &&
-                                  paddle::platform::is_xpu_support_op(
-                                      type_,
-                                      framework::TransToPhiDataType(
-                                          kern_pair.first.data_type_));
-                         });
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [this](OpKernelMap::const_reference kern_pair) {
+            bool is_xpu_support1 = phi::backends::xpu::is_xpu_support_op(
+                type_,
+                framework::TransToPhiDataType(kern_pair.first.data_type_));
+            bool is_xpu_support2 = phi::backends::xpu::is_xpu_support_op(
+                phi::TransToPhiKernelName(type_),
+                framework::TransToPhiDataType(kern_pair.first.data_type_));
+            return phi::is_xpu_place(kern_pair.first.place_) &&
+                   (is_xpu_support1 || is_xpu_support2);
+          });
     }
   }
 #else
