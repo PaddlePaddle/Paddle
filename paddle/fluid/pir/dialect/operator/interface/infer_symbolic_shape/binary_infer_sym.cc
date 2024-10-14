@@ -1501,7 +1501,7 @@ bool PruneGateByCapacityOpInferSymbolicShape(
   int n_expert = op->attribute<pir::Int32Attribute>("n_expert").data();
   int n_worker = op->attribute<pir::Int32Attribute>("n_worker").data();
   int expert_count_num_ele = 1;
-  for (int i = 0; i < expert_count_shape.size(); i++) {
+  for (size_t i = 0; i < expert_count_shape.size(); i++) {
     expert_count_num_ele *= expert_count_shape[i].Get<int64_t>();
   }
   PADDLE_ENFORCE_EQ(
