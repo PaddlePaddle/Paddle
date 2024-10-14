@@ -870,7 +870,7 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void AssignOutInferMeta(const MetaTensor& x,
-                        const MetaTensor& output,
+                        MetaTensor& output,  // NOLINT
                         MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
