@@ -198,9 +198,11 @@ struct TrivialLoopAlignInstr : public FusionInstruction {
 
 struct ItersTransformInstr : public FusionInstruction {
   ItersTransformInstr(const std::string& source,
+                      const std::string& aligned,
                       const std::string& target,
                       const ItersTransformRoute& iters_transform_route)
       : source_(source),
+        aligned_(aligned),
         target_(target),
         iters_transform_route_(iters_transform_route) {}
   virtual InstructionType type() const { return T_ItersTransform; }
@@ -209,11 +211,13 @@ struct ItersTransformInstr : public FusionInstruction {
   }
 
   std::string source_;
+  std::string aligned_;
   std::string target_;
   ItersTransformRoute iters_transform_route_;
 
   virtual std::string DebugStr() const {
-    return "ItersTransformInstr || " + source_ + " => " + target_;
+    return "ItersTransformInstr || " + source_ + " => " + target_ +
+           ", Align to " + aligned_;
   }
 };
 

@@ -218,7 +218,7 @@ struct FuseItersPermutatioOperation {
                                        const PatternNodePtr& target) {
       const std::string source_tmp_id = GetNewTmpId(source->id());
       merged_node->AppendInstr(std::make_shared<ItersTransformInstr>(
-          source->id(), source_tmp_id, transform_route));
+          source->id(), target->id(), source_tmp_id, transform_route));
       const std::vector<std::string> names =
           is_rise ? std::vector<std::string>({target->id(), source_tmp_id})
                   : std::vector<std::string>({source_tmp_id, target->id()});

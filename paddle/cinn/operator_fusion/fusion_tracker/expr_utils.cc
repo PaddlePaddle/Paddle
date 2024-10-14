@@ -40,10 +40,16 @@ ir::Expr ApplyItersTransform::operator()(const RemoveOnesTransform& trans) {
 ir::Expr ApplyItersTransform::operator()(const AppendItersTransform& trans) {
   VLOG(4) << "[ItersTransform] Start AppendItersTransform: "
           << trans.DebugStr();
+  auto aligned_vars = GetAllLoopVars(aligned_expr_);
+  PADDLE_ENFORCE_LT(trans.axis_.back(),
+                    aligned_vars.size(),
+                    ::common::errors::InvalidArgument(
+                        "The last axis to append iters should be less than the "
+                        "size of aligned_vars."));
+
   std::vector<ir::Var> append_vars;
-  for (size_t i = 0; i < trans.symbols_.size(); ++i) {
-    const auto upper_bound =
-        cinn::common::DimExprConverter().ConvertToIrExpr(trans.symbols_[i]);
+  for (size_t i = 0; i < trans.axis_.size(); ++i) {
+    const auto upper_bound = aligned_vars[trans.axis_[i]]->upper_bound;
     append_vars.push_back(ir::Var(upper_bound, trans.var_names_[i]));
   }
   auto result = InsertForsTransformer(trans.axis_, append_vars)(expr_);

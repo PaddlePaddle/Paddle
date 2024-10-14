@@ -187,34 +187,6 @@ GetGroupValue2Shape(const OpLoweringGroupPtr& group,
   return value2shape;
 }
 
-void SubstituteDimExprForFusionTracker(
-    const OpLoweringGroupPtr& group,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
-  const auto fusion_tracker = group->fusion_tracker_ptr;
-  for (const auto instr : fusion_tracker->instructions_) {
-    if (instr->type() == cinn::fusion::T_ItersTransform) {
-      auto& transforms = cinn::fusion::dynamic_cast_instr_with_err<
-                             cinn::fusion::ItersTransformInstr>(instr)
-                             ->iters_transform_route_;
-      for (auto& trans : transforms) {
-        if (const auto append_iters_trans =
-                std::get_if<cinn::fusion::AppendItersTransform>(&trans)) {
-          auto& dim_exprs = append_iters_trans->symbols_;
-          std::transform(dim_exprs.begin(),
-                         dim_exprs.end(),
-                         dim_exprs.begin(),
-                         [&](const symbol::DimExpr& dim_expr) {
-                           return dim_expr_map.find(dim_expr) ==
-                                          dim_expr_map.end()
-                                      ? dim_expr
-                                      : dim_expr_map.at(dim_expr);
-                         });
-        }
-      }
-    }
-  }
-}
-
 }  // namespace
 
 namespace cinn::dialect::ir::details {
@@ -241,8 +213,6 @@ CreateGroupShapeOrDataExprs(
     value2shape.insert({value, new_shape_expr});
     VLOG(6) << "Add value_to_shape_or_data_exprs for " << value.impl();
   });
-
-  SubstituteDimExprForFusionTracker(group, dim_expr_map);
 
   // infer first to use local dim constraints
   // TODO(Hongqing-work): try to get global constraints

@@ -128,19 +128,27 @@ void RunTrivialLoopAlignInstr(
 void RunItersTransformInstr(const std::shared_ptr<ItersTransformInstr>& instr,
                             FusionInterpreter* interpreter) {
   auto iters_transform = [transform_route = instr->iters_transform_route_](
-                             ir::Expr op_expr) -> ir::Expr {
+                             ir::Expr op_expr,
+                             ir::Expr aligned_expr) -> ir::Expr {
     for (auto trans : transform_route) {
-      op_expr = std::visit(ApplyItersTransform(op_expr), trans);
+      op_expr = std::visit(ApplyItersTransform(op_expr, aligned_expr), trans);
     }
     return op_expr;
   };
 
   auto new_pattern = std::make_shared<ScopeElement>();
   auto fusion_ops = interpreter->scope[instr->source_]->fusion_ops;
+  PADDLE_ENFORCE(interpreter->scope.count(instr->aligned_) &&
+                     !interpreter->scope[instr->aligned_]->fusion_ops.empty(),
+                 ::common::errors::PreconditionNotMet(
+                     "ItersTransform to aligend op must be initialized."));
+  ir::Expr aligned_expr =
+      std::visit(FusibleOp2Expr(),
+                 interpreter->scope[instr->aligned_]->fusion_ops.back())[0];
   for (const auto& fusion_op : fusion_ops) {
     ir::Expr op_expr = std::visit(FusibleOp2Expr(), fusion_op).back();
     VLOG(4) << "[ItersTransform] expr before transform: \n" << op_expr;
-    ir::Expr transformed_expr = iters_transform(op_expr);
+    ir::Expr transformed_expr = iters_transform(op_expr, aligned_expr);
     if (cinn::hlir::framework::pir::trivial_fusion_detail::IsReduceBody(
             transformed_expr)) {
       new_pattern->fusion_ops.emplace_back(ReduceOp(transformed_expr));
