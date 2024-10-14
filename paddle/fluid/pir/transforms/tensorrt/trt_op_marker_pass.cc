@@ -1402,8 +1402,6 @@ class NearestInterV2Pattern
       }
     }
 
-   
-
     auto data_format =
         op->attribute<pir::StrAttribute>("data_format").AsString();
     if (data_format != "NCHW" && data_format != "NHWC") {
