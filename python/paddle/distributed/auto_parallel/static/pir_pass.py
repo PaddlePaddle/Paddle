@@ -162,7 +162,7 @@ def apply_partition_pass(program):
                 assign_out.get_defining_op().dist_attr = (
                     copy_op_attr_with_new_member(
                         assign_out.get_defining_op().dist_attr,
-                        new_chunk_id=prev_op.dist_attr.chunk_id,
+                        new_chunk_id=op.dist_attr.chunk_id,
                     )
                 )
 
@@ -1444,30 +1444,45 @@ def fuse_attention_ffn_qkv_pass(
                             dy_param.local_shape[-1] // dy_param.local_head_dims
                         )
                     concated_dy_param_index.append(param_index)
-                # Fuse params and init pir program fusion params.
-                with paddle.base.dygraph.guard():
-                    if len(dy_param_list) == 3:
-                        is_qkv = True
-                        num_heads = dy_param_list[0].local_num_head
-                        num_key_value_heads = dy_param_list[1].local_num_head
-                    else:
-                        is_qkv = False
-                        num_heads = None
-                        num_key_value_heads = None
-                    concated_param = fuse_param_func(
-                        [obj._local_value() for obj in concated_dy_param_list],
-                        is_qkv=is_qkv,
-                        num_heads=num_heads,
-                        num_key_value_heads=num_key_value_heads,
-                    )
 
-                pir_scope_param = (
-                    paddle.static.global_scope().var(pir_param).get_tensor()
-                )
-                pir_scope_param._share_data_with(concated_param.get_tensor())
-                # Pop and relase original params from concrete_program
-                for param in concated_dy_param_list:
-                    param.get_tensor()._clear()
+                dy_param_init = True
+                for p in concated_dy_param_list:
+                    if not p._local_value()._is_initialized():
+                        dy_param_init = False
+                        break
+
+                if dy_param_init:
+                    # Fuse params and init pir program fusion params.
+                    with paddle.base.dygraph.guard():
+                        if len(dy_param_list) == 3:
+                            is_qkv = True
+                            num_heads = dy_param_list[0].local_num_head
+                            num_key_value_heads = dy_param_list[
+                                1
+                            ].local_num_head
+                        else:
+                            is_qkv = False
+                            num_heads = None
+                            num_key_value_heads = None
+                        concated_param = fuse_param_func(
+                            [
+                                obj._local_value()
+                                for obj in concated_dy_param_list
+                            ],
+                            is_qkv=is_qkv,
+                            num_heads=num_heads,
+                            num_key_value_heads=num_key_value_heads,
+                        )
+
+                    pir_scope_param = (
+                        paddle.static.global_scope().var(pir_param).get_tensor()
+                    )
+                    pir_scope_param._share_data_with(
+                        concated_param.get_tensor()
+                    )
+                    # Pop and relase original params from concrete_program
+                    for param in concated_dy_param_list:
+                        param.get_tensor()._clear()
     concated_dy_param_index.sort(reverse=True)
     for index in concated_dy_param_index:
         concrete_program.parameters[0].pop(index)

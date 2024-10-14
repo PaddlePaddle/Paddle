@@ -115,3 +115,16 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed, scope=None):
 def get_trt_version_list():
     version = trt.__version__
     return list(map(int, version.split('.')))
+
+
+# Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
+def mark_buitlin_op(program):
+    for op in program.global_block().ops:
+        if op.name() == "builtin.split":
+            defining_op = op.operands()[0].source().get_defining_op()
+            if defining_op is not None:
+                if (
+                    defining_op.has_attr("__l_trt__")
+                    and defining_op.attrs()["__l_trt__"]
+                ):
+                    enforce_op_lower_trt(program, op.name())

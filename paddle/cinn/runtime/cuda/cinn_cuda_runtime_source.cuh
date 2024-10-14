@@ -463,7 +463,8 @@ __device__ inline bool cinn_any(const bool left, const bool right) { return left
 #define CINN_WARP_SHUFFLE_INTERNAL_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                \
   __device__ inline DTYPE cinn_warp_shuffle_##REDUCE_TYPE##_internal(const DTYPE value) { \
     DTYPE tmp_val     = value, shfl_res;                                                  \
-    unsigned int mask = __activemask();                                                   \
+    unsigned int tmp_mask = ((unsigned long)1 << (blockDim.x < 32 ? blockDim.x : 32)) - 1;\
+    unsigned int mask = __activemask() & tmp_mask;                                        \
     unsigned int lane = __popc(mask);                                                     \
     if (lane < 32) {                                                                      \
       CINN_SHUFFLE_FUNCTION(16, cinn_##REDUCE_TYPE, (DTYPE)(INITIAL_VALUE))               \
@@ -718,6 +719,52 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_IMPL)
 #endif
 
 #undef CINN_BLOCK_REDUCE_IMPL
+
+#define CINN_GRID_REDUCE_IMPL(REDUCE_TYPE, init_value, DTYPE)                    \
+  __shared__ DTYPE tmp_val;                                                      \
+  int tid = (threadIdx.z * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x; \
+  if (tid < spatial_threads) {                                                   \
+    tmp_val = init_value;                                                        \
+    for (int y = 0; y < gridDim.y; y++) {                                        \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, mem[(y * gridDim.x + blockIdx.x) * spatial_threads + tid]); \
+    }                                                                            \
+  }                                                                              \
+  __syncthreads();                                                               \
+  return tmp_val;
+
+#define CINN_GRID_REDUCE_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                \
+  __device__ inline DTYPE cinn_grid_reduce_##REDUCE_TYPE(const DTYPE* mem, int spatial_threads) { \
+    CINN_GRID_REDUCE_IMPL(REDUCE_TYPE, (DTYPE)(INITIAL_VALUE), DTYPE);           \
+  }
+
+EXPAND_REDUCE_INT32_MARCO(CINN_GRID_REDUCE_MACRO)
+EXPAND_REDUCE_INT64_MARCO(CINN_GRID_REDUCE_MACRO)
+EXPAND_REDUCE_FP32_MACRO(CINN_GRID_REDUCE_MACRO)
+EXPAND_REDUCE_FP64_MACRO(CINN_GRID_REDUCE_MACRO)
+EXPAND_REDUCE_BOOL_MACRO(CINN_GRID_REDUCE_MACRO)
+
+#ifdef CINN_CUDA_BF16
+EXPAND_REDUCE_BF16_MACRO(CINN_GRID_REDUCE_MACRO)
+#endif
+
+#ifdef CINN_CUDA_FP16
+EXPAND_REDUCE_FP16_MACRO(CINN_GRID_REDUCE_MACRO)
+#endif
+
+#undef CINN_GRID_REDUCE_IMPL
+#undef CINN_GRID_REDUCE_MACRO
+
+__device__ inline bool cinn_grid_reduce_update_semaphore(int *semaphores) {
+  __shared__ bool done;
+  __threadfence();
+  __syncthreads();
+  if (threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0) {
+    int old = atomicAdd(&semaphores[blockIdx.x], 1);
+    done = (old == (gridDim.y - 1));
+  }
+  __syncthreads();
+  return done;
+}
 
 #undef EXPAND_REDUCE_INT32_MARCO
 #undef EXPAND_REDUCE_INT64_MARCO

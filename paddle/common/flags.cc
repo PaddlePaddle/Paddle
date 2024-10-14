@@ -1395,6 +1395,18 @@ PHI_DEFINE_EXPORTED_bool(
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
 
 /**
+ * Performance related FLAG
+ * Name: enable_auto_layout_pass
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, using AutoLayoutPass and AutuLayoutSimplifyPass by default
+ */
+PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass,
+                         false,
+                         "Whether enable auto_layout_pass.");
+
+/**
  * JitLayer related FLAG
  * Name: FLAGS_jit_engine_type
  * Since Version: 2.3.0
@@ -1953,3 +1965,7 @@ PHI_DEFINE_EXPORTED_bool(fused_multi_transformer_op_use_mbfmha,
 PHI_DEFINE_EXPORTED_int64(multi_block_attention_min_partition_size,
                           1024,
                           "The minimum partition size for flash decoding");
+
+PHI_DEFINE_EXPORTED_bool(save_cf_stack_op,
+                         false,
+                         "Save cf stack op for higher-order derivatives.");

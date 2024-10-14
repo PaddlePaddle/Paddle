@@ -2004,8 +2004,19 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
   std::vector<int64_t> axis;
-  if (paddle::dialect::details::GetAxisFromOpInput(
-          op->operand_source(1), infer_context, &axis)) {
+  if (op->num_operands() == 1) {
+    const auto attributes = op->attributes();
+    if (op->attributes().find("axis") != attributes.end()) {
+      axis = op->attribute<paddle::dialect::IntArrayAttribute>("axis")
+                 .data()
+                 .GetData();
+      bool reduce_all = axis.size() == 0;
+
+      return details::ReduceInferDim(
+          op, infer_context, axis, keepdim, reduce_all);
+    }
+  } else if (paddle::dialect::details::GetAxisFromOpInput(
+                 op->operand_source(1), infer_context, &axis)) {
     bool reduce_all = axis.size() == 0;
 
     return details::ReduceInferDim(
@@ -3132,6 +3143,31 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
                                               decrease_axis,
                                               infer_context));
 
+  return true;
+}
+
+bool SlogdetOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+  size_t x_shape_size = x_shape.size();
+  PADDLE_ENFORCE_GE(
+      x_shape_size,
+      2,
+      common::errors::InvalidArgument(
+          "the input matrix dimension size should greater than 2."));
+  infer_context->AddEqualCstr(x_shape[x_shape_size - 1],
+                              x_shape[x_shape_size - 2]);
+  std::vector<symbol::DimExpr> out_shape = {2};
+  size_t addtional_dims = x_shape.size() - 2;
+  for (size_t i = 0; i < addtional_dims; i++) {
+    out_shape.push_back(x_shape[i]);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
   return true;
 }
 
