@@ -25,6 +25,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     test_auto_parallel_c_embedding_pass MODULES
     test_auto_parallel_c_embedding_pass ENVS FLAGS_enable_pir_api=1
     FLAGS_dist_prim_all=1)
+  py_test_modules(
+    test_auto_parallel_replace_with_parallel_cross_entropy_pass MODULES
+    test_auto_parallel_replace_with_parallel_cross_entropy_pass ENVS
+    FLAGS_enable_pir_api=1 FLAGS_dist_prim_all=1)
   py_test_modules(test_reshard MODULES test_reshard ENVS FLAGS_enable_pir_api=1)
   py_test_modules(test_learning_rate MODULES test_learning_rate ENVS
                   FLAGS_enable_pir_api=1)
@@ -38,6 +42,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
   set_tests_properties(test_auto_parallel_c_embedding_pass
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
+  set_tests_properties(
+    test_auto_parallel_replace_with_parallel_cross_entropy_pass
+    PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
   py_test_modules(
     test_eliminate_transpose_pass MODULES test_eliminate_transpose_pass ENVS
     FLAGS_enable_pir_in_executor=1)
