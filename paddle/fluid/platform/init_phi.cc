@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/common/macros.h"
 #include "paddle/fluid/platform/init.h"
 
-#include "paddle/fluid/pir/dialect/static_tensor_operants.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/phi/api/include/operants_manager.h"
 
 REGISTER_FILE_SYMBOLS(init_phi)

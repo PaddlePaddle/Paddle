@@ -288,7 +288,8 @@ set(op_dialect_srcs
     ${api_source_file}
     ${api_source_file}
     ${cache_grad_op_symbol_shape_file}
-    ${CMAKE_CURRENT_SOURCE_DIR}/static_tensor_operants.cc)
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.cc
+)
 
 if(WITH_ONEDNN)
   set(op_dialect_srcs
