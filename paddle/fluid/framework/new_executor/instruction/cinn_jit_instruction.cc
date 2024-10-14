@@ -85,7 +85,9 @@ class CinnJitInstruction::FnPtrImpl {
         }};
 
     for (const auto& [_, binding_info] : cinn_kernel_info_.symbol_args_map) {
-      func_args_.emplace_back(std::visit(GetSymbolArg, binding_info));
+      auto info1 = std::visit(GetSymbolArg, binding_info);
+      std::cerr << "bind info " << info1 << std::endl;
+      func_args_.emplace_back(info1);
     }
 
     if (VLOG_IS_ON(4)) {
@@ -178,6 +180,7 @@ class CinnJitInstruction::FnPtrImpl {
       free(output_tensor_shapes[i]);
     }
     VLOG(6) << "End InferShape: " << cinn_kernel_info_.fn_name;
+    std::cerr << "kernel name " << cinn_kernel_info_.fn_name << std::endl;
   }
 
  private:
@@ -241,6 +244,8 @@ CinnJitInstruction::CinnJitInstruction(
     }
     tensor->Resize(alloc_tensor_type.dims());
   }
+
+  need_update_shape = true;
 }
 
 void CinnJitInstruction::Run() {
@@ -266,6 +271,20 @@ void CinnJitInstruction::Run() {
 
   // 2. exexute kernel
   fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
+
+  dev_ctx_->Wait();
+
+  for (int i = 0; i < input_tensor_size; ++i) {
+    std::cerr << "input i " << i << "\t" << tensor_args_[i]->dims()
+              << std::endl;
+    // std::cerr << tensor_args_[i] << std::endl;
+  }
+  std::cerr << "=============\n";
+  for (int i = input_tensor_size; i < tensor_args_.size(); ++i) {
+    std::cerr << "out i " << i - input_tensor_size << "\t"
+              << tensor_args_[i]->dims() << std::endl;
+    // std::cerr << tensor_args_[i] << std::endl;
+  }
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";
