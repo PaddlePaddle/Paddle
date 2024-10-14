@@ -36,6 +36,15 @@ void SoftmaxGPUDNNKernel(const Context& dev_ctx,
   }
 
   SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, x, axis, out);
+
+  //  DenseTensor temp;
+  // phi::Copy(dev_ctx, *out, phi::CPUPlace(), true, &temp);
+
+  // //std::cerr << "softmax out " << oss.str() << std::endl;
+  // for( size_t i =0 ; i < 10; ++i )
+  // {
+  //   std::cerr << "i " << i << "\t" << temp.data<T>()[i] << std::endl;
+  // }
 }
 
 }  // namespace phi
