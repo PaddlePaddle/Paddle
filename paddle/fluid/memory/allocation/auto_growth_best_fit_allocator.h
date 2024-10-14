@@ -44,6 +44,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   // Release the memory block which is not used in pool.
   uint64_t ReleaseImpl(const platform::Place &place) override {
+    std::lock_guard<SpinLock> guard(spinlock_);
     return FreeIdleChunks();
   }
 
