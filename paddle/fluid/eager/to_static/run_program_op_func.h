@@ -27,22 +27,6 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
-// Filter params without grads in global block. In this case, we will
-// tag its AutogradMeta with stop_gradient = True to avoid fault from
-// reducer while training on multi-cards.
-static void clear_no_grad_edges(const std::vector<paddle::Tensor>& params,
-                                const paddle::framework::BlockDesc* block_desc,
-                                egr::GradNodeBase* grad_node,
-                                size_t slot_id) {
-  for (size_t i = 0; i < params.size(); ++i) {
-    auto p_grad_name = paddle::framework::GradVarName(params[i].name());
-    if (!block_desc->HasVar(p_grad_name)) {
-      VLOG(3) << "clear edge of " << p_grad_name;
-      grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
-    }
-  }
-}
-
 static void clear_no_grad_edges_with_partial_block(
     const std::vector<paddle::Tensor>& params,
     const paddle::framework::BlockDesc* forward_block_desc,
@@ -54,6 +38,27 @@ static void clear_no_grad_edges_with_partial_block(
     if (!forward_block_desc->HasVar(p_grad_name) &&
         !backward_block_desc->HasVar(p_grad_name)) {
       VLOG(3) << "clear edge of " << p_grad_name;
+      grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
+    }
+  }
+}
+
+static bool IsFakeValue(const pir::Value& value) {
+  return value.impl() == nullptr || !value.type();
+}
+
+// Filter params without grads in global block. In this case, we will
+// tag its AutogradMeta with stop_gradient = True to avoid fault from
+// reducer while training on multi-cards.
+static void pir_clear_no_grad_edges(
+    const std::vector<paddle::Tensor>& params,
+    const std::vector<pir::Value>& backward_params_grad,
+    const pir::Block* backward_block,
+    egr::GradNodeBase* grad_node,
+    size_t slot_id) {
+  for (size_t i = 0; i < params.size(); ++i) {
+    if (IsFakeValue(backward_params_grad[i])) {
+      VLOG(3) << "clear edge of " << params[i].name();
       grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
     }
   }
@@ -314,6 +319,9 @@ inline void pir_run_program_ad_func(
         std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
     auto forward_outputs =
         PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo"));
+    auto backward_params_grad =
+        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
+
     pir_clear_unused_out_var_in_backward(
         forward_outputs, backward_program->block(), step_scope[0]);
 
@@ -324,13 +332,13 @@ inline void pir_run_program_ad_func(
     grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
-    // TODO(@xiongkun): rewrite by new ir representation.
-    // VLOG(2) << "clear_no_grad_edges.";
-    // clear_no_grad_edges_with_partial_block(params,
-    // forward_global_block,
-    // backward_global_block,
-    // grad_node.get(),
-    // [>slot id<] 1);
+    // Clear no grad edges
+    VLOG(2) << "clear no grad edges.";
+    pir_clear_no_grad_edges(params,
+                            backward_params_grad,
+                            backward_program->block(),
+                            grad_node.get(),
+                            /*slot id*/ 1);
 
     grad_node->SetGradInMeta(deref_out, 0);
 

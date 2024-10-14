@@ -18,13 +18,19 @@ import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
+    build_size_tensor,
+    build_start_tensor,
+    cast_tensor,
     get_axes_for_reduce_op,
     get_positive_dim,
     get_shape_tensor_element,
     has_dynamic_shape,
     trt_concat,
+    trt_floor_div,
+    trt_less,
     trt_max,
     trt_min,
+    trt_mul,
     trt_reshape,
     trt_shape,
     trt_sub,
@@ -447,3 +453,201 @@ def slice_converter(network, paddle_op, inputs):
         output_tensor = reshape_layer.get_output(0)
 
     return output_tensor
+
+
+@converter_registry.register("pd_op.split_with_num", trt_version="8.x")
+def split_with_num_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    input_shape_size = len(input_tensor.shape)
+
+    # Handle the case where axis is of type pir::Value
+    axis_op = paddle_op.operands()[1].source().get_defining_op()
+    if axis_op.name() == "pd_op.full":
+        axis_value = axis_op.attrs()["value"]
+        axis_tensor = add_1D_constant_layer(network, axis_value)
+    else:
+        axis_tensor = inputs[1]
+        axis_tensor = cast_tensor(network, axis_tensor, trt.int32)
+
+    num_splits = paddle_op.attrs().get("num")
+    num_splits_tensor = add_1D_constant_layer(network, num_splits)
+
+    # Get the dynamic shape of the input tensor
+    input_shape_tensor = network.add_shape(input_tensor).get_output(0)
+
+    # Handle negative axis index
+    input_shape_size_tensor = add_1D_constant_layer(network, input_shape_size)
+    zero_tensor = add_1D_constant_layer(network, 0)
+
+    is_negative_axis = trt_less(network, axis_tensor, zero_tensor)
+    is_negative_axis_int = cast_tensor(network, is_negative_axis, trt.int32)
+
+    axis_adjustment = trt_mul(
+        network, is_negative_axis_int, input_shape_size_tensor
+    )
+
+    axis_tensor = trt_sum(network, axis_tensor, axis_adjustment)
+
+    # Get the size of the dimension specified by axis
+    input_axis_size = network.add_gather(
+        input_shape_tensor, axis_tensor, axis=0
+    ).get_output(0)
+
+    # Compute the size of each split
+    split_size = trt_floor_div(network, input_axis_size, num_splits_tensor)
+
+    outputs = []
+    for idx in range(num_splits):
+        idx_tensor = add_1D_constant_layer(network, idx)
+        offset = trt_floor_div(network, idx_tensor, split_size)
+
+        start_tensor = build_start_tensor(
+            network, input_shape_size, axis_tensor, offset
+        )
+
+        size_tensor = build_size_tensor(
+            network,
+            input_shape_size,
+            axis_tensor,
+            num_splits_tensor,
+            input_shape_tensor,
+        )
+
+        # Create Slice layer
+        slice_layer = network.add_slice(
+            input_tensor,
+            [0] * input_shape_size,
+            [0] * input_shape_size,
+            [1] * input_shape_size,
+        )
+        slice_layer.set_input(1, start_tensor)
+        slice_layer.set_input(2, size_tensor)
+
+        outputs.append(slice_layer.get_output(0))
+
+    return outputs
+
+
+@converter_registry.register("pd_op.split", trt_version="8.x")
+def split_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    input_shape = paddle_op.operands()[0].source().shape
+    input_shape_size = len(input_shape)
+
+    axis_op = paddle_op.operands()[2].source().get_defining_op()
+    if axis_op.name() == "pd_op.full":
+        axis_value = axis_op.attrs()["value"]
+        axis_tensor = add_1D_constant_layer(network, axis_value)
+    else:
+        axis_tensor = inputs[2]
+        axis_tensor = cast_tensor(network, axis_tensor, trt.int32)
+
+    # Retrieve and process sections
+    sections_op = paddle_op.operands()[1].source().get_defining_op()
+    if sections_op.name() == "pd_op.full_int_array":
+        sections_value = sections_op.attrs()["value"]
+        section_list = [int(s) for s in sections_value]
+        dynamic_sections = False
+    else:
+        sections_tensor = inputs[1]
+        dynamic_sections = True
+
+    # Get the dynamic shape of the input tensor
+    input_shape_tensor = network.add_shape(input_tensor).get_output(0)
+
+    # Handle negative axis index
+    input_shape_size_tensor = add_1D_constant_layer(network, input_shape_size)
+    zero_tensor = add_1D_constant_layer(network, 0)
+
+    is_negative_axis = trt_less(network, axis_tensor, zero_tensor)
+    is_negative_axis_int = cast_tensor(network, is_negative_axis, trt.int32)
+
+    axis_adjustment = trt_mul(
+        network, is_negative_axis_int, input_shape_size_tensor
+    )
+    axis_tensor = trt_sum(network, axis_tensor, axis_adjustment)
+
+    # Initialize output list
+    outputs = []
+    offset = add_1D_constant_layer(network, 0)
+
+    if not dynamic_sections:
+        for section_size in section_list:
+            section_size_tensor = add_1D_constant_layer(network, section_size)
+
+            # Build start_tensor
+            start_tensor = build_start_tensor(
+                network, input_shape_size, axis_tensor, offset
+            )
+
+            # Build size_tensor
+            size_tensor = build_size_tensor(
+                network,
+                input_shape_size,
+                axis_tensor,
+                section_size_tensor,
+                input_shape_tensor,
+            )
+            # Create Slice layer
+            slice_layer = network.add_slice(
+                input_tensor,
+                [0] * input_shape_size,
+                [0] * input_shape_size,
+                [1] * input_shape_size,
+            )
+            slice_layer.set_input(1, start_tensor)
+            slice_layer.set_input(2, size_tensor)
+
+            outputs.append(slice_layer.get_output(0))
+
+            # Update offset
+            offset = network.add_elementwise(
+                offset, section_size_tensor, trt.ElementWiseOperation.SUM
+            ).get_output(0)
+    else:
+        # If sections is a dynamic tensor
+        num_sections = sections_tensor.shape[0]
+        if num_sections == -1:
+            raise NotImplementedError("dynamic sections not support")
+        num_sections = int(num_sections)
+
+        for idx in range(num_sections):
+            idx_tensor = add_1D_constant_layer(network, idx)
+
+            # Get section_size_tensor = sections_tensor[idx]
+            section_size_tensor = network.add_gather(
+                sections_tensor, idx_tensor, axis=0
+            ).get_output(0)
+
+            # Build start_tensor
+            start_tensor = build_start_tensor(
+                network, input_shape_size, axis_tensor, offset
+            )
+
+            # Build size_tensor
+            size_tensor = build_size_tensor(
+                network,
+                input_shape_size,
+                axis_tensor,
+                section_size_tensor,
+                input_shape_tensor,
+            )
+
+            # Create Slice layer
+            slice_layer = network.add_slice(
+                input_tensor,
+                [0] * input_shape_size,
+                [0] * input_shape_size,
+                [1] * input_shape_size,
+            )
+            slice_layer.set_input(1, start_tensor)
+            slice_layer.set_input(2, size_tensor)
+
+            outputs.append(slice_layer.get_output(0))
+
+            # Update offset
+            offset = network.add_elementwise(
+                offset, section_size_tensor, trt.ElementWiseOperation.SUM
+            ).get_output(0)
+
+    return outputs

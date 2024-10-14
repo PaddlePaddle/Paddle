@@ -100,11 +100,6 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     attrs={'file_path': os.path.join(dirname, origin_var.name)},
                 )
 
-        load_block.append_op(
-            type='delete_var',
-            inputs={'X': need_delete_vars},
-        )
-
         executor.run(load_prog)
 
     if not isinstance(main_program, Program):
