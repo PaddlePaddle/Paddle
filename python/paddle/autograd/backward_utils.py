@@ -55,6 +55,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.leaky_relu",
     "pd_op.log",
     "pd_op.logcumsumexp",
+    "pd_op.logsumexp",
     "pd_op.matmul",
     "pd_op.max",
     "pd_op.maximum",
@@ -88,8 +89,9 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.swish",
     "pd_op.tanh",
     "pd_op.topk",
-    "pd_op.unsqueeze",
     "pd_op.transpose",
+    "pd_op.trunc",
+    "pd_op.unsqueeze",
     "pd_op.where",
 ]
 
