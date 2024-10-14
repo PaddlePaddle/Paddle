@@ -888,6 +888,7 @@ set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
 set_tests_properties(test_jit_save_load PROPERTIES TIMEOUT 100)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 
+
 if(WITH_COVERAGE)
   set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
 endif()
@@ -1174,3 +1175,4 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 30)
