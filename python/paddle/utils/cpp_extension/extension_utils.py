@@ -1417,10 +1417,10 @@ def run_cmd(command, verbose=False):
     try:
         if verbose:
             return subprocess.check_call(
-                command, shell=True, stderr=subprocess.STDOUT
+                command, stderr=subprocess.STDOUT
             )
         else:
-            return subprocess.check_call(command, shell=True, stdout=DEVNULL)
+            return subprocess.check_call(command, stdout=DEVNULL)
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError(f"Failed to run command: {compile}, errors: {error}")
