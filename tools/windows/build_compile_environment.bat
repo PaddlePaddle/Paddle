@@ -20,11 +20,11 @@
 ::   Install compile environment for xly CI.
 ::
 ::   Include:
-::     1. CMake 3.18.0
+::     1. CMake 3.17.0
 ::     2. Git 2.28.0
 ::     3. Python 3.8.3\3.9.7\3.10.0
-::     4. Visual Studio 2017 Community
-::     5. CUDA 11.2
+::     4. Visual Studio 2019 Community
+::     5. CUDA 11.2/12.0
 ::     6. java jre
 ::     7. sccache
 ::     8. TensorRT
@@ -32,12 +32,12 @@
 
 :: Echo command is not required.
 @echo off
-cd /d %~dp0%
+cd /d C:\Users\Administrator\Downloads
 
 SET INSTALL_FLAG=%1
 ::  0. PR_CI_Windows_OPENBLAS
-::  1. PR_CI_Windows_Inference，will install VS2019, CUDA11.2
-::  2. PR_CI_Windows，CUDA10.2
+::  1. PR_CI_Windows_Inference  CUDA11.2
+::  2. PR_CI_Windows  CUDA12.0
 
 
 :: ===== start step 0: wget tool =====
@@ -60,26 +60,26 @@ goto :eof
 :: ===== end step 0: wget tool =====
 
 :: ===== start step 1: cmake =====
-:: Download CMake-3.18.0 and add in PATH when it not installed.
-:: TODO: limit version >= 3.18.0
+:: Download CMake-3.17.0 and add in PATH when it not installed.
+:: TODO: limit version >= 3.17.0
 :cmake
-echo ">>>>>>>> step [1/9]: CMake 3.18.0"
+echo ">>>>>>>> step [1/9]: CMake 3.17.0"
 cmake --help > nul 2> nul || call :install_cmake
 goto git
 
 :install_cmake
-echo There is not cmake in this PC, will install cmake-3.18.0.
-echo Download package from https://cmake.org/files/v3.18/cmake-3.18.0-win64-x64.msi ...
-wget -O cmake-3.18.0-win64-x64.msi https://cmake.org/files/v3.18/cmake-3.18.0-win64-x64.msi
-echo Install cmake-3.18.0 ...
+echo There is not cmake in this PC, will install cmake-3.17.0.
+echo Download package from https://cmake.org/files/v3.17/cmake-3.17.0-win64-x64.msi ...
+wget -O cmake-3.17.0-win64-x64.msi https://cmake.org/files/v3.17/cmake-3.17.0-win64-x64.msi
+echo Install cmake-3.17.0 ...
 :: /passive [silent installation]
 :: /norestart [do not restart]
 :: ADD_CMAKE_TO_PATH = System [add CMake to the system PATH for all users]
-start /wait cmake-3.18.0-win64-x64.msi /passive /norestart ADD_CMAKE_TO_PATH=System
+start /wait cmake-3.17.0-win64-x64.msi /passive /norestart ADD_CMAKE_TO_PATH=System
 if %errorlevel% == 0 (
-  echo Install CMake-3.18.0 success!
+  echo Install CMake-3.17.0 success!
 ) else (
-  echo Error***** Install Cmake-3.18.0 failed, please re-install it manually.
+  echo Error***** Install Cmake-3.17.0 failed, please re-install it manually.
 )
 goto :eof
 :: ===== end step 1: cmake =====
@@ -167,29 +167,8 @@ goto :eof
 :: Download Visual Studio 2017 when it not installed.
 :vs
 echo ">>>>>>>> step [4/9]: Visual Studio"
-if %INSTALL_FLAG% == 1 (
-  cmd /C "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"  > nul 2> nul || call :install_visual_studio2019
-) else (
-  cmd /C "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"  > nul 2> nul || call :install_visual_studio2017
-)
+cmd /C "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"  > nul 2> nul || call :install_visual_studio2019
 goto :cuda
-
-:install_visual_studio2017
-echo There is not Visual Studio in this PC, will install VS2017.
-echo Download package from "https://paddle-ci.gz.bcebos.com/window_requirement/VS2017/vs_Community.exe"
-wget -O vs_Community.exe "https://paddle-ci.gz.bcebos.com/window_requirement/VS2017/vs_Community.exe"
-echo Install Visual Studio 2017 ...
-:: /passive [silent install]
-:: /norestart [no restart]
-:: /NoRefresh [no refresh]
-:: /InstallSelectableItems NativeLanguageSupport_Group [select Visual C++ for installing]
-start /wait vs_Community.exe --passive --add Microsoft.VisualStudio.Workload.NativeDesktop --add Microsoft.VisualStudio.Workload.Universal --includeRecommended
-if %errorlevel% == 0 (
-  echo Install Visual Studio 2017 success!
-) else (
-  echo Error***** Install Visual Studio 2017 failed, please re-install it manually.
-)
-goto :eof
 
 :install_visual_studio2019
 echo There is not Visual Studio in this PC, will install VS2019.
@@ -202,6 +181,8 @@ if %errorlevel% == 0 (
 ) else (
   echo Error***** Install Visual Studio 2019 failed, please re-install it manually.
 )
+:: Wait VS2019 install
+ping -n 4000 127.0.0.1 > NULL
 goto :eof
 :: ===== end step 4: Visual Studio Community =====
 
@@ -212,31 +193,30 @@ if %INSTALL_FLAG% == 1 (
     cmd /C nvcc --version 2> nul | findstr /C:"11.2" > nul 2> nul || call :install_cuda112
 )
 if %INSTALL_FLAG% == 2 (
-    cmd /C nvcc --version 2> nul | findstr /C:"10.2" > nul 2> nul || call :install_cuda102
+    cmd /C nvcc --version 2> nul | findstr /C:"12.0" > nul 2> nul || call :install_cuda120
 )
 goto java-jre
 
-:install_cuda102
-echo There is not CUDA in this PC, will install CUDA-10.2.
-echo Download package from "https://paddle-ci.gz.bcebos.com/window_requirement/cuda_10.2.89_441.22_win10.exe"
-wget -O cuda_installer.exe "https://paddle-ci.gz.bcebos.com/window_requirement/cuda_10.2.89_441.22_win10.exe"
-echo Install CUDA-10.2 ...
+:install_cuda120
+echo There is not CUDA in this PC, will install CUDA-12.0.
+echo Download package from "https://paddle-ci.gz.bcebos.com/window_requirement/cuda_12.0.1_528.33_windows.exe"
+wget -O cuda_installer.exe "https://paddle-ci.gz.bcebos.com/window_requirement/cuda_12.0.1_528.33_windows.exe"
+echo Install CUDA-12.0 ...
 :: -s [silent install]
 start /wait cuda_installer.exe -s
 if %errorlevel% == 0 (
-  echo Install CUDA-10.2 success!
+  echo Install CUDA-12.0 success!
 ) else (
-  echo Error***** Install CUDA-10.2 failed, please re-install it manually.
+  echo Error***** Install CUDA-12.0 failed, please re-install it manually.
   goto :eof
 )
 del cuda_installer.exe
 
-echo Download cudnn from "https://paddle-ci.gz.bcebos.com/window_requirement/cudnn-10.2-windows10-x64-v7.6.5.32.zip"
-wget -O cudnn-10.2-windows10-x64-v7.6.5.32.zip "https://paddle-ci.gz.bcebos.com/window_requirement/cudnn-10.2-windows10-x64-v7.6.5.32.zip"
-tar xf cudnn-10.2-windows10-x64-v7.6.5.32.zip
-xcopy /E /Y /R "cuda\bin\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\bin"
-xcopy /E /Y /R "cuda\include\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\include"
-xcopy /E /Y /R "cuda\lib\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\lib"
+echo Download cudnn from "https://paddle-ci.gz.bcebos.com/window_requirement/cudnn-windows-x86_64-8.9.1.23_cuda12-archive.zip"
+wget -O cudnn-windows-x86_64-8.9.1.23_cuda12-archive.zip "https://paddle-ci.gz.bcebos.com/window_requirement/cudnn-windows-x86_64-8.9.1.23_cuda12-archive.zip"
+xcopy /E /Y /R "cuda\bin\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0\bin"
+xcopy /E /Y /R "cuda\include\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0\include"
+xcopy /E /Y /R "cuda\lib\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0\lib"
 rd /s /q cuda
 goto :eof
 
@@ -304,20 +284,20 @@ goto :eof
 :tensorrt
 echo ">>>>>>>> step [8/9]: TensorRT"
 if %INSTALL_FLAG% == 2 (
-  call :download_TensorRT_7_0_0_11
+  call :download_TensorRT_8_6_1_6
 )
 if %INSTALL_FLAG% == 1 (
   call :download_TensorRT_8_0_1_6
 )
 goto xly-agent
 
-:download_TensorRT_7_0_0_11
-if not exist TensorRT-7.0.0.11.Windows10.x86_64.cuda-10.2.cudnn7.6.zip wget -O TensorRT-7.0.0.11.Windows10.x86_64.cuda-10.2.cudnn7.6.zip ^
-"https://paddle-ci.gz.bcebos.com/window_requirement/TensorRT-7.0.0.11.Windows10.x86_64.cuda-10.2.cudnn7.6.zip"
+:download_TensorRT_8_6_1_6
+if not exist TensorRT-8.6.1.6.Windows10.x86_64.cuda-12.0.zip wget -O TensorRT-8.6.1.6.Windows10.x86_64.cuda-12.0.zip ^
+"https://paddle-ci.gz.bcebos.com/window_requirement/TensorRT-8.6.1.6.Windows10.x86_64.cuda-12.0.zip"
 goto :eof
 
 :download_TensorRT_8_0_1_6
-if not exist TTensorRT-8.0.1.6.Windows10.x86_64.cuda-11.3.cudnn8.2.zip wget -O TensorRT-8.0.1.6.Windows10.x86_64.cuda-11.3.cudnn8.2.zip ^
+if not exist TensorRT-8.0.1.6.Windows10.x86_64.cuda-11.3.cudnn8.2.zip wget -O TensorRT-8.0.1.6.Windows10.x86_64.cuda-11.3.cudnn8.2.zip ^
 "https://paddle-ci.gz.bcebos.com/window_requirement/TensorRT-8.0.1.6.Windows10.x86_64.cuda-11.3.cudnn8.2.zip"
 goto :eof
 :: ===== end step 8: TensorRT =====
