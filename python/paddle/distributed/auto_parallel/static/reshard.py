@@ -20,7 +20,6 @@ from functools import reduce
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 from paddle.distributed.utils.stream_utils import ExecutionStreamType
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
@@ -381,9 +380,6 @@ class Inserter:
                 'dynamic_shape': True,
             },
         )
-        send_op.dist_attr.execution_stream = (
-            AutoParallelStreamType.CALC_STREAM.value
-        )
         send_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
@@ -406,9 +402,6 @@ class Inserter:
                 'dtype': tensor.dtype,
                 'dynamic_shape': True,
             },
-        )
-        recv_op.dist_attr.execution_stream = (
-            AutoParallelStreamType.CALC_STREAM.value
         )
         recv_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
