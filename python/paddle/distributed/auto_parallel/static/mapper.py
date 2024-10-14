@@ -42,7 +42,7 @@ def is_collective_comm_op(op):
         str(dist.ReduceOp.MAX),
         str(dist.ReduceOp.PROD),
     ]
-    if op.type == "reduce" and op.attr("roreduce_typeot") in reduce_tyep:
+    if op.type == "reduce" and op.attr("reduce_tyep") in reduce_tyep:
         return True
     if op.type in comm_list:
         return True
@@ -114,7 +114,7 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
             comm_volume = tensor_bytes
         else:
             comm_volume = None
-    elif "c_reduce" in comm_op_type:
+    elif comm_op_type == "reduce":
         if comm_op.attr("root_id") == src_rank:
             comm_volume = None
         else:

@@ -1320,7 +1320,6 @@ class ShardingPass(PassBase):
                 # increase in memory usage. For more details, see the code of StreamSafeCUDAAllocator.
                 # This issue should be fixed using CUDAMallocAsyncAllocator in the future.
                 if (
-                    # op.type == "c_reduce_avg"
                     op.type == "reduce"
                     and op.attr("reduce_type") == str(dist.ReduceOp.AVG)
                     and not grad_group.is_in_local_shard
@@ -1433,7 +1432,6 @@ class ShardingPass(PassBase):
             # update program
             for idx, op in reversed(list(enumerate(block.ops))):
                 if is_data_parallel_reduce_op(op):
-                    # assert op.type == "c_reduce_sum"
                     assert op.type == "reduce" and op.attr(
                         "reduce_type"
                     ) == str(dist.ReduceOp.SUM)
