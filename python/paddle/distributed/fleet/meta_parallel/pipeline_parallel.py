@@ -45,6 +45,7 @@ if _use_four_directions:
 else:
     from .pp_utils import p2p_communication as p2p
 
+from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
@@ -64,6 +65,15 @@ def get_action(is_dp, shard_split_param=False):
     if shard_split_param:
         return HOOK_ACTION.REDUCE_SCATTER
     return HOOK_ACTION.REDUCE
+
+
+def _get_align_mode_scale():
+    hcg = fleet.get_hybrid_communicate_group()
+    data_parallel_world_size = hcg.get_data_parallel_world_size()
+    sharding_parallel_world_size = hcg.get_sharding_parallel_world_size()
+    return max(data_parallel_world_size, 1) * max(
+        sharding_parallel_world_size, 1
+    )
 
 
 # assume only the first stage and last stage need data, and data consumption is ordered
@@ -997,6 +1007,9 @@ class PipelineParallel(MetaParallelBase):
             )
             if self.is_pipeline_last_stage():
                 assert output_tensor_grad is None
+                # In align mode, we scale the grad directly after forward
+                if paddle.distributed.in_auto_parallel_align_mode():
+                    output_tensor = output_tensor / _get_align_mode_scale()
                 if self.scaler:
                     paddle.autograd.backward(self.scaler.scale(output_tensor))
                 else:
