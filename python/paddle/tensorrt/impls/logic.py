@@ -26,7 +26,7 @@ def greater_than_converter(network, paddle_op, inputs):
     layer_output = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.GREATER
     )
-    return trt_cast(network, layer_output, trt.float32)
+    return trt_cast(network, layer_output, inputs[0].dtype)
 
 
 @converter_registry.register("pd_op.less_than", trt_version="8.x")
@@ -34,4 +34,4 @@ def less_than_converter(network, paddle_op, inputs):
     layer_output = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.LESS
     )
-    return trt_cast(network, layer_output, trt.float32)
+    return trt_cast(network, layer_output, inputs[0].dtype)
