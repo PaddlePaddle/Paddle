@@ -1477,6 +1477,7 @@ class TanhOpPattern : public pir::OpRewritePattern<paddle::dialect::TanhOp> {
       VLOG(3) << "Tanh op does not support 0 dim input when TensorRT < 8.6.";
       return false;
     }
+#endif
 
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
