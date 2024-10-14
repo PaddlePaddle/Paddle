@@ -144,7 +144,7 @@ function do_openssl_build {
     ./config -fPIC --prefix=/usr/local/ssl > /dev/null
     make > /dev/null
     make install > /dev/null
-
+    ln -sf /usr/lib64/libcrypto.so.1.1 /usr/local/ssl/lib/libcrypto.so.1.1
 }
 
 
