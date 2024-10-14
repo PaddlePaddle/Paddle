@@ -1414,10 +1414,6 @@ class NearestInterV2Pattern
       VLOG(3) << "The interp_method of NearestInterV2 is not nearest";
       return false;
     }
-    bool has_size_input = false;
-    if (size_tensor) {
-      has_size_input = true;
-    }
 
 #if IS_TRT_VERSION_GE(8200)
     pir::Value size_tensor = op.operand_source(2);
