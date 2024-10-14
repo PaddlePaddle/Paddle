@@ -231,7 +231,7 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
       const auto reduce_dims_product =
           iters_manager_->GetReduceDimsProduct(target);
       if (reduce_dims_product.isa<std::int64_t>() &&
-          reduce_dims_product.dyn_cast<std::int64_t>() > 1024 * 4) {
+          reduce_dims_product.dyn_cast<std::int64_t>() > 1024 * 8) {
         VLOG(4) << "Can not fuse trivial to reduce with large reduce dims: "
                 << reduce_dims_product.dyn_cast<std::int64_t>();
         return std::nullopt;
