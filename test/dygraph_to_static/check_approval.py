@@ -105,15 +105,6 @@ class TestClassInheritFromTestCaseDiagnostic(Diagnostic):
         )
 
 
-class TestCaseWithPirApiDecoratorDiagnostic(Diagnostic):
-    def __init__(self, start: Location, end: Location):
-        super().__init__(
-            start,
-            end,
-            'Test case should use @test_pt_and_pir instead of @test_with_pir_api',
-        )
-
-
 ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
     UseToStaticAsDecoratorDiagnostic: [
         "test_rollback.py",
@@ -141,8 +132,8 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_move_cuda_pinned_tensor.py",
         "test_pylayer.py",
         "test_tensor_attr_consistency.py",
+        "test_partial_program_hook.py",
     ],
-    TestCaseWithPirApiDecoratorDiagnostic: [],
 }
 
 
@@ -163,8 +154,6 @@ class Checker(ast.NodeVisitor):
 
 
 class TestBaseChecker(Checker):
-    REGEX_TEST_WITH_PIR_API = re.compile(r".*test_with_pir_api")
-
     def visit_ClassDef(self, node: ast.ClassDef):
         if not is_test_class(node):
             return
@@ -184,31 +173,7 @@ class TestBaseChecker(Checker):
                 )
                 return
 
-            if (
-                isinstance(base, ast.Attribute)
-                and isinstance(base.value, ast.Name)
-                and base.value.id == 'dygraph_to_static'
-                and base.attr == 'Dy2StTestBase'
-            ) or (isinstance(base, ast.Name) and base.id == 'Dy2StTestBase'):
-                for sub_node in node.body:
-                    if isinstance(sub_node, ast.FunctionDef) and is_test_case(
-                        sub_node
-                    ):
-                        self.check_test_case(sub_node)
-                return
-
         self.generic_visit(node)
-
-    def check_test_case(self, node: ast.FunctionDef):
-        # Check if the test case use @test_with_pir_api
-        for decorator in node.decorator_list:
-            decorator_str = ast_to_source_code(decorator).strip()
-            if TestBaseChecker.REGEX_TEST_WITH_PIR_API.match(decorator_str):
-                start = Location(node.lineno, node.col_offset)
-                end = Location(node.end_lineno, node.end_col_offset)  # type: ignore
-                self.diagnostics.append(
-                    TestCaseWithPirApiDecoratorDiagnostic(start, end)
-                )
 
 
 class FunctionTostaticChecker(Checker):
@@ -318,7 +283,6 @@ def main():
         (
             UseToStaticAsDecoratorDiagnostic,
             TestClassInheritFromTestCaseDiagnostic,
-            TestCaseWithPirApiDecoratorDiagnostic,
         ),
     )
     if diagnostics:

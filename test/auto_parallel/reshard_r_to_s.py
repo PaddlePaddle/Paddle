@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.pir_pass import (
-    apply_reshard_pass,
+    ReshardPasses,
 )
 from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -97,7 +97,7 @@ class TestReshardRToS:
                 )
             dist_program = main_program.clone()
             set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
-            apply_reshard_pass(dist_program)
+            ReshardPasses.apply_reshard_pass(dist_program)
             np.testing.assert_equal(dist_program.num_ops(), 6)
             old_ops = [op.name() for op in main_program.global_block().ops]
             new_ops = [op.name() for op in dist_program.global_block().ops]
