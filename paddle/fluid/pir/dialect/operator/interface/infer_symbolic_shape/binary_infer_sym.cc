@@ -545,28 +545,21 @@ bool convtransposefunction(pir::Operation *op,
   if (channel_last) {
     output_shape.push_back(filter_shape[1] * groups);
   }
-  const symbol::DimExpr new_symbol =  infer_context->GetNextSymName();
   const int offset = (channel_last ? 2 : 1); //kNHWC
-
-  VLOG(3)<<"channel_last|||"<<channel_last<<"  output shape|||"<<output_shape;
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     symbol::DimExpr filter_extent =
         new_dilations[i] * (filter_shape[i + 2] - 1) + 1;
     symbol::DimExpr infer_shape;
-    VLOG(3)<<"x_shape[i + offset]:"<<x_shape[i + offset];
     if (x_shape[i + offset].Has<std::int64_t>()) {
       if (x_shape[i + offset].Get<int64_t>()> 0) {
         infer_shape = (x_shape[i + offset] - 1) * symbol::DimExpr(strides[i]) -
                       new_paddings[2 * i] - new_paddings[2 * i + 1] +
                       filter_extent;
-        VLOG(3)<<"if 0";
       }
     }
     else {
-      infer_shape = new_symbol;
-      VLOG(3)<<"if 1";
+      infer_shape = infer_context->GetNextSymName();
     }
-    VLOG(3)<<"infer_shape:"<<infer_shape;
     if (!output_size.empty()) {
       output_shape.push_back(output_size[i]);
     } else if (!output_padding.empty() > 0) {
@@ -579,7 +572,6 @@ bool convtransposefunction(pir::Operation *op,
   if (!channel_last) {
     output_shape.push_back(filter_shape[1] * groups);
   }
-  VLOG(3)<<"output_shape"<<output_shape;
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
