@@ -726,6 +726,11 @@ void FillSplitOutDims(const MetaTensor& x,
                       const std::vector<int64_t>& sections_vec,
                       std::vector<MetaTensor*>* out);
 
+void SetInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& shape,
+                  const std::vector<int64_t>& stride,
+                  MetaTensor* out);
+
 void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void SplitInferMeta(const MetaTensor& x_meta,

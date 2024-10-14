@@ -3257,3 +3257,101 @@ def geometric_(
     x.uniform_(min=float(tiny), max=float(1))
     x.log_().divide_(paddle.log1p(-(probs)))
     return x
+
+
+@inplace_apis_in_dygraph_only
+def set_(
+    x: paddle.Tensor,
+    source: paddle.Tensor | None = None,
+    shape: Sequence[int] | None = None,
+    stride: Sequence[int] | None = None,
+    offset: int = 0,
+    name: str | None = None,
+) -> paddle.Tensor:
+    """
+    set x with specified source Tensor's underlying storage, shape, stride and offset.
+
+    Note that the ``x`` will share the same data with ``source`` Tensor.
+
+    Args:
+        x (Tensor): An arbitrary Tensor. The data type supports ``bfloat16``, ``float16``, ``float32``, ``float64``,
+            ``bool``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64`` or ``complex128``.
+        source (Tensor|None, optional): Define the target Tensor to use. The data type supports `bfloat16`, ``float16``,
+            ``float32``, ``float64``, ``bool``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64`` or
+            ``complex128``. Default: None, which means to set ``x`` with an empty source tensor.
+        shape (list|tuple|None, optional): Define the target shape. Each element of it should be integer. Default: None,
+            which means it will use the specified ``source``'s shape as default value.
+        stride (list|tuple|None, optional): Define the target stride. Each element of it should be integer. Default: None,
+            and when ``shape`` is also None, it will use the specified ``source``'s stride as default value; when ``shape``
+            is specified, it will use the default stride corresponding to the specified ``shape``.
+        offset (int, optional): Define the target offset from x's holder. Default: 0.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
+
+            >>> src = paddle.to_tensor([[11., 22., 33.]])
+            >>> src2 = paddle.to_tensor([11., 22., 33., 44., 55., 66.])
+
+            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x.set_()
+            >>> print(x)
+            Tensor(shape=[0], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [])
+
+            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x.set_(src)
+            >>> print(x)
+            Tensor(shape=[1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[11., 22., 33.]])
+
+            >>> print(x._is_shared_buffer_with(src))
+            True
+
+            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x.set_(src, shape=[2, 1])
+            >>> print(x)
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[11.],
+             [22.]])
+
+            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x.set_(src2, shape=[3], stride=[2])
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [11., 33., 55.])
+
+            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x.set_(src2, offset=1)
+            >>> print(x.offset)
+            1
+
+    """
+    if in_dynamic_mode():
+        # set_ doesn't have backward op so EagerUtils::CheckInplace will not be
+        # called in eager_generator.cc. Here to keep consistent with other inplace
+        # op, manually check whether x is leaf node and doesn't stop gradient.
+        if x.is_leaf and not x.stop_gradient:
+            raise ValueError(
+                f"(InvalidArgument) Leaf Tensor {x.name} that doesn't stop gradient can't use "
+                "inplace strategy."
+            )
+        if source is None:
+            source = paddle.empty([0], dtype=x.dtype)
+            shape = [0]
+            stride = [0]
+        if stride is None:
+            if shape is None:
+                stride = source.strides
+            else:
+                stride = paddle.empty(shape).strides
+        if shape is None:
+            shape = source.shape
+
+        return _C_ops.set_(x, source, shape, stride, offset)
