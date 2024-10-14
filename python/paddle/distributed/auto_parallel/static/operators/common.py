@@ -17,6 +17,7 @@ import logging
 import warnings
 
 import paddle
+import paddle.distributed as dist
 from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
@@ -669,14 +670,16 @@ def is_data_parallel_scale_op(op):
 
 
 def is_data_parallel_reduce_op(op):
+    is_allreduce_op = op.type in [
+        "c_allreduce_sum",
+        "c_allreduce_avg",
+    ]
+    is_reduce_op = op.type == "reduce" and op.desc.attr("reduce_type") in [
+        str(dist.ReduceOp.SUM),
+        str(dist.ReduceOp.AVG),
+    ]
     return (
-        op.type
-        in [
-            "c_allreduce_sum",
-            "c_allreduce_avg",
-            "c_reduce_sum",
-            "c_reduce_avg",
-        ]
+        (is_allreduce_op or is_reduce_op)
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )
