@@ -561,6 +561,9 @@ PD_REGISTER_SPMD_RULE(
     embedding,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(c_embedding,
+                      PD_INFER_SPMD(phi::distributed::CEmbeddingInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CEmbeddingGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     lookup_table_v2,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
@@ -639,6 +642,10 @@ PD_REGISTER_SPMD_RULE(
     softmax_with_cross_entropy,
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdStatic),
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    c_softmax_with_cross_entropy,
+    PD_INFER_SPMD(phi::distributed::CSoftmaxWithCrossEntropyInferSpmd));
 
 // fused_linear_param_grad_add got no reverse infer spmd rule
 PD_REGISTER_SPMD_RULE(
