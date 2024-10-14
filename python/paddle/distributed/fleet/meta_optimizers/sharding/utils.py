@@ -16,6 +16,7 @@ import re
 from functools import reduce
 
 import paddle
+import paddle.distributed as dist
 from paddle.distributed.fleet.meta_optimizers.common import (
     OP_ROLE_KEY,
     OpRole,
@@ -117,7 +118,10 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
 
     for idx, op in enumerate(block.ops):
         # sharding use both allreduce and reduce to sync grad
-        if op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
+        if op.type == "c_allreduce_sum" or (
+            op.type == "reduce"
+            and op.desc.attr("reduce_type") == str(dist.ReduceOp.SUM)
+        ):
             if not op.all_attrs()["use_calc_stream"]:
                 ring_id = op.desc.attr("ring_id")
                 var_name = op.desc.input_arg_names()[0]
@@ -153,13 +157,18 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 ):
                     dp_grads_status[var_name] = 1
         # check sharding allreduce and  reduce but skip megatron allreduce
-        elif op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
+        elif op.type == "c_allreduce_sum" or (
+            op.type == "reduce"
+            and op.desc.attr("reduce_type") == str(dist.ReduceOp.SUM)
+        ):
             if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 ring_id = op.desc.attr("ring_id")
                 if ring_id == sharding_ring_id:
-                    assert (
-                        op.type == "c_reduce_sum"
+                    assert op.type == "reduce" and op.desc.attr(
+                        "reduce_type"
+                    ) == str(
+                        dist.ReduceOp.SUM
                     ), "Grad in Sharding group should be reduce rather than allreduce"
                     if var_name in vars_status:
                         _status = vars_status[var_name]
@@ -550,14 +559,13 @@ def insert_fused_reduce_ops(
         for fused_var in fused_vars:
             block._insert_op_without_sync(
                 insert_idx + insert_num,
-                type='c_reduce_sum',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
+                type='reduce',
+                inputs={'x': fused_var},
+                outputs={'out': fused_var},
                 attrs={
                     'ring_id': ring_id,
                     'root_id': root_id,
-                    'use_calc_stream': use_calc_stream,
-                    OP_ROLE_KEY: op_role,
+                    'reduce_type': int(dist.ReduceOp.SUM),
                 },
             )
             if not use_calc_stream:
@@ -622,14 +630,13 @@ def insert_reduce_ops(
             grad_in_this_device.append(var)
         block._insert_op_without_sync(
             insert_idx,
-            type='c_reduce_sum',
-            inputs={'X': var},
-            outputs={'Out': var},
+            type='reduce',
+            inputs={'x': var},
+            outputs={'out': var},
             attrs={
                 'ring_id': ring_id,
                 'root_id': root_id,
-                'use_calc_stream': use_calc_stream,
-                OP_ROLE_KEY: op_role,
+                'reduce_type': int(dist.ReduceOp.SUM),
             },
         )
 

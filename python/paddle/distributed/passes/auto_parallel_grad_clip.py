@@ -17,6 +17,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..auto_parallel.process_mesh import ProcessMesh
@@ -252,10 +253,14 @@ class ClipHelper:
                 return False
 
         for op in self.block.ops:
-            if op.type in [
-                "c_reduce_sum",
-                "c_allreduce_sum",
-            ] and not is_data_parallel_reduce_op(op):
+            if (
+                op.type == "c_allreduce_sum"
+                or (
+                    op.type == "reduce"
+                    and op.desc.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                )
+                and not is_data_parallel_reduce_op(op)
+            ):
                 return False
             if op.type in ["send_v2", "recv_v2"]:
                 return False

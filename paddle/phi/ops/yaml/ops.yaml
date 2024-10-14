@@ -3975,6 +3975,18 @@
   backward : reciprocal_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : reduce
+  args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param: [x]
+  kernel :
+    func : reduce
+    param: [x, root_id, reduce_type]
+  traits : paddle::dialect::ForwardOnlyTrait
+  inplace : (x -> out)
+
 - op : reduce_as
   args : (Tensor x, Tensor target)
   output : Tensor(out)
