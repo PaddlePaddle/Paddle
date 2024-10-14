@@ -50,7 +50,7 @@ ir::IndexExpr IterMapToExprNormalizer::ConvertIterSum(ir::IterSum* expr) {
 
 ir::IndexExpr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
   // quick branch
-  if (IsZero(expr->scale)) return ir::IndexExpr(0);
+  if (IsZero(expr->scale) || IsOne(expr->extent)) return ir::IndexExpr(0);
   ir::IndexExpr source;
   ir::IterMark* mark = expr->source.As<ir::IterMark>();
   if (auto opt = mark->source.As<ir::_Var_>()) {
@@ -67,7 +67,7 @@ ir::IndexExpr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
     return source * expr->scale;
   } else if (ProveLE(
                  mark->extent, expr->lower_factor * expr->extent, analyzer_)) {
-    if (IsOne(expr->extent) && !IsOne(mark->extent)) {
+    if (IsOne(expr->extent)) {
       return ir::Zero(expr->extent.type());
     }
     return source / expr->lower_factor * expr->scale;
@@ -242,10 +242,13 @@ Expr IterMapRewriter::PreprocessDividend(const Expr& dividend) {
     if (sum->args.size() == 1) {
       return dividend;
     }
-    // TODO(liuruyan): number of split in sum is greater then 1, Do `tryFuse` in
-    // latter.
-    auto fused = dividend;
-    return fused;
+    auto opt_fused = TryFuse(dividend);
+    if (!opt_fused) {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "Dividend can't be written as a single fused IterSum"));
+      return ir::IndexExpr();
+    }
+    return opt_fused.value();
   } else {
     PADDLE_THROW(
         ::common::errors::InvalidArgument("Expect dividend is IterExpr."));
@@ -317,8 +320,8 @@ ir::Expr IterMapRewriter::SplitDivConst(ir::Expr lhs_expr,
                                     (lhs->extent + rhs - 1) / rhs,
                                     ir::One(rhs.type()));
   }
-
-  return ir::IterSum::Make({new_split}, base / rhs);
+  return IsZero(base / rhs) ? new_split
+                            : ir::IterSum::Make({new_split}, base / rhs);
 }
 
 ir::Expr IterMapRewriter::SplitModConst(ir::Expr lhs_expr,
@@ -487,7 +490,7 @@ std::optional<Expr> IterMapRewriter::TryFuse(const ir::Expr& expr) {
     auto arg_copy = ir::ir_utils::IRCopy(iter_sum->args[matched_pos]);
     auto arg = arg_copy.As<ir::IterSplit>();
     arg->scale = arg->scale / base_scale;
-    grouped_iters.push_back(arg_copy.as_index());
+    grouped_iters.push_back(arg_copy);
     expected_scale = MulAndNormalize(
         iter_sum->args[matched_pos].As<ir::IterSplit>()->extent, matched_scale);
   }
