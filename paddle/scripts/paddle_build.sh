@@ -4154,7 +4154,7 @@ function clang-tidy_check() {
             check_error=1
         fi
     done
-    
+
     rm $temp_file
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
