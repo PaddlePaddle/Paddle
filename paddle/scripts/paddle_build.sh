@@ -4147,20 +4147,20 @@ function clang-tidy_check() {
     )
 
     check_error=0
-    for s in "${S[@]}"; do
-        count=$(grep -o "$s" $temp_file | wc -l)
-        if [ $count -ge 2 ]; then
-            echo "check_error: $[ $s ]"
+    for str in "${S[@]}"; do
+        count=$(echo "$T" | grep -o "$str" | wc -l)
+        if [ "$count" -ge 2 ]; then
+            echo "check error: $[ $s ]"
             check_error=1
         fi
     done
-    
+
     rm $temp_file
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
     echo "Check Time: $[ $endTime_s - $startTime_s ]s"
-    echo "check error: $[ $check_error ]"
+    echo "Check error: $[ $check_error ]"
 
     echo -e '\n************************************************************************************'
     if [ ${check_error} != 0 ];then
