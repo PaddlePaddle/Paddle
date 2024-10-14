@@ -466,17 +466,22 @@ struct SimplifyCastMutator : public ir::IRMutator<> {
 
 void Simplify(Expr* expr) {
   VLOG(3) << "Begin Simplify " << *expr;
+  std::cerr << "begin " << *expr << std::endl;
   SimplifyCastMutator()(expr);
   SimplifyRampMutator()(expr);
   SimplifyLoadMutator()(expr);
   SimplifyStoreMutator()(expr);
+  std::cerr << "before ifthen " << *expr << std::endl;
   SimplifyIfThenElseMutator()(expr);
+  std::cerr << "after ifthen " << *expr << std::endl;
 
   cinn::common::cas_intervals_t var_intervals;
   SimplifyNoPureMathMutator mutator(var_intervals);
   mutator(expr);
 
   ReplaceFracWithDivMutator()(expr);
+
+  std::cerr << "end " << *expr << std::endl;
 }
 
 void SimplifyCast(Expr* expr) { SimplifyCastMutator()(expr); }

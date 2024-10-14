@@ -115,6 +115,14 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
   func_bodies = OperationFusion(ops, func_bodies, group->fusion_tracker_ptr);
+
+  std::cerr << "===========================\n";
+  for (auto& b : func_bodies) {
+    std::cerr << b << std::endl;
+  }
+
+  std::cerr << "===========================\n";
+
   std::shared_ptr<FusionGroupInfo> fusion_group_info =
       GetFusionGroupInfo(func_bodies);
 
@@ -380,12 +388,17 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
     // 4.Apply low level pass
     if (i != func_bodies.size() - 1) {
+      std::cerr << "first \n" << func << std::endl;
       func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
-      optim::RearrangeLoadInstruction(&(func->body));
+      std::cerr << "opti 1 \n " << func << std::endl;
+      // optim::RearrangeLoadInstruction(&(func->body));
+      std::cerr << "rearage \n" << func << std::endl;
     } else {
       func = optim::Optimize(Expr(func), common::DefaultHostTarget(), false)
                  .as_lowered_func_ref();
     }
+
+    std::cerr << "lower fuction " << func << std::endl;
     lowered_funcs.push_back(std::move(func));
   }
 

@@ -33,6 +33,12 @@ struct ForVarExtent {
   ir::Expr extent;
 };
 
+// struct InsertNode
+// {
+//   ir::ScheduleBlockRealize* insert_point;
+//   ir::Expr insert_expr;
+// };
+
 struct IndicesAndExtent {
   std::vector<ir::Expr> indices;
   std::vector<ForVarExtent> for_var_extents;
@@ -198,6 +204,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     std::unordered_set<std::string> global_buffer_name;
     for (const auto& [buffer_name, indice_and_extent] :
          buffer_to_indice_and_extent_) {
+      std::cerr << "buffer name !! " << buffer_name << std::endl;
       // For buffers disobey SSA principle, we don't substitute them.
       if (global_store_buffer_names_.find(buffer_name) !=
           global_store_buffer_names_.end()) {
@@ -236,6 +243,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
             "they comes from the same ScheduleBlockRealize"));
 
     for (std::size_t i = 0; i < iter_values.size(); ++i) {
+      // std::cerr << "iter vars and value " << iter_vars[i] << "\t" <<
+      // iter_values[i] << std::endl;
       var_to_sb_expr_[iter_vars[i]] = iter_values[i];
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -263,18 +272,30 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
     const auto& load_buffer = node->tensor.as_tensor_ref()->buffer;
     if (load_buffer->memory_type == ir::MemoryType::Heap) {
+      std::cerr << "!!!!!!!!=====\n";
+      std::cerr << "load buffer  name " << load_buffer->name << std::endl;
       std::vector<ir::Expr> tensor_indices;
       for (const auto& indice : node->indices) {
         ir::Expr new_indice = ir::ir_utils::IRCopy(indice);
+        // std::cerr << "base indice " << indice << std::endl;
         for (const auto& [var, sb_expr] : var_to_sb_expr_) {
           ReplaceVarWithExpr(&new_indice, var, ir::ir_utils::IRCopy(sb_expr));
         }
+        std::cerr << "new indice " << new_indice << std::endl;
         tensor_indices.push_back(new_indice);
       }
+
+      // for( auto d : for_var_extents_)
+      // {
+      //   std::cerr << "d " << d.extent << std::endl;
+      // }
+
       buffer_to_indice_and_extent_[load_buffer->name].push_back(
           {tensor_indices, for_var_extents_});
     }
   }
+
+  // void Visit(const )
 
   void Visit(const ir::Store* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::Store>();
@@ -283,6 +304,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         ::common::errors::InvalidArgument("The input expr should be a Store"));
     const auto& store_buffer = node->tensor.as_tensor_ref()->buffer;
     if (store_buffer->memory_type == ir::MemoryType::Heap) {
+      std::cerr << "store buffer name " << store_buffer->name << std::endl;
       global_store_buffer_names_.insert(store_buffer->name);
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -328,6 +350,15 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     }
   }
 
+  // void Visit(const ir::For* op, Expr* expr) override {
+  //   auto* node = expr->As<ir::For>();
+
+  //   current_for_ = node;
+  //   map_for_in_block_[node] = current_block_;
+
+  //   IRMutator<>::Visit(op, expr);
+  // }
+
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
     auto* node = expr->As<ir::ScheduleBlockRealize>();
     PADDLE_ENFORCE_NOT_NULL(
@@ -335,6 +366,7 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
         ::common::errors::InvalidArgument(
             "The input expr should be a ScheduleBlockRealize"));
     current_sbr_ = node;
+    insert_block_ = current_block_;
     IRMutator<>::Visit(op, expr);
   }
 
@@ -387,7 +419,24 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
             "buffer_name %s should not be in global_buffer_to_local_buffer_",
             buffer_name));
     global_buffer_to_local_buffer_[buffer_name] = new_tensor;
-    block_to_insert_stmts_[current_block_].push_back(new_sbr);
+
+    std::cerr << "insert new sbr " << new_sbr << std::endl;
+
+    for (size_t i = 0; i < sb_node->iter_vars.size(); ++i) {
+      std::cerr << "iter vars " << sb_node->iter_vars[i] << std::endl;
+    }
+
+    // for( size_t i = 0; i < current_for_->loop_var.size(); ++i)
+    // {
+    //   std::cerr << "for i " <<  i << "\t" << current_for_->loop_var[i] <<
+    //   "\t" << current_for_->extent[i] << std::endl;
+    // }
+
+    block_to_insert_stmts_[insert_block_].push_back(new_sbr);
+    // block_to_insert_stmts_[current_block_].push_back(new_sbr);
+
+    // insert_nodes_.push_back( InsertNode{ insert_block_, current_sbr_,
+    // new_sbr});
   }
 
   void SubstituteGlobalTensor(ir::Load* load_node,
@@ -405,22 +454,38 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
   std::unordered_map<std::string, ir::Expr> global_buffer_to_local_buffer_;
   std::unordered_map<ir::Block*, std::vector<ir::Expr>> block_to_insert_stmts_;
 
+  // std::vector<InsertNode> insert_nodes_;
+
   ir::Block* current_block_;
+  ir::Block* insert_block_;
+  ir::For* current_for_;
   ir::ScheduleBlockRealize* current_sbr_;
+  std::unordered_map<ir::For*, ir::Block*> map_for_in_block_;
 };
 
 }  // namespace
 
 void EliminateCommonGlobalMemoryRead(Expr* e) {
   VLOG(4) << "Before EliminateCommonGlobalMemoryRead: \n" << *e;
+  std::cerr << "before process " << *e << std::endl;
+
   GlobalTensorInfoCollector collector;
   collector(e);
 
   const auto& eliminate_buffer_names = collector.GetEliminateBufferNames();
 
+  std::cerr << "eliminate buffer name " << eliminate_buffer_names.size()
+            << std::endl;
+
+  for (auto& name : eliminate_buffer_names) {
+    std::cerr << "eliminate name " << name << std::endl;
+  }
+
   CommonGlobalMemoryEliminator eliminator(eliminate_buffer_names);
   eliminator(e);
   VLOG(4) << "After EliminateCommonGlobalMemoryRead: \n" << *e;
+
+  std::cerr << "after process " << *e << std::endl;
 }
 
 }  // namespace optim
