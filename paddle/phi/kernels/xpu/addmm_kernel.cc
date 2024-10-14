@@ -16,8 +16,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "xblas/cublasLt.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
+#include "xblas/cublasLt.h"
 
 namespace xblas = baidu::xpu::xblas;
 
@@ -96,7 +96,8 @@ void AddmmKernel(const Context& dev_ctx,
     XpuFcInfo fc_info;
     GetFCInfo(x_dims, y_dims, false, false, &fc_info);
     xpu::Context* xpu_ctx = dev_ctx.x_context();
-    MatMulXPUFunction<XPUType, XPUType>(xpu_ctx, x_ptr, y_ptr, input_ptr, out_ptr, fc_info, alpha, beta);
+    MatMulXPUFunction<XPUType, XPUType>(
+        xpu_ctx, x_ptr, y_ptr, input_ptr, out_ptr, fc_info, alpha, beta);
   }
 }
 }  // namespace phi

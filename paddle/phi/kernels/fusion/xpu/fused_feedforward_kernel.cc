@@ -142,12 +142,12 @@ void FFN(const phi::XPUContext& dev_ctx,
                              nullptr,
                              nullptr);
   phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(xpu_ctx,
-                                   x_ptr,
-                                   linear1_weight_ptr,
-                                   nullptr,
-                                   linear2_before_tmp_ptr,
-                                   linear1_fc_info,
-                                   1.0f);
+                                             x_ptr,
+                                             linear1_weight_ptr,
+                                             nullptr,
+                                             linear2_before_tmp_ptr,
+                                             linear1_fc_info,
+                                             1.0f);
 
   // bias
   r = xpu::broadcast_add(xpu_ctx,
@@ -193,12 +193,12 @@ void FFN(const phi::XPUContext& dev_ctx,
                              nullptr,
                              nullptr);
   phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(xpu_ctx,
-                                   dropout1_out_ptr,
-                                   linear2_weight_ptr,
-                                   nullptr,
-                                   dropout2_out_ptr,
-                                   linear2_fc_info,
-                                   1.0f);
+                                             dropout1_out_ptr,
+                                             linear2_weight_ptr,
+                                             nullptr,
+                                             dropout2_out_ptr,
+                                             linear2_fc_info,
+                                             1.0f);
 
   // bias
   r = xpu::broadcast_add(xpu_ctx,

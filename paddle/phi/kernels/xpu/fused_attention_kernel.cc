@@ -263,12 +263,12 @@ void FusedAttentionKernel(const Context &dev_ctx,
                          nullptr);
 
   phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(xpu_ctx,
-                                   x_cacl_ptr,
-                                   qkv_weight_ptr,
-                                   nullptr,
-                                   qkv_before_transpose_ptr,
-                                   qkv_fc_info,
-                                   1.0f);
+                                             x_cacl_ptr,
+                                             qkv_weight_ptr,
+                                             nullptr,
+                                             qkv_before_transpose_ptr,
+                                             qkv_fc_info,
+                                             1.0f);
 
   // bias
   r = xpu::broadcast_add(xpu_ctx,
@@ -357,8 +357,13 @@ void FusedAttentionKernel(const Context &dev_ctx,
                             nullptr,
                             nullptr,
                             nullptr);
-    phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
-        xpu_ctx, attn_dropout_out_ptr, v_ptr, nullptr, qkv_ptr, qktv_fc_info, 1.0f);
+    phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(xpu_ctx,
+                                               attn_dropout_out_ptr,
+                                               v_ptr,
+                                               nullptr,
+                                               qkv_ptr,
+                                               qktv_fc_info,
+                                               1.0f);
     r = xpu::transpose(xpu_ctx,
                        qkv_ptr,
                        fmha_out_ptr,
@@ -381,12 +386,12 @@ void FusedAttentionKernel(const Context &dev_ctx,
                             nullptr,
                             nullptr);
   phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(xpu_ctx,
-                                   fmha_out_ptr,
-                                   out_linear_weight_ptr,
-                                   nullptr,
-                                   linear_out_ptr,
-                                   linear_fc_info,
-                                   1.0f);
+                                             fmha_out_ptr,
+                                             out_linear_weight_ptr,
+                                             nullptr,
+                                             linear_out_ptr,
+                                             linear_fc_info,
+                                             1.0f);
 
   // out_linear_bias_ptr
   r = xpu::broadcast_add(xpu_ctx,

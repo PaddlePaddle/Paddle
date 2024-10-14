@@ -39,7 +39,8 @@ void MatmulKernel(const Context& dev_ctx,
   XpuFcInfo fc_info;
   GetFCInfo(x_dims, y_dims, transpose_x, transpose_y, &fc_info);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
-  MatMulXPUFunction<XPUType, XPUType>(xpu_ctx, x_ptr, y_ptr, nullptr, out_ptr, fc_info, 1.0f);
+  MatMulXPUFunction<XPUType, XPUType>(
+      xpu_ctx, x_ptr, y_ptr, nullptr, out_ptr, fc_info, 1.0f);
 }
 
 template <typename T, typename Context>

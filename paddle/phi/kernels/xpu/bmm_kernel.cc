@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/bmm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/bmm_kernel.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
@@ -70,7 +70,8 @@ void BmmKernel(const Context& dev_ctx,
   XpuFcInfo fc_info;
   GetFCInfo(x_dims, y_dims, false, false, &fc_info);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
-  MatMulXPUFunction<XPUType, XPUType>(xpu_ctx, x_ptr, y_ptr, nullptr, out_ptr, fc_info, 1.0);
+  MatMulXPUFunction<XPUType, XPUType>(
+      xpu_ctx, x_ptr, y_ptr, nullptr, out_ptr, fc_info, 1.0);
 }
 }  // namespace phi
 
