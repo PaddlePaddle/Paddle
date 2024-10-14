@@ -88,6 +88,7 @@ message PpConfig {
     optional bool overlap_p2p_comm = 7 [default = false];
     optional bool clear_every_step_cache = 8 [default = false];
     optional bool use_batch_p2p_comm = 9 [default = true];
+    optional bool best_unbalanced_scheduler = 10 [ default = false ];
 }
 
 message DygraphShardingConfig {
