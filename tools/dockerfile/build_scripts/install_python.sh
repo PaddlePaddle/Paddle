@@ -22,10 +22,10 @@ if [ "$1" == "python313" ]; then
     wget https://github.com/python/cpython/archive/refs/tags/v3.13.0.tar.gz
     tar -xvf v3.13.0.tar.gz
     cd cpython-3.13.0/
-    ./configure --with-pydebug --with-ssl --enable-optimizations --with-lto --disable-gil
+    ./configure --with-pydebug --enable-optimizations --with-lto --disable-gil
     make -s -j
     make altinstall
-    ./configure --with-pydebug --with-ssl --enable-optimizations --with-lto
+    ./configure --with-pydebug
     make -s -j
     make altinstall
 fi
