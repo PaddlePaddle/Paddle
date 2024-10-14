@@ -37,22 +37,21 @@ void IterMapToExprNormalizer::Visit(const Expr* expr, Expr* op) {
   }
 }
 
-Expr IterMapToExprNormalizer::ConvertIterSum(ir::IterSum* expr) {
-  Expr res(0);
+ir::IndexExpr IterMapToExprNormalizer::ConvertIterSum(ir::IterSum* expr) {
+  ir::IndexExpr res(0);
 
   for (auto&& arg : expr->args) {
     auto split = arg.As<ir::IterSplit>();
     res = res + ConvertIterSplit(split);
   }
-  res = IsZero(expr->base) ? res : res + expr->base;
+  res = res + expr->base;
   return res;
 }
 
-Expr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
+ir::IndexExpr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
   // quick branch
-  if (IsZero(expr->scale)) return Expr(0);
-
-  Expr source;
+  if (IsZero(expr->scale)) return ir::IndexExpr(0);
+  ir::IndexExpr source;
   ir::IterMark* mark = expr->source.As<ir::IterMark>();
   if (auto opt = mark->source.As<ir::_Var_>()) {
     source = opt;
@@ -63,21 +62,19 @@ Expr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
     Visit(&(mark->source), &(mark->source));
     source = mark->source;
   }
-  Expr res;
-  if (analyzer_.ProveEQ(expr->extent, mark->extent) &&
+  if (ProveEQ(expr->extent, mark->extent, analyzer_) &&
       IsOne(expr->lower_factor)) {
-    res = source;
-  } else if (analyzer_.ProveEQ(mark->extent,
-                               expr->lower_factor * expr->extent)) {
+    return source * expr->scale;
+  } else if (ProveLE(
+                 mark->extent, expr->lower_factor * expr->extent, analyzer_)) {
     if (IsOne(expr->extent) && !IsOne(mark->extent)) {
-      res = ir::Zero(expr->extent.type());
+      return ir::Zero(expr->extent.type());
     }
-    res = source / expr->lower_factor * expr->scale;
+    return source / expr->lower_factor * expr->scale;
   } else {
-    res = (source % (expr->lower_factor * expr->extent)) / expr->lower_factor *
-          expr->scale;
+    return (source % (expr->lower_factor * expr->extent)) / expr->lower_factor *
+           expr->scale;
   }
-  return IsOne(expr->scale) ? res : res * expr->scale;
 }
 
 void IterMapRewriter::Visit(const ir::_Var_* op, Expr* expr) {
@@ -109,7 +106,7 @@ void IterMapRewriter::Visit(const ir::Add* op, Expr* expr) {
   } else if (auto b_split = b.As<ir::IterSplit>()) {
     AddToLhs(ret_sum, *b_split, 1);
   } else {
-    ret_sum->base = ret_sum->base + b;
+    ret_sum->base = ret_sum->base + b.as_index();
   }
   *expr = ret;
 }
@@ -135,7 +132,7 @@ void IterMapRewriter::Visit(const ir::Sub* op, Expr* expr) {
   } else if (auto* b_split = b.As<ir::IterSplit>()) {
     AddToLhs(ret_sum, *b_split, -1);
   } else {
-    ret_sum->base = ret_sum->base - b;
+    ret_sum->base = ret_sum->base - b.as_index();
   }
 
   *expr = ret;
@@ -158,7 +155,8 @@ void IterMapRewriter::Visit(const ir::Mul* op, Expr* expr) {
   if ((a.As<ir::IterSum>() || a.As<ir::IterSplit>()) &&
       (b.As<ir::IterSum>() || b.As<ir::IterSplit>())) {
     PADDLE_THROW(::common::errors::InvalidArgument(
-        "product of iter and iter is not supported"));
+        "Product of iter and iter is not supported"));
+    return;
   }
 
   if (!a.As<ir::IterSum>() && !a.As<ir::IterSplit>()) {
@@ -171,13 +169,204 @@ void IterMapRewriter::Visit(const ir::Mul* op, Expr* expr) {
     MulToLhs(a_sum, b);
 
   } else if (auto a_split = ret.As<ir::IterSplit>()) {
-    a_split->scale = a_split->scale * b;
+    a_split->scale = a_split->scale * b.as_index();
   }
 
   *expr = ret;
 }
 
-Expr IterMapRewriter::ToIterSum(const Expr& expr) {
+void IterMapRewriter::Visit(const ir::Div* op, Expr* expr) {
+  auto a = op->a();
+  auto b = op->b();
+
+  Visit(&a);
+  Visit(&b);
+
+  if (auto const_res = cinn::common::TryConstFold<ir::Div>(a, b)) {
+    *expr = const_res.value();
+    return;
+  }
+
+  if (!IsIterExpr(a, b)) return;
+
+  if ((b.As<ir::IterSum>() || b.As<ir::IterSplit>())) {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Division of iter and iter is not supported"));
+    return;
+  }
+
+  auto ret = ir::ir_utils::IRCopy(a);
+
+  auto preprocessed = PreprocessDividend(ret);
+  auto preprocessed_sum = preprocessed.As<ir::IterSum>();
+
+  ret = SplitDivConst(preprocessed_sum->args[0], preprocessed_sum->base, b);
+
+  *expr = ret;
+}
+
+void IterMapRewriter::Visit(const ir::Mod* op, Expr* expr) {
+  auto a = op->a();
+  auto b = op->b();
+
+  Visit(&a);
+  Visit(&b);
+
+  if (auto const_res = cinn::common::TryConstFold<ir::Mod>(a, b)) {
+    *expr = const_res.value();
+    return;
+  }
+
+  if (!IsIterExpr(a, b)) return;
+
+  if ((b.As<ir::IterSum>() || b.As<ir::IterSplit>())) {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Mod of iter and iter is not supported"));
+    return;
+  }
+
+  auto ret = ir::ir_utils::IRCopy(a);
+
+  auto preprocessed = PreprocessDividend(ret);
+  auto preprocessed_sum = preprocessed.As<ir::IterSum>();
+
+  ret = SplitModConst(preprocessed_sum->args[0], preprocessed_sum->base, b);
+
+  *expr = ret;
+}
+
+Expr IterMapRewriter::PreprocessDividend(const Expr& dividend) {
+  if (dividend.As<ir::IterSplit>()) {
+    return ir::IterSum::Make({dividend}, ir::Zero(dividend.type()));
+  } else if (auto sum = dividend.As<ir::IterSum>()) {
+    if (sum->args.size() == 1) {
+      return dividend;
+    }
+    // TODO(liuruyan): number of split in sum is greater then 1, Do `tryFuse` in
+    // latter.
+    auto fused = dividend;
+    return fused;
+  } else {
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("Expect dividend is IterExpr."));
+    return Expr();
+  }
+}
+
+ir::IndexExpr IterMapRewriter::SplitDivConst(ir::IndexExpr lhs_expr,
+                                             ir::IndexExpr base,
+                                             ir::IndexExpr rhs) {
+  // (lhs_expr + base) // rhs
+  if (IsOne(rhs)) {
+    if (IsZero(base)) return lhs_expr;
+    return ir::IterSum::Make({lhs_expr}, base);
+  }
+
+  auto lhs = lhs_expr.As<ir::IterSplit>();
+  if (!IsOne(lhs->scale)) {
+    if (ProveDivisible(lhs->scale, rhs, analyzer_) && IsZero(base)) {
+      lhs->scale = lhs->scale / rhs;
+      return lhs;
+    } else if (ProveDivisible(lhs->scale, rhs, analyzer_) &&
+               ProveDivisible(base, rhs, analyzer_)) {
+      lhs->scale = lhs->scale / rhs;
+      return ir::IterSum::Make({lhs}, base / rhs);
+    } else if (ProveDivisible(rhs, lhs->scale, analyzer_) && IsZero(base)) {
+      rhs = rhs / lhs->scale;
+      lhs->scale = ir::One(rhs.type());
+    } else if (ProveDivisible(rhs, lhs->scale, analyzer_) &&
+               ProveDivisible(base, lhs->scale, analyzer_)) {
+      base = base / lhs->scale;
+      rhs = rhs / lhs->scale;
+      lhs->scale = ir::One(rhs.type());
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "IterExpr scale must be divisible by rhs"));
+      return ir::IndexExpr();
+    }
+  }
+
+  // TODO(liuruyan): Padding dividend to divisor later. assuming dividend canbe
+  // divided by divisor now.
+
+  ir::IndexExpr new_split;
+  if (!ProveDivisible(base, rhs, analyzer_)) {
+    // padding base to divisor later. Treat the whole expr as IterMark now.
+    return ir::IterSum::Make(
+        {ir::IterSplit::Make(
+            ir::IterMark::Make(ir::IterSum::Make({ir::IndexExpr(lhs)}, base),
+                               lhs->extent + base),
+            rhs,
+            (lhs->extent + base + rhs - 1) / rhs,
+            ir::One(rhs.type()))},
+        ir::Zero(rhs.type()));
+  }
+
+  if (ProveDivisible(lhs->extent, rhs, analyzer_)) {
+    new_split = ir::IterSplit::Make(
+        lhs->source, lhs->lower_factor * rhs, lhs->extent / rhs, lhs->scale);
+  } else if (IsOne(lhs->lower_factor) &&
+             ProveEQ(lhs->extent,
+                     lhs->source.As<ir::IterMark>()->extent,
+                     analyzer_)) {
+    new_split = ir::IterSplit::Make(
+        lhs->source, rhs, (lhs->extent + rhs - 1) / rhs, lhs->scale);
+  } else {
+    new_split = ir::IterSplit::Make(ir::IterMark::Make(lhs, lhs->extent),
+                                    rhs,
+                                    (lhs->extent + rhs - 1) / rhs,
+                                    ir::One(rhs.type()));
+  }
+
+  return ir::IterSum::Make({new_split}, base / rhs);
+}
+
+ir::IndexExpr IterMapRewriter::SplitModConst(ir::IndexExpr lhs_expr,
+                                             ir::IndexExpr base,
+                                             ir::IndexExpr rhs) {
+  // (lhs_expr + base) % rhs
+  if (IsOne(rhs)) {
+    return ir::Zero(lhs_expr.type());
+  }
+
+  auto lhs = lhs_expr.As<ir::IterSplit>();
+  if (!IsOne(lhs->scale)) {
+    if (ProveDivisible(lhs->scale, rhs, analyzer_) && IsZero(base)) {
+      return ir::Zero(lhs_expr.type());
+    } else if (ProveDivisible(lhs->scale, rhs, analyzer_) &&
+               ProveDivisible(base, rhs, analyzer_)) {
+      return ir::Zero(lhs_expr.type());
+    } else if (ProveDivisible(rhs, lhs->scale, analyzer_) && IsZero(base)) {
+      rhs = rhs / lhs->scale;
+    } else if (ProveDivisible(rhs, lhs->scale, analyzer_) &&
+               ProveDivisible(base, lhs->scale, analyzer_)) {
+      base = base / lhs->scale;
+      rhs = rhs / lhs->scale;
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "IterExpr scale must be divisible by rhs"));
+      return ir::IndexExpr();
+    }
+  }
+
+  if (!ProveDivisible(base, rhs, analyzer_)) {
+    auto lhs_s1 = ir::IterSplit::Make(
+        lhs->source, lhs->lower_factor, lhs->extent, ir::One(lhs_expr.type()));
+    // padding base to divisor later. Treat the whole expr as IterMark now.
+    return ir::IterSplit::Make(
+        ir::IterMark::Make(ir::IterSum::Make({lhs_s1}, base),
+                           lhs->extent + base),
+        ir::One(rhs.type()),
+        rhs,
+        lhs->scale);
+  }
+  // TODO(liuruyan): Padding dividend to divisor later. assuming dividend canbe
+  // divided by divisor now.
+
+  return ir::IterSplit::Make(lhs->source, lhs->lower_factor, rhs, lhs->scale);
+}
+
+ir::IndexExpr IterMapRewriter::ToIterSum(const Expr& expr) {
   if (expr.As<ir::IterSum>()) {
     return expr;
   } else if (auto split = expr.As<ir::IterSplit>()) {
@@ -192,7 +381,7 @@ Expr IterMapRewriter::ToIterSum(const Expr& expr) {
 void IterMapRewriter::AddToLhs(ir::IterSum* lhs,
                                const ir::IterSplit& rhs,
                                int sign) {
-  auto rhs_expr = ir::ir_utils::IRCopy(Expr(const_cast<ir::IterSplit*>(&rhs)));
+  auto rhs_expr = ir::ir_utils::IRCopy(Expr(&Reference(&rhs)));
   for (auto&& lvalue : lhs->args) {
     if (lvalue == rhs_expr) {
       auto lsplit = lvalue.As<ir::IterSplit>();
@@ -209,7 +398,7 @@ void IterMapRewriter::AddToLhs(ir::IterSum* lhs,
     lhs->args.push_back(rhs_expr);
   } else {
     rhs_expr.As<ir::IterSplit>()->scale =
-        ir::Zero(rhs.scale.type()) - rhs.scale;
+        ir::Zero(rhs.scale.type()).as_index() - rhs.scale;
     lhs->args.push_back(rhs_expr);
   }
 }
@@ -228,12 +417,12 @@ void IterMapRewriter::AddToLhs(ir::IterSum* lhs,
   }
 }
 
-void IterMapRewriter::MulToLhs(ir::IterSum* lhs, const Expr& rhs) {
+void IterMapRewriter::MulToLhs(ir::IterSum* lhs, const ir::IndexExpr& rhs) {
   for (auto&& lvalue : lhs->args) {
     auto lsplit = lvalue.As<ir::IterSplit>();
     lsplit->scale = lsplit->scale * rhs;
   }
-  lhs->base = IsZero(lhs->base) ? lhs->base : lhs->base * rhs;
+  lhs->base = lhs->base * rhs;
 }
 
 }  // namespace common

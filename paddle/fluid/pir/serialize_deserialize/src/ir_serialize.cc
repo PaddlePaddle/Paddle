@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/serialize_utils.h"
 #include "paddle/pir/include/core/dialect.h"
@@ -20,6 +21,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
+COMMON_DECLARE_bool(save_cf_stack_op);
 namespace pir {
 
 Json ProgramWriter::GetProgramJson(const pir::Program* program) {
@@ -99,29 +101,31 @@ Json ProgramWriter::WriteBlock(pir::Block* block,
   Json ops_json = Json::array();
 
   /* delete cf.stack_create / cf.tuple_push */
-  std::vector<pir::Operation*> delete_ops;
-  for (auto op : block->ops()) {
-    if (op->isa<pir::StackCreateOp>()) {
-      delete_ops.push_back(op);
+  if (!FLAGS_save_cf_stack_op) {
+    std::vector<pir::Operation*> delete_ops;
+    for (auto op : block->ops()) {
+      if (op->isa<pir::StackCreateOp>()) {
+        delete_ops.push_back(op);
+      }
     }
+    VLOG(6) << "program before delete stack op :" << *(block->parent_program());
+    for (auto op : delete_ops) {
+      VLOG(0) << "Delete cf.stack_create / cf.tuple_push.";
+      auto stack_op = op->dyn_cast<pir::StackCreateOp>();
+      if (stack_op.inlet().HasOneUse()) {
+        auto tuple_push_op = stack_op.tuple_push_op();
+        auto block_in = tuple_push_op->GetParent();
+        block_in->erase(*tuple_push_op);
+      }
+      if (stack_op.outlet().HasOneUse()) {
+        auto tuple_pop_op = stack_op.tuple_pop_op();
+        auto block_in = tuple_pop_op->GetParent();
+        block_in->erase(*tuple_pop_op);
+      }
+      block->erase(*op);
+    }
+    VLOG(6) << "program after delete stack op :" << *(block->parent_program());
   }
-  VLOG(6) << "program before delete stack op :" << *(block->parent_program());
-  for (auto op : delete_ops) {
-    VLOG(0) << "Delete cf.stack_create / cf.tuple_push.";
-    auto stack_op = op->dyn_cast<pir::StackCreateOp>();
-    if (stack_op.inlet().HasOneUse()) {
-      auto tuple_push_op = stack_op.tuple_push_op();
-      auto block_in = tuple_push_op->GetParent();
-      block_in->erase(*tuple_push_op);
-    }
-    if (stack_op.outlet().HasOneUse()) {
-      auto tuple_pop_op = stack_op.tuple_pop_op();
-      auto block_in = tuple_pop_op->GetParent();
-      block_in->erase(*tuple_pop_op);
-    }
-    block->erase(*op);
-  }
-  VLOG(6) << "program after delete stack op :" << *(block->parent_program());
   for (auto op : block->ops()) {
     auto op_json = WriteOp(*op);
     ops_json.emplace_back(op_json);

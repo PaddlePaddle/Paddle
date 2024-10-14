@@ -3058,6 +3058,57 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
           VLOG(6) << *it;
         }
       }
+
+      pir::Value shadow_source = it->operand_source(0);
+      auto val_src_place =
+          shadow_source.type()
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .place();
+
+      if (shadow_value.use_count() >= 1 || val_src_place == phi::CPUPlace()) {
+        bool all_use_is_scalar = true;
+        for (auto use_it = shadow_value.use_begin();
+             use_it != shadow_value.use_end();
+             ++use_it) {
+          auto use_op = use_it->owner();
+
+          if (!use_op->isa<PhiKernelOp>()) {
+            all_use_is_scalar = false;
+            break;
+          }
+
+          auto op_info = ctx->GetRegisteredOpInfo(
+              use_op->dyn_cast<PhiKernelOp>().op_name());
+
+          if (!op_info) {
+            all_use_is_scalar = false;
+            break;
+          }
+
+          auto* op_info_concept =
+              op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
+          auto [input_infos, _1, _2, _3, _4] =
+              op_info_concept->get_op_info_(op_info.name());
+
+          uint32_t val_index = 0;
+          for (uint32_t index = 0; index < use_op->num_operands(); index++) {
+            if (use_op->operand_source(index) == shadow_value) {
+              val_index = index;
+              break;
+            }
+          }
+
+          if (!input_infos[val_index].is_mutable_attribute) {
+            all_use_is_scalar = false;
+            break;
+          }
+        }
+        if (all_use_is_scalar) {
+          // set dst_place_type for shadow_feed, 0 for cpu_place
+          VLOG(6) << "Reset shadow_feed dst_place_type to 0 for scalar use";
+          it->set_attribute("dst_place_type", pir::Int32Attribute::get(ctx, 0));
+        }
+      }
     }
   }
 }
