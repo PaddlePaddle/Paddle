@@ -908,20 +908,19 @@ class SplitWithNumOpPattern
   }
 };
 
-template <typename OpType>
-class LogicOpPattern : public pir::OpRewritePattern<OpType> {
+class GreaterEqualOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GreaterEqualOp> {
  public:
-  using pir::OpRewritePattern<OpType>::OpRewritePattern;
-
-  bool MatchAndRewrite(OpType op,
+  using pir::OpRewritePattern<
+      paddle::dialect::GreaterEqualOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GreaterEqualOp op,
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->template attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
 #if IS_TRT_VERSION_LT(8400)
-    VLOG(3) << OpType::getOperationName()
-            << " is not supported when TensorRT < 8.4";
+    VLOG(3) << "GreaterEqualOp is not supported when TensorRT < 8.4";
     return false;
 #else
     pir::Value x = op.operand_source(0);
@@ -929,7 +928,7 @@ class LogicOpPattern : public pir::OpRewritePattern<OpType> {
     auto x_dtype = pir::GetDataTypeFromValue(x);
     auto y_dtype = pir::GetDataTypeFromValue(y);
     if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
-      VLOG(3) << op.name() << " do not support bool datatype";
+      VLOG(3) << "Greate_equal op do not support bool datatype";
       return false;
     }
 #endif
@@ -938,21 +937,60 @@ class LogicOpPattern : public pir::OpRewritePattern<OpType> {
   }
 };
 
-class GreaterEqualOpPattern
-    : public LogicOpPattern<paddle::dialect::GreaterEqualOp> {
- public:
-  using LogicOpPattern<paddle::dialect::GreaterEqualOp>::LogicOpPattern;
-};
-
 class GreaterThanOpPattern
-    : public LogicOpPattern<paddle::dialect::GreaterThanOp> {
+    : public pir::OpRewritePattern<paddle::dialect::GreaterThanOp> {
  public:
-  using LogicOpPattern<paddle::dialect::GreaterThanOp>::LogicOpPattern;
+  using pir::OpRewritePattern<paddle::dialect::GreaterThanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GreaterThanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+    VLOG(3) << "GreaterThanOp is not supported when TensorRT < 8.4";
+    return false;
+#else
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "Greater_than op do not support bool datatype";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
 };
 
-class LessThanOpPattern : public LogicOpPattern<paddle::dialect::LessThanOp> {
+class LessThanOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::LessThanOp> {
  public:
-  using LogicOpPattern<paddle::dialect::LessThanOp>::LogicOpPattern;
+  using pir::OpRewritePattern<paddle::dialect::LessThanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::LessThanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+    VLOG(3) << "LessThanOp is not supported when TensorRT < 8.4";
+    return false;
+#else
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "Less_than op do not support bool datatype";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
 };
 
 class MultiplyOpPattern
