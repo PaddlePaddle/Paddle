@@ -65,7 +65,8 @@ class StorageHelperBase : public BaseT {
   using InterfaceList =
       typename Filter<TypeInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
-  static ConcreteT dyn_cast_impl(BaseT type) {
+  template <typename T>
+  static ConcreteT dyn_cast_impl(T type) {
     if (type && type.type_id() == TypeId::get<ConcreteT>()) {
       return ConcreteT(type.storage());
     }

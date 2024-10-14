@@ -342,6 +342,9 @@ set_field_default_config(
 )
 set_field_default_config(MP_OPTIMIZATION, "replace_with_c_embedding", False)
 
+set_field_default_config(
+    MP_OPTIMIZATION, "replace_with_parallel_cross_entropy", False
+)
 if TYPE_CHECKING:
 
     class _MPOptimizationConfig(TypedDict, total=False):  # noqa: PYI049
