@@ -73,7 +73,7 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
           "FusedGemm do not support batched fc now, but got batch size %d.",
           batch_size));
   MatMulXPUFunction<XPUType>(
-      xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f, false, act);
+      xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f, 0.f, false, act);
 }
 
 }  // namespace fusion

@@ -46,7 +46,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
 
   PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] Expr param(loop) must be For node!\n"
@@ -58,7 +58,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   PADDLE_ENFORCE_EQ(
       cinn::common::is_zero(for_node->min),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] The For node must start with 0!\n"
@@ -68,7 +68,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   PADDLE_ENFORCE_EQ(
       factors.empty(),
       false,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] The factors param of Split should not be empty!\n"
@@ -162,7 +162,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   PADDLE_ENFORCE_LE(
       num_minus1,
       1,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] The params in factors of Split on dynamic shape should "
@@ -173,7 +173,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   PADDLE_ENFORCE_EQ(
       is_positive,
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] The params in factors of Split on dynamic shape should "
@@ -226,7 +226,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
 
   PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] Expr param(loop) must be For node!\n"
@@ -238,7 +238,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   PADDLE_ENFORCE_EQ(
       common::is_zero(for_node->min),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] The For node must start with 0!\n"
@@ -248,7 +248,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   PADDLE_ENFORCE_EQ(
       factors.empty(),
       false,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] The factors param of Split should not be empty!"
@@ -258,7 +258,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   PADDLE_ENFORCE_EQ(
       loop.As<ir::For>()->extent.is_constant(),
       false,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] Can't Split a loop with constant extent but with "
@@ -282,7 +282,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   PADDLE_ENFORCE_EQ(
       analyzer.ProveEQ(tot_extent, prod_size).value_or(false),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] Product of factors can't be proved to be equal to the "
@@ -333,7 +333,7 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   PADDLE_ENFORCE_EQ(
       loops.empty(),
       false,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
           "[Error info] The loops param of Fuse should not be empty!\n"
@@ -343,7 +343,7 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   for (const Expr& it_loop : loops) {
     PADDLE_ENFORCE_NOT_NULL(
         it_loop.As<ir::For>(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<Fuse>.\n"
             "[Error info] Loop in vector<Expr> param(loops) of Fuse must be "
@@ -354,7 +354,7 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
     if (!for_nodes.empty()) {
       PADDLE_ENFORCE_NOT_NULL(
           for_nodes.back()->body.As<ir::Block>(),
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "[IRScheduleError] An error occurred in the schedule primitive "
               "<Fuse>.\n"
               "[Error info] The body of for node is not Block!\n"
@@ -364,7 +364,7 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
       PADDLE_ENFORCE_EQ(
           for_nodes.back()->body.As<ir::Block>()->stmts.size(),
           1,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "[IRScheduleError] An error occurred in the schedule primitive "
               "<Fuse>.\n"
               "[Error info] The Block's size of for node is not 1!\n"
@@ -374,7 +374,7 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
       PADDLE_ENFORCE_EQ(
           for_nodes.back()->body.As<ir::Block>()->stmts[0],
           it_loop,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "[IRScheduleError] An error occurred in the schedule primitive "
               "<Fuse>.\n"
               "[Error info] The For nodes in loops param of Fuse must be "
@@ -437,7 +437,7 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
       PADDLE_ENFORCE_EQ(
           loops_index[i - 1] + 1,
           loops_index[i],
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "[IRScheduleError] An error occurred in the schedule primitive "
               "<Fuse>.\n"
               "[Error info] Loops index in Fuse should be continuous!\n"
@@ -448,7 +448,7 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
   for (int i : loops_index) {
     PADDLE_ENFORCE_LT(i,
                       static_cast<int>(all_loops.size()),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <Fuse>.\n"
                           "[Error info] The loop index in Fuse should be less "
@@ -459,7 +459,7 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
     PADDLE_ENFORCE_GE(
         i,
         0,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<Fuse>.\n"
             "[Error info] The loop index in Fuse should be >= 0!\n"
@@ -485,7 +485,7 @@ Expr DyScheduleImpl::Fuse(const Expr& block,
       PADDLE_ENFORCE_EQ(
           loops_index[i - 1] + 1,
           loops_index[i],
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "[IRScheduleError] An error occurred in the schedule primitive "
               "<Fuse>.\n"
               "[Error info] Loops index in Fuse should be continuous!\n"
@@ -496,7 +496,7 @@ Expr DyScheduleImpl::Fuse(const Expr& block,
   for (int i : loops_index) {
     PADDLE_ENFORCE_LT(i,
                       static_cast<int>(all_loops.size()),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <Fuse>.\n"
                           "[Error info] The loop index in Fuse should be less "
@@ -506,7 +506,7 @@ Expr DyScheduleImpl::Fuse(const Expr& block,
 
     PADDLE_ENFORCE_GT(i,
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <Fuse>.\n"
                           "[Error info] The loop index in Fuse should be > 0!\n"
@@ -554,7 +554,7 @@ Expr DyScheduleImpl::Reorder(const std::string& block_name,
   for (int i : loops_index) {
     PADDLE_ENFORCE_LT(i,
                       static_cast<int>(all_loops.size()),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <Reoder>.\n"
                           "[Error info] The loop index in Reorder should be "
@@ -565,7 +565,7 @@ Expr DyScheduleImpl::Reorder(const std::string& block_name,
     PADDLE_ENFORCE_GE(
         i,
         0,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<Reoder>.\n"
             "[Error info] The loop index in Reorder should be >= 0!\n"
@@ -590,7 +590,7 @@ Expr DyScheduleImpl::Reorder(const Expr& block,
   for (int i : loops_index) {
     PADDLE_ENFORCE_LT(i,
                       static_cast<int>(all_loops.size()),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <Reoder>.\n"
                           "[Error info] The loop index in Reorder should be "
@@ -601,7 +601,7 @@ Expr DyScheduleImpl::Reorder(const Expr& block,
     PADDLE_ENFORCE_GE(
         i,
         0,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<Reoder>.\n"
             "[Error info] The loop index in Reorder should be >= 0!\n"

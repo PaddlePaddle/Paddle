@@ -178,5 +178,29 @@ support_types = get_xpu_op_support_types('gather_nd')
 for stype in support_types:
     create_test_class(globals(), XPUTestGatherNd, stype)
 
+
+class TestZeroDimIndex(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        # shape of x: [2, 3, 2]
+        self.x = paddle.to_tensor(
+            [[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]]
+        )
+
+    def test_1(self):
+        index = np.zeros((0, 1)).astype("int")
+        index = paddle.to_tensor(index)
+        output = paddle.gather_nd(self.x, index)
+        self.assertEqual(output.numel().numpy(), 0)
+        self.assertEqual(output.shape, [0, 3, 2])
+
+    def test_2(self):
+        index = np.zeros((2, 0, 1)).astype("int")
+        index = paddle.to_tensor(index)
+        output = paddle.gather_nd(self.x, index)
+        self.assertEqual(output.numel().numpy(), 0)
+        self.assertEqual(output.shape, [2, 0, 3, 2])
+
+
 if __name__ == "__main__":
     unittest.main()

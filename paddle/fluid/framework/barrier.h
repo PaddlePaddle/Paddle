@@ -50,10 +50,17 @@ class Barrier {
             "Fail to initialize the barrier with error code %d.", ret));
 #endif
   }
-  ~Barrier() {
+  ~Barrier() noexcept(false) {
 #ifdef _LINUX
     int ret = pthread_barrier_destroy(&_barrier);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0,
+        ret,
+        common::errors::PreconditionNotMet(
+            "[error info] the result of "
+            "pthread_barrier_destroy(&_barrier) should be zero.\n "
+            "[result info] The value of current result is %d.",
+            ret));
 #endif
   }
   void reset(int count) {
@@ -125,10 +132,16 @@ class Semaphore {
             "Fail to initialize the semaphore with error code %d.", ret));
 #endif
   }
-  ~Semaphore() {
+  ~Semaphore() noexcept(false) {
 #ifdef _LINUX
     int ret = sem_destroy(&_sem);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(
+        0,
+        ret,
+        common::errors::PreconditionNotMet(
+            "[error info] the result of sem_destroy(&_sem) should be zero.\n"
+            "[result info] The value of current result is %d.",
+            ret));
 #endif
   }
   void post() {

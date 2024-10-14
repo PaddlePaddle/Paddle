@@ -43,7 +43,7 @@ class ParseKernelKeyInterface
   };
 
   /// Constructor
-  ParseKernelKeyInterface(pir::Operation *op, Concept *impl)
+  ParseKernelKeyInterface(const pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<ParseKernelKeyInterface>(op), impl_(impl) {}
 
   KernelKeyTuple ParseKernelKey(pir::Operation *op) {

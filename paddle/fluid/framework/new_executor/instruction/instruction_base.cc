@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle::framework {
@@ -196,8 +196,6 @@ InstructionBase::InstructionBase(size_t id, const phi::Place& place)
       output_index_(),
       no_need_buffer_values_() {
   id_ = id;
-
-  is_artificial_ = false;
 
   if (phi::is_cpu_place(place)) {
     type_ = OpFuncType::kCpuSync;
