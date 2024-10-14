@@ -28,6 +28,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace pir {
 #define COMPRESS_DIALECT_NAME(attr_template)           \
@@ -53,6 +54,8 @@ class AttrTypeWriter {
   static Json WritePaddleDistType(const pir::Type& type);
 
   static Json WritePaddleDistAttr(const pir::Attribute& attr);
+
+  static Json WriteControlFlowType(const pir::Type& type);
 };
 /** serializeTypeToJson is a template function to serialize
  * a pir type to a json object. a pir type may have value or no value
@@ -245,6 +248,9 @@ Json writeType(const pir::Type& type) {
   } else if (type.dialect().name() == paddle::dialect::DistDialect::name()) {
     VLOG(6) << "write PaddleDistType ... ";
     return AttrTypeWriter::WritePaddleDistType(type);
+  } else if (type.dialect().name() == pir::ControlFlowDialect::name()) {
+    VLOG(6) << "write ControlFlowDialect ... ";
+    return AttrTypeWriter::WriteControlFlowType(type);
   } else {
     PADDLE_ENFORCE(
         false,
@@ -721,6 +727,28 @@ Json AttrTypeWriter::WritePaddleDistAttr(const pir::Attribute& attr) {
             "Unknown Attr %s when write paddle.operatordialect attr"));
   }
   return Json::object();
+}
+
+Json AttrTypeWriter::WriteControlFlowType(const pir::Type& type) {
+  Json type_json = Json::object();
+  if (type.isa<pir::StackType>()) {
+    VLOG(8) << "Write StackType ... ";
+    return pir::serializeTypeToJson<pir::StackType>(
+        type.dyn_cast<pir::StackType>());
+  } else if (type.isa<pir::InletType>()) {
+    VLOG(8) << "Write InletType ... ";
+    return pir::serializeTypeToJson<pir::InletType>(
+        type.dyn_cast<pir::InletType>());
+  } else if (type.isa<pir::OutletType>()) {
+    VLOG(8) << "Write OutletType ... ";
+    return pir::serializeTypeToJson<pir::OutletType>(
+        type.dyn_cast<pir::OutletType>());
+  } else {
+    PADDLE_ENFORCE(false,
+                   common::errors::InvalidArgument(
+                       "Unknown Type when write controlflow dialect type"));
+  }
+  return type_json;
 }
 
 }  // namespace pir
