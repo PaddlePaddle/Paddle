@@ -172,6 +172,65 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
                              std::vector<void *> *buffers,
                              int batch_size,
                              cudaStream_t stream) {
+  int totalBindings = infer_engine_->getNbBindings();
+
+  int numInputs = 0;
+  for (int i = 0; i < totalBindings; ++i) {
+    if (infer_engine_->bindingIsInput(i)) {
+      numInputs++;
+    }
+  }
+#if IS_TRT_VERSION_GE(8500)
+  for (int i = 0; i < infer_engine_->getNbIOTensors(); ++i) {
+    const auto tensorName = infer_engine_->getIOTensorName(i);
+    m_IOTensorNames.emplace_back(tensorName);
+  }
+#else
+  for (int i = 0; i < infer_engine_->getNbBindings(); ++i) {
+    const auto tensorName = infer_engine_->getBindingName(i);
+    m_IOTensorNames.emplace_back(tensorName);
+  }
+#endif
+
+#if IS_TRT_VERSION_GE(8500)
+  if (with_dynamic_shape()) {
+    for (const auto &item : optim_input_shape()) {
+      std::string key = item.first;
+      std::string value_str = Vec2Str(item.second);
+      LOG(INFO) << "optim_input_shape key: " << key << ", value: " << value_str;
+    }
+
+    LOG(INFO) << "with_dynamic_shape";
+    for (int i = 0; i < numInputs; ++i) {
+      if (optim_input_shape().count(m_IOTensorNames[i])) {
+        const auto &dims_vec = optim_input_shape().at(m_IOTensorNames[i]);
+        nvinfer1::Dims inputDims;
+        inputDims.nbDims = dims_vec.size();
+        inputDims.d[0] = batch_size;
+        for (auto j = 1u; j < dims_vec.size(); ++j) {
+          inputDims.d[j] = dims_vec[j];
+        }
+        context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
+      }
+    }
+  }
+#endif
+
+  if (!context->allInputDimensionsSpecified()) {
+    LOG(ERROR) << "Not all input dimensions are specified for dynamic shape.";
+    return false;
+  }
+
+#if IS_TRT_VERSION_GE(8500)
+  for (size_t j = 0; j < buffers->size(); ++j) {
+    bool status =
+        context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
+    if (!status) {
+      return false;
+    }
+  }
+#endif
+
   if (cudagraph_inited_) {
     VLOG(1) << "cuda_graph init success, so we will use cuda graph launch the "
                "entire graph.";
