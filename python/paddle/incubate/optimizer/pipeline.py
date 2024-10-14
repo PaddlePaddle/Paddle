@@ -884,23 +884,30 @@ class PipelineOptimizer:
                         is_param = (
                             True if isinstance(prefix_var, Parameter) else False
                         )
-                        block._insert_op_without_sync(
-                            index=index + extra_index_info['index'],
-                            type=(
-                                'p_send'
-                                if not use_mp or is_param
-                                else 'partial_send'
-                            ),
-                            inputs={'X': var},
-                            attrs={
-                                'ring_id': ring_id,
-                                'peer': 1,
-                                # if p_send, use_calc_stream&num&id attr is not in op_attrs, will not insert
-                                'use_calc_stream': False,
-                                'num': self.mp_degree,
-                                'id': self.mp_rank,
-                            },
-                        )
+                        if not use_mp or is_param:
+                            send_op = block._insert_op_without_sync(
+                                index=index + extra_index_info['index'],
+                                type='p_send',
+                                inputs={'x': var},
+                                attrs={
+                                    'ring_id': ring_id,
+                                    'peer': 1,
+                                },
+                            )
+                            send_op.dist_attr.execution_stream = "default"
+                        else:
+                            block._insert_op_without_sync(
+                                index=index + extra_index_info['index'],
+                                type='partial_send',
+                                inputs={'X': var},
+                                attrs={
+                                    'ring_id': ring_id,
+                                    'peer': 1,
+                                    'use_calc_stream': False,
+                                    'num': self.mp_degree,
+                                    'id': self.mp_rank,
+                                },
+                            )
                         extra_index_info['index'] += 1
                         insert_index = None
                         if int(op_role) == int(self._op_role.Backward):
@@ -925,25 +932,32 @@ class PipelineOptimizer:
                         if int(op_role) == int(self._op_role.Forward):
                             sync_comm_op._set_attr('pipeline_flag', '')
                             extra_index_info['index'] += 1
-                        recv_op = block._insert_op_without_sync(
-                            index=index + extra_index_info['index'],
-                            type=(
-                                'p_recv'
-                                if not use_mp or is_param
-                                else 'partial_recv'
-                            ),
-                            outputs={'out': [var]},
-                            attrs={
-                                'dtype': var.dtype,
-                                'peer': 0,
-                                'ring_id': ring_id,
-                                # if p_recv, out_shape&num&id attr is not in op_attrs, will not insert
-                                'out_shape': var_shape,
-                                'num': self.mp_degree,
-                                'id': self.mp_rank,
-                            },
-                        )
-                        recv_op.dist_attr.execution_stream = "default"
+                        if not use_mp or is_param:
+                            recv_op = block._insert_op_without_sync(
+                                index=index + extra_index_info['index'],
+                                type='p_recv',
+                                outputs={'out': [var]},
+                                attrs={
+                                    'dtype': var.dtype,
+                                    'peer': 0,
+                                    'ring_id': ring_id,
+                                },
+                            )
+                            recv_op.dist_attr.execution_stream = "default"
+                        else:
+                            block._insert_op_without_sync(
+                                index=index + extra_index_info['index'],
+                                type='partial_recv',
+                                outputs={'out': [var]},
+                                attrs={
+                                    'dtype': var.dtype,
+                                    'peer': 0,
+                                    'ring_id': ring_id,
+                                    'out_shape': var_shape,
+                                    'num': self.mp_degree,
+                                    'id': self.mp_rank,
+                                },
+                            )
                         extra_index_info['index'] += 1
                         if use_mp and not is_param:
                             block._insert_op_without_sync(

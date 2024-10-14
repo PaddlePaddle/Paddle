@@ -375,7 +375,7 @@ class PipelinePass(PassBase):
                                 continue
                             if op.type == "nop":
                                 continue
-                            # HACKCODE: the varname of send_v2 op, cast op should be recorded for brpc comm
+                            # HACKCODE: the varname of p_send op, cast op should be recorded for brpc comm
                             if (
                                 op.type
                                 not in [
