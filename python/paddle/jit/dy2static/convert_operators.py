@@ -257,15 +257,17 @@ def _run_py_while(cond, body, getter, setter):
         pred = cond()
         if isinstance(pred, (Variable, Value)):
             err_msg = """\
-                You need to use break_flag in the control flow, Python will mistakenly convert the iteration variable from bool to Tensor,
-                And Tensor has no known value on static graph, for example:
+                In a loop using the `break`. In the case of motion to static,
+                an intermediate variable `break_flag` is generated, and python converts `break_flag` from a bool to a Tensor,
+                whereas under static graphs Tensor has no known values, so that leads to this error, for example:
+
                     >>> x = paddle.to_tensor([5, 10])
                     >>> for _ in range(10):
                     ...     if x.sum() > 5:
                     ...         break
 
                 There are one common workarounds available:
-                Explicitly rewrite to the form of a control flow, for example:
+                Explicit conversion of code to control flow form, for example:
                     >>> x = paddle.to_tensor([5, 10])
                     >>> for _ in range(paddle.to_tensor(10)):
                     ...     if x.sum() > 5:
