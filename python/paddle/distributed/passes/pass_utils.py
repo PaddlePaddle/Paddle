@@ -579,7 +579,6 @@ def _insert_sync_for_fthenb_1f1b(program, dist_context=None):
         offset = 0
         backward_recv_index = None
         for index, op in enumerate(block.ops):
-            # if op.type == "recv_v2" and is_backward_op(op):
             if op.type == "p_recv" and is_backward_op(op):
                 backward_recv_index = index
                 break
