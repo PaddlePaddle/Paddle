@@ -4006,8 +4006,8 @@ OpInfoTuple AssignOut_Op::GetOpInfo() {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info =
-      paddle::dialect::OpRunTimeInfo("UnchangedInferMeta",
-                                     {"x"},
+      paddle::dialect::OpRunTimeInfo("AssignOutInferMeta",
+                                     {"x", "output"},
                                      "assign",
                                      {"x"},
                                      {},
@@ -4030,9 +4030,16 @@ void AssignOut_Op::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
-
+  std::cout << "111 x dtype " << x_.type().dyn_cast<pir::DenseTensorType>()
+            << std::endl;
+  std::cout << "output dtype "
+            << output_.type().dyn_cast<pir::DenseTensorType>() << std::endl;
   std::vector<pir::Type> argument_outputs =
       AssignOut_Op::InferMeta(argument_inputs, &argument_attributes);
+  std::cout << "222 x dtype " << x_.type().dyn_cast<pir::DenseTensorType>()
+            << std::endl;
+  std::cout << "output dtype "
+            << output_.type().dyn_cast<pir::DenseTensorType>() << std::endl;
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
   constexpr char kStopGradientAttrName[] = "stop_gradient";
@@ -4092,7 +4099,7 @@ void AssignOut_Op::VerifySig() {
 }
 
 void AssignOut_Op::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::UnchangedInferMeta);
+  auto fn = PD_INFER_META(phi::AssignOutInferMeta);
   fn(infer_meta);
 }
 
@@ -4106,6 +4113,7 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
                         input_values.size()));
 
   pir::Value x_ = input_values[0];
+  pir::Value output_ = input_values[1];
   VLOG(4) << "Builder construction outputs";
 
   paddle::dialect::DenseTensorType x;
@@ -4116,7 +4124,14 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
         "Only support paddle::dialect::DenseTensorType or "
         "paddle::dialect::AllocatedDenseTensorType"));
   }
-
+  paddle::dialect::DenseTensorType output;
+  if (output_.type().isa<paddle::dialect::DenseTensorType>()) {
+    output = output_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorType or "
+        "paddle::dialect::AllocatedDenseTensorType"));
+  }
   VLOG(4) << "Builder construction  dense_x";
   paddle::dialect::IrTensor ir_tensor_x(
       paddle::dialect::TransToPhiDataType(x.dtype()),
@@ -4124,12 +4139,21 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
       x.data_layout(),
       x.lod(),
       x.offset());
+  VLOG(4) << "Builder construction  dense_output";
+  paddle::dialect::IrTensor ir_tensor_output(
+      paddle::dialect::TransToPhiDataType(output.dtype()),
+      output.dims(),
+      output.data_layout(),
+      output.lod(),
+      output.offset());
   VLOG(4) << "Builder construction  meta_x";
   paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+  VLOG(4) << "Builder construction  meta_output";
+  paddle::dialect::IrMetaTensor meta_output(&ir_tensor_output);
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::UnchangedInferMeta(meta_x, &meta_out);
+  phi::AssignOutInferMeta(meta_x, meta_output, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(

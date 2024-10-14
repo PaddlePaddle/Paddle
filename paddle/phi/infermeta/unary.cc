@@ -5352,6 +5352,16 @@ void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
 
+void AssignOutInferMeta(const MetaTensor& x,
+                        const MetaTensor& output,
+                        MetaTensor* out) {
+  output.share_meta(x);
+  out->share_meta(x);
+  std::cout << "0 out dtype " << out->dtype() << std::endl;
+  out->set_dtype(x.dtype());
+  std::cout << "1 out dtype " << out->dtype() << std::endl;
+}
+
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
