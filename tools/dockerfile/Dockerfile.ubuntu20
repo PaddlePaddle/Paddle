@@ -69,30 +69,29 @@ RUN apt-get update && \
   rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
 
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && unzip setuptools-50.3.2.zip
+RUN wget -q https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && unzip setuptools-50.3.2.zip
 WORKDIR /home/setuptools-50.3.2
 RUN python3.9 setup.py build && python3.9 setup.py install && \
   python3.8 setup.py build && python3.8 setup.py install
 
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/ef/cc/93f7213b2ab5ed383f98ce8020e632ef256b406b8569606c3f160ed8e1c9/setuptools-68.2.2.tar.gz && tar xf setuptools-68.2.2.tar.gz
+RUN wget -q https://files.pythonhosted.org/packages/ef/cc/93f7213b2ab5ed383f98ce8020e632ef256b406b8569606c3f160ed8e1c9/setuptools-68.2.2.tar.gz && tar xf setuptools-68.2.2.tar.gz
 WORKDIR /home/setuptools-68.2.2
 RUN python3.10 setup.py build && python3.10 setup.py install && \
   python3.11 setup.py build && python3.11 setup.py install && \
   python3.12 setup.py build && python3.12 setup.py install
 
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/1f/7f/4da15e07ccd11c84c1ccc8f6e24288d5e76c99441bf80e315b33542db951/pip-23.3.1.tar.gz && tar -zxf pip-23.3.1.tar.gz
-WORKDIR pip-23.3.1
-RUN python3.9 setup.py install && \
-  python3.8 setup.py install  && \
-  python3.10 setup.py install && \
-  python3.11 setup.py install && \
-  python3.12 setup.py install
+RUN wget -q https://bootstrap.pypa.io/get-pip.py
+RUN python3.9 get-pip.py && \
+  python3.8 get-pip.py && \
+  python3.10 get-pip.py && \
+  python3.11 get-pip.py && \
+  python3.12 get-pip.py
 
 WORKDIR /home
-RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz pip-23.3.1.tar.gz && \
-    rm -r setuptools-50.3.2 setuptools-68.2.2 pip-23.3.1
+RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz && \
+    rm -r setuptools-50.3.2 setuptools-68.2.2 get-pip.py
 
 # remove them when apt-get support 2.27 and higher version
 RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \
@@ -151,7 +150,6 @@ RUN pip3.8 --no-cache-dir install pre-commit==2.17.0 && \
 
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
-
 RUN pip3.8 --no-cache-dir install -r  /root/requirements.txt && \
     pip3.9 --no-cache-dir install -r  /root/requirements.txt && \
     pip3.9 --no-cache-dir install -r  /home/requirements.txt && \
