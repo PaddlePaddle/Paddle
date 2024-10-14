@@ -105,7 +105,7 @@ ir::Expr ReplaceSbrIter(const ir::ScheduleBlockRealize* sbr,
 
 struct MoveScheduleBlockMutator : public ir::IRMutator<Expr*> {
  public:
-  MoveScheduleBlockMutator(const std::string& src, const std::string& dst)
+  MoveScheduleBlockMutator(const ir::Expr& src, const ir::Expr& dst)
       : src_(src), dst_(dst) {}
 
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -117,12 +117,24 @@ struct MoveScheduleBlockMutator : public ir::IRMutator<Expr*> {
           block_to_new_stmts_.end()) {
         current_block->stmts = block_to_new_stmts_[current_block];
       }
-      while (!insert_root_schedule_blocks_.empty()) {
-        VLOG(6) << "Insert to root block: "
-                << insert_root_schedule_blocks_.back();
-        root_block_->stmts.insert(root_block_->stmts.begin(),
-                                  insert_root_schedule_blocks_.back());
-        insert_root_schedule_blocks_.pop_back();
+      if (insert_root_schedule_block_ != nullptr) {
+        root_block_->stmts = [&]() -> std::vector<ir::Expr> {
+          std::vector<ir::Expr> new_stmts;
+          for (const ir::Expr& expr : root_block_->stmts) {
+            new_stmts.push_back(expr);
+            if (expr.As<ir::ScheduleBlockRealize>()) {
+              auto* sbr = expr.As<ir::ScheduleBlockRealize>();
+              auto* sb = sbr->schedule_block.As<ir::ScheduleBlock>();
+              if (sb->name == dst_.As<ir::ScheduleBlock>()->name) {
+                VLOG(6) << "Insert to root block: "
+                        << insert_root_schedule_block_;
+                new_stmts.push_back(insert_root_schedule_block_);
+                insert_root_schedule_block_ = nullptr;
+              }
+            }
+          }
+          return new_stmts;
+        }();
       }
     };
 
@@ -136,7 +148,7 @@ struct MoveScheduleBlockMutator : public ir::IRMutator<Expr*> {
     auto* sbr_node = expr->As<ir::ScheduleBlockRealize>();
     current_sbr_ = sbr_node;
     const auto* sb_node = sbr_node->schedule_block.As<ir::ScheduleBlock>();
-    if (sb_node->name == dst_) {
+    if (sb_node->name == dst_.As<ir::ScheduleBlock>()->name) {
       root_block_ = current_block_;
       root_for_var_extents_ = for_var_extents_;
     }
@@ -154,15 +166,15 @@ struct MoveScheduleBlockMutator : public ir::IRMutator<Expr*> {
     auto* node = expr->As<ir::Store>();
     ir::Expr sb = ir::ir_utils::IRCopy(current_sbr_->schedule_block);
     ir::ScheduleBlock* sb_node = sb.As<ir::ScheduleBlock>();
-    if (sb_node->name == src_) {
+    if (sb_node->name == src_.As<ir::ScheduleBlock>()->name) {
       MoveAfter();
     }
   }
 
   void MoveAfter() {
     // Merge current sbr to root block.
-    insert_root_schedule_blocks_.push_back(
-        ReplaceSbrIter(current_sbr_, for_var_extents_, root_for_var_extents_));
+    insert_root_schedule_block_ =
+        ReplaceSbrIter(current_sbr_, for_var_extents_, root_for_var_extents_);
 
     // Record and will remove current sbr later.
     block_to_new_stmts_[current_block_] = [&]() -> std::vector<ir::Expr> {
@@ -172,7 +184,7 @@ struct MoveScheduleBlockMutator : public ir::IRMutator<Expr*> {
           const ir::Expr sb = ir::ir_utils::IRCopy(
               expr.As<ir::ScheduleBlockRealize>()->schedule_block);
           const ir::ScheduleBlock* sb_node = sb.As<ir::ScheduleBlock>();
-          if (sb_node->name == src_) {
+          if (sb_node->name == src_.As<ir::ScheduleBlock>()->name) {
             continue;
           }
         }
@@ -184,14 +196,14 @@ struct MoveScheduleBlockMutator : public ir::IRMutator<Expr*> {
 
   std::vector<ForVarExtent> for_var_extents_;
   std::vector<ForVarExtent> root_for_var_extents_;
-  std::vector<ir::Expr> insert_root_schedule_blocks_;
   std::unordered_map<ir::Block*, std::vector<ir::Expr>> block_to_new_stmts_;
 
-  ir::Block* root_block_;
-  ir::Block* current_block_;
-  ir::ScheduleBlockRealize* current_sbr_;
-  const std::string& src_;
-  const std::string& dst_;
+  ir::Block* root_block_{nullptr};
+  ir::Block* current_block_{nullptr};
+  ir::ScheduleBlockRealize* current_sbr_{nullptr};
+  ir::Expr insert_root_schedule_block_{nullptr};
+  const ir::Expr& src_;
+  const ir::Expr& dst_;
 };
 
 struct EmptyBlockRemover : public ir::IRMutator<Expr*> {
@@ -317,8 +329,8 @@ bool CanMergeBlocks(const ir::For* first,
   return IsEqual(first_inner_for_list, second_inner_for_list);
 }
 
-void MoveScheduleBlock(const std::string& src,
-                       const std::string& dst,
+void MoveScheduleBlock(const ir::Expr& src,
+                       const ir::Expr& dst,
                        ir::Expr* root) {
   MoveScheduleBlockMutator(src, dst)(root);
   EmptyBlockRemover()(root);
