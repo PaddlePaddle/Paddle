@@ -51,7 +51,9 @@ struct ItersFusionPolicy final : public PolicyBase {
   std::optional<ItersTransformRoute> SearchTransformRouteFromReduce2Reduce(
       const FusionItersSignature& source, const FusionItersSignature& target);
   std::optional<ItersTransformRoute> SearchItersTransformRoute(
-      const FusionItersSignature& source, const FusionItersSignature& target);
+      const FusionItersSignature& source,
+      const FusionItersSignature& target,
+      bool squeeze_source);
 
   using NodeRouteMap = std::unordered_map<PatternNodePtr, ItersTransformRoute>;
   std::unordered_map<PatternNodePtr, NodeRouteMap> routes_;

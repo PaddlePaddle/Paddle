@@ -31,8 +31,12 @@ bool ItersFusionPolicy::CanFuseSource2Target(const PatternNodePtr& source,
     VLOG(4) << "Pattern with empty loop iters can't be fused.";
     return false;
   }
-  const auto iters_transforms =
-      SearchItersTransformRoute(source->fusion_iters(), target->fusion_iters());
+  auto iters_transforms = SearchItersTransformRoute(
+      source->fusion_iters(), target->fusion_iters(), false);
+  if (iters_transforms == std::nullopt) {
+    iters_transforms = SearchItersTransformRoute(
+        source->fusion_iters(), target->fusion_iters(), true);
+  }
   if (iters_transforms != std::nullopt) {
     VLOG(4) << "Find iters transforms: "
             << DebugStrItersTransformRoute(iters_transforms.value());
@@ -180,20 +184,28 @@ ItersFusionPolicy::SearchTransformRouteFromReduce2Reduce(
 }
 
 std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
-    const FusionItersSignature& source, const FusionItersSignature& target) {
+    const FusionItersSignature& source,
+    const FusionItersSignature& target,
+    bool squeeze_source) {
   ItersTransformRoute iters_transforms;
-  // STEP1: Remove Ones from source
-  auto source_ones = MapVectorIfTrue<std::pair<std::string, int>, int>(
-      Enumerate(source.loop_iters),
-      [this](std::pair<std::string, int> p) { return p.second; },
-      [this](std::pair<std::string, int> p) {
-        return this->iters_manager_->IterSymbolEqualOne(p.first);
-      });
+
   auto squeezed_source = source;
-  if (!source_ones.empty() && source_ones.size() != source.loop_iters.size()) {
-    iters_transforms.emplace_back(RemoveOnesTransform(source_ones));
-    squeezed_source.loop_iters =
-        GatherVectorExcept(source.loop_iters, source_ones);
+  if (squeeze_source) {
+    // Remove iters equal to one in source
+    auto source_ones = MapVectorIfTrue<std::pair<std::string, int>, int>(
+        Enumerate(source.loop_iters),
+        [this](std::pair<std::string, int> p) { return p.second; },
+        [this](std::pair<std::string, int> p) {
+          return this->iters_manager_->IterSymbolEqualOne(p.first);
+        });
+    if (!source_ones.empty() &&
+        source_ones.size() != source.loop_iters.size()) {
+      iters_transforms.emplace_back(RemoveOnesTransform(source_ones));
+      squeezed_source.loop_iters =
+          GatherVectorExcept(source.loop_iters, source_ones);
+    } else {
+      return std::nullopt;
+    }
   }
 
   if (squeezed_source.loop_iters.size() > target.loop_iters.size()) {
@@ -201,8 +213,7 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
     return std::nullopt;
   }
 
-  // STEP2: Do reuse, append, transpose iters analysis.
-  // Search ItersTransform including reduce iters
+  // Search ItersTransformRoute based on different cases
   if (squeezed_source.reduce_iter_nums && target.reduce_iter_nums) {
     // Reduce -> Reduce ItersTransform
     const auto result =
@@ -213,20 +224,19 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
       return std::nullopt;
     }
   } else if (!squeezed_source.reduce_iter_nums && target.reduce_iter_nums) {
-    // // Trivial -> Reduce ItersTransform
-    // // Can fuse with non fake reduce dims or small inner reduce loop
-    // auto [target_flatten_iters, _UNUSED] = SplitReduceIters(target);
-    // if (!AllFirstInSecond(squeezed_source.loop_iters, target_flatten_iters))
-    // {
-    //   const auto reduce_dims_product =
-    //       iters_manager_->GetReduceDimsProduct(target);
-    //   if (reduce_dims_product.isa<std::int64_t>() &&
-    //       reduce_dims_product.dyn_cast<std::int64_t>() > 1024 * 16) {
-    //     VLOG(4) << "Can not fuse trivial to reduce with large reduce dims: "
-    //             << reduce_dims_product.dyn_cast<std::int64_t>();
-    //     return std::nullopt;
-    //   }
-    // }
+    // Trivial -> Reduce ItersTransform
+    // Can fuse with non fake reduce dims or small inner reduce loop
+    auto [target_flatten_iters, _UNUSED] = SplitReduceIters(target);
+    if (!AllFirstInSecond(squeezed_source.loop_iters, target_flatten_iters)) {
+      const auto reduce_dims_product =
+          iters_manager_->GetReduceDimsProduct(target);
+      if (reduce_dims_product.isa<std::int64_t>() &&
+          reduce_dims_product.dyn_cast<std::int64_t>() > 1024 * 4) {
+        VLOG(4) << "Can not fuse trivial to reduce with large reduce dims: "
+                << reduce_dims_product.dyn_cast<std::int64_t>();
+        return std::nullopt;
+      }
+    }
   } else if (squeezed_source.reduce_iter_nums && !target.reduce_iter_nums) {
     VLOG(4) << "Can not transform iters from Reduce to Trivial.";
     return std::nullopt;
