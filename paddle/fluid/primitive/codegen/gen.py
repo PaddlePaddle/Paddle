@@ -76,6 +76,7 @@ UNARY_PRIM_VJP_OPS = [
     'sin_grad',
     'cos_grad',
     'tanh_grad',
+    'trunc_grad',
     'square_grad',
 ]
 
@@ -126,6 +127,7 @@ OTHER_PRIM_VJP_OPS = [
     'unsqueeze_grad',
     'where_grad',
     'logcumsumexp_grad',
+    'logsumexp_grad',
 ]
 
 # whole vjp list of primitive op vjp
