@@ -151,9 +151,14 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
 
   idx_neg1 = (-idx_neg1) - 1;
 
-  bool exact_split =
-      (tot_extent ==
-       cinn::common::AutoSimplify(process_factors[0] * process_factors[1]));
+  bool exact_split = (tot_extent == [&] {
+    auto extent = process_factors[0];
+    for (int i = 1; i < process_factors.size(); i++) {
+      extent = cinn::common::AutoSimplify(extent * process_factors[i]);
+    }
+    return extent;
+  }());
+
   if (!exact_split) {
     process_factors[idx_neg1] =
         cinn::common::AutoSimplify(process_factors[idx_neg1] + Expr(1));
