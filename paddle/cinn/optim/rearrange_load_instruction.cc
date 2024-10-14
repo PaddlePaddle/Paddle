@@ -117,6 +117,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
 
   void Visit(const ir::Select *op, Expr *expr) override {}
   void Visit(const ir::Broadcast *op, Expr *expr) override {}
+  void Visit(const ir::IfThenElse *op, Expr *expr) override {}
 
   void replaceBlock(ir::Block *op, int old_let_size, int old_stmts_size) {
     std::vector<Expr> new_stmts;
