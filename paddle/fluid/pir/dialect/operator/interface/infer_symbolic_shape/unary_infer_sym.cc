@@ -1122,7 +1122,7 @@ bool FrameOpInferSymbolicShape(pir::Operation *op,
     end_axis = x_rank - 2;
   }
   bool contain_unknow_dim;
-  for (int i = 0; i < x_shape.size(); i++) {
+  for (size_t i = 0; i < x_shape.size(); i++) {
     if (x_shape[i].isa<int64_t>()) {
       contain_unknow_dim = true;
       break;
