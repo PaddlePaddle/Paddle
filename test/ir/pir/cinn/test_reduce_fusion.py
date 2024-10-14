@@ -137,12 +137,12 @@ class TestReduceFusion(unittest.TestCase):
     def test_reduce_all_reshape(self):
         # R(reduce all) -> reshape
         def func(x):
-            a = paddle.max(x, axis=[0, 1, 2, 3], keepdim=False)
+            a = paddle.max(x, axis=[0, 1, 2], keepdim=False)
             b = paddle.reshape(a, [1])
             return b
 
         def init():
-            x = paddle.rand((16, 32, 64, 128))
+            x = paddle.rand((8, 16, 32))
             return (x,)
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
