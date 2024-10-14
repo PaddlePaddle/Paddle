@@ -14,6 +14,7 @@
 
 import logging
 
+import paddle.distributed as dist
 from paddle.base import core
 from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
@@ -194,7 +195,10 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                     global_grad_to_comm_op[op_input_names[0]] = [op]
                     remove_op_ids.append(idx)
 
-                if op.type in ["c_allreduce_sum", "c_reduce_sum"]:
+                if op.type == "c_allreduce_sum" or (
+                    op.type == "reduce"
+                    and op.desc.attr('reduce_type') == str(dist.ReduceOp.SUM)
+                ):
                     scale_index = idx + 1
                     if scale_index < len(len(ops)):
                         if is_data_parallel_scale_op(ops[scale_index]):
