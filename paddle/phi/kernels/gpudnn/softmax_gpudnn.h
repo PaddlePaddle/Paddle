@@ -323,117 +323,80 @@ template <template <typename, typename> class Reduction,
           typename AccT,
           int VecSize>
 __device__ __forceinline__ AccT
-ThreadVecReduce(T* data,
-                int dim_size,
+ThreadVecReduce(const T* block_ptr,
+                const int dim_size,
                 const int shift,
                 const Reduction<T, AccT>& functor,
                 AccT default_value) {
-  using VecT = phi::AlignedVector<T, VecSize>;
   AccT thread_val = default_value;
 
-  // for memory align, handle the unaligned data in first block.
-  int offset = threadIdx.x;
-  if (shift > 0) {
-    data -= shift;
-    dim_size += shift;
-    if (offset >= shift) {
-      thread_val = functor(thread_val, data[offset]);
-    }
-    dim_size -= blockDim.x;
-    data += blockDim.x;
+  // for memory align, handle the unaligned data.
+  if ((shift > 0) && (threadIdx.x < VecSize - shift)) {
+    thread_val = functor(thread_val, block_ptr[threadIdx.x]);
   }
 
-  const int last = dim_size % (VecSize * blockDim.x);
-
-  T v[VecSize];
-  VecT* value = reinterpret_cast<VecT*>(&v);
-
-  for (; offset * VecSize < dim_size - last; offset += blockDim.x) {
-    *value = reinterpret_cast<VecT*>(data)[offset];
+  phi::AlignedVector<T, VecSize> value;
+  int offset = (VecSize - shift) + threadIdx.x * VecSize;
+  for (; offset < dim_size; offset += blockDim.x * VecSize) {
+    phi::Load<T, VecSize>(block_ptr + offset, &value);
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
-      thread_val = functor(thread_val, v[i]);
+      thread_val = functor(thread_val, value[i]);
     }
   }
 
-  offset = dim_size - last + threadIdx.x;
-  for (; offset < dim_size; offset += blockDim.x) {
-    thread_val = functor(thread_val, data[offset]);
+  const int tail = (dim_size + shift) % VecSize;
+  if ((tail > 0) && (threadIdx.x < tail)) {
+    const T* block_tail_ptr = block_ptr + dim_size - tail;
+    thread_val = functor(thread_val, block_tail_ptr[threadIdx.x]);
   }
   return thread_val;
 }
 
-template <template <typename, typename> class Reduction,
+template <template <typename, typename> class Functor,
           typename T,
           typename AccT,
           int VecSize>
-__device__ __forceinline__ void ThreadVecWriteVec(T* out,
-                                                  T* input,
-                                                  int dim_size,
-                                                  const int shift,
-                                                  Reduction<AccT, T> functor) {
-  using VecT = phi::AlignedVector<T, VecSize>;
-
+__device__ __forceinline__ void ThreadVecReadWrite(T* out,
+                                                   const T* input,
+                                                   const int dim_size,
+                                                   const int shift,
+                                                   Functor<AccT, T> functor) {
   // for memory align, handle the unaligned data in first block.
-  int offset = threadIdx.x;
-  if (shift > 0) {
-    input -= shift;
-    out -= shift;
-    dim_size += shift;
-    if (offset >= shift) {
-      out[offset] = functor(static_cast<AccT>(input[offset]));
-    }
-    dim_size -= blockDim.x;
-    input += blockDim.x;
-    out += blockDim.x;
+  if ((shift > 0) && (threadIdx.x < VecSize - shift)) {
+    out[threadIdx.x] = functor(static_cast<AccT>(input[threadIdx.x]));
   }
 
-  const int last = dim_size % (VecSize * blockDim.x);
+  phi::AlignedVector<T, VecSize> in_value;
+  phi::AlignedVector<T, VecSize> out_value;
 
-  T in_v[VecSize];
-  VecT* in_value = reinterpret_cast<VecT*>(&in_v);
-
-  T out_v[VecSize];
-  VecT* out_value = reinterpret_cast<VecT*>(&out_v);
-
-  for (; offset * VecSize < dim_size - last; offset += blockDim.x) {
-    *in_value = reinterpret_cast<VecT*>(input)[offset];
+  int offset = (VecSize - shift) + threadIdx.x * VecSize;
+  for (; offset < dim_size; offset += blockDim.x * VecSize) {
+    phi::Load<T, VecSize>(input + offset, &in_value);
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
-      out_v[i] = functor(static_cast<AccT>(in_v[i]));
+      out_value[i] = functor(static_cast<AccT>(in_value[i]));
     }
-    reinterpret_cast<VecT*>(out)[offset] = *out_value;
+    phi::Store<T, VecSize>(out_value, out + offset);
   }
 
-  offset = dim_size - last + threadIdx.x;
-  // the tail
-  for (; offset < dim_size; offset += blockDim.x) {
-    out[offset] = functor(static_cast<AccT>(input[offset]));
+  const int tail = (dim_size + shift) % VecSize;
+  if ((tail > 0) && (threadIdx.x < tail)) {
+    const T* block_tail_inptr = input + dim_size - tail;
+    T* block_tail_outptr = out + dim_size - tail;
+    block_tail_outptr[threadIdx.x] =
+        functor(static_cast<AccT>(block_tail_inptr[threadIdx.x]));
   }
 }
 
-template <template <typename, typename> class Reduction,
+template <template <typename, typename> class Functor,
           typename T,
-          typename AccT,
-          int VecSize>
-__device__ __forceinline__ void ThreadVecWrite(T* out,
-                                               T* input,
-                                               int dim_size,
-                                               Reduction<AccT, T> functor) {
-  const int last = dim_size % (VecSize * blockDim.x);
-
-  for (int offset = threadIdx.x; offset < dim_size - last;
-       offset += blockDim.x * VecSize) {
-#pragma unroll
-    for (int i = 0; i < VecSize; i++) {
-      out[offset + i * blockDim.x] =
-          functor(static_cast<AccT>(input[offset + i * blockDim.x]));
-    }
-  }
-
-  // the tail
-  for (int offset = dim_size - last + threadIdx.x; offset < dim_size;
-       offset += blockDim.x) {
+          typename AccT>
+__device__ __forceinline__ void ThreadReadWrite(T* out,
+                                                const T* input,
+                                                int dim_size,
+                                                Functor<AccT, T> functor) {
+  for (int offset = threadIdx.x; offset < dim_size; offset += blockDim.x) {
     out[offset] = functor(static_cast<AccT>(input[offset]));
   }
 }
@@ -445,7 +408,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
   using VecT = phi::AlignedVector<T, kVecSize>;
 
   int bid = blockIdx.x;
-  T* batch_input = const_cast<T*>(src) + bid * dim_size;
+  const T* batch_input = const_cast<T*>(src) + bid * dim_size;
   T* batch_output = softmax + bid * dim_size;
 
   const int input_align_shift =
@@ -473,22 +436,22 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
 
   // write data to softmax_output according to the LogMode
   if (LogMode) {
-    LogSoftmaxForwardFunctor<AccT, T> reduction(thread_max, thread_exp);
+    LogSoftmaxForwardFunctor<AccT, T> softmax(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
-      ThreadVecWriteVec<LogSoftmaxForwardFunctor, T, AccT, kVecSize>(
-          batch_output, batch_input, dim_size, input_align_shift, reduction);
+      ThreadVecReadWrite<LogSoftmaxForwardFunctor, T, AccT, kVecSize>(
+          batch_output, batch_input, dim_size, input_align_shift, softmax);
     } else {
-      ThreadVecWrite<LogSoftmaxForwardFunctor, T, AccT, kVecSize>(
-          batch_output, batch_input, dim_size, reduction);
+      ThreadReadWrite<LogSoftmaxForwardFunctor, T, AccT>(
+          batch_output, batch_input, dim_size, softmax);
     }
   } else {
-    SoftmaxForwardFunctor<AccT, T> reduction(thread_max, thread_exp);
+    SoftmaxForwardFunctor<AccT, T> softmax(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
-      ThreadVecWriteVec<SoftmaxForwardFunctor, T, AccT, kVecSize>(
-          batch_output, batch_input, dim_size, input_align_shift, reduction);
+      ThreadVecReadWrite<SoftmaxForwardFunctor, T, AccT, kVecSize>(
+          batch_output, batch_input, dim_size, input_align_shift, softmax);
     } else {
-      ThreadVecWrite<SoftmaxForwardFunctor, T, AccT, kVecSize>(
-          batch_output, batch_input, dim_size, reduction);
+      ThreadReadWrite<SoftmaxForwardFunctor, T, AccT>(
+          batch_output, batch_input, dim_size, softmax);
     }
   }
 }
@@ -1183,6 +1146,7 @@ void LaunchKeMatrixSoftmaxForwardKernel(
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   constexpr int kVecSize =
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
+  // Use a block to calculate the softmax of a row along the lowest dimension.
   int block_dim = CalcBlockSize(kVecSize, dim_size);
   KeMatrixSoftmaxForward<T, AccT, IndexType, LogMode>
       <<<N, block_dim, 0, dev_ctx.stream()>>>(out, input, dim_size);
