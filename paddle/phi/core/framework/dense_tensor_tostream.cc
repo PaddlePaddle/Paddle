@@ -24,6 +24,7 @@
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/framework/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
