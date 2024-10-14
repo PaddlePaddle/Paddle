@@ -843,7 +843,7 @@ tensor_method_func = [
     "combinations",
     'signbit',
     'log_normal_',
-    'ser_',
+    'set_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
