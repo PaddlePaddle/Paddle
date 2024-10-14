@@ -26,7 +26,6 @@ namespace cub = hipcub;
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
 
 namespace phi {
 namespace fusion {
