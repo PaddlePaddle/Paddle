@@ -1456,16 +1456,15 @@ class ShardingPass(PassBase):
                         inter_node_dst = dst_rank // nranks_per_node
                         new_op = block._insert_op_without_sync(
                             idx + 1,
-                            type='c_reduce_sum',
-                            inputs={"X": reduce_varname},
+                            type='reduce',
+                            inputs={"x": reduce_varname},
                             outputs={
-                                "Out": reduce_varname,
+                                "out": reduce_varname,
                             },
                             attrs={
                                 'ring_id': inter_node_group.id,
                                 'root_id': inter_node_dst,
-                                'use_calc_stream': True,
-                                OP_ROLE_KEY: OpRole.Backward,
+                                'reduce_type': int(dist.ReduceOp.SUM),
                             },
                         )
                         new_op._set_attr(
