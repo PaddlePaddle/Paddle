@@ -3709,6 +3709,17 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void ReduceSumInferMeta(const MetaTensor& x,
+                        const std::vector<int64_t>& axis,
+                        bool keep_dim,
+                        MetaTensor* out) {
+  bool reduce_all = false;
+  if (axis.empty()) {
+    reduce_all = true;
+  }
+  SumRawInferMeta(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
+}
+
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,

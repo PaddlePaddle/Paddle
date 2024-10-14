@@ -106,8 +106,13 @@ static const char* call_cuda_kernel = "cinn_call_cuda_kernel";
 
 static const char* call_hip_kernel = "cinn_call_hip_kernel";
 
+static const char* call_cuda_memset = "cinn_call_cuda_memset";
+
 static const char* get_value_in_cuda_kernel_args =
     "cinn_get_value_in_cuda_kernel_args";
+
+static const char* get_item_in_cuda_kernel_args =
+    "cinn_get_item_in_cuda_kernel_args";
 
 static const char* infer_shape_set_value = "infer_shape_set_value";
 

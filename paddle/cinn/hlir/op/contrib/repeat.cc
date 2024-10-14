@@ -157,7 +157,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    CHECK_EQ(pack_args.size(), 2U);
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        2U,
+        ::common::errors::InvalidArgument(
+            "[Error info] The size of pack_args should equal to 2."));
     std::string tensor_name = pack_args[1].operator std::string();
 
     std::vector<ir::Tensor> out = Repeat(tensor_A, repeats, axis, tensor_name);
