@@ -320,7 +320,7 @@ void _Var_::Verify() const {
                         "A valid name is required to identify the variable."));
 }
 
-Expr IterMark::Make(const Expr &source, const Expr &extent) {
+Expr IterMark::Make(const Expr &source, const IndexExpr &extent) {
   auto *n = make_shared<IterMark>();
   n->source = source;
   n->extent = extent;
@@ -335,9 +335,9 @@ IterMark &IterMark::operator=(const IterMark &other) {
   return *this;
 }
 Expr IterSplit::Make(const Expr &source,
-                     const Expr &lower_factor,
-                     const Expr &extent,
-                     const Expr &scale) {
+                     const IndexExpr &lower_factor,
+                     const IndexExpr &extent,
+                     const IndexExpr &scale) {
   auto *n = make_shared<IterSplit>();
   n->set_type(source.type());
   n->source = source;
@@ -353,18 +353,18 @@ Expr IterSplit::Make(const Expr &source) {
   n->set_type(source.type());
   n->source = source;
   n->extent = source_mark->extent;
-  n->lower_factor = One(source.type());
-  n->scale = One(source.type());
+  n->lower_factor = One(source.type()).as_index();
+  n->scale = One(source.type()).as_index();
   return Expr(n);
 }
 
-Expr IterSplit::Make(const Expr &source, const Expr &scale) {
+Expr IterSplit::Make(const Expr &source, const IndexExpr &scale) {
   auto *n = make_shared<IterSplit>();
   auto source_mark = source.As<IterMark>();
   n->set_type(source.type());
   n->source = source;
   n->extent = source_mark->extent;
-  n->lower_factor = One(source.type());
+  n->lower_factor = One(source.type()).as_index();
   n->scale = scale;
   return Expr(n);
 }
@@ -377,7 +377,7 @@ IterSplit &IterSplit::operator=(const IterSplit &other) {
   return *this;
 }
 
-Expr IterSum::Make(const std::vector<Expr> &args, const Expr &base) {
+Expr IterSum::Make(const std::vector<Expr> &args, const IndexExpr &base) {
   auto *n = make_shared<IterSum>();
   n->set_type(base.type());
   n->args = std::move(args);
