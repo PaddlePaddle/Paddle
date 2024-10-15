@@ -20,3 +20,8 @@ from paddle.tensorrt.register import converter_registry
 @converter_registry.register("pd_op.conv2d", trt_version="8.x")
 def conv2d_converter(network, paddle_op, inputs):
     return ConvertConv2d(network, paddle_op, inputs)
+
+
+@converter_registry.register("pd_op.conv2d_transpose", trt_version="8.x")
+def conv2d_transpose_converter(network, paddle_op, inputs):
+    return ConvertConv2d(network, paddle_op, inputs)
