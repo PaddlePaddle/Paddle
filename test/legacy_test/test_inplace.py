@@ -2038,7 +2038,7 @@ class TestDygraphInplaceSet(unittest.TestCase):
         self.dtype = "float32"
         self.new_shape = [20]
         self.new_stride = [2]
-        self.new_offset = 1
+        self.new_offset = 0
 
     def non_inplace_api_processing(
         self, x, new_x=None, shape=None, stride=None, offset=0
@@ -2204,7 +2204,7 @@ class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
         self.dtype = "float16"
         self.new_shape = [3, 8]
         self.new_stride = [2, 2]
-        self.new_offset = 2
+        self.new_offset = 0
 
     def test_inplace_api(self):
         for place in self.places:
@@ -2230,7 +2230,7 @@ class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
         self.dtype = "uint16"
         self.new_shape = [3, 8]
         self.new_stride = [2, 2]
-        self.new_offset = 2
+        self.new_offset = 0
 
     def test_inplace_api(self):
         for place in self.places:
