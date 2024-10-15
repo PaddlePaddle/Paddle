@@ -356,8 +356,8 @@ ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
     VLOG(4) << "pe::GenerateShape will return a meaningless tensor when "
                "output_dim_exprs.size() != 1";
     return Compute(
-        {Expr(1)},
-        [=](const std::vector<Expr>& indice) { return Expr(1); },
+        {Expr(1l)},
+        [=](const std::vector<Expr>& indice) { return Expr(1l); },
         name);
   }
   cinn::common::DimExprConverterWithSymbolBindings converter(inputs,

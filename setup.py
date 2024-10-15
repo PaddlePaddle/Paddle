@@ -1704,6 +1704,14 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # drr init headers
+            find_files(
+                '*.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape',
+                recursive=True,
+            )
+        )
         + list(  # operator init headers
             find_files(
                 '*.h',
