@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -364,7 +363,6 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
     def init_reduction(self):
         self.reduction = None
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

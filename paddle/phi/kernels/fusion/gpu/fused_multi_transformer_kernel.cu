@@ -31,7 +31,7 @@ void FusedMultiTransformerOpKernel(
     const Context &dev_ctx,
     const DenseTensor &x,
     const std::vector<const DenseTensor *> &ln_scales,
-    const std::vector<const DenseTensor *> &ln_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &ln_biases_in,
     const std::vector<const DenseTensor *> &qkv_weights,
     const paddle::optional<std::vector<const DenseTensor *>> &qkv_biases_in,
     const paddle::optional<std::vector<const DenseTensor *>> &cache_kvs_in,
@@ -45,7 +45,7 @@ void FusedMultiTransformerOpKernel(
     const paddle::optional<std::vector<const DenseTensor *>>
         &out_linear_biases_in,
     const std::vector<const DenseTensor *> &ffn_ln_scales,
-    const std::vector<const DenseTensor *> &ffn_ln_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &ffn_ln_biases_in,
     const std::vector<const DenseTensor *> &ffn1_weights,
     const paddle::optional<std::vector<const DenseTensor *>> &ffn1_biases_in,
     const std::vector<const DenseTensor *> &ffn2_weights,
@@ -75,6 +75,10 @@ void FusedMultiTransformerOpKernel(
   int seq_len = input_x_dims[1];
   int dim_embed = input_x_dims[2];
   int bsz_seq = bsz * seq_len;
+
+  // Optional Bias input for LayerNorm / RMSNorm
+  auto ln_biases = ln_biases_in.get();
+  auto ffn_ln_biases = ffn_ln_biases_in.get();
 
   bool use_glu = (act_method == "geglu" || act_method == "swiglu");
 

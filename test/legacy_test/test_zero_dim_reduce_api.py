@@ -22,7 +22,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 reduce_api_list = [
     paddle.sum,
@@ -143,7 +142,6 @@ class TestReduceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static_reduce_x_0D(self):
         paddle.enable_static()
         for api in reduce_api_list:
@@ -198,7 +196,6 @@ class TestReduceAPI(unittest.TestCase):
                 if len(res) > 2:
                     np.testing.assert_allclose(res[-1], np.array(1.0))
 
-    @test_with_pir_api
     def test_static_reduce_ND_0D(self):
         paddle.enable_static()
         for api in reduce_api_list:
@@ -237,7 +234,6 @@ class TestReduceAPI(unittest.TestCase):
                 if len(res) > 2:
                     self.assertEqual(res[2].shape, (3, 5))
 
-    @test_with_pir_api
     def test_static_reduce_x_1D(self):
         paddle.enable_static()
         for api in reduce_api_list:

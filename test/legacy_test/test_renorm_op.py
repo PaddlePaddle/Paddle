@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 paddle.set_device('cpu')
 
@@ -32,7 +31,6 @@ class TestRenormAPI(unittest.TestCase):
         self.dim = 2
         self.max_norm = 2.05
 
-    @test_with_pir_api
     def test_renorm_api(self):
         paddle.enable_static()
         self.input_data()

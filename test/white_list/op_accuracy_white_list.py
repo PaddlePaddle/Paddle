@@ -47,7 +47,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'fractional_max_pool2d',
     'fractional_max_pool3d',
     'minus',
-    'modified_huber_loss',
     'nce',
     'pool2d',
     'pool3d',

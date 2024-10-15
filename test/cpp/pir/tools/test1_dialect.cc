@@ -25,12 +25,12 @@ void Test1Dialect::initialize() {
   RegisterOps<Operation1, Operation2, Operation3, Operation4>();
 }
 
-pir::OpPrintFn Test1Dialect::PrintOperation(pir::Operation *op) const {
-  return [](pir::Operation *op, pir::IrPrinter &printer) {
+pir::OpPrintFn Test1Dialect::PrintOperation(const pir::Operation &op) const {
+  return [](const pir::Operation &op, pir::IrPrinter &printer) {
     printer.PrintOpResult(op);
     printer.os << " =";
 
-    printer.os << " \"" << op->name() << "\"";
+    printer.os << " \"" << op.name() << "\"";
     printer.PrintOpOperands(op);
   };
 }

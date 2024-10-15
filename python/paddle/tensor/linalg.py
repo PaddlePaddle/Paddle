@@ -13,10 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
@@ -2742,7 +2742,12 @@ def det(x: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_or_pir_mode():
         return _C_ops.det(x)
     else:
-        check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
+        check_dtype(
+            x.dtype,
+            'Input',
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'det',
+        )
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (

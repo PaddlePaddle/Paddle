@@ -30,21 +30,10 @@ void ExpandAsKernel(const Context& ctx,
                     const std::vector<int>& target_shape_t,
                     DenseTensor* out) {
   std::vector<int> target_shape = target_shape_t;
-  std::cerr << "base shape " << std::endl;
-  for (auto d : target_shape) {
-    std::cerr << d << " , ";
-  }
-  std::cerr << "\n";
 
   if (y.get_ptr()) {
     target_shape = phi::vectorize<int>(y.get_ptr()->dims());
   }
-
-  std::cerr << "base shape new " << std::endl;
-  for (auto d : target_shape) {
-    std::cerr << d << " , ";
-  }
-  std::cerr << "\n";
 
   int rank = x.dims().size();
   int target_rank = static_cast<int>(target_shape.size());
