@@ -3257,6 +3257,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } else if (var->IsType<framework::Vocab>()) {
         tensor_in = &(var->Get<framework::Vocab>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<framework::Strings>()) {
+        tensor_in = &(var->Get<framework::Strings>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::FeedList>()) {
         tensor_in = &(var->Get<framework::FeedList>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
