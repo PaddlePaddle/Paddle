@@ -342,6 +342,11 @@ class DygraphShardingOptimizer:
                         )
                         g_var.scale_(1.0 / sharding_nrank)
                         reduce_op = ReduceOp.SUM
+
+                    # In align mode, we scale the grad in advance, so we need a SUM here
+                    if paddle.distributed.in_auto_parallel_align_mode():
+                        reduce_op = ReduceOp.SUM
+
                     param_rank = self._param2rank[param.name]
 
                     need_check = strtobool(

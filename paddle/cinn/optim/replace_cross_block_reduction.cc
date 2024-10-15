@@ -90,6 +90,24 @@ struct CrossBlockReductionReplacer : public ir::IRMutator<> {
     return reduce_var_names.count(innermost_loop->loop_var->name) > 0;
   }
 
+  void InsertTempSpaceToFuncArgs(ir::_LoweredFunc_* func_node,
+                                 const ir::Buffer& buffer,
+                                 bool need_zero_init) {
+    // insert the temp space after the last tensor argument and before the
+    // first scalar argument
+    auto insert_pos =
+        std::find_if(func_node->args.begin(),
+                     func_node->args.end(),
+                     [](const ir::Argument& arg) { return arg.is_var(); });
+
+    int arg_idx = std::distance(func_node->args.begin(), insert_pos);
+    func_node->temp_spaces.emplace_back(
+        CalcBufferSizeInBytes(buffer), arg_idx, need_zero_init);
+
+    ir::Argument temp_space_arg(buffer, ir::Argument::IO::kOutput);
+    func_node->args.insert(insert_pos, temp_space_arg);
+  }
+
   void ConvertHeapBuffersToFuncArgs(ir::_LoweredFunc_* func_node) {
     std::vector<ir::Buffer> global_bufs;
     std::vector<ir::Buffer> local_bufs;
@@ -108,9 +126,7 @@ struct CrossBlockReductionReplacer : public ir::IRMutator<> {
                           "Currently supports at most one global buffer."));
 
     for (auto& buf : global_bufs) {
-      func_node->temp_spaces.emplace_back(
-          CalcBufferSizeInBytes(buf), /* arg_idx= */ func_node->args.size());
-      func_node->args.emplace_back(buf, ir::Argument::IO::kOutput);
+      InsertTempSpaceToFuncArgs(func_node, buf, false);
     }
     func_node->temp_bufs = local_bufs;
   }
@@ -231,13 +247,8 @@ struct CrossBlockReductionReplacer : public ir::IRMutator<> {
 
     ir::_LoweredFunc_* func_node = op->As<ir::_LoweredFunc_>();
     ConvertHeapBuffersToFuncArgs(func_node);
-
+    InsertTempSpaceToFuncArgs(func_node, semaphore_buffer_, true);
     func_node->temp_bufs.push_back(is_done_tensor_->buffer);
-    func_node->temp_spaces.emplace_back(
-        CalcBufferSizeInBytes(semaphore_buffer_),
-        /* arg_idx= */ func_node->args.size(),
-        /* need_zero_init = */ true);
-    func_node->args.emplace_back(semaphore_buffer_, ir::Argument::IO::kOutput);
   }
 
   void Visit(const ir::ScheduleBlockRealize* expr, ir::Expr* op) override {

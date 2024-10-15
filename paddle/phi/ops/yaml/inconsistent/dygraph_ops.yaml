@@ -133,6 +133,7 @@
   kernel :
     func : embedding_grad
     data_type : weight
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : equal
   args : (Tensor x, Tensor y)
@@ -165,6 +166,7 @@
     data_type : params
   optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : fused_gemm_epilogue
   args : (Tensor x, Tensor y, Tensor bias, bool trans_x, bool trans_y, str activation)
@@ -338,6 +340,7 @@
   kernel :
     func : sync_comm_stream
     data_type : DataType::FLOAT32
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
@@ -359,3 +362,4 @@
     func : unique
     data_type : x
   optional : indices, inverse, counts
+  traits : paddle::dialect::ForwardOnlyTrait
