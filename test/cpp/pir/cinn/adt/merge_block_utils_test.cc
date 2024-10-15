@@ -143,7 +143,8 @@ TEST(ForInfo, ForInfoNotEqual) {
 TEST(ForInfo, ForMerge) {
   ir::Expr for_loop1 = MakeForLoops({2, 3, 4}, 0);
   ir::Expr for_loop2 = MakeForLoops({2, 3, 4}, 0);
-  ir::Expr fuse_loop = LoopFusion(for_loop1.As<ir::For>(), for_loop2.As<ir::For>());
+  ir::Expr fuse_loop =
+      LoopFusion(for_loop1.As<ir::For>(), for_loop2.As<ir::For>());
   EXPECT_TRUE(CanMergeBlocks(
       for_loop1.As<ir::For>(), fuse_loop.As<ir::For>(), IsBlockForAllEqual));
   EXPECT_TRUE(CanMergeBlocks(
