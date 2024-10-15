@@ -16,7 +16,6 @@
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 COMMON_DECLARE_bool(manually_trans_conv_filter);
 
@@ -1445,44 +1444,46 @@ bool PriorBoxOpInferSymbolicShape(
 
 bool RepeatInterleaveWithTensorIndexOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const symbol::ShapeOrDataDimExprs &index_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &repeats_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   const auto &attributes = op->attributes();
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  const std::vector<symbol::DimExpr> &in_dims_sym = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (operand_shape_or_data.data().has_value()) {
-      dims = operand_shape_or_data.data().value();
-    } else {
-      dims = operand_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
-  const symbol::DimExpr &repeat_times_sym = [&] {
-    symbol::DimExpr repeat_times;
-    if (index_shape_or_data.data().has_value()) {
-      repeat_times = index_shape_or_data.data().value()[0];
-    } else {
-      repeat_times = index_shape_or_data.shape()[0];
-    }
-    return repeat_times;
-  }();
+  PADDLE_ENFORCE_EQ(
+      repeats_shape_or_data.shape().size(),
+      1,
+      common::errors::InvalidArgument(
+          "The shape of Input(Repeats) should be 1-D Tensor, but received "
+          "shape is %d-D.",
+          repeats_shape_or_data.shape().size()));
 
-  int x_rank = in_dims_sym.size();
+  ExprVec repeat_times_shape =
+      paddle::dialect::details::GetOrCreateExprVecFromData(
+          repeats_shape_or_data, infer_context);
+
+  const auto &GetSum = [&](const auto &dim_exprs) {
+    symbol::DimExpr sum{0};
+    for (const auto &dim_expr : dim_exprs) {
+      sum = sum + dim_expr;
+    }
+    return sum;
+  };
+
+  int x_rank = x_shape.size();
   if (axis < 0) axis += x_rank;
 
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;
     for (int i = 0; i < x_rank; i++) {
       if (i == axis) {
-        out_sym_shape.push_back(in_dims_sym.at(i) * repeat_times_sym);
+        out_sym_shape.push_back(GetSum(repeat_times_shape));
       } else {
-        out_sym_shape.push_back(in_dims_sym.at(i));
+        out_sym_shape.push_back(x_shape.at(i));
       }
     }
     return out_sym_shape;
