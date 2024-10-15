@@ -804,10 +804,13 @@ class PipelineOptimizer:
                             inputs={'x': var},
                             attrs={
                                 'peer': 1,
+                                self._op_role_key: op_role,
                                 'ring_id': ring_id,
                             },
                         )
-                        send_op.dist_attr.execution_stream = "default"
+                        print("---------pipeline----------")
+                        print(send_op)
+                        # send_op.dist_attr.execution_stream = "default"
                         extra_index_info['index'] += 1
                         var_shape = list(var.shape)
                         var_shape[0] = (
@@ -823,9 +826,12 @@ class PipelineOptimizer:
                                 'dtype': var.dtype,
                                 'peer': 0,
                                 'ring_id': ring_id,
+                                self._op_role_key: op_role,
                             },
                         )
-                        recv_op.dist_attr.execution_stream = "default"
+                        print("---------pipeline----------")
+                        print(recv_op)
+                        # recv_op.dist_attr.execution_stream = "default"
                         extra_index_info['index'] += 1
                     elif self.schedule_mode == '1F1B':  # 1F1B
                         var_shape = list(var.shape)
@@ -892,9 +898,12 @@ class PipelineOptimizer:
                                 attrs={
                                     'ring_id': ring_id,
                                     'peer': 1,
+                                    self._op_role_key: op_role,
                                 },
                             )
-                            send_op.dist_attr.execution_stream = "default"
+                            print("---------pipeline----------")
+                            print(send_op)
+                            # send_op.dist_attr.execution_stream = "default"
                         else:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
@@ -906,6 +915,7 @@ class PipelineOptimizer:
                                     'use_calc_stream': False,
                                     'num': self.mp_degree,
                                     'id': self.mp_rank,
+                                    self._op_role_key: op_role,
                                 },
                             )
                         extra_index_info['index'] += 1
@@ -941,9 +951,12 @@ class PipelineOptimizer:
                                     'dtype': var.dtype,
                                     'peer': 0,
                                     'ring_id': ring_id,
+                                    self._op_role_key: op_role,
                                 },
                             )
-                            recv_op.dist_attr.execution_stream = "default"
+                            print("---------pipeline----------")
+                            print(recv_op)
+                            # recv_op.dist_attr.execution_stream = "default"
                         else:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
@@ -956,6 +969,7 @@ class PipelineOptimizer:
                                     'out_shape': var_shape,
                                     'num': self.mp_degree,
                                     'id': self.mp_rank,
+                                    self._op_role_key: op_role,
                                 },
                             )
                         extra_index_info['index'] += 1
@@ -1622,8 +1636,11 @@ class PipelineOptimizer:
                         # microbatch
                         'peer': read_dev_index,
                         'ring_id': ring_id,
+                        self._op_role_key: self._op_role.LRSched,
                     },
                 )
+                print("---------pipeline----------")
+                # print(recv_op)
                 read_block._insert_op(
                     index=0,
                     type='p_recv',
@@ -1634,6 +1651,7 @@ class PipelineOptimizer:
                         # microbatch
                         'peer': write_dev_index,
                         'ring_id': ring_id,
+                        self._op_role_key: self._op_role.LRSched,
                     },
                 )
                 read_block._insert_op(

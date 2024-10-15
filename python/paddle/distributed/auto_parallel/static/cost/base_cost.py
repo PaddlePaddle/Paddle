@@ -781,6 +781,7 @@ class CommOpCost(OpCost):
         from ..reshard import get_var_with_recursion
 
         if self._comm_count is None:
+            print("---------self._comm_count is None-----------")
             dtype = None
             shape = None
             if self.op is not None:
@@ -802,8 +803,10 @@ class CommOpCost(OpCost):
                 dtype = var.dtype
                 shape = var.shape
             elif self.op_desc is not None:
+                print("---------self.op_desc is not None-----------")
                 dtype = self.op_desc["inputs"]["X"][0][0]
                 shape = self.op_desc["inputs"]["X"][0][1]
+                print(dtype, shape)
 
             factor = None
             if dtype == paddle.float32 or dtype == paddle.int32:

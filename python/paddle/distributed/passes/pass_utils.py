@@ -471,20 +471,18 @@ def _pir_overlap_send_recv(program):
     This function is used to replace the function '_insert_sync_for_fthenb_1f1b'.
     The finally target of this function is as follows:
         1. no need to insert the 'c_sync_calc' and 'c_sync_calc' operators
-        2. 'send_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
-        3. 'recv_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
+        2. 'p_send' operator uses 'dist_attr.execution_stream' to set stream of its own.
+        3. 'p_recv' operator uses 'dist_attr.execution_stream' to set stream of its own.
     """
     for block in program.blocks:
         for op in block.ops:
-            if op.name() == "pd_op.send_v2":
+            if op.name() == "pd_op.p_send":
                 op.set_bool_attr("dynamic_shape", False)
-                op.set_bool_attr("use_calc_stream", True)
                 ring_id = op.attrs()["ring_id"]
                 op.set_execution_stream(f"send_stream_{ring_id}")
                 op.set_scheduling_priority(0)
-            elif op.name() == "pd_op.recv_v2":
+            elif op.name() == "pd_op.p_recv":
                 op.set_bool_attr("dynamic_shape", False)
-                op.set_bool_attr("use_calc_stream", True)
                 op.set_execution_stream("recv_stream")
                 op.set_scheduling_priority(0)
 
