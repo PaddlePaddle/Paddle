@@ -541,7 +541,9 @@ def remove_unuseful_comm_op_pass(program):
             if op.operand_source(0).has_one_use():
                 op.result(0).replace_all_uses_with(op.operand_source(0))
                 op.erase()
-
+        if op.name() == "pd_op.cast" and op.result(0).dtype == op.operand_source(0).dtype:
+            op.result(0).replace_all_uses_with(op.operand_source(0))
+            op.erase()
 
 # In sequence_parallel, we need to transpose hidden_states
 # from [bs, seq, hidden] to [seq, bs, hidden] to perform
@@ -606,7 +608,6 @@ def complete_op_role(main_program, op_role_scope: list):
             else:
                 pass
             global_op_idx += 1
-
 
 def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     """
