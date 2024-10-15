@@ -213,8 +213,8 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
   return iter->second->nccl_comm();
 }
 
-std::string ProcessGroupNCCL::GetOrCreateGroupKey(
-    const Place& place, CommType comm_type = CommType::UNKNOWN) {
+std::string ProcessGroupNCCL::GetOrCreateGroupKey(const Place& place,
+                                                  CommType comm_type) {
   const auto& key = GetKeyFromPlace(place);
   if (place_to_group_key_.find(key) == place_to_group_key_.end()) {
     if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
