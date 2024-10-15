@@ -16,20 +16,17 @@ import numpy as np
 import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
-    activation_converter,
+    activation_map,
     get_trt_plugin,
 )
 from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.relu", trt_version="8.x")
-def relu_converter(network, paddle_op, inputs):
-    return activation_converter(network, paddle_op.name(), inputs)
-
-
 @converter_registry.register("pd_op.tanh", trt_version="8.x")
-def tanh_converter(network, paddle_op, inputs):
-    return activation_converter(network, paddle_op.name(), inputs)
+@converter_registry.register("pd_op.sigmoid", trt_version="8.x")
+def activation_converter(network, paddle_op, inputs):
+    return activation_map[paddle_op.name()](network, inputs)
 
 
 @converter_registry.register("pd_op.softmax", trt_version="8.x")

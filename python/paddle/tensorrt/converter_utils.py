@@ -238,18 +238,6 @@ def trt_min(network, a, b):
     return layer.get_output(0)
 
 
-def activation_converter(network, type, inputs):
-    if type == "pd_op.tanh":
-        layer = network.add_activation(inputs[0], trt.ActivationType.TANH)
-    elif type == "pd_op.relu":
-        layer = network.add_activation(inputs[0], trt.ActivationType.RELU)
-    elif type == "pd_op.sigmoid":
-        layer = network.add_activation(inputs[0], trt.ActivationType.SIGMOID)
-    else:
-        return None
-    return layer.get_output(0)
-
-
 def trt_mul(network, a, b):
     layer = network.add_elementwise(a, b, trt.ElementWiseOperation.PROD)
     return layer.get_output(0)
@@ -334,3 +322,25 @@ def build_size_tensor(
     ).get_output(0)
 
     return size_tensor
+
+
+def trt_tanh(network, inputs):
+    layer = network.add_activation(inputs[0], trt.ActivationType.TANH)
+    return layer.get_output(0)
+
+
+def trt_relu(network, inputs):
+    layer = network.add_activation(inputs[0], trt.ActivationType.RELU)
+    return layer.get_output(0)
+
+
+def trt_sigmoid(network, inputs):
+    layer = network.add_activation(inputs[0], trt.ActivationType.SIGMOID)
+    return layer.get_output(0)
+
+
+activation_map = {
+    "pd_op.tanh": trt_tanh,
+    "pd_op.relu": trt_relu,
+    "pd_op.sigmoid": trt_sigmoid,
+}
