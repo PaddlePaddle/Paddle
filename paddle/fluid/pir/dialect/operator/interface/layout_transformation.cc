@@ -17,10 +17,10 @@
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/pass/utils.h"
 
 namespace paddle::dialect {
 
@@ -72,7 +72,7 @@ void RewriteByLayoutImpl<AddGroupNormSiluOp>(pir::Operation* op,
   }
 
   for (auto value : RelevantOutputsImpl<AddGroupNormSiluOp>(op)) {
-    pir::SetNewLayoutForValue(value, new_layout);
+    SetNewLayoutForValue(value, new_layout);
   }
 }
 

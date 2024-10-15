@@ -35,13 +35,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
+#include "paddle/pir/include/pass/utils.h"
 
 struct Node;
 
@@ -655,6 +655,7 @@ class TransferLayoutPass : public pir::Pass {
       for (auto op : ops) {
         VLOG(10) << op << ",";
       }
+      VLOG(10);
     }
 
     VLOG(10) << "-----------------------[op src set]------------------------";
@@ -794,6 +795,7 @@ class TransferLayoutPass : public pir::Pass {
         for (const auto& op : operation_set) {
           VLOG(10) << " op: " << op << ",";
         }
+        VLOG(10);
         const auto& perm =
             ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
