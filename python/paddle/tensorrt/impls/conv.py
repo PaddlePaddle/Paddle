@@ -18,6 +18,7 @@ import tensorrt as trt
 from paddle.tensorrt.register import converter_registry
 
 
+@converter_registry.register("pd_op.depthwise_conv2d", trt_version="8.x")
 @converter_registry.register("pd_op.conv2d", trt_version="8.x")
 def conv2d_converter(network, paddle_op, inputs):
     input_tensor, weight = inputs
