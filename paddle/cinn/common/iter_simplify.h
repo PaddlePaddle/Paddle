@@ -84,7 +84,7 @@ class IterMapRewriter : public ir::IRMutator<> {
   void Visit(const ir::Mod* op, Expr* expr) override;
 
  private:
-  static ir::IndexExpr ToIterSum(const Expr& expr);
+  static Expr ToIterSum(const Expr& expr);
 
   static void AddToLhs(ir::IterSum* lhs, const ir::IterSplit& rhs, int sign);
 
@@ -94,16 +94,29 @@ class IterMapRewriter : public ir::IRMutator<> {
 
   Expr PreprocessDividend(const Expr& dividend);
 
-  ir::IndexExpr SplitDivConst(ir::IndexExpr lhs,
-                              ir::IndexExpr base,
-                              ir::IndexExpr rhs);
+  Expr SplitDivConst(Expr lhs, ir::IndexExpr base, ir::IndexExpr rhs);
 
-  ir::IndexExpr SplitModConst(ir::IndexExpr lhs,
-                              ir::IndexExpr base,
-                              ir::IndexExpr rhs);
+  Expr SplitModConst(Expr lhs, ir::IndexExpr base, ir::IndexExpr rhs);
+
+  int32_t FindIterWithExactScale(const ir::IterSum& expr,
+                                 const std::vector<bool>& skip_flag,
+                                 const ir::IndexExpr& expected_scale,
+                                 const Expr& match_source,
+                                 int32_t rbegin = -1,
+                                 int32_t first_possible_unit_extent_pos = 0);
+
+  int32_t FindFirstPossibleUnitExtentIndex(const ir::IterSum& expr);
+
+  int32_t FindBaseIter(const ir::IterSum& expr,
+                       const std::vector<bool>& skip_flag,
+                       const Expr& match_source,
+                       int32_t rbegin = -1);
+
+  std::optional<Expr> TryFuse(const Expr& expr);
 
   std::unordered_map<std::string, ir::IndexExpr> var_map_;
   std::vector<ir::IterMark> input_marks_;
+  std::unordered_map<Expr, Expr> sum_fuse_map_;
   common::SymbolicExprAnalyzer analyzer_;
 };
 

@@ -352,5 +352,31 @@ TEST_F(TestIterSimplify, mod) {
   TEST_EXPR(e14, gt14, Expr(0));
 }
 
+TEST_F(TestIterSimplify, fuse_not_same_source) {
+  IterMapRewriter rewriter{{i, j, k, i_j_k_fused}, analyzer};
+  IterMapToExprNormalizer normalizer{analyzer};
+
+  auto gt1 = ITER_SUM(ITER_SPLIT(
+      ITER_MARK_SUM(ITER_SUM(ITER_SPLIT(ITER_MARK_VAR(i), ir::IndexExpr(32)),
+                             ITER_SPLIT(ITER_MARK_VAR(j), ir::IndexExpr(8)),
+                             ITER_SPLIT(ITER_MARK_VAR(k), ir::IndexExpr(1))),
+                    ir::IndexExpr(64)),
+      ir::IndexExpr(8),
+      ir::IndexExpr(8),
+      ir::IndexExpr(1)));
+  auto gt2 = ITER_SUM(ITER_SPLIT(
+      ITER_MARK_SUM(ITER_SUM(ITER_SPLIT(ITER_MARK_VAR(i), ir::IndexExpr(4)),
+                             ITER_SPLIT(ITER_MARK_VAR(j), ir::IndexExpr(1))),
+                    ir::IndexExpr(8))));
+
+  ir::Expr e1 = (i * 32 + j * 8 + k) / 8;
+  ir::Expr e2 = (i * 32 + j * 8) / 8;
+  ir::Expr e3 = (i * 32 + j * 7) / 8;
+
+  TEST_EXPR(e1, gt1, (i * 32 + j * 8 + k) / 8);
+  TEST_EXPR(e2, gt2, i * 4 + j);
+  EXPECT_ANY_THROW(rewriter.Rewrite(&e3));
+}
+
 }  // namespace common
 }  // namespace cinn
