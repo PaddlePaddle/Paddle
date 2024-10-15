@@ -14,14 +14,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/ddim.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/common/transform.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/impl/clip_kernel_impl.h"
-
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"

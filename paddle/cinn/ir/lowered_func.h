@@ -114,6 +114,28 @@ struct CudaAxisInfo {
 std::ostream& operator<<(std::ostream& os, const CudaAxisInfo& x);
 
 /**
+ * A struct representing a temporary global buffer (allocated on the heap) that
+ * is used as staging space during kernel execution.
+ */
+struct TempSpaceInfo {
+  TempSpaceInfo() = default;
+  TempSpaceInfo(const Expr& size, int arg_idx, bool need_zero_init = false)
+      : size_(size), arg_idx_(arg_idx), need_zero_init_(need_zero_init) {}
+
+  Expr size() const { return size_; }
+  int arg_idx() const { return arg_idx_; }
+  bool need_zero_init() const { return need_zero_init_; }
+
+ private:
+  // size of the space in bytes
+  Expr size_;
+  // index in the function's argument list
+  int arg_idx_;
+  // whether this space need to be zero-initialized
+  bool need_zero_init_;
+};
+
+/**
  * Definition of a lowered function. Note that, it should be functional.
  *
  * Arguments of the function:
@@ -130,6 +152,10 @@ struct _LoweredFunc_ : ExprNode<_LoweredFunc_> {
   //! Temporary buffers(as output), these buffers will not appear in the
   //! function's argument list, but will be used in the body.
   std::vector<Buffer> temp_bufs;
+
+  //! Temporary global buffers. These buffers will appear in the function's
+  //! argument list.
+  std::vector<TempSpaceInfo> temp_spaces;
 
   //! Body of this function.
   Expr body;

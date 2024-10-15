@@ -119,6 +119,7 @@
   infer_meta :
     func : CEmbeddingInferMeta
     param : [weight, x, start_index]
+    spmd_rule: CEmbeddingInferSpmd
   kernel :
     func : c_embedding
     param : [weight, x, start_index, vocab_size]
@@ -1011,6 +1012,7 @@
     data_type : x
   interfaces : paddle::dialect::ParseKernelKeyInterface
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : write_to_array
   args : (Tensor i, Tensor x)
@@ -1021,6 +1023,7 @@
   output: Tensor(softmax), Tensor(loss)
   infer_meta:
     func : CSoftmaxWithCrossEntropyInferMeta
+    spmd_rule : CSoftmaxWithCrossEntropyInferSpmd
   kernel:
     func: c_softmax_with_cross_entropy
     data_type : logits
