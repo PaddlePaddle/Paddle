@@ -2763,9 +2763,10 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                 "saving it to file and 'load_op' to load it"
             )
         if in_dynamic_or_pir_mode():
-            if output is None:
-                output = zeros(list(input.shape), dtype)
+
             if in_dynamic_mode():
+                if output is None:
+                    output = zeros(list(input.shape), dtype)
                 _C_ops.assign_value_(
                     output,
                     list(input.shape),
@@ -2774,8 +2775,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                     _current_expected_place(),
                 )
             else:
-                output = _C_ops.assign_value_(
-                    output,
+                output = _C_ops.assign_value(
                     list(input.shape),
                     dtype,
                     values,

@@ -443,6 +443,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   // 3.1.2 allock for out with total_true_num
   std::vector<int64_t> out_dim = {static_cast<int64_t>(total_true_num)};
 
+  std::cerr << "out dim " << total_true_num << std::endl;
   if (SelectData == 1) {
     out->Resize(common::make_ddim(out_dim));
   } else if (SelectData == 0) {  // == 0 where_index

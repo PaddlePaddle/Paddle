@@ -408,12 +408,19 @@ void divide_grad(const Tensor& x,
                  int axis,
                  Tensor* dx,
                  Tensor* dy) {
+  std::cerr << "divide grad\n";
   if (dy) {
     // dy = -(x/y^2) * dout = -out * dout / y
-    auto dy_res = -out * out_grad / y;
+    // auto dy_res = -out / y * out_grad;
+    // auto dy_res = -out_grad * out / y;
+    auto dy_res = -out_grad * (x / y / y);
+    std::cerr << "dims " << out.dims() << "\t " << y.dims() << "\t " << x.dims()
+              << std::endl;
     if (out.dims() != y.dims()) {
       // Maybe need reduce here
+
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), out.dims());
+      std::cerr << "reduce dims yyyy " << reduce_dim << std::endl;
       if (!reduce_dim.size()) {
         set_output<T>(dy_res, dy);
       } else {
@@ -432,6 +439,7 @@ void divide_grad(const Tensor& x,
     if (out_grad.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), out_grad.dims());
+      std::cerr << "reduce dims xx  " << std::endl;
       if (!reduce_dim.size()) {
         set_output<T>(dx_res, dx);
       } else {
@@ -1266,6 +1274,26 @@ void max_grad(const Tensor& x,
         }
       }
     }
+
+    std::cerr << "axis base\n";
+    for (auto s : axis_) {
+      std::cerr << s << " , ";
+    }
+    std::cerr << std::endl;
+
+    std::sort(axis_.begin(), axis_.end());
+    std::cerr << "axis \n";
+    for (auto s : axis_) {
+      std::cerr << s << " , ";
+    }
+    std::cerr << std::endl;
+
+    std::cerr << "out_grad \n";
+    for (auto d : out_grad.shape()) {
+      std::cerr << d << " , ";
+    }
+    std::cerr << std::endl;
+
     auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
     auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
     auto out_ = reshape<T>(out, out_grad_shape);

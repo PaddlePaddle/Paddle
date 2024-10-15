@@ -20,6 +20,9 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+
+#include "paddle/fluid/framework/tensor_util.h"
+
 namespace phi {
 
 template <typename T>
@@ -77,8 +80,41 @@ void LabelSmoothKernel(const Context& ctx,
     const auto* dist_t = prior_dist.get_ptr();
     auto dist_numel = dist_t->numel();
     const T* dist_data = dist_t->data<T>();
+
+    std::cerr << "label smooth with prio\n";
+
+    /// std::stringstream ss;
+    // ss << label;
+    // paddle::framework::print_tensor<T>(ss, label);
+
+    DenseTensor label_cpu;
+
+    phi::Copy(ctx, label, phi::CPUPlace(), true, &label_cpu);
+    std::cerr << "label \n";
+    for (size_t i = 0; i < 20; ++i) {
+      std::cerr << label_cpu.data<T>()[i] << "  ";
+    }
+    std::cerr << "\n";
+
+    DenseTensor dist_cpu;
+
+    phi::Copy(ctx, *dist_t, phi::CPUPlace(), true, &dist_cpu);
+    std::cerr << "dist  \n";
+    for (size_t i = 0; i < 20; ++i) {
+      std::cerr << dist_cpu.data<T>()[i] << "  ";
+    }
+    std::cerr << "\n";
+
     LabelSmoothRunDistKernel<T><<<grid, threads, 0, stream>>>(
         size_prob, epsilon, dist_numel, in_data, dist_data, out_data);
+
+    phi::DenseTensor out_cpu;
+    phi::Copy(ctx, *out, phi::CPUPlace(), true, &out_cpu);
+    std::cerr << "out  \n";
+    for (size_t i = 0; i < 20; ++i) {
+      std::cerr << out_cpu.data<T>()[i] << "  ";
+    }
+    std::cerr << "\n";
 
   } else {
     std::vector<const DenseTensor*> ins = {&label};

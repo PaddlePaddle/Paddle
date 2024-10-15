@@ -23,9 +23,6 @@ namespace primitive {
 namespace details {
 
 template <typename T>
-Tensor unsqueeze_decomp(const Tensor& x, const IntArray& axis);
-
-template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
 
@@ -212,13 +209,11 @@ std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
 
 template <typename T>
 Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
-  auto num_classes_tensor =
-      backend::full_with_tensor<T>(num_classes, 0, x.dtype());
   auto start = full<T>({1}, 0, x.dtype());
   auto step = full<T>({1}, 1, x.dtype());
   auto arange_class =
       backend::arange_with_tensor<T>(start, num_classes, step, x.dtype());
-  auto reshape_x = unsqueeze_decomp<T>(x, {-1});
+  auto reshape_x = backend::unsqueeze<T>(x, {-1});
   auto equal_res = backend::equal<T>(reshape_x, arange_class);
   return cast<T>(equal_res, phi::DataType::FLOAT32);
 }
@@ -834,9 +829,9 @@ Tensor full_like_decomp(const Tensor& x,
 
 template <typename T>
 Tensor floor_divide_decomp(const Tensor& x, const Tensor& y) {
-  auto x_cast = cast<T>(x, DataType::INT64);
-  auto y_cast = cast<T>(y, DataType::INT64);
-  auto res = x_cast / y_cast;
+  // auto x_cast = cast<T>(x, DataType::INT64);
+  // auto y_cast = cast<T>(y, DataType::INT64);
+  auto res = backend::divide<T>(x, y);
   return cast<T>(res, x.dtype());
 }
 
@@ -1130,6 +1125,14 @@ Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
     start_axis = 0;
     end_axis = 0;
   }
+  if (start_axis < 0) {
+    start_axis += x_dim.size();
+  }
+
+  if (end_axis < 0) {
+    end_axis += x_dim.size();
+  }
+
   if (end_axis < start_axis) {
     PADDLE_THROW(common::errors::Unimplemented(
         "end_axis must be greater than or equal to start_axis."));
