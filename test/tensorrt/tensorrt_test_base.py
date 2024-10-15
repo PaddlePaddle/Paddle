@@ -109,6 +109,7 @@ class TensorRTBaseTest(unittest.TestCase):
             for name, value in api_args.items():
                 actual_args.append(value)
             output = self.python_api(*actual_args)
+            print("output:",output)
             fetch_list = []
             if isinstance(output, tuple):
                 fetch_list = [out for out in list(output) if out is not None]
