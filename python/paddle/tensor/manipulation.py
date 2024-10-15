@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import functools
 import math
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
@@ -4399,6 +4400,19 @@ def chunk(
 ) -> list[Tensor]:
     """
     Split the input tensor into multiple sub-Tensors.
+
+    Here are some examples to explain it.
+
+        - 1. Given a 3-D tensor x with a shape [3, 3, 3], if we split the first dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [1, 3, 3].
+        - 2. Given a 3-D tensor x with a shape [3, 3, 3], if we split the second dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [3, 1, 3].
+        - 3. Given a 3-D tensor x with a shape [3, 3, 3], if we split the third dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [3, 3, 1].
+
+    The following figure illustrates the first example.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/chunk.png
+        :width: 800
+        :alt: legend of reshape API
+        :align: center
 
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.

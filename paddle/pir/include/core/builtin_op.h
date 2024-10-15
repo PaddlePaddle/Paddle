@@ -211,7 +211,7 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
 
 class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
  public:
-  explicit ConstantLikeTrait(Operation *op)
+  explicit ConstantLikeTrait(const Operation *op)
       : OpTraitBase<ConstantLikeTrait>(op) {}
 };
 
@@ -244,7 +244,7 @@ class IR_API ConstantTensorOp : public ConstantOp {
  public:
   using ConstantOp::ConstantOp;
 
-  static ConstantTensorOp dyn_cast(Operation *op);
+  static ConstantTensorOp dyn_cast(const Operation *op);
   static bool classof(const Operation *op);
 
   static void Build(Builder &builder,             // NOLINT

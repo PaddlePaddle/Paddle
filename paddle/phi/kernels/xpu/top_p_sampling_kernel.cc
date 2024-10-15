@@ -63,7 +63,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       p_num,
       bs,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Expected bs == p_num, but got bs=%d, p_num=%d.", bs, p_num));
 
   std::vector<int64_t> infer_seed(bs, random_seed);

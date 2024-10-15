@@ -15,11 +15,6 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
-###### start ######
-list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
-###### end ######
-
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 list(REMOVE_ITEM TEST_OPS test_householder_product)
 list(REMOVE_ITEM TEST_OPS test_conv2d_op_depthwise_conv)
@@ -31,7 +26,6 @@ list(REMOVE_ITEM TEST_OPS test_pool_max_op)
 list(REMOVE_ITEM TEST_OPS test_matmul_v2_op)
 
 list(REMOVE_ITEM TEST_OPS test_allgather)
-list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
 list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
@@ -89,7 +83,6 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
-list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
@@ -445,7 +438,6 @@ list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
-list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 list(REMOVE_ITEM TEST_OPS test_layers)
 list(REMOVE_ITEM TEST_OPS test_install_check)
