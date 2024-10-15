@@ -660,7 +660,9 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         from paddle.autograd.backward_utils import ValueSet
 
         for var in paddle.utils.flatten(outputs):
-            if isinstance(var, paddle.pir.Value):
+            if isinstance(var, paddle.pir.Value) and var not in ValueSet(
+                result_list
+            ):
                 result_list.append(var)
 
         if output_spec is not None:
