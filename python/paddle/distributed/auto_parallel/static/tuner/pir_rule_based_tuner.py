@@ -20,6 +20,7 @@ import paddle.nn
 import paddle.nn.functional as F
 
 _PIR_PATTERNS = {}
+_USED_PATTERNS = []
 
 
 def register_pir_pattern(cls):
@@ -33,6 +34,22 @@ def register_pir_pattern(cls):
     register()
 
     return cls
+
+
+def register_used_patterns(names):
+    if isinstance(names, list):
+        for name in names:
+            _USED_PATTERNS.append(name)
+    else:
+        _USED_PATTERNS.append(names)
+
+
+def clear_used_patterns():
+    _USED_PATTERNS.clear()
+
+
+def get_pattern(name):
+    return _PIR_PATTERNS[name]
 
 
 class PIRBasePattern:
@@ -108,7 +125,47 @@ class MpDistInfos(DistInfos):
 
 
 # Llama
-# @register_pir_pattern
+@register_pir_pattern
+class PIREmbeddingPattern(PIRBasePattern):
+    """Embedding pattern"""
+
+    name = "embedding"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        # # # build program # # #
+        paddle.enable_static()
+        # program init
+        start_program, main_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
+        # data init
+        x_shape = [4, 1024]
+        x = paddle.randn(x_shape)
+        weight_shape = [1024, 2048]
+        # program construction
+        with paddle.static.program_guard(main_program, start_program):
+            x = paddle.static.data('x', x_shape, x.dtype)
+            weight = paddle.create_parameter(
+                shape=weight_shape,
+                dtype=paddle.get_default_dtype(),
+                default_initializer=paddle.nn.initializer.Constant(1.0),
+            )
+            out = paddle.nn.functional.embedding(x, weight)
+
+        self.pir_program = main_program
+        print(f"in embedding, program is {self.pir_program}")
+        paddle.disable_static()
+
+        # # todo: how to design an efficient distributed infos for each pattern
+        self.ops_dist_infos = None
+
+
+# Llama
+@register_pir_pattern
 class PIRRMSNormPattern(PIRBasePattern):
     """RMSNorm pattern"""
 
@@ -153,7 +210,7 @@ class PIRRMSNormPattern(PIRBasePattern):
 
 
 # Llama
-# @register_pir_pattern
+@register_pir_pattern
 class PIRRotateHalfPattern(PIRBasePattern):
     """Rotate Half pattern"""
 
@@ -190,7 +247,7 @@ class PIRRotateHalfPattern(PIRBasePattern):
 
 
 # Llama
-# @register_pir_pattern
+@register_pir_pattern
 class PIRApplyRotaryPosEmbPattern(PIRBasePattern):
     """ApplyRotaryPosEmb pattern"""
 
@@ -259,7 +316,7 @@ class PIRApplyRotaryPosEmbPattern(PIRBasePattern):
 
 
 # Llama
-# @register_pir_pattern
+@register_pir_pattern
 class PIRQKVReshapePattern(PIRBasePattern):
     """QKV(not fused) and reshape pattern"""
 
@@ -313,7 +370,7 @@ class PIRQKVReshapePattern(PIRBasePattern):
 
 
 # Llama
-# @register_pir_pattern
+@register_pir_pattern
 class PIRQKVRopePattern(PIRBasePattern):
     """QKV(not fused) and Rope pattern"""
 
@@ -404,7 +461,7 @@ class PIRQKVRopePattern(PIRBasePattern):
 
 
 # Llama
-# @register_pir_pattern
+@register_pir_pattern
 class PIRScaleDotProductPattern(PIRBasePattern):
     """Scale dot product attention pattern"""
 
@@ -492,7 +549,7 @@ class PIRScaleDotProductPattern(PIRBasePattern):
 
 
 # Llama
-# @register_pir_pattern
+@register_pir_pattern
 class PIRAttentionPattern(PIRBasePattern):
     """Attention pattern"""
 
@@ -646,7 +703,7 @@ class PIRAttentionPattern(PIRBasePattern):
 
 
 # Llama
-# @register_pir_pattern
+@register_pir_pattern
 class PIRMLPPattern(PIRBasePattern):
     """MLP pattern"""
 
@@ -943,7 +1000,7 @@ class PIRDecoderLayerPattern(PIRBasePattern):
 
 
 # GPT
-# @register_pir_pattern
+@register_pir_pattern
 class PIRQKVReshapePattern_2(PIRBasePattern):
     """QKV(not fused) and reshape pattern"""
 
@@ -1004,7 +1061,7 @@ class PIRQKVReshapePattern_2(PIRBasePattern):
 
 
 # GPT
-# @register_pir_pattern
+@register_pir_pattern
 class PIRCoreAttnPattern(PIRBasePattern):
     """Core attention pattern"""
 
@@ -1088,7 +1145,7 @@ class PIRCoreAttnPattern(PIRBasePattern):
 
 
 # # GPT
-# @register_pir_pattern
+@register_pir_pattern
 class PIRAttentio2nPattern(PIRBasePattern):
     """Attention2 pattern"""
 
@@ -1208,7 +1265,7 @@ class PIRAttentio2nPattern(PIRBasePattern):
 
 
 # DemoNet, GPT
-# @register_pir_pattern
+@register_pir_pattern
 class PIRFFNPattern(PIRBasePattern):
     """FFN pattern"""
 
@@ -1413,22 +1470,24 @@ def match_pattern(pattern, pir_program):
 
 
 def match_all_patterns(pir_program):
+    print(f"used patterns is: {_USED_PATTERNS}")
     matched_results = {}
     matched_ids = set()
     for pattern_name in _PIR_PATTERNS:
-        pattern = _PIR_PATTERNS[pattern_name]
-        results, matched = match_pattern(pattern, pir_program)
-        for result in results:
-            has_matched = False
-            for id in result:
-                if result[id] in matched_ids:
-                    has_matched = True
-                    break
-            if not has_matched:
-                for item in result:
-                    matched_ids.add(result[id])
-                if pattern.name not in matched_results:
-                    matched_results[pattern.name] = []
-                matched_results[pattern.name].append(result)
+        if pattern_name in _USED_PATTERNS:
+            pattern = _PIR_PATTERNS[pattern_name]
+            results, matched = match_pattern(pattern, pir_program)
+            for result in results:
+                has_matched = False
+                for id in result:
+                    if result[id] in matched_ids:
+                        has_matched = True
+                        break
+                if not has_matched:
+                    for item in result:
+                        matched_ids.add(result[id])
+                    if pattern.name not in matched_results:
+                        matched_results[pattern.name] = []
+                    matched_results[pattern.name].append(result)
 
     return matched_results

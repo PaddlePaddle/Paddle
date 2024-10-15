@@ -24,8 +24,10 @@ from paddle.base.framework import (
     in_dygraph_mode,
 )
 from paddle.distributed.auto_parallel.static.tuner.pir_rule_based_tuner import (
-    _PIR_PATTERNS,
+    clear_used_patterns,
+    get_pattern,
     match_all_patterns,
+    register_used_patterns,
 )
 
 
@@ -198,25 +200,17 @@ def to_distributed(model, mesh, config):
     # breakpoint()
 
     # # # # step4: pattern recogincation
+    DECODER_LAYER_NAME = 'decoder_layer'
+    register_used_patterns(DECODER_LAYER_NAME)
     results = match_all_patterns(pir_program)
     print(f"match patterns based on pir program is: {results}")
-
-    # for pattern_name, matched_all_patterns in results.items():
-    #     for matched_pattern in matched_all_patterns:
-    #         pattern_ops_id = []
-    #         program_ops_id = []
-    #         for a, b in matched_pattern.items():
-    #             pattern_ops_id.append(a)
-    #             program_ops_id.append(b)
-    #         print(f"pattern ops id is: {sorted(pattern_ops_id)}")
-    #         print(f"program ops id is: {sorted(program_ops_id)}")
     # breakpoint()
 
     # # # # step5: mark pir programs ops dist infos
     matched_programs = {}
     for pattern_name, matched_patterns in results.items():
         # process one pattern
-        pattern_ops_dist_infos = _PIR_PATTERNS[pattern_name].ops_dist_infos
+        pattern_ops_dist_infos = get_pattern(pattern_name).ops_dist_infos
         assert (
             pattern_ops_dist_infos is not None
         ), f"{pattern_name} does not contain ops_dist_infos, cannot reshard, please check"
@@ -243,7 +237,6 @@ def to_distributed(model, mesh, config):
         print(f"matched program and ops dist infos are {matched_programs}")
 
     # # # #: shard model
-    DECODER_LAYER_NAME = 'decoder_layer'
     num_hidden_layers = len(matched_programs[DECODER_LAYER_NAME])
     print(f"num_hidden_layers by pattern matching is {num_hidden_layers}")
     assert (
@@ -256,10 +249,6 @@ def to_distributed(model, mesh, config):
         for i in range(pp_degree):
             local_mesh = mesh.get_mesh_with_dim("pp", i)
             GLOBAL_MESH.append(local_mesh)
-    # print(f"GLOBAL MESH is {GLOBAL_MESH}")
-    # for local_mesh in GLOBAL_MESH:
-    #     print(local_mesh)
-    # breakpoint()
 
     # # # # step6-0: SHARD PATRAMETERS, get dynamic layer dist infos
     for pattern_name, processed_patterns in matched_programs.items():
@@ -297,7 +286,6 @@ def to_distributed(model, mesh, config):
                         )
 
     # # # # step6-0: SHARD INPUTS
-
     decoder_layers = []
     for pattern_name, matched_all_patterns in results.items():
         if pattern_name == DECODER_LAYER_NAME:
@@ -310,7 +298,6 @@ def to_distributed(model, mesh, config):
                         ops_id_to_layer[tuple(sorted(program_ops_id))]
                     )
     print(f"matched decoder layers are: {decoder_layers}")
-    # breakpoint()
 
     if "pp" in mesh.dim_names and decoder_layers is not None:
         num_decoder_blocks = len(decoder_layers)
@@ -329,7 +316,15 @@ def to_distributed(model, mesh, config):
                 reshard_all_inputs
             )
 
-    # # # # step7: clean layer_op recorder hooks
+    # # # # step7: support sequence parallel
+    clear_used_patterns()
+    used_patterns = ["embedding"]
+    register_used_patterns(used_patterns)
+    results = match_all_patterns(pir_program)
+    print(f"match patterns based on pir program is: {results}")
+    # breakpoint()
+
+    # # # # step8: clean layer_op recorder hooks
     for layer in model.sublayers():
         for hook_helper in layer._op_recorder.hooks:
             hook_helper.remove()
