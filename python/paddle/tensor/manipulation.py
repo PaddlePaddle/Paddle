@@ -6343,29 +6343,21 @@ def non_negative_axis(arr, axis):
 
 
 def infer_dynamic_broadcast_shape(
-    arr_shape: Tensor, arr_shape_dim: int, indices_shape: Tensor, axis: int
+    arr_shape: Tensor, indices_shape: Tensor, axis: int
 ) -> Tensor:
     """
     Find the broadcast shape for indices when `arr` has a dynamic shape.
 
     Args:
         arr_shape (Tensor): Shape tensor of arr.
-        arr_shape_dim (int): Dimensions of arr.
         indices_shape (Tensor): Shape tensor of indices.
         axis (int): The axis to put 1d slices along.
 
     Returns:
         Tensor: The shape tensor for later broadcasting
     """
-    new_shapes = []
-    for i in range(arr_shape_dim):
-        if i == axis:
-            new_shapes.append(
-                paddle.slice(indices_shape, [0], [axis], [axis + 1])
-            )
-        else:
-            new_shapes.append(paddle.slice(arr_shape, [0], [i], [i + 1]))
-    return paddle.concat(new_shapes)
+    arr_shape[axis] = indices_shape[axis]
+    return arr_shape
 
 
 def infer_broadcast_shape(
@@ -6565,7 +6557,7 @@ def put_along_axis(
             arr_shape = paddle.shape(arr)
             indices_shape = paddle.shape(indices)
             broadcast_shape = infer_dynamic_broadcast_shape(
-                arr_shape, arr.ndim, indices_shape, axis
+                arr_shape, indices_shape, axis
             )
             values = (
                 paddle.to_tensor(values)
