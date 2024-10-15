@@ -94,7 +94,10 @@ def conv2dtranspose_wrapper(
     if padding_algorithm is None:
         padding_algorithm = "EXPLICIT"
     weight = paddle.static.create_parameter(
-        name="weight", shape=[3, 6, 3, 3], dtype="float32"
+        name="weight",
+        shape=[3, 6, 3, 3],
+        dtype="float32",
+        default_initializer=paddle.nn.initializer.Normal(mean=0.0, std=1.0),
     )
     return _C_ops.conv2d_transpose(
         x,
@@ -118,8 +121,8 @@ class TestConv2dTransposeTRTPattern(TensorRTBaseTest):
             "stride": [1, 1],
             "padding": [1, 1],
             "output_padding": [],
-            "output_size": [5, 5],
-            "padding_algorithm": "EXPLICIT",
+            "output_size": [7, 7],
+            "padding_algorithm": "VALID",
             "groups": 1,
             "dilation": [1, 1],
             "data_format": "NCHW",
@@ -132,14 +135,36 @@ class TestConv2dTransposeTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-class TestConv2dTransposeWithoutTRTPattern(TensorRTBaseTest):
+class TestConv2dTransposePaddingAlgorithmTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = conv2dtranspose_wrapper
         self.api_args = {
             "x": np.random.random([2, 3, 5, 5]).astype("float32"),
             "stride": [1, 1],
-            "padding": [1, 1],
+            "padding": [1, 0, 1, 2],
             "output_padding": [],
+            "output_size": None,
+            "padding_algorithm": "SAME",
+            "groups": 1,
+            "dilation": [1, 1],
+            "data_format": "NCHW",
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 5, 5]}
+        self.max_shape = {"x": [4, 3, 5, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestConv2dTransposeOutputPaddingTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = conv2dtranspose_wrapper
+        self.api_args = {
+            "x": np.random.random([2, 3, 5, 5]).astype("float32"),
+            "stride": [2, 2],
+            "padding": [2, 2],
+            "output_padding": [1, 1],
             "output_size": None,
             "padding_algorithm": "EXPLICIT",
             "groups": 1,

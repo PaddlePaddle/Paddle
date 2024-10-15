@@ -339,8 +339,6 @@ def ConvertConv2d(network, paddle_op, inputs):
     input_shape = paddle_op.operands()[0].source().shape
     filter_shape = paddle_op.operands()[1].source().shape
 
-    output_size_shape = paddle_op.operands()[2].source().shape
-
     if len(filter_shape) != 4:
         raise ValueError(
             f"filter's dims size should be 4, but got {len(filter_shape)}"
@@ -402,17 +400,13 @@ def ConvertConv2d(network, paddle_op, inputs):
             kernel=filter,
             bias=None,
         )
-        if output_size is None:
-            pass
-        else:
-            layer.set_output_size(output_size)
 
     layer.stride_nd = nv_strides
     layer.pre_padding = pre_paddings
 
     if output_padding:
         post_paddings[0] -= output_padding[0]
-        post_paddings[0] -= output_padding[1]
+        post_paddings[1] -= output_padding[1]
 
     if post_paddings[0] < 0 or post_paddings[1] < 0:
         raise ValueError("The value PostPadding should be >= 0.")
