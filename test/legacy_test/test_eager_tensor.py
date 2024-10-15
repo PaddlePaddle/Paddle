@@ -1301,6 +1301,12 @@ class TestEagerTensor(unittest.TestCase):
                 numpy_scalar.__format__(format_spec),
             )
 
+            format_spec = "{:.{}f}"
+            self.assertEqual(
+                format_spec.format(paddle_scalar, width),
+                format_spec.format(numpy_scalar, width),
+            )
+
         # test for integer scalar
         for width in range(0, 5):
             paddle_scalar = paddle.uniform([], min=-100, max=100).to("int64")
@@ -1319,6 +1325,12 @@ class TestEagerTensor(unittest.TestCase):
             self.assertEqual(
                 paddle_scalar.__format__(format_spec),
                 numpy_scalar.__format__(format_spec),
+            )
+
+            format_spec = "{:{}d}"
+            self.assertEqual(
+                format_spec.format(paddle_scalar, width),
+                format_spec.format(numpy_scalar, width),
             )
 
         # test for tensor that ndim > 0, expected to raise TypeError
