@@ -18,6 +18,7 @@ import numpy as np
 from tensorrt_test_base import TensorRTBaseTest
 
 import paddle
+from paddle import _C_ops
 
 
 def conv2d_wrapper(x):
@@ -70,8 +71,84 @@ class TestConv2dPaddingTRTPattern(TensorRTBaseTest):
         }
 
         self.program_config = {"feed_list": ["x"]}
-        self.min_shape = {"x": [1, 8, 8, 3]}
-        self.max_shape = {"x": [10, 8, 8, 3]}
+        self.min_shape = {"x": [1, 3, 8, 8]}
+        self.max_shape = {"x": [10, 3, 8, 8]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+def conv2dtranspose_wrapper(
+    x,
+    stride=1,
+    padding=0,
+    output_padding=[],
+    output_size=None,
+    padding_algorithm="EXPLICIT",
+    groups=1,
+    dilation=1,
+    data_format="NCDHW",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    if padding_algorithm is None:
+        padding_algorithm = "EXPLICIT"
+    weight = paddle.static.create_parameter(
+        name="weight", shape=[3, 6, 3, 3], dtype="float32"
+    )
+    return _C_ops.conv2d_transpose(
+        x,
+        weight,
+        stride,
+        padding,
+        output_padding,
+        output_size,
+        padding_algorithm,
+        groups,
+        dilation,
+        data_format,
+    )
+
+
+class TestConv2dTransposeTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = conv2dtranspose_wrapper
+        self.api_args = {
+            "x": np.random.random([2, 3, 5, 5]).astype("float32"),
+            "stride": [1, 1],
+            "padding": [1, 1],
+            "output_padding": [],
+            "output_size": [5, 5],
+            "padding_algorithm": "EXPLICIT",
+            "groups": 1,
+            "dilation": [1, 1],
+            "data_format": "NCHW",
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 5, 5]}
+        self.max_shape = {"x": [4, 3, 5, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestConv2dTransposeWithoutTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = conv2dtranspose_wrapper
+        self.api_args = {
+            "x": np.random.random([2, 3, 5, 5]).astype("float32"),
+            "stride": [1, 1],
+            "padding": [1, 1],
+            "output_padding": [],
+            "output_size": None,
+            "padding_algorithm": "EXPLICIT",
+            "groups": 1,
+            "dilation": [1, 1],
+            "data_format": "NCHW",
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 5, 5]}
+        self.max_shape = {"x": [4, 3, 5, 5]}
 
     def test_trt_result(self):
         self.check_trt_result()

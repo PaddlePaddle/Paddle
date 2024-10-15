@@ -236,8 +236,13 @@ def trt_min(network, a, b):
 def ConvertConv2d(network, paddle_op, inputs):
     if paddle_op.name() == "pd_op.conv2d":
         input_tensor, filter = inputs
+    elif paddle_op.name() == "pd_op.conv2d_transpose":
+        input_tensor, filter, output_size = inputs
 
+    input_shape = paddle_op.operands()[0].source().shape
     filter_shape = paddle_op.operands()[1].source().shape
+
+    output_size_shape = paddle_op.operands()[2].source().shape
 
     if len(filter_shape) != 4:
         raise ValueError(
@@ -254,9 +259,9 @@ def ConvertConv2d(network, paddle_op, inputs):
     dilation = paddle_op.attrs().get("dilations", [1, 1])
     groups = paddle_op.attrs().get("groups", 1)
 
-    if has_dynamic_shape(input_tensor.shape):
+    if has_dynamic_shape(input_shape):
         assert (
-            input_tensor.shape[1] != -1
+            input_shape[1] != -1
         ), "Channel dim can't be dynamic for transpose convolution."
 
     output_padding = paddle_op.attrs().get("output_padding", [0, 0])
@@ -268,12 +273,19 @@ def ConvertConv2d(network, paddle_op, inputs):
     nv_dilations = trt.DimsHW(dilation[0], dilation[1])
     nv_strides = trt.DimsHW(stride[0], stride[1])
 
+    pre_paddings = [0, 0]
+    post_paddings = [0, 0]
+
     if len(paddings) == 2:
-        pre_padding = trt.DimsHW(paddings[0], paddings[1])
-        post_padding = trt.DimsHW(paddings[0], paddings[1])
+        pre_paddings[0] = paddings[0]
+        pre_paddings[1] = paddings[1]
+        post_paddings[0] = paddings[0]
+        post_paddings[1] = paddings[1]
     elif len(paddings) == 4:
-        pre_padding = trt.DimsHW(paddings[0], paddings[2])
-        post_padding = trt.DimsHW(paddings[1], paddings[3])
+        pre_paddings[0] = paddings[0]
+        pre_paddings[1] = paddings[2]
+        post_paddings[0] = paddings[1]
+        post_paddings[1] = paddings[3]
     else:
         raise ValueError(f"Unsupported paddings size: {len(paddings)}")
 
@@ -285,18 +297,26 @@ def ConvertConv2d(network, paddle_op, inputs):
             kernel=filter,
             bias=None,
         )
+    elif paddle_op.name() == "pd_op.conv2d_transpose":
+        layer = network.add_deconvolution_nd(
+            input=input_tensor,
+            num_output_maps=n_input * groups,
+            kernel_shape=nv_ksize,
+            kernel=filter,
+            bias=None,
+        )
 
     layer.stride_nd = nv_strides
-    layer.pre_padding = pre_padding
+    layer.pre_padding = pre_paddings
 
     if output_padding:
-        post_padding[0] -= output_padding[0]
-        post_padding[0] -= output_padding[1]
+        post_paddings[0] -= output_padding[0]
+        post_paddings[0] -= output_padding[1]
 
-    if post_padding[0] < 0 or post_padding[1] < 0:
+    if post_paddings[0] < 0 or post_paddings[1] < 0:
         raise ValueError("The value PostPadding should be >= 0.")
 
-    layer.post_padding = post_padding
+    layer.post_padding = post_paddings
     layer.num_groups = groups
 
     if padding_algorithm == "SAME":
