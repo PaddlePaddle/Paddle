@@ -178,6 +178,17 @@ void ProcessGroupNCCL::GroupEnd() {
   }
 }
 
+std::string ProcessGroupNCCL::GetGroupKey(const Place& place) {
+  if (place_to_comm_ctx_.find(place.DebugString()) ==
+      place_to_comm_ctx_.end()) {
+    std::string store_key;
+    GetStoreKey(place.DebugString(), CommType::UNKNOWN, &store_key);
+    CreateNCCLEnvCache(
+        place, place.DebugString(), store_key, CommType::UNKNOWN);
+  }
+  return place_to_group_key_.at(place.DebugString());
+}
+
 phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
     const Place& place) const {
   return GetDeviceContext(place, /*use_calc_stream*/ false);
