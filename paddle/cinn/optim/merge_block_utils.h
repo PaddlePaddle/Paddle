@@ -66,13 +66,59 @@ bool CanMergeBlocks(const ir::For* first,
                     const ir::For* second,
                     const ForEqualFunc& IsEqual);
 
-// Move schedule block src after schedule block dst.
-void MoveScheduleBlock(const ir::Expr& src,
-                       const ir::Expr& dst,
+/**
+ * \brief Move schedule block src after schedule block dst, without checking
+ * dependency.
+ * @param src The src ScheduleBlock.
+ * @param dst The dst ScheduleBlock.
+ * @param root The root Expr.
+ */
+void MoveScheduleBlock(const ir::ScheduleBlock* src,
+                       const ir::ScheduleBlock* dst,
                        ir::Expr* root);
 
-// Fuse two loop, src -> dst. Return `nullptr` if not supported.
-ir::Expr LoopFusion(const ir::Expr& src, const ir::Expr& dst);
+/**
+ * \brief Fuse two loop, `src` -> `dst`, remains ScheduleBlock order. Return
+ * `nullptr` if not supported. Currently support loop struct having exactly the
+ * same extents without IfThenElse.
+ * @param src The first loop.
+ * @param dst The second loop.
+ * @return Return fused loop or `nullptr` if not supported.
+ */
+/**
+ * Example 1: LoopFusion(loop_src, loop_dst)
+ * loop(loop_dst)
+ *   for(i, 0, 10)
+ *     for(j, 0, 10)
+ *        B[i,j] = A[i,j]
+ *
+ * loop(loop_src)
+ *   for(i, 0, 10)
+ *     for(j, 0, 10)
+ *        C[i,j] = A[i,j]
+ * =>
+ * Return value:
+ * loop(loop_fused)
+ *   for(i, 0, 10)
+ *     for(j, 0, 10)
+ *        B[i,j] = A[i,j]
+ *        C[i,j] = A[i,j]
+ *
+ * Example 2: LoopFusion(loop_src, loop_dst)
+ * loop(loop_dst)
+ *   for(i, 0, 10)
+ *     for(j, 0, 10)
+ *        B[i,j] = A[i,j]
+ *
+ * loop(loop_src)
+ *   for(i, 0, 3)
+ *     for(j, 0, 4)
+ *        C[i,j] = A[i,j]
+ * =>
+ * Return value:
+ * `nullptr`
+ */
+ir::Expr LoopFusion(const ir::For* src, const ir::For* dst);
 
 }  // namespace optim
 }  // namespace cinn
