@@ -620,8 +620,11 @@ class HybridParallelInferenceHelper:
                         attrs={
                             'peer': 1,
                             'ring_id': ring_id,
+                            self._op_role_key: op_role,
                         },
                     )
+                    print("---------hybrid_parallel_inference----------")
+                    print(send_op)
                     extra_index_info['index'] += 1
                     var_shape = list(var.shape)
                     if var_shape[0] < 0:
@@ -640,8 +643,11 @@ class HybridParallelInferenceHelper:
                             'dtype': var.dtype,
                             'peer': 0,
                             'ring_id': ring_id,
+                            self._op_role_key: op_role,
                         },
                     )
+                    print("---------hybrid_parallel_inference----------")
+                    print(recv_op)
                     extra_index_info['index'] += 1
 
                 _insert_send_recv(
@@ -712,8 +718,12 @@ class HybridParallelInferenceHelper:
                         attrs={
                             'peer': 0,
                             'ring_id': ring_id,
+                            self._op_role_key: int(self._op_role.Forward),
                         },
                     )
+                    print("---------hybrid_parallel_inference----------")
+                    print(send_op)
+
                 else:
                     var_shape = list(var.shape)
                     print(var_name)
@@ -731,8 +741,11 @@ class HybridParallelInferenceHelper:
                             'dtype': var.dtype,
                             'peer': 1,
                             'ring_id': ring_id,
+                            self._op_role_key: int(self._op_role.Forward),
                         },
                     )
+                    print("---------hybrid_parallel_inference----------")
+                    print(recv_op)
                 index += 1
         block._sync_with_cpp()
 

@@ -377,9 +377,12 @@ class Inserter:
             attrs={
                 'ring_id': process_group.id,
                 'peer': process_group.ranks.index(dst),
+                'op_role': op_role,
                 'dynamic_shape': True,
             },
         )
+        print("------reshard------------")
+        print(send_op)
         send_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
@@ -400,10 +403,13 @@ class Inserter:
                 'ring_id': process_group.id,
                 'peer': process_group.ranks.index(src),
                 'dtype': tensor.dtype,
+                'op_role': op_role,
                 'dynamic_shape': True,
             },
         )
         recv_op._set_attr('op_namescope', "/auto_parallel/reshard")
+        print("------reshard------------")
+        print(recv_op)
 
     @staticmethod
     def insert_reset_lod_op(block, idx, X, Y, op_role, sync=True):
