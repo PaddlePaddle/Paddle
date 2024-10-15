@@ -25,6 +25,10 @@ if [ "$1" == "python313" ]; then
     ./configure --with-pydebug --enable-optimizations --with-lto --disable-gil
     make -s -j
     make altinstall
+    if [ -f "/usr/local/bin/python3.13t" ]; then
+        rm /usr/local/bin/python3.13t
+    fi
+    ln -s /usr/local/bin/python3.13td /usr/local/bin/python3.13t
     ./configure --with-pydebug
     make -s -j
     make altinstall

@@ -19,54 +19,6 @@
 # Stop at any error, show all commands
 set -ex
 
-function check_libstdcpp_exists() {
-  if [ $1 == "gcc82" ]; then
-    if [ -f "/usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25" ]; then
-      if [ -L "${lib_so_5}" ]; then
-        if [ -f "${lib_so_5}.bak" ]; then
-          rm -f ${lib_so_5}.bak
-        fi
-        cp ${lib_so_5} ${lib_so_5}.bak  && rm -f ${lib_so_5}
-      fi
-      ln -s /usr/local/gcc-8.2/lib64/libgfortran.so.5 ${lib_so_5}
-      if [ -L "${lib_so_6}" ]; then
-        if [ -f "${lib_so_6}.bak" ]; then
-          rm -f ${lib_so_6}.bak
-        fi
-        cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6}
-      fi
-      ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6}
-      cp -f /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
-      exit 0
-    fi
-  elif [ $1 == "gcc122" ]; then
-    if [ -f "/usr/local/gcc-12.2/lib64/libstdc++.so.6.0.30" ]; then
-      if [ -L "${lib_so_6}" ]; then
-        if [ -f "${lib_so_6}.bak" ]; then
-          rm -f ${lib_so_6}.bak
-        fi
-        cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6}
-      fi
-      ln -s /usr/local/gcc-12.2/lib64/libstdc++.so.6 ${lib_so_6}
-      cp -f /usr/local/gcc-12.2/lib64/libstdc++.so.6.0.30 ${lib_path}
-      exit 0
-    fi
-  elif [ $1 == "gcc121" ]; then
-    if [ -f "/usr/local/gcc-12.1/lib64/libstdc++.so.6.0.30" ]; then
-      if [ -L "${lib_so_6}" ]; then
-        if [ -f "${lib_so_6}.bak" ]; then
-          rm -f ${lib_so_6}.bak
-        fi
-        cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6}
-      fi
-      ln -s /usr/local/gcc-12.1/lib64/libstdc++.so.6 ${lib_so_6}
-      cp -f /usr/local/gcc-12.1/lib64/libstdc++.so.6.0.30 ${lib_path}
-      exit 0
-    fi
-  fi
-}
-
-
 if [ -f "/etc/redhat-release" ];then
   lib_so_5=/usr/lib64/libgfortran.so.5
   lib_so_6=/usr/lib64/libstdc++.so.6
@@ -76,8 +28,6 @@ else
   lib_so_6=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
   lib_path=/usr/lib/x86_64-linux-gnu
 fi
-
-check_libstdcpp_exists $1
 
 if [ "$1" == "gcc82" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz
