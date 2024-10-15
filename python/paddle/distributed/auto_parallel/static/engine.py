@@ -718,6 +718,19 @@ class Engine:
                 mode="all",
             )
 
+            # update self._parameter_name_list after fused_ffn_qkv, otherwise opt stage will not update fused params
+            for k in self.fused_ffn_qkv.keys():
+                for fusion in self.fused_ffn_qkv[k]:
+                    for after_fuse_name, before_fuse_params in fusion.items():
+                        index = self._parameter_name_list.index(
+                            before_fuse_params[0].name
+                        )
+                        self._parameter_name_list.insert(index, after_fuse_name)
+                        for before_fuse_param in before_fuse_params:
+                            self._parameter_name_list.remove(
+                                before_fuse_param.name
+                            )
+
         forward_op_start_idx = 0
         backward_op_start_idx = -1
         opt_op_start_idx = -1

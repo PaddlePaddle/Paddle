@@ -157,6 +157,10 @@ struct _LoweredFunc_ : ExprNode<_LoweredFunc_> {
   //! argument list.
   std::vector<TempSpaceInfo> temp_spaces;
 
+  //! Number of output tensors that appear in the function's argument list.
+  //! This number doesn't include temp_spaces.
+  int num_output_tensors;
+
   //! Body of this function.
   Expr body;
 
