@@ -176,9 +176,8 @@ PreparedOp PrepareImpl(
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(ring_id)) {
       distributed::ProcessGroup* pg = map->get(ring_id);
-      auto group_key =
-          static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)->GetGroupKey(
-              place);
+      auto group_key = static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
+                           ->GetOrCreateGroupKey(place);
       const auto& comm_context_manager =
           phi::distributed::CommContextManager::GetInstance();
       if (comm_context_manager.Has(group_key)) {
