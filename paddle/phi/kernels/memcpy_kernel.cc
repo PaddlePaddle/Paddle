@@ -72,7 +72,7 @@ void MemcpyD2HKernel(const Context& dev_ctx,
 
     default:
       PADDLE_THROW(errors::InvalidArgument(
-          "Arugment 'dst_place_type' only support 0-1, but got: %d",
+          "Argument 'dst_place_type' only support 0-1, but got: %d",
           dst_place_type));
       break;
   }
