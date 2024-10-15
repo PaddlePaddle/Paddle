@@ -322,3 +322,23 @@ def build_size_tensor(
     ).get_output(0)
 
     return size_tensor
+
+
+def trt_greater_than(network, paddle_op, inputs):
+    layer_output = add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.GREATER
+    )
+    return trt_cast(network, layer_output, inputs[0].dtype)
+
+
+def trt_less_than(network, paddle_op, inputs):
+    layer_output = add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.LESS
+    )
+    return trt_cast(network, layer_output, inputs[0].dtype)
+
+
+elementwise_map = {
+    "pd_op.greater_than": trt_greater_than,
+    "pd_op.less_than": trt_less_than,
+}

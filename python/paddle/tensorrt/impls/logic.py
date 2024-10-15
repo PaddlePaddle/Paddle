@@ -12,26 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
-    add_elementwise_layer,
-    trt_cast,
+    elementwise_map,
 )
 from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.greater_than", trt_version="8.x")
-def greater_than_converter(network, paddle_op, inputs):
-    layer_output = add_elementwise_layer(
-        network, paddle_op, inputs, trt.ElementWiseOperation.GREATER
-    )
-    return trt_cast(network, layer_output, inputs[0].dtype)
-
-
 @converter_registry.register("pd_op.less_than", trt_version="8.x")
-def less_than_converter(network, paddle_op, inputs):
-    layer_output = add_elementwise_layer(
-        network, paddle_op, inputs, trt.ElementWiseOperation.LESS
-    )
-    return trt_cast(network, layer_output, inputs[0].dtype)
+def logic_converter(network, paddle_op, inputs):
+    return elementwise_map[paddle_op.name()](network, paddle_op, inputs)
