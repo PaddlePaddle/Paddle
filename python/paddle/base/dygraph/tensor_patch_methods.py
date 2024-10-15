@@ -913,7 +913,7 @@ def monkey_patch_tensor():
 
         return tensor_to_string(self)
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec: str) -> str:
         if self.ndim == 0:
             return self.item().__format__(format_spec)
 

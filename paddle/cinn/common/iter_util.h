@@ -103,5 +103,34 @@ bool ProveLE(const Expr& lhs,
   return analyzer.ProveLE(lhs, rhs).value_or(false);
 }
 
+template <typename TNode, typename FLeaf>
+inline void UnpackReduction(const ir::IndexExpr& value, FLeaf fleaf) {
+  if (const TNode* node = value.As<TNode>()) {
+    UnpackReduction<TNode, FLeaf>(node->a(), fleaf);
+    UnpackReduction<TNode, FLeaf>(node->b(), fleaf);
+  } else {
+    fleaf(value);
+  }
+}
+
+// TODO(liuruyan): canby simplify into IndexExpr multiply.
+inline ir::IndexExpr MulAndNormalize(const ir::IndexExpr& lhs,
+                                     const ir::IndexExpr& rhs) {
+  int64_t cscale = 1;
+  ir::IndexExpr res = ir::One(lhs.type());
+  auto fcollect = [&](ir::IndexExpr val) {
+    if (const auto* intimm = val.As<ir::IntImm>()) {
+      cscale *= intimm->value;
+    } else {
+      res = res * val;
+    }
+  };
+  UnpackReduction<ir::Mul>(lhs, fcollect);
+  UnpackReduction<ir::Mul>(rhs, fcollect);
+  if (cscale != 1) {
+    res = res * ir::IndexExpr(make_shared<ir::IntImm>(res.type(), cscale));
+  }
+  return res;
+}
 }  // namespace common
 }  // namespace cinn
