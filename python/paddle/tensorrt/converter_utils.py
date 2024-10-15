@@ -323,18 +323,18 @@ def build_size_tensor(
 
     return size_tensor
 
+
 def ConvertConv2d(network, paddle_op, inputs):
     if paddle_op.name() == "pd_op.conv2d":
         input_tensor, filter = inputs
     elif paddle_op.name() == "pd_op.conv2d_transpose":
-        if len(inputs) ==3:
-            input_tensor,filter,output_size=inputs
-        elif len(inputs)==2:
-            input_tensor,filter=inputs
-            output_size=None
+        if len(inputs) == 3:
+            input_tensor, filter, output_size = inputs
+        elif len(inputs) == 2:
+            input_tensor, filter = inputs
+            output_size = None
         else:
             raise ValueError("Invalid number of inputs for conv2d_transpose")
-        
 
     input_shape = paddle_op.operands()[0].source().shape
     filter_shape = paddle_op.operands()[1].source().shape
@@ -427,4 +427,3 @@ def ConvertConv2d(network, paddle_op, inputs):
     layer.dilation_nd = nv_dilations
 
     return layer.get_output(0)
-
