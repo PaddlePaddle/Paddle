@@ -37,5 +37,22 @@ class TestConv2dTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+def depthwise_conv2d_wrapper(x):
+    conv = paddle.nn.Conv2D(2, 2, (3, 3), groups=2)
+    return conv(x)
+
+
+class TestDepthwiseConv2dTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = depthwise_conv2d_wrapper
+        self.api_args = {"x": np.random.random([3, 2, 8, 8]).astype("float32")}
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 2, 8, 8]}
+        self.max_shape = {"x": [10, 2, 8, 8]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 if __name__ == '__main__':
     unittest.main()

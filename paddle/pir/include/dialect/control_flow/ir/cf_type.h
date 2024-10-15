@@ -30,16 +30,19 @@ class IR_API StackType
     : public Type::TypeBase<StackType, ContainerType, TypeStorage> {
  public:
   using Base::Base;
+  static std::string name() { return "t_stack"; }
 };
 
 class IR_API InletType : public Type::TypeBase<InletType, Type, TypeStorage> {
  public:
   using Base::Base;
+  static std::string name() { return "t_inlet"; }
 };
 
 class IR_API OutletType : public Type::TypeBase<OutletType, Type, TypeStorage> {
  public:
   using Base::Base;
+  static std::string name() { return "t_outlet"; }
 };
 
 }  // namespace pir

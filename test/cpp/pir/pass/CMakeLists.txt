@@ -17,4 +17,6 @@ if(WITH_GPU)
     # be build only in CI, so suppose the generator in Windows is Ninja.
     copy_onnx(transfer_layout_pass_test)
   endif()
+
+  paddle_test(auto_layout_pass_test SRCS auto_layout_pass_test.cc)
 endif()

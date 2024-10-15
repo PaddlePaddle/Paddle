@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/common/iter_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -24,27 +25,9 @@
 namespace cinn {
 namespace common {
 
-bool IsIterExpr(const Expr& a, const Expr& b) {
-  return a.As<ir::IterSplit>() || a.As<ir::IterSum>() ||
-         b.As<ir::IterSplit>() || b.As<ir::IterSum>();
-}
-
-bool IsOne(const Expr& expr) {
-  if (expr.is_constant() && expr.get_constant() == 1) {
-    return true;
-  }
-  return false;
-}
-bool IsZero(const Expr& expr) {
-  if (expr.is_constant() && expr.get_constant() == 0) {
-    return true;
-  }
-  return false;
-}
-
 class IterMapToExprNormalizer : public ir::IRMutator<> {
  public:
-  explicit IterMapToExprNormalizer(SymbolicExprAnalyzer analyzer)
+  explicit IterMapToExprNormalizer(const SymbolicExprAnalyzer& analyzer)
       : analyzer_(analyzer) {}
 
   void Convert(Expr* expr) { Visit(expr, expr); }
@@ -52,22 +35,25 @@ class IterMapToExprNormalizer : public ir::IRMutator<> {
  private:
   void Visit(const Expr* expr, Expr* op) override;
 
-  Expr ConvertIterSum(ir::IterSum* expr);
+  ir::IndexExpr ConvertIterSum(ir::IterSum* expr);
 
-  Expr ConvertIterSplit(ir::IterSplit* expr);
+  ir::IndexExpr ConvertIterSplit(ir::IterSplit* expr);
 
  private:
-  common::SymbolicExprAnalyzer& analyzer_;
+  common::SymbolicExprAnalyzer analyzer_;
 };
 
 class IterMapRewriter : public ir::IRMutator<> {
  public:
-  explicit IterMapRewriter(const std::vector<ir::Var>& input_iters) {
+  explicit IterMapRewriter(const std::vector<ir::Var>& input_iters,
+                           const SymbolicExprAnalyzer& analyzer)
+      : analyzer_(analyzer) {
     for (const auto& iter : input_iters) {
       if (IsOne(iter->upper_bound)) {
         var_map_[iter->name] = ir::IterSum::Make({}, iter->lower_bound);
       } else if (IsZero(iter->lower_bound)) {
-        auto tmp = ir::IterMark::Make(Expr(iter.ptr()), iter->upper_bound);
+        auto tmp =
+            ir::IterMark::Make(ir::IndexExpr(iter.ptr()), iter->upper_bound);
         auto mark = tmp.As<ir::IterMark>();
         var_map_[iter->name] = ir::IterSplit::Make(tmp);
         input_marks_.push_back(*mark);
@@ -93,6 +79,10 @@ class IterMapRewriter : public ir::IRMutator<> {
 
   void Visit(const ir::Mul* op, Expr* expr) override;
 
+  void Visit(const ir::Div* op, Expr* expr) override;
+
+  void Visit(const ir::Mod* op, Expr* expr) override;
+
  private:
   static Expr ToIterSum(const Expr& expr);
 
@@ -100,10 +90,34 @@ class IterMapRewriter : public ir::IRMutator<> {
 
   static void AddToLhs(ir::IterSum* lhs, const ir::IterSum& rhs, int sign);
 
-  static void MulToLhs(ir::IterSum* lhs, const Expr& rhs);
+  static void MulToLhs(ir::IterSum* lhs, const ir::IndexExpr& rhs);
 
-  std::unordered_map<std::string, Expr> var_map_;
+  Expr PreprocessDividend(const Expr& dividend);
+
+  Expr SplitDivConst(Expr lhs, ir::IndexExpr base, ir::IndexExpr rhs);
+
+  Expr SplitModConst(Expr lhs, ir::IndexExpr base, ir::IndexExpr rhs);
+
+  int32_t FindIterWithExactScale(const ir::IterSum& expr,
+                                 const std::vector<bool>& skip_flag,
+                                 const ir::IndexExpr& expected_scale,
+                                 const Expr& match_source,
+                                 int32_t rbegin = -1,
+                                 int32_t first_possible_unit_extent_pos = 0);
+
+  int32_t FindFirstPossibleUnitExtentIndex(const ir::IterSum& expr);
+
+  int32_t FindBaseIter(const ir::IterSum& expr,
+                       const std::vector<bool>& skip_flag,
+                       const Expr& match_source,
+                       int32_t rbegin = -1);
+
+  std::optional<Expr> TryFuse(const Expr& expr);
+
+  std::unordered_map<std::string, ir::IndexExpr> var_map_;
   std::vector<ir::IterMark> input_marks_;
+  std::unordered_map<Expr, Expr> sum_fuse_map_;
+  common::SymbolicExprAnalyzer analyzer_;
 };
 
 }  // namespace common

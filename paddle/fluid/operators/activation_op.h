@@ -30,8 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
@@ -61,15 +59,6 @@ struct BaseActivationFunctor {
   template <typename T>                   \
   using name##GradGradFunctor = phi::funcs::name##GradGradFunctor<T>;
 
-USE_PHI_FUNCTOR(Tanh)
-USE_PHI_FUNCTOR(Relu6)
-USE_PHI_FUNCTOR(HardShrink)
-USE_PHI_FUNCTOR(ELU)
-USE_PHI_FUNCTOR(Sigmoid)
-USE_PHI_FUNCTOR(HardSigmoid)
-USE_PHI_FUNCTOR(Swish)
-USE_PHI_FUNCTOR(HardSwish)
-USE_PHI_FUNCTOR(Pow)
 USE_PHI_FUNCTOR(Mish)
 
 template <typename T>
