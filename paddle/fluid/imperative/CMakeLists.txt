@@ -36,7 +36,8 @@ else()
          data_transform
          phi
          common
-         var_helper)
+         var_helper
+         process_group_nccl)
 endif()
 cc_library(
   layer
