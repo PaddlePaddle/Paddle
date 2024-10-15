@@ -471,8 +471,8 @@ __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
 }
 
 /*
- * @brief Get ReturnsCount random data fromm compute according to state, state
- * can be curandStatePhilox4_32_10_t, hiprandStatePhilox4_32_10_t which has beed
+ * @brief Get ReturnsCount random data from compute according to state, state
+ * can be curandStatePhilox4_32_10_t, hiprandStatePhilox4_32_10_t which has been
  * initialized.
  *
  * @template paraments
@@ -580,8 +580,8 @@ __device__ __forceinline__ void Cumsum(OutT* out,
  * out: The register pointer of out, the size is 2.
  * in: The register pointer of input, the size is 2.
  * num: The num of this block
- * monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
- * sorted in escending.
+ * monotonic_type: if monotonic_type = 1 then sorted in ascending order, else
+ * sorted in descending.
  */
 #define SHARED_SIZE_LIMIT 1024
 // each thread load 2 data from global memory so SHARED_SIZE_LIMIT must
@@ -638,8 +638,8 @@ __device__ __forceinline__ void Sort(OutT* out,
  * in: The register pointer of input, the size is 2.
  * in_index: The register pointer of in_index, the size is 2.
  * num: The num of this block.
- * monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
- * sorted in escending.
+ * monotonic_type: if monotonic_type = 1 then sorted in ascending order, else
+ * sorted in descending.
  */
 template <typename InT, typename OutT, typename IndexType>
 __device__ __forceinline__ void Sort(OutT* out,

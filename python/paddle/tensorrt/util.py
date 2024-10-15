@@ -112,6 +112,11 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed, scope=None):
     return exe_program
 
 
+def get_trt_version_list():
+    version = trt.__version__
+    return list(map(int, version.split('.')))
+
+
 # Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
 def mark_buitlin_op(program):
     for op in program.global_block().ops:

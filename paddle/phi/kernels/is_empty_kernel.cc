@@ -24,7 +24,7 @@ void IsEmptyKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out) {
   // Note: is_empty is always executed on CPU and the output data should
-  // always be allocated for CPUPlace. We reigister CUDA kernel for this op to
+  // always be allocated for CPUPlace. We register CUDA kernel for this op to
   // avoid the unnecessary data transform.
   bool* out_data = dev_ctx.template HostAlloc<bool>(out);
   out_data[0] = common::product(x.dims()) == 0;
