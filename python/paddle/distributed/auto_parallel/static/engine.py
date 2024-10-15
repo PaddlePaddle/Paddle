@@ -995,7 +995,7 @@ class Engine:
                 for job_type in self._job_plan.job_types():
                     ir_program = self._job_plan.ir_program(job_type)
                     pm.run(ir_program)
-
+        remove_unuseful_comm_op_pass(dense_program)
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
         self._pir_dist_startup_progs[mode] = startup_program
