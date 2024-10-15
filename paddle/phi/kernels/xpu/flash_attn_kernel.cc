@@ -301,6 +301,63 @@ void FlashAttnKernel(const Context& ctx,
     flash_attention_kernel =
         baidu::xpu::xfa::mha_varlen_fwd<XPUType, float, XPUTypeFP16, int>;
   }
+  if (std::is_same<phi::dtype::bfloat16, T>::value) {
+    float* q_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(q.numel());
+    float* k_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(k.numel());
+    float* v_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(v.numel());
+    float* out_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(out->numel());
+    int r = xpu::cast<XPUType, float>(
+        ctx.x_context(), q_data, q_fp32_data, q.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        ctx.x_context(), k_data, k_fp32_data, k.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        ctx.x_context(), v_data, v_fp32_data, v.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    auto flash_attention_kernel_bf16 =
+        baidu::xpu::xfa::mha_varlen_fwd<float, float, tfloat32, int>;
+    if (fa_tgemm == XPU_FA_TGEMM::FA_FLOAT) {
+      flash_attention_kernel_bf16 =
+          baidu::xpu::xfa::mha_varlen_fwd<float, float, float, int>;
+    }
+    r = flash_attention_kernel_bf16(
+        ctx.x_context(),
+        q_fp32_data,                                // q
+        k_fp32_data,                                // k
+        v_fp32_data,                                // v
+        out_fp32_data,                              // out
+        softmax_lse_data,                           // softmax_lse
+        qlod,                                       // lod_seqlens_q
+        kvlod,                                      // lod_seqlens_k
+        seqlen_q,                                   // max_seqlen_q
+        seqlen_k,                                   // max_seqlen_k
+        num_heads,                                  // head_num
+        num_heads_k,                                // head_num_k
+        head_size,                                  // head_dim
+        1.0f / std::sqrt(head_size),                // softmax_scale
+        dropout,                                    // p_dropout
+        static_cast<int32_t>(seed_offset_data[0]),  // seed
+        causal,                                     // is_causal
+        nullptr,                                    // attn_mask
+        bias_data,                                  // bias
+        nullptr,                                    // q_maxptr
+        nullptr,                                    // k_maxptr
+        nullptr,                                    // v_maxptr
+        nullptr,                                    // o_maxptr
+        false,                                      // is_qkv_fusion
+        fa_layout,                                  // qkv_layout
+        nullptr,                                    // alibi_slopes
+        {},                                         // alibi_slopes_shape
+        -1,                                         // window_size_left
+        -1                                          // window_size_right
+    );
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
+    r = xpu::cast<float, XPUType>(
+        ctx.x_context(), out_fp32_data, out_data, out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    return;
+  }
   int r =
       flash_attention_kernel(ctx.x_context(),
                              q_data,                       // q
