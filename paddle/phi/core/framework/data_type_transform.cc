@@ -45,7 +45,7 @@ static void XPUCastData(const phi::DenseTensor& in,
   int r = xpu::cast<XPUInTDType, XPUOutTDType>(
       dev_ctx->x_context(),
       reinterpret_cast<const XPUInTDType*>(in.data<InType>()),
-      reinterpret_cast<XPUOutTDType*>(dev_ctx.Alloc<OutType>(out)),
+      reinterpret_cast<XPUOutTDType*>(dev_ctx->Alloc<OutType>(out)),
       in.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   dev_ctx->Wait();
@@ -93,7 +93,7 @@ struct CastDataType {
   void apply() {
     auto* in_begin = in_.data<InType>();
     auto* in_end = in_begin + in_.numel();
-    auto* out_begin = ctx_.Alloc<OutType>(out_);
+    auto* out_begin = ctx_->Alloc<OutType>(out_);
 
     if (phi::is_cpu_place(in_.place())) {
       phi::Transform<phi::CPUContext> trans;
