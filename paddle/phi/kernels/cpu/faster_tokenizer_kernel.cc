@@ -36,7 +36,6 @@ using std::unordered_set;
 using std::vector;
 using std::wcout;
 using std::wstring;
-using Strings = paddle::framework::Strings;
 
 inline bool IsControl(const wchar_t& ch);
 inline bool IsChineseChar(const wchar_t& ch);
@@ -57,13 +56,13 @@ class BasicTokenizer {
 
 class WordPieceTokenizer {
  public:
-  explicit WordPieceTokenizer(const paddle::framework::Vocab* vocab,
+  explicit WordPieceTokenizer(const phi::Vocab* vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
   void Tokenize(const wstring& text, vector<int64_t>* output) const;
 
  private:
-  const paddle::framework::Vocab* vocab_;
+  const phi::Vocab* vocab_;
   wstring unk_token_{L"[UNK]"};
   int64_t unk_token_id_;
   size_t max_input_chars_per_word_;
@@ -71,7 +70,7 @@ class WordPieceTokenizer {
 
 class BertTokenizer {
  public:
-  explicit BertTokenizer(const paddle::framework::Vocab* vocab,
+  explicit BertTokenizer(const phi::Vocab* vocab,
                          bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
@@ -114,7 +113,7 @@ class BertTokenizer {
   bool do_lower_case_;
   wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
   string padding_site_;
-  const paddle::framework::Vocab* vocab_;
+  const phi::Vocab* vocab_;
   BasicTokenizer basic_tokenizer_;
   WordPieceTokenizer word_piece_tokenizer_;
   int64_t unk_token_id_, cls_token_id_, mask_token_id_, pad_token_id_,
@@ -204,7 +203,7 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
-    const paddle::framework::Vocab* vocab,
+    const phi::Vocab* vocab,
     const wstring& unk_token /* = L"[UNK]"*/,
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
@@ -260,7 +259,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
   }
 }
 
-BertTokenizer::BertTokenizer(const paddle::framework::Vocab* vocab,
+BertTokenizer::BertTokenizer(const phi::Vocab* vocab,
                              bool do_lower_case /* = false */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
@@ -542,8 +541,7 @@ void FasterTokenizerKernel(const Context& dev_ctx,
                            bool pad_to_max_seq_len,
                            DenseTensor* input_ids,
                            DenseTensor* segment_ids) {
-  const auto* vocab =
-      reinterpret_cast<const paddle::framework::Vocab*>(&vocab_in);
+  const auto* vocab = reinterpret_cast<const phi::Vocab*>(&vocab_in);
   const auto* text = reinterpret_cast<const Strings*>(&text_in);
   const auto* text_pair =
       reinterpret_cast<const Strings*>(text_pair_in.get_ptr());
