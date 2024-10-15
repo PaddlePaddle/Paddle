@@ -14,15 +14,17 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/phi_tensor_base_vector.h"
+#include "paddle/phi/core/vocab/phi_tensor_base_vector.h"
+
+namespace phi {
+template <>
+struct PhiVectorType<const paddle::framework::Variable*> {
+  const char* type_name = "VariableRefArray";
+};
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
-
-template <>
-struct PhiVectorType<const framework::Variable*> {
-  const char* type_name = "VariableRefArray";
-};
 
 using VariableRefArray = PhiVector<const framework::Variable*>;
 

@@ -55,6 +55,9 @@ from .auto_parallel_recompute import (  # noqa: F401
     RecomputePass,
     RecomputeState,
 )
+from .auto_parallel_replace_with_parallel_cross_entropy import (  # noqa: F401
+    AutoParallelReplaceWithParallelCrossEntropyPass,
+)
 from .auto_parallel_sequence_parallel_optimization import (  # noqa: F401
     SequenceParallelOptimizationPass,
 )
