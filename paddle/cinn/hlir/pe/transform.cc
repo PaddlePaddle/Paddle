@@ -494,10 +494,14 @@ ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
           accumulate_shape = cinn::common::AutoSimplify(
               accumulate_shape + input_tensors[i]->shape[axis]);
           std::vector<Expr> new_indice = indice;
-          new_indice[axis] = indice[axis] - accumulate_shape;
-          ret = ir::Select::Make(indice[axis] < accumulate_shape,
-                                 ret,
-                                 input_tensors[i + 1](new_indice));
+          new_indice[axis] =
+              ir::Cast::Make(accumulate_shape.type(), indice[axis]) -
+              accumulate_shape;
+          ret =
+              ir::Select::Make(ir::Cast::Make(accumulate_shape.type(),
+                                              indice[axis]) < accumulate_shape,
+                               ret,
+                               input_tensors[i + 1](new_indice));
         }
         return ret;
       },
