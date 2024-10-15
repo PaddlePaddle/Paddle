@@ -37,7 +37,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
     idx_vec.push_back(i);
   }
   int64_t seed_int = 0;
-  if (seed.initialized()) {
+  if (seed.initialized() && seed.numel() != 0) {
     seed_int = *seed.data<int64_t>();
   } else {
     seed_int = startup_seed;
