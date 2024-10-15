@@ -84,7 +84,7 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
         lod_tensors[i]->initialized() ? lod_tensors[i]->data() : nullptr;
     VLOG(4) << size << " " << len;
     ss << "input(" << i << "-th tensor) dim:(" << lod_tensors[i]->dims() << ") "
-       << " addres:" << ptr << " len: " << len << ", ";
+       << " address:" << ptr << " len: " << len << ", ";
     *numel += len;
   }
   VLOG(10) << ss.str();
