@@ -93,7 +93,7 @@ struct CastDataType {
   void apply() {
     auto* in_begin = in_.data<InType>();
     auto* in_end = in_begin + in_.numel();
-    auto* out_begin = ctx.Alloc<OutType>(out_);
+    auto* out_begin = ctx_.Alloc<OutType>(out_);
 
     if (phi::is_cpu_place(in_.place())) {
       phi::Transform<phi::CPUContext> trans;
