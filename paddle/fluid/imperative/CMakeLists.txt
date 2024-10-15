@@ -22,7 +22,7 @@ if(WITH_XPU)
          phi
          common
          var_helper)
-else()
+elseif(WITH_GPU)
   cc_library(
     prepared_operator
     SRCS prepared_operator.cc
@@ -38,6 +38,21 @@ else()
          common
          var_helper
          process_group_nccl)
+else()
+  cc_library(
+    prepared_operator
+    SRCS prepared_operator.cc
+    DEPS proto_desc
+         operator
+         device_context
+         lod_tensor
+         selected_rows_utils
+         var_type_traits
+         op_kernel_type
+         data_transform
+         phi
+         common
+         var_helper)
 endif()
 cc_library(
   layer
