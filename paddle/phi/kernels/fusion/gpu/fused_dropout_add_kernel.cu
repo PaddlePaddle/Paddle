@@ -274,5 +274,7 @@ PD_REGISTER_KERNEL(fused_dropout_add,
                    double,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {
+  kernel->OutputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(1).SetBackend(phi::Backend::CPU);
 }
