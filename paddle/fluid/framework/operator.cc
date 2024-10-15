@@ -3311,8 +3311,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input phi::TensorArray size is 0, the output
           // phi::TensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<framework::Strings>()) {
-          tensor_out = var->template GetMutable<framework::Strings>();
+        } else if (var->template IsType<phi::Strings>()) {
+          tensor_out = var->template GetMutable<phi::Strings>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::Vocab>()) {
+          tensor_out = var->template GetMutable<phi::Vocab>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<paddle::framework::RawTensor>() ||
                    !var->IsInitialized()) {
