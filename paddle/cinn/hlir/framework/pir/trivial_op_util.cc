@@ -819,20 +819,6 @@ ExprTransformer InsertIfForAppendVarsTransformer() {
       schedule_block.As<ir::ScheduleBlock>()->body = new_body;
     }
 
-    // // Insert if above schedule block
-    // auto last_for = (ExprSetFinderUtils::ChildFors *
-    //                  ExprSetFinderUtils::IsForIterVar(vars.back()))
-    //                     .GetSingle(root)
-    //                     .As<ir::For>();
-    // ir::Expr new_body = last_for->body;
-    // for (const auto& cond : conditions) {
-    //   new_body = ir::IfThenElse::Make(cond, new_body);
-    // }
-    // if (!new_body.As<ir::Block>()) {
-    //   new_body = ir::Block::Make({new_body});
-    // }
-    // last_for->body = new_body;
-
     return root;
   };
   return ExprTransformer(f);
@@ -950,21 +936,16 @@ ir::Expr GetBodyBlock(const ir::Expr& root) {
       std::count_if(iters.begin(), iters.end(), [](const ir::Var& v) {
         return v->is_reduce_axis;
       });
-  if (reduce_size == iters.size()) {
-    PADDLE_THROW(::common::errors::Unimplemented(
-        "Currently can not get body block with no reduce axis."));
-    return (ExprSetFinderUtils::ChildRootScheduleBlockRealizes *
-            ExprSetFinderUtils::Realizer2ScheduleBlock *
-            ExprSetFinderUtils::ScheduleBlock2Body)
-        .GetSingle(root);
-  } else {
-    return (ExprSetFinderUtils::ChildFors *
-            ExprSetFinderUtils::IsForIterVar(
-                iters[iters.size() - reduce_size - 1]))
-        .GetSingle(root)
-        .As<ir::For>()
-        ->body;
-  }
+  PADDLE_ENFORCE_LT(reduce_size,
+                    iters.size(),
+                    ::common::errors::InvalidArgument(
+                        "The reduce size should be less than the total size."));
+  return (ExprSetFinderUtils::ChildFors *
+          ExprSetFinderUtils::IsForIterVar(
+              iters[iters.size() - reduce_size - 1]))
+      .GetSingle(root)
+      .As<ir::For>()
+      ->body;
 }
 
 }  // namespace trivial_fusion_detail

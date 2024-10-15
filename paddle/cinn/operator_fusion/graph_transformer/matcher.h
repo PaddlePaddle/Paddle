@@ -111,7 +111,6 @@ struct CanFuseItersPermutationMatcher {
                                                               upstream) ||
             graph.iters_fusion_policy()->CanFuseSource2Target(upstream,
                                                               downstream));
-    //  && CanFuseTrivialAndReduce()(graph, upstream, downstream);
   }
 };
 
@@ -443,7 +442,8 @@ struct HorizontalCheckMiddleOutputVar {
                   const PatternNodePtr& rhs) {
     // Middle Variable Must be ( id-dependent ) to support horizontal fusion.
     if (DontHaveMiddleVariable(graph, lhs, rhs)) return true;
-    return false;
+    // TODO(huangjiyi): Support horizontal fusion for patterns with dependency
+    // relationship
     // const auto& left_dims_vec = GetLoopValueDims(lhs->stmt_pattern());
     // const auto& right_dims_vec = GetLoopValueDims(rhs->stmt_pattern());
     // bool identical_dep = true;
@@ -451,6 +451,7 @@ struct HorizontalCheckMiddleOutputVar {
     // identical_dep &= IdenticalDepAll(graph, right_dims, left_dims_vec);
     //}
     // return identical_dep;
+    return false;
   }
 };
 
