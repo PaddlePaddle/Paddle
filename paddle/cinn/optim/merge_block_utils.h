@@ -71,7 +71,7 @@ void MoveScheduleBlock(const ir::Expr& src,
                        const ir::Expr& dst,
                        ir::Expr* root);
 
-// Fuse two loop, src -> dst.
+// Fuse two loop, src -> dst. Return `nullptr` if not supported.
 ir::Expr LoopFusion(const ir::Expr& src, const ir::Expr& dst);
 
 }  // namespace optim

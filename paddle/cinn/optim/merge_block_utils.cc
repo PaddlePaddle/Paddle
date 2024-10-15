@@ -337,10 +337,14 @@ void MoveScheduleBlock(const ir::Expr& src,
 }
 
 ir::Expr LoopFusion(const ir::Expr& src, const ir::Expr& dst) {
-  VLOG(6) << "loop src: \n" << src;
-  VLOG(6) << "loop dst: \n" << dst;
+  VLOG(6) << "LoopFusion src: \n" << src;
+  VLOG(6) << "LoopFusion dst: \n" << dst;
   ir::Expr fused_loop = LoopFusionHelper(src, dst);
-  VLOG(6) << "fused loop: \n" << fused_loop;
+  if (fused_loop != nullptr) {
+    VLOG(6) << "Fused loop: \n" << fused_loop;
+  } else {
+    VLOG(6) << "Not supported for those loops!";
+  }
   return fused_loop;
 }
 
