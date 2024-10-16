@@ -263,9 +263,6 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
     } else {
       num_rows_dim = symbol::DimExpr(infer_context->GetNextSymName());
     }
-  } else {
-    PADDLE_THROW(
-        common::errors::InvalidArgument("The num_rows must be set for Eyeop."));
   }
 
   if (op->HasAttribute("num_columns")) {
@@ -285,9 +282,6 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
     } else {
       num_columns_dim = symbol::DimExpr(infer_context->GetNextSymName());
     }
-  } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The num_columns must be set for Eyeop."));
   }
   out_shape.emplace_back(num_rows_dim);
   out_shape.emplace_back(num_columns_dim);
