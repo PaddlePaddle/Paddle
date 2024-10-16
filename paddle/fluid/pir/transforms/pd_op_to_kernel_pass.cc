@@ -3060,15 +3060,12 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
       }
 
       pir::Value shadow_source = it->operand_source(0);
-      if (!shadow_source.type().isa<AllocatedDenseTensorType>()) {
-        continue;
-      }
-      auto var_src_place =
+      auto val_src_place =
           shadow_source.type()
-              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .place();
 
-      if (shadow_value.use_count() >= 1 &&
-          phi::is_cpu_place(var_src_place.place())) {
+      if (shadow_value.use_count() >= 1 || val_src_place == phi::CPUPlace()) {
         bool all_use_is_scalar = true;
         for (auto use_it = shadow_value.use_begin();
              use_it != shadow_value.use_end();
