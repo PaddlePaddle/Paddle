@@ -1468,6 +1468,15 @@ def get_package_data_and_package_dir():
         for xpu_cuda_lib_file in xpu_cuda_lib_list:
             shutil.copy(xpu_cuda_lib_file, libs_path)
             package_data['paddle.libs'] += [os.path.basename(xpu_cuda_lib_file)]
+        if env_dict.get("WITH_XPU_XRE5") == 'ON':
+            xpu_cuda_rt_lib_list = glob.glob(
+                env_dict.get("XPU_CUDA_RT_LIB") + '*'
+            )
+            for xpu_cuda_rt_lib_file in xpu_cuda_rt_lib_list:
+                shutil.copy(xpu_cuda_rt_lib_file, libs_path)
+                package_data['paddle.libs'] += [
+                    os.path.basename(xpu_cuda_rt_lib_file)
+                ]
 
         shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]

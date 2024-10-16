@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/top_p_sampling_kernel.h"
-#include "xpu/refactor/nn_customization.h"
+#include "xpu/refactor/customized_api.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
