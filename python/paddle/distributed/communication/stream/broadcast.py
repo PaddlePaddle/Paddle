@@ -81,7 +81,6 @@ def _broadcast_in_static_mode(
         outputs={'out': [tensor]},
         attrs={
             'root': src_rank_in_group,
-            'use_calc_stream': sync_op,
             'ring_id': ring_id,
         },
     )
