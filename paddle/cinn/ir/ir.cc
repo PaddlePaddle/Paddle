@@ -414,6 +414,9 @@ Expr For::Make(Var loop_var,
       ::common::errors::InvalidArgument("The extent is not defined. "
                                         "A valid extent is required."));
 
+  if (!(loop_var->lower_bound.defined())) loop_var->lower_bound = min;
+  if (!(loop_var->upper_bound.defined())) loop_var->upper_bound = extent;
+
   node->loop_var = loop_var;
   node->min = min;
   node->extent = extent;
