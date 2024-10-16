@@ -22,7 +22,7 @@ if(WITH_XPU)
          phi
          common
          var_helper)
-elseif(WITH_NCCL OR WITH_RCCL)
+elseif(WITH_GPU OR WITH_ROCM)
   cc_library(
     prepared_operator
     SRCS prepared_operator.cc
