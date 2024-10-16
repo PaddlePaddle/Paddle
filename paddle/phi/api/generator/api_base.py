@@ -21,10 +21,6 @@ PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
 ORIGIN_PREFIX_TENSOR_NAME = 'origin_input_'
 
-API_KEEPING_GLOBAL_DEVICE = [
-    'shard_index',
-]
-
 
 def parse_plain_list(s: str, sep=",") -> list[str]:
     """Copy from `paddle/fluid/operators/generator/parse_utils.py`"""
@@ -94,10 +90,7 @@ class BaseAPI:
             },
         }
         self.ref_place = None
-        if (
-            'place' in self.attrs['names']
-            and self.api not in API_KEEPING_GLOBAL_DEVICE
-        ):
+        if 'place' in self.attrs['names']:
             # if place is specified explicitly, just use it, such as 'full' op
             self.ref_place = "place"
 
@@ -763,14 +756,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             self.ref_place is None
             and self.__class__.__name__ == "ForwardAPI"
             and input_name not in self.optional_vars
-            and self.api not in API_KEEPING_GLOBAL_DEVICE
         ):
             # use the place of first available tensor for forward op
             self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}->place()"
         elif (
             (self.ref_place is None or "_grad" in input_name)
             and input_name not in self.optional_vars
-            and self.api not in API_KEEPING_GLOBAL_DEVICE
             and self.__class__.__name__ == "BackwardAPI"
         ):
             # use the place of first available grad tensor for backward op
@@ -903,14 +894,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             self.ref_place is None
             and self.__class__.__name__ == "ForwardAPI"
             and input_name not in self.optional_vars
-            and self.api not in API_KEEPING_GLOBAL_DEVICE
         ):
             # use the place of first available tensor for forward op
             self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}.at(0)->place()"
         elif (
             self.__class__.__name__ == "BackwardAPI"
             and input_name not in self.optional_vars
-            and self.api not in API_KEEPING_GLOBAL_DEVICE
             and (self.ref_place is None or "_grad" in input_name)
         ):
             # use the place of first available grad tensor for backward op

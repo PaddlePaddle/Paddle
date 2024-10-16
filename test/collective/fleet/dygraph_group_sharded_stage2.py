@@ -21,6 +21,7 @@ import tempfile
 import numpy as np
 
 import paddle
+from paddle import distributed as dist
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
@@ -149,13 +150,15 @@ def train_mlp(
     )
 
     if sharding_stage == 2:
-        model.to(device="gpu")
+        model.to(device=f"gpu:{dist.get_rank()}")
 
     for eop in range(epoch):
         model.train()
 
         for batch_id, data in enumerate(train_loader()):
             img, label = data
+            img = img.to(device=f"gpu:{dist.get_rank()}")
+            label = label.to(device=f"gpu:{dist.get_rank()}")
             label.stop_gradient = True
             img.stop_gradient = True
 
