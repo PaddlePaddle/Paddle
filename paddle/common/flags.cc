@@ -1398,7 +1398,7 @@ PHI_DEFINE_EXPORTED_bool(
  * Performance related FLAG
  * Name: enable_auto_layout_pass
  * Since Version: 3.0.0
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: If True, using AutoLayoutPass and AutuLayoutSimplifyPass by default
  */
