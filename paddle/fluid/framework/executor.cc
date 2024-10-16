@@ -72,7 +72,9 @@ Executor::~Executor() {
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  platform::ClearMKLDNNCache(place_, this);
+  if (FLAGS_use_mkldnn) {
+    platform::ClearMKLDNNCache(place_, this);
+  }
 #endif
 }
 
@@ -187,8 +189,10 @@ void Executor::Run(const ProgramDesc& pdesc,
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
-  platform::RegisterModelLayout(ctx->ops_, place_);
+  if (FLAGS_use_mkldnn) {
+    platform::AttachPointerHashToMKLDNNKey(this, place_);
+    platform::RegisterModelLayout(ctx->ops_, place_);
+  }
 #endif
   RunPreparedContext(
       ctx.get(), scope, create_local_scope, create_vars, keep_kid_scopes);
@@ -332,7 +336,9 @@ void Executor::Run(const ProgramDesc& program,
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  if (FLAGS_use_mkldnn) {
+    platform::AttachPointerHashToMKLDNNKey(this, place_);
+  }
 #endif
   bool has_feed_ops =
       has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
