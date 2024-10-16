@@ -342,4 +342,7 @@ PD_INFER_DECL extern const std::vector<std::string> kPirXpuPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnBf16Passes;
 
+/// \brief List of passes that should be executed before CINN's passes.
+PD_INFER_DECL extern const std::vector<std::string> BeforeCINNPasses;
+
 }  // namespace paddle

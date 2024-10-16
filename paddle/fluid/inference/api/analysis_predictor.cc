@@ -838,18 +838,19 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       if (!config_.custom_pass_only_) {
         ::pir::PassManager pm(::pir::IrContext::Instance(),
                               config_.pm_opt_level_);
+        for (auto &&pass : BeforeCINNPasses) {
+          pm.AddPass(pir::PassRegistry::Instance().Get(pass));
+        }
         // Author(liujinnan): Temporary version, after `auto_layout_pass`
         // replaces `transfer_layout_pass` the branch will be deleted, and put
         // `auto_layout_pass` and `auto_layout_simplify_pass` into
         // `BeforeCINNPasses` directly.
         if (config_.autolayout_enabled()) {
-          BeforeCINNPasses.push_bach("auto_layout_pass");
-          BeforeCINNPasses.push_bach("auto_layout_simplify_pass");
+          pm.AddPass(pir::PassRegistry::Instance().Get("auto_layout_pass"));
+          pm.AddPass(
+              pir::PassRegistry::Instance().Get("auto_layout_simplify_pass"));
         } else {
-          BeforeCINNPasses.push_bach("transfer_layout_pass");
-        }
-        for (auto &&pass : BeforeCINNPasses) {
-          pm.AddPass(pir::PassRegistry::Instance().Get(pass));
+          pm.AddPass(pir::PassRegistry::Instance().Get("transfer_layout_pass"));
         }
         pm.Run(pir_program_.get());
       }
