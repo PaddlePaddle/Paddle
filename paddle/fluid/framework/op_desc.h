@@ -200,6 +200,7 @@ class TEST_API OpDesc {
 
   // The following methods are only used for auto parallel.
   uint64_t Id() const { return id_; }
+  void SetId(uint64_t id) { id_ = id; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
   const OperatorDistAttr *DistAttr() const;

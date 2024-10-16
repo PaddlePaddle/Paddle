@@ -268,8 +268,19 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
   std::map<int, BriefNode *> brief_node_map;
 
   std::unordered_set<int32_t> valid_node_ids;
+  std::vector<uint64_t> op_ids;
+  std::map<uint64_t, paddle::framework::OpDesc *> id2op;
   for (auto *node : graph_->Nodes()) {
     valid_node_ids.insert(node->id());
+    if (node->IsOp()) {
+      op_ids.push_back(node->Op()->Id());
+      id2op[node->Op()->Id()] = node->Op();
+    }
+  }
+  std::sort(op_ids.begin(), op_ids.end());
+  uint64_t start_id = op_ids[0];
+  for (size_t i = 0; i < op_ids.size(); ++i) {
+    id2op[op_ids[i]]->SetId(start_id + i);  // Re set the ID of OPs.
   }
 
   for (auto &node : framework::ir::GraphTraits::TS(*graph_)) {
@@ -375,14 +386,53 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
           .push_back(n);
     }
   }
-  std::vector<std::vector<Node *>> result;
+  std::vector<std::vector<Node *>> subgraphs;
   std::for_each(clusters.begin(),
                 clusters.end(),
                 [&](const decltype(clusters)::value_type &it) {
-                  result.push_back(it.second);
+                  subgraphs.push_back(it.second);
                 });
 
-  return result;
+  // Re sort the ID of OPs.
+  std::map<uint64_t, Node *> id2nodes;
+  std::vector<std::vector<uint64_t>> resort_ids;
+  for (auto &subgraph : subgraphs) {
+    std::vector<uint64_t> tem_ids;
+    for (auto *node : subgraph) {
+      tem_ids.push_back(node->Op()->Id());
+      id2nodes[node->Op()->Id()] = node;
+    }
+    std::sort(tem_ids.begin(), tem_ids.end());
+
+    // Re sort and Resegment the OP of subgraphs.
+    std::vector<std::vector<uint64_t>> tem_resort_ids;
+    std::vector<uint64_t> tem_resort_id;
+    uint64_t min_index = tem_ids[0];
+    for (size_t i = 0; i < tem_ids.size(); ++i) {
+      if ((tem_ids[i] != (min_index + i))) {
+        tem_resort_ids.push_back(tem_resort_id);
+        tem_resort_id.clear();
+        min_index = tem_ids[i] - i;
+      }
+      tem_resort_id.push_back(tem_ids[i]);
+      if (i == tem_ids.size() - 1) {
+        tem_resort_ids.push_back(tem_resort_id);
+      }
+    }
+    resort_ids.insert(
+        resort_ids.end(), tem_resort_ids.begin(), tem_resort_ids.end());
+  }
+
+  // Generate new subgraphs from the reordered IDs
+  std::vector<std::vector<Node *>> results;
+  for (auto ids : resort_ids) {
+    std::vector<Node *> tem_result;
+    for (auto id : ids) {
+      tem_result.push_back(id2nodes[id]);
+    }
+    results.push_back(tem_result);
+  }
+  return results;
 }
 
 void SubGraphFuser::operator()() { ReplaceNodesWithSubGraphs(); }

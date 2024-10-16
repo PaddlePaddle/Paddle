@@ -406,9 +406,11 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
           continue;
         }
       }
-      auto var_id = var_scope->VarId(var_name);
-      vars.push_back(var);
-      ids.push_back(var_id);
+      if (var) {
+        auto var_id = var_scope->VarId(var_name);
+        vars.push_back(var);
+        ids.push_back(var_id);
+      }
     }
     name2var[item.first] = std::move(vars);
     name2id[item.first] = std::move(ids);

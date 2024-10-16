@@ -54,6 +54,7 @@ static const std::vector<std::string> gpu_support_subgraph_passes = {
 static const std::vector<std::string> trt_support_subgraph_passes = {
     "feed_fetch_subgraph_pass",
     "set_subgraph_edge_pass",
+    "identity_op_clean_pass",
     "trt_map_ops_to_matrix_multiply_pass",
     "tensorrt_subgraph_pass",
     "simplify_with_basic_ops_pass",

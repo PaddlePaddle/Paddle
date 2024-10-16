@@ -42,9 +42,16 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   auto &graph = argument->main_graph();
   std::vector<std::string> repetitive_params;
 
-  if (graph.Has(framework::ir::kRepetitiveParamAttr))
-    repetitive_params = graph.Get<std::vector<std::string>>(
-        framework::ir::kRepetitiveParamAttr);
+  for (size_t i = 0; i < graph.SubGraphsSize(); ++i) {
+    auto sub_graph = graph.GetSubGraph(i);
+    if (sub_graph->Has(framework::ir::kRepetitiveParamAttr)) {
+      auto sub_repetitive_params = sub_graph->Get<std::vector<std::string>>(
+          framework::ir::kRepetitiveParamAttr);
+      repetitive_params.insert(repetitive_params.end(),
+                               sub_repetitive_params.begin(),
+                               sub_repetitive_params.end());
+    }
+  }
 
   LOG(INFO) << "Sync params from CPU to GPU";
 
@@ -72,6 +79,11 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
                              argument->tensorrt_tuned_dynamic_shape());
   if (with_dynamic_shape) {
     reserve_cpu_weights = true;
+  }
+
+  // To save GPU memory for sub_blocks
+  if (FLAGS_all_blocks_convert_trt) {
+    reserve_cpu_weights = false;
   }
 
   std::unordered_set<std::string> visited;
