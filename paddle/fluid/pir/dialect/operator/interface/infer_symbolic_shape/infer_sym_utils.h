@@ -177,4 +177,11 @@ std::vector<symbol::DimExpr> GetSymShapeForInputValue(
     pir::InferSymbolicShapeContext *infer_context);
 
 bool IsFakeValue(const pir::Value &value);
+
+std::vector<symbol::DimExpr> GetVecFromIntArray(
+    const pir::Operation *op,
+    pir::InferSymbolicShapeContext *infer_context,
+    const std::string &input_name,
+    const int &index);
+
 }  // namespace paddle::dialect::details
