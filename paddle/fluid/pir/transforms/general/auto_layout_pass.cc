@@ -200,7 +200,6 @@ class AutoLayoutPass : public pir::Pass {
                            pir::Builder& builder) {  // NOLINT
     builder.SetInsertionPointAfter(op);
     for (auto& result : op->results()) {
-      if (result.use_empty()) continue;
       if (!JudgeValue(result)) continue;
       auto transpose_op =
           builder.Build<paddle::dialect::TransposeOp>(result, NHWC2NCHW_);
