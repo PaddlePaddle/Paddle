@@ -1403,7 +1403,7 @@ PHI_DEFINE_EXPORTED_bool(
  * Note: If True, using AutoLayoutPass and AutuLayoutSimplifyPass by default
  */
 PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass,
-                         true,
+                         false,
                          "Whether enable auto_layout_pass.");
 
 /**

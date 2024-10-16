@@ -836,19 +836,22 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
     if (config_.use_gpu() && config_.cinn_enabled()) {
       if (!config_.custom_pass_only_) {
-        ::pir::PassManager fused_op_pm(::pir::IrContext::Instance(),
-                                       config_.pm_opt_level_);
-        const std::vector<std::string> FusedOpPasses{// Operator fusion pass
-                                                     "conv2d_bn_fuse_pass",
-                                                     "conv2d_add_act_fuse_pass",
-                                                     "conv2d_add_fuse_pass",
-                                                     "transfer_layout_pass"};
-
-        for (const auto &fused_op : FusedOpPasses) {
-          fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
+        ::pir::PassManager pm(::pir::IrContext::Instance(),
+                              config_.pm_opt_level_);
+        // Author(liujinnan): Temporary version, after `auto_layout_pass`
+        // replaces `transfer_layout_pass` the branch will be deleted, and put
+        // `auto_layout_pass` and `auto_layout_simplify_pass` into
+        // `BeforeCINNPasses` directly.
+        if (config_.autolayout_enabled()) {
+          BeforeCINNPasses.push_bach("auto_layout_pass");
+          BeforeCINNPasses.push_bach("auto_layout_simplify_pass");
+        } else {
+          BeforeCINNPasses.push_bach("transfer_layout_pass");
         }
-
-        fused_op_pm.Run(pir_program_.get());
+        for (auto &&pass : BeforeCINNPasses) {
+          pm.AddPass(pir::PassRegistry::Instance().Get(pass));
+        }
+        pm.Run(pir_program_.get());
       }
     }
 
@@ -883,16 +886,28 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
                         config_.deleted_passes_.end(),
                         gpu_pass) == config_.deleted_passes_.end()) {
             if (gpu_pass == "transfer_layout_pass" &&
-                config_.autolayout_enabled())
+                config_.autolayout_enabled()) {
+              // Author(liujinnan): `auto_layout_pass` is a substitute for
+              // `transfer_layout_pass` and is temporarily controlled by Flag.
+              // After complete verification, `transfer_layout_pass` will be
+              // completely replaced and this branch will be deleted.
+              pass_pm.AddPass(
+                  pir::PassRegistry::Instance().Get("auto_layout_pass"));
+              pass_pm.AddPass(pir::PassRegistry::Instance().Get(
+                  "auto_layout_simplify_pass"));
               continue;
-            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+            } else if (config_.cinn_enabled() &&
+                       std::find(BeforeCINNPasses.begin(),
+                                 BeforeCINNPasses.end(),
+                                 gpu_pass) != config_.deleted_passes_.end()) {
+              // Because this pass is executed before the CINN‘s passes for
+              // performance reasons, we need to skip this pass.
+              continue;
+            } else {
+              // Added pass normally.
+              pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+            }
           }
-        }
-        if (config_.autolayout_enabled()) {
-          pass_pm.AddPass(
-              pir::PassRegistry::Instance().Get("auto_layout_pass"));
-          pass_pm.AddPass(
-              pir::PassRegistry::Instance().Get("auto_layout_simplify_pass"));
         }
       }
 
@@ -2231,13 +2246,26 @@ void AnalysisPredictor::PrepareArgument() {
         pass_builder->ClearPasses();
         for (const auto &pass : kGpuLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
-          if (pass == "transfer_layout_pass" && config_.autolayout_enabled())
+          if (gpu_pass == "transfer_layout_pass" &&
+              config_.autolayout_enabled()) {
+            // Author(liujinnan): `auto_layout_pass` is a substitute for
+            // `transfer_layout_pass` and is temporarily controlled by Flag.
+            // After complete verification, `transfer_layout_pass` will be
+            // completely replaced and this branch will be deleted.
+            pass_builder->AppendPass("auto_layout_pass");
+            pass_builder->AppendPass("auto_layout_simplify_pass");
             continue;
-          pass_builder->AppendPass(pass);
-        }
-        if (config_.autolayout_enabled()) {
-          pass_builder->AppendPass("auto_layout_pass");
-          pass_builder->AppendPass("auto_layout_simplify_pass");
+          } else if (config_.cinn_enabled() &&
+                     std::find(BeforeCINNPasses.begin(),
+                               BeforeCINNPasses.end(),
+                               gpu_pass) != config_.deleted_passes_.end()) {
+            // Because this pass is executed before the CINN‘s passes for
+            // performance reasons, we need to skip this pass.
+            continue;
+          } else {
+            // Added pass normally.
+            pass_builder->AppendPass(pass);
+          }
         }
       } else if (config_.use_xpu()) {  // NOLINT
         // All passes support fp16. Not reset pass_builder.

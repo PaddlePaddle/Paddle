@@ -39,7 +39,7 @@ namespace {
 
 class AutoLayoutPass : public pir::Pass {
  public:
-  AutoLayoutPass() : pir::Pass("auto_layout_pass", 3) {}
+  AutoLayoutPass() : pir::Pass("auto_layout_pass", 2) {}
   void Run(pir::Operation* op) override {
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);

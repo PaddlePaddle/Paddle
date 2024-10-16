@@ -678,4 +678,6 @@ const std::vector<std::string> kPirCpuPasses{
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass"};
 
+const std::vector<std::string> BeforeCINNPasses{
+    "conv2d_bn_fuse_pass", "conv2d_add_act_fuse_pass", "conv2d_add_fuse_pass"};
 }  // namespace paddle
