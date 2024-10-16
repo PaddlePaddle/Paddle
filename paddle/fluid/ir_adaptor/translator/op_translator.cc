@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <numeric>
 #include <regex>
 #include <string>
@@ -2766,7 +2767,28 @@ pir::Attribute TranslateReduceAll(pir::IrContext* ctx,
   }
 
   if (reduce_all) {
-    return pir::ArrayAttribute::get(ctx, std::vector<pir::Attribute>{});
+    auto x_names = op_desc.Input("X");
+    auto x_name = x_names[0];
+    const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(x_name);
+    IR_ENFORCE(var_desc != nullptr,
+               "VarDesc `%s` should be exist in legacy program",
+               x_name);
+
+    int axis_size = var_desc->GetShape().size();
+
+    if (attr_info.type_name == "paddle::dialect::IntArrayAttribute") {
+      std::vector<int64_t> axis;
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis.push_back(i);
+      }
+      return dialect::IntArrayAttribute::get(ctx, axis);
+    } else {
+      std::vector<pir::Attribute> axis;
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis.push_back(pir::Int64Attribute::get(ctx, i));
+      }
+      return pir::ArrayAttribute::get(ctx, axis);
+    }
   }
 
   auto& attribute_translator = AttributeTranslator::instance();
@@ -3973,8 +3995,6 @@ OpTranslator::OpTranslator() {
   special_handlers["pool2d"] = Pool2dOpTranscriber();
   special_handlers["pool3d"] = Pool3dOpTranscriber();
   special_handlers["randint"] = RandIntOpTranscriber();
-  special_handlers["reduce_all"] = ReduceOpTranscriber();
-  special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["repeat_interleave"] = RepeatInterLeaveOpTranscriber();
   special_handlers["repeat_interleave_grad"] =
       RepeatInterLeaveGradOpTranscriber();
@@ -4003,6 +4023,16 @@ OpTranslator::OpTranslator() {
       SoftmaxWithCrossEntropyOpTranscriber();
   special_handlers["gather"] = GatherOpTranscriber();
   special_handlers["box_coder"] = BoxCoderOpTranscriber();
+
+  // reduce operations
+  special_handlers["reduce_all"] = ReduceOpTranscriber();
+  special_handlers["reduce_any"] = ReduceOpTranscriber();
+  special_handlers["reduce_amax"] = ReduceOpTranscriber();
+  special_handlers["reduce_amin"] = ReduceOpTranscriber();
+  special_handlers["reduce_max"] = ReduceOpTranscriber();
+  special_handlers["reduce_min"] = ReduceOpTranscriber();
+  special_handlers["reduce_mean"] = ReduceOpTranscriber();
+  special_handlers["reduce_sum"] = ReduceOpTranscriber();
 
   // To adapt LodTensorArray
   special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();
