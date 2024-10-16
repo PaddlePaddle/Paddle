@@ -707,7 +707,7 @@ class PIRAttentionPattern(PIRBasePattern):
 class PIRMLPPattern(PIRBasePattern):
     """MLP pattern"""
 
-    name = "MLP"
+    name = "mlp"
 
     def __init__(self):
         super().__init__()
