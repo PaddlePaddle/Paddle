@@ -91,6 +91,13 @@ class Pool2dOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
+    paddle::dialect::FullIntArrayOp full_int_array_op =
+        pir::GetDefiningOpForInput(op, 1)
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    if (!full_int_array_op) {
+      VLOG(3) << "Cannot find FullIntArrayOp";
+      return false;
+    }
     auto padding_attr = op->attribute<pir::ArrayAttribute>("paddings");
     std::vector<int32_t> paddings;
     for (const auto &attr : padding_attr.AsVector()) {
@@ -124,28 +131,19 @@ class Pool2dOpPattern
           if (!op->attribute<pir::BoolAttribute>("global_pooling").data()) {
             if (op->HasAttribute("exclusive")) {
               if (op->attribute<pir::BoolAttribute>("exclusive").data()) {
-                paddle::dialect::FullIntArrayOp full_int_array_op =
-                    pir::GetDefiningOpForInput(op, 1)
-                        ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-                if (!full_int_array_op) {
-                  VLOG(3) << "Cannot find FullIntArrayOp";
-                  return false;
-                } else {
-                  auto attr_value =
-                      full_int_array_op->attribute<pir::ArrayAttribute>(
-                          "value");
-                  std::vector<int64_t> kernel_size;
-                  for (const auto &attr : attr_value.AsVector()) {
-                    kernel_size.push_back(
-                        attr.dyn_cast<pir::Int64Attribute>().data());
-                  }
-                  for (size_t i = 0; i < kernel_size.size(); ++i) {
-                    if (kernel_size[i] <= paddings[i]) {
-                      VLOG(3) << "the padding size should be less than the "
-                                 "filter size "
-                                 "for exclusive-counting pooling.";
-                      return false;
-                    }
+                auto attr_value =
+                    full_int_array_op->attribute<pir::ArrayAttribute>("value");
+                std::vector<int64_t> kernel_size;
+                for (const auto &attr : attr_value.AsVector()) {
+                  kernel_size.push_back(
+                      attr.dyn_cast<pir::Int64Attribute>().data());
+                }
+                for (size_t i = 0; i < kernel_size.size(); ++i) {
+                  if (kernel_size[i] <= paddings[i]) {
+                    VLOG(3) << "the padding size should be less than the "
+                               "filter size "
+                               "for exclusive-counting pooling.";
+                    return false;
                   }
                 }
               }
@@ -798,12 +796,16 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
       return false;
     }
 
-    paddle::dialect::FullOp full_op =
-        pir::GetDefiningOpForInput(op, 2)->dyn_cast<paddle::dialect::FullOp>();
-    if (!full_op) {
-      VLOG(3) << "Can not find full op";
+    pir::Value axis_tensor = op.operand_source(2);
+    if (!axis_tensor) {
+      VLOG(3) << "pd_op.split can not find axis input";
       return false;
-    } else {
+    }
+    auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
+    if (pir::GetDefiningOpForInput(op, 2)->isa<paddle::dialect::FullOp>()) {
+      paddle::dialect::FullOp full_op =
+          pir::GetDefiningOpForInput(op, 2)
+              ->dyn_cast<paddle::dialect::FullOp>();
       auto axis = full_op->attribute<paddle::dialect::ScalarAttribute>("value")
                       .data()
                       .to<int>();
@@ -811,29 +813,25 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
                          .type()
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dims();
-      auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
 
-      paddle::dialect::FullIntArrayOp full_sections_op =
-          pir::GetDefiningOpForInput(op, 1)
-              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-      if (!full_sections_op) {
-        VLOG(3) << "Can not find FullIntArrayOp";
-        return false;
-      }
-
-      auto sections = full_sections_op->attribute<pir::ArrayAttribute>("value");
-
-      std::vector<int64_t> output_lengths;
-      for (const auto &attr : sections.AsVector()) {
-        output_lengths.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
-      }
       axis += (axis < 0) ? x_shape.size() : 0;
 
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
         return false;
       }
+    }
 
+    if (pir::GetDefiningOpForInput(op, 1)
+            ->isa<paddle::dialect::FullIntArrayOp>()) {
+      paddle::dialect::FullIntArrayOp full_sections_op =
+          pir::GetDefiningOpForInput(op, 1)
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+      auto sections = full_sections_op->attribute<pir::ArrayAttribute>("value");
+      std::vector<int64_t> output_lengths;
+      for (const auto &attr : sections.AsVector()) {
+        output_lengths.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+      }
       if (output_lengths.size() != out_vector_type.size()) {
         VLOG(3) << "The output_length should be equal to the output size.";
         return false;
@@ -855,33 +853,38 @@ class SplitWithNumOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    paddle::dialect::FullOp full_op =
-        pir::GetDefiningOpForInput(op, 1)->dyn_cast<paddle::dialect::FullOp>();
-    if (!full_op) {
-      VLOG(3) << "Can not find full op";
+
+    pir::Value axis_tensor = op.operand_source(1);
+    if (!axis_tensor) {
+      VLOG(3) << "pd_op.split_with_num can not find axis input";
       return false;
-    } else {
-      auto axis = full_op->attribute<paddle::dialect::ScalarAttribute>("value")
+    }
+    if (pir::GetDefiningOpForInput(op, 1)
+            ->isa<paddle::dialect::FullIntArrayOp>()) {
+      paddle::dialect::FullIntArrayOp full_int_array_op =
+          pir::GetDefiningOpForInput(op, 1)
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+      auto axis = full_int_array_op
+                      ->attribute<paddle::dialect::ScalarAttribute>("value")
                       .data()
                       .to<int>();
       auto x_shape = op.operand_source(0)
                          .type()
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dims();
-      auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
 
       axis += (axis < 0) ? x_shape.size() : 0;
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
         return false;
       }
-
       if (!op->HasAttribute("num")) {
         VLOG(3) << "split_with_num op must has num attributes";
         return false;
       }
       int num = op->attribute<pir::Int32Attribute>("num").data();
       std::vector<int64_t> output_lengths;
+
       if (num > 0) {
         int64_t in_axis_dim = x_shape[axis];
         if (in_axis_dim % num != 0) {
@@ -895,16 +898,18 @@ class SplitWithNumOpPattern
           output_lengths.push_back(out_axis_dim);
         }
       }
-
+      auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
       if (out_vector_type.size() != output_lengths.size()) {
         VLOG(3) << "The output_length should be equal to the output size.";
         return false;
       }
-      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-      return true;
     }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
   }
 };
+
 class GreaterEqualOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GreaterEqualOp> {
  public:
@@ -933,6 +938,63 @@ class GreaterEqualOpPattern
     return true;
   }
 };
+
+class GreaterThanOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GreaterThanOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GreaterThanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GreaterThanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+    VLOG(3) << "GreaterThanOp is not supported when TensorRT < 8.4";
+    return false;
+#else
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "Greater_than op do not support bool datatype";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class LessThanOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::LessThanOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::LessThanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::LessThanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+    VLOG(3) << "LessThanOp is not supported when TensorRT < 8.4";
+    return false;
+#else
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "Less_than op do not support bool datatype";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class MultiplyOpPattern
     : public pir::OpRewritePattern<paddle::dialect::MultiplyOp> {
  public:
@@ -1525,6 +1587,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<SplitOpPattern>(context));
     ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
     ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
+    ps.Add(std::make_unique<GreaterThanOpPattern>(context));
+    ps.Add(std::make_unique<LessThanOpPattern>(context));
     ps.Add(std::make_unique<MultiplyOpPattern>(context));
     ps.Add(std::make_unique<SubtractOpPattern>(context));
     ps.Add(std::make_unique<DivideOpPattern>(context));

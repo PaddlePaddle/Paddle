@@ -1023,6 +1023,7 @@
   output: Tensor(softmax), Tensor(loss)
   infer_meta:
     func : CSoftmaxWithCrossEntropyInferMeta
+    spmd_rule : CSoftmaxWithCrossEntropyInferSpmd
   kernel:
     func: c_softmax_with_cross_entropy
     data_type : logits

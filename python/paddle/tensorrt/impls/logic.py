@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .graph_khop_sampler import graph_khop_sampler  # noqa: F401
-from .graph_reindex import graph_reindex  # noqa: F401
-from .graph_sample_neighbors import graph_sample_neighbors  # noqa: F401
-from .graph_send_recv import graph_send_recv  # noqa: F401
-from .resnet_unit import ResNetUnit  # noqa: F401
-from .softmax_mask_fuse import softmax_mask_fuse  # noqa: F401
-from .softmax_mask_fuse_upper_triangle import (  # noqa: F401
-    softmax_mask_fuse_upper_triangle,
+
+from paddle.tensorrt.converter_utils import (
+    elementwise_map,
 )
+from paddle.tensorrt.register import converter_registry
+
+
+@converter_registry.register("pd_op.greater_than", trt_version="8.x")
+@converter_registry.register("pd_op.less_than", trt_version="8.x")
+def logic_converter(network, paddle_op, inputs):
+    return elementwise_map[paddle_op.name()](network, paddle_op, inputs)
