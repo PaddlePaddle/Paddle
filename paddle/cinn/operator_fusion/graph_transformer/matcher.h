@@ -71,6 +71,49 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+struct CanFuseTrivialAndReduce {
+  bool operator()(PatternGraph graph,  // NOLINT
+                  const PatternNodePtr& upstream,
+                  const PatternNodePtr& downstream) {
+    PatternNodePtr reduce_node;
+    if (upstream->fusion_iters().reduce_iter_nums &&
+        !downstream->fusion_iters().reduce_iter_nums) {
+      reduce_node = upstream;
+    } else if (!upstream->fusion_iters().reduce_iter_nums &&
+               downstream->fusion_iters().reduce_iter_nums) {
+      reduce_node = downstream;
+    } else {
+      return true;
+    }
+    auto reduce_dims_product =
+        graph.iters_fusion_policy()->iters_manager()->GetReduceDimsProduct(
+            reduce_node->fusion_iters());
+    if (reduce_dims_product.isa<std::int64_t>()) {
+      return reduce_dims_product.dyn_cast<std::int64_t>() <= 1024 * 10;
+    } else {
+      return true;
+    }
+  }
+};
+
+struct CanFuseItersPermutationMatcher {
+  bool operator()(PatternGraph graph,  // NOLINT
+                  const PatternNodePtr& upstream,
+                  const PatternNodePtr& downstream) {
+    return StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
+                                                              upstream) &&
+           StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
+                                                              downstream) &&
+           graph.policy_manager()
+               .template GetPolicy<GeneralTopoPolicy>()
+               ->CanFuse(upstream, downstream) &&
+           (graph.iters_fusion_policy()->CanFuseSource2Target(downstream,
+                                                              upstream) ||
+            graph.iters_fusion_policy()->CanFuseSource2Target(upstream,
+                                                              downstream));
+  }
+};
+
 struct LiftToAnchorPatternMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     bool not_reduce_tree =
@@ -80,17 +123,35 @@ struct LiftToAnchorPatternMatcher {
     // TODO(huangjiyi): Support anchor value is reduce output.
     // bool reduce_tree_with_single_reduce =
     //     StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
-    //     std::get<ReduceTreePattern>(node->stmt_pattern()).childs().size() ==
-    //     0;
+    //     std::get<ReduceTreePattern>(node->stmt_pattern()).childs().size()
+    //     == 0;
     return not_reduce_tree /* || reduce_tree_with_single_reduce */;
   }
 };
 
 struct RecomputeNodeMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
-    return StmtPatternGraphMatcher<AnchorPattern>()(graph, node) &&
-           node->downstream().size() >= 1 &&
-           (std::get<AnchorPattern>(node->stmt_pattern()).can_recompute());
+    const auto can_recompute_fn = [](const PatternNodePtr& node) -> bool {
+      // Current Algorithm:
+      // An node can be recomputed if:
+      // 1. It didn't go through any pattern merging during prior fusions,
+      // which means it only has one output value.
+      // 2. It only contains trivial ops.
+      if (node->fusion_iters().output_values.size() > 1) {
+        return false;
+      }
+
+      for (const auto& op : GetOpsInPattern(node->stmt_pattern())) {
+        const auto& op_kind = GetOpPatternKind(op);
+        if (op_kind >= hlir::framework::kReduction) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    return StmtPatternGraphMatcher<ItersPermutationPattern>()(graph, node) &&
+           node->downstream().size() >= 1 && can_recompute_fn(node);
   }
 };
 
@@ -151,7 +212,19 @@ struct HorizontalFusionMatcher {
   }
 };
 
-struct LEOneElementWiseDownstreamMatcher {
+struct TransposeOpMatcher {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    return (node->sink_op()->name() == "pd_op.transpose");
+  }
+};
+
+struct NonSinkNodeMatcher {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    return !node->downstream().empty();
+  }
+};
+
+struct NotAllElementWiseDownstreamMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     size_t count = 0;
     for (const auto& downsteram : node->downstream()) {
@@ -165,12 +238,6 @@ struct LEOneElementWiseDownstreamMatcher {
       }
     }
     return (count < node->downstream().size());
-  }
-};
-
-struct NonSinkNodeMatcher {
-  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
-    return !node->downstream().empty();
   }
 };
 
@@ -375,13 +442,16 @@ struct HorizontalCheckMiddleOutputVar {
                   const PatternNodePtr& rhs) {
     // Middle Variable Must be ( id-dependent ) to support horizontal fusion.
     if (DontHaveMiddleVariable(graph, lhs, rhs)) return true;
-    const auto& left_dims_vec = GetLoopValueDims(lhs->stmt_pattern());
-    const auto& right_dims_vec = GetLoopValueDims(rhs->stmt_pattern());
-    bool identical_dep = true;
-    for (const auto& right_dims : right_dims_vec) {
-      identical_dep &= IdenticalDepAll(graph, right_dims, left_dims_vec);
-    }
-    return identical_dep;
+    // TODO(huangjiyi): Support horizontal fusion for patterns with dependency
+    // relationship
+    // const auto& left_dims_vec = GetLoopValueDims(lhs->stmt_pattern());
+    // const auto& right_dims_vec = GetLoopValueDims(rhs->stmt_pattern());
+    // bool identical_dep = true;
+    // for (const auto& right_dims : right_dims_vec) {
+    // identical_dep &= IdenticalDepAll(graph, right_dims, left_dims_vec);
+    //}
+    // return identical_dep;
+    return false;
   }
 };
 
