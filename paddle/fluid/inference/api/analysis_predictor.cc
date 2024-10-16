@@ -2246,8 +2246,7 @@ void AnalysisPredictor::PrepareArgument() {
         pass_builder->ClearPasses();
         for (const auto &pass : kGpuLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
-          if (gpu_pass == "transfer_layout_pass" &&
-              config_.autolayout_enabled()) {
+          if (pass == "transfer_layout_pass" && config_.autolayout_enabled()) {
             // Author(liujinnan): `auto_layout_pass` is a substitute for
             // `transfer_layout_pass` and is temporarily controlled by Flag.
             // After complete verification, `transfer_layout_pass` will be
@@ -2258,7 +2257,7 @@ void AnalysisPredictor::PrepareArgument() {
           } else if (config_.cinn_enabled() &&
                      std::find(BeforeCINNPasses.begin(),
                                BeforeCINNPasses.end(),
-                               gpu_pass) != config_.deleted_passes_.end()) {
+                               pass) != config_.deleted_passes_.end()) {
             // Because this pass is executed before the CINN‘s passes for
             // performance reasons, we need to skip this pass.
             continue;
