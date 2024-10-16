@@ -32,7 +32,6 @@
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
@@ -169,7 +168,29 @@ PreparedOp PrepareImpl(
     const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  if (attrs.find("ring_id") != attrs.end()) {
+    auto ring_id_attr = attrs.at("ring_id");
+    int ring_id = PADDLE_GET(int, ring_id_attr);
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(ring_id)) {
+      distributed::ProcessGroup* pg = map->get(ring_id);
+      auto group_key = static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
+                           ->GetOrCreateGroupKey(place);
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      if (comm_context_manager.Has(group_key)) {
+        auto comm_context = comm_context_manager.Get(group_key);
+        dev_ctx->SetCommContext(comm_context);
+      } else {
+        VLOG(3) << "group_key " << group_key
+                << " not found in comm_context_manager";
+      }
+    } else {
+      VLOG(3) << "ring_id " << ring_id << " not found in ProcessGroupMap";
+    }
+  }
+#endif
 #ifdef PADDLE_WITH_DNNL
   // OneDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
@@ -247,52 +268,7 @@ PreparedOp PrepareImpl(
   if (has_phi_kernel) {
     VLOG(6) << kernel_signature;
     phi_kernel_name = kernel_signature.name;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    if (attrs.find("ring_id") != attrs.end() &&
-        phi_kernel_name != "c_softmax_with_cross_entropy" &&
-        phi_kernel_name != "c_softmax_with_cross_entropy_grad") {
-      auto ring_id_attr = attrs.at("ring_id");
-      int ring_id = PADDLE_GET(int, ring_id_attr);
-      auto map = distributed::ProcessGroupMapFromGid::getInstance();
-      if (map->has(ring_id)) {
-        distributed::ProcessGroup* pg = map->get(ring_id);
-        auto group_key = static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
-                             ->GetOrCreateGroupKey(place);
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        if (comm_context_manager.Has(group_key)) {
-          auto comm_context = comm_context_manager.Get(group_key);
-          auto default_stream =
-              static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
-          dev_ctx =
-              static_cast<phi::distributed::NCCLCommContext*>(comm_context)
-                  ->GetDevContext();
-          dev_ctx->SetCommContext(comm_context);
-          if (attrs.find("use_calc_stream") != attrs.end()) {
-            auto use_calc_stream_attr = attrs.at("use_calc_stream");
-            bool use_calc_stream = PADDLE_GET(bool, use_calc_stream_attr);
-            if (phi::is_gpu_place(place) && use_calc_stream) {
-              static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
-                  default_stream, false);
-              auto& instance =
-                  paddle::memory::allocation::AllocatorFacade::Instance();
-              dev_ctx->SetAllocator(
-                  instance
-                      .GetAllocator(
-                          place,
-                          static_cast<phi::GPUContext*>(dev_ctx)->stream())
-                      .get());
-            }
-          }
-        } else {
-          VLOG(3) << "group_key " << group_key
-                  << " not found in comm_context_manager";
-        }
-      } else {
-        VLOG(3) << "ring_id " << ring_id << " not found in ProcessGroupMap";
-      }
-    }
-#endif
+
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
