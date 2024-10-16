@@ -323,3 +323,16 @@ def build_size_tensor(
     ).get_output(0)
 
     return size_tensor
+
+
+# Reduce the given tensor in the TensorRT network to a scalar
+def trt_reduce_to_scalar(network, tensor):
+    if len(tensor.shape) == 0:
+        return tensor
+    axes = 0
+    for i in range(len(tensor.shape)):
+        axes |= 1 << i
+    reduce_layer = network.add_reduce(
+        tensor, trt.ReduceOperation.SUM, axes, keep_dims=False
+    )
+    return reduce_layer.get_output(0)
