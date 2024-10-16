@@ -209,6 +209,33 @@ struct ReduceTreePlusTrivialPattern {
   }
 };
 
+struct ItersPermutationPattern {
+  using LoopFramework =
+      std::pair<std::vector<symbol::DimExpr>, std::vector<bool>>;
+  explicit ItersPermutationPattern(const std::vector<pir::Operation*>& ops,
+                                   const FusionTrackerPtr& tracker,
+                                   const LoopFramework& loop_dims)
+      : ops_(ops), id_(UniqueId()), tracker_(tracker), loop_dims_(loop_dims) {}
+
+  std::vector<pir::Operation*> ops_;
+  std::vector<pir::Operation*> ops() const { return ops_; }
+
+  static std::string name() { return "ItersPermutation"; }
+  static std::string UniqueId() {
+    static std::atomic<int64_t> counter = 0;
+    counter += 1;
+    return name() + "_" + std::to_string(counter);
+  }
+  std::string id() const { return id_; }
+  std::string id_;
+
+  FusionTrackerPtr tracker_;
+  void update_tracker() const {}
+
+  LoopFramework loop_dims_;
+  LoopFramework loop_dims() const { return loop_dims_; }
+};
+
 struct AnchorPattern {
   explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
                          const pir::Value& anchor,
@@ -326,6 +353,7 @@ using StmtPattern = std::variant<TrivialPattern,
                                  ReduceTreePlusTrivialPattern,
                                  HorizontalFusionPattern,
                                  UnsupportPattern,
+                                 ItersPermutationPattern,
                                  AnchorPattern>;
 
 static std::string GetPatternId(const StmtPattern& s);

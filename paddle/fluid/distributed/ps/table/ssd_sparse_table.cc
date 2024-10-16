@@ -47,6 +47,7 @@ int32_t SSDSparseTable::Initialize() {
   if (ret != 0) {
     LOG(ERROR) << "AFS Init Error";
   }
+  _use_afs_api = true;
 #endif
   return 0;
 }
@@ -1681,20 +1682,31 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
                                   part_num,
                                   region->_file_idx);
           channel_config.path = filename;
+          if (_use_afs_api) {
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-          afs_writer = _afs_wrapper.OpenWriter(channel_config.path);
+            afs_writer = _afs_wrapper.OpenWriter(channel_config.path);
 #else
-          write_channel =
-              _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+            VLOG(0) << "Error: Not support afs api without heterps and pscore";
 #endif
+          } else {
+            write_channel =
+                _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+          }
           last_file_idx = region->_file_idx;
         }
+        int ret = 0;
+
+        if (_use_afs_api) {
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-        if (0 != ps_gpu_ptr->AfsWrite(
-                     afs_writer, region->_buf, region->_cur, true)) {
+          ret = ps_gpu_ptr->AfsWrite(
+              afs_writer, region->_buf, region->_cur, true);
 #else
-        if (0 != write_channel->write(region->_buf, region->_cur)) {
+          VLOG(0) << "Error: Not support afs api without heterps and pscore";
 #endif
+        } else {
+          ret = write_channel->write(region->_buf, region->_cur);
+        }
+        if (ret != 0) {
           std::stringstream ss;
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
@@ -1755,7 +1767,9 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
       }
     }
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-    _afs_wrapper.CloseWriter(afs_writer);
+    if (_use_afs_api) {
+      _afs_wrapper.CloseWriter(afs_writer);
+    }
 #endif
     // write_channel->close();
   };  // NOLINT
@@ -2569,7 +2583,8 @@ int32_t SSDSparseTable::Load(const std::string& path,
                              const std::string& param) {
   VLOG(0) << "LOAD FLAGS_rocksdb_path:" << FLAGS_rocksdb_path;
   std::string table_path = TableDir(path);
-  auto file_list = _afs_client.list(table_path);
+  auto file_list = _afs_client.list(::paddle::string::format_string(
+      "%s/part-%03d*", table_path.c_str(), _shard_idx));
 
   // std::sort(file_list.begin(), file_list.end());
   for (auto file : file_list) {
@@ -2817,12 +2832,20 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
         uint64_t ssd_mf_count = 0;
 
         channel_config.path = filename;
+        std::shared_ptr<FsReadChannel> read_channel = nullptr;
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-        auto reader = _afs_wrapper.OpenReader(filename);
-#else
-        int err_no = 0;
-        auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
+        AfsReaderHandle reader = nullptr;
 #endif
+        if (_use_afs_api) {
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+          reader = _afs_wrapper.OpenReader(filename);
+#else
+          VLOG(0) << "Not support use afs api without heterps and pscore";
+#endif
+        } else {
+          int err_no = 0;
+          read_channel = _afs_client.open_r(channel_config, 0, &err_no);
+        }
         auto& shard = _local_shards[shard_idx];
         rocksdb::Options options;
         options.comparator = _db->get_comparator();
@@ -2879,11 +2902,15 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
         while (1) {
           remain = ret;
           cursor = buf + remain;
+          if (_use_afs_api) {
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-          ret = ps_gpu_ptr->AfsRead(reader, cursor, buf_len - remain);
+            ret = ps_gpu_ptr->AfsRead(reader, cursor, buf_len - remain);
 #else
-          ret = read_channel->read(cursor, buf_len - remain);
+            VLOG(0) << "Error: Not support afs api without heterps and pscore";
 #endif
+          } else {
+            ret = read_channel->read(cursor, buf_len - remain);
+          }
           if (ret <= 0) {
             break;
           }
@@ -2974,11 +3001,15 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
         free(convert_buf);
         auto tmp_count = ssd_count + mem_count;
         feasign_size_all += tmp_count;
+        if (_use_afs_api) {
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-        ps_gpu_ptr->CloseReader(reader);
+          ps_gpu_ptr->CloseReader(reader);
 #else
-        read_channel->close();
+          VLOG(0) << "Error: Not support afs api without heterps and pscore";
 #endif
+        } else {
+          read_channel->close();
+        }
         // VLOG(0) << "[last_k: " << last_k << "][remain: " << remain
         //         << "][shard_idx: " << shard_idx
         //         << "][file_split_idx: " << file_split_idx << "]";
