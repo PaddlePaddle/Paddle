@@ -218,7 +218,7 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetOrCreateCommContext(
   const auto& key = GetKeyFromPlace(place);
   std::string store_key;
   GetStoreKey(key, comm_type, &store_key);
-  if (place_to_group_key_.find(key) == place_to_group_key_.end()) {
+  if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
     CreateNCCLEnvCache(place, key, store_key, comm_type);
   }
   return GetCommContext(&store_key);
