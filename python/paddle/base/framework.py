@@ -212,16 +212,18 @@ class GlobalThreadLocal(threading.local):
         self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
-        tmp_flags = os.environ.get("FLAGS_enable_pir_api")
-        if tmp_flags is not None:
-            if (
-                tmp_flags == "0"
-                or tmp_flags == 0
-                or tmp_flags == "False"
-                or not tmp_flags
-            ):
-                tmp_flags = False
-            set_flags({"FLAGS_enable_pir_api": bool(tmp_flags)})
+        env_pir_enabled = os.environ.get("FLAGS_enable_pir_api")
+
+        if env_pir_enabled is not None:
+            pir_enabled = env_pir_enabled.lower() not in [
+                'n',
+                'no',
+                'f',
+                'false',
+                'off',
+                '0',
+            ]
+            set_flags({"FLAGS_enable_pir_api": pir_enabled})
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]
@@ -789,7 +791,9 @@ def _dygraph_tracer():
 
 def _current_expected_place_():
     global _global_expected_place_
-    if _global_expected_place_ is None:
+    if _global_expected_place_ is None or isinstance(
+        _global_expected_place_, core.Place
+    ):
         if core.is_compiled_with_cuda():
             try:
                 device_count = core.get_cuda_device_count()
@@ -2935,7 +2939,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
 
                 >>> # get the number of elements of the Variable
-                >>> y = x.size() # type: ignore
+                >>> y = x.size
 
         """
 
@@ -3150,7 +3154,6 @@ class Operator:
     OP_WITHOUT_KERNEL_SET = {
         "feed",
         "fetch",
-        "recurrent",
         "go",
         "conditional_block",
         "pylayer",
@@ -3159,7 +3162,6 @@ class Operator:
         "recv",
         "listen_and_serv",
         "fl_listen_and_serv",
-        "ncclInit",
         "select",
         "checkpoint_notify",
         "gen_bkcl_id",
@@ -3169,9 +3171,6 @@ class Operator:
         "c_comm_init",
         "c_sync_calc_stream",
         "c_sync_comm_stream",
-        "queue_generator",
-        "dequeue",
-        "enqueue",
         "heter_listen_and_serv",
         "c_wait_comm",
         "c_wait_compute",
@@ -4683,8 +4682,6 @@ class Block:
                 "conditional_block_grad",
                 "pylayer",
                 "pylayer_grad",
-                "recurrent",
-                "recurrent_grad",
                 "while",
                 "while_grad",
             }

@@ -37,22 +37,21 @@ void IterMapToExprNormalizer::Visit(const Expr* expr, Expr* op) {
   }
 }
 
-Expr IterMapToExprNormalizer::ConvertIterSum(ir::IterSum* expr) {
-  Expr res(0);
+ir::IndexExpr IterMapToExprNormalizer::ConvertIterSum(ir::IterSum* expr) {
+  ir::IndexExpr res(0);
 
   for (auto&& arg : expr->args) {
     auto split = arg.As<ir::IterSplit>();
     res = res + ConvertIterSplit(split);
   }
-  res = IsZero(expr->base) ? res : res + expr->base;
+  res = res + expr->base;
   return res;
 }
 
-Expr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
+ir::IndexExpr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
   // quick branch
-  if (IsZero(expr->scale)) return Expr(0);
-
-  Expr source;
+  if (IsZero(expr->scale) || IsOne(expr->extent)) return ir::IndexExpr(0);
+  ir::IndexExpr source;
   ir::IterMark* mark = expr->source.As<ir::IterMark>();
   if (auto opt = mark->source.As<ir::_Var_>()) {
     source = opt;
@@ -63,21 +62,19 @@ Expr IterMapToExprNormalizer::ConvertIterSplit(ir::IterSplit* expr) {
     Visit(&(mark->source), &(mark->source));
     source = mark->source;
   }
-  Expr res;
-  if (analyzer_.ProveEQ(expr->extent, mark->extent) &&
+  if (ProveEQ(expr->extent, mark->extent, analyzer_) &&
       IsOne(expr->lower_factor)) {
-    res = source;
-  } else if (analyzer_.ProveEQ(mark->extent,
-                               expr->lower_factor * expr->extent)) {
-    if (IsOne(expr->extent) && !IsOne(mark->extent)) {
-      res = ir::Zero(expr->extent.type());
+    return source * expr->scale;
+  } else if (ProveLE(
+                 mark->extent, expr->lower_factor * expr->extent, analyzer_)) {
+    if (IsOne(expr->extent)) {
+      return ir::Zero(expr->extent.type());
     }
-    res = source / expr->lower_factor * expr->scale;
+    return source / expr->lower_factor * expr->scale;
   } else {
-    res = (source % (expr->lower_factor * expr->extent)) / expr->lower_factor *
-          expr->scale;
+    return (source % (expr->lower_factor * expr->extent)) / expr->lower_factor *
+           expr->scale;
   }
-  return IsOne(expr->scale) ? res : res * expr->scale;
 }
 
 void IterMapRewriter::Visit(const ir::_Var_* op, Expr* expr) {
@@ -109,7 +106,7 @@ void IterMapRewriter::Visit(const ir::Add* op, Expr* expr) {
   } else if (auto b_split = b.As<ir::IterSplit>()) {
     AddToLhs(ret_sum, *b_split, 1);
   } else {
-    ret_sum->base = ret_sum->base + b;
+    ret_sum->base = ret_sum->base + b.as_index();
   }
   *expr = ret;
 }
@@ -135,7 +132,7 @@ void IterMapRewriter::Visit(const ir::Sub* op, Expr* expr) {
   } else if (auto* b_split = b.As<ir::IterSplit>()) {
     AddToLhs(ret_sum, *b_split, -1);
   } else {
-    ret_sum->base = ret_sum->base - b;
+    ret_sum->base = ret_sum->base - b.as_index();
   }
 
   *expr = ret;
@@ -158,7 +155,8 @@ void IterMapRewriter::Visit(const ir::Mul* op, Expr* expr) {
   if ((a.As<ir::IterSum>() || a.As<ir::IterSplit>()) &&
       (b.As<ir::IterSum>() || b.As<ir::IterSplit>())) {
     PADDLE_THROW(::common::errors::InvalidArgument(
-        "product of iter and iter is not supported"));
+        "Product of iter and iter is not supported"));
+    return;
   }
 
   if (!a.As<ir::IterSum>() && !a.As<ir::IterSplit>()) {
@@ -171,10 +169,346 @@ void IterMapRewriter::Visit(const ir::Mul* op, Expr* expr) {
     MulToLhs(a_sum, b);
 
   } else if (auto a_split = ret.As<ir::IterSplit>()) {
-    a_split->scale = a_split->scale * b;
+    a_split->scale = a_split->scale * b.as_index();
   }
 
   *expr = ret;
+}
+
+void IterMapRewriter::Visit(const ir::Div* op, Expr* expr) {
+  auto a = op->a();
+  auto b = op->b();
+
+  Visit(&a);
+  Visit(&b);
+
+  if (auto const_res = cinn::common::TryConstFold<ir::Div>(a, b)) {
+    *expr = const_res.value();
+    return;
+  }
+
+  if (!IsIterExpr(a, b)) return;
+
+  if ((b.As<ir::IterSum>() || b.As<ir::IterSplit>())) {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Division of iter and iter is not supported"));
+    return;
+  }
+
+  auto ret = ir::ir_utils::IRCopy(a);
+
+  auto preprocessed = PreprocessDividend(ret);
+  auto preprocessed_sum = preprocessed.As<ir::IterSum>();
+
+  ret = SplitDivConst(preprocessed_sum->args[0], preprocessed_sum->base, b);
+
+  *expr = ret;
+}
+
+void IterMapRewriter::Visit(const ir::Mod* op, Expr* expr) {
+  auto a = op->a();
+  auto b = op->b();
+
+  Visit(&a);
+  Visit(&b);
+
+  if (auto const_res = cinn::common::TryConstFold<ir::Mod>(a, b)) {
+    *expr = const_res.value();
+    return;
+  }
+
+  if (!IsIterExpr(a, b)) return;
+
+  if ((b.As<ir::IterSum>() || b.As<ir::IterSplit>())) {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Mod of iter and iter is not supported"));
+    return;
+  }
+
+  auto ret = ir::ir_utils::IRCopy(a);
+
+  auto preprocessed = PreprocessDividend(ret);
+  auto preprocessed_sum = preprocessed.As<ir::IterSum>();
+
+  ret = SplitModConst(preprocessed_sum->args[0], preprocessed_sum->base, b);
+
+  *expr = ret;
+}
+
+Expr IterMapRewriter::PreprocessDividend(const Expr& dividend) {
+  if (dividend.As<ir::IterSplit>()) {
+    return ir::IterSum::Make({dividend}, ir::Zero(dividend.type()));
+  } else if (auto sum = dividend.As<ir::IterSum>()) {
+    if (sum->args.size() == 1) {
+      return dividend;
+    }
+    auto opt_fused = TryFuse(dividend);
+    if (!opt_fused) {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "Dividend can't be written as a single fused IterSum"));
+      return ir::IndexExpr();
+    }
+    return opt_fused.value();
+  } else {
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("Expect dividend is IterExpr."));
+    return Expr();
+  }
+}
+
+ir::Expr IterMapRewriter::SplitDivConst(ir::Expr lhs_expr,
+                                        ir::IndexExpr base,
+                                        ir::IndexExpr rhs) {
+  // (lhs_expr + base) // rhs
+  if (IsOne(rhs)) {
+    if (IsZero(base)) return lhs_expr;
+    return ir::IterSum::Make({lhs_expr}, base);
+  }
+
+  auto lhs = lhs_expr.As<ir::IterSplit>();
+  if (!IsOne(lhs->scale)) {
+    if (ProveDivisible(lhs->scale, rhs, analyzer_) && IsZero(base)) {
+      lhs->scale = lhs->scale / rhs;
+      return lhs;
+    } else if (ProveDivisible(lhs->scale, rhs, analyzer_) &&
+               ProveDivisible(base, rhs, analyzer_)) {
+      lhs->scale = lhs->scale / rhs;
+      return ir::IterSum::Make({lhs}, base / rhs);
+    } else if (ProveDivisible(rhs, lhs->scale, analyzer_) && IsZero(base)) {
+      rhs = rhs / lhs->scale;
+      lhs->scale = ir::One(rhs.type());
+    } else if (ProveDivisible(rhs, lhs->scale, analyzer_) &&
+               ProveDivisible(base, lhs->scale, analyzer_)) {
+      base = base / lhs->scale;
+      rhs = rhs / lhs->scale;
+      lhs->scale = ir::One(rhs.type());
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "IterExpr scale must be divisible by rhs"));
+      return ir::IndexExpr();
+    }
+  }
+
+  // TODO(liuruyan): Padding dividend to divisor later. assuming dividend canbe
+  // divided by divisor now.
+
+  ir::IndexExpr new_split;
+  if (!ProveDivisible(base, rhs, analyzer_)) {
+    // padding base to divisor later. Treat the whole expr as IterMark now.
+    return ir::IterSum::Make(
+        {ir::IterSplit::Make(
+            ir::IterMark::Make(ir::IterSum::Make({ir::IndexExpr(lhs)}, base),
+                               lhs->extent + base),
+            rhs,
+            (lhs->extent + base + rhs - 1) / rhs,
+            ir::One(rhs.type()))},
+        ir::Zero(rhs.type()));
+  }
+
+  if (ProveDivisible(lhs->extent, rhs, analyzer_)) {
+    new_split = ir::IterSplit::Make(
+        lhs->source, lhs->lower_factor * rhs, lhs->extent / rhs, lhs->scale);
+  } else if (IsOne(lhs->lower_factor) &&
+             ProveEQ(lhs->extent,
+                     lhs->source.As<ir::IterMark>()->extent,
+                     analyzer_)) {
+    new_split = ir::IterSplit::Make(
+        lhs->source, rhs, (lhs->extent + rhs - 1) / rhs, lhs->scale);
+  } else {
+    new_split = ir::IterSplit::Make(ir::IterMark::Make(lhs, lhs->extent),
+                                    rhs,
+                                    (lhs->extent + rhs - 1) / rhs,
+                                    ir::One(rhs.type()));
+  }
+  return IsZero(base / rhs) ? new_split
+                            : ir::IterSum::Make({new_split}, base / rhs);
+}
+
+ir::Expr IterMapRewriter::SplitModConst(ir::Expr lhs_expr,
+                                        ir::IndexExpr base,
+                                        ir::IndexExpr rhs) {
+  // (lhs_expr + base) % rhs
+  if (IsOne(rhs)) {
+    return ir::Zero(lhs_expr.type());
+  }
+
+  auto lhs = lhs_expr.As<ir::IterSplit>();
+  if (!IsOne(lhs->scale)) {
+    if (ProveDivisible(lhs->scale, rhs, analyzer_) && IsZero(base)) {
+      return ir::Zero(lhs_expr.type());
+    } else if (ProveDivisible(lhs->scale, rhs, analyzer_) &&
+               ProveDivisible(base, rhs, analyzer_)) {
+      return ir::Zero(lhs_expr.type());
+    } else if (ProveDivisible(rhs, lhs->scale, analyzer_) && IsZero(base)) {
+      rhs = rhs / lhs->scale;
+    } else if (ProveDivisible(rhs, lhs->scale, analyzer_) &&
+               ProveDivisible(base, lhs->scale, analyzer_)) {
+      base = base / lhs->scale;
+      rhs = rhs / lhs->scale;
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "IterExpr scale must be divisible by rhs"));
+      return ir::IndexExpr();
+    }
+  }
+
+  if (!ProveDivisible(base, rhs, analyzer_)) {
+    auto lhs_s1 = ir::IterSplit::Make(
+        lhs->source, lhs->lower_factor, lhs->extent, ir::One(lhs_expr.type()));
+    // padding base to divisor later. Treat the whole expr as IterMark now.
+    return ir::IterSplit::Make(
+        ir::IterMark::Make(ir::IterSum::Make({lhs_s1}, base),
+                           lhs->extent + base),
+        ir::One(rhs.type()),
+        rhs,
+        lhs->scale);
+  }
+  // TODO(liuruyan): Padding dividend to divisor later. assuming dividend canbe
+  // divided by divisor now.
+
+  return ir::IterSplit::Make(lhs->source, lhs->lower_factor, rhs, lhs->scale);
+}
+
+int32_t IterMapRewriter::FindFirstPossibleUnitExtentIndex(
+    const ir::IterSum& expr) {
+  for (size_t i = 0; i < expr.args.size(); ++i) {
+    if (IsOne(expr.args[i].As<ir::IterSplit>()->extent))
+      return static_cast<int32_t>(i);
+  }
+  return static_cast<int32_t>(expr.args.size());
+}
+
+int32_t IterMapRewriter::FindIterWithExactScale(
+    const ir::IterSum& expr,
+    const std::vector<bool>& skip_flag,
+    const ir::IndexExpr& expected_scale,
+    const ir::Expr& match_source,
+    int32_t rbegin,
+    int32_t first_possible_unit_extent_pos) {
+  if (rbegin == -1) {
+    rbegin = static_cast<int32_t>(expr.args.size()) - 1;
+  }
+  int32_t matched_pos = -1;
+  // use reverse search, as smallest scale usually are near the end.
+  for (int32_t j = rbegin; j >= 0; --j) {
+    if (skip_flag[j]) continue;
+    auto split = expr.args[j].As<ir::IterSplit>();
+    if (match_source.defined() && match_source != split->source) continue;
+    const ir::IndexExpr& cur_scale = split->scale;
+    // for bijective mapping, the matched scale must equal to expected scale
+    if (ProveEQ(cur_scale, expected_scale, analyzer_)) {
+      if (IsOne(split->extent)) return j;
+      if (matched_pos == -1) {
+        matched_pos = j;
+      }
+      if (j <= first_possible_unit_extent_pos) return matched_pos;
+    }
+  }
+  return matched_pos;
+}
+
+int32_t IterMapRewriter::FindBaseIter(const ir::IterSum& expr,
+                                      const std::vector<bool>& skip_flag,
+                                      const ir::Expr& match_source,
+                                      int32_t rbegin) {
+  if (rbegin == -1) {
+    rbegin = static_cast<int>(expr.args.size()) - 1;
+  }
+
+  int base_index = -1;
+  int64_t min_const_scale = 0;
+
+  for (int32_t i = rbegin; i >= 0; --i) {
+    if (skip_flag[i]) continue;
+    auto split = expr.args[i].As<ir::IterSplit>();
+    if (match_source.defined() && match_source != split->source) continue;
+    if (const auto* op = split->scale.As<ir::IntImm>()) {
+      if (base_index == -1 || op->value < min_const_scale) {
+        min_const_scale = op->value;
+        base_index = static_cast<int>(i);
+      } else if (op->value == min_const_scale) {
+        if (IsOne(split->extent) &&
+            !IsOne(expr.args[base_index].As<ir::IterSplit>()->extent)) {
+          base_index = static_cast<int32_t>(i);
+        }
+      }
+    }
+  }
+  if (base_index != -1) return base_index;
+
+  int32_t min_reduce_size = 0;
+  for (int32_t i = rbegin; i >= 0; --i) {
+    if (skip_flag[i]) continue;
+    auto split = expr.args[i].As<ir::IterSplit>();
+    if (match_source.defined() && match_source != split->source) continue;
+    int32_t reduce_size = 0;
+    auto fcollect = [&](const ir::IndexExpr&) { ++reduce_size; };
+    UnpackReduction<ir::Mul>(split->scale, fcollect);
+    if (base_index == -1 || reduce_size < min_reduce_size) {
+      min_reduce_size = reduce_size;
+      base_index = static_cast<int32_t>(i);
+    }
+  }
+  return base_index;
+}
+
+std::optional<Expr> IterMapRewriter::TryFuse(const ir::Expr& expr) {
+  auto iter_sum = expr.As<ir::IterSum>();
+  if (!iter_sum) return std::nullopt;
+  if (iter_sum->args.size() <= 1) return std::nullopt;
+  // TODO(liuruyan): fuse iter with same source.
+
+  std::vector<bool> visited(iter_sum->args.size(), false);
+  int base_index = FindBaseIter(*iter_sum, visited, ir::IndexExpr(), -1);
+  if (base_index == -1) return std::nullopt;
+  ir::IndexExpr base_scale =
+      iter_sum->args[base_index].As<ir::IterSplit>()->scale;
+
+  std::vector<ir::Expr> grouped_iters;
+
+  ir::IndexExpr expected_extra_base = ir::Zero(iter_sum->type());
+  ir::IndexExpr tail_extent = ir::Zero(iter_sum->type());
+  ir::IndexExpr expected_scale = base_scale;
+  int first_possible_unit_extent_pos =
+      FindFirstPossibleUnitExtentIndex(*iter_sum);
+
+  for (size_t i = 0; i < iter_sum->args.size(); ++i) {
+    ir::IndexExpr matched_scale{nullptr};
+    int matched_pos =
+        i == 0 ? base_index
+               : FindIterWithExactScale(*iter_sum,
+                                        visited,
+                                        expected_scale,
+                                        ir::IndexExpr(),
+                                        -1,
+                                        first_possible_unit_extent_pos);
+    if (matched_pos != -1) matched_scale = expected_scale;
+
+    if (matched_pos == -1) return std::nullopt;
+
+    visited[matched_pos] = true;
+    auto arg_copy = ir::ir_utils::IRCopy(iter_sum->args[matched_pos]);
+    auto arg = arg_copy.As<ir::IterSplit>();
+    arg->scale = arg->scale / base_scale;
+    grouped_iters.push_back(arg_copy);
+    expected_scale = MulAndNormalize(
+        iter_sum->args[matched_pos].As<ir::IterSplit>()->extent, matched_scale);
+  }
+  std::reverse(grouped_iters.begin(), grouped_iters.end());
+  Expr grouped_sum =
+      ir::IterSum::Make(grouped_iters, ir::Zero(iter_sum->type()));
+
+  auto it = sum_fuse_map_.find(grouped_sum);
+  if (it != sum_fuse_map_.end()) {
+    return ir::IterSum::Make({ir::IterSplit::Make(it->second, base_scale)},
+                             iter_sum->base);
+  } else {
+    // new iter, form a new mark
+    auto mark = ir::IterMark::Make(grouped_sum, expected_scale / base_scale);
+    sum_fuse_map_[grouped_sum] = mark;
+    return ir::IterSum::Make({ir::IterSplit::Make(mark, base_scale)},
+                             iter_sum->base);
+  }
 }
 
 Expr IterMapRewriter::ToIterSum(const Expr& expr) {
@@ -192,7 +526,7 @@ Expr IterMapRewriter::ToIterSum(const Expr& expr) {
 void IterMapRewriter::AddToLhs(ir::IterSum* lhs,
                                const ir::IterSplit& rhs,
                                int sign) {
-  auto rhs_expr = ir::ir_utils::IRCopy(Expr(const_cast<ir::IterSplit*>(&rhs)));
+  auto rhs_expr = ir::ir_utils::IRCopy(Expr(&Reference(&rhs)));
   for (auto&& lvalue : lhs->args) {
     if (lvalue == rhs_expr) {
       auto lsplit = lvalue.As<ir::IterSplit>();
@@ -209,7 +543,7 @@ void IterMapRewriter::AddToLhs(ir::IterSum* lhs,
     lhs->args.push_back(rhs_expr);
   } else {
     rhs_expr.As<ir::IterSplit>()->scale =
-        ir::Zero(rhs.scale.type()) - rhs.scale;
+        ir::Zero(rhs.scale.type()).as_index() - rhs.scale;
     lhs->args.push_back(rhs_expr);
   }
 }
@@ -228,12 +562,12 @@ void IterMapRewriter::AddToLhs(ir::IterSum* lhs,
   }
 }
 
-void IterMapRewriter::MulToLhs(ir::IterSum* lhs, const Expr& rhs) {
+void IterMapRewriter::MulToLhs(ir::IterSum* lhs, const ir::IndexExpr& rhs) {
   for (auto&& lvalue : lhs->args) {
     auto lsplit = lvalue.As<ir::IterSplit>();
     lsplit->scale = lsplit->scale * rhs;
   }
-  lhs->base = IsZero(lhs->base) ? lhs->base : lhs->base * rhs;
+  lhs->base = lhs->base * rhs;
 }
 
 }  // namespace common

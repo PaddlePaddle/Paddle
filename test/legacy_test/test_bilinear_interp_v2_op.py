@@ -388,7 +388,11 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
 
 class TestBilinearInterpOpFP16(TestBilinearInterpOp):
     def test_check_output(self):
-        self.check_output(atol=1e-3, check_pir=True)
+        self.check_output(
+            atol=1e-3,
+            check_pir=True,
+            check_symbol_infer=(self.out_size is None),
+        )
 
     def test_check_grad(self):
         self.check_grad(

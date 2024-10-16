@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/ops_signature/signatures.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -41,6 +40,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
 
 namespace phi {
@@ -54,7 +54,7 @@ class DenseTensor;
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
-#include "paddle/fluid/platform/onednn_op_list.h"
+#include "paddle/phi/core/platform/onednn_op_list.h"
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1389,15 +1389,19 @@ bool OperatorWithKernel::SupportXPU() const {
       return false;
     } else {
       auto& op_kernels = kernel_iter->second;
-      return std::any_of(op_kernels.begin(),
-                         op_kernels.end(),
-                         [this](OpKernelMap::const_reference kern_pair) {
-                           return phi::is_xpu_place(kern_pair.first.place_) &&
-                                  paddle::platform::is_xpu_support_op(
-                                      type_,
-                                      framework::TransToPhiDataType(
-                                          kern_pair.first.data_type_));
-                         });
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [this](OpKernelMap::const_reference kern_pair) {
+            bool is_xpu_support1 = phi::backends::xpu::is_xpu_support_op(
+                type_,
+                framework::TransToPhiDataType(kern_pair.first.data_type_));
+            bool is_xpu_support2 = phi::backends::xpu::is_xpu_support_op(
+                phi::TransToPhiKernelName(type_),
+                framework::TransToPhiDataType(kern_pair.first.data_type_));
+            return phi::is_xpu_place(kern_pair.first.place_) &&
+                   (is_xpu_support1 || is_xpu_support2);
+          });
     }
   }
 #else
@@ -3252,6 +3256,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::Vocab>()) {
         tensor_in = &(var->Get<framework::Vocab>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<framework::Strings>()) {
+        tensor_in = &(var->Get<framework::Strings>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::FeedList>()) {
         tensor_in = &(var->Get<framework::FeedList>());

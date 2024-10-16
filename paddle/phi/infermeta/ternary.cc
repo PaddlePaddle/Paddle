@@ -742,6 +742,22 @@ void InstanceNormInferMeta(const MetaTensor& x,
   }
 }
 
+void FasterTokenizerInferMeta(const MetaTensor& vocab,
+                              const MetaTensor& text,
+                              const MetaTensor& text_pair,
+                              bool do_lower_case,
+                              bool is_split_into_words,
+                              int max_seq_len,
+                              bool pad_to_max_seq_len,
+                              MetaTensor* input_ids,
+                              MetaTensor* segment_ids,
+                              MetaConfig config) {
+  input_ids->set_dims({-1, -1});
+  segment_ids->set_dims({-1, -1});
+  input_ids->set_dtype(phi::DataType::INT64);
+  segment_ids->set_dtype(phi::DataType::INT64);
+}
+
 void GlobalGatherInferMeta(const MetaTensor& x,
                            const MetaTensor& local_count,
                            const MetaTensor& global_count,
