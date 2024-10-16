@@ -97,7 +97,9 @@ std::vector<Expr> CodeGenGpuDev::GenerateBufferAliasExprs(
     auto data_type = t->type();
     auto data_ptr_type = data_type;
     data_ptr_type.set_cpp_handle();
-
+    if (t->name == "((half2*)var)") {
+      continue;
+    }
     Var t_var(t->name, data_ptr_type);
     Var buf_var(t->buffer->name, data_ptr_type);
     buffer_alias.push_back(ir::Let::Make(t_var, buf_var));

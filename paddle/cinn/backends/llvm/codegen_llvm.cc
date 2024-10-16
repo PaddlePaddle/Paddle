@@ -393,6 +393,12 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Not *op) {
   return Not(Visit(&op->v()));
 }
 
+llvm::Value *CodeGenLLVM::Visit(const ir::StructElement *op) {
+  // TODO(phlrain): impl here
+  throw std::runtime_error("not impl");
+  return Visit(&op->value);
+}
+
 llvm::Value *CodeGenLLVM::Visit(const ir::Cast *op) {
   auto from = op->v().type();
   auto to = op->type();

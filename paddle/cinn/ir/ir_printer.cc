@@ -508,6 +508,13 @@ void IrPrinter::Visit(const _LoweredFunc_ *f) {
 
   Visit(f->body);
 }
+
+void IrPrinter::Visit(const StructElement *f) {
+  Visit(f->value);
+
+  str_ += "." + f->name;
+}
+
 void IrPrinter::Visit(const Let *f) {
   PADDLE_ENFORCE_EQ(
       f->type().valid(),
@@ -515,8 +522,11 @@ void IrPrinter::Visit(const Let *f) {
       ::common::errors::InvalidArgument(
           "The type of `f` is not valid. "
           "Please ensure that `f->type()` returns a valid type."));
-
-  str_ += f->type().to_string();
+  if (auto var = f->symbol.As<ir::_Var_>()) {
+    str_ += var->type().to_string();
+  } else {
+    str_ += f->type().to_string();
+  }
   str_ += " ";
   Visit(f->symbol);
   if (f->body.defined()) {

@@ -416,6 +416,7 @@ void Compiler::CompileCudaModule(const Module& module,
                     ::common::errors::InvalidArgument(
                         "Compile CUDA C code failed from device module"));
   VLOG(3) << "[CUDA] C:\n" << source_code;
+  std::cerr << "source code\n" << source_code << std::endl;
   SourceCodePrint::GetInstance()->write(source_code);
   device_fn_code_ += source_code;
 

@@ -57,6 +57,7 @@ struct Type {
     None = -1,
     FP16,
     BF16,
+    HALF2,
     // for FP8 in future
     // E5M2,
     // E4M3,
@@ -91,6 +92,7 @@ struct Type {
       int bits = -1, specific_type_t st = specific_type_t::None) const;
   CINN_NODISCARD bool is_float16() const;
   CINN_NODISCARD bool is_bfloat16() const;
+  CINN_NODISCARD bool is_half2() const;
   CINN_NODISCARD bool is_int(int bits = -1) const;
   CINN_NODISCARD bool is_integer(int bits = -1) const;
   CINN_NODISCARD bool is_uint(int bits = -1) const;
