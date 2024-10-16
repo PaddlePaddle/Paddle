@@ -62,7 +62,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     // transpose before softmax due to the following two reasons:
     // 1. the XPU cross_entropy APIs supports cross entropy on the last dim
     // only, so the transpose here is unavoidable for them.
-    // 2. the XPU softmax api would do the transpose internaly if axis is not
+    // 2. the XPU softmax api would do the transpose internally if axis is not
     // the last dim and we can eliminate a transpose call if we explicitly
     // transpose the inputs before the softmax calculation.
     XPUType* logits_trans = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);

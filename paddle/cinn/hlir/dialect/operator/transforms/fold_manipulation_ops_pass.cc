@@ -41,7 +41,11 @@ bool RemoveOp(pir::Operation* op,
               pir::PatternRewriter* rewriter,
               bool check_dtype = false) {
   const auto& IsDynamicShape = [](const pir::Value& value) -> bool {
-    return value.type().dyn_cast<pir::ShapedTypeInterface>().IsDynamicShape();
+    auto shape_type = value.type().dyn_cast<pir::ShapedTypeInterface>();
+    if (shape_type && shape_type.IsDynamicShape()) {
+      return true;
+    }
+    return false;
   };
   const auto& GetDims = [](const pir::Value& value) -> decltype(auto) {
     return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
