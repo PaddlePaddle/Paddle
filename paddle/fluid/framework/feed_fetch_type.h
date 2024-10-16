@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/phi/core/framework/feed_fetch_type.h"
+
 namespace paddle {
 namespace framework {
 

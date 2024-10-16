@@ -995,7 +995,7 @@ class Engine:
                 for job_type in self._job_plan.job_types():
                     ir_program = self._job_plan.ir_program(job_type)
                     pm.run(ir_program)
-
+        remove_unuseful_comm_op_pass(dense_program)
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
         self._pir_dist_startup_progs[mode] = startup_program
@@ -1432,6 +1432,9 @@ class Engine:
 
                 set_all_ops_op_role(startup_prog.global_block(), OpRole.Forward)
                 ReshardPasses.apply_reshard_pass(startup_prog)
+                paddle.base.libpaddle.pir.apply_dist2dense_pass(startup_prog)
+                remove_unuseful_comm_op_pass(startup_prog)
+
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
                 self._executor.run(startup_prog)
