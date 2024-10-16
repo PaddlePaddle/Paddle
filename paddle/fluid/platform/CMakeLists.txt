@@ -40,14 +40,14 @@ if(WITH_GLOO)
   cc_library(
     gloo_context
     SRCS gloo_context.cc
-    DEPS framework_proto gloo_wrapper phi common)
+    DEPS gloo_wrapper phi common)
 endif()
 
 # separate init from device_context to avoid cycle dependencies
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context phi common)
+  DEPS phi common)
 
 #fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -59,7 +59,6 @@ cc_library(
        xxhash
        ${STREAM_CALLBACK_DEPS}
        eigen3
-       framework_proto
        ${IPU_CTX_DEPS}
        ${ONEDNN_CTX_DEPS}
        ${dgc_deps}
@@ -73,13 +72,7 @@ set(DEVICE_EVENT_LIBS)
 cc_library(
   lodtensor_printer
   SRCS lodtensor_printer.cc
-  DEPS phi
-       common
-       tensor
-       scope
-       lod_tensor
-       variable_helper
-       framework_proto)
+  DEPS phi common tensor scope lod_tensor variable_helper)
 
 add_subdirectory(profiler)
 

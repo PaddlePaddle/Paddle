@@ -262,6 +262,24 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                      ir::CallType::Extern,
                      ir::FunctionRef(),
                      0);
+
+  // create memset calls for temp_spaces if needed
+  std::vector<ir::Expr> call_kernel_stmts;
+  for (auto &temp_space : func_node->temp_spaces) {
+    if (temp_space.need_zero_init()) {
+      ir::Expr size = common::cast(temp_space.size(), common::UInt(64));
+      ir::Expr call_get_arg =
+          lang::CallExtern(runtime::intrinsic::get_item_in_cuda_kernel_args,
+                           {kernel_args_, ir::Expr(temp_space.arg_idx())});
+      ir::Expr call_memset = lang::CallExtern(
+          runtime::intrinsic::call_cuda_memset,
+          {call_get_arg, ir::Expr(1), ir::Expr(0), size, kernel_stream_});
+      call_kernel_stmts.push_back(call_memset);
+    }
+  }
+  call_kernel_stmts.push_back(call_extern_api);
+  call_extern_api = ir::Block::Make(call_kernel_stmts);
+
   if (buckets_.empty()) {
     buckets_.emplace_back(ir::IfThenElse::Make(predicate, call_extern_api));
   } else {
@@ -269,6 +287,26 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
     buckets_.pop_back();
     buckets_.emplace_back(
         ir::IfThenElse::Make(predicate, call_extern_api, false_expr));
+  }
+
+  // create infer shape calls for temp_spaces
+  std::vector<ir::Expr> temp_space_infer_shape_stmts;
+  for (int i = 0; i < func_node->temp_spaces.size(); ++i) {
+    ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int64_t **>());
+    ir::Expr size =
+        common::cast(func_node->temp_spaces[i].size(), common::Int(64));
+    ir::Expr call_set_value =
+        lang::CallExtern(runtime::intrinsic::infer_shape_set_value,
+                         {ir::Expr(func_node->num_output_tensors + i),
+                          ir::Expr(0),
+                          size,
+                          tensor_shape_args});
+    temp_space_infer_shape_stmts.push_back(call_set_value);
+  }
+  if (!temp_space_infer_shape_stmts.empty()) {
+    ir::Expr if_body = ir::Block::Make(temp_space_infer_shape_stmts);
+    temp_space_infer_shape_body_ =
+        ir::IfThenElse::Make(predicate, if_body, temp_space_infer_shape_body_);
   }
 }
 

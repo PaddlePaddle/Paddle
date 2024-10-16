@@ -1996,7 +1996,7 @@
     func : flashmask_attention
     data_type : q
   backward : flashmask_attention_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
@@ -2141,6 +2141,7 @@
     param : [shape, value, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : full_batch_size_like
@@ -4787,6 +4788,7 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sync_calc_stream
   args : (Tensor x)

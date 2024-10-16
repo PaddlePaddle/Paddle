@@ -597,7 +597,7 @@ namespace std {
 
 template <>
 struct hash<cinn::ir::Expr> {
-  size_t operator()(const cinn::ir::Expr& x) {
+  size_t operator()(const cinn::ir::Expr& x) const {
     return reinterpret_cast<size_t>(x.get());
   }
 };
