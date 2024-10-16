@@ -287,6 +287,7 @@ void IrPrinter::PrintOpResult(const Operation& op) {
       [this](Value v) { this->PrintValue(v); },
       [this]() { this->os << ", "; });
   os << ")";
+  os << "(op_id: op_" << op->id() << ")";
 }
 
 void IrPrinter::PrintAttributeMap(const Operation& op) {
