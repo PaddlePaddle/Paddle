@@ -1067,6 +1067,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._best_unbalanced_scheduler = self._strategy.hybrid_configs[
             "pp_configs"
         ].best_unbalanced_scheduler
+        if self._best_unbalanced_scheduler and (
+            self.accumulate_steps % self.num_stages == 0
+        ):
+            self._best_unbalanced_scheduler = False
+            warnings.warn(
+                "cur acc can be divided by pp stages, turn off _best_unbalanced_scheduler automatically"
+            )
         if self._best_unbalanced_scheduler:
             assert (
                 not self._comm_overlap
