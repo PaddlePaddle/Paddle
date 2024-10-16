@@ -1125,6 +1125,7 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pir/include', recursive=True)) +  # pir init headers
     # init headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/drr/include')) +  # drr init headers
+    list(find_files('*.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape'))+
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/ir')) +  # operator init headers
     list(find_files('general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/utils'))+
     list(find_files('interface.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/serialize_deserialize/include'))+
@@ -1135,7 +1136,7 @@ headers = (
     list(find_files('utils.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
     list(find_files('op_compat_info.h','@PADDLE_SOURCE_DIR@/paddle/fluid/ir_adaptor/translator/'))+
     list(find_files('op_yaml_info_parser.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
-    list(find_files('vjp.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/"'))+
+    list(find_files('vjp.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/'))+
     list(find_files('infer_symbolic_shape.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/'))+
     #pir headers
     list(find_files('lexer.h','@PADDLE_SOURCE_DIR@/paddle/pir/src/core/parser/'))+

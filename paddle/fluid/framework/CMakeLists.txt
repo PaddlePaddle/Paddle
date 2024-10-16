@@ -490,10 +490,6 @@ if(TENSORRT_FOUND)
   set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} tensorrt_engine_op)
 endif()
 
-if(WITH_NVTX AND NOT WIN32)
-  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} cuda_profiler)
-endif()
-
 cc_library(
   naive_executor
   SRCS naive_executor.cc
