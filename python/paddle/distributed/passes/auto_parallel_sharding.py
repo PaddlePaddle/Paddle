@@ -1504,7 +1504,6 @@ def _insert_init_and_broadcast_op(
         attrs={
             'ring_id': ring_id,
             'root': root_rank,
-            'use_calc_stream': True,
             OP_ROLE_KEY: op_role,
         },
     )
