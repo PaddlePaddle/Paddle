@@ -1284,11 +1284,14 @@ void FusedBiasDropoutResidualLnGradInferMeta(
 void FusedDotProductAttentionInferMeta(const MetaTensor& q,
                                        const MetaTensor& k,
                                        const MetaTensor& v,
+                                       const MetaTensor& bias,
                                        MetaTensor* out,
                                        MetaTensor* softmax_out,
                                        MetaTensor* rng_state) {
   // q input shape: [batch_size, q_seq_len, num_heads, head_size]
   // k, v input shape: [batch_size, kv_seq_len, num_heads, head_size]
+  // cu_seqlen_q and cu_seqlen_kv input shape: [batch_size+1]
+  // bias shape: [b,1,s,s] or [b,h,s,s] or [1,1,s,s] or [1, h, s, s]
   auto q_dim = q.dims();
   auto k_dim = k.dims();
   auto v_dim = v.dims();
@@ -1328,15 +1331,19 @@ void FusedDotProductAttentionInferMeta(const MetaTensor& q,
 void FusedDotProductAttentionGradInferMeta(const MetaTensor& q,
                                            const MetaTensor& k,
                                            const MetaTensor& v,
+                                           const MetaTensor& bias,
                                            MetaTensor* q_grad,
                                            MetaTensor* k_grad,
-                                           MetaTensor* v_grad) {
-  auto q_dim = q.dims();
-  auto k_dim = k.dims();
-  auto v_dim = v.dims();
-  q_grad->set_dims(q_dim);
-  k_grad->set_dims(k_dim);
-  v_grad->set_dims(v_dim);
+                                           MetaTensor* v_grad,
+                                           MetaTensor* bias_grad) {
+  q_grad->share_meta(q);
+  k_grad->share_meta(k);
+  v_grad->share_meta(v);
+  if (bias) {
+    if (bias_grad) {
+      bias_grad->share_meta(bias);
+    }
+  }
 }
 
 void FusedFeedForwardInferMeta(const MetaTensor& x,
@@ -1919,8 +1926,11 @@ void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
     x_grad->set_dims(x_dims);
     x_grad->set_dtype(x.dtype());
   }
-  y_grad->set_dims(y_dims);
-  y_grad->set_dtype(y.dtype());
+
+  if (y_grad) {
+    y_grad->set_dims(y_dims);
+    y_grad->set_dtype(y.dtype());
+  }
 
   if (bias_grad) {
     int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];
