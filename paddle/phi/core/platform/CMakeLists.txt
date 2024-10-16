@@ -7,6 +7,10 @@ if(WITH_GPU OR WITH_ROCM)
        device/gpu/gpu_resource_pool.cc)
 endif()
 
+if(WITH_GPU)
+  list(APPEND DEVICE_SRCS device/gpu/cuda/cuda_profiler.cc)
+endif()
+
 if(WITH_XPU)
   list(APPEND DEVICE_SRCS device/xpu/xpu_info.cc
        device/xpu/xpu_resource_pool.cc)

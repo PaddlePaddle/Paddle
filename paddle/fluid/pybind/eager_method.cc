@@ -2246,7 +2246,7 @@ static PyObject* tensor_method_set_vocab(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
-  using Vocab = paddle::framework::Vocab;
+  using Vocab = phi::Vocab;
   auto vocab = CastPyArg2Vocab(PyTuple_GET_ITEM(args, 0), 0);
   auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
   *var_tensor->GetMutable<Vocab>() = vocab;
@@ -2259,7 +2259,7 @@ static PyObject* tensor_method_set_string_list(TensorObject* self,
                                                PyObject* args,
                                                PyObject* kwargs) {
   EAGER_TRY
-  using Strings = paddle::framework::Strings;
+  using Strings = phi::Strings;
   auto strings = CastPyArg2VectorOfString(PyTuple_GET_ITEM(args, 0), 0);
   auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
   *var_tensor->GetMutable<Strings>() = strings;
@@ -2277,7 +2277,7 @@ static PyObject* tensor_method_get_map_tensor(TensorObject* self,
       true,
       common::errors::Fatal(
           "this method is only effective for VariableCompatTensor"));
-  using Vocab = paddle::framework::Vocab;
+  using Vocab = phi::Vocab;
   auto* var_tensor =
       static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get());
   return ToPyObject(var_tensor->Get<Vocab>());
