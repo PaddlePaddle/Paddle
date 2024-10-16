@@ -170,6 +170,8 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._dp_group = dp_group
         self.world_size = self._group.nranks
         self._rank = self._group.rank
+        if self._default_device == "gpu":
+            self._default_device = f"{self._default_device}:{self._rank}"
         self._global_root_rank = self._group.ranks[0]
 
         if self._dp_group is not None and self._dp_group.nranks > 1:
