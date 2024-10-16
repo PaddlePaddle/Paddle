@@ -1000,9 +1000,6 @@ class Engine:
         self._pir_dist_main_progs[mode] = dist_program
         self._pir_dist_startup_progs[mode] = startup_program
 
-        with paddle.base.dygraph.guard():
-            paddle.distributed.barrier()
-
     def _prepare_program(self, mode, init_parameters=True):
         if self._in_pir_mode:
             with paddle.amp.auto_cast(
