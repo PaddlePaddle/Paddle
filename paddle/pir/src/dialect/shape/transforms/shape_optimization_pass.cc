@@ -167,15 +167,16 @@ void CheckInferSymWithInferMeta(
 
       // Check rank.
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
-        std::ostringstream print_stream;
-        print_stream << "Warning : Check InferSymbolicShape for " << op->name()
-                     << " [id:" << op->id() << "] "
-                     << " carefully! rank of infer_meta_shape is ["
-                     << infer_meta_shape.size()
-                     << "], but rank of infer_sym_shape is ["
-                     << infer_sym_shape.size() << "].";
-        LOG(ERROR) << print_stream.str();
-        continue;
+        LOG(ERROR) << "value infer_sym_shape is ["
+                   << infer_context->GetShapeOrDataForValue(res)
+                   << "], real shape is [" << res.type() << "].";
+        PADDLE_THROW(common::errors::PreconditionNotMet(
+            "Error : Check InferSymbolicShape for %s [id:%d] carefully! rank "
+            "of infer_meta_shape is [%d], but rank of infer_sym_shape is [%d].",
+            op->name(),
+            op->id(),
+            infer_meta_shape.size(),
+            infer_sym_shape.size()));
       }
 
       // Check each dim.
@@ -183,27 +184,31 @@ void CheckInferSymWithInferMeta(
         // Check Static shape should NOT be a symbol.
         if (infer_meta_shape[i] != -1) {
           if (!infer_sym_shape[i].isa<int64_t>()) {
-            std::ostringstream print_stream;
-            print_stream
-                << "Warning : Check InferSymbolicShape for " << op->name()
-                << " [id:" << op->id() << "] "
-                << " carefully! "
-                << "shape[" << i
-                << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
-            LOG(ERROR) << print_stream.str();
-            continue;
+            LOG(ERROR) << "value infer_sym_shape is ["
+                       << infer_context->GetShapeOrDataForValue(res)
+                       << "], real shape is [" << res.type() << "].";
+            PADDLE_THROW(common::errors::PreconditionNotMet(
+                "Error : Check InferSymbolicShape for %s [id:%d] carefully!  "
+                "shape [%d] of infer_sym_shape shoule be int64_t.",
+                op->name(),
+                op->id(),
+                i));
           }
 
           // Check Static shape should be consist.
           if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
-            std::ostringstream print_stream;
-            print_stream << "Warning : Check InferSymbolicShape for "
-                         << op->name() << " [id:" << op->id() << "] "
-                         << " carefully! "
-                         << "infer_sym_shape is [" << infer_meta_shape[i]
-                         << "], but infer_meta_shape is ["
-                         << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
-            LOG(ERROR) << print_stream.str();
+            LOG(ERROR) << "value infer_sym_shape is ["
+                       << infer_context->GetShapeOrDataForValue(res)
+                       << "], real shape is [" << res.type() << "].";
+            PADDLE_THROW(common::errors::PreconditionNotMet(
+                "Error : Check InferSymbolicShape for %s [id:%d] carefully! "
+                "infer_meta_shape index(%d) is [%d], but infer_sym_shape is "
+                "[%d].",
+                op->name(),
+                op->id(),
+                i,
+                infer_meta_shape[i],
+                infer_sym_shape[i].dyn_cast<int64_t>()));
           }
         }
       }
