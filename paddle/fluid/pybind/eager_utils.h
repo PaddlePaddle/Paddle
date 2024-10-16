@@ -112,7 +112,7 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
-paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos);
+phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos);
 std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
                                                   ssize_t arg_pos);
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
@@ -158,7 +158,7 @@ PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
-PyObject* ToPyObject(const paddle::framework::Vocab& value);
+PyObject* ToPyObject(const phi::Vocab& value);
 
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
 PyObject* ToPyObject(const pir::Value& value);

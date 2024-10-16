@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def TopPProcess(probs, top_p):
@@ -167,7 +166,6 @@ class TestTopPAPI(unittest.TestCase):
             for place in places:
                 self.run_dygraph(place)
 
-    @test_with_pir_api
     def test_static(self):
         if core.is_compiled_with_xpu():
             places = [core.XPUPlace(0)]
