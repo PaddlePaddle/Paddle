@@ -85,6 +85,15 @@ def get_tensor(run_time_args, arg_name):
             ), f"the elements in {arg_name} must be paddle.Tensor"
             this_input_tensor_lists.append(ele)
         return this_input_tensor_lists
+    elif isinstance(run_time_args, dict):
+        this_input_tensor_lists = []
+        for key in run_time_args.keys():
+            ele = run_time_args[key]
+            assert isinstance(
+                ele, paddle.Tensor
+            ), f"the elements in {arg_name} must be paddle.Tensor"
+            this_input_tensor_lists.append(ele)
+        return this_input_tensor_lists
     elif is_fixed_type(run_time_args):
         return [run_time_args]
     else:
@@ -92,24 +101,6 @@ def get_tensor(run_time_args, arg_name):
             f'''we only support adding paddle.incubate.jit.inference() in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
             but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
         )
-
-
-# get paddle.Tensor's input_spec for doing dynamic to static.
-def get_d2s_spec(run_time_args, name):
-    if isinstance(run_time_args, paddle.Tensor):
-        return InputSpec.from_tensor(run_time_args, name=name)
-    elif isinstance(run_time_args, list):
-        this_input_spec = []
-        suffix = 0
-        for ele in run_time_args:
-            assert isinstance(ele, paddle.Tensor)
-            this_input_spec.append(
-                InputSpec.from_tensor(ele, name=name + "_" + str(suffix))
-            )
-            suffix += 1
-        return this_input_spec
-    elif is_fixed_type(run_time_args):
-        return run_time_args
 
 
 class InferenceEngine:
@@ -235,6 +226,47 @@ class InferenceEngine:
         # update the d2s_input_shapes, because of dynamic shape
         self.d2s_input_shapes = d2s_input_shapes
 
+    # get paddle.Tensor's input_spec for doing dynamic to static.
+    def get_d2s_spec(self, run_time_args, name):
+        if isinstance(run_time_args, paddle.Tensor):
+            tmp_spec = InputSpec.from_tensor(run_time_args, name=name)
+            tmp_spec.shape = self.d2s_input_shapes[self.tmp_d2s_shapes_id]
+            tmp_spec.stop_gradient = True
+            self.d2s_input_names[self.tmp_d2s_shapes_id] = tmp_spec.name
+            self.tmp_d2s_shapes_id += 1
+            return tmp_spec
+        elif isinstance(run_time_args, list):
+            this_input_spec = []
+            suffix = 0
+            for ele in run_time_args:
+                assert isinstance(ele, paddle.Tensor)
+                tmp_spec = InputSpec.from_tensor(
+                    ele, name=name + "_" + str(suffix)
+                )
+                tmp_spec.shape = self.d2s_input_shapes[self.tmp_d2s_shapes_id]
+                tmp_spec.stop_gradient = True
+                self.d2s_input_names[self.tmp_d2s_shapes_id] = tmp_spec.name
+                self.tmp_d2s_shapes_id += 1
+                this_input_spec.append(tmp_spec)
+                suffix += 1
+            return this_input_spec
+        elif isinstance(run_time_args, dict):
+            this_input_spec = {}
+            for key in run_time_args.keys():
+                ele = run_time_args[key]
+                assert isinstance(ele, paddle.Tensor)
+                tmp_spec = InputSpec.from_tensor(ele, name=name + "_" + key)
+                tmp_spec.shape = self.d2s_input_shapes[self.tmp_d2s_shapes_id]
+                tmp_spec.stop_gradient = True
+                self.d2s_input_names[self.tmp_d2s_shapes_id] = tmp_spec.name
+                self.tmp_d2s_shapes_id += 1
+                this_input_spec[key] = tmp_spec
+            return this_input_spec
+        elif is_fixed_type(run_time_args):
+            self.d2s_input_names[self.tmp_d2s_shapes_id] = name
+            self.tmp_d2s_shapes_id += 1
+            return run_time_args
+
     def to_static_model(self, func, input_tensor_lists, *args, **kwargs):
         class WrappedLayer(paddle.nn.Layer):
             def __init__(self, layer):
@@ -254,53 +286,28 @@ class InferenceEngine:
 
         # we need do ds2.
         input_specs = []
+        self.tmp_d2s_shapes_id = 0
+        # initial the self.d2s_input_names!
+        if len(self.d2s_input_names) == 0:
+            self.d2s_input_names.extend([None] * len(input_tensor_lists))
+
         # first we handle Positional Arguments
         for i in range(len(args)):
             if i == 0 and self.used_as_at_decorator:
                 assert isinstance(args[i], paddle.nn.Layer)
             else:
-                input_specs.append(get_d2s_spec(args[i], name=arg_names[i]))
+                input_specs.append(
+                    self.get_d2s_spec(args[i], name=arg_names[i])
+                )
         position_arguments_num = len(args)
         # second we handle Keyword Arguments
         for i in range(position_arguments_num, len(arg_names)):
             if arg_names[i] in kwargs.keys():
                 this_input = kwargs[arg_names[i]]
-                input_specs.append(get_d2s_spec(this_input, name=arg_names[i]))
             else:
                 this_input = arg_defaults[i]
                 assert is_fixed_type(this_input)
-                input_specs.append(this_input)
-
-        for i in range(len(input_specs)):
-            if isinstance(input_specs[i], list):
-                for j in range(len(input_specs[i])):
-                    input_specs[i][j].stop_gradient = True
-            elif isinstance(input_specs[i], paddle.static.InputSpec):
-                input_specs[i].stop_gradient = True
-
-        # update the input_spec's shape for doing d2s
-        d2s_shapes_id = 0
-        # initial the self.d2s_input_names!
-        if len(self.d2s_input_names) == 0:
-            self.d2s_input_names.extend([None] * len(input_tensor_lists))
-        for i in range(len(input_specs)):
-            if isinstance(input_specs[i], list):
-                for j in range(len(input_specs[i])):
-                    input_specs[i][j].shape = self.d2s_input_shapes[
-                        d2s_shapes_id
-                    ]
-                    self.d2s_input_names[d2s_shapes_id] = input_specs[i][j].name
-                    d2s_shapes_id += 1
-            elif isinstance(input_specs[i], paddle.static.InputSpec):
-                input_specs[i].shape = self.d2s_input_shapes[d2s_shapes_id]
-                self.d2s_input_names[d2s_shapes_id] = input_specs[i].name
-                d2s_shapes_id += 1
-            else:
-                if self.used_as_at_decorator:
-                    self.d2s_input_names[d2s_shapes_id] = arg_names[i + 1]
-                else:
-                    self.d2s_input_names[d2s_shapes_id] = arg_names[i]
-                d2s_shapes_id += 1
+            input_specs.append(self.get_d2s_spec(this_input, name=arg_names[i]))
 
         os.environ["TRITON_KERNEL_CACHE_DIR"] = self.save_model_dir
 
@@ -325,6 +332,7 @@ class InferenceEngine:
 
         # save d2s_shapes
         assert len(self.d2s_input_names) == len(self.d2s_input_shapes)
+
         with open(self.d2s_input_info_path, "w") as f:
             for i in range(len(self.d2s_input_names)):
                 line = self.d2s_input_names[i] + ":"

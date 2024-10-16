@@ -47,8 +47,11 @@ class TestLayer2(paddle.nn.Layer):
         super().__init__()
         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=True)
 
-    def forward(self, x_list, bool_value):
+    def forward(self, x_list, bool_value, my_dict={}):
         x = x_list[0]
+        y = my_dict["y"] + my_dict["x"]
+        y = paddle.nn.functional.relu(y)
+        x = x + y
         for i in range(5):
             x = paddle.nn.functional.softmax(x, -1)
         x = x.cast("float32")
@@ -125,11 +128,12 @@ class TestToStaticInputListModel(Dy2StTestBase):
         dtype = "float32"
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer2(hidd)
-        result0 = my_layer([x, x], bool_value=True).numpy()
+        my_dict = {"y": x + x, "x": 2 * x}
+        result0 = my_layer([x, x], bool_value=True, my_dict=my_dict).numpy()
         my_static_layer = paddle.incubate.jit.inference(my_layer)
         my_static_layer = paddle.incubate.jit.inference(my_layer)
 
-        result1 = my_layer([x, x], bool_value=True).numpy()
+        result1 = my_layer([x, x], bool_value=True, my_dict=my_dict).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
 
 
