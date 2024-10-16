@@ -14,11 +14,13 @@
 
 #include "paddle/phi/core/distributed/store/gloo_store.h"
 
+#include <utility>
+
 namespace phi {
 namespace distributed {
 
-GlooStore::GlooStore(const std::shared_ptr<phi::distributed::Store>& store)
-    : store_(store) {}
+GlooStore::GlooStore(std::shared_ptr<phi::distributed::Store>  store)
+    : store_(std::move(store)) {}
 
 std::vector<char> GlooStore::get(const std::string& key) {
   auto value = store_->get(key);
