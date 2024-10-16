@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestNegOp(unittest.TestCase):
@@ -36,7 +35,6 @@ class TestNegOp(unittest.TestCase):
             dy_result.numpy(), expected_result, rtol=1e-05
         )
 
-    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(

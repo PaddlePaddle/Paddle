@@ -50,7 +50,7 @@ class VjpInterface : public pir::OpInterfaceBase<VjpInterface> {
   };
 
   /// Constructor
-  VjpInterface(pir::Operation* op, Concept* impl)
+  VjpInterface(const pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<VjpInterface>(op), impl_(impl) {}
 
   std::vector<std::vector<pir::Value>> Vjp(

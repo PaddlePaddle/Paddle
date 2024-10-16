@@ -187,5 +187,23 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap();
 
 const std::unordered_map<std::string, phi::DataLayout>& StringToDataLayoutMap();
 
+void SetStopGradient();
+
+void SetStopGradient(pir::Value* value);
+
+void SetStopGradient(std::vector<pir::Value>* values);
+
+void SetStopGradient(paddle::optional<pir::Value>* value);
+
+void SetStopGradient(paddle::optional<std::vector<pir::Value>>* values);
+
+template <typename T, typename... Args>
+void SetStopGradient(T value, Args... args) {
+  SetStopGradient(&value);
+  SetStopGradient(args...);
+}
+
+std::vector<std::vector<bool>> ConstructStopGradient(pir::Operation* op);
+
 }  // namespace dialect
 }  // namespace paddle

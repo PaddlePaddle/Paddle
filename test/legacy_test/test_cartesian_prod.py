@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -50,7 +49,6 @@ class TestCartesianProdAPIBase(unittest.TestCase):
     def init_setting(self):
         self.dtype_np = 'float32'
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -174,7 +172,6 @@ class TestCartesianProdAPIFP16(unittest.TestCase):
         self.d_np = np.empty(0, self.dtype_np)
         self.place = core.CUDAPlace(0)
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -258,7 +255,6 @@ class TestCartesianProdAPIBF16(unittest.TestCase):
         self.d_np = np.empty(0, self.dtype_np)
         self.place = core.CUDAPlace(0)
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()

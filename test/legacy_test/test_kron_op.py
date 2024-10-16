@@ -21,7 +21,6 @@ import paddle
 import paddle.base.dygraph as dg
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestKronOp(OpTest):
@@ -132,7 +131,6 @@ class TestKronLayer(unittest.TestCase):
             c_var = paddle.kron(a_var, b_var)
             np.testing.assert_allclose(c_var.numpy(), np.kron(a, b))
 
-    @test_with_pir_api
     def test_case_with_output(self):
         place = base.CPUPlace()
         a = np.random.randn(10, 10).astype(np.float64)

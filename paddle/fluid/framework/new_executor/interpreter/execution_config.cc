@@ -17,10 +17,25 @@
 #include <set>
 #include <thread>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/utils/string/string_helper.h"
+
+// FLAGS_force_sync_ops is used to finer control the op-sync in executor.
+// The format is: "micro_batch_id, job_name, op_id, op_name | micro_batch_id,
+// job_name, op_id, op_name | ...". Keep spaces to syncs all name/id. Example:
+// 1. sync the recv_v2 op in the second backward-job of 1F1B scheduling:
+// FLAGS_force_sync_ops="1, backward, , recv_v2"
+// 2. sync the full op with op_id=5: FLAGS_force_sync_ops=" , , 5, full"
+// 3. sync all ops in the first default-job: FLAGS_force_sync_ops="0,default,,
+// 4. sync all ops in the forward-job and backward-job: FLAGS_force_sync_ops=" ,
+// forward, , | , backward, , , "
+PHI_DEFINE_EXPORTED_string(force_sync_ops,
+                           "",
+                           "Pattern to force sync ops in executor.");
 
 PD_DECLARE_bool(new_executor_serial_run);
 
@@ -147,6 +162,67 @@ void ExecutionConfig::Log(int log_level) {
   log_str << "]\n";
 
   VLOG(log_level) << log_str.str();
+}
+
+std::set<std::pair<int, std::string>> GetForceSyncOps(
+    int micro_batch_id, const std::string& job_name) {
+  std::set<std::pair<int, std::string>> force_sync_ops;
+  std::stringstream ss(paddle::string::erase_spaces(FLAGS_force_sync_ops));
+  std::string item;
+
+  while (std::getline(ss, item, '|')) {
+    item += ",";  // The comma at the end of the string will be ignored in
+                  // std::getline
+    std::stringstream item_stream(item);
+    std::vector<std::string> tokens;
+    std::string token;
+    while (std::getline(item_stream, token, ',')) {
+      VLOG(1) << "token: " << token;
+      tokens.push_back(token);
+    }
+
+    PADDLE_ENFORCE_EQ(
+        tokens.size(),
+        4,
+        phi::errors::InvalidArgument("Invalid force_sync_ops format: \"%s\", "
+                                     "FLAGS_force_sync_ops=\"%s\"",
+                                     item,
+                                     FLAGS_force_sync_ops));
+
+    int micro_batch_id_;
+    if (tokens[0] == "") {
+      micro_batch_id_ = -1;
+    } else {
+      micro_batch_id_ = std::stoi(tokens[0]);
+    }
+    if (micro_batch_id_ != micro_batch_id && micro_batch_id_ != -1) {
+      continue;
+    }
+
+    if (tokens[1] != job_name && tokens[1] != "") {
+      continue;
+    }
+
+    int op_id;
+    if (tokens[2] == "") {
+      op_id = -1;
+    } else {
+      op_id = std::stoi(tokens[2]);
+    }
+    std::string op_name = tokens[3];
+    force_sync_ops.insert({op_id, op_name});
+  }
+
+  if (!force_sync_ops.empty()) {
+    std::stringstream ss;
+    ss << "job_name: " << job_name << ", micro_batch_id: " << micro_batch_id
+       << ", force_sync_ops: ";
+    for (auto& pair : force_sync_ops) {
+      ss << "(" << pair.first << ", " << pair.second << ") ";
+    }
+    VLOG(6) << ss.str();
+  }
+  return force_sync_ops;
 }
 
 }  // namespace paddle::framework::interpreter

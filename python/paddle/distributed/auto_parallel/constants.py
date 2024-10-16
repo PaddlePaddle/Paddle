@@ -118,7 +118,7 @@ set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_fp16_guard", False)
 set_field_default_config(AMP, "use_bf16_guard", False)
 set_field_default_config(AMP, "use_master_grad", False)
-set_field_default_config(AMP, "use_promote", False)
+set_field_default_config(AMP, "use_promote", True)
 
 if TYPE_CHECKING:
 
@@ -340,7 +340,11 @@ MP_OPTIMIZATION = "mp_optimization"
 set_field_default_config(
     MP_OPTIMIZATION, "allreduce_matmul_grad_overlapping", False
 )
+set_field_default_config(MP_OPTIMIZATION, "replace_with_c_embedding", False)
 
+set_field_default_config(
+    MP_OPTIMIZATION, "replace_with_parallel_cross_entropy", False
+)
 if TYPE_CHECKING:
 
     class _MPOptimizationConfig(TypedDict, total=False):  # noqa: PYI049

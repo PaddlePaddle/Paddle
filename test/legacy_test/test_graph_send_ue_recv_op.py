@@ -20,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def get_broadcast_shape(shp1, shp2):
@@ -1005,7 +1004,6 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
             err_msg=f'two value is                        {np_add}\n{res_add}, check diff!',
         )
 
-    @test_with_pir_api
     def test_out_size_tensor_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

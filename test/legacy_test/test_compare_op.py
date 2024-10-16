@@ -22,7 +22,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def create_test_class(op_type, typename, callback, check_pir=False):
@@ -94,7 +93,6 @@ def create_paddle_case(op_type, callback):
             if core.is_compiled_with_cuda():
                 self.place = paddle.CUDAPlace(0)
 
-        @test_with_pir_api
         def test_api(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -111,7 +109,6 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == self.real_result).all(), True)
 
-        @test_with_pir_api
         def test_api_float(self):
             if self.op_type == "equal":
                 paddle.enable_static()
@@ -311,7 +308,6 @@ def create_paddle_case(op_type, callback):
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
-        @test_with_pir_api
         def test_broadcast_api_1(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -332,7 +328,6 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == real_result).all(), True)
 
-        @test_with_pir_api
         def test_broadcast_api_2(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -353,7 +348,6 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == real_result).all(), True)
 
-        @test_with_pir_api
         def test_broadcast_api_3(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -372,7 +366,6 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == real_result).all(), True)
 
-        @test_with_pir_api
         def test_zero_dim_api_1(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -391,7 +384,6 @@ def create_paddle_case(op_type, callback):
                 real_result = callback(x_np, y_np)
             self.assertEqual((res == real_result).all(), True)
 
-        @test_with_pir_api
         def test_zero_dim_api_2(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -410,7 +402,6 @@ def create_paddle_case(op_type, callback):
                 real_result = callback(x_np, y_np)
             self.assertEqual((res == real_result).all(), True)
 
-        @test_with_pir_api
         def test_zero_dim_api_3(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -429,7 +420,6 @@ def create_paddle_case(op_type, callback):
                 real_result = callback(x_np, y_np)
             self.assertEqual((res == real_result).all(), True)
 
-        @test_with_pir_api
         def test_bool_api_4(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -448,7 +438,6 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == real_result).all(), True)
 
-        @test_with_pir_api
         def test_bool_broadcast_api_4(self):
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -526,7 +515,7 @@ create_bf16_case('not_equal', lambda _a, _b: _a != _b, True)
 
 
 class TestCompareOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_int16_support(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -541,7 +530,7 @@ class TestCompareOpError(unittest.TestCase):
 
 
 class API_TestElementwise_Equal(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -566,7 +555,6 @@ class API_TestElementwise_Equal(unittest.TestCase):
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, True])).all(), True)
 
-    @test_with_pir_api
     def test_api_fp16(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -583,7 +571,7 @@ class API_TestElementwise_Equal(unittest.TestCase):
 
 
 class API_TestElementwise_Greater_Than(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api_fp16(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -600,7 +588,7 @@ class API_TestElementwise_Greater_Than(unittest.TestCase):
 
 
 class TestCompareOpPlace(unittest.TestCase):
-    @test_with_pir_api
+
     def test_place_1(self):
         paddle.enable_static()
         place = paddle.CPUPlace()

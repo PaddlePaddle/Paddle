@@ -59,8 +59,12 @@ class TensorRTEngineInstruction : public InstructionBase {
   std::unique_ptr<paddle::platform::TensorRTEngine> trt_engine_;  // not owned
   int64_t workspace_size_;
   bool allow_build_at_runtime_;
-  std::vector<std::string> input_names_;
-  std::vector<std::string> output_names_;
+  std::unordered_map<int, std::string>
+      input_names_;  // Only record input name that is not empty
+  int input_nums_ = 0;
+  std::unordered_map<int, std::string>
+      output_names_;  // Only record output name that is not empty
+  int output_nums_ = 0;
   std::vector<int> outputs_rank_;
   std::vector<phi::DataType> outputs_dtype_;
   std::string op_name_ = "pd_op.tensorrt_engine";

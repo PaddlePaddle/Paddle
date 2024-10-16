@@ -274,8 +274,8 @@ def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         out = x + y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64, complex64, complex128.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -325,8 +325,8 @@ def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         out = x - y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64, complex64, complex128.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -373,8 +373,8 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         out = x * y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64, complex64, complex128.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -424,8 +424,8 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         out = x / y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64, complex64, complex128.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

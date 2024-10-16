@@ -21,7 +21,6 @@ import paddle
 import paddle.static
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
@@ -508,7 +507,7 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
-    @test_with_pir_api
+
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
         main_program = paddle.static.Program()

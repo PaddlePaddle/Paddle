@@ -18,11 +18,10 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestOpNameConflict(unittest.TestCase):
-    @test_with_pir_api
+
     def test_conflict(self):
         paddle.enable_static()
         main = base.Program()

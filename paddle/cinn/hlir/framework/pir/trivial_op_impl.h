@@ -79,9 +79,6 @@ ir::Expr GetComputeBody(const FusibleOp& op);
 
 ir::Tensor GetOutputTensor(const FusibleOp& op);
 
-std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
-                                 const ir::Expr& root);
-
 std::vector<ir::Var> GetOutputIters(const FusibleOp& op);
 
 std::vector<ir::Var> GetReduceIters(const ReduceOp& op);
@@ -168,12 +165,16 @@ struct FusionGroupInfo {
   std::vector<int64_t> loop_strides;
   std::vector<int64_t> reduce_axis;
   std::vector<std::string> reduce_var_name;
+  bool can_apply_grid_reduce;
 
   std::string DebugPrint() {
-    return "GroupInfo\nloop_ranges: " + cinn::utils::Join(loop_ranges, " ") +
-           "\nloop_strides: " + cinn::utils::Join(loop_strides, ", ") +
-           "\nreduce_axis: " + cinn::utils::Join(reduce_axis, " ") +
-           "\nreduce_var_name: " + cinn::utils::Join(reduce_var_name, " ");
+    std::stringstream ss;
+    ss << "GroupInfo\nloop_ranges: " << cinn::utils::Join(loop_ranges, " ")
+       << "\nloop_strides: " << cinn::utils::Join(loop_strides, ", ")
+       << "\nreduce_axis: " << cinn::utils::Join(reduce_axis, " ")
+       << "\nreduce_var_name: " << cinn::utils::Join(reduce_var_name, " ")
+       << "\ncan_apply_grid_reduce: " << can_apply_grid_reduce;
+    return ss.str();
   }
 };
 

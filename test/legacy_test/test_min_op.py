@@ -23,7 +23,6 @@ from test_sum_op import TestReduceOPTensorAxisBase
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class ApiMinTest(unittest.TestCase):
@@ -33,7 +32,6 @@ class ApiMinTest(unittest.TestCase):
         else:
             self.place = core.CPUPlace()
 
-    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -66,7 +64,6 @@ class ApiMinTest(unittest.TestCase):
             (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=(0, 1))).all(), True)
 
-    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
 

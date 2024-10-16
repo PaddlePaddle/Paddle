@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def output_hist(out):
@@ -64,7 +63,6 @@ class TestBernoulliApi(unittest.TestCase):
         hist, prob = output_hist(out.numpy())
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-    @test_with_pir_api
     def test_static(self):
         x = paddle.rand([1024, 1024])
         out = paddle.bernoulli(x)

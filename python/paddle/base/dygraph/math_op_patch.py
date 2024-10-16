@@ -107,6 +107,9 @@ def monkey_patch_math_tensor():
     def _neg_(var: Tensor) -> Tensor:
         return _scalar_elementwise_op_(var, -1.0, 0.0)
 
+    def _abs_(var: Tensor) -> Tensor:
+        return var.abs()
+
     def _float_(var: Tensor) -> float:
         numel = np.prod(var.shape)
         assert (
@@ -188,6 +191,7 @@ def monkey_patch_math_tensor():
 
     eager_methods = [
         ('__neg__', _neg_),
+        ('__abs__', _abs_),
         ('__float__', _float_),
         ('__long__', _long_),
         ('__int__', _int_),

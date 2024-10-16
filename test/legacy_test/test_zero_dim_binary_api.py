@@ -23,7 +23,6 @@ import numpy as np
 
 import paddle
 from paddle.framework import use_pir_api
-from paddle.pir_utils import test_with_pir_api
 
 binary_api_list = [
     {'func': paddle.add, 'cls_method': '__add__'},
@@ -224,7 +223,6 @@ class TestBinaryAPI(unittest.TestCase):
             out_shape = out.shape
         self.assertEqual(out_shape, target_tuple)
 
-    @test_with_pir_api
     def test_static_binary_0D_0D(self):
         paddle.enable_static()
         for api in binary_api_list:
@@ -268,7 +266,6 @@ class TestBinaryAPI(unittest.TestCase):
 
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_binary_0D_ND(self):
         paddle.enable_static()
         for api in binary_api_list:
@@ -311,7 +308,6 @@ class TestBinaryAPI(unittest.TestCase):
                     self.assertShapeEqual(grad_list[2][1], [2, 3, 4])
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_binary_ND_0D(self):
         paddle.enable_static()
         for api in binary_api_list:
@@ -354,7 +350,6 @@ class TestBinaryAPI(unittest.TestCase):
                     self.assertShapeEqual(grad_list[2][1], [2, 3, 4])
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_binary_0D_scalar(self):
         paddle.enable_static()
         for api in binary_api_list:
@@ -388,7 +383,6 @@ class TestBinaryAPI(unittest.TestCase):
                         self.assertShapeEqual(grad_list[1][1], [])
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static_binary_int_api(self):
         paddle.enable_static()
         for api in binary_int_api_list:

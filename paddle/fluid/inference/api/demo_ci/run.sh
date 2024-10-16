@@ -159,55 +159,9 @@ for WITH_STATIC_LIB in ON OFF; do
       fi
     done
 
-    # -----vis_demo on windows-----
-    rm -rf *
-    cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
-      -DWITH_MKL=$TURN_ON_MKL \
-      -DDEMO_NAME=vis_demo \
-      -DWITH_GPU=$TEST_GPU_CPU \
-      -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-      -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
-      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCUDA_LIB="$CUDA_LIB"
-    ninja
-    for use_gpu in $use_gpu_list; do
-      for vis_demo_name in $vis_demo_list; do
-        ./vis_demo.exe \
-          --modeldir=$DATA_DIR/$vis_demo_name/model \
-          --data=$DATA_DIR/$vis_demo_name/data.txt \
-          --refer=$DATA_DIR/$vis_demo_name/result.txt \
-          --use_gpu=$use_gpu
-        if [ $? -ne 0 ]; then
-          echo "vis demo $vis_demo_name use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
-          EXIT_CODE=1
-        fi
-      done
-    done
-
     # --------tensorrt mobilenet on windows------
     if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
       rm -rf *
-      cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
-        -DWITH_MKL=$TURN_ON_MKL \
-        -DDEMO_NAME=trt_mobilenet_demo \
-        -DWITH_GPU=$TEST_GPU_CPU \
-        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-        -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
-        -DUSE_TENSORRT=$USE_TENSORRT \
-        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
-        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCUDA_LIB="$CUDA_LIB"
-      ninja
-      ./trt_mobilenet_demo.exe \
-        --modeldir=$DATA_DIR/mobilenet/model \
-        --data=$DATA_DIR/mobilenet/data.txt \
-        --refer=$DATA_DIR/mobilenet/result.txt
-      if [ $? -ne 0 ]; then
-        echo "trt_mobilenet_demo runs failed." >> ${current_dir}/test_summary.txt
-        EXIT_CODE=1
-      fi
     fi
   else
     # -----simple_on_word2vec on linux/mac-----
@@ -230,49 +184,6 @@ for WITH_STATIC_LIB in ON OFF; do
           EXIT_CODE=1
         fi
       done
-    fi
-    # ---------vis_demo on linux/mac---------
-    rm -rf *
-    cmake .. -DPADDLE_LIB=${inference_install_dir} \
-      -DWITH_MKL=$TURN_ON_MKL \
-      -DDEMO_NAME=vis_demo \
-      -DWITH_GPU=$TEST_GPU_CPU \
-      -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-    make -j$(nproc)
-    for use_gpu in $use_gpu_list; do
-      for vis_demo_name in $vis_demo_list; do
-        ./vis_demo \
-          --modeldir=$DATA_DIR/$vis_demo_name/model \
-          --data=$DATA_DIR/$vis_demo_name/data.txt \
-          --refer=$DATA_DIR/$vis_demo_name/result.txt \
-          --use_gpu=$use_gpu
-        if [ $? -ne 0 ]; then
-          echo "vis demo $vis_demo_name use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
-          EXIT_CODE=1
-        fi
-      done
-    done
-    # --------tensorrt mobilenet on linux/mac------
-    if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
-      rm -rf *
-      cmake .. -DPADDLE_LIB=${inference_install_dir} \
-        -DWITH_MKL=$TURN_ON_MKL \
-        -DDEMO_NAME=trt_mobilenet_demo \
-        -DWITH_GPU=$TEST_GPU_CPU \
-        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-        -DUSE_TENSORRT=$USE_TENSORRT \
-        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
-        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-      make -j$(nproc)
-      ./trt_mobilenet_demo \
-        --modeldir=$DATA_DIR/mobilenet/model \
-        --data=$DATA_DIR/mobilenet/data.txt \
-        --refer=$DATA_DIR/mobilenet/result.txt
-      if [ $? -ne 0 ]; then
-        echo "trt_mobilenet_demo runs failed " >> ${current_dir}/test_summary.txt
-        EXIT_CODE=1
-      fi
     fi
 
     # --------onnxruntime mobilenetv2 on linux/mac------

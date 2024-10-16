@@ -73,7 +73,7 @@ class MatrixExpTestCase(unittest.TestCase):
             )
 
     # TODO(megemini): cond/while_loop should be tested in pir
-    # @test_with_pir_api
+    #
     def test_static(self):
         paddle.enable_static()
         places = []

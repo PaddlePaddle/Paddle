@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(1024)
 
@@ -193,7 +192,6 @@ class TestIndexSelectAPI(unittest.TestCase):
         ).astype("float32")
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
-    @test_with_pir_api
     def test_index_select_api(self):
         paddle.enable_static()
         self.input_data()

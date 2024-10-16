@@ -46,7 +46,7 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
   auto* for_node = loop.As<ir::For>();
   PADDLE_ENFORCE_NOT_NULL(
       for_node,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MutateForType>.\n"
           "[Error info] Loop parameter should be For nod3!\n"
@@ -92,7 +92,7 @@ void DyScheduleImpl::Vectorize(const Expr& loop, int factor) {
 
   PADDLE_ENFORCE_GT(factor,
                     0,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <Vectorize>.\n"
                         "[Error info] Vectorize factor should be more than 0.\n"
@@ -102,7 +102,7 @@ void DyScheduleImpl::Vectorize(const Expr& loop, int factor) {
   PADDLE_ENFORCE_EQ(
       loop.As<For>()->extent.is_constant(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Vectorize>.\n"
           "[Error info] The loop to be vectorized should be constant!\n"
@@ -121,7 +121,7 @@ void DyScheduleImpl::Unroll(const Expr& loop) {
   PADDLE_ENFORCE_EQ(
       loop.As<For>()->extent.is_constant(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Unroll>.\n"
           "[Error info] The loop to be unrolled should be constant!\n"
@@ -149,7 +149,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
     PADDLE_ENFORCE_EQ(
         thread_axes.count(thread_axis),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<Bind>.\n"
             "[Error info] The thread_axis which is %s is not supported\n"
@@ -166,7 +166,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
     if (thread_axis[0] == 'b') {
       PADDLE_ENFORCE_EQ(check_offset(thread_axis[0]),
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "[IRScheduleError] An error occurred in the "
                             "schedule primitive <Bind>.\n"
                             "[Error info] Invalid Bind! The extent of loop is "
@@ -178,7 +178,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
     } else {
       PADDLE_ENFORCE_EQ(check_offset(thread_axis[0]),
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "[IRScheduleError] An error occurred in the "
                             "schedule primitive <Bind>.\n"
                             "[Error info] Invalid Bind! The extent of loop is "

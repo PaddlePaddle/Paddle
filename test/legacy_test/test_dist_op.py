@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -243,7 +242,6 @@ class TestDistAPI(unittest.TestCase):
             'float32' if core.is_compiled_with_rocm() else 'float64'
         )
 
-    @test_with_pir_api
     def test_api(self):
         self.init_data_type()
         main_program = paddle.static.Program()

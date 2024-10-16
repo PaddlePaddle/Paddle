@@ -20,7 +20,6 @@ from utils import check_output, extra_cc_args, paddle_includes
 
 import paddle
 from paddle import static
-from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -158,7 +157,6 @@ class TestMultiOutputDtypes(unittest.TestCase):
         self.assertTrue('int32' in str(one_int32.dtype))
         check_output(one_int32, np.ones([4, 8]).astype('int32'), "one_int32")
 
-    @test_with_pir_api
     def test_multi_out_static(self):
         paddle.enable_static()
         for device in self.devices:
@@ -178,7 +176,6 @@ class TestMultiOutputDtypes(unittest.TestCase):
                 self.assertTrue(len(outs) == 3)
                 self.check_multi_outputs(outs, True)
 
-    @test_with_pir_api
     def test_discrete_out_static(self):
         for device in self.devices:
             for dtype in self.dtypes:

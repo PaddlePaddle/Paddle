@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import static
 from paddle.base import core, dygraph
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -146,7 +145,6 @@ class TestAngleAPI(unittest.TestCase):
             out_np = paddle.angle(x).numpy()
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):

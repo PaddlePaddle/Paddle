@@ -996,6 +996,60 @@ def create_backward_prune_set(
     return outputs_set, inputs_set, no_gradvar_set
 
 
+def _complete_grad_op_chunk_id(block, state):
+    dist_skip_op_list = ["builtin.split", "builtin.combine"]
+
+    def infer_dist_skip_op_chunk_id(op):
+        if op.name() == "builtin.split":
+            op_chunk_id = (
+                op.operand_source(0).get_defining_op().dist_attr.chunk_id
+            )
+        elif op.name() == "builtin.combine":
+            op_chunk_id = op.result(0).get_defining_op().dist_attr.chunk_id
+        else:
+            # TODO(luchang): need to support more ops such as pd_op.pylayer and so on
+            op_chunk_id = -1
+        return op_chunk_id
+
+    is_dist_program = False
+    for op in block.ops:
+        if op.dist_attr is not None:
+            is_dist_program = True
+            break
+
+    if not is_dist_program:
+        return
+
+    for op in block.ops:
+        if op not in state.op_to_opgrad:
+            continue
+
+        if op.dist_attr is None:
+            op_chunk_id = -1
+            if op.name() in dist_skip_op_list:
+                op_chunk_id = infer_dist_skip_op_chunk_id(op)
+        else:
+            op_chunk_id = op.dist_attr.chunk_id
+            if op_chunk_id == -1 and op.name() == "dist_op.reshard":
+                prev_op = op.operand_source(0).get_defining_op()
+                if prev_op.name() in dist_skip_op_list:
+                    op_chunk_id = infer_dist_skip_op_chunk_id(prev_op)
+                else:
+                    op_chunk_id = prev_op.dist_attr.chunk_id
+
+        for bwd_op in state.op_to_opgrad[op]:
+            if bwd_op.dist_attr is None:
+                continue
+            bwd_op.dist_attr = (
+                paddle.base.libpaddle.pir.create_op_dist_attribute(
+                    bwd_op.dist_attr.process_mesh,
+                    bwd_op.dist_attr.operands(),
+                    bwd_op.dist_attr.results(),
+                    op_chunk_id,
+                )
+            )
+
+
 def calc_gradient_helper(
     outputs: Value | Sequence[Value],
     inputs: Value | Sequence[Value],
@@ -1057,29 +1111,8 @@ def calc_gradient_helper(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
 
-    # set struct name for grad ops
-    for op in block.ops:
-        if op in state.op_to_opgrad:
-            if op.dist_attr is None:
-                continue
-
-            op_chunk_id = op.dist_attr.chunk_id
-            if op_chunk_id == -1 and op.name() == "dist_op.reshard":
-                op_chunk_id = (
-                    op.operand_source(0).get_defining_op().dist_attr.chunk_id
-                )
-
-            for bwd_op in state.op_to_opgrad[op]:
-                if bwd_op.dist_attr is None:
-                    continue
-                bwd_op.dist_attr = (
-                    paddle.base.libpaddle.pir.create_op_dist_attribute(
-                        bwd_op.dist_attr.process_mesh,
-                        bwd_op.dist_attr.operands(),
-                        bwd_op.dist_attr.results(),
-                        op_chunk_id,
-                    )
-                )
+    # set chunk id for grad ops
+    _complete_grad_op_chunk_id(block, state)
 
     remove_ops = []
     if not is_inplace_net(backward_ops) and inputs:

@@ -53,7 +53,9 @@ PD_REGISTER_KERNEL(add_coo_coo_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
@@ -66,6 +68,8 @@ PD_REGISTER_KERNEL(add_coo_dense_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

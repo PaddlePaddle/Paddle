@@ -25,7 +25,6 @@ sys.path.append("..")
 from op_test import OpTest
 
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 # 2D normal case
@@ -263,7 +262,7 @@ class TestSolveOpBatched_case8(OpTest):
 
 
 class TestSolveOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

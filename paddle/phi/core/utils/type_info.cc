@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/utils/type_info.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
 
@@ -50,6 +51,8 @@ template class TypeInfoTraits<phi::TensorBase, SparseCsrTensor>;
 template class TypeInfoTraits<phi::TensorBase, StringTensor>;
 template class TypeInfoTraits<phi::TensorBase, TensorArray>;
 template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
+template class TypeInfoTraits<phi::TensorBase, Vocab>;
+template class TypeInfoTraits<phi::TensorBase, Strings>;
 
 template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
 template class TypeInfoTraits<phi::DeviceContext, CustomContext>;

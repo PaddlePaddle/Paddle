@@ -20,7 +20,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/init_default_kernel_signature_map.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -29,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"

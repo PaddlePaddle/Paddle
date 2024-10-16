@@ -305,7 +305,7 @@ void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
       if (auto vec_type = type.dyn_cast<pir::VectorType>()) {
         for (size_t idx = 0; idx < vec_type.size(); ++idx) {
           auto inner_type = vec_type[idx];
-          if (!inner_type && !vec_type[idx].isa<DistTypeInterface>()) {
+          if (inner_type && !inner_type.isa<DistTypeInterface>()) {
             CvtValueToDist(value, mesh_attr);
             break;
           }

@@ -48,7 +48,7 @@ class InferSymbolicShapeInterface
   };
 
   /// Constructor
-  InferSymbolicShapeInterface(pir::Operation *op, Concept *impl)
+  InferSymbolicShapeInterface(const pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<InferSymbolicShapeInterface>(op), impl_(impl) {}
 
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);

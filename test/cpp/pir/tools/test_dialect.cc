@@ -41,12 +41,12 @@ void TestDialect::initialize() {
               SameOperandsAndResultTypeTraitOp3>();
 }
 
-pir::OpPrintFn TestDialect::PrintOperation(pir::Operation *op) const {
-  return [](pir::Operation *op, pir::IrPrinter &printer) {
+pir::OpPrintFn TestDialect::PrintOperation(const pir::Operation &op) const {
+  return [](const pir::Operation &op, pir::IrPrinter &printer) {
     printer.PrintOpResult(op);
     printer.os << " =";
 
-    printer.os << " \"" << op->name() << "\"";
+    printer.os << " \"" << op.name() << "\"";
     printer.PrintOpOperands(op);
   };
 }

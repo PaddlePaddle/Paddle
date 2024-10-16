@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base, static
-from paddle.pir_utils import test_with_pir_api
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
@@ -210,7 +209,6 @@ def test(test_case, op_str, use_gpu=False, data_set=TEST_META_DATA):
         test_case.assertTrue((dygraph_result == result_np).all())
         test_case.assertTrue((eager_result == result_np).all())
 
-        @test_with_pir_api
         def test_static_or_pir_mode():
             (static_result,) = run_static(
                 x_np, meta_data['type'], op_str, use_gpu
@@ -299,7 +297,7 @@ class TestCUDABFP16(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_bad_input(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

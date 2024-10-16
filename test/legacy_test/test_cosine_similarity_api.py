@@ -21,7 +21,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn, static
 from paddle.base import Executor, core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestCosineSimilarityAPI(unittest.TestCase):
@@ -44,7 +43,6 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         cos_sim = w12 / n12
         return cos_sim
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
 

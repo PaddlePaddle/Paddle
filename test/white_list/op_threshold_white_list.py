@@ -39,8 +39,6 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'sigmoid_cross_entropy_with_logits',
     'soft_relu',
     'softmax_with_cross_entropy',
-    'spp',
-    'teacher_student_sigmoid_loss',
     'unpool',
     'yolov3_loss',
     'inverse',

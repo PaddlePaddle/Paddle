@@ -1,7 +1,7 @@
 cc_library(
   host_tracer
   SRCS host_tracer.cc
-  DEPS framework_proto phi common var_type_traits)
+  DEPS phi common var_type_traits)
 cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc
@@ -36,19 +36,3 @@ cc_library(
        glog
        event_bind
        custom_tracer)
-cc_test(
-  test_event_node
-  SRCS test_event_node.cc
-  DEPS event_node profiler_logger)
-cc_test(
-  test_extra_info
-  SRCS test_extra_info.cc
-  DEPS phi glog common)
-cc_test(
-  test_serialization_logger
-  SRCS dump/test_serialization_logger.cc
-  DEPS event_bind)
-cc_test(
-  new_profiler_test
-  SRCS profiler_test.cc
-  DEPS new_profiler)

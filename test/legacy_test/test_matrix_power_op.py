@@ -21,7 +21,6 @@ from op_test import OpTest
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -285,7 +284,6 @@ class TestMatrixPowerAPI(unittest.TestCase):
                 fetches[0], np.linalg.matrix_power(input_np, -2), rtol=1e-05
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -304,7 +302,7 @@ class TestMatrixPowerAPI(unittest.TestCase):
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -392,7 +390,6 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
             except ValueError as ex:
                 print("The mat is singular")
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for place in self.places:

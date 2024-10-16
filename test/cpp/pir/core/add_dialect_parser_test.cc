@@ -14,10 +14,10 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/attribute_base.h"
 #include "paddle/pir/include/core/builtin_attribute.h"

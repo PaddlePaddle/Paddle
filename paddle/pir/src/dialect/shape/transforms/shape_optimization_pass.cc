@@ -98,14 +98,14 @@ std::string PrintOperationWithNoRegion(Operation* op) {
   }
   os << ")";
 
-  printer.PrintAttributeMap(op);
+  printer.PrintAttributeMap(*op);
   os << " :";
 
   // PrintOpSignature
-  printer.PrintOperandsType(op);
+  printer.PrintOperandsType(*op);
   os << " -> ";
 
-  printer.PrintOpReturnType(op);
+  printer.PrintOpReturnType(*op);
 
   return os.str();
 }

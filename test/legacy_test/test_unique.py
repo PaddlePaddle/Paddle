@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestUniqueOp(OpTest):
@@ -422,7 +421,6 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((inverse.numpy() == np_inverse).all(), True)
         self.assertTrue((counts.numpy() == np_counts).all(), True)
 
-    @test_with_pir_api
     def test_static_graph(self):
         with paddle_static_guard():
             with paddle.static.program_guard(

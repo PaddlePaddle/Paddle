@@ -20,7 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
-from op_test import skip_check_grad_ci
+from op_test import convert_float_to_uint16, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -37,7 +37,9 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
         def setUp(self):
             self.use_xpu = True
             self.op_type = "elementwise_max"
-            self.dtype = self.in_type
+            self.dtype = (
+                self.in_type if self.in_type != np.uint16 else np.float32
+            )
             self.init_input_output()
             # If x and y have the same value, the max() is not differentiable.
             # So we generate test data by the following method
@@ -47,6 +49,9 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
             x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
             sgn = np.random.choice([-1, 1], [13, 17]).astype(self.dtype)
             y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+            if self.in_type == np.uint16:
+                x = convert_float_to_uint16(x)
+                y = convert_float_to_uint16(y)
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {
                 'Out': np.maximum(self.inputs['X'], self.inputs['Y'])
@@ -91,6 +96,9 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
         def init_input_output(self):
             x = np.random.random_integers(-5, 5, [2, 3, 20]).astype(self.dtype)
             y = np.array([0.5]).astype(self.dtype)
+            if self.in_type == np.uint16:
+                x = convert_float_to_uint16(x)
+                y = convert_float_to_uint16(y)
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {
                 'Out': np.maximum(self.inputs['X'], self.inputs['Y'])
@@ -101,6 +109,9 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
             x = np.random.random((100,)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
             y = x + sgn * np.random.uniform(0.1, 1, (100,)).astype(self.dtype)
+            if self.in_type == np.uint16:
+                x = convert_float_to_uint16(x)
+                y = convert_float_to_uint16(y)
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {
                 'Out': np.maximum(self.inputs['X'], self.inputs['Y'])
@@ -113,6 +124,9 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
             y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
                 self.dtype
             )
+            if self.in_type == np.uint16:
+                x = convert_float_to_uint16(x)
+                y = convert_float_to_uint16(y)
             self.inputs = {'X': x, 'Y': y}
 
             self.outputs = {
@@ -128,6 +142,9 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
             y = x + sgn * np.random.uniform(1, 2, (2, 3, 1, 5)).astype(
                 self.dtype
             )
+            if self.in_type == np.uint16:
+                x = convert_float_to_uint16(x)
+                y = convert_float_to_uint16(y)
             self.inputs = {'X': x, 'Y': y}
 
             self.outputs = {

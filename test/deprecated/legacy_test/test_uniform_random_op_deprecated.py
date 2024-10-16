@@ -20,7 +20,6 @@ from test_attribute_var_deprecated import UnittestBase
 
 import paddle
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestUniformMinMaxTensor(UnittestBase):
@@ -28,7 +27,6 @@ class TestUniformMinMaxTensor(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
-    @test_with_pir_api
     def test_static(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()

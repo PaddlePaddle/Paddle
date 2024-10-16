@@ -26,7 +26,6 @@ sys.path.append("../../legacy_test")
 from decorator_helper import prog_scope
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 # Use to test zero-dim of Sundry API, which is unique and can not be classified
 # with others. It can be implemented here flexibly.
@@ -44,7 +43,6 @@ class TestSundryAPIStatic(unittest.TestCase):
             out_shape = out.shape
         self.assertEqual(out_shape, target_tuple)
 
-    @test_with_pir_api
     @prog_scope()
     def test_allclose(self):
         # 1) x is 0D
@@ -67,7 +65,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertFalse(res[0])
 
-    @test_with_pir_api
     @prog_scope()
     def test_equal_all(self):
         # 1) x is 0D
@@ -90,7 +87,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertFalse(res[0])
 
-    @test_with_pir_api
     @prog_scope()
     def test_where(self):
         x1 = paddle.full([], 1, 'float32')
@@ -119,7 +115,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[3], 1)
 
-    @test_with_pir_api
     @prog_scope()
     def test_atan2(self):
         x1 = paddle.full([], 0, 'float32')
@@ -134,7 +129,6 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_interpolate(self):
         from paddle.nn.functional import interpolate
@@ -174,7 +168,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res2[0].shape, (2, 3, 12, 12))
         self.assertEqual(res2[1].shape, (2, 3, 6, 6))
 
-    @test_with_pir_api
     @prog_scope()
     def test_upsample(self):
         from paddle.nn.functional import upsample
@@ -199,7 +192,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res1[0].shape, (2, 3, 12, 12))
         self.assertEqual(res1[1].shape, (2, 3, 6, 6))
 
-    @test_with_pir_api
     @prog_scope()
     def test_unstack(self):
         x1 = paddle.full([1], 0, 'float32')
@@ -224,7 +216,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_unbind(self):
         x1 = paddle.full([1], 0, 'float32')
@@ -249,7 +240,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_masked_select(self):
         x = paddle.rand([])
@@ -269,7 +259,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[3], 1)
 
-    @test_with_pir_api
     @prog_scope()
     def test_squeeze(self):
         x1 = paddle.full([], 2)
@@ -302,7 +291,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_unsqueeze(self):
         x1 = paddle.full([], 2)
@@ -335,7 +323,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_t(self):
         x = paddle.full([], 2.0)
@@ -359,7 +346,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_static_data(self):
         x1 = paddle.static.data(name="x1", shape=[])
@@ -390,7 +376,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 301.0)
 
-    @test_with_pir_api
     @prog_scope()
     def test_prelu(self):
         x1 = paddle.full([], 1.0, 'float32')
@@ -428,7 +413,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4].shape, ())
         self.assertEqual(res[5].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_while_loop(self):
         def cond(i, x):

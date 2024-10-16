@@ -153,7 +153,8 @@ struct DimExprConverterWithSymbolBindings::
       return inputs_[input_idx]->sym_shape[input_dim_idx]->GetDimExpr();
     }
     // for data binding [S0, a, b], inputs[a] is Tensor A, return A(b)
-    return inputs_[input_idx](cinn::ir::Expr(input_dim_idx));
+    return ir::Cast::Make(cinn::common::I64(),
+                          inputs_[input_idx](cinn::ir::Expr(input_dim_idx)));
   }
 
   DimExprToIrExprVisitorWithSymbolBinding(

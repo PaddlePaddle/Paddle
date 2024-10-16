@@ -4,30 +4,29 @@ if(WIN32)
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context
-         paddle_inference_api)
+    DEPS ${GLOB_OPERATOR_DEPS} phi paddle_inference_api)
 else()
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context)
+    DEPS ${GLOB_OPERATOR_DEPS} phi)
 endif()
 nv_library(
   tensorrt_dynamic_shape_infermeta_factory
   SRCS dynamic_shape_infermeta.cc
-  DEPS framework_proto)
+  DEPS phi)
 nv_library(
   tensorrt_plugin_arg_mapping_context
   SRCS plugin_arg_mapping_context.cc
-  DEPS framework_proto)
+  DEPS phi)
 nv_library(
   tensorrt_op_teller
   SRCS op_teller.cc
-  DEPS framework_proto device_context tensorrt_dynamic_shape_infermeta_factory)
+  DEPS phi tensorrt_dynamic_shape_infermeta_factory)
 nv_test(
   test_tensorrt
   SRCS test_tensorrt.cc
-  DEPS device_context phi common)
+  DEPS phi common)
 if(WIN32)
   nv_test(
     test_tensorrt_engine
@@ -47,7 +46,7 @@ endif()
 nv_test(
   test_arg_mapping_context
   SRCS test_arg_mapping_context.cc
-  DEPS framework_proto tensorrt_plugin_arg_mapping_context)
+  DEPS phi tensorrt_plugin_arg_mapping_context)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

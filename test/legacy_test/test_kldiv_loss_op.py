@@ -18,7 +18,6 @@ from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.nn.functional import kl_div
-from paddle.pir_utils import test_with_pir_api
 
 
 def kldiv_loss(x, target, reduction, log_target=False):
@@ -147,7 +146,6 @@ class TestKLDivLossDygraph(unittest.TestCase):
     def test_kl_loss_mean_logtarget(self):
         self.run_kl_loss('mean', log_target=True)
 
-    @test_with_pir_api
     def test_kl_loss_static_api(self):
         with paddle_static_guard():
             input = paddle.static.data(name='input', shape=[5, 20])

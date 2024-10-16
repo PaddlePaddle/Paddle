@@ -21,7 +21,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(0)
 
@@ -275,7 +274,7 @@ class TestCumprodAPI(unittest.TestCase):
             self.place.append(paddle.CUDAPlace(0))
 
     # test static graph api.
-    @test_with_pir_api
+
     def test_static_api(self):
         paddle.enable_static()
 

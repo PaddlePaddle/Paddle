@@ -28,7 +28,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/timer.h"
 namespace paddle {
 namespace framework {
 class DataFeed;

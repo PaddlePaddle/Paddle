@@ -72,8 +72,7 @@ TEST(xpu_config, inference) {
   config.SetXpuConfig(xpu_config);
 
   XpuConfig xpu_config_test = config.xpu_config();
-  CHECK_EQ(xpu_config_test.l3_size, l3_size);
-  PADDLE_ENFORCE_GT(xpu_config_test.l3_size,
+  PADDLE_ENFORCE_EQ(xpu_config_test.l3_size,
                     l3_size,
                     common::errors::InvalidArgument(
                         "xpu_config_test.l3_size %d is different from our "

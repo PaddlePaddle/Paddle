@@ -7,6 +7,10 @@ if(WITH_GPU OR WITH_ROCM)
        device/gpu/gpu_resource_pool.cc)
 endif()
 
+if(WITH_GPU)
+  list(APPEND DEVICE_SRCS device/gpu/cuda/cuda_profiler.cc)
+endif()
+
 if(WITH_XPU)
   list(APPEND DEVICE_SRCS device/xpu/xpu_info.cc
        device/xpu/xpu_resource_pool.cc)
@@ -28,5 +32,7 @@ endif()
 list(APPEND DEVICE_SRCS cuda_graph_with_memory_pool.cc)
 list(APPEND DEVICE_SRCS device_context.cc gen_comm_id_helper.cc)
 list(APPEND DEVICE_SRCS profiler/utils.cc profiler/cpu_utilization.cc)
+
+list(APPEND DEVICE_SRCS cpu_helper.cc denormal.cc monitor.cc timer.cc)
 
 collect_srcs(core_srcs SRCS ${DEVICE_SRCS})

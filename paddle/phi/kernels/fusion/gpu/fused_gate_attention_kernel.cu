@@ -221,11 +221,10 @@ void FusedGateAttentionOpKernel(
     PADDLE_ENFORCE_EQ(
         !key || query == key || query->data<T>() == key->data<T>(),
         true,
-        phi::errors::InvalidArgument(
-            "key is expected to be nullptr or the same as "
-            "query, but received key=%p, query=%p.",
-            key,
-            query));
+        errors::InvalidArgument("key is expected to be nullptr or the same as "
+                                "query, but received key=%p, query=%p.",
+                                key,
+                                query));
 
     // 1. Merged QKV Matmul: einsum(nbhqk,nbkhc -> nbqhc)
     phi::DenseTensor *qkv_out = config.GetQKVOut();

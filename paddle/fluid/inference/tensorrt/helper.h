@@ -22,10 +22,10 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/tensorrt.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {

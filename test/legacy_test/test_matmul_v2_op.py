@@ -23,7 +23,6 @@ import paddle
 import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -629,7 +628,6 @@ class TestMatMulV2API(unittest.TestCase):
             )
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

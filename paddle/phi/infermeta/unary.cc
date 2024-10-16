@@ -3709,6 +3709,17 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void ReduceSumInferMeta(const MetaTensor& x,
+                        const std::vector<int64_t>& axis,
+                        bool keep_dim,
+                        MetaTensor* out) {
+  bool reduce_all = false;
+  if (axis.empty()) {
+    reduce_all = true;
+  }
+  SumRawInferMeta(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
+}
+
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
@@ -4715,6 +4726,17 @@ void SumInferMeta(const MetaTensor& x,
     reduce_all = true;
   }
   SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out, config);
+}
+
+void DetInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
+  // remove the last two demension
+  auto out_dim = common::vectorize<int>(x.dims());
+  out_dim.pop_back();
+  out_dim.pop_back();
+
+  out->set_dims(common::make_ddim(out_dim));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,

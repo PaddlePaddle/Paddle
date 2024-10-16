@@ -747,7 +747,13 @@ class SymbolicVariable(VariableBase):
             self.graph.pycode_gen._origin_code
         )
 
+        disabled_vars = set()
+
         def disable_symbolic(var: VariableBase):
+            if var in disabled_vars:
+                return
+
+            disabled_vars.add(var)
             if var.tracker.is_traceable():
                 tracker_expr = var.tracker.trace_value_from_frame().inlined_expr
                 symbolic_inputs[tracker_expr] = None

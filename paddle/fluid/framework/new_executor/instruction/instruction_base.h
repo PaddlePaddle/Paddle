@@ -43,6 +43,9 @@ class InstructionBase {
   bool IsArtificial() const { return is_artificial_; }
   void SetArtificial(bool is_artificial) { is_artificial_ = is_artificial; }
 
+  bool IsSyncAfterLaunch() const { return sync_after_launch_; }
+  void SetSyncAfterLaunch(bool sync) { sync_after_launch_ = sync; }
+
   OpFuncType KernelType() const;
   void SetKernelType(OpFuncType type) { type_ = type; }
 
@@ -176,8 +179,12 @@ class InstructionBase {
  protected:
   size_t id_;
 
-  bool is_artificial_;  // Instruction is artificial means that it is only used
-                        // to assist scheduling and no need to be executed.
+  bool is_artificial_{
+      false};  // Instruction is artificial means that it is only used
+               // to assist scheduling and no need to be executed.
+
+  bool sync_after_launch_{false};
+
   OpFuncType type_;
 
   // dist attrs：lower value, higher priority

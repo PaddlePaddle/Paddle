@@ -1012,6 +1012,32 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
+struct IndexExpr : public Expr {
+ public:
+  IndexExpr() = default;
+  IndexExpr(const IndexExpr& other) : Expr(other.ptr()) {}
+  IndexExpr(IrNode* p) : Expr(p) {}            // NOLINT
+  IndexExpr(const Expr& expr) : Expr(expr) {}  // NOLINT
+
+  explicit IndexExpr(int32_t x) : Expr(x) {}
+  explicit IndexExpr(int64_t x) : Expr(x) {}
+
+  IndexExpr& operator=(const IndexExpr& other);
+
+#define DEFINE_OPERATOR(op)               \
+  IndexExpr operator op(int64_t v) const; \
+  IndexExpr operator op(int32_t v) const; \
+  IndexExpr operator op(IndexExpr other) const;
+
+  DEFINE_OPERATOR(+)
+  DEFINE_OPERATOR(-)
+  DEFINE_OPERATOR(*)
+  DEFINE_OPERATOR(/)
+  DEFINE_OPERATOR(%)
+
+#undef DEFINE_OPERATOR
+};
+
 /**
  * \brief IterMark is a special ExprNode, which can be used to mark ther entire
  * ierator. source is a IterSum or iterator. extent is the extent of the
@@ -1024,10 +1050,10 @@ struct IterMark : public ExprNode<IterMark> {
   }
   IterMark& operator=(const IterMark& other);
 
-  static Expr Make(const Expr& source, const Expr& extent);
+  static Expr Make(const Expr& source, const IndexExpr& extent);
   Type type() const { return source.type(); }
   Expr source;
-  Expr extent;
+  IndexExpr extent;
   static const IrNodeTy _node_type_ = IrNodeTy::IterMark;
 };
 
@@ -1049,17 +1075,17 @@ struct IterSplit : public ExprNode<IterSplit> {
   IterSplit& operator=(const IterSplit& other);
 
   static Expr Make(const Expr& source,
-                   const Expr& lower_factor,
-                   const Expr& extent,
-                   const Expr& scale);
-  static Expr Make(const Expr& source, const Expr& scale);
+                   const IndexExpr& lower_factor,
+                   const IndexExpr& extent,
+                   const IndexExpr& scale);
+  static Expr Make(const Expr& source, const IndexExpr& scale);
   static Expr Make(const Expr& source);
 
   Type type() const { return source.type(); }
   Expr source;
-  Expr lower_factor;
-  Expr extent;
-  Expr scale;
+  IndexExpr lower_factor;
+  IndexExpr extent;
+  IndexExpr scale;
   static const IrNodeTy _node_type_ = IrNodeTy::IterSplit;
 };
 
@@ -1070,10 +1096,10 @@ struct IterSplit : public ExprNode<IterSplit> {
 struct IterSum : public ExprNode<IterSum> {
  public:
   IterSum() = default;
-  static Expr Make(const std::vector<Expr>& args, const Expr& base);
+  static Expr Make(const std::vector<Expr>& args, const IndexExpr& base);
   Type type() const { return base.type(); }
   std::vector<Expr> args;
-  Expr base;
+  IndexExpr base;
   static const IrNodeTy _node_type_ = IrNodeTy::IterSum;
 };
 

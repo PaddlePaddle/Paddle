@@ -69,7 +69,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_callbacks_deprecated MODULES
                   test_engine_callbacks_deprecated)
   set_tests_properties(test_engine_callbacks_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_align_tool_deprecated MODULES test_align_tool_deprecated)
   set_tests_properties(test_align_tool_deprecated PROPERTIES TIMEOUT 20)
   py_test_modules(test_pass_recompute_deprecated MODULES

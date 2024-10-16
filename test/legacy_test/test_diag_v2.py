@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestDiagV2Op(OpTest):
@@ -90,7 +89,7 @@ class TestDiagV2OpCase4(TestDiagV2Op):
 
 
 class TestDiagV2Error(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         main = static.Program()
@@ -204,7 +203,6 @@ class TestDiagV2API(unittest.TestCase):
         y = paddle.diag(x, offset=-1)
         np.testing.assert_allclose(y.numpy(), self.expected12, rtol=1e-05)
 
-    @test_with_pir_api
     def run_static(self, use_gpu=False):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):

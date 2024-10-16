@@ -27,6 +27,7 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
 
@@ -319,6 +320,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(ExtendedTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorBase);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SelectedRows);
@@ -339,6 +341,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(TensorArray);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorArray);
+
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(phi::Strings);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(phi::Strings);
 
   /* Attribute Helpers */
 

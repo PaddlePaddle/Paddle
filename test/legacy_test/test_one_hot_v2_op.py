@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def one_hot_wrapper(x, depth_tensor, **keargs):
@@ -168,7 +167,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOpApi(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -197,7 +196,6 @@ class TestOneHotOpApi(unittest.TestCase):
                 return_numpy=False,
             )
 
-    @test_with_pir_api
     def test_api_with_depthTensor(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()

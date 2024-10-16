@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def test_static_layer(
@@ -124,7 +123,7 @@ def calc_softmarginloss(
 
 
 class TestSoftMarginLoss(unittest.TestCase):
-    @test_with_pir_api
+
     def test_SoftMarginLoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         types = [np.int32, np.int64, np.float32, np.float64]

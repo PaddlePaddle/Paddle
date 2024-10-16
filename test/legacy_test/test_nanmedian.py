@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(102)
 
@@ -161,7 +160,6 @@ class TestNanmedianModeMin(unittest.TestCase):
             [0, 2, 1, 3],
         ]
 
-    @test_with_pir_api
     def test_api_static(self):
         data = self.fake_data["col_nan_odd"]
         paddle.enable_static()
@@ -417,7 +415,6 @@ class TestNanmedianModeMean(unittest.TestCase):
             [0, 2, 1, 3],
         ]
 
-    @test_with_pir_api
     def test_api_static(self):
         data = self.fake_data["col_nan_odd"]
         paddle.enable_static()

@@ -247,6 +247,11 @@ std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(p));
+    if (p == phi::AllocationType::CUSTOM) {
+      op_desc->SetAttr("place_device_id", in_t.place().GetDeviceId());
+      op_desc->SetAttr("place_device_type", in_t.place().GetDeviceType());
+    }
+
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
   }
@@ -264,6 +269,10 @@ std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(p));
+    if (p == phi::AllocationType::CUSTOM) {
+      op_desc->SetAttr("place_device_id", param.place().GetDeviceId());
+      op_desc->SetAttr("place_device_type", param.place().GetDeviceType());
+    }
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
 
@@ -344,6 +353,11 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
       // TODO(phlrain) : using tensor dtype
       op_desc->SetAttr("dtype", 0);
       op_desc->SetAttr("place", static_cast<int>(p));
+      if (p == phi::AllocationType::CUSTOM) {
+        op_desc->SetAttr("place_device_id", tensor.place().GetDeviceId());
+        op_desc->SetAttr("place_device_type", tensor.place().GetDeviceType());
+      }
+
       op_desc->SetAttr("name", var_name);
       op_desc->SetOutput("out", {var_name});
     }

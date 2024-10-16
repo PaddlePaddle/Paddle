@@ -495,7 +495,8 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaTensor* residual_out,
                              MetaTensor* mean,
-                             MetaTensor* variance);
+                             MetaTensor* variance,
+                             MetaConfig config = MetaConfig());
 
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,

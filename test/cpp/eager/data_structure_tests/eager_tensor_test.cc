@@ -356,12 +356,12 @@ TEST(EagerVariable, DataLayout) {
 TEST(VariableCompatTensor, MemberFunction) {
   egr::VariableCompatTensor var_tensor;
   // test GetMutable and Get
-  var_tensor.GetMutable<paddle::framework::Vocab>();
-  auto& vocab = var_tensor.Get<paddle::framework::Vocab>();
+  var_tensor.GetMutable<phi::Vocab>();
+  auto& vocab = var_tensor.Get<phi::Vocab>();
   EXPECT_EQ(vocab.size(), 0UL);
   bool caught_exception = false;
   try {
-    var_tensor.GetMutable<paddle::framework::Strings>();
+    var_tensor.GetMutable<phi::Strings>();
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -369,7 +369,7 @@ TEST(VariableCompatTensor, MemberFunction) {
   }
   EXPECT_TRUE(caught_exception);
   // test Type and IsType
-  EXPECT_TRUE(var_tensor.IsType<paddle::framework::Vocab>());
+  EXPECT_TRUE(var_tensor.IsType<phi::Vocab>());
   EXPECT_EQ(var_tensor.Type(),
             static_cast<int>(paddle::framework::proto::VarType::VOCAB));
   // test valid and initialized

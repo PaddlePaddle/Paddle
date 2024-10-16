@@ -87,6 +87,10 @@ def divide_net(x, y):
     return x / y
 
 
+def dot_net(x, y):
+    return paddle.dot(x, y)
+
+
 def dropout_net1(x):
     return paddle.nn.functional.dropout(
         x, training=False, mode='downscale_in_infer'
@@ -733,6 +737,38 @@ class TestPrimDivideWithGrad11(TestPrimTwoWithGrad):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = divide_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimDotWithGrad1(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.dot_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200]
+        self.init_x_shape = [None, None]
+        self.y_shape = [30, 200]
+        self.init_y_shape = [None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = dot_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimDotWithGrad2(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.dot_grad"
+        self.dtype = "float32"
+        self.x_shape = [200]
+        self.init_x_shape = [None]
+        self.y_shape = [200]
+        self.init_y_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = dot_net
         self.enable_cinn = False
         self.tol = 1e-5
 

@@ -20,7 +20,6 @@ import paddle
 from paddle import base
 from paddle.base import core, in_pir_mode
 from paddle.base.framework import IrGraph, Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 from paddle.static.quantization import QuantizationTransformPass
 
 paddle.enable_static()
@@ -77,7 +76,6 @@ class TestQuantizationSubGraph(unittest.TestCase):
         # be destructed and the sub_graphs will be empty.
         return graph, all_sub_graphs
 
-    @test_with_pir_api
     def test_quant_sub_graphs(self, use_cuda=False):
         graph, sub_graphs = self.build_graph_with_sub_graph()
         place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()

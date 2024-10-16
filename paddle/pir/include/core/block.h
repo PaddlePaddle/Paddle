@@ -198,6 +198,8 @@ class IR_API Block {
   Region *parent_;     // not owned
 };
 
+std::ostream &operator<<(std::ostream &os, const Block &block);
+
 template <class TypeIter>
 void Block::AddArgs(TypeIter first, TypeIter last) {
   while (first != last) {

@@ -18,6 +18,8 @@ import sys
 import tempfile
 import unittest
 
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 
 class TestEngineAPI(unittest.TestCase):
     def test_engine_api(self):

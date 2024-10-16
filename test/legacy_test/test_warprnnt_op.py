@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import _C_ops
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -250,7 +249,7 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
 
 
 class TestWarpRNNTOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

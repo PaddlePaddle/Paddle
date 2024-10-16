@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base, nn
 from paddle.base.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 LOOKAHEAD_K = 5
 LOOKAHEAD_ALPHA = 0.2
@@ -27,7 +26,7 @@ SGD_LR = 1.0
 
 
 class TestLookAhead(unittest.TestCase):
-    @test_with_pir_api
+
     def test_lookahead_static(self):
         paddle.enable_static()
         place = base.CPUPlace()

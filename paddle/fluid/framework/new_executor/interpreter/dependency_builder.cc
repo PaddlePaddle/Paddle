@@ -607,7 +607,7 @@ void PirDependencyBuilder::AddDependencyForCommunicationOp() {
   // c_allreduce_sum(b)
   // c_allreduce_sum(c)
   // c_sync_comm_stream(a)
-  const std::string kSyncComm = dialect::CSyncCommStreamOp::name();
+  const std::string kSyncComm = dialect::SyncCommStreamOp::name();
   dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_.at(op_idx)->Name() == kSyncComm) {

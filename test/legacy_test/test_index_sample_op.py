@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestIndexSampleOp(OpTest):
@@ -200,7 +199,7 @@ class TestIndexSampleBF16Op(OpTest):
 
 
 class TestIndexSampleShape(unittest.TestCase):
-    @test_with_pir_api
+
     def test_shape(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

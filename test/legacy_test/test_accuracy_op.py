@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 def accuracy_wrapper(infer, indices, label):
@@ -171,7 +170,6 @@ class TestAccuracyAPI1(unittest.TestCase):
                 )
                 self.assertEqual((result == self.expect_value).all(), True)
 
-    @test_with_pir_api
     def test_api(self):
         self.run_api(accuracy_api=paddle.static.accuracy)
         self.run_api(accuracy_api=paddle.metric.accuracy)

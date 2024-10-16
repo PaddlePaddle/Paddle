@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #ifdef PADDLE_WITH_NCCL
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif

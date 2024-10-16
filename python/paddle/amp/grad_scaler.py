@@ -238,7 +238,19 @@ class AmpScaler:
                 var = var.astype('float32')
             if not self._use_dynamic_loss_scaling:
                 return var
-            return var * self._scale
+            scale_out = paddle._C_ops.multiply(var, self._scale)
+            multiply_op = scale_out.get_defining_op()
+            src_var_op = var.get_defining_op()
+            if multiply_op.dist_attr and src_var_op.dist_attr:
+                multiply_op.dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        multiply_op.dist_attr.process_mesh,
+                        multiply_op.dist_attr.operands(),
+                        multiply_op.dist_attr.results(),
+                        src_var_op.dist_attr.chunk_id,
+                    )
+                )
+            return scale_out
 
         # NOTE(lizhiyu): We hack here to avoid changing the `dist_attr` of `self._scale` of 'no-calculation-rank'
         if not self._enable or not var._is_initialized():

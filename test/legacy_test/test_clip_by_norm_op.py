@@ -22,7 +22,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle.base import core
 from paddle.nn import clip
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestClipByNormOp(OpTest):
@@ -188,7 +187,6 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
             equal_nan=False,
         )
 
-    @test_with_pir_api
     def test_clip_by_norm_with_selected_ros(self):
         places = []
         if (

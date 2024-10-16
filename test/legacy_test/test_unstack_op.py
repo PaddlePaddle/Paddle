@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestUnStackOpBase(OpTest):
@@ -236,7 +235,7 @@ class TestUnStackBF16Op(OpTest):
 
 
 class TestUnstackZeroInputOp(unittest.TestCase):
-    @test_with_pir_api
+
     def unstack_zero_input_static(self):
         paddle.enable_static()
 

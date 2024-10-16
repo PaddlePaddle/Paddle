@@ -69,6 +69,7 @@ SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
 
   TensorDistAttr output_attr =
       CopyTensorDistAttrForOutput(input_attrs[non_empty_index]);
+  output_attr.set_partial_status(input_attrs[non_empty_index].partial_status());
   std::vector<int64_t> dim_mapping(ndim + 1, -1);
   const auto& input_dim_mapping = input_attrs[non_empty_index].dims_mapping();
   for (size_t i = 0; i < ndim; i++) {

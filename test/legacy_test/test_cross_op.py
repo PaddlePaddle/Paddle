@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestCrossOp(OpTest):
@@ -172,7 +171,6 @@ class TestCrossAPI(unittest.TestCase):
             [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
         ).astype('float32')
 
-    @test_with_pir_api
     def test_cross_api(self):
         self.input_data()
 

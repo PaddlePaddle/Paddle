@@ -22,7 +22,6 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def instance_norm_wrapper(
@@ -159,7 +158,6 @@ class TestInstanceNorm(unittest.TestCase):
             y2 = compute_v2(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         with static_guard():
             places = []

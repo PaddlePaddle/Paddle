@@ -27,7 +27,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle.base.dygraph as dg
 from paddle import static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -99,7 +98,6 @@ class TestComplexConjOp(unittest.TestCase):
                     target = np.conj(input)
                     np.testing.assert_array_equal(result, target)
 
-    @test_with_pir_api
     def test_conj_static_mode(self):
         def init_input_output(dtype):
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
@@ -135,7 +133,7 @@ class TestComplexConjOp(unittest.TestCase):
 
 
 class Testfp16ConjOp(unittest.TestCase):
-    @test_with_pir_api
+
     def testfp16(self):
         if paddle.is_compiled_with_cuda():
             input_x = (

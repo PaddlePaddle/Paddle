@@ -19,7 +19,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -372,7 +371,7 @@ class TestWithDouble(TestModulatedDeformableConvOp):
 
 
 class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error_api(self):
         def test_invalid_input():
             paddle.enable_static()
@@ -446,7 +445,7 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
 
 class TestDeformConv2DAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         def test_deform_conv2d_v1():
             paddle.enable_static()

@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 os.environ['FLAGS_new_einsum'] = "1"
 
@@ -466,7 +465,6 @@ class TestNumpyTests(unittest.TestCase):
         self.check_output("i,ij->", y, x)
         self.check_output("ij,i->", x, y)
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         base = paddle.base
@@ -525,7 +523,6 @@ class TestStaticGraphShape(unittest.TestCase):
     def tearDown(self):
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_shape(self):
         A = paddle.static.data(name='x', shape=[-1])
         B = paddle.static.data(name='y', shape=[384])

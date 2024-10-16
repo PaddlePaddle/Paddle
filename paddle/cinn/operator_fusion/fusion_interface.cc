@@ -36,7 +36,7 @@ std::vector<ir::Expr> OperationFusion(
   }
 
   auto interpreter =
-      FusionInterpreter(fusion_tracker_ptr, initialized_lowered_op);
+      FusionInterpreter(fusion_tracker_ptr, ops, initialized_lowered_op);
   auto output = interpreter.Run();
 
   VLOG(4) << "Fusion Result: output size is " << output.size();

@@ -25,4 +25,5 @@ PD_REGISTER_KERNEL(flatten2,
                    uint8_t,
                    int,
                    int8_t,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}

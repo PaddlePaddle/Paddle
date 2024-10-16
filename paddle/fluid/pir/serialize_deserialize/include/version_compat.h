@@ -34,9 +34,11 @@ class PatchBuilder {
   PatchBuilder& operator=(const PatchBuilder&) = delete;
   PatchBuilder& operator=(PatchBuilder&&);
 
-  void IR_API BuildPatch(const std::string& path,
-                         uint64_t pir_version,
-                         uint64_t max_version);
+  /* Patch patch is set to empty by default. It is only used for testing.
+   */
+  void IR_API BuildPatch(uint64_t pir_version,
+                         uint64_t max_version,
+                         const std::string& path = "");
   /* If file_version != pir_vefrsion, set file_version for finding patch yamls.
    */
   void SetFileVersion(const uint64_t version) { file_version_ = version; }

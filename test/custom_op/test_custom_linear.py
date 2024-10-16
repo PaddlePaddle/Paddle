@@ -21,7 +21,6 @@ from utils import check_output, extra_cc_args, extra_nvcc_args, paddle_includes
 import paddle
 import paddle.nn.functional as F
 from paddle import static
-from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -119,7 +118,6 @@ class TestCustomLinearJit(unittest.TestCase):
         self.np_weight = np.full([2, 4], fill_value=0.5, dtype="float32")
         self.np_bias = np.ones([4], dtype="float32")
 
-    @test_with_pir_api
     def test_static(self):
         for device in self.devices:
             for dtype in self.dtypes:

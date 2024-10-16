@@ -17,7 +17,6 @@ import warnings
 
 import paddle
 from paddle.base import core, in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -93,7 +92,6 @@ class TestDeviceGuard(unittest.TestCase):
 
         execute(main_program, startup_program)
 
-    @test_with_pir_api
     def test_without_kernel_op(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()

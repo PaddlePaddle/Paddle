@@ -48,7 +48,7 @@ class GetKernelTypeForVarInterface
   };
 
   /// Constructor
-  GetKernelTypeForVarInterface(pir::Operation* op, Concept* impl)
+  GetKernelTypeForVarInterface(const pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<GetKernelTypeForVarInterface>(op), impl_(impl) {}
 
   phi::DataType GetKernelTypeForVar(

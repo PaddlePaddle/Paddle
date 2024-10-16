@@ -20,9 +20,9 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 
 namespace paddle {
 namespace framework {

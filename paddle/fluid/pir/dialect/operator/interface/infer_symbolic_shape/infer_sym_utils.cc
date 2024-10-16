@@ -260,4 +260,39 @@ std::vector<symbol::DimExpr> GetSymShapeForInputValue(
 bool IsFakeValue(const pir::Value &value) {
   return value.impl() == nullptr || value.type() == pir::Type();
 }
+
+bool GetAxisFromOpInput(pir::Value in_value,
+                        pir::InferSymbolicShapeContext *infer_context,
+                        std::vector<int64_t> *axis) {
+  auto axis_gen_op = in_value.defining_op();
+  if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
+    std::vector<int64_t> tmp = details::GetVectorAttr(
+        axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+
+    axis->swap(tmp);
+
+    return true;
+  } else {
+    auto axis_shape_or_data = infer_context->GetShapeOrDataForValue(in_value);
+    std::vector<symbol::DimExpr> dims;
+    if (!axis_shape_or_data.data().has_value()) {
+      return false;
+    }
+    auto dim_exprs = axis_shape_or_data.data().value();
+
+    std::vector<int64_t> tmp_axis;
+    tmp_axis.reserve(dim_exprs.size());
+    for (auto dim : dim_exprs) {
+      if (dim.isa<int64_t>()) {
+        tmp_axis.push_back(dim.Get<int64_t>());
+      } else {
+        return false;
+      }
+    }
+
+    axis->swap(tmp_axis);
+
+    return true;
+  }
+}
 }  // namespace paddle::dialect::details

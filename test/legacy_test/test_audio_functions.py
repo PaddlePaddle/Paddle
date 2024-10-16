@@ -21,7 +21,6 @@ from scipy import signal
 
 import paddle
 import paddle.audio
-from paddle.pir_utils import test_with_pir_api
 
 
 def parameterize(*params):
@@ -91,7 +90,6 @@ class TestAudioFuncitons(unittest.TestCase):
         )
 
     @parameterize([1.0, 3.0, 9.0, 25.0], [True, False])
-    @test_with_pir_api
     def test_audio_function_static(self, val: float, htk_flag: bool):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -160,7 +158,7 @@ class TestAudioFuncitons(unittest.TestCase):
         [64, 128, 256], [0.0, 0.5, 1.0], [10000, 11025], [False, True]
     )
     # TODO(MarioLulab) May cause precision error. Fix it soon
-    @test_with_pir_api
+
     def test_audio_function_mel_static(
         self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
     ):
@@ -259,6 +257,7 @@ class TestAudioFuncitons(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             window_scipy_exp, window_paddle_exp.numpy(), decimal=5
         )
+
         try:
             window_paddle = paddle.audio.functional.get_window("hann", -1)
         except ValueError:
@@ -292,7 +291,14 @@ class TestAudioFuncitons(unittest.TestCase):
         np.testing.assert_array_almost_equal(librosa_dct, paddle_dct, decimal=5)
 
     @parameterize(
-        [128, 256, 512], ["hamming", "hann", "triang", "bohman"], [True, False]
+        [128, 256, 512],
+        [
+            "hamming",
+            "hann",
+            "triang",
+            "bohman",
+        ],
+        [True, False],
     )
     def test_stft_and_spect(
         self, n_fft: int, window_str: str, center_flag: bool
@@ -347,7 +353,14 @@ class TestAudioFuncitons(unittest.TestCase):
         )
 
     @parameterize(
-        [128, 256, 512], [64, 82], ["hamming", "hann", "triang", "bohman"]
+        [128, 256, 512],
+        [64, 82],
+        [
+            "hamming",
+            "hann",
+            "triang",
+            "bohman",
+        ],
     )
     def test_istft(self, n_fft: int, hop_length: int, window_str: str):
         if len(self.waveform.shape) == 2:  # (C, T)

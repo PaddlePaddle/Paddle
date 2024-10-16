@@ -29,6 +29,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace pir {
@@ -66,6 +67,10 @@ class AttrTypeReader {
   static pir::Attribute ReadPaddleDistAttr(const std::string attr_name,
                                            Json* attr_json,
                                            pir::IrContext* ctx);
+
+  static pir::Type ReadControlFlowType(const std::string type_name,
+                                       Json* type_json,
+                                       pir::IrContext* ctx);
 };
 
 template <typename T>
@@ -237,6 +242,9 @@ pir::Type parseType(Json* type_json) {
   } else if (DECOMPRESS_DIALECT_ID(name.first) ==
              paddle::dialect::DistDialect::name()) {
     return AttrTypeReader::ReadPaddleDistType(name.second, type_json, ctx);
+  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
+             pir::ControlFlowDialect::name()) {
+    return AttrTypeReader::ReadControlFlowType(name.second, type_json, ctx);
   } else {
     PADDLE_ENFORCE(
         false,
@@ -691,6 +699,27 @@ pir::Type AttrTypeReader::ReadPaddleDistType(const std::string type_name,
                    common::errors::InvalidArgument(
                        "Unknown Type %s for parse paddleoperator dialect type",
                        type_name));
+    return pir::Type();
+  }
+}
+
+pir::Type AttrTypeReader::ReadControlFlowType(const std::string type_name,
+                                              Json* type_json,
+                                              pir::IrContext* ctx) {
+  if (type_name == pir::StackType::name()) {
+    VLOG(8) << "Parse StackType ... ";
+    return pir::deserializeTypeFromJson<pir::StackType>(type_json, ctx);
+  } else if (type_name == pir::InletType::name()) {
+    VLOG(8) << "Parse InletType ... ";
+    return pir::deserializeTypeFromJson<pir::InletType>(type_json, ctx);
+  } else if (type_name == pir::OutletType::name()) {
+    VLOG(8) << "Parse OutletType ... ";
+    return pir::deserializeTypeFromJson<pir::OutletType>(type_json, ctx);
+  } else {
+    PADDLE_ENFORCE(
+        false,
+        common::errors::InvalidArgument(
+            "Unknown Type %s for parse controlflow dialect type", type_name));
     return pir::Type();
   }
 }

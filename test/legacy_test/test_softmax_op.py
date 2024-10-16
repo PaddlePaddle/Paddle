@@ -22,7 +22,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -534,7 +533,6 @@ class TestSoftmaxAPI(unittest.TestCase):
     def executed_api(self):
         self.softmax = F.softmax
 
-    @test_with_pir_api
     def test_static_check(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -579,7 +577,6 @@ class TestSoftmaxAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_error(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -615,7 +612,6 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static(self):
         with static_guard():
             main_prog = base.Program()

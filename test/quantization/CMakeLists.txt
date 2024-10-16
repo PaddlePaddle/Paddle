@@ -299,9 +299,6 @@ if(LINUX AND WITH_ONEDNN)
   download_quant_model(
     ${QUANT_MOBILENETV1_MODEL_DIR} ${QUANT_MOBILENETV1_MODEL_ARCHIVE}
     3b774d94a9fcbb604d09bdb731fc1162)
-  inference_quant_int8_image_classification_test(
-    test_quant_int8_mobilenetv1_mkldnn ${QUANT_MOBILENETV1_MODEL_DIR}/model
-    ${IMAGENET_DATA_PATH})
 
   # Quant MobileNetV2
   set(QUANT_MOBILENETV2_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV2_quant")
@@ -343,10 +340,6 @@ if(LINUX AND WITH_ONEDNN)
     ${QUANT2_RESNET50_MODEL_DIR} ${QUANT2_RESNET50_MODEL_ARCHIVE}
     e87309457e8c462a579340607f064d66)
   set(FP32_RESNET50_MODEL_DIR "${INT8_INSTALL_DIR}/resnet50")
-  inference_quant2_int8_image_classification_test(
-    test_quant2_int8_resnet50_mkldnn
-    ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float
-    ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
   # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max`
   # operators and the `out_threshold` attributes,
@@ -357,10 +350,6 @@ if(LINUX AND WITH_ONEDNN)
   download_quant_model(
     ${QUANT2_RESNET50_RANGE_MODEL_DIR} ${QUANT2_RESNET50_RANGE_MODEL_ARCHIVE}
     2fdc8a139f041c0d270abec826b2d304)
-  inference_quant2_int8_image_classification_test(
-    test_quant2_int8_resnet50_range_mkldnn
-    ${QUANT2_RESNET50_RANGE_MODEL_DIR}/ResNet50_qat_range
-    ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
   # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max`
   # operators and the `out_threshold` attributes,
@@ -373,10 +362,6 @@ if(LINUX AND WITH_ONEDNN)
     ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}
     ${QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE}
     887a1b1b0e9a4efd10f263a43764db26)
-  inference_quant2_int8_image_classification_test(
-    test_quant2_int8_resnet50_channelwise_mkldnn
-    ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise
-    ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
   # Quant2 MobileNetV1
   set(QUANT2_MOBILENETV1_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV1_quant2")
@@ -385,10 +370,6 @@ if(LINUX AND WITH_ONEDNN)
     ${QUANT2_MOBILENETV1_MODEL_DIR} ${QUANT2_MOBILENETV1_MODEL_ARCHIVE}
     7f626e453db2d56fed6c2538621ffacf)
   set(FP32_MOBILENETV1_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv1")
-  inference_quant2_int8_image_classification_test(
-    test_quant2_int8_mobilenetv1_mkldnn
-    ${QUANT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf/float
-    ${FP32_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
   ### Quant2 for NLP
 
@@ -409,10 +390,6 @@ if(LINUX AND WITH_ONEDNN)
   download_quant_fp32_model(${FP32_ERNIE_MODEL_DIR} ${FP32_ERNIE_MODEL_ARCHIVE}
                             114f38804a3ef8c45e7259e68bbd838b)
   set(QUANT2_ERNIE_OPS_TO_QUANTIZE "fused_matmul,matmul,matmul_v2,slice")
-  inference_quant2_int8_nlp_test(
-    test_quant2_int8_ernie_mkldnn ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float
-    ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH}
-    ${NLP_LABELS_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
 
   # Quant2 GRU
   set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
@@ -427,9 +404,6 @@ if(LINUX AND WITH_ONEDNN)
   # Convert Quant2 model to dot and pdf files
   set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH
       "${QUANT_INSTALL_DIR}/Ernie_quant2_int8_dot_file")
-  convert_model2dot_test(
-    convert_model2dot_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float
-    ${QUANT2_INT8_ERNIE_DOT_SAVE_PATH} "Ernie_quant2_int8")
 
   ### PTQ INT8
 
@@ -501,21 +475,10 @@ set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 if(LINUX AND WITH_ONEDNN)
-  set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
-                                                                      120)
-  set_tests_properties(convert_model2dot_ernie PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant2_int8_resnet50_channelwise_mkldnn
-                       PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant_int8_mobilenetv2_mkldnn PROPERTIES TIMEOUT
                                                                      120)
-  set_tests_properties(test_quant2_int8_resnet50_range_mkldnn PROPERTIES TIMEOUT
-                                                                         120)
   set_tests_properties(test_quant_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
-                                                                     120)
-  set_tests_properties(test_quant2_int8_ernie_mkldnn PROPERTIES TIMEOUT 120)
   #set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
 endif()
 

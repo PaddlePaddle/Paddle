@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/fusion.h"
-#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 
 namespace paddle {
 namespace operators {

@@ -21,7 +21,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestInverseOp(OpTest):
@@ -153,7 +152,6 @@ class TestInverseAPI(unittest.TestCase):
                 fetches[0], np.linalg.inv(input_np), rtol=1e-05
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -223,7 +221,6 @@ class TestInverseSingularAPI(unittest.TestCase):
             except ValueError as ex:
                 print("The mat is singular")
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

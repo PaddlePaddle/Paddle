@@ -27,8 +27,8 @@ limitations under the License. */
 #endif
 #include "io/fs.h"
 #include "paddle/common/enforce.h"
-#include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/monitor.h"
+#include "paddle/phi/core/platform/timer.h"
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
 COMMON_DECLARE_bool(enable_ins_parser_file);

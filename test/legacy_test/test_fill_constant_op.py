@@ -25,7 +25,6 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def fill_wrapper(shape, value=0.0):
@@ -290,7 +289,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         paddle.enable_static()
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
@@ -429,7 +428,7 @@ class TestFillConstantImperative(unittest.TestCase):
 
 
 class TestFillConstantOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors1(self):
         with paddle_static_guard(), paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

@@ -25,7 +25,6 @@ from utils import (
 
 import paddle
 from paddle import static
-from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -102,7 +101,6 @@ class TestCustomCastOp(unittest.TestCase):
     def setUp(self):
         self.dtypes = ['float32', 'float64']
 
-    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
             x = np.random.uniform(-1, 1, [4, 8]).astype("float32")

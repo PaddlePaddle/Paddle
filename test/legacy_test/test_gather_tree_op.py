@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestGatherTreeOp(OpTest):
@@ -56,7 +55,7 @@ class TestGatherTreeOp(OpTest):
 
 
 class TestGatherTreeOpAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case(self):
         paddle.enable_static()
         ids = paddle.static.data(name='ids', shape=[5, 2, 2], dtype='int64')
@@ -79,7 +78,7 @@ class TestGatherTreeOpAPI(unittest.TestCase):
 
 
 class TestGatherTreeOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):

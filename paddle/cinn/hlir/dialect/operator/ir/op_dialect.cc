@@ -91,15 +91,15 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
   }
 }
 
-pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation *op) const {
-  if (auto group_op = op->dyn_cast<GroupOp>()) {
-    return [](pir::Operation *op, pir::IrPrinter &printer) {
-      auto group_op = op->dyn_cast<GroupOp>();
+pir::OpPrintFn OperatorDialect::PrintOperation(const pir::Operation &op) const {
+  if (auto group_op = op.dyn_cast<GroupOp>()) {
+    return [](const pir::Operation &op, pir::IrPrinter &printer) {
+      auto group_op = op.dyn_cast<GroupOp>();
       group_op.Print(printer);
     };
-  } else if (auto fusion_op = op->dyn_cast<FusionOp>()) {
-    return [](pir::Operation *op, pir::IrPrinter &printer) {
-      auto fusion_op = op->dyn_cast<FusionOp>();
+  } else if (auto fusion_op = op.dyn_cast<FusionOp>()) {
+    return [](const pir::Operation &op, pir::IrPrinter &printer) {
+      auto fusion_op = op.dyn_cast<FusionOp>();
       fusion_op.Print(printer);
     };
   }

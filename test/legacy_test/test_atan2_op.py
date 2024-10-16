@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 np.random.seed(0)
@@ -118,7 +117,6 @@ class TestAtan2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
@@ -192,7 +190,7 @@ class TestAtan2BF16OP(OpTest):
 
 
 class TestAtan2Error(unittest.TestCase):
-    @test_with_pir_api
+
     def test_mismatch(self):
         paddle.enable_static()
 

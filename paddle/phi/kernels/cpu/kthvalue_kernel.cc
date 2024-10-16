@@ -91,7 +91,7 @@ void KthvalueKernel(const Context& dev_ctx,
                       1,
                       common::errors::InvalidArgument(
                           "the k in the kthvalue must less equal than the "
-                          "elemenents number of the input X, but received %d .",
+                          "elements number of the input X, but received %d .",
                           k));
 
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);

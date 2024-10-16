@@ -72,7 +72,7 @@
   args : (Tensor x, int64_t[] axis, bool keepdim, DataType dtype=DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMeta
+    func : ReduceSumInferMeta
     param : [x, axis, keepdim]
   kernel :
     func : frobenius_norm

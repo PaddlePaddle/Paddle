@@ -22,7 +22,6 @@ from paddle import base
 from paddle.base import core
 
 # rename this function, or `pytest` will treat it as a fixture
-from paddle.pir_utils import test_with_pir_api as _test_with_pir_api
 
 
 class TestAlphaDropoutFunctionAPI(unittest.TestCase):
@@ -38,7 +37,6 @@ class TestAlphaDropoutFunctionAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @_test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -129,7 +127,7 @@ class TestAlphaDropoutFunctionAPI(unittest.TestCase):
 
 
 class TestAlphaDropoutFunctionAPIError(unittest.TestCase):
-    @_test_with_pir_api
+
     def test_input_type_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -144,7 +142,6 @@ class TestAlphaDropoutFunctionAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-    @_test_with_pir_api
     def test_input_dtype_errors(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -237,8 +234,8 @@ class TestAlphaDropoutClassAPI(unittest.TestCase):
                 self.assertTrue(grad.shape == input.shape)
                 self.assertTrue((grad == 1).all())
 
-    @_test_with_pir_api
     def test_static_fp16_gpu(self):
+        paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
@@ -262,8 +259,8 @@ class TestAlphaDropoutClassAPI(unittest.TestCase):
 
                 np.testing.assert_allclose(res[0], input, rtol=1e-05)
 
-    @_test_with_pir_api
     def test_static_bfp16_gpu(self):
+        paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
@@ -301,7 +298,6 @@ class TestFeatureAlphaDropoutFunctionAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @_test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -427,7 +423,6 @@ class TestFeatureAlphaDropoutFunctionAPIError(unittest.TestCase):
                         x=input, p=0.0
                     )
 
-    @_test_with_pir_api
     def test_input_type_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -442,7 +437,6 @@ class TestFeatureAlphaDropoutFunctionAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-    @_test_with_pir_api
     def test_input_dtype_errors(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -535,7 +529,6 @@ class TestFeatureAlphaDropoutClassAPI(unittest.TestCase):
                 self.assertTrue(grad.shape == input.shape)
                 self.assertTrue((grad == 1).all())
 
-    @_test_with_pir_api
     def test_static_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -560,7 +553,6 @@ class TestFeatureAlphaDropoutClassAPI(unittest.TestCase):
 
                 np.testing.assert_allclose(res[0], input, rtol=1e-05)
 
-    @_test_with_pir_api
     def test_static_bfp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)

@@ -43,19 +43,8 @@ class CodeGenInvokeModule : public CodeGenLLVM {
     return LowerInvokeFunc(func);
   }
 
-  llvm::Value *Visit(const ir::Call *op) override {
-    // TODO(Hongqing-work): change intrinsic name to get_value_in_kernel_args
-    if (op->name == runtime::intrinsic::get_value_in_cuda_kernel_args) {
-      return LowerParseArgsValueCall(op);
-    } else {
-      return CodeGenLLVM::Visit(op);
-    }
-  }
-
  protected:
   llvm::Value *LowerInvokeFunc(const ir::_LoweredFunc_ *func);
-
-  llvm::Value *LowerParseArgsValueCall(const ir::Call *call_ir);
 };
 
 class CodeGenHost : public CodeGenInvokeModule {
@@ -80,7 +69,7 @@ class CodeGenSwitchHost : public CodeGenInvokeModule {
   // only support call of args get function and inner case host function call
   llvm::Value *Visit(const ir::Call *op) override {
     if (op->name == runtime::intrinsic::get_value_in_cuda_kernel_args) {
-      return CodeGenInvokeModule::LowerParseArgsValueCall(op);
+      return CodeGenLLVM::Visit(op);
     } else {
       return LowerInnerCaseCall(op);
     }

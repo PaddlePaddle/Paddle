@@ -20,7 +20,6 @@
 import unittest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 unary_api_list = [
     paddle.nn.functional.elu,
@@ -137,7 +136,6 @@ class TestUnaryAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static_unary(self):
         paddle.enable_static()
 

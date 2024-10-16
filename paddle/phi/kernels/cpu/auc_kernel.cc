@@ -163,7 +163,7 @@ void AucKernel(const Context &dev_ctx,
   auto *origin_stat_neg = dev_ctx.template Alloc<int64_t>(stat_neg_out);
   auto *auc_value = dev_ctx.template Alloc<double>(auc);
 
-  // Just for pass UT, since UT's input & output connot be set same var
+  // Just for pass UT, since UT's input & output cannot be set same var
   auto *stat_pos_in_tensor = &stat_pos;
   auto *stat_neg_in_tensor = &stat_neg;
   auto *pos_in_data = stat_pos.data<int64_t>();

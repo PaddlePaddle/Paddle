@@ -35,7 +35,7 @@ int64_t get_reduction_mode(const std::string& reduce) {
     return 5;
   } else {
     PADDLE_THROW(errors::InvalidArgument(
-        "can not support reduce: '%s' for scatter kernel, only "
+        "can not support reduce: '%s' for put_along_axis kernel, only "
         "support reduce op: 'add', 'assign', 'mul', 'mean', 'amin', 'amax' and "
         "'multiply', the "
         "default reduce "
@@ -95,34 +95,34 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         value.dims().size()));
 
   if (index_dtype == DataType::INT32) {
-    int ret =
-        xpu::put_along_axis(dev_ctx.x_context(),
-                            reinterpret_cast<const XPUType*>(x.data<T>()),
-                            reinterpret_cast<const XPUType*>(value.data<T>()),
-                            index.data<int32_t>(),
-                            reinterpret_cast<XPUType*>(out->data<T>()),
-                            x_shape,
-                            value_shape,
-                            index_shape,
-                            axis,
-                            reduce_mode,
-                            include_self);
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "scatter_element");
+    int ret = xpu::paddle_put_along_axis(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(value.data<T>()),
+        index.data<int32_t>(),
+        reinterpret_cast<XPUType*>(out->data<T>()),
+        x_shape,
+        value_shape,
+        index_shape,
+        axis,
+        reduce_mode,
+        include_self);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "paddle_put_along_axis");
 
   } else {
-    int ret =
-        xpu::put_along_axis(dev_ctx.x_context(),
-                            reinterpret_cast<const XPUType*>(x.data<T>()),
-                            reinterpret_cast<const XPUType*>(value.data<T>()),
-                            index.data<int64_t>(),
-                            reinterpret_cast<XPUType*>(out->data<T>()),
-                            x_shape,
-                            value_shape,
-                            index_shape,
-                            axis,
-                            reduce_mode,
-                            include_self);
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "scatter_element");
+    int ret = xpu::paddle_put_along_axis(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(value.data<T>()),
+        index.data<int64_t>(),
+        reinterpret_cast<XPUType*>(out->data<T>()),
+        x_shape,
+        value_shape,
+        index_shape,
+        axis,
+        reduce_mode,
+        include_self);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "paddle_put_along_axis");
   }
 }
 

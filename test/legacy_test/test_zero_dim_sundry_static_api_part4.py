@@ -23,7 +23,6 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 # Use to test zero-dim of Sundry API, which is unique and can not be classified
 # with others. It can be implemented here flexibly.
@@ -41,7 +40,6 @@ class TestSundryAPIStatic(unittest.TestCase):
             out_shape = out.shape
         self.assertEqual(out_shape, target_tuple)
 
-    @test_with_pir_api
     @prog_scope()
     def test_numel(self):
         # 1) x is 0D
@@ -62,7 +60,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         np.testing.assert_array_equal(res[0], np.array(15))
 
-    @test_with_pir_api
     @prog_scope()
     def test_rank(self):
         # 1) x is 0D
@@ -83,7 +80,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         np.testing.assert_array_equal(res[0], np.array(2))
 
-    @test_with_pir_api
     @prog_scope()
     def test_shape(self):
         x = paddle.full([], 0.5)
@@ -94,7 +90,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(res[0], np.array([]))
         self.assertEqual(res[0].shape, (0,))
 
-    @test_with_pir_api
     def test_broadcast_tensors(self):
         # 1) x is 0D, y is 0D
         x1 = paddle.full([], 2.0)
@@ -126,7 +121,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertShapeEqual(out1, [2, 3])
         self.assertShapeEqual(out2, [2, 3])
 
-    @test_with_pir_api
     @prog_scope()
     def test_to_tensor(self):
         out1 = paddle.to_tensor(1)
@@ -140,7 +134,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[1], 2.5)
 
-    @test_with_pir_api
     @prog_scope()
     def test_matmul(self):
         # 1) no transpose
@@ -177,7 +170,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (10,))
         self.assertEqual(res[2].shape, (10,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_slogdet(self):
         # 2-D input
@@ -206,7 +198,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (2, 3))
         self.assertEqual(res[1].shape, (3, 3, 3))
 
-    @test_with_pir_api
     @prog_scope()
     def test_multi_dot(self):
         a = paddle.randn([4])
@@ -228,7 +219,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (4, 5))
         self.assertEqual(res[3].shape, (5,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_cov(self):
         xt_1 = paddle.randn((12,))
@@ -243,7 +233,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (12,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_corrcoef(self):
         x = paddle.randn((12,))
@@ -256,7 +245,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (12,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_det(self):
         xt_1 = paddle.randn((3, 3))
@@ -272,7 +260,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 3))
 
-    @test_with_pir_api
     @prog_scope()
     def test_dist(self):
         x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
@@ -292,7 +279,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2, 2))
         np.testing.assert_array_equal(res[0], np.array(2).astype(np.float32))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_norm1(self):
         # 1D input, p = fro ,axis = None, using reduceInferMeta
@@ -308,7 +294,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_norm2(self):
         # 1D input, p = 1 ,axis = None,
@@ -325,7 +310,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_norm3(self):
         # 1D input, p = 1 ,axis = 0,
@@ -342,7 +326,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_norm4(self):
         # 1D input, p = fro ,axis = 0,
@@ -359,7 +342,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_norm5(self):
         # 2D input, p = 1, axis = [0, 1]
@@ -376,7 +358,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 6))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_norm6(self):
         # 2D input, p = 1, axis = None
@@ -394,7 +375,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 6))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_norm7(self):
         # 2D input, p = inf, axis = None
@@ -410,7 +390,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 6))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_norm8(self):
         # 2D input, p = -inf, axis = [0, 1]
@@ -426,7 +405,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 6))
 
-    @test_with_pir_api
     @prog_scope()
     def test_linalg_cond(self):
         # use paddle.sum
@@ -536,7 +514,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (2,))
         self.assertEqual(res[1].shape, (2, 4, 4))
 
-    @test_with_pir_api
     @prog_scope()
     def test_trace(self):
         x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")

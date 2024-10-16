@@ -21,7 +21,6 @@ import numpy as np
 from op_test import paddle_static_guard
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 from paddle.vision.ops import decode_jpeg, read_file
 
 
@@ -56,7 +55,6 @@ class TestReadFileWithStatic(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_with_pir_api
     def test_read_file_decode_jpeg_static(self):
         paddle.enable_static()
         if not paddle.is_compiled_with_cuda():

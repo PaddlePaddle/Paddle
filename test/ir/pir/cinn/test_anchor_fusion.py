@@ -16,6 +16,7 @@ import os
 import unittest
 
 import numpy
+import utils
 
 os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
 os.environ['FLAGS_group_schedule_tiling_first'] = '1'
@@ -49,7 +50,9 @@ class TestAnchorFusion(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def compare_result(self, dy_compute, input_spec, data_init):
+    def check_accuracy_and_kernel_num(
+        self, data_init, dy_compute, kernel_num=None, input_spec=None
+    ):
         inputs = data_init()
         dy_out = dy_compute(*inputs)
         static_compute = paddle.jit.to_static(
@@ -61,130 +64,198 @@ class TestAnchorFusion(unittest.TestCase):
         for a, b in zip(
             paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
         ):
-            numpy.testing.assert_allclose(a, b, atol=1e-5, rtol=1e-6)
+            numpy.testing.assert_allclose(a, b, atol=1e-6, rtol=1e-6)
+        if kernel_num is not None:
+            utils.check_jit_kernel_number(static_compute, kernel_num)
 
-    def test_anchor_fusion_1(self):
+    def test_identiy_iters_fusion(self):
+        #        T
+        #      / | \
+        #     /  |  \
+        #    T   T   T
+        #   / \     / \
+        #  T   T   T   T
         def func(x):
             x = x * 3
             a = x + 1
-            b = x + 2
-            return a, b
+            d = paddle.sqrt(a)
+            e = paddle.ceil(a)
+            b = x - 2
+            c = paddle.exp(x)
+            f = paddle.log(c)
+            g = paddle.sign(c)
+            return d, e, b, f, g
 
         def init():
             x = paddle.rand((32, 32, 128))
             return (x,)
 
-        self.compare_result(func, None, init)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
-    def test_anchor_fusion_2(self):
+    def test_transpose_iters_fusion(self):
+        #     Tranpose
+        #      /  \
+        #     T   Tranpose
+        #    / \
+        #   T  Tranpose
         def func(x):
-            x = x * 2
+            x = paddle.transpose(x, [2, 0, 1, 3])
             a = x + 1
-            c = paddle.sum(a, axis=-1)
-            b = x + 2
-            return b, c
-
-        def init():
-            x = paddle.ones((32, 32, 128))
-            return (x,)
-
-        self.compare_result(func, None, init)
-
-    def test_anchor_fusion_3(self):
-        def func(x):
-            x = x * 2
-            a = x + 1
-            c = paddle.sum(a, axis=-1)
-            b = x + 2
-            d = paddle.sum(b, axis=-1)
-            return c, d
-
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
-
-        self.compare_result(func, None, init)
-
-    def test_anchor_fusion_4(self):
-        def func(x):
-            m = x + 1
-            a = m + 1
-            b = m + 2
-            c = a * 2
-            d = a / 2
+            b = paddle.transpose(x, [3, 1, 0, 2])
+            c = a / 3
+            d = paddle.transpose(a, [0, 2, 3, 1])
             return b, c, d
 
         def init():
-            x = paddle.rand((32, 32, 128))
+            x = paddle.ones((16, 32, 64, 128))
             return (x,)
 
-        self.compare_result(func, None, init)
+        # This case can't be fused to one kernel because muti-downstream
+        # transpose op will sink currently.
+        self.check_accuracy_and_kernel_num(init, func)
 
-    def test_anchor_fusion_5(self):
-        #     R
-        #    / \
-        #   T   T
+    def test_append_iters_fusion(self):
+        #       T
+        #     /   \
+        #    S     B
+        #   / \   / \
+        #  S   B S   T
         def func(x):
-            a = paddle.sum(x, axis=-1)
-            b = a - 3
-            c = a * 2
-            return b, c
+            x = x * 2
+            a = x[0, :]  # shape=[64, 128]
+            b = paddle.expand(x, [16, 32, 64, 128])
+            c = a[:, 0]  # shape=[64]
+            d = paddle.expand(a, [8, 16, 32, 64, 128])
+            e = b[0, :, 0, :]  # shape=[32,128]
+            f = paddle.exp(b)
+            return c, d, e, f
 
         def init():
-            x = paddle.rand((32, 32, 128))
+            x = paddle.rand((32, 64, 128))
             return (x,)
 
-        self.compare_result(func, None, init)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
-    def test_anchor_fusion_6(self):
-        #      T
-        #     / \
-        #    B   R
-        #   /     \
-        #  T       T
+    def test_trivial_reuse_iters_fusion(self):
+        #     T
+        #    / \
+        #   S   B
+        #   |   |
+        #   B   S
         def func(x):
             a = x + 1
-            b = paddle.expand(a, [10, 32, 32, 128]) / 2
-            c = paddle.sum(a, axis=-1)
-            d = c * 3
-            return b, d
+            b = a[0, :]
+            c = paddle.expand(b, [16, 32, 128])
+            d = paddle.expand(a, [8, 16, 32, 128])
+            e = d[0, :]
+            return c, e
 
         def init():
-            x = paddle.rand((32, 32, 128))
+            x = paddle.rand((16, 32, 128))
             return (x,)
 
-        self.compare_result(func, None, init)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
-    def test_fusion_iters(self):
+    def test_reduce_fusion(self):
+        #      T
+        #     / \
+        #    R   R
+        #       / \
+        #      T   B
+        #           \
+        #            R
+        def func(x):
+            a = x + 2
+            b = paddle.sum(a, axis=0)
+            c = paddle.max(a, axis=0)
+            d = c - 4
+            e = paddle.expand(c, [32, 64, 128])
+            f = paddle.sum(e, axis=0)
+            return b, d, f
+
+        def init():
+            x = paddle.rand((32, 64, 128))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
+    def test_reduce_all_fusion(self):
+        #      T
+        #     / \
+        #    T  ReduceAll
+        def func(x):
+            a = x + 1
+            b = paddle.max(a, axis=[0], keepdim=False)
+            return a, b
+
+        def init():
+            x = paddle.rand((32,))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
+    def test_complex_fusion(self):
         #     T   T
         #      \ /
         #       T
-        #       |
-        #   Transpose
-        #      / \
-        #     S   R
-        #    /     \
-        #   B       B
-        #            \
-        #             R
+        #    / | | \
+        #   /  | |  \
+        #  T   S R  Transpose
+        #      | |
+        #      B B
+        #        |
+        #        R
         def func(x, y):
             a = x + 1
             b = y * 2
             c = a + b
-            d = paddle.transpose(c, [1, 0])
-            e = d[0, :]
-            f = paddle.expand(e, [16, 16])
-            g = paddle.max(d, axis=0)
-            h = paddle.expand(g, [32, 16])
+            d = paddle.transpose(c, [1, 0, 2])
+            e = c[0, :]
+            f = paddle.expand(e, [16, 32, 64])
+            g = paddle.max(c, axis=0)
+            h = paddle.expand(g, [16, 32, 64])
             i = paddle.sum(h, axis=0)
-            return f, i
+            return c, d, f, i
 
         def init():
-            x = paddle.rand((16, 32))
-            y = paddle.rand((16, 32))
+            x = paddle.rand((16, 32, 64))
+            y = paddle.rand((16, 32, 64))
             return (x, y)
 
-        self.compare_result(func, None, init)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
+    def test_recompute_multidownstrema_trivial(self):
+        #     T
+        #    / \
+        #   S   S
+        #   |   |
+        #   R   R
+        def func(x):
+            a = x + 1
+            b = a[0, :]
+            c = paddle.sum(b, axis=0)
+            d = a[0, 0, :]
+            e = paddle.max(d, axis=-1)
+            return c, e
+
+        def init():
+            x = paddle.rand((8, 16, 32, 128))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
+
+    def test_batch_norm(self):
+        self.batch_norm = paddle.nn.layer.norm.BatchNorm(2048)
+
+        def func(x):
+            a = self.batch_norm(x)
+            return a
+
+        def init():
+            x = paddle.rand((128, 2048, 7, 7))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
 
 if __name__ == "__main__":

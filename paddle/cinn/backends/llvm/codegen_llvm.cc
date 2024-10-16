@@ -511,53 +511,6 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Cast *op) {
 llvm::Value *CodeGenLLVM::CreateSerialFor(const ir::For *op, int stride) {
   SymbolTableGuard symbol_table_guard(*symbol_table_);
 
-  do {
-    break;
-    llvm::BasicBlock *preheader_bb = b_->GetInsertBlock();
-    auto *for_begin = llvm::BasicBlock::Create(
-        b_->getContext(), "for_begin", b_->GetInsertBlock()->getParent());
-    auto *for_body = llvm::BasicBlock::Create(
-        b_->getContext(), "for_body", b_->GetInsertBlock()->getParent());
-    auto *for_end = llvm::BasicBlock::Create(
-        b_->getContext(), "for_end", b_->GetInsertBlock()->getParent());
-
-    Br(for_begin);
-    b_->SetInsertPoint(for_begin);
-
-    auto *begin = Visit(&op->min);
-    auto *loop_value = PHI(begin->getType(), 2);
-    loop_value->addIncoming(begin, preheader_bb);
-
-    llvm::Value *old_var = GetVar(op->loop_var->name);
-    SetVar(op->loop_var->name, loop_value);
-    auto *end = Visit(&op->extent);
-    CondBr(ICmpSLT(loop_value, end), for_body, for_end);
-    b_->SetInsertPoint(for_body);
-    Visit(&op->body);
-
-    if (old_var) {
-      SetVar(op->loop_var->name, old_var);
-    } else {
-      symbol_table_->Erase(op->loop_var->name);
-    }
-
-    auto loop_next = Add(loop_value,
-                         llvm::ConstantInt::get(b_->getInt32Ty(), stride),
-                         "indvar.inc",
-                         true,
-                         true);
-    loop_value->addIncoming(loop_next, b_->GetInsertBlock());
-
-    Br(for_begin);
-    b_->SetInsertPoint(for_end);
-
-    return nullptr;
-    // llvm::AllocaInst *loop_var = Alloca(b_->getInt32Ty(), nullptr,
-    // op->loop_var->name); loop_var->setAlignment(llvm::Align(4));
-    // SetVar(op->loop_var->name, loop_var);
-  } while (false);
-
-  ////////////////////////////////////
   llvm::BasicBlock *preheader_bb = b_->GetInsertBlock();
   llvm::BasicBlock *exit_bb = nullptr;
 
@@ -814,20 +767,13 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Module_ *op) {
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::_Var_ *op) {
-  llvm::Value *value = GetVar(op->name, false);
-  llvm::Value *result{};
-  CHECK(value) << "ir::_Var_[" << op->name << "]: value is null";
-  // TODO(fc500110) hard coding
-  if (LLVM_WillVarLowerAsPointer(op->name)) {
-    result = value;
-  } else if (value->getType()->isPointerTy() &&
-             !value->getType()->getPointerElementType()->isPointerTy()) {
-    result = Load(value, op->name + "_load");
-  } else {
-    result = value;
+  llvm::Value *value = GetVar(op->name, /* lazy= */ false);
+  // When visiting a Var that is allocated on the stack, we are actually
+  // reading its value instead of its address.
+  if (llvm::AllocaInst::classof(value)) {
+    return Load(value, op->name + "_load");
   }
-
-  return result;
+  return value;
 }
 
 void CodeGenLLVM::Scalarize(
@@ -1043,12 +989,6 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Buffer_ *op) {
 
 llvm::Value *CodeGenLLVM::Visit(const ir::_Tensor_ *op) {
   return GetVar(op->name);
-  auto *buffer_op = op->buffer.As<ir::_Buffer_>();
-  if (symbol_table_->Lookup(buffer_op->name)) {
-    return Visit(buffer_op);
-  }
-
-  return SetVar(buffer_op->name, Visit(buffer_op));
 }
 
 template <typename T,
@@ -1435,10 +1375,6 @@ void CodeGenLLVM::InitTarget(const Target &target) {
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
   naive_vec_alignment_ = GetNaiveVecAlignment(target);
-}
-
-bool LLVM_WillVarLowerAsPointer(const std::string &var_name) {
-  return var_name == "_args" || utils::EndsWith(var_name, "__ptr");
 }
 
 void CodeGenLLVM::AddTbaaMetadata(llvm::Instruction *inst,

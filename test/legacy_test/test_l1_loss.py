@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestFunctionalL1Loss(unittest.TestCase):
@@ -45,7 +44,6 @@ class TestFunctionalL1Loss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, [10, 10, 5])
 
-    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -100,7 +98,7 @@ class TestFunctionalL1Loss(unittest.TestCase):
 
     # test case the raise message
     def test_errors(self):
-        @test_with_pir_api
+
         def test_value_error():
             input = paddle.static.data(
                 name='input', shape=[10, 10, 5], dtype='float32'
@@ -141,7 +139,6 @@ class TestClassL1Loss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, [10, 10, 5])
 
-    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -197,7 +194,7 @@ class TestClassL1Loss(unittest.TestCase):
 
     # test case the raise message
     def test_errors(self):
-        @test_with_pir_api
+
         def test_value_error():
             loss = paddle.nn.loss.L1Loss(reduction="reduce_mean")
 

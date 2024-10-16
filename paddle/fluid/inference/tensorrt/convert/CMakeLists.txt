@@ -143,7 +143,7 @@ nv_library(
        tensorrt_plugin
        operator
        scope
-       framework_proto
+       phi
        tensorrt_op_teller
        op_registry)
 

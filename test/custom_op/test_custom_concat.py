@@ -20,7 +20,6 @@ from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import static
-from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -143,7 +142,6 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                 for x_grad, pd_x_grad in zip(grad_inputs, pd_grad_inputs):
                     self.check_output(x_grad, pd_x_grad, "x_grad")
 
-    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
             for axis in self.axises:
@@ -176,7 +174,6 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                 for x_grad, pd_x_grad in zip(grad_inputs, pd_grad_inputs):
                     self.check_output(x_grad, pd_x_grad, "x_grad")
 
-    @test_with_pir_api
     def test_static_with_attr(self):
         for dtype in self.dtypes:
             for axis in self.axises:

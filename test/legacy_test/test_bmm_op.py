@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestBmmOp(OpTest):
@@ -97,7 +96,7 @@ class TestBmmBF16Op(OpTest):
 
 
 class API_TestBmm(unittest.TestCase):
-    @test_with_pir_api
+
     def test_out(self):
         with paddle_static_guard():
             with paddle.static.program_guard(

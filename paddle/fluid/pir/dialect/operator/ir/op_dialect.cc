@@ -326,13 +326,13 @@ void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {
   }
 }
 
-void PrintOperationImpl(pir::Operation* op,
+void PrintOperationImpl(const pir::Operation& op,
                         pir::IrPrinter& printer) {  // NOLINT
-  if (auto if_op = op->dyn_cast<IfOp>()) {
+  if (auto if_op = op.dyn_cast<IfOp>()) {
     if_op.Print(printer);
-  } else if (auto while_op = op->dyn_cast<WhileOp>()) {
+  } else if (auto while_op = op.dyn_cast<WhileOp>()) {
     while_op.Print(printer);
-  } else if (auto pylayer_op = op->dyn_cast<PyLayerOp>()) {
+  } else if (auto pylayer_op = op.dyn_cast<PyLayerOp>()) {
     pylayer_op.Print(printer);
   } else {
     printer.PrintGeneralOperation(op);
@@ -431,8 +431,8 @@ pir::Attribute OperatorDialect::ParseAttribute(
   }
 }
 
-pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation* op) const {
-  if (op->isa<IfOp>() || op->isa<WhileOp>() || op->isa<PyLayerOp>()) {
+pir::OpPrintFn OperatorDialect::PrintOperation(const pir::Operation& op) const {
+  if (op.isa<IfOp>() || op.isa<WhileOp>() || op.isa<PyLayerOp>()) {
     return PrintOperationImpl;
   }
   return nullptr;
@@ -1074,7 +1074,7 @@ void CustomOpDialect::PrintAttribute(pir::Attribute attr,
   PrintAttributeImpl(attr, os);
 }
 
-pir::OpPrintFn CustomOpDialect::PrintOperation(pir::Operation* op) const {
+pir::OpPrintFn CustomOpDialect::PrintOperation(const pir::Operation& op) const {
   return nullptr;
 }
 

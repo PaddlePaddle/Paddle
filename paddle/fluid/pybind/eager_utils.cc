@@ -884,9 +884,9 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   return dtype;
 }
 
-paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
+phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
   if (PyDict_Check(obj)) {
-    paddle::framework::Vocab vocab;
+    phi::Vocab vocab;
     vocab = ::pybind11::handle(obj)
                 .cast<std::unordered_map<std::wstring, std::int32_t>>();
     return vocab;
@@ -1260,7 +1260,7 @@ PyObject* ToPyObject(
   return dict;
 }
 
-PyObject* ToPyObject(const paddle::framework::Vocab& value) {
+PyObject* ToPyObject(const phi::Vocab& value) {
   PyObject* dict = PyDict_New();
   for (const auto& map_iter : value) {
     // Convert Key

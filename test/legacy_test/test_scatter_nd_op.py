@@ -21,7 +21,6 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_scatter_nd(ref, index, updates, fun):
@@ -350,7 +349,6 @@ class TestScatterNdOpAPI(unittest.TestCase):
     test scatter_nd_add api and scatter_nd api
     """
 
-    @test_with_pir_api
     def testcase1(self):
         with static_guard():
             ref1 = paddle.static.data(
@@ -370,7 +368,6 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
             output1 = paddle.scatter_nd_add(ref1, index1, updates1)
 
-    @test_with_pir_api
     def testcase2(self):
         with static_guard():
             ref2 = paddle.static.data(
@@ -392,7 +389,6 @@ class TestScatterNdOpAPI(unittest.TestCase):
                 ref2, index2, updates2, name="scatter_nd_add"
             )
 
-    @test_with_pir_api
     def testcase3(self):
         with static_guard():
             shape3 = [10, 9, 8, 1, 3]
@@ -408,7 +404,6 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
             output3 = paddle.scatter_nd(index3, updates3, shape3)
 
-    @test_with_pir_api
     def testcase4(self):
         with static_guard():
             shape4 = [10, 9, 8, 1, 3]
@@ -452,7 +447,6 @@ class TestScatterNdOpAPI(unittest.TestCase):
             np.testing.assert_array_equal(gpu_value.numpy(), cpu_value.numpy())
             paddle.set_device(device)
 
-        @test_with_pir_api
         def test_static_graph():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -490,7 +484,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
 
 # Test Raise Error
 class TestScatterNdOpRaise(unittest.TestCase):
-    @test_with_pir_api
+
     def test_check_raise(self):
         def check_raise_is_test():
             with static_guard():
@@ -532,7 +526,6 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 )
                 output6 = paddle.scatter_nd_add(ref6, index6, updates6)
 
-    @test_with_pir_api
     def test_check_raise3(self):
         def check_raise_is_test():
             with static_guard():

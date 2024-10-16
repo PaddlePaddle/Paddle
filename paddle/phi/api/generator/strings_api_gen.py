@@ -227,6 +227,10 @@ class StringsAPI(ForwardAPI):
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{code_indent}  if (FLAGS_benchmark) {{
+{code_indent}      dev_ctx->Wait();
+{code_indent}      std::cout << \"{self.api} kernel run finish.\" << std::endl;
+{code_indent}  }}
 
 {code_indent}  {self.gene_return_code()}"""
 
@@ -339,6 +343,7 @@ def source_include(header_file_path):
 #include "paddle/phi/core/kernel_registry.h"
 
 COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(benchmark);
 """
 
 

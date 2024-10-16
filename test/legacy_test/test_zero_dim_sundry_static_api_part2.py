@@ -23,7 +23,6 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 # Use to test zero-dim of Sundry API, which is unique and can not be classified
 # with others. It can be implemented here flexibly.
@@ -41,7 +40,6 @@ class TestSundryAPIStatic(unittest.TestCase):
             out_shape = out.shape
         self.assertEqual(out_shape, target_tuple)
 
-    @test_with_pir_api
     @prog_scope()
     def test_quantile(self):
         x1 = paddle.rand([])
@@ -84,7 +82,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[5].shape, ())
         self.assertEqual(res[5], 1.0)
 
-    @test_with_pir_api
     @prog_scope()
     def test_nanquantile(self):
         # 1) x is 0D
@@ -118,7 +115,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, (2, 3))
 
-    @test_with_pir_api
     @prog_scope()
     def test_flip(self):
         x = paddle.rand([])
@@ -134,7 +130,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_equal_scalar(self):
         x = paddle.rand([])
@@ -145,7 +140,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], False)
 
-    @test_with_pir_api
     @prog_scope()
     def test_pow_scalar(self):
         x = paddle.rand([])
@@ -161,7 +155,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_cast(self):
         x = paddle.full([], 1.0, 'float32')
@@ -177,7 +170,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_cumprod(self):
         x = paddle.full([], 1.0, 'float32')
@@ -195,7 +187,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         with self.assertRaises(ValueError):
             tmp = paddle.cumprod(x, 2)
 
-    @test_with_pir_api
     @prog_scope()
     def test_clip(self):
         x = paddle.uniform([], None, -10, 10)
@@ -235,7 +226,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[6].shape, ())
         self.assertEqual(res[7].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_increment(self):
         x = paddle.rand([])
@@ -263,7 +253,6 @@ class TestSundryAPIStatic(unittest.TestCase):
             self.assertEqual(res[2].shape, ())
             self.assertEqual(res[3].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_bitwise_not(self):
         # have no backward
@@ -275,7 +264,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_logical_not(self):
         # have no backward
@@ -287,7 +275,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_searchsorted(self):
         # have no backward
@@ -300,7 +287,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 0)
 
-    @test_with_pir_api
     @prog_scope()
     def test_transpose(self):
         x = paddle.rand([])
@@ -320,7 +306,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         with self.assertRaises(ValueError):
             x = paddle.transpose(x, [0])
 
-    @test_with_pir_api
     @prog_scope()
     def test_moveaxis(self):
         x = paddle.rand([])
@@ -340,7 +325,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         with self.assertRaises(AssertionError):
             x = paddle.moveaxis(x, [0], [1])
 
-    @test_with_pir_api
     @prog_scope()
     def test_gather_1D(self):
         x = paddle.full([10], 1.0, 'float32')
@@ -359,7 +343,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (10,))
         self.assertEqual(res[2].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_gather_XD_axis_0(self):
         x = paddle.full([2, 3], 1.0, 'float32')
@@ -378,7 +361,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, (3,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_gather_XD_axis_1(self):
         x = paddle.full([2, 3], 1.0, 'float32')
@@ -397,7 +379,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, (2,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_gather_nd(self):
         x1 = paddle.full([10], 1.0, 'float32')
@@ -441,7 +422,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4].shape, ())
         self.assertEqual(res[5].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_scatter_1D(self):
         x = paddle.full([10], 1.0, 'float32')
@@ -461,7 +441,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (10,))
         self.assertEqual(res[2].shape, (10,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_scatter_XD(self):
         x = paddle.full([2, 3], 1.0, 'float32')
@@ -481,7 +460,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, (2, 3))
 
-    @test_with_pir_api
     @prog_scope()
     def test_diagflat(self):
         # have no backward
@@ -500,7 +478,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2, 2))
         self.assertEqual(res[2].shape, (1, 1))
 
-    @test_with_pir_api
     @prog_scope()
     def test_scatter__1D(self):
         x = paddle.full([10], 1.0, 'float32')
@@ -512,7 +489,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(res[0][2], 4)
 
-    @test_with_pir_api
     @prog_scope()
     def test_scatter__XD(self):
         x = paddle.full([2, 3], 1.0, 'float32')
@@ -524,7 +500,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         np.testing.assert_array_equal(res[0][1], [4.0, 4.0, 4.0])
 
-    @test_with_pir_api
     @prog_scope()
     def test_scatter_nd(self):
         index = paddle.full([1], 3, dtype='int64')
@@ -543,7 +518,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (5,))
         self.assertEqual(res[2].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_flatten(self):
         x = paddle.full([], 1, 'float32')
@@ -565,7 +539,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (1,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_histogram(self):
         x = paddle.full([], 1, 'float32')
@@ -576,7 +549,6 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, (5,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_scale(self):
         x = paddle.rand([])
@@ -591,7 +563,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_floor_divide(self):
         # 1-d // 0-d
@@ -622,7 +593,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(out3_1, out3_2)
         np.testing.assert_array_equal(out3_2, np.asarray(1))
 
-    @test_with_pir_api
     @prog_scope()
     def test_cumsum(self):
         x1 = paddle.rand([])
@@ -669,7 +639,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertShapeEqual(out2, [])
         self.assertShapeEqual(out3, [])
 
-    @test_with_pir_api
     @prog_scope()
     def test_logcumsumexp(self):
         x = paddle.rand([])
@@ -701,7 +670,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[3], 1.0)
 
-    @test_with_pir_api
     @prog_scope()
     def test_add_n(self):
         x1 = paddle.rand([])
@@ -749,7 +717,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[5].shape, ())
         self.assertEqual(res[6].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_reshape_list(self):
         x1 = paddle.rand([])
@@ -818,7 +785,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[10].shape, (1,))
         self.assertEqual(res[11].shape, (1, 1))
 
-    @test_with_pir_api
     @prog_scope()
     def test_reshape_tensor(self):
         x1 = paddle.rand([1, 1])
@@ -875,7 +841,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[7].shape, (1,))
         self.assertEqual(res[8].shape, (1, 1))
 
-    @test_with_pir_api
     @prog_scope()
     def test_reverse(self):
         x = paddle.rand([])
@@ -892,7 +857,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
-    @test_with_pir_api
     @prog_scope()
     def test_sort(self):
         x1 = paddle.rand([])
@@ -933,7 +897,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4], 1.0)
         self.assertEqual(res[5], 1.0)
 
-    @test_with_pir_api
     @prog_scope()
     def test_argsort(self):
         with paddle.static.program_guard(
@@ -955,7 +918,6 @@ class TestSundryAPIStatic(unittest.TestCase):
             self.assertEqual(res[0], 0.0)
             self.assertEqual(res[1], 0.0)
 
-    @test_with_pir_api
     @prog_scope()
     def test_lerp(self):
         shapes = [
@@ -987,7 +949,6 @@ class TestSundryAPIStatic(unittest.TestCase):
             self.assertEqual(res[2].shape, shape[1])
             self.assertEqual(res[3].shape, shape[0])
 
-    @test_with_pir_api
     @prog_scope()
     def test_repeat_interleave(self):
         x1 = paddle.full([], 1.0, 'float32')

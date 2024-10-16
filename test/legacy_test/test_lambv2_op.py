@@ -20,7 +20,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.pir_utils import test_with_pir_api
 
 
 class LAMBOptimizer(paddle.optimizer.Lamb):
@@ -114,7 +113,7 @@ class TestLambOpV2(unittest.TestCase):
 
 
 class TestLambOpWithCombinedOp(unittest.TestCase):
-    @test_with_pir_api
+
     def test_lamb_op_with_multi_steps(self):
         paddle.enable_static()
 

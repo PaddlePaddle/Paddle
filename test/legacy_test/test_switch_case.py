@@ -21,13 +21,12 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestAPISwitchCase(unittest.TestCase):
-    @test_with_pir_api
+
     def test_return_single_var(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -127,7 +126,6 @@ class TestAPISwitchCase(unittest.TestCase):
                 err_msg=f'result is {res[4]} but answer is {2}',
             )
 
-    @test_with_pir_api
     def test_0d_tensor(self):
         def fn_1():
             return paddle.full(shape=[], dtype='int32', fill_value=1)
@@ -220,7 +218,6 @@ class TestAPISwitchCase(unittest.TestCase):
             )
             self.assertEqual(res[4].shape, ())
 
-    @test_with_pir_api
     def test_0d_tensor_backward(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -259,7 +256,6 @@ class TestAPISwitchCase(unittest.TestCase):
         )
         self.assertEqual(res[1].shape, ())
 
-    @test_with_pir_api
     def test_0d_tensor_dygraph(self):
         paddle.disable_static()
 
@@ -341,7 +337,6 @@ class TestAPISwitchCase(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_return_var_tuple(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -392,7 +387,7 @@ class TestAPISwitchCase(unittest.TestCase):
 
 
 class TestAPISwitchCase_Nested(unittest.TestCase):
-    @test_with_pir_api
+
     def test_nested_switch_case(self):
         def fn_1(x=1):
             out = paddle.static.nn.switch_case(
@@ -506,7 +501,6 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 err_msg=f'result is {res[2]} but answer is {3}',
             )
 
-    @test_with_pir_api
     def test_nested_switch_0d_tensor(self):
         def fn_1(x=1):
             out = paddle.static.nn.switch_case(
@@ -610,7 +604,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
 
 # test TypeError and ValueError of api switch_case
 class TestAPISwitchCase_Error(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error(self):
         def fn_1():
             return paddle.tensor.fill_constant(

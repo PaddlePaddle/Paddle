@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base, static
-from paddle.pir_utils import test_with_pir_api
 
 TEST_REAL_DATA = [
     np.array(1.0),
@@ -76,7 +75,6 @@ def test(data_cases, type_cases, use_gpu=False):
             np_result = np.isreal(data.astype(type))
             np.testing.assert_equal(dygraph_result, np_result)
 
-            @test_with_pir_api
             def test_static_or_pir_mode():
                 (static_result,) = run_static(data, type, use_gpu)
                 np.testing.assert_equal(static_result, np_result)

@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 def call_sfl_functional(
@@ -121,7 +120,7 @@ def calc_sigmoid_focal_loss(
 
 
 class TestSigmoidFocalLoss(unittest.TestCase):
-    @test_with_pir_api
+
     def test_SigmoidFocalLoss(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
             np.float64

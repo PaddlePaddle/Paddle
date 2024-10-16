@@ -21,7 +21,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def ref_prelu(x, weight):
@@ -49,7 +48,6 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.weight_np_0 = np.random.randn(1).astype('float32')
         self.weight_np_1 = np.random.randn(self.x_np.shape[1]).astype('float32')
 
-    @test_with_pir_api
     def static_check(self, weight_np):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_np.shape, 'float32')
@@ -71,7 +69,6 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static_api(self):
         self.static_check(self.weight_np_0)
         self.static_check(self.weight_np_1)
@@ -80,7 +77,6 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
 
-    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             weight_fp32 = paddle.static.data(
@@ -110,7 +106,6 @@ class TestNNPReluAPI(unittest.TestCase):
         )
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
-    @test_with_pir_api
     def test_static_api(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()

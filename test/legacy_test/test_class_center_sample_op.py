@@ -19,7 +19,6 @@ from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def class_center_sample_numpy(label, classes_list, num_samples):
@@ -155,7 +154,6 @@ class TestClassCenterSampleV2(unittest.TestCase):
             for place in self.places:
                 self.check_static_result(place=place)
 
-    @test_with_pir_api
     def check_static_result(self, place):
         with paddle_static_guard():
             main = paddle.static.Program()

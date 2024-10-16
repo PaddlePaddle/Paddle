@@ -466,15 +466,15 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NE(
       rows,
       0,
-      phi::errors::InvalidArgument("The input Tensor x's shape[-2] should not "
-                                   "be 0, but shape is %s now.",
-                                   dim_x));
+      errors::InvalidArgument("The input Tensor x's shape[-2] should not "
+                              "be 0, but shape is %s now.",
+                              dim_x));
   PADDLE_ENFORCE_NE(
       cols,
       0,
-      phi::errors::InvalidArgument("The input Tensor x's shape[-1] should not "
-                                   "be 0, but shape is %s now.",
-                                   dim_x));
+      errors::InvalidArgument("The input Tensor x's shape[-1] should not "
+                              "be 0, but shape is %s now.",
+                              dim_x));
   int k = std::min(rows, cols);
   auto numel = x.numel();
   int batches = numel / (rows * cols);

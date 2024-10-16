@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_unflatten(x, axis, shape):
@@ -95,7 +94,6 @@ class TestUnflattenAPI(unittest.TestCase):
         self.setUp()
         self.func_dygraph()
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = []
@@ -303,7 +301,6 @@ class TestLayer(unittest.TestCase):
 
             paddle.enable_static()
 
-            @test_with_pir_api
             def test_static_or_pir_mode():
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
@@ -330,7 +327,7 @@ class TestLayer(unittest.TestCase):
 
 
 class TestLayerName(unittest.TestCase):
-    @test_with_pir_api
+
     def test_name(self):
         self.x = np.random.randn(3, 4, 4, 5).astype('float32')
         self.axis = 1

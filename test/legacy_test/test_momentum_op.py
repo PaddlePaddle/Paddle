@@ -22,7 +22,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def calculate_momentum_by_numpy(
@@ -560,7 +559,6 @@ class TestMomentumV2(unittest.TestCase):
         adam.step()
         adam.clear_gradients()
 
-    @test_with_pir_api
     def test_momentum(self):
         paddle.enable_static()
         place = base.CPUPlace()
@@ -723,7 +721,6 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             regularization=paddle.regularizer.L2Decay(coeff=0.1)
         )
 
-    @test_with_pir_api
     def test_momentum_static(self):
         paddle.enable_static()
         place = base.CPUPlace()

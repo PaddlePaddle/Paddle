@@ -2559,3 +2559,122 @@ def set_all_ops_op_role(block, op_role):
             op.op_role = op_role
         for sub_block in op.blocks():
             set_all_ops_op_role(sub_block, op_role)
+
+
+def fuse_param_func(
+    fuse_params, is_qkv=False, num_heads=None, num_key_value_heads=None
+):
+    """fuse function for fusing weights
+
+    (1) fuse_attention_qkv
+        q => [q1,q2,q3,q4]
+        k => [k1,k2,k3,k4] or [k1,k2] for GQA
+        v => [v1,v2,v3,v4] or [v1,v2] for GQA
+        fused weight => [q1,k1,v1,q2,k2,v2,q3,k3,v3,q4,k4,v4]
+                or for GQA [q1,q2,k1,v1,q3,q4,k2,v2]
+    (2) fuse_attention_ffn
+        directly fuse weights to 1 parts
+        [gate_weight], [up_weight] => [gate_weight, up_weight]
+
+    Args:
+        fuse_params (_type_): to be fused weights
+        is_qkv (bool, optional): for attention qkv weights. Defaults to False.
+        num_heads (_type_, optional): query heads. Defaults to None.
+        num_key_value_heads (_type_, optional): key and value heads. Defaults to None.
+
+    Returns:
+        _type_: fused weights
+    """
+    concat_fn = paddle.concat
+    split_fn = paddle.split
+
+    if is_qkv:
+        # fuse_attention_qkv
+        assert (
+            num_heads
+        ), f"num_heads should be number of heads for Q, but got {num_heads}"
+        assert (
+            num_key_value_heads
+        ), f"num_key_value_heads should be number of key_value_heads for K and V, but got {num_key_value_heads}"
+        assert (
+            len(fuse_params) == 3
+        ), f"fuse_params length is not equal 3, it should be Q K V list. but got length {len(fuse_params)}"
+        num_query_groups = num_heads // num_key_value_heads
+        q_list = split_fn(fuse_params[0], num_heads, axis=-1)
+        k_list = split_fn(fuse_params[1], num_key_value_heads, axis=-1)
+        v_list = split_fn(fuse_params[2], num_key_value_heads, axis=-1)
+
+        qkv_pairs = []
+        for i in range(num_key_value_heads):
+            qkv_pairs += q_list[
+                i * num_query_groups : (i + 1) * num_query_groups
+            ]
+            qkv_pairs.append(k_list[i])
+            qkv_pairs.append(v_list[i])
+        return concat_fn(qkv_pairs, axis=-1)
+    else:
+        # fuse_attention_ffn
+        return concat_fn(fuse_params, axis=-1)
+
+
+def split_param_func(
+    fused_param,
+    split_nums=2,
+    is_qkv=False,
+    num_heads=None,
+    num_key_value_heads=None,
+):
+    """split function for splitting weights
+
+    (1) fuse_attention_qkv
+        fused weight => [q1,k1,v1,q2,k2,v2,q3,k3,v3,q4,k4,v4]
+                or for GQA [q1,q2,k1,v1,q3,q4,k2,v2]
+        after split
+        q => [q1,q2,q3,q4]
+        k => [k1,k2,k3,k4] or [k1,k2] for GQA
+        v => [v1,v2,v3,v4] or [v1,v2] for GQA
+    (2) fuse_attention_ffn
+        directly split weight to 2 parts
+        [gate_weight, up_weight] => [gate_weight], [up_weight]
+
+    Args:
+        fused_param (_type_): len(fused_param)=1, only one weight to be splitted
+        split_nums (int, optional): split_nums. Defaults to 2.
+        is_qkv (bool, optional): for attention qkv weights. Defaults to False.
+        num_heads (_type_, optional): query heads. Defaults to None.
+        num_key_value_heads (_type_, optional): key and value heads. Defaults to None.
+
+    Returns:
+        _type_: splitted weights
+    """
+    concat_fn = paddle.concat
+    split_fn = paddle.split
+
+    if is_qkv:
+        # fuse_attention_qkv
+        assert (
+            num_heads
+        ), f"num_heads should be number of heads for Q, but got {num_heads}"
+        assert (
+            num_key_value_heads
+        ), f"num_key_value_heads should be number of key_value_heads for K and V, but got {num_key_value_heads}"
+        num_query_groups = num_heads // num_key_value_heads
+        q_list, k_list, v_list = [], [], []
+        split_heads = split_fn(
+            fused_param, num_heads + 2 * num_key_value_heads, axis=-1
+        )
+        for i in range(num_key_value_heads):
+            q_list += split_heads[
+                i * (num_query_groups + 2) : (i + 1) * (num_query_groups + 2)
+                - 2
+            ]
+            k_list.append(split_heads[(i + 1) * (num_query_groups + 2) - 2])
+            v_list.append(split_heads[(i + 1) * (num_query_groups + 2) - 1])
+        return (
+            concat_fn(q_list, axis=-1),
+            concat_fn(k_list, axis=-1),
+            concat_fn(v_list, axis=-1),
+        )
+    else:
+        # fuse_attention_ffn
+        return split_fn(fused_param, split_nums, axis=-1)

@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def cal_kthvalue(x, k, axis, keepdim=False):
@@ -208,7 +207,6 @@ class TestModeOpInStatic(unittest.TestCase):
         self.input_data = np.random.random((2, 20, 1, 2, 80)).astype(np.float64)
         self.k = 10
 
-    @test_with_pir_api
     def test_run_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(

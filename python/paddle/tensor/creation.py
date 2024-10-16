@@ -1360,7 +1360,9 @@ def eye(
 
     def _check_attr(attr, message):
         if isinstance(attr, ((Variable, core.eager.Tensor, paddle.pir.Value))):
-            assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
+            assert len(attr.shape) == 0 or (
+                len(attr.shape) == 1 and attr.shape[0] in [1, -1]
+            )
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
 
@@ -2879,6 +2881,8 @@ def _memcpy(input, place=None, output=None) -> paddle.Tensor:
             dst_place_type = 2
         elif p.is_xpu_place():
             dst_place_type = 3
+        elif p.is_custom_place():
+            dst_place_type = 4
 
     if in_pir_mode():
         return _C_ops.memcpy(input, dst_place_type)

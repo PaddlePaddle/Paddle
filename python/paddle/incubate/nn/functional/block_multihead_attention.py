@@ -67,6 +67,7 @@ def block_multihead_attention(
     quant_min_bound: float = -127.0,
     out_scale: float = -1,
     compute_dtype: str = "default",
+    rope_theta: float = 10000.0,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     """
     Block Multi-head attention for text summarization.
@@ -107,6 +108,7 @@ def block_multihead_attention(
         quant_min_bound (Float32): The min bound of float type to int type.
         out_scale (Float32): The quant scale of fmha_out. Default is -1, which means do not apply quantization for fmha_out.
         compute_dtype (Str): A compute dtype, is used to represent the input data type. Default is "default", which means compute dtype is determined by input dtype. However, if the dtype of input is Int32, this value should be set to actual dtype of the model.
+        rope_theta (Float32): The theta of RoPE. Default is 10000.0.
     Returns:
         Tensor|(output, qkv_out, cache_k_out, cache_v_out), which output is the output of
         block_multihead_attention layers, qkv_out is inplace with input `qkv`, cache_k_out and cache_v_out are inplace with input `cache_k` and `cache_v`.
@@ -334,6 +336,7 @@ def block_multihead_attention(
             quant_min_bound,
             out_scale,
             compute_dtype,
+            rope_theta,
         )
 
     helper = LayerHelper('block_multihead_attention', **locals())
@@ -402,6 +405,7 @@ def block_multihead_attention(
             'quant_min_bound': quant_min_bound,
             'out_scale': out_scale,
             'compute_dtype': compute_dtype,
+            'rope_theta': rope_theta,
         },
     )
     return out, qkv, key_cache, value_cache
@@ -445,6 +449,7 @@ def block_multihead_attention_xpu(
     quant_min_bound: float = -127.0,
     out_scale: float = -1,
     compute_dtype: str = "default",
+    rope_theta: float = 10000.0,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     if in_dynamic_mode():
         return _C_ops.block_multihead_attention_xpu(
@@ -485,6 +490,7 @@ def block_multihead_attention_xpu(
             quant_min_bound,
             out_scale,
             compute_dtype,
+            rope_theta,
         )
 
     helper = LayerHelper('block_multihead_attention_xpu', **locals())
@@ -555,6 +561,7 @@ def block_multihead_attention_xpu(
             'quant_min_bound': quant_min_bound,
             'out_scale': out_scale,
             'compute_dtype': compute_dtype,
+            'rope_theta': rope_theta,
         },
     )
     return out, qkv, key_cache, value_cache

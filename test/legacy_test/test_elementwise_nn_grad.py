@@ -21,11 +21,10 @@ from decorator_helper import prog_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -55,7 +54,7 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -87,7 +86,7 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -117,7 +116,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -150,7 +149,6 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
     def subtract_wrapper(self, x):
         return paddle.subtract(x[0], x[1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -187,7 +185,7 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -220,7 +218,6 @@ class TestElementwiseSubBroadcastDoubleGradCheck2(unittest.TestCase):
     def subtract_wrapper(self, x):
         return paddle.subtract(x[0], x[1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -261,7 +258,6 @@ class TestElementwiseSubBroadcastDoubleGradCheck3(unittest.TestCase):
     def subtract_wrapper(self, x):
         return paddle.subtract(x[0], x[1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -302,7 +298,6 @@ class TestElementwiseSubBroadcastDoubleGradCheck4(unittest.TestCase):
     def subtract_wrapper(self, x):
         return paddle.subtract(x[0], x[1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -343,7 +338,6 @@ class TestElementwiseSubBroadcastDoubleGradCheck5(unittest.TestCase):
     def subtract_wrapper(self, x):
         return paddle.subtract(x[0], x[1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -384,7 +378,6 @@ class TestElementwiseSubBroadcastDoubleGradCheck6(unittest.TestCase):
     def subtract_wrapper(self, x):
         return paddle.subtract(x[0], x[1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -425,7 +418,6 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     def divide_wrapper(self, x):
         return paddle.divide(x[0], x[1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -464,7 +456,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -497,7 +489,7 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseAddTripleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -560,7 +552,6 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
     def multiply_wrapper(self, x):
         return paddle.multiply(x[0], x[1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.

@@ -184,7 +184,7 @@ class TensorRTConfig:
             >>> trt_config = TensorRTConfig(inputs=[input])
             >>> trt_config.disable_ops = "pd_op.dropout"
         """
-        self.inputs = (inputs,)
+        self.inputs = inputs
         self.min_subgraph_size = min_subgraph_size
         self.save_model_dir = save_model_dir
         self.disable_ops = disable_ops
@@ -207,18 +207,22 @@ def convert_to_trt(program, trt_config, scope):
             feed_name.append(param_name)
 
     with paddle.pir_utils.IrGuard():
+        min_shape_feed = {}
+        max_shape_feed = {}
         for i, input_instance in enumerate(trt_config.inputs):
             # get fake inputs
-            min_data, _, max_data = input_instance[i].generate_input_data()
+            min_data, _, max_data = input_instance.generate_input_data()
             program_with_output = program.list_vars()[-1]
+            min_shape_feed[feed_name[i]] = min_data
+            max_shape_feed[feed_name[i]] = max_data
 
             # run warmup for collecting shape
-            program = warmup_shape_infer(
-                program,
-                min_shape_feed={feed_name[0]: min_data},
-                max_shape_feed={feed_name[0]: max_data},
-                scope=scope,
-            )
+        program = warmup_shape_infer(
+            program,
+            min_shape_feed=min_shape_feed,
+            max_shape_feed=max_shape_feed,
+            scope=scope,
+        )
 
         # run pir pass (including trt_op_marker_pass)
         program_with_pir = run_pir_pass(program, partition_mode=False)
@@ -314,7 +318,7 @@ def convert(function=None, input_spec=None, config=None, **kwargs):
         ...         )
         ...         trt_config = TensorRTConfig(inputs=[input_config])
         ...         for i, input_instrance in enumerate(trt_config.inputs):
-        ...             min_data, _, max_data = input_instrance[i].generate_input_data()
+        ...             min_data, _, max_data = input_instrance.generate_input_data()
         ...             paddle.disable_static()
         ...             x = paddle.to_tensor(min_data)
         ...             net = CumsumModel(input_dim=min_data.shape[-1])
@@ -608,7 +612,7 @@ def convert_loaded_model(model_dir, config):
 
             ...    paddle.disable_static()
             ...    for i, input_instrance in enumerate(trt_config.inputs):
-            ...        min_data, _, max_data = input_instrance[i].generate_input_data()
+            ...        min_data, _, max_data = input_instrance.generate_input_data()
             ...        model_inputs = paddle.to_tensor(min_data)
             ...        output_converted = predictor.run([model_inputs])
 

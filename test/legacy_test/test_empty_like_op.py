@@ -20,7 +20,6 @@ from op_test import convert_uint16_to_float
 import paddle
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestEmptyLikeAPICommon(unittest.TestCase):
@@ -170,7 +169,6 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
     def setUp(self):
         self.init_config()
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         train_program = paddle.static.Program()
@@ -220,7 +218,6 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPICommon):
         self.data_x_shape = [200, 3]
         self.dtype = 'float16'
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -254,7 +251,6 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
         self.data_x_shape = [200, 3]
         self.dtype = 'uint16'
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():

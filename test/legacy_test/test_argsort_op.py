@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
 paddle.enable_static()
@@ -67,7 +66,6 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
     def setUp(self):
         self.place = core.CPUPlace()
 
-    @test_with_pir_api
     def test_error(self):
         def test_base_var_type():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -98,7 +96,6 @@ class TestArgsort(unittest.TestCase):
         self.axis = 0
         self.data = np.random.rand(*self.input_shape)
 
-    @test_with_pir_api
     def test_api_static1(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -119,7 +116,6 @@ class TestArgsort(unittest.TestCase):
 
             self.assertEqual((result == np_result).all(), True)
 
-    @test_with_pir_api
     def test_api_static2(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -179,7 +175,6 @@ class TestStableArgsort(unittest.TestCase):
         else:
             self.place = core.CPUPlace()
 
-    @test_with_pir_api
     def test_api_static1_cpu(self):
         self.cpu_place()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -197,7 +192,6 @@ class TestStableArgsort(unittest.TestCase):
 
             self.assertEqual((result == np_result).all(), True)
 
-    @test_with_pir_api
     def test_api_static1_gpu(self):
         self.gpu_place()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -215,7 +209,6 @@ class TestStableArgsort(unittest.TestCase):
 
             self.assertEqual((result == np_result).all(), True)
 
-    @test_with_pir_api
     def test_api_static2_cpu(self):
         self.cpu_place()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -235,7 +228,6 @@ class TestStableArgsort(unittest.TestCase):
 
             self.assertEqual((result2 == np_result2).all(), True)
 
-    @test_with_pir_api
     def test_api_static2_gpu(self):
         self.gpu_place()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -454,7 +446,7 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 
 class TestArgsortOpFp16(unittest.TestCase):
-    @test_with_pir_api
+
     def test_fp16(self):
         if base.core.is_compiled_with_cuda():
             paddle.enable_static()

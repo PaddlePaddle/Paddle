@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def crop(data, offsets, crop_shape):
@@ -241,7 +240,7 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorException(unittest.TestCase):
-    @test_with_pir_api
+
     def test_exception(self):
         input1 = paddle.static.data(
             name="input1", shape=[2, 3, 6, 6], dtype="float32"

@@ -29,7 +29,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn.functional import avg_pool3d, max_pool3d
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestPool3D_API(unittest.TestCase):
@@ -45,7 +44,6 @@ class TestPool3D_API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_avg_static_results(self, place):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -152,7 +150,6 @@ class TestPool3D_API(unittest.TestCase):
             result = avg_pool3d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-    @test_with_pir_api
     def check_max_static_results(self, place):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -402,7 +399,6 @@ class TestPool3D_API(unittest.TestCase):
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_pool_return_mask_ceil(place)
 
-    @test_with_pir_api
     def test_static_fp16_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -429,7 +425,6 @@ class TestPool3D_API(unittest.TestCase):
 
                 np.testing.assert_array_equal(res[0].shape, [1, 2, 1, 16, 16])
 
-    @test_with_pir_api
     def test_static_bf16_gpu(self):
         paddle.enable_static()
         if (

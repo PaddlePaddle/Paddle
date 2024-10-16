@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestFlattenOp(OpTest):
@@ -466,7 +465,6 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         np_x = np.random.rand(2, 3, 4, 4).astype('float32')
@@ -487,7 +485,6 @@ class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -589,7 +586,6 @@ class TestFlattenZeroSizedTensorAPI(unittest.TestCase):
         out_np = data.flatten()
         np.testing.assert_equal(out.numpy(), out_np)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         data = np.random.randn(2, 3, 0)

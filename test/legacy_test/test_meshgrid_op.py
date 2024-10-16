@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def meshgrid_wrapper(x):
@@ -173,7 +172,7 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
 
 
 class TestMeshgridOp3(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         input_1 = np.random.randint(
             0,
@@ -211,7 +210,7 @@ class TestMeshgridOp3(unittest.TestCase):
 
 
 class TestMeshgridOp4(unittest.TestCase):
-    @test_with_pir_api
+
     def test_list_input(self):
         input_1 = np.random.randint(
             0,
@@ -249,7 +248,7 @@ class TestMeshgridOp4(unittest.TestCase):
 
 
 class TestMeshgridOp5(unittest.TestCase):
-    @test_with_pir_api
+
     def test_tuple_input(self):
         input_1 = np.random.randint(
             0,
@@ -365,7 +364,7 @@ class TestMeshgridOp8(unittest.TestCase):
 
 
 class TestMeshgridOpComplexStatic(unittest.TestCase):
-    @test_with_pir_api
+
     def test_tuple_input(self):
         input_1 = np.random.randint(
             0,

@@ -20,7 +20,6 @@ import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base, nn
-from paddle.pir_utils import test_with_pir_api
 
 
 class Conv1DTestCase(unittest.TestCase):
@@ -145,7 +144,6 @@ class Conv1DTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
-    @test_with_pir_api
     def _test_equivalence(self, place):
         result1 = self.functional(place)
         with dg.guard(place):

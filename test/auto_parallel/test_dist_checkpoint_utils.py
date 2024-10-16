@@ -27,6 +27,8 @@ from paddle.distributed.checkpoint.utils import (
     unflatten_state_dict,
 )
 
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 
 class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
     def setUp(self):

@@ -892,9 +892,9 @@ def load_inference_model(
             >>> [inference_program, feed_target_names, fetch_targets] = (
             ...     paddle.static.load_inference_model(path_prefix, exe))
             >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32) # type: ignore[var-annotated]
-            >>> results = exe.run(inference_program,  # type: ignore[arg-type]
-            ...               feed={feed_target_names[0]: tensor_img},  # type: ignore[index,dict-item]
-            ...               fetch_list=fetch_targets)  # type: ignore[arg-type]
+            >>> results = exe.run(inference_program,
+            ...               feed={feed_target_names[0]: tensor_img},
+            ...               fetch_list=fetch_targets)
 
             # In this example, the inference program was saved in file
             # "./infer_model.pdmodel" and parameters were saved in file

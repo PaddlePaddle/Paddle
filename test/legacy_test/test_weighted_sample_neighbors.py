@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestWeightedSampleNeighbors(unittest.TestCase):
@@ -81,7 +80,6 @@ class TestWeightedSampleNeighbors(unittest.TestCase):
             )
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
-    @test_with_pir_api
     def test_sample_result_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

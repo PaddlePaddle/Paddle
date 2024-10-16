@@ -21,7 +21,6 @@ from scipy import special
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(42)
 paddle.seed(42)
@@ -57,7 +56,7 @@ class Testi1API(unittest.TestCase):
             self.place.append(paddle.CUDAPlace(0))
 
     def test_api_static(self):
-        @test_with_pir_api
+
         def run(place):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):

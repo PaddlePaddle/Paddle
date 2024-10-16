@@ -28,7 +28,6 @@ from op_test_xpu import XPUOpTest
 import paddle
 import paddle.nn
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 def adamw_step(inputs, attributes):
@@ -202,7 +201,6 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             )
             assert adam.__str__() is not None
 
-        @test_with_pir_api
         def test_adamw_op(self):
             paddle.enable_static()
             place = base.XPUPlace(0)
@@ -471,7 +469,6 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     linear2.bias.numpy(), fc2_b, rtol=1e-5, atol=1e-5
                 )
 
-        @test_with_pir_api
         def test_adamw_op(self):
             paddle.enable_static()
             place = base.XPUPlace(0)

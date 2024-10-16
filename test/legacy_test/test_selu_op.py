@@ -21,7 +21,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def ref_selu(
@@ -124,7 +123,6 @@ class TestSeluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
@@ -148,7 +146,6 @@ class TestSeluAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_base_api(self):
         with base.program_guard(base.Program()):
             x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
@@ -158,7 +155,6 @@ class TestSeluAPI(unittest.TestCase):
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.

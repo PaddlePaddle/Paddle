@@ -217,7 +217,7 @@ struct Layer {
                   const std::string& mode,
                   bool is_test,
                   DenseTensor* cache_input) {
-    // crate the temp input for the X * W_ih^T + Bias_ih
+    // create the temp input for the X * W_ih^T + Bias_ih
     const int& hidden_size = weight.dims()[0];  // NOLINT
     cache_input->Resize(
         common::make_ddim({input.dims()[0], input.dims()[1], hidden_size}));
@@ -272,7 +272,7 @@ struct Layer {
                    DenseTensor* last_c,
                    const DenseTensor& mask_tensor,
                    const std::string& mode) {
-    // in the output, if mask flag is 0, we will retun the zero data
+    // in the output, if mask flag is 0, we will return the zero data
     auto& place = *dev_ctx.eigen_device();
     auto out = EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
     auto mask = EigenMatrix<T>::From(

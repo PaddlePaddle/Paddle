@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def _run_ldexp_dynamic(x, y, device='cpu'):
@@ -156,7 +155,6 @@ class TestLdexpAPIWithStatic(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append('gpu')
 
-    @test_with_pir_api
     def test_ldexp_static(self):
         np.random.seed(7)
         for place in self.places:

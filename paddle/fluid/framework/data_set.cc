@@ -23,8 +23,8 @@
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/monitor.h"
+#include "paddle/phi/core/platform/timer.h"
 
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"

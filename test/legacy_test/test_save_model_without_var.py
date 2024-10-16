@@ -17,11 +17,10 @@ import warnings
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSaveModelWithoutVar(unittest.TestCase):
-    @test_with_pir_api
+
     def test_no_var_save(self):
         data = paddle.static.data(name='data', shape=[-1, 1], dtype='float32')
         data_plus = data + 1

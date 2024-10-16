@@ -20,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 paddle.seed(2024)
@@ -388,7 +387,7 @@ class TestUnpool1DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool1DAPI_st(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case(self):
         paddle.enable_static()
         places = []
@@ -484,7 +483,7 @@ class TestUnpool2DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool2DAPI_st(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case(self):
         paddle.enable_static()
         places = []
@@ -589,7 +588,7 @@ class TestUnpool3DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool3DAPI_st2(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case(self):
         paddle.enable_static()
         places = []

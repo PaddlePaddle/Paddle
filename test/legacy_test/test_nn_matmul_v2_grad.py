@@ -22,7 +22,6 @@ from decorator_helper import prog_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -37,7 +36,6 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         self.transpose_x = False
         self.transpose_y = False
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
@@ -100,7 +98,6 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
         self.transpose_x = True
         self.transpose_y = False
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
@@ -142,7 +139,6 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         self.transpose_x = False
         self.transpose_y = False
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005

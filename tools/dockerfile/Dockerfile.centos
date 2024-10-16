@@ -13,7 +13,7 @@ ENV PATH /opt/rh/devtoolset-2/root/usr/bin:$PATH
 ENV LD_LIBRARY_PATH /usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-RUN yum install -y bzip2 gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel patch
+RUN yum update -y && yum install -y bzip2 gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel libtool xz graphviz wget curl-devel patch perl swig
 COPY build_scripts /build_scripts
 RUN bash build_scripts/build.sh
 #RUN bash build_scripts/install_nccl2.sh
@@ -25,7 +25,7 @@ RUN ln -s /usr/local/ssl/include/openssl /usr/include
 RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
   tar -xvf git-2.17.1.tar.gz && \
   cd git-2.17.1 && \
-  ./configure --with-openssl --prefix=/usr/local && \
+  ./configure --with-openssl CFLAGS="-Dsocklen_t=uint32_t" --prefix=/usr/local && \
   make -j8 && make install
 
 ENV SSL_CERT_FILE=/opt/_internal/certs.pem
@@ -41,11 +41,6 @@ RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.15.12.l
     mkdir /root/gopath/bin && \
     mkdir /root/gopath/src
 
-
-# protobuf 3.6.1
-RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \
-    tar xzf protobuf-cpp-3.6.1.tar.gz && \
-    cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
 
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 
@@ -70,14 +65,14 @@ RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_i
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.11.0/bin/pip3 install pre-commit 'ipython==5.3.0' && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.12.0/bin/pip3 install pre-commit 'ipython==5.3.0'
 
-RUN wget -O /opt/swig-2.0.12.tar.gz --no-check-certificate https://sourceforge.net/projects/swig/files/swig/swig-2.0.12/swig-2.0.12.tar.gz/download && \
-    cd /opt && tar xzf swig-2.0.12.tar.gz && cd /opt/swig-2.0.12 && ./configure && make && make install && cd /opt && rm swig-2.0.12.tar.gz
 
-# ccache 3.7.9
-RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
-    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
-    ./configure -prefix=/usr/local/ccache-3.7.9 && \
+# ccache 4.8.2
+RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
+    tar xf ccache-4.8.2.tar.gz && mkdir /usr/local/ccache-4.8.2 && cd ccache-4.8.2 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local/ccache-4.8.2 .. && \
     make -j8 && make install && \
-    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+    ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
+    cd ../../ && rm -rf ccache-4.8.2.tar.gz
 
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

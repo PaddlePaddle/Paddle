@@ -61,16 +61,16 @@ __global__ void KeLocalStats(
     auto out = BlockReduce(temp_storage).Reduce(x_sum, cub::Sum());
     __syncthreads();
     if (threadIdx.x == 0) {
-      mean_var[k] = out / (N * M);
+      mean_var[k] = out;
     }
     out = BlockReduce(temp_storage).Reduce(x2_sum, cub::Sum());
     __syncthreads();
     if (threadIdx.x == 0) {
-      mean_var[k + C] = out / (N * M);
+      mean_var[k + C] = out;
     }
   }
   if (blockIdx.x == 0 && threadIdx.x == 0) {
-    mean_var[2 * C] = static_cast<BatchNormParamType<T>>(1.0);
+    mean_var[2 * C] = static_cast<BatchNormParamType<T>>(N * M);
   }
 }
 

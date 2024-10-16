@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -53,7 +52,7 @@ class TestRandintOp(OpTest):
 
 
 class TestRandintOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -225,7 +224,6 @@ class TestRandintAPI_ZeroDim(unittest.TestCase):
         self.assertEqual(x.shape, [])
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

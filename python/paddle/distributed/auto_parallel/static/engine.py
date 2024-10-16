@@ -71,6 +71,7 @@ from .pir_pass import (
     apply_partition_pass,
     check_chunk_id,
     complete_chunk_id,
+    fuse_attention_ffn_qkv_pass,
     pipeline_pass,
     remove_unuseful_comm_op_pass,
 )
@@ -330,6 +331,8 @@ class Engine:
                 paddle.framework.set_flags({'FLAGS_enable_pir_in_executor': 1})
 
         self.enable_job_schedule_profiler = False
+
+        self.fused_ffn_qkv = None
 
     # get dist input spec from shard dataloader
     def _prepare_data_spec_from_dataloader(self, dataloader):
@@ -702,6 +705,32 @@ class Engine:
         mix_fw_program = self._fwd_main_progs[mode]
         startup_program = self._startup_progs[mode]
 
+        # TODO(zhangbo) Open fused_ffn/fused_attention_qkv pass
+        if os.getenv("FLAGS_enable_fused_ffn_qkv_pass") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            self.fused_ffn_qkv = fuse_attention_ffn_qkv_pass(
+                startup_program,
+                mix_fw_program,
+                self.concrete_program,
+                mode="all",
+            )
+
+            # update self._parameter_name_list after fused_ffn_qkv, otherwise opt stage will not update fused params
+            for k in self.fused_ffn_qkv.keys():
+                for fusion in self.fused_ffn_qkv[k]:
+                    for after_fuse_name, before_fuse_params in fusion.items():
+                        index = self._parameter_name_list.index(
+                            before_fuse_params[0].name
+                        )
+                        self._parameter_name_list.insert(index, after_fuse_name)
+                        for before_fuse_param in before_fuse_params:
+                            self._parameter_name_list.remove(
+                                before_fuse_param.name
+                            )
+
         forward_op_start_idx = 0
         backward_op_start_idx = -1
         opt_op_start_idx = -1
@@ -710,13 +739,32 @@ class Engine:
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
-        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
+        if self._strategy.mp_optimization.replace_with_parallel_cross_entropy:
+            auto_parallel_replace_with_parallel_cross_entropy_pass = new_pass(
+                "replace_with_parallel_cross_entropy", {}
+            )
+            auto_parallel_replace_with_parallel_cross_entropy_pass.apply(
+                [dist_program], [startup_program]
+            )
 
+        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
         if (
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"
         ):
-            complete_chunk_id(dist_program, self._strategy.pipeline)
+            complete_chunk_id(
+                dist_program, startup_program, self._strategy.pipeline
+            )
+
+        if self._strategy.mp_optimization.replace_with_c_embedding:
+            config = {}
+            config["concrete_program"] = self.concrete_program
+            auto_parallel_c_embedding_pass = new_pass(
+                "auto_parallel_c_embedding_pass", config
+            )
+            auto_parallel_c_embedding_pass.apply(
+                [dist_program], [startup_program]
+            )
 
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
@@ -947,7 +995,7 @@ class Engine:
                 for job_type in self._job_plan.job_types():
                     ir_program = self._job_plan.ir_program(job_type)
                     pm.run(ir_program)
-
+        remove_unuseful_comm_op_pass(dense_program)
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
         self._pir_dist_startup_progs[mode] = startup_program
@@ -1266,7 +1314,6 @@ class Engine:
                 all_process_groups = get_all_process_groups()
                 for process_group in all_process_groups:
                     process_group.instantiate()
-                pass
                 return
 
             # Traverse different rank programs and traverse each op of them,
@@ -1385,6 +1432,9 @@ class Engine:
 
                 set_all_ops_op_role(startup_prog.global_block(), OpRole.Forward)
                 ReshardPasses.apply_reshard_pass(startup_prog)
+                paddle.base.libpaddle.pir.apply_dist2dense_pass(startup_prog)
+                remove_unuseful_comm_op_pass(startup_prog)
+
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
                 self._executor.run(startup_prog)

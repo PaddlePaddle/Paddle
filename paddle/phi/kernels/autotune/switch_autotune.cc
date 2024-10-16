@@ -39,7 +39,7 @@ void AutoTuneStatus::Update() {
     return;
   }
 
-  // This fuction is called when each iter finished.
+  // This function is called when each iter finished.
   if (current_steps_id_ + 1 < start_step_id_) {
     use_autotune_ = false;
   } else if (current_steps_id_ + 1 >= start_step_id_ &&

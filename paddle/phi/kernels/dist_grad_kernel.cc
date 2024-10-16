@@ -65,8 +65,8 @@ void DistGradKernel(const Context& dev_ctx,
       dev_ctx, t, out, out_grad, p, -1, 1e-12, false, true, &x_grad_tmp);
 
   if (x_grad) {
-    // do reduce, the implemetation of cpu SumKernel has bug, it changes
-    // the dims of output iternally, so we Resize x/y_grad twice.
+    // do reduce, the implementation of cpu SumKernel has bug, it changes
+    // the dims of output internally, so we Resize x/y_grad twice.
     auto res_x = GetReduceDims(x_grad_tmp.dims(), x.dims());
     if (!std::get<0>(res_x).empty()) {
       x_grad->Resize(common::make_ddim(std::get<1>(res_x)));

@@ -232,7 +232,10 @@ def _is_custom_device_bfloat16_supported() -> bool:
     Judge whether current custom device support bfloat16 amp.
     """
     place = _current_expected_place()
-    return place.get_device_type() == 'npu'
+    return (
+        place.get_device_type() == 'npu'
+        or place.get_device_type() == 'intel_hpu'
+    )
 
 
 def need_keep_fp32(layer: Layer, dtype: str) -> bool:
