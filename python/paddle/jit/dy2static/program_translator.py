@@ -68,7 +68,6 @@ from .utils import (
     input_specs_compatible,
     is_paddle_func,
     make_hashable,
-    prim_is_enabled,
     prim_or_cinn_is_enabled,
     type_name,
 )
@@ -402,21 +401,6 @@ class StaticFunction(Generic[_InputT, _RetT]):
         else:
             self._dygraph_function = function
             self._class_instance = None
-        # TODO(chenzhuo): Remove this after lowering prim into C++
-        if (
-            input_spec is not None
-            and prim_is_enabled()
-            and not core._enable_prim_dynamic_shape()
-        ):
-            from paddle.static import InputSpec
-
-            for spec in flatten(input_spec):
-                if isinstance(spec, InputSpec) and -1 in spec.shape:
-                    input_spec = None
-                    warnings.warn(
-                        'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
-                    )
-                    break
 
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)

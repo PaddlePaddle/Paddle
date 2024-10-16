@@ -15,8 +15,8 @@ limitations under the License. */
 #include <fstream>
 #include <string>
 
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/platform/cuda_device_guard.h"
@@ -25,10 +25,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cupti.h"
 #endif
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/os_info.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
 
 #ifdef PADDLE_WITH_XPU

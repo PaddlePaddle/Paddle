@@ -56,6 +56,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/general/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
 
 COMMON_DECLARE_bool(cinn_specify_input_dynamic_dim);
@@ -93,6 +94,19 @@ bool HasDynamicShape(const pir::Program& program) {
   return false;
 }
 }  // namespace
+
+void ApplyIdentityOpCleanPass(
+    ::pir::Program* program,
+    const std::function<std::shared_ptr<::pir::PassManager>()>&
+        CreatePassManager) {
+  // NOTE(gongshaotian):Before Paddle 3.0, useless full op and scale op are
+  // inserted at the end of the Program when export models using Paddle. This
+  // Pass is designed to address the above-mentioned issues encountered when
+  // open CINN execution in some models that cannot be reexported.
+  std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  pass_manager->AddPass(pir::CreateIdentityOpCleanPass());
+  pass_manager->Run(program);
+}
 
 void ApplyShapeOptimizationPass(
     ::pir::Program* program,
@@ -264,6 +278,7 @@ void ApplyCinnPass(::pir::Program* program,
       .file_name("original_programs.py")
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
+  ApplyIdentityOpCleanPass(program, CreatePassManager);
   ApplyShapeOptimizationPass(program, CreatePassManager);
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);

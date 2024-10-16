@@ -179,6 +179,17 @@ bool is_custom_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CUSTOM;
 }
 
+bool is_accelerat_place(const Place &p) {
+  return is_gpu_place(p) || is_xpu_place(p) || is_ipu_place(p) ||
+         is_custom_place(p);
+}
+
+bool is_accelerat_allocation_type(AllocationType type) {
+  return type == phi::AllocationType::GPU || type == phi::AllocationType::XPU ||
+         type == phi::AllocationType::IPU ||
+         type == phi::AllocationType::CUSTOM;
+}
+
 bool places_are_same_class(const Place &p1, const Place &p2) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (is_custom_place(p1) && is_custom_place(p2)) {

@@ -12,8 +12,6 @@ if(WIN32 AND NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_build_strategy)
-list(REMOVE_ITEM TEST_OPS test_simnet)
-list(REMOVE_ITEM TEST_OPS test_pylayer)
 
 if(NOT WITH_GPU)
   # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.

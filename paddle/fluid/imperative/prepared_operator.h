@@ -34,6 +34,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
 
@@ -307,8 +308,14 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
         continue;
       } else if (input_defs[i].type_index ==
-                 std::type_index(typeid(
-                     paddle::optional<std::vector<const phi::DenseTensor*>>))) {
+                     std::type_index(
+                         typeid(paddle::optional<phi::ExtendedTensor>)) ||
+                 input_defs[i].type_index ==
+                     std::type_index(typeid(paddle::optional<phi::Strings>)) ||
+                 input_defs[i].type_index ==
+                     std::type_index(
+                         typeid(paddle::optional<
+                                std::vector<const phi::DenseTensor*>>))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -337,6 +344,12 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<phi::TensorArray>()) {
         tensor_in = &(var.template Get<phi::TensorArray>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var.template IsType<phi::Vocab>()) {
+        tensor_in = &(var.template Get<phi::Vocab>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var.template IsType<phi::Strings>()) {
+        tensor_in = &(var.template Get<phi::Strings>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(

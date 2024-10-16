@@ -146,7 +146,7 @@ void LayerNormalizeReluXPUInferMeta(const MetaTensor& x,
 void FusedMultiTransformerInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scales,
-    const std::vector<const MetaTensor*>& ln_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& ln_biases,
     const std::vector<const MetaTensor*>& qkv_weights,
     const paddle::optional<std::vector<const MetaTensor*>>& qkv_biases,
     const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
@@ -159,7 +159,7 @@ void FusedMultiTransformerInferMeta(
     const std::vector<const MetaTensor*>& out_linear_weights,
     const paddle::optional<std::vector<const MetaTensor*>>& out_linear_biases,
     const std::vector<const MetaTensor*>& ffn_ln_scales,
-    const std::vector<const MetaTensor*>& ffn_ln_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn_ln_biases,
     const std::vector<const MetaTensor*>& ffn1_weights,
     const paddle::optional<std::vector<const MetaTensor*>>& ffn1_biases,
     const std::vector<const MetaTensor*>& ffn2_weights,
@@ -296,6 +296,7 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const float quant_min_bound,
                                       const float out_scale,
                                       const std::string& compute_dtype,
+                                      const float rope_theta,
                                       MetaTensor* fmha_out,
                                       MetaTensor* qkv_out,
                                       MetaTensor* key_cache_out,
@@ -441,6 +442,7 @@ void BlockMultiheadAttentionInferXPUMeta(
     const float quant_min_bound,
     const float out_scale,
     const std::string& compute_dtype,
+    const float rope_theta,
     MetaTensor* fmha_out,
     MetaTensor* qkv_out,
     MetaTensor* key_cache_out,
@@ -480,6 +482,7 @@ void BlockMultiheadAttentionInferXPUMeta(
                                    quant_min_bound,
                                    out_scale,
                                    compute_dtype,
+                                   rope_theta,
                                    fmha_out,
                                    qkv_out,
                                    key_cache_out,
@@ -1820,7 +1823,8 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
   auto x_mat_dims =
       common::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
 
-  int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
+  auto x_rank = x_dims.size();
+  int K_from_x = static_cast<int>(trans_x ? x_dims[x_rank - 2] : x_mat_dims[1]);
   int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
   bool check_dim = (!config.is_runtime && K_from_x != -1) || config.is_runtime;
   if (check_dim) {
@@ -1835,12 +1839,12 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> out_dims;
-  out_dims.reserve(static_cast<size_t>(x_dims.size()));
-  if (trans_x) {
-    for (int i = 1; i < x_dims.size(); ++i) out_dims.push_back(x_dims[i]);
-  } else {
-    for (int i = 0; i < x_dims.size() - 1; ++i) out_dims.push_back(x_dims[i]);
+  out_dims.reserve(x_rank);
+
+  for (int i = 0; i + 2 < x_rank; ++i) {
+    out_dims.push_back(x_dims[i]);
   }
+  out_dims.push_back(trans_x ? x_dims[x_rank - 1] : x_dims[x_rank - 2]);
 
   if (trans_y) {
     out_dims.push_back(y_dims[0]);
@@ -1951,8 +1955,11 @@ void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
     x_grad->set_dims(x_dims);
     x_grad->set_dtype(x.dtype());
   }
-  y_grad->set_dims(y_dims);
-  y_grad->set_dtype(y.dtype());
+
+  if (y_grad) {
+    y_grad->set_dims(y_dims);
+    y_grad->set_dtype(y.dtype());
+  }
 
   if (bias_grad) {
     int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];
