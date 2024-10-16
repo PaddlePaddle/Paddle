@@ -47,6 +47,9 @@ bool ProcessGroupBKCL::BKCLTask::IsCompleted() {
 
 // TODO(sheniang03): Add timeout for wait, now timeout unused
 bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
+  if (HasDelayedCommFunc()) {
+    StartDelayedCommFunc();
+  }
   const auto* calc_ctx =
       static_cast<XPUContext*>(phi::DeviceContextPool::Instance().Get(place_));
   if (barrier_) {
@@ -74,6 +77,23 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
 
 // Same as Wait
 void ProcessGroupBKCL::BKCLTask::Synchronize() { Wait(kWaitTimeout); }
+
+void ProcessGroupBKCL::BKCLTask::StartDelayedCommFunc() {
+  for (auto& fn : delayed_funcs_) {
+    fn();
+  }
+
+  delayed_funcs_.clear();
+}
+
+void ProcessGroupBKCL::BKCLTask::RegisterDelayedCommFunc(const CommFunc& func) {
+  delayed_funcs_.push_back(func);
+}
+
+static bool IsCrossNodeComm(int src_rank, int tgt_rank) {
+  VLOG(1) << "src_rank: " << src_rank << "tgt_rank: " << tgt_rank;
+  return true;
+}
 
 ProcessGroupBKCL::ProcessGroupBKCL(
     const std::shared_ptr<phi::distributed::Store>& store,
@@ -317,7 +337,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
   auto bkcl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
   auto bkcl_comm_ctx = this->GetCommContext();
-  fn(bkcl_comm_ctx, bkcl_stream, p2p_target_rank);
+  if (std::getenv("BKCL_ASYNC_SEND_RECV") != nullptr &&
+      IsCrossNodeComm(rank_, p2p_target_rank) && comm_type == CommType::RECV) {
+    // delay dispatch of comm kernels
+    task->RegisterDelayedCommFunc(
+        [=] { fn(bkcl_comm_ctx, bkcl_stream, p2p_target_rank); });
+  } else {
+    fn(bkcl_comm_ctx, bkcl_stream, p2p_target_rank);
+  }
 
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(comm_ctx.get(),
