@@ -335,8 +335,6 @@ bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
     if (flatten) {
       if (keepdims) {
         out_sym_shape.emplace_back(std::int64_t(rank));
-      } else {
-        out_sym_shape.emplace_back(std::int64_t(0));
       }
     } else {
       for (int i = 0; i < axis; i++) {
