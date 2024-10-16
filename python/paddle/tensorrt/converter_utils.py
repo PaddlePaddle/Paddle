@@ -324,21 +324,36 @@ def build_size_tensor(
     return size_tensor
 
 
-def trt_greater_than(network, paddle_op, inputs):
+def converter_greater_than(network, paddle_op, inputs):
     layer_output = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.GREATER
     )
     return trt_cast(network, layer_output, inputs[0].dtype)
 
 
-def trt_less_than(network, paddle_op, inputs):
+def converter_less_than(network, paddle_op, inputs):
     layer_output = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.LESS
     )
     return trt_cast(network, layer_output, inputs[0].dtype)
 
 
+def converter_equal(network, paddle_op, inputs):
+    layer_output = add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.EQUAL
+    )
+    return layer_output
+
+
+def converter_not_equal(network, paddle_op, inputs):
+    layer_output = trt_equal(network, paddle_op, inputs)
+    not_layer = network.add_unary(layer_output, trt.UnaryOperation.NOT)
+    return not_layer.get_output(0)
+
+
 elementwise_map = {
-    "pd_op.greater_than": trt_greater_than,
-    "pd_op.less_than": trt_less_than,
+    "pd_op.greater_than": converter_greater_than,
+    "pd_op.less_than": converter_less_than,
+    "pd_op.equal": converter_equal,
+    "pd_op.not_equal": converter_not_equal,
 }

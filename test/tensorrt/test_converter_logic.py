@@ -50,5 +50,35 @@ class TestLessThanTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestEqualTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.equal
+        self.api_args = {
+            "x": np.random.randn(3).astype(np.float32),
+            "y": np.random.randn(3).astype(np.float32),
+        }
+        self.program_config = {"feed_list": ["x", "y"]}
+        self.min_shape = {"x": [1], "y": [1]}
+        self.max_shape = {"x": [5], "y": [5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestNotEqualTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.not_equal
+        self.api_args = {
+            "x": np.random.randn(3).astype(np.float32),
+            "y": np.random.randn(3).astype(np.float32),
+        }
+        self.program_config = {"feed_list": ["x", "y"]}
+        self.min_shape = {"x": [1], "y": [1]}
+        self.max_shape = {"x": [5], "y": [5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 if __name__ == '__main__':
     unittest.main()
