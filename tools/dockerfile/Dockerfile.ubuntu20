@@ -164,8 +164,8 @@ RUN pip3.9 --no-cache-dir install -r  /root/requirements.txt && \
     pip3.12 --no-cache-dir install -r /home/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /root/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /home/requirements.txt && \
-    python3.13t -m pip --no-cache-dir install -r /root/requirements.txt && \
-    python3.13t -m pip --no-cache-dir install -r /home/requirements.txt
+    python3.13t -m pip --no-cache-dir install -r /root/requirements.txt
+    # python3.13t -m pip --no-cache-dir install -r /home/requirements.txt
 
 
 # ccache 4.2.0
