@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/pass/pass.h"
+#include <glog/logging.h>
+
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/region.h"
 #include "paddle/pir/include/core/verify.h"
+#include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_instrumentation.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
@@ -86,6 +88,7 @@ GreedyRewriteConfig PatternRewritePass::InitializeConfig() {
 }
 
 void PatternRewritePass::Run(Operation* op) {
+  VLOG(4) << "Run PatternRewritePass: " << name();
   auto [_, num_rewrites] =
       ApplyPatternsGreedily(op, patterns_, InitializeConfig());
   AddStatistics(num_rewrites);
