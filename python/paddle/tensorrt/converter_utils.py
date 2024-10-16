@@ -325,7 +325,7 @@ def build_size_tensor(
     return size_tensor
 
 
-def ConvertConv2d(network, paddle_op, inputs):
+def convert_conv2d(network, paddle_op, inputs):
     if (
         paddle_op.name() == "pd_op.conv2d"
         or paddle_op.name() == "pd_op.depthwise_conv2d"
