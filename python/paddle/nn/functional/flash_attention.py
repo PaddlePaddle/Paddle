@@ -33,6 +33,24 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
+def _is_hopper_device():
+    # 获取指定设备的属性
+    if paddle.device.is_compiled_with_cuda():
+        place = paddle.framework._current_expected_place_()
+        if isinstance(place, paddle.base.core.CUDAPlace):
+            device_properties = paddle.device.cuda.get_device_properties(
+                place.get_device_id()
+            )
+            compute_capability = (
+                device_properties.major,
+                device_properties.minor,
+            )
+            if compute_capability == (9, 0):
+                return True
+    # Otherwise
+    return False
+
+
 @signature_safe_contextmanager
 def sdp_kernel(
     enable_math: bool = False,
@@ -322,18 +340,47 @@ def flash_attention(
 
     if sdp_func_name == "flash_attn":
         if in_dynamic_or_pir_mode():
-            (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
-                query,
-                key,
-                value,
-                fixed_seed_offset,
-                None,
-                dropout,
-                causal,
-                return_softmax,
-                not training,
-                rng_name,
-            )
+            if _is_hopper_device():
+                attn_mask = None
+                cu_seqlen_q = None
+                cu_seqlen_k = None
+                head_dim = query.shape[3]
+                scaling_factor = head_dim**-0.5
+                if causal:
+                    mask_type = "causal"
+                    bias_type = "none"
+                else:
+                    mask_type = "none"
+                    bias_type = "none"
+
+                (result_attention, result_softmax, _) = (
+                    _C_ops.fused_dot_product_attention(
+                        query,
+                        key,
+                        value,
+                        attn_mask,
+                        cu_seqlen_q,
+                        cu_seqlen_k,
+                        scaling_factor,
+                        dropout,
+                        training,
+                        mask_type,
+                        bias_type,
+                    )
+                )
+            else:
+                (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
+                    query,
+                    key,
+                    value,
+                    fixed_seed_offset,
+                    None,
+                    dropout,
+                    causal,
+                    return_softmax,
+                    not training,
+                    rng_name,
+                )
             return result_attention, result_softmax if return_softmax else None
 
         helper = LayerHelper('flash_attn', **locals())
@@ -1041,21 +1088,58 @@ def scaled_dot_product_attention(
         return out
     else:
         if in_dynamic_or_pir_mode():
-            fixed_seed_offset = None
-            return_softmax = False
-            rng_name = ""
-            out, _, _, _ = _C_ops.flash_attn(
-                query,
-                key,
-                value,
-                fixed_seed_offset,
-                attn_mask,
-                dropout_p,
-                is_causal,
-                return_softmax,
-                not training,
-                rng_name,
-            )
+            if _is_hopper_device():
+                cu_seqlen_q = None
+                cu_seqlen_k = None
+                head_dim = query.shape[3]
+                scaling_factor = head_dim**-0.5
+                if is_causal:
+                    assert (
+                        attn_mask is None
+                    ), "mask must be None when is_causal is True"
+                    mask_type = "causal"
+                    bias_type = "none"
+                elif attn_mask is not None:
+                    mask_type = "none"
+                    bias_type = (
+                        "post_scale_bias"  # pass mask as a post scale bias
+                    )
+                    assert (
+                        attn_mask.dtype == query.dtype
+                    ), "attn_mask dtype should be the same as qkv dtype"
+                else:
+                    mask_type = "none"
+                    bias_type = "none"
+
+                (out, _, _) = _C_ops.fused_dot_product_attention(
+                    query,
+                    key,
+                    value,
+                    attn_mask,
+                    cu_seqlen_q,
+                    cu_seqlen_k,
+                    scaling_factor,
+                    dropout_p,
+                    training,
+                    mask_type,
+                    bias_type,
+                )
+            else:
+                fixed_seed_offset = None
+                return_softmax = False
+                rng_name = ""
+                out, _, _, _ = _C_ops.flash_attn(
+                    query,
+                    key,
+                    value,
+                    fixed_seed_offset,
+                    attn_mask,
+                    dropout_p,
+                    is_causal,
+                    return_softmax,
+                    not training,
+                    rng_name,
+                )
             return out
         else:
             helper = LayerHelper('flash_attn', **locals())
