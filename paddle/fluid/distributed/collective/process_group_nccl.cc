@@ -213,19 +213,15 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
   return iter->second->nccl_comm();
 }
 
-std::string ProcessGroupNCCL::GetOrCreateGroupKey(const Place& place,
-                                                  CommType comm_type) {
+phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetOrCreateCommContext(
+    const Place& place, CommType comm_type) {
   const auto& key = GetKeyFromPlace(place);
+  std::string store_key;
+  GetStoreKey(key, comm_type, &store_key);
   if (place_to_group_key_.find(key) == place_to_group_key_.end()) {
-    if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-      std::string store_key;
-      GetStoreKey(key, comm_type, &store_key);
-      CreateNCCLEnvCache(place, key, store_key, comm_type);
-    } else {
-      VLOG(3) << "group_key already exists, but comm_ctx is null.";
-    }
+    CreateNCCLEnvCache(place, key, store_key, comm_type);
   }
-  return place_to_group_key_.at(key);
+  return GetCommContext(key);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
