@@ -278,11 +278,3 @@ def nearest_interp_converter(network, paddle_op, inputs):
         resize_layer.scales = scales
 
     return resize_layer.get_output(0)
-
-
-
-
-        
-    
-    
-    
