@@ -39,8 +39,6 @@ bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
 }
 
 template class TypeInfoTraits<phi::TensorBase, paddle::framework::RawTensor>;
-template class TypeInfoTraits<phi::TensorBase, paddle::framework::Vocab>;
-template class TypeInfoTraits<phi::TensorBase, paddle::framework::Strings>;
 template class TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>;
 template class TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;

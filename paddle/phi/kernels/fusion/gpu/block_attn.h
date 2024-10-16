@@ -1689,7 +1689,7 @@ void blha(const phi::GPUContext &dev_ctx,
       mask_broadcast_num_heads = false;
     } else {
       PADDLE_THROW(errors::InvalidArgument(
-          "Unknow dimension for attn_mask, the q_num_head(2nd) "
+          "Unknown dimension for attn_mask, the q_num_head(2nd) "
           "dimension is invalid, it should be 1 or q_num_head(%d), "
           "but got %d",
           q_num_head,

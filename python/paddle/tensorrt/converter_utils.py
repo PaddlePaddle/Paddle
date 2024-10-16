@@ -19,6 +19,8 @@ import sys
 import numpy as np
 import tensorrt as trt
 
+from .util import get_trt_version_list
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 if parent_dir not in sys.path:
@@ -31,8 +33,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-version = trt.__version__
-version_list = list(map(int, version.split('.')))
+version_list = get_trt_version_list()
 
 
 def has_dynamic_shape(shape):
