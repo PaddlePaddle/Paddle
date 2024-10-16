@@ -16,7 +16,6 @@ import logging
 from collections import OrderedDict
 from enum import Enum
 from functools import reduce
-from itertools import product
 
 import paddle
 from paddle.base import core
@@ -946,55 +945,6 @@ def _split_program_into_forward_backward_optimize(
     return fwd_program, bwd_program, opt_program
 
 
-def _add_persistable_var(
-    type_to_program, type_to_ops, all_ops, op_idx, program_type
-):
-    all_program_types = list(type_to_program.keys())
-    following_program_types = all_program_types[
-        all_program_types.index(program_type) + 1 :
-    ]
-    op = type_to_ops[program_type][op_idx]
-    op_name = op.name()
-    op_num_results = op.num_results()
-
-    def get_var_name(idx):
-        if op_name in ["pd_op.data", "builtin.parameter"]:
-            return op.result(idx).name
-
-        result_value = all_ops[op_idx].result(idx)
-        all_used_ops = result_value.all_used_ops()
-        shadow_output_op_used = next(
-            (op for op in all_used_ops if op.name() == "builtin.shadow_output"),
-            None,
-        )
-
-        if shadow_output_op_used is not None:
-            return shadow_output_op_used.attrs()["output_name"]
-        else:
-            return f"var_{op_idx}_{all_ops[op_idx].name()}_{idx}"
-
-    for idx in range(op_num_results):
-        var_name = None
-        for type in reversed(following_program_types):
-            op_result = type_to_ops[type][op_idx].result(idx)
-            if op_result.use_empty():
-                continue
-
-            if var_name is None:
-                var_name = get_var_name(idx)
-                if var_name.startswith("var_"):
-                    paddle.pir.set_insertion_point_after(op)
-                    paddle._C_ops.set_persistable_value(op_result, var_name)
-
-            program_block = type_to_program[type].global_block()
-            new_result_var = program_block.add_kwarg(var_name, op_result.type())
-            new_result_var.persistable = op_result.persistable
-            op_result.replace_all_uses_with(new_result_var)
-
-    for type in following_program_types:
-        type_to_ops[type][op_idx].erase()
-
-
 def _pir_get_backward_op_type(all_ops, op_idx):
     cur_op = all_ops[op_idx]
 
@@ -1017,6 +967,12 @@ def _pir_get_backward_op_type(all_ops, op_idx):
                 return False
         return True
 
+    def used_by_grad_merge_add(value):
+        for op in value.all_used_ops():
+            if op.has_attr("grad_merge_add"):
+                return True
+        return False
+
     # For the cur_op doesn't have output such as 'send_v2', it should be backward_b.
     if cur_op.num_results() == 0:
         return ["backward_b"]
@@ -1024,12 +980,74 @@ def _pir_get_backward_op_type(all_ops, op_idx):
     if is_reshape_matmul_pattern():
         return ["backward_w"] * 5
 
+    # backward_w type op should only output grad of parameters
+    for output in cur_op.results():
+        if not used_by_grad_merge_add(output):
+            return ["backward_b"]
+
     return ["backward_w"]
 
 
 def _split_program_for_vpp(
     program, num_model_chunks, oprole_names, split_bw=False
 ):
+    def get_var_name(op_idx, result_idx):
+        result_value = all_ops[op_idx].result(result_idx)
+        all_used_ops = result_value.all_used_ops()
+        shadow_output_op_used = None
+        for op in all_used_ops:
+            if op.name() == "builtin.shadow_output":
+                shadow_output_op_used = op
+
+        if shadow_output_op_used is not None:
+            var_name = shadow_output_op_used.attrs()["output_name"]
+        else:
+            var_name = f"var_{op_idx}_{all_ops[op_idx].name()}_{result_idx}"
+        return var_name
+
+    def add_persistable_var(op_idx, program_type):
+        all_program_types = list(type_to_program.keys())
+        following_program_types = all_program_types[
+            all_program_types.index(program_type) + 1 :
+        ]
+        op_num_results = type_to_ops[program_type][op_idx].num_results()
+        op_name = type_to_ops[program_type][op_idx].name()
+
+        for idx in range(op_num_results):
+            var_name = None
+            for type in reversed(following_program_types):
+                op_result = type_to_ops[type][op_idx].result(idx)
+                if op_result.use_empty():
+                    continue
+
+                # if this op's output is used, create the persistable
+                # var to be used in other programs.
+                if var_name is None:
+                    if op_name in ["pd_op.data", "builtin.parameter"]:
+                        var_name = op_result.name
+                    else:
+                        var_name = get_var_name(op_idx, idx)
+                        if "var_" in var_name:
+                            paddle.pir.set_insertion_point_after(
+                                type_to_ops[program_type][op_idx]
+                            )
+                            paddle._C_ops.set_persistable_value(
+                                type_to_ops[program_type][op_idx].result(idx),
+                                var_name,
+                            )
+
+                program_block = type_to_program[type].global_block()
+                new_result_var = program_block.add_kwarg(
+                    var_name, op_result.type()
+                )
+                new_result_var.persistable = op_result.persistable
+                type_to_ops[type][op_idx].result(idx).replace_all_uses_with(
+                    new_result_var
+                )
+
+        for type in following_program_types:
+            type_to_ops[type][op_idx].erase()
+
     type_to_program = OrderedDict()
     type_to_ops = OrderedDict()
 
@@ -1042,7 +1060,8 @@ def _split_program_for_vpp(
             )
         else:
             chunk_ids = list(range(num_model_chunks))
-            chunk_ids = chunk_ids if "backward" in type else reversed(chunk_ids)
+            if "backward" in type:
+                chunk_ids.reverse()
             for chunk_id in chunk_ids:
                 type_to_program[type + str(chunk_id)] = program.clone()
                 type_to_ops[type + str(chunk_id)] = (
@@ -1055,147 +1074,67 @@ def _split_program_for_vpp(
     all_ops = program.global_block().ops
     chunk_ids = list(range(num_model_chunks))
 
+    bwd_pattern_ops_type = []
     for idx in range(len(all_ops) - 1, -1, -1):
         op = all_ops[idx]
         op_role = op.op_role
         op_chunk_id = op.attrs()["chunk_id"]
+        # Step2.1: infer chunk_id for ops that don't have chunk_id
         if op_role != int(OpRole.Optimize) and op_chunk_id == -1:
             op_chunk_id = infer_chunk_id(idx, all_ops, False)
             if op_chunk_id == -1:
                 raise ValueError(
                     f"Cannot infer chunk_id for op {op.name()} at index {idx}"
                 )
-        if op_role == int(OpRole.Optimize):
-            # in optimize program, both forward and backward ops should be removed
-            for role, chunk_id in product(oprole_names[:-1], chunk_ids):
-                type_to_ops[role + str(chunk_id)][idx].erase()
-        elif op_role == int(OpRole.Backward):
-            bwd_op_type = op_role
-            if split_bw:
-                bwd_op_type = _pir_get_backward_op_type(op)
 
+        # Step2.2: indentify the job_type of the op
+        if op_role == int(OpRole.Optimize):
+            job_type = "optimizer"
+        elif op_role == int(OpRole.Backward) and split_bw:
+            if len(bwd_pattern_ops_type) == 0:
+                bwd_pattern_ops_type = _pir_get_backward_op_type(op)
+            job_type = bwd_pattern_ops_type.pop()
+        elif op_role == int(OpRole.Backward) and (not split_bw):
+            job_type = "backward"
         elif op_role == int(OpRole.Forward):
-            pass
+            job_type = "forward"
         else:
             raise ValueError(
                 f"The op[{op.name()}]'s op role: {op_role} isn't one of Forward, Backward or Optimizer."
             )
 
-
-def _pir_program_for_vpp(
-    program, num_model_chunks, enable_send_recv_overlap=False
-):
-    oprole_type = {0: "forward", 1: "backward", 2: "optimizer"}
-    type_to_program = OrderedDict()
-    type_to_ops = OrderedDict()
-
-    # Step1: create programs and ops for each type
-    for type in oprole_type.values():
-        if type == "optimizer":
-            type_to_program["optimizer"] = program.clone()
-            type_to_ops["optimizer"] = (
-                type_to_program["optimizer"].global_block().ops
-            )
-        else:
-            chunk_ids = list(range(num_model_chunks))
-            chunk_ids = chunk_ids if type != "backward" else reversed(chunk_ids)
+        # Step2.3: delete ops not belong to the type
+        for type in oprole_names:
+            if type == job_type:
+                break
             for chunk_id in chunk_ids:
-                type_to_program[type + str(chunk_id)] = program.clone()
-                type_to_ops[type + str(chunk_id)] = (
-                    type_to_program[type + str(chunk_id)].global_block().ops
-                )
+                type_to_ops[type + str(chunk_id)][idx].erase()
+        chunk_order = range(0, op_chunk_id)
+        if job_type == "backward":
+            chunk_order = range(num_model_chunks - 1, op_chunk_id, -1)
+        for chunk_id in chunk_order:
+            type_to_ops[type + str(chunk_id)][idx].erase()
 
-    # Step2: delete the ops not belong to the type
-    # 1. delete ops
-    # 2. add persistable var used between multiple programs
-    all_ops = program.global_block().ops
-    chunk_ids = list(range(num_model_chunks))
-
-    for idx in range(len(all_ops) - 1, -1, -1):
-        op = all_ops[idx]
-        op_role = op.op_role
-        op_chunk_id = op.attrs()["chunk_id"]
-        if op_role != int(OpRole.Optimize) and op_chunk_id == -1:
-            op_chunk_id = infer_chunk_id(idx, all_ops, False)
-            if op_chunk_id == -1:
-                raise ValueError(
-                    f"Cannot infer chunk_id for op {op.name()} at index {idx}"
-                )
-
-        if op_role == int(OpRole.Optimize):
-            # in optimize program, both forward and backward ops should be removed
-            for chunk_id in chunk_ids:
-                type_to_ops["forward" + str(chunk_id)][idx].erase()
-                type_to_ops["backward" + str(chunk_id)][idx].erase()
-        elif op.op_role == int(OpRole.Backward):
-            for chunk_id in chunk_ids:
-                type_to_ops["forward" + str(chunk_id)][idx].erase()
-            for chunk_id in range(num_model_chunks - 1, op_chunk_id, -1):
-                type_to_ops["backward" + str(chunk_id)][idx].erase()
-
-            _add_persistable_var(
-                type_to_program,
-                type_to_ops,
-                all_ops,
-                idx,
-                "backward" + str(op_chunk_id),
-            )
-        elif op.op_role == int(OpRole.Forward):
-            for chunk_id in range(0, op_chunk_id):
-                type_to_ops["forward" + str(chunk_id)][idx].erase()
-
-            _add_persistable_var(
-                type_to_program,
-                type_to_ops,
-                all_ops,
-                idx,
-                "forward" + str(op_chunk_id),
-            )
-        else:
-            raise ValueError(
-                f"The op[{op.name()}]'s op role: {op_role} isn't one of Forward, Backward or Optimizer."
-            )
+        # Step2.4: add persistable var used between multiple programs
+        if job_type != "optimizer":
+            add_persistable_var(idx, job_type + str(op_chunk_id))
 
     return list(type_to_program.keys()), list(type_to_program.values())
 
 
-def _pir_program_for_vpp_split_bwk(
-    program,
-    num_model_chunks,
-    enable_send_recv_overlap=False,
+def _pir_program_for_vpp(
+    program, num_model_chunks, enable_send_recv_overlap=False, split_bw=False
 ):
     _pir_overlap_send_recv(program)
 
-    oprole_type = {
-        0: "forward",
-        1: "backward",
-        2: "backward_b",
-        3: 'backward_w',
-        4: "optimizer",
-    }
+    oprole_names = ["forward", "backward", "optimizer"]
+    if split_bw:
+        oprole_names = ["forward", "backward_b", "backward_w", "optimizer"]
 
-    type_to_program = OrderedDict()
-    type_to_ops = OrderedDict()
-
-    # Step1: create programs and ops for each type
-    for type in oprole_type.values():
-        if type == "optimizer":
-            type_to_program["optimizer"] = program.clone()
-            type_to_ops["optimizer"] = (
-                type_to_program["optimizer"].global_block().ops
-            )
-        else:
-            chunk_ids = list(range(num_model_chunks))
-            chunk_ids = chunk_ids if type != "backward" else reversed(chunk_ids)
-            for chunk_id in chunk_ids:
-                type_to_program[type + str(chunk_id)] = program.clone()
-                type_to_ops[type + str(chunk_id)] = (
-                    type_to_program[type + str(chunk_id)].global_block().ops
-                )
-
-    # Step2: delete the ops not belong to the type
-    # 1. delete ops
-    # 2. add persistable var used between multiple programs
+    program_types, programs = _split_program_for_vpp(
+        program, num_model_chunks, oprole_names, split_bw=split_bw
+    )
+    return program_types, programs
 
 
 def _program_for_vpp(

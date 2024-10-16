@@ -320,11 +320,12 @@ def _pir_append_gradient_merge_backward_op(
         new_gradient_merge_var_add = paddle._C_ops.add_(
             new_gradient_merge_var, grad
         )
-        new_gradient_merge_var_add.get_defining_op().op_role = (
-            grad_defining_op.op_role
+        new_gradient_merge_var_add_op = (
+            new_gradient_merge_var_add.get_defining_op()
         )
+        new_gradient_merge_var_add_op.op_role = grad_defining_op.op_role
 
-        new_gradient_merge_var_add.get_defining_op().dist_attr = (
+        new_gradient_merge_var_add_op.dist_attr = (
             paddle.base.libpaddle.pir.create_op_dist_attribute(
                 grad_defining_op.dist_attr.process_mesh,
                 grad_defining_op.dist_attr.operands(),
@@ -332,18 +333,20 @@ def _pir_append_gradient_merge_backward_op(
                 grad_defining_op.dist_attr.chunk_id,
             )
         )
-        # # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather op
-        # for used_grad_op in grad.all_used_ops():
-        #     if used_grad_op.name() != "pd_op.all_gather":
-        #         continue
-        #     move_to_opt_block_flag = True
-        #     for all_gather_result in used_grad_op.results():
-        #         for used_op in all_gather_result.all_used_ops():
-        #             if used_op.op_role != int(OpRole.Optimize):
-        #                 move_to_opt_block_flag = False
-        #                 break
-        #     if move_to_opt_block_flag:
-        #         used_grad_op.op_role = int(OpRole.Optimize)
+        new_gradient_merge_var_add_op.set_bool_attr("grad_merge_add", True)
+
+        # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather op
+        for used_grad_op in grad.all_used_ops():
+            if used_grad_op.name() != "pd_op.all_gather":
+                continue
+            move_to_opt_block_flag = True
+            for all_gather_result in used_grad_op.results():
+                for used_op in all_gather_result.all_used_ops():
+                    if used_op.op_role != int(OpRole.Optimize):
+                        move_to_opt_block_flag = False
+                        break
+            if move_to_opt_block_flag:
+                used_grad_op.op_role = int(OpRole.Optimize)
 
         opt_ops_use_grad = [
             op
