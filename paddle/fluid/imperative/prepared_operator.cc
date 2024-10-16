@@ -31,7 +31,6 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
@@ -175,19 +174,10 @@ PreparedOp PrepareImpl(
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(ring_id)) {
       distributed::ProcessGroup* pg = map->get(ring_id);
-      auto group_key = static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
-                           ->GetOrCreateGroupKey(place);
-      const auto& comm_context_manager =
-          phi::distributed::CommContextManager::GetInstance();
-      if (comm_context_manager.Has(group_key)) {
-        auto comm_context = comm_context_manager.Get(group_key);
-        dev_ctx->SetCommContext(comm_context);
-      } else {
-        VLOG(3) << "group_key " << group_key
-                << " not found in comm_context_manager";
-      }
-    } else {
-      VLOG(3) << "ring_id " << ring_id << " not found in ProcessGroupMap";
+      auto comm_context =
+          static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
+              ->GetOrCreateCommContext(place);
+      dev_ctx->SetCommContext(comm_context);
     }
   }
 #endif
