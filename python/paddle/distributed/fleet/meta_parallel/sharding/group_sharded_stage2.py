@@ -100,6 +100,8 @@ class GroupShardedStage2(nn.Layer):
             0
         ]  # picking ranks index 0 as the reference
         self._default_device = device
+        if self._default_device == "gpu":
+            self._default_device = f"{self._default_device}:{self._rank}"
 
         self._dp_group = dp_group
 
