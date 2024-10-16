@@ -618,6 +618,7 @@ const std::vector<std::string> kPirXpuPasses{
     // Operator fusion pass
     "add_activation_xpu_fuse_pass",
     "add_layernorm_xpu_fuse_pass",
+    "bn_act_xpu_fuse_pass",
     "conv2d_bn_xpu_fuse_pass",
     "conv2d_add_xpu_fuse_pass",
     "group_norm_silu_fuse_pass",
