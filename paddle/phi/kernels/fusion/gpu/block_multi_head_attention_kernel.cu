@@ -544,7 +544,7 @@ void DispatchWithDtype(
       //            unpadding_v.numel(),
       //            "unpadding_v",
       //            unpadding_v.numel());
-      // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
+      // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requires
       // q,k,v,out all in 3-D [token_num, q_num_head, dim_head].
       auto fmha_shape = fmha_buf.dims();
       fmha_buf.Resize({token_num, q_num_head, dim_head});

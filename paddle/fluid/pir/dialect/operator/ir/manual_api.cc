@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -279,6 +281,33 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
                                                        bool trans_x,
                                                        bool trans_y,
                                                        std::string activation) {
+  // AMP Logic
+  if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() !=
+      paddle::imperative::AmpLevel::O0) {
+    VLOG(5) << "Check and Prepare For AMP: fused_gemm_epilogue";
+    auto op_name = phi::TransToFluidOpName("fused_gemm_epilogue");
+    paddle::small_vector<std::vector<pir::Value>, egr::kSlotSmallVectorSize>
+        amp_values_vector = {{x}, {y}, {bias}};
+    auto amp_dst_dtype =
+        paddle::imperative::GetAmpDestDtype(op_name, amp_values_vector);
+    auto new_x =
+        paddle::imperative::AmpAutoCast("x", x, amp_dst_dtype, op_name);
+    auto new_y =
+        paddle::imperative::AmpAutoCast("y", y, amp_dst_dtype, op_name);
+    auto new_bias =
+        paddle::imperative::AmpAutoCast("bias", bias, amp_dst_dtype, op_name);
+
+    {
+      paddle::imperative::AutoCastGuard guard(
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
+          paddle::imperative::AmpLevel::O0);
+      return paddle::dialect::fused_gemm_epilogue(
+          new_x, new_y, new_bias, trans_x, trans_y, activation);
+    }
+  }
+
+  // Type Promotion Logic
+  VLOG(5) << " No Type Promotion for fused_gemm_epilogue api. ";
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::AttributeMap attribute_map = {
       {"trans_x", pir::BoolAttribute::get(ctx, trans_x)},
@@ -289,6 +318,10 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
           .GetBuilder()
           ->Build<paddle::dialect::FusedGemmEpilogueOp>(
               x, y, bias, attribute_map);
+  if (!egr::Controller::Instance().HasGrad()) {
+    SetStopGradient(fused_gemm_epilogue_op.result(0),
+                    fused_gemm_epilogue_op.result(1));
+  }
   return std::make_tuple(fused_gemm_epilogue_op.result(0),
                          fused_gemm_epilogue_op.result(1));
 }

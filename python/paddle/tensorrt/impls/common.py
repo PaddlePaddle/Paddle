@@ -12,10 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import numpy as np
 import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import get_shape_tensor_element
 from paddle.tensorrt.register import converter_registry
+from paddle.tensorrt.util import get_trt_version_list
+
+
+@converter_registry.register("pd_op.dropout", trt_version="8.x")
+def dropout_converter(network, paddle_op, inputs):
+    input_x = inputs[0]
+    p_defining_op = paddle_op.operands()[2].source().get_defining_op()
+    dropout_prob = p_defining_op.attrs()["value"]
+    downgrade_in_infer = paddle_op.attrs().get("mode")
+
+    if downgrade_in_infer == "upscale_in_train":
+        shuffle_layer = network.add_shuffle(input_x)
+        return shuffle_layer.get_output(0)
+
+    weight_data = np.array([1 - dropout_prob]).astype("float32")
+    scale_weights = trt.Weights(weight_data)
+    shift_weights = trt.Weights(np.array([0]).astype("float32"))
+    power_weights = trt.Weights(np.array([1]).astype("float32"))
+
+    scale_layer = network.add_scale(
+        input_x,
+        mode=trt.ScaleMode.UNIFORM,
+        shift=shift_weights,
+        scale=scale_weights,
+        power=power_weights,
+    )
+
+    return scale_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.bilinear_interp", trt_version="8.x")
@@ -31,7 +61,8 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     out_d = paddle_op.attrs().get("out_d")
     scale_attr = paddle_op.attrs().get("scale")
 
-    trt_major, trt_minor, trt_patch = trt.__version__.split(".")
+    trt_major = get_trt_version_list()[0]
+    trt_minor = get_trt_version_list()[1]
     trt_version_float = float(f"{trt_major}.{trt_minor}")
 
     resize_layer = network.add_resize(input_tensor)
@@ -145,7 +176,8 @@ def nearest_interp_converter(network, paddle_op, inputs):
     scale_attr = paddle_op.attrs().get("scale")
 
     # Parse TensorRT version
-    trt_major, trt_minor, trt_patch = trt.__version__.split(".")
+    trt_major = get_trt_version_list()[0]
+    trt_minor = get_trt_version_list()[1]
     trt_version_float = float(f"{trt_major}.{trt_minor}")
 
     # Create Resize layer
