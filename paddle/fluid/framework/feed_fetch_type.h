@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/string_array.h"
 #include "paddle/phi/core/extended_tensor.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
 using FeedType = paddle::
