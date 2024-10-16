@@ -84,7 +84,7 @@ class IterMapRewriter : public ir::IRMutator<> {
   void Visit(const ir::Mod* op, Expr* expr) override;
 
  private:
-  static Expr ToIterSum(const Expr& expr);
+  static ir::IndexExpr ToIterSum(const ir::IndexExpr& expr);
 
   static void AddToLhs(ir::IterSum* lhs, const ir::IterSplit& rhs, int sign);
 
@@ -92,16 +92,20 @@ class IterMapRewriter : public ir::IRMutator<> {
 
   static void MulToLhs(ir::IterSum* lhs, const ir::IndexExpr& rhs);
 
-  Expr PreprocessDividend(const Expr& dividend);
+  ir::IndexExpr PreprocessDividend(const ir::IndexExpr& dividend);
 
-  Expr SplitDivConst(Expr lhs, ir::IndexExpr base, ir::IndexExpr rhs);
+  ir::IndexExpr SplitDivConst(ir::IndexExpr lhs,
+                              ir::IndexExpr base,
+                              ir::IndexExpr rhs);
 
-  Expr SplitModConst(Expr lhs, ir::IndexExpr base, ir::IndexExpr rhs);
+  ir::IndexExpr SplitModConst(ir::IndexExpr lhs,
+                              ir::IndexExpr base,
+                              ir::IndexExpr rhs);
 
   int32_t FindIterWithExactScale(const ir::IterSum& expr,
                                  const std::vector<bool>& skip_flag,
                                  const ir::IndexExpr& expected_scale,
-                                 const Expr& match_source,
+                                 const ir::IndexExpr& match_source,
                                  int32_t rbegin = -1,
                                  int32_t first_possible_unit_extent_pos = 0);
 
@@ -109,14 +113,15 @@ class IterMapRewriter : public ir::IRMutator<> {
 
   int32_t FindBaseIter(const ir::IterSum& expr,
                        const std::vector<bool>& skip_flag,
-                       const Expr& match_source,
+                       const ir::IndexExpr& match_source,
                        int32_t rbegin = -1);
 
-  std::optional<Expr> TryFuse(const Expr& expr);
+  std::optional<ir::IndexExpr> TryFuse(const ir::IndexExpr& expr);
+  std::optional<ir::IndexExpr> TryFuseSameSource(const ir::IndexExpr& expr);
 
   std::unordered_map<std::string, ir::IndexExpr> var_map_;
   std::vector<ir::IterMark> input_marks_;
-  std::unordered_map<Expr, Expr> sum_fuse_map_;
+  std::unordered_map<ir::IndexExpr, ir::IndexExpr> sum_fuse_map_;
   common::SymbolicExprAnalyzer analyzer_;
 };
 
