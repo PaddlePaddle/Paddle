@@ -174,16 +174,27 @@ class TestConv2dTransposeOutputPaddingTRTPattern(TensorRTBaseTest):
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 3, 5, 5]}
         self.max_shape = {"x": [4, 3, 5, 5]}
-        
-        
-    
+
+
 def depthwise_conv2d_wrapper(x):
     conv = paddle.nn.Conv2D(2, 2, (3, 3), groups=2)
     return conv(x)
 
-def depthwise_conv2d_python_api(x, padding="SAME", stride=(1, 1),dilation=(1,1)):
-    conv = paddle.nn.Conv2D(2, 2, (3, 3), groups=2,padding=padding,stride=stride,dilation=dilation)
+
+def depthwise_conv2d_python_api(
+    x, padding="SAME", stride=(1, 1), dilation=(1, 1)
+):
+    conv = paddle.nn.Conv2D(
+        2,
+        2,
+        (3, 3),
+        groups=2,
+        padding=padding,
+        stride=stride,
+        dilation=dilation,
+    )
     return conv(x)
+
 
 class TestDepthwiseConv2dTRTPattern(TensorRTBaseTest):
     def setUp(self):
@@ -196,46 +207,51 @@ class TestDepthwiseConv2dTRTPattern(TensorRTBaseTest):
     def test_trt_result(self):
         self.check_trt_result()
 
+
 class TestDepthwiseConv2dPaddingTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = depthwise_conv2d_python_api
         self.api_args = {
             "x": np.random.random([3, 2, 8, 8]).astype("float32"),
-            "padding":"VALID",
-            "stride":(1,2)
-            }
+            "padding": "VALID",
+            "stride": (1, 2),
+        }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 2, 8, 8]}
         self.max_shape = {"x": [10, 2, 8, 8]}
 
     def test_trt_result(self):
         self.check_trt_result()
-  
-        
+
+
 class TestDepthwiseConv2dSameTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = depthwise_conv2d_python_api
         self.api_args = {
             "x": np.random.random([3, 2, 8, 8]).astype("float32"),
-            "padding":"SAME",
-            "stride":(1,2),
-            "dialation":(2,2),
-            }
+            "padding": "SAME",
+            "stride": (1, 2),
+            "dialation": (2, 2),
+        }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 2, 8, 8]}
         self.max_shape = {"x": [10, 2, 8, 8]}
 
     def test_trt_result(self):
         self.check_trt_result()
-        
-        
+
+
 def depthwise_conv2d_transpose_wrapper(x):
     conv = paddle.nn.Conv2DTranspose(2, 2, (3, 3), groups=2)
     return conv(x)
 
-def depthwise_conv2d_transpose_python_api(x, padding="SAME", stride=(1, 1),dilation=(1,1)):
+
+def depthwise_conv2d_transpose_python_api(
+    x, padding="SAME", stride=(1, 1), dilation=(1, 1)
+):
     conv = paddle.nn.Conv2DTranspose(2, 2, (3, 3), groups=2)
     return conv(x)
+
 
 class TestDepthwiseConv2dTransposeTRTPattern(TensorRTBaseTest):
     def setUp(self):
@@ -247,37 +263,40 @@ class TestDepthwiseConv2dTransposeTRTPattern(TensorRTBaseTest):
 
     def test_trt_result(self):
         self.check_trt_result()
-        
+
+
 class TestDepthwiseConv2dTransposeSameTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = depthwise_conv2d_transpose_python_api
         self.api_args = {
             "x": np.random.random([3, 2, 8, 8]).astype("float32"),
-            "padding":"SAME",
-            "stride":(1,2),
-            "dialation":(2,2),
-            }
+            "padding": "SAME",
+            "stride": (1, 2),
+            "dialation": (2, 2),
+        }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 2, 8, 8]}
         self.max_shape = {"x": [10, 2, 8, 8]}
 
     def test_trt_result(self):
         self.check_trt_result()
-        
+
+
 class TestDepthwiseConv2dTransposeValidTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = depthwise_conv2d_transpose_python_api
         self.api_args = {
             "x": np.random.random([3, 2, 8, 8]).astype("float32"),
-            "padding":"VALID",
-            "stride":(1,2)
-            }
+            "padding": "VALID",
+            "stride": (1, 2),
+        }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 2, 8, 8]}
         self.max_shape = {"x": [10, 2, 8, 8]}
 
     def test_trt_result(self):
         self.check_trt_result()
+
 
 if __name__ == '__main__':
     unittest.main()

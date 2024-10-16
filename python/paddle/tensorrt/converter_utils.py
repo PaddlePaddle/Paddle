@@ -326,9 +326,15 @@ def build_size_tensor(
 
 
 def ConvertConv2d(network, paddle_op, inputs):
-    if paddle_op.name() == "pd_op.conv2d":
+    if (
+        paddle_op.name() == "pd_op.conv2d"
+        or paddle_op.name() == "pd_op.depthwise_conv2d"
+    ):
         input_tensor, filter = inputs
-    elif paddle_op.name() == "pd_op.conv2d_transpose":
+    elif (
+        paddle_op.name() == "pd_op.conv2d_transpose"
+        or paddle_op.name() == "pd_op.depthwise_conv2d_transpose"
+    ):
         if len(inputs) == 3:
             input_tensor, filter, output_size = inputs
         elif len(inputs) == 2:
@@ -385,15 +391,21 @@ def ConvertConv2d(network, paddle_op, inputs):
     else:
         raise ValueError(f"Unsupported paddings size: {len(paddings)}")
 
-    if paddle_op.name() == "pd_op.conv2d":
+    if (
+        paddle_op.name() == "pd_op.conv2d"
+        or paddle_op.name() == "pd_op.depthwise_conv2d"
+    ):
         layer = network.add_convolution_nd(
             input=input_tensor,
-            num_output_maps=n_input * groups,
+            num_output_maps=n_output,
             kernel_shape=nv_ksize,
             kernel=filter,
             bias=None,
         )
-    elif paddle_op.name() == "pd_op.conv2d_transpose":
+    elif (
+        paddle_op.name() == "pd_op.conv2d_transpose"
+        or paddle_op.name() == "pd_op.depthwise_conv2d_transpose"
+    ):
         layer = network.add_deconvolution_nd(
             input=input_tensor,
             num_output_maps=n_input * groups,
