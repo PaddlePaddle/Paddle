@@ -1542,6 +1542,16 @@
     data_type : x
   backward : fake_quantize_dequantize_abs_max_grad
 
+- op : fake_quantize_dequantize_lsq
+  args : (Tensor x, Tensor scale, float lsq_factor = 1.0, int bit_length = 8, int round_type = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : FakeQuantizeLSQInferMeta
+  kernel :
+    func : fake_quantize_dequantize_lsq
+    data_type : x
+  backward : fake_quantize_dequantize_lsq_grad
+
 - op : fake_quantize_dequantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
   output : Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)

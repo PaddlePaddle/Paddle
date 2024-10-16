@@ -928,6 +928,16 @@
   kernel :
     func : fake_quantize_dequantize_abs_max_grad
 
+- backward_op : fake_quantize_dequantize_lsq_grad
+  forward: fake_quantize_dequantize_lsq(Tensor x, Tensor scale, float lsq_factor = 1.0, int bit_length = 8, int round_type = 1) -> Tensor(out)
+  args : (Tensor x, Tensor scale, Tensor out_grad, float lsq_factor = 1.0, int bit_length = 8, int round_type = 1)
+  output: Tensor(x_grad), Tensor(scale_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, scale]
+  kernel :
+    func : fake_quantize_dequantize_lsq_grad
+
 - backward_op : fake_quantize_dequantize_moving_average_abs_max_grad
   forward: fake_quantize_dequantize_moving_average_abs_max(Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
   args : (Tensor out_grad, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)

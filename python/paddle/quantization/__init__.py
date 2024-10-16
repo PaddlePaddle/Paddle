@@ -41,6 +41,7 @@ from .imperative.qat import (  # noqa: F401
 )
 from .ptq import PTQ
 from .qat import QAT
+from .quanters import fake_lsq_quant_dequant
 
 __all__ = [
     "QuantConfig",
@@ -49,4 +50,5 @@ __all__ = [
     "quanter",
     "QAT",
     "PTQ",
+    "fake_lsq_quant_dequant",
 ]
