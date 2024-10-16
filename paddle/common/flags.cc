@@ -1965,3 +1965,7 @@ PHI_DEFINE_EXPORTED_bool(fused_multi_transformer_op_use_mbfmha,
 PHI_DEFINE_EXPORTED_int64(multi_block_attention_min_partition_size,
                           1024,
                           "The minimum partition size for flash decoding");
+
+PHI_DEFINE_EXPORTED_bool(save_cf_stack_op,
+                         false,
+                         "Save cf stack op for higher-order derivatives.");
