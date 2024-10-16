@@ -674,7 +674,7 @@ inline void RunProgramAPI(
           program_id,
           global_inner_scope,
           place_hash_key,
-          false);  // Simply pass false in PT mode
+          /*used_for_sot=*/false);  // Simply pass false in PT mode
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -841,7 +841,7 @@ inline void RunProgramGradAPI(
           program_id,
           global_inner_scope,
           place_hash_key,
-          false);  // Simply pass false for PT mode
+          /*used_for_sot=*/false);  // Simply pass false in PT mode
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
