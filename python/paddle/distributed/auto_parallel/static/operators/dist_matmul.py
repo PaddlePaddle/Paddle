@@ -493,7 +493,6 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
                 attrs={
                     'ring_id': sync_group.id,
                     'root': 0,
-                    'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )
