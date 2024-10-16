@@ -4017,7 +4017,7 @@ function clang-tidy_check() {
         "clang-analyzer-cplusplus.SelfAssignment"
         "clang-analyzer-cplusplus.SmartPtr"
         "clang-analyzer-cplusplus.VirtualCallModeling"
-        # "clang-analyzer-deadcode.DeadStores"
+        "clang-analyzer-deadcode.DeadStores"
         "clang-analyzer-fuchsia.HandleChecker"
         "clang-analyzer-nullability.NullPassedToNonnull"
         "clang-analyzer-nullability.NullReturnedFromNonnull"
@@ -4093,16 +4093,16 @@ function clang-tidy_check() {
         "clang-analyzer-valist.Uninitialized"
         "clang-analyzer-valist.Unterminated"
         "clang-analyzer-valist.ValistBase"
-        "cppcoreguidelines-avoid-c-arrays"
-        "cppcoreguidelines-avoid-goto"
-        "cppcoreguidelines-c-copy-assignment-signature"
-        "cppcoreguidelines-explicit-virtual-functions"
-        "cppcoreguidelines-init-variables"
-        "cppcoreguidelines-narrowing-conversions"
-        "cppcoreguidelines-no-malloc"
-        "cppcoreguidelines-pro-type-const-cast"
-        "cppcoreguidelines-pro-type-member-init"
-        "cppcoreguidelines-slicing"
+        "*******-avoid-c-arrays"
+        "*******-avoid-goto"
+        "*******-c-copy-assignment-signature"
+        "*******-explicit-virtual-functions"
+        "*******-init-variables"
+        "*******-narrowing-conversions"
+        "*******-no-malloc"
+        "*******-pro-type-const-cast"
+        "*******-pro-type-member-init"
+        "*******-slicing"
         "hicpp-avoid-goto"
         "hicpp-exception-baseclass"
         "misc-unused-alias-decls"
@@ -4131,7 +4131,7 @@ function clang-tidy_check() {
         "modernize-use-transparent-functors"
         "modernize-use-uncaught-exceptions"
         "performance-faster-string-find"
-        # "performance-for-range-copy"
+        "performance-for-range-copy"
         "performance-implicit-conversion-in-loop"
         "performance-inefficient-algorithm"
         "performance-inefficient-string-concatenation"
@@ -4147,20 +4147,23 @@ function clang-tidy_check() {
     )
 
     check_error=0
-    for s in "${S[@]}"; do
-        count=$(grep -o "$s" $temp_file | wc -l)
-        if [ $count -ge 2 ]; then
-            echo "check_error: $[ $s ]"
+    length=$(echo -n "$T" | wc -c)
+    echo "Clang Tidy output length: $[ $length ]"
+    for str in "${S[@]}"; do
+        count=$(echo "$[ $T ]" | grep -o "$[ $str ]" | wc -l)
+        echo "str: $[ $str] count: $[ $count ]"
+        if [ "$[ $count ]" -ge 2 ]; then
+            echo "check error: $[ $s ]"
             check_error=1
         fi
     done
-    
+
     rm $temp_file
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
     echo "Check Time: $[ $endTime_s - $startTime_s ]s"
-    echo "check error: $[ $check_error ]"
+    echo "Check error: $[ $check_error ]"
 
     echo -e '\n************************************************************************************'
     if [ ${check_error} != 0 ];then
