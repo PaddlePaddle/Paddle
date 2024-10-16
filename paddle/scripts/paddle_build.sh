@@ -4150,9 +4150,9 @@ function clang-tidy_check() {
     length=$(echo -n "$T" | wc -c)
     echo "Clang Tidy output length: $[ $length ]"
     for str in "${S[@]}"; do
-        count=$(echo "$T" | grep -o "$str" | wc -l)
-        echo "count: $[ $count ]"
-        if [ "$count" -ge 2 ]; then
+        count=$(echo "$[ $T ]" | grep -o "$[ $str ]" | wc -l)
+        echo "str: $[ $str] count: $[ $count ]"
+        if [ "$[ $count ]" -ge 2 ]; then
             echo "check error: $[ $s ]"
             check_error=1
         fi
