@@ -73,6 +73,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         )
 
         paddle.disable_static()
+        np.random.seed(20)
 
         query = np.random.randn(*self.shape)
         key = np.random.randn(*self.kvshape)
@@ -158,6 +159,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         )
         # test dynamic
         paddle.disable_static()
+        np.random.seed(20)
 
         query = np.random.randn(*self.shape)
         key = np.random.randn(*self.shape)
@@ -278,6 +280,7 @@ class TestFlashAttentionGQA(unittest.TestCase):
         self.dtype = 'bfloat16'
 
     def gen_unpadded_data(self, dtype):
+        np.random.seed(20)
         seq_len_q = np.random.randint(
             low=1, high=self.seq_len, size=[self.batch_size]
         )
