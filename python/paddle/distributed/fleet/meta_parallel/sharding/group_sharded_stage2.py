@@ -100,8 +100,6 @@ class GroupShardedStage2(nn.Layer):
             0
         ]  # picking ranks index 0 as the reference
         self._default_device = device
-        if self._default_device == "gpu":
-            self._default_device = f"{self._default_device}:{self._rank}"
 
         self._dp_group = dp_group
 
@@ -295,7 +293,7 @@ class GroupShardedStage2(nn.Layer):
         """
         assert isinstance(device, str), "Device must be type str"
         assert (
-            device == self._default_device
+            device.split(":")[0] == self._default_device
         ), "New devices are not supported, because of the optimizer state is not sync"
 
         self._layer.to(device=device, dtype=dtype, blocking=blocking)

@@ -165,8 +165,6 @@ class GroupShardedStage3(nn.Layer):
             self._group.nranks > 1
         ), "Training must be distributed, ranks must be greater than 1."
         self._rank = self._group.rank
-        if self._default_device == "gpu":
-            self._default_device = f"{self._default_device}:{self._rank}"
         self._global_root_rank = self._group.ranks[
             0
         ]  # picking ranks index 0 as the reference

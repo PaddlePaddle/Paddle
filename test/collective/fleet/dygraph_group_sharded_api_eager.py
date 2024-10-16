@@ -17,6 +17,7 @@ import tempfile
 import numpy as np
 
 import paddle
+from paddle import distributed as dist
 from paddle.distributed.sharding import (
     group_sharded_parallel,
     save_group_sharded_model,
@@ -122,6 +123,8 @@ def train_mlp(
         model.train()
         for batch_id, data in enumerate(train_loader()):
             img, label = data
+            img = img.to(device=f"gpu:{dist.get_rank()}")
+            label = label.to(device=f"gpu:{dist.get_rank()}")
             label.stop_gradient = True
             img.stop_gradient = True
             with paddle.amp.auto_cast(True, level=amp_level):
