@@ -31,7 +31,7 @@ def set_random_seed(seed):
 
 
 class ColumnLinearNet(paddle.nn.Layer):
-    def __init__(self, input_size, output_size, global_dtype, mp_group):
+    def __init__(self, input_size, output_size, global_dtype):
         super().__init__()
         self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
             in_features=input_size,
@@ -40,7 +40,6 @@ class ColumnLinearNet(paddle.nn.Layer):
             has_bias=True,
             gather_output=True,
             name="test_column_linear",
-            mp_group=mp_group,
         )
 
     def forward(self, x):
@@ -137,11 +136,10 @@ class TestDistTraining(unittest.TestCase):
         output_size = output_size_per_card * self.model_parallel_size
         batch_size = 4
 
+        model_a = ColumnLinearNet(input_size, output_size, global_dtype)
+
         # get w
         check_group = dist.new_group(list(range(self.model_parallel_size)))
-        model_a = ColumnLinearNet(
-            input_size, output_size, global_dtype, check_group
-        )
         integral_w = []
         partial_w = model_a.parallel_linear.weight.clone().detach()
         paddle.distributed.all_gather(integral_w, partial_w, group=check_group)
