@@ -539,15 +539,17 @@ class ShardingPass(PassBase):
                 if op.type == "c_allreduce_sum":
                     reduce_op_type = "reduce"
                     reduce_type = str(dist.ReduceOp.SUM)
+                    op_role = op.attr("op_role")
                 elif op.type == "reduce" and op.attr("reduce_type") == str(
                     dist.ReduceOp.SUM
                 ):
                     reduce_op_type = "reduce"
                     reduce_type = str(dist.ReduceOp.SUM)
+                    op_role = op.attr("op_role")
                 else:
                     reduce_op_type = "reduce"
                     reduce_type = str(dist.ReduceOp.AVG)
-                reduce_type = dist.ReduceOp.SUM
+                    op_role = op.attr("op_role")
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
@@ -560,6 +562,7 @@ class ShardingPass(PassBase):
                     sharding_info.get_var_rank(base_name),
                     self._dist_context,
                     reduce_type,
+                    op_role,
                 )
                 if (
                     not self.sharding_hybrid_dp
@@ -1465,11 +1468,14 @@ class ShardingPass(PassBase):
                                 'ring_id': inter_node_group.id,
                                 'root_id': inter_node_dst,
                                 'reduce_type': int(dist.ReduceOp.SUM),
+                                OP_ROLE_KEY: OpRole.Backward,
+                                'op_role': OpRole.Backward,
                             },
                         )
                         new_op._set_attr(
                             'op_namescope', '/' + ParallelMode.DataParallel
                         )
+                        print("---------auto para sharding------", new_op)
 
                         if self.enable_overlap:
                             new_op.dist_attr.execution_stream = comm_stream
@@ -1555,6 +1561,7 @@ def _insert_reduce_op(
     root_id,
     dist_context,
     reduce_type,
+    op_role,
 ):
     assert (
         root_id >= 0
@@ -1568,8 +1575,10 @@ def _insert_reduce_op(
             'ring_id': ring_id,
             'root_id': root_id,
             'reduce_type': int(reduce_type),
+            OP_ROLE_KEY: op_role,
         },
     )
+    print("--------_insert_reduce_op--------------", new_op)
 
     dist_attr = dist_context.get_tensor_dist_attr_for_program(
         block.var(reduce_var)
@@ -1582,6 +1591,7 @@ def _insert_reduce_op(
         chunk_id=dist_attr.chunk_id,
     )
     new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
+    print("---------auto para sharding-no-----", new_op)
     return new_op
 
 

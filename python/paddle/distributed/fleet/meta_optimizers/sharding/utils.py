@@ -566,6 +566,7 @@ def insert_fused_reduce_ops(
                     'ring_id': ring_id,
                     'root_id': root_id,
                     'reduce_type': int(dist.ReduceOp.SUM),
+                    'op_role': op_role,
                 },
             )
             if not use_calc_stream:
@@ -637,6 +638,7 @@ def insert_reduce_ops(
                 'ring_id': ring_id,
                 'root_id': root_id,
                 'reduce_type': int(dist.ReduceOp.SUM),
+                OP_ROLE_KEY: op_role,
             },
         )
 
