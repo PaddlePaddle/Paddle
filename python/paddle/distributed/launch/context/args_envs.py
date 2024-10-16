@@ -101,7 +101,7 @@ def parse_args():
     base_group.add_argument(
         "--nnodes",
         type=str,
-        default="1",
+        default="-1",
         help="the number of nodes, i.e. pod/node number",
     )
 
