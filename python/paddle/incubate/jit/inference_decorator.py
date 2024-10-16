@@ -168,6 +168,7 @@ class InferenceEngine:
 
         self.enable_new_ir = kwargs.get("enable_new_ir")
         self.exp_enable_use_cutlass = kwargs.get("exp_enable_use_cutlass")
+        self.enable_save_optim_model = kwargs.get("enable_save_optim_model")
 
         py_script = textwrap.dedent(inspect.getsource(func))
         py_script = py_script[py_script.find("def") :]
@@ -373,12 +374,38 @@ class InferenceEngine:
         model_file = os.path.join(self.save_model_dir, "infer.pdmodel")
         params_file = os.path.join(self.save_model_dir, "infer.pdiparams")
 
+        optimized_model_file = os.path.join(
+            self.save_model_dir, "_optimized.pdmodel"
+        )
+        optimized_param_file = os.path.join(
+            self.save_model_dir, "_optimized.pdiparams"
+        )
+
+        if self.enable_new_ir:
+            optimized_model_file = os.path.join(
+                self.save_model_dir, "_optimized.json"
+            )
+
+        if self.enable_save_optim_model and os.path.exists(
+            optimized_model_file
+        ):
+            model_file = optimized_model_file
+            params_file = optimized_param_file
+
         config = Config(model_file, params_file)
         config.enable_memory_optim()
         config.switch_ir_debug(self.switch_ir_debug)
         config.switch_ir_optim(self.switch_ir_optim)
+
+        if self.enable_save_optim_model and os.path.exists(
+            optimized_model_file
+        ):
+            config.switch_ir_optim(False)
         if self.exp_enable_use_cutlass:
             config.exp_enable_use_cutlass()
+
+        if self.enable_save_optim_model:
+            config.enable_save_optim_model(True)
         if self.enable_cinn:
             config.enable_cinn()
         config.enable_new_ir(self.enable_new_ir)
@@ -474,6 +501,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
+    enable_save_optim_model: bool = ...,
 ) -> _InferenceDecorator: ...
 
 
@@ -494,6 +522,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
+    enable_save_optim_model: bool = ...,
 ) -> _LayerT: ...
 
 
@@ -514,6 +543,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
+    enable_save_optim_model: bool = ...,
 ) -> Callable[_InputT, _RetT]: ...
 
 
@@ -533,6 +563,7 @@ def inference(
     enable_new_ir=False,
     exp_enable_use_cutlass=False,
     delete_pass_lists=None,
+    enable_save_optim_model=False,
 ):
     """
     Converts dynamic graph APIs into static graph saved in disk. Then will use Paddle Inference to infer based on
@@ -557,6 +588,9 @@ def inference(
         enable_new_ir(bool, optional): Whether to enable new IR. Default is True.
         exp_enable_use_cutlass(bool, optional): Whether to enable use cutlass. Default is False.
         delete_pass_lists(list[str], optional): The list of pass names to delete. Default is None.
+        enable_save_optim_model(bool, optional): When is True, the optimized model after running pass is saved,
+            when user run program in the next time, the optimized model will be loaded and used directly without running pass again.
+            This can save loading time. Default is False.
 
     Returns:
         function (callable): the decorated function which can be used for inference.
@@ -617,6 +651,7 @@ def inference(
             enable_new_ir=enable_new_ir,
             exp_enable_use_cutlass=exp_enable_use_cutlass,
             delete_pass_lists=delete_pass_lists,
+            enable_save_optim_model=enable_save_optim_model,
         )
 
         # This is the innermost_decorator, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
@@ -651,6 +686,25 @@ def inference(
                 infer_engine.to_static_model(
                     func, input_tensor_lists, *args, **kwargs
                 )
+                # delete old optimized model.
+                old_optimized_model_file = os.path.join(
+                    infer_engine.save_model_dir, "_optimized.pdmodel"
+                )
+                old_new_ir_optimized_model_file = os.path.join(
+                    infer_engine.save_model_dir, "_optimized.json"
+                )
+
+                old_optimized_params_file = os.path.join(
+                    infer_engine.save_model_dir, "_optimized.pdiparams"
+                )
+
+                if os.path.exists(old_optimized_model_file):
+                    os.remove(old_optimized_model_file)
+                if os.path.exists(old_optimized_params_file):
+                    os.remove(old_optimized_params_file)
+                if os.path.exists(old_new_ir_optimized_model_file):
+                    os.remove(old_new_ir_optimized_model_file)
+
             else:
                 # we need register some triton ops.
                 register_triton_custom_ops(infer_engine.save_model_dir)
