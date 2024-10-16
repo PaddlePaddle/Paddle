@@ -54,6 +54,7 @@ pir::CINNKernelInfo BackendResource::GenerateKernelInfo() const {
   kernel_info.infer_shape_fn_ptr = GetInferFuncPtr();
   kernel_info.CX86_fn_ptr = GetCX86HostFuncPtr();
   kernel_info.symbol_args_map = GetSymbolArgsMap();
+  kernel_info.temp_space_sizes = GetTempSpaceSizes();
   return kernel_info;
 }
 }  // namespace pir

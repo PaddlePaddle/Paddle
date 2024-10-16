@@ -19,13 +19,12 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 from paddle.static import Executor, append_backward
 from paddle.static.nn.control_flow import ConditionalBlock
 
 
 class ConditionalBlockTest(unittest.TestCase):
-    @test_with_pir_api
+
     def test_forward(self):
         main_program = base.Program()
         startup_program = base.Program()

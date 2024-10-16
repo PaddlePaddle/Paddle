@@ -35,7 +35,7 @@ class DecompInterface : public pir::OpInterfaceBase<DecompInterface> {
   };
 
   /// Constructor
-  DecompInterface(pir::Operation* op, Concept* impl)
+  DecompInterface(const pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<DecompInterface>(op), impl_(impl) {}
 
   std::vector<std::vector<pir::Value>> Decomp(pir::Operation* op) {

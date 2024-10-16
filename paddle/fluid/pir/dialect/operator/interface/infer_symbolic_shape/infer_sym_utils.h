@@ -184,4 +184,7 @@ std::vector<symbol::DimExpr> GetVecFromIntArray(
     const std::string &input_name,
     const int &index);
 
+bool GetAxisFromOpInput(pir::Value in_value,
+                        pir::InferSymbolicShapeContext *infer_context,
+                        std::vector<int64_t> *axis);
 }  // namespace paddle::dialect::details

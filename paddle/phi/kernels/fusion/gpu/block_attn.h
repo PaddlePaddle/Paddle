@@ -1560,6 +1560,10 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                                   StoreFunc store_func,
                                   const int use_cachekv_int8) {
   switch (params.block_size) {
+    case 1:
+      dispatch_blha_impl_key_and_thread<T, Dh, Dh_MAX, 1>(
+          params, stream, load_func, store_func, use_cachekv_int8);
+      break;
     case 32:
       dispatch_blha_impl_key_and_thread<T, Dh, Dh_MAX, 32>(
           params, stream, load_func, store_func, use_cachekv_int8);
@@ -1642,6 +1646,7 @@ void blha(const phi::GPUContext &dev_ctx,
           const int timestep,
           const int rotary_emb_dims,
           float inv_sqrt_dh,
+          const float rope_theta,
           const bool add_qkv_bias = true,
           const bool neox_rotary_style = false,
           const int quant_round_type = 1,
@@ -1684,7 +1689,7 @@ void blha(const phi::GPUContext &dev_ctx,
       mask_broadcast_num_heads = false;
     } else {
       PADDLE_THROW(errors::InvalidArgument(
-          "Unknow dimension for attn_mask, the q_num_head(2nd) "
+          "Unknown dimension for attn_mask, the q_num_head(2nd) "
           "dimension is invalid, it should be 1 or q_num_head(%d), "
           "but got %d",
           q_num_head,
@@ -1731,6 +1736,7 @@ void blha(const phi::GPUContext &dev_ctx,
   params.timestep = timestep + pre_cache_length;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
+  params.rope_theta = rope_theta;
 
   VLOG(3) << "batch_size: " << batch_size << " q_num_head: " << q_num_head
           << " kv_num_head: " << kv_num_head << " block_size: " << block_size

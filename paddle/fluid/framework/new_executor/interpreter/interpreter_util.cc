@@ -20,7 +20,6 @@
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
@@ -36,6 +35,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/memory/stats.h"
@@ -752,17 +752,6 @@ void BuildOpFuncList(const phi::Place& place,
         VLOG(4) << "get RuntimeContext";
 
         Scope scope, *runtime_scope = &scope;
-        // NOTE(Ruibiao): We do not encourage directly using scope in OP kernel.
-        // But some OPs do have such behavior (e.g., cinn_launch OP). Here
-        // special treatment for them.
-        if (op_with_kernel->Type() == "cinn_launch" ||
-            op_with_kernel->Type() == "cinn_instruction_run") {
-          VLOG(6) << "OP(" << op_with_kernel->Type()
-                  << ") use scope in kernel, "
-                     "so pass a real scope to "
-                     "ExecutionContext";
-          runtime_scope = local_scope;
-        }
 
         // construct the device context
         auto* dev_ctx = ConstructDeviceContext(op, place);

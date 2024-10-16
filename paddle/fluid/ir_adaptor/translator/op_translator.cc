@@ -1527,6 +1527,19 @@ struct DataOpTranscriber : public FeedOpTranscriber {
              ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
     };
 
+    if (static_cast<phi::AllocationType>(allocate_type) ==
+        phi::AllocationType::CUSTOM) {
+      int place_device_id =
+          PADDLE_GET_CONST(int, op_desc.GetAttr("place_device_id"));
+      std::string place_device_type =
+          PADDLE_GET_CONST(std::string, op_desc.GetAttr("place_device_type"));
+      attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
+          ctx,
+          phi::Place(static_cast<phi::AllocationType>(allocate_type),
+                     place_device_id,
+                     place_device_type));
+    }
+
     return attribute_map;
   }
 };
@@ -3902,6 +3915,20 @@ struct WithXShapeAndAxisGradOpTranscriber : public OpTranscriber {
   }
 };
 
+struct SyncCommStreamOpTranscriber : public OpTranscriber {
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    std::string target_op_name = "pd_op.sync_comm_stream_";
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Op c_sync_comm_stream should have corresponding "
+          "OpInfo pd_op.sync_comm_stream_."));
+    }
+    return op_info;
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -4012,6 +4039,8 @@ OpTranslator::OpTranslator() {
       WithXShapeAndAxisGradOpTranscriber<dialect::SqueezeGradOp>();
   special_handlers["unsqueeze2_grad"] =
       WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
+
+  special_handlers["c_sync_comm_stream"] = SyncCommStreamOpTranscriber();
 }
 }  // namespace translator
 }  // namespace paddle

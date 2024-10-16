@@ -87,11 +87,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
@@ -134,7 +131,10 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/monitor.h"
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/utils/none.h"
@@ -160,7 +160,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #ifndef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
@@ -172,9 +172,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/device/custom/custom_device_resource_pool.h"
 #endif
 
@@ -1072,11 +1072,7 @@ void BindDecompVjp(pybind11::module *m) {
     for (size_t i = 0; i < decomp_res.size(); ++i) {
       py::list sub_res;
       for (size_t j = 0; j < decomp_res[i].size(); ++j) {
-        if (!decomp_res[i][j]) {
-          sub_res.append(nullptr);
-        } else {
-          sub_res.append(decomp_res[i][j]);
-        }
+        sub_res.append(decomp_res[i][j]);
       }
       res.append(sub_res);
     }
@@ -1270,7 +1266,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PADDLE_ENFORCE_NOT_NULL(
         dlMTensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "from_dlpack received an invalid capsule. "
             "Note that DLTensor capsules can be consumed only once, "
             "so you might have already constructed a tensor from it once."));

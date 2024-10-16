@@ -36,7 +36,7 @@ AUTOCONF_HASH=954bd69b391edc12d6a4a51a2dd1476543da5c6bbf05a95b59dc0dd6fd4c2969
 
 # Dependencies for compiling Python that we want to remove from
 # the final image after compiling Python
-PYTHON_COMPILE_DEPS="zlib-devel bzip2-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel db4-devel libpcap-devel xz-devel libffi-devel"
+PYTHON_COMPILE_DEPS="zlib-devel bzip2-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel xz-devel libffi-devel"
 
 # Libraries that are allowed as part of the manylinux1 profile
 MANYLINUX1_DEPS="glibc-devel libstdc++-devel glib2-devel libX11-devel libXext-devel libXrender-devel  mesa-libGL-devel libICE-devel libSM-devel ncurses-devel freetype-devel libpng-devel"
@@ -49,11 +49,8 @@ source $MY_DIR/build_utils.sh
 yum -y install wget curl epel-release
 
 # Development tools and libraries
-yum -y install bzip2 make git patch unzip bison yasm diffutils \
+yum -y install bzip2 make git patch unzip bison diffutils \
     automake which file \
-    kernel-devel-`uname -r` \
-    devtoolset-2-binutils devtoolset-2-gcc \
-    devtoolset-2-gcc-c++ devtoolset-2-gcc-gfortran \
     ${PYTHON_COMPILE_DEPS}
 
 # Install more recent version of cmake

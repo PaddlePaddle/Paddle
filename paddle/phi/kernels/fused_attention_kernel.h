@@ -42,8 +42,8 @@ namespace phi {
  * @param num_heads           The number head for multi_head_attention.
  * @param transpose_qkv_wb    The qkv_w shape is (h, 3h), do transpose to it.
  * @param pre_layer_norm      if true, the attention op uses pre_layer_norm
- *                            architecure, else, uses post_layer_norm
- * architecuture. [default false].
+ *                            architecture, else, uses post_layer_norm
+ * architecture. [default false].
  * @param epsilon             Constant for numerical stability [default 1e-5].
  * @param attn_dropout_rate   Probability of setting units to zero.
  * @param is_test             (bool, default false) Set to true for inference

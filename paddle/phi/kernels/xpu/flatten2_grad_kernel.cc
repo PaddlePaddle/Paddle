@@ -22,9 +22,15 @@ PD_REGISTER_KERNEL(flatten2_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::Flatten2GradKernel,
+                   double,
                    float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int64_t,
                    int,
+                   int16_t,
                    int8_t,
-                   int64_t) {}
+                   uint8_t,
+                   bool) {}
 
 #endif

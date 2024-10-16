@@ -52,7 +52,6 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
@@ -62,6 +61,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -100,7 +100,7 @@
 #endif
 
 #ifdef PADDLE_WITH_NVTX
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_CINN
@@ -833,6 +833,24 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       }
       return pass_manager;
     };
+
+    if (config_.use_gpu() && config_.cinn_enabled()) {
+      if (!config_.custom_pass_only_) {
+        ::pir::PassManager fused_op_pm(::pir::IrContext::Instance(),
+                                       config_.pm_opt_level_);
+        const std::vector<std::string> FusedOpPasses{// Operator fusion pass
+                                                     "conv2d_bn_fuse_pass",
+                                                     "conv2d_add_act_fuse_pass",
+                                                     "conv2d_add_fuse_pass",
+                                                     "transfer_layout_pass"};
+
+        for (const auto &fused_op : FusedOpPasses) {
+          fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
+        }
+
+        fused_op_pm.Run(pir_program_.get());
+      }
+    }
 
     if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
       VLOG(4) << "[Prim] Decomp program in predictor begin.";
