@@ -31,8 +31,7 @@ limitations under the License. */
 #define _LINUX
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::atomic<int> PSGPUWorker::shape_check_count_(16);
 std::atomic<bool> PSGPUWorker::shape_check_flag_(true);
@@ -580,6 +579,5 @@ void PSGPUWorker::ResetStat() {
 
 void PSGPUWorker::ProduceTasks() { return; }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

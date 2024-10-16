@@ -16,8 +16,7 @@
 
 #include "paddle/utils/string/split.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 // PD_DEFINE_string(cert_path, "./cert.pem", "cert.pem path");
 // PD_DEFINE_string(key_path, "./key.pem", "key.pem path");
 std::shared_ptr<HeterServer> HeterServer::s_instance_ = nullptr;
@@ -258,5 +257,4 @@ int SendAndRecvVariableHandler::QueryInSwitchWithScope(
   VLOG(4) << "heter server QueryInSwitchWithScope done";
   return 0;
 }
-}  // end namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

@@ -724,6 +724,6 @@ class SparseAdagradV2Optimizer {
 };
 
 #endif
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

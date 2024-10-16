@@ -176,6 +176,6 @@ int HeterPs<GPUAccessor, GPUOptimizer>::dedup_keys_and_fillidx(
                                        filter_zero);
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

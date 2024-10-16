@@ -218,6 +218,6 @@ void PSGPUWrapper::CopyKeys(const phi::Place& place,
   xpu_wait(stream);
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

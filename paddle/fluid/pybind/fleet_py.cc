@@ -46,8 +46,7 @@ using paddle::distributed::GraphPyServer;
 using paddle::distributed::GraphPyService;
 using paddle::distributed::HeterClient;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindDistFleetWrapper(py::module* m) {
   py::class_<FleetWrapper, std::shared_ptr<FleetWrapper>>(*m,
                                                           "DistFleetWrapper")
@@ -454,5 +453,4 @@ void BindIndexSampler(py::module* m) {
       .def("init_beamsearch_conf", &IndexSampler::init_beamsearch_conf)
       .def("sample", &IndexSampler::sample);
 }
-}  // end namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

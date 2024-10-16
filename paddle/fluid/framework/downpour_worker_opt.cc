@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class OpDesc;
 class OperatorBase;
@@ -559,5 +558,4 @@ void DownpourWorkerOpt::TrainFiles() {
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

@@ -37,7 +37,7 @@ namespace {  // NOLINT
 template <typename K, typename V>
 using KeyValuePair = cub::KeyValuePair<K, V>;
 
-}  // end namespace
+}  // namespace
 
 #define FIXED_BLOCK_DIM_CASE_BASE(log2_block_dim, ...)  \
   case (1 << (log2_block_dim)): {                       \

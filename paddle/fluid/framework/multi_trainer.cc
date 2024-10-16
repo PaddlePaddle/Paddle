@@ -28,8 +28,7 @@ PHI_DEFINE_EXPORTED_bool(enable_dump_main_program,
                          false,
                          "enable dump main program, default false");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 extern Barrier g_barrier;
 
@@ -436,5 +435,4 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
 }
 #endif
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

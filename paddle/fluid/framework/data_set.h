@@ -445,5 +445,5 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
   bool enable_heterps_ = true;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle

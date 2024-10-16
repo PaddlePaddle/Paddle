@@ -339,6 +339,6 @@ class HeterCommKernel {
   int block_size_{256};
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

@@ -388,5 +388,5 @@ class LineFileReader {
   size_t _buf_size = 0;
   size_t _length = 0;
 };
-}  // end namespace string
-}  // end namespace paddle
+}  // namespace string
+}  // namespace paddle

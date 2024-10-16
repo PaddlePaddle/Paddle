@@ -186,6 +186,6 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                    feature_learning_rate);
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

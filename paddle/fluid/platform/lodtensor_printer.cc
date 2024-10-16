@@ -21,14 +21,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 void PrintVar(framework::Scope* scope,
               const std::string& var_name,
@@ -81,5 +78,4 @@ void PrintVar(framework::Scope* scope,
   _ForEachDataType_(PrintTensorCallback);
 }
 
-}  // end namespace platform
-}  // end namespace paddle
+}  // namespace paddle::platform

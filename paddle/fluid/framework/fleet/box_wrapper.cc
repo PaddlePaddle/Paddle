@@ -23,8 +23,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::shared_ptr<BoxWrapper> BoxWrapper::s_instance_ = nullptr;
 gpuStream_t BoxWrapper::stream_list_[8];
@@ -341,6 +340,5 @@ void BoxWrapper::AddReplaceFeasign(boxps::PSAgentBase* p_agent,
   VLOG(0) << "End AddReplaceFeasign";
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

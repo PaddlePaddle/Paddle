@@ -214,7 +214,7 @@ __host__ __device__ void shuffle_copy(
                          key_flag_scan_op());
 }
 
-}  // end namespace generic
-}  // end namespace detail
-}  // end namespace system
-}  // end namespace thrust
+}  // namespace generic
+}  // namespace detail
+}  // namespace system
+}  // namespace thrust

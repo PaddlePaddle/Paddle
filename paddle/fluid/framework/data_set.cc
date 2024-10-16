@@ -43,8 +43,7 @@ COMMON_DECLARE_int32(gpugraph_storage_mode);
 COMMON_DECLARE_string(graph_edges_split_mode);
 COMMON_DECLARE_bool(query_dest_rank_by_multi_node);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 // constructor
 template <typename T>
@@ -2196,5 +2195,4 @@ void SlotRecordDataset::DynamicAdjustReadersNum(int thread_num) {
   PrepareTrain();
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

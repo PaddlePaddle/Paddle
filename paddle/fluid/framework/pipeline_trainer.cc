@@ -18,8 +18,7 @@
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/phi/core/framework/trainer_desc.pb.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
@@ -142,6 +141,5 @@ Scope* PipelineTrainer::GetWorkerScope(int thread_id) {
   return microbatch_scopes_[0];
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

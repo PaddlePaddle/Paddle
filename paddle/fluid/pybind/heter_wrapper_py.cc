@@ -29,8 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 void BindHeterWrapper(py::module* m) {
   py::class_<framework::HeterWrapper, std::shared_ptr<framework::HeterWrapper>>(
@@ -44,5 +43,4 @@ void BindHeterWrapper(py::module* m) {
       .def("stop_xpu_service", &framework::HeterWrapper::StopXpuService);
 }  // end HeterWrapper
 #endif
-}  // end namespace pybind
-}  // end namespace paddle
+}  // namespace paddle::pybind
