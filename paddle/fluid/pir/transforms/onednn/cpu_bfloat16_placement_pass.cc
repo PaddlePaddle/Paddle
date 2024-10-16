@@ -98,7 +98,7 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
     }
 
     const std::vector<std::string> permitted_input_names = {
-        "x", "y", "input", "residual_param"};
+        "x", "y", "input", "residual_param", "residual_data"};
     auto op_name = op->name();
     auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
     if (!op_info) return false;
