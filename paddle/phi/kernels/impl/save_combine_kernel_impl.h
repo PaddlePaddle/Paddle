@@ -27,10 +27,10 @@
 #include "paddle/phi/core/framework/convert_utils.h"
 #include "paddle/phi/core/framework/data_type_transform.h"
 #include "paddle/phi/core/framework/lod_tensor_serialize.h"
-#include "paddle/phi/core/framework/raw_tensor.h"
 #include "paddle/phi/core/framework/var_type_helper.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
