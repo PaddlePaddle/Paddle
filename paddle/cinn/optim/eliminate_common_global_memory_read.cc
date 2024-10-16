@@ -387,6 +387,9 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     }
 
     IRMutator<>::Visit(op, expr);
+
+    auto* node = expr->As<ir::For>();
+    node->reset_vectorize_info();
   }
 
   // void Visit(const ir::Store* op, Expr* expr) override {
@@ -487,9 +490,10 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     ir::Expr new_for = ir::For::Make(vec_for_->loop_var,
                                      vec_for_->min,
                                      vec_for_->extent,
-                                     ir::ForType::Serial,
+                                     ir::ForType::Vectorized,
                                      ir::DeviceAPI::UNK,
-                                     new_sbr);
+                                     new_sbr,
+                                     ir::VectorizeInfo(1, 2));
 
     block_to_insert_stmts_[insert_vectorize_block_].push_back(new_for);
   }
@@ -706,17 +710,17 @@ void EliminateCommonGlobalMemoryRead(Expr* e) {
   GlobalTensorInfoCollector collector;
   collector(e);
 
-  std::cerr << "before process global memory \n" << *e << std::endl;
+  // std::cerr << "before process global memory \n" << *e << std::endl;
   const auto& eliminate_buffer_names = collector.GetEliminateBufferNames();
 
-  for (auto& name : eliminate_buffer_names) {
-    std::cerr << "eliminate buffer name " << name << std::endl;
-  }
+  // for (auto& name : eliminate_buffer_names) {
+  //   std::cerr << "eliminate buffer name " << name << std::endl;
+  // }
 
   CommonGlobalMemoryEliminator eliminator(eliminate_buffer_names);
   eliminator(e);
 
-  std::cerr << "after process global memory \n" << *e << std::endl;
+  // std::cerr << "after process global memory \n" << *e << std::endl;
 
   VLOG(4) << "After EliminateCommonGlobalMemoryRead: \n" << *e;
 }

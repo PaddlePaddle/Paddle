@@ -191,7 +191,6 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
     if (sp_loop > 1 && sp_thread > 1) {
       // [S, R] => [S(-1), S(inner_loop), S(thread), R]
       std::cerr << "sp loop " << sp_loop << "\t" << sp_thread << std::endl;
-      auto split_loops = sch->Split(loops[0], {-1, sp_loop, sp_thread});
       auto split_loops = sch->Split(loops[0], {-1, sp_loop, sp_thread, 2});
       split_loops.back().As<ir::For>()->set_vectorize_info(VectorizeInfo(1, 2));
 
