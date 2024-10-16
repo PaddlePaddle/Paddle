@@ -517,7 +517,7 @@ bool convtransposefunction(pir::Operation *op,
             "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
 
-  const bool channel_last = (data_format != "kNHWC");
+  const bool channel_last = (data_format != "NHWC");
   const symbol::DimExpr C =
       (channel_last ? x_shape[1] : x_shape[x_shape.size() - 1]);
 
@@ -561,7 +561,7 @@ bool convtransposefunction(pir::Operation *op,
     }
     if (!output_size.empty()) {
       output_shape.push_back(output_size[i]);
-    } else if (!output_padding.empty() > 0) {
+    } else if (!output_padding.empty()) {
       output_shape.push_back(infer_shape + symbol::DimExpr(output_padding[i]));
     } else {
       output_shape.push_back(infer_shape);
@@ -648,14 +648,10 @@ bool Conv2dTransposeOpInferSymbolicShape(
   } else {
     const auto &output_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
-    VLOG(3) << output_shape_or_data.data().value() << "|||"
-            << output_shape_or_data.shape()
-            << "conv2dtransposedata------------";
     const std::vector<symbol::DimExpr> &output_size =
         output_shape_or_data.data().has_value()
             ? output_shape_or_data.data().value()
             : output_shape_or_data.shape();
-    VLOG(3) << output_size;
     return convtransposefunction(op, infer_context, output_size);
   }
 }
