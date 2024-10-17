@@ -265,13 +265,7 @@ if(WITH_XPU)
   cc_library(
     phi_utils
     SRCS phi_utils.cc
-    DEPS lod_tensor
-         selected_rows_utils
-         phi
-         common
-         var_type_traits
-         op_info
-         xpu_op_list)
+    DEPS lod_tensor selected_rows_utils phi common var_type_traits op_info)
 else()
   cc_library(
     phi_utils
@@ -284,8 +278,7 @@ if(WITH_XPU)
     operator
     SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
          infershape_utils.cc
-    DEPS xpu_op_list
-         op_info
+    DEPS op_info
          proto_desc
          tensor
          scope

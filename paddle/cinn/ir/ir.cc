@@ -320,12 +320,12 @@ void _Var_::Verify() const {
                         "A valid name is required to identify the variable."));
 }
 
-Expr IterMark::Make(const Expr &source, const IndexExpr &extent) {
+IndexExpr IterMark::Make(const IndexExpr &source, const IndexExpr &extent) {
   auto *n = make_shared<IterMark>();
   n->source = source;
   n->extent = extent;
   n->set_type(source.type());
-  return Expr(n);
+  return IndexExpr(n);
 }
 
 IterMark &IterMark::operator=(const IterMark &other) {
@@ -334,20 +334,20 @@ IterMark &IterMark::operator=(const IterMark &other) {
   extent = other.extent;
   return *this;
 }
-Expr IterSplit::Make(const Expr &source,
-                     const IndexExpr &lower_factor,
-                     const IndexExpr &extent,
-                     const IndexExpr &scale) {
+IndexExpr IterSplit::Make(const IndexExpr &source,
+                          const IndexExpr &lower_factor,
+                          const IndexExpr &extent,
+                          const IndexExpr &scale) {
   auto *n = make_shared<IterSplit>();
   n->set_type(source.type());
   n->source = source;
   n->lower_factor = lower_factor;
   n->extent = extent;
   n->scale = scale;
-  return Expr(n);
+  return IndexExpr(n);
 }
 
-Expr IterSplit::Make(const Expr &source) {
+IndexExpr IterSplit::Make(const IndexExpr &source) {
   auto *n = make_shared<IterSplit>();
   auto source_mark = source.As<IterMark>();
   n->set_type(source.type());
@@ -355,10 +355,10 @@ Expr IterSplit::Make(const Expr &source) {
   n->extent = source_mark->extent;
   n->lower_factor = One(source.type()).as_index();
   n->scale = One(source.type()).as_index();
-  return Expr(n);
+  return IndexExpr(n);
 }
 
-Expr IterSplit::Make(const Expr &source, const IndexExpr &scale) {
+IndexExpr IterSplit::Make(const IndexExpr &source, const IndexExpr &scale) {
   auto *n = make_shared<IterSplit>();
   auto source_mark = source.As<IterMark>();
   n->set_type(source.type());
@@ -366,7 +366,7 @@ Expr IterSplit::Make(const Expr &source, const IndexExpr &scale) {
   n->extent = source_mark->extent;
   n->lower_factor = One(source.type()).as_index();
   n->scale = scale;
-  return Expr(n);
+  return IndexExpr(n);
 }
 IterSplit &IterSplit::operator=(const IterSplit &other) {
   this->set_type(other.type());
@@ -377,12 +377,13 @@ IterSplit &IterSplit::operator=(const IterSplit &other) {
   return *this;
 }
 
-Expr IterSum::Make(const std::vector<Expr> &args, const IndexExpr &base) {
+IndexExpr IterSum::Make(const std::vector<IndexExpr> &args,
+                        const IndexExpr &base) {
   auto *n = make_shared<IterSum>();
   n->set_type(base.type());
   n->args = std::move(args);
   n->base = base;
-  return Expr(n);
+  return IndexExpr(n);
 }
 
 void Mul::Verify() const { BinaryNodeVerify(a(), b(), "Mul"); }
@@ -413,6 +414,9 @@ Expr For::Make(Var loop_var,
       true,
       ::common::errors::InvalidArgument("The extent is not defined. "
                                         "A valid extent is required."));
+
+  if (!(loop_var->lower_bound.defined())) loop_var->lower_bound = min;
+  if (!(loop_var->upper_bound.defined())) loop_var->upper_bound = extent;
 
   node->loop_var = loop_var;
   node->min = min;
