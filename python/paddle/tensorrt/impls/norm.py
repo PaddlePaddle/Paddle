@@ -16,7 +16,7 @@ import numpy as np
 import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
-    append_ones,
+    add_ones,
     get_axes_for_reduce_op,
     get_dynamic_dims,
     has_dynamic_shape,
@@ -43,14 +43,14 @@ def layernorm_converter(network, paddle_op, inputs):
     dims = list(range(len(input_a.shape)))[begin_norm_axis:]
     axes = get_axes_for_reduce_op(dims)
 
-    scale_tensor = append_ones(
+    scale_tensor = add_ones(
         network,
         scale_tensor,
         f"{scale_tensor.name}_broadcast",
         len(input_a.shape) - len(scale_tensor.shape),
     )
 
-    bias_tensor = append_ones(
+    bias_tensor = add_ones(
         network,
         bias_tensor,
         f"{bias_tensor.name}_broadcast",
