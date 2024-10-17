@@ -124,7 +124,23 @@ class TestPrimLayerNormWithGrad1(TestPrimThreeWithGrad):
         self.z = np.random.random(self.z_shape).astype(self.dtype)
         self.net = layer_norm_net1
         self.enable_cinn = False
-        self.tol = 1e-4
+        self.tol = 1e-5
+        self.other_place_tol = 1e-4
+
+    def test_prim_all_dynamic(self):
+        res_ref, grad_ref = self.base_net()
+        res, grad = self.base_net("prim")
+
+        if not paddle.core.is_compiled_with_cuda():
+            self.tol = self.other_place_tol
+
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(
+                ref, actual, rtol=self.tol, atol=self.tol
+            )
+
+        for dr, d in zip(grad_ref, grad):
+            np.testing.assert_allclose(dr, d, rtol=self.tol, atol=self.tol)
 
 
 class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
@@ -137,10 +153,26 @@ class TestPrimLayerNormWithGrad2(TestPrimBaseWithGrad):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = layer_norm_net1
         self.enable_cinn = False
-        self.tol = 1e-3
+        self.tol = 1e-5
+        self.other_place_tol = 1e-3
+
+    def test_prim_all_dynamic(self):
+        res_ref, grad_ref = self.base_net()
+        res, grad = self.base_net("prim")
+
+        if not paddle.core.is_compiled_with_cuda():
+            self.tol = self.other_place_tol
+
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(
+                ref, actual, rtol=self.tol, atol=self.tol
+            )
+
+        for dr, d in zip(grad_ref, grad):
+            np.testing.assert_allclose(dr, d, rtol=self.tol, atol=self.tol)
 
 
-class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
+class TestPrimLayerNormWithGrad3(TestPrimLayerNormWithGrad1):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -156,10 +188,11 @@ class TestPrimLayerNormWithGrad3(TestPrimThreeWithGrad):
         self.z = np.random.random(self.z_shape).astype(self.dtype)
         self.net = layer_norm_net2
         self.enable_cinn = False
-        self.tol = 1e-4
+        self.tol = 1e-5
+        self.other_place_tol = 1e-4
 
 
-class TestPrimLayerNormWithGrad4(TestPrimBaseWithGrad):
+class TestPrimLayerNormWithGrad4(TestPrimLayerNormWithGrad2):
     def setUp(self):
         np.random.seed(2023)
         self.op_name = "pd_op.layer_norm_grad"
@@ -169,7 +202,8 @@ class TestPrimLayerNormWithGrad4(TestPrimBaseWithGrad):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = layer_norm_net1
         self.enable_cinn = False
-        self.tol = 8e-3
+        self.tol = 1e-5
+        self.other_place_tol = 8e-3
 
 
 class TestPrimLeakyReluWithGrad(TestPrimBaseWithGrad):
