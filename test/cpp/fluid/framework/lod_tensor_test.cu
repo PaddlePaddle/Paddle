@@ -58,7 +58,7 @@ TEST(DenseTensor, LoDInGPU) {
   phi::DenseTensor lod_tensor;
   phi::GPUPlace place(0);
 
-  ph::LoD src_lod;
+  phi::LoD src_lod;
   src_lod.push_back(std::vector<size_t>{0, 2, 4, 6, 8, 10, 12, 14});
 
   lod_tensor.Resize({14, 16});
