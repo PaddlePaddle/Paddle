@@ -1475,7 +1475,6 @@ class ShardingPass(PassBase):
                         new_op._set_attr(
                             'op_namescope', '/' + ParallelMode.DataParallel
                         )
-                        print("---------auto para sharding------", new_op)
 
                         if self.enable_overlap:
                             new_op.dist_attr.execution_stream = comm_stream
@@ -1578,7 +1577,6 @@ def _insert_reduce_op(
             OP_ROLE_KEY: op_role,
         },
     )
-    print("--------_insert_reduce_op--------------", new_op)
 
     dist_attr = dist_context.get_tensor_dist_attr_for_program(
         block.var(reduce_var)
@@ -1591,7 +1589,6 @@ def _insert_reduce_op(
         chunk_id=dist_attr.chunk_id,
     )
     new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
-    print("---------auto para sharding-no-----", new_op)
     return new_op
 
 
