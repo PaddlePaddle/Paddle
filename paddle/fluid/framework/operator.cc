@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -42,6 +41,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/raw_tensor.h"
 
 namespace phi {
 class DenseTensor;
