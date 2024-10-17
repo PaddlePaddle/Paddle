@@ -5972,11 +5972,11 @@ def as_complex(x: Tensor, name: str | None = None) -> Tensor:
     the size of the last axis should be 2, which represent the real and imag part
     of a complex number. The shape of the returned tensor is ``(*,)``.
 
-    The image below demonstrate the case that a float 3D tensor with shape [2, 3, 2] is transformed into a complex 2D tensor with shape [2, 3].
+    The image below demonstrates the case that a real 3D tensor with shape [2, 3, 2] is transformed into a complex 2D tensor with shape [2, 3].
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/as_complex.png
-       :alt: Illustration of as_complex
        :width: 500
+       :alt: Illustration of as_complex
        :align: center
 
     Args:
