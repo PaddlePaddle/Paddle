@@ -1038,7 +1038,7 @@ void DispatchWithDtype(const Context &dev_ctx,
       mask_broadcast_num_heads = false;
     } else {
       PADDLE_THROW(errors::InvalidArgument(
-          "Unknow dimension for attn_mask, the num_head(2nd) "
+          "Unknown dimension for attn_mask, the num_head(2nd) "
           "dimension is invalid, it should be 1 or num_head(%d), "
           "but got %d",
           num_head,

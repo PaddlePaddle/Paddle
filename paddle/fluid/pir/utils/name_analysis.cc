@@ -30,7 +30,7 @@ pir::Value GetOutputValueByName(const pir::Program &program,
       if (op.attribute("output_name") == name_attr) {
         if (value) {
           PADDLE_THROW(common::errors::PreconditionNotMet(
-              "More than one shadow ouput named with %s found.", name));
+              "More than one shadow output named with %s found.", name));
         }
         value = op.operand_source(0);
       }
@@ -107,7 +107,7 @@ std::map<std::string, std::string> RenameValue(Value value,
                                                const std::string &new_name,
                                                Block *block) {
   std::map<std::string, std::string> rename_mapping;
-  VLOG(5) << "Strating to rename value to " << new_name;
+  VLOG(5) << "Starting to rename value to " << new_name;
   // Handle kwarg
   for (auto [name, kwarg] : block->kwargs()) {
     if (kwarg == value) {

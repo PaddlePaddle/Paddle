@@ -13,31 +13,15 @@
 # limitations under the License.
 
 
-import tensorrt as trt
-
+from paddle.tensorrt.converter_utils import convert_conv2d
 from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.depthwise_conv2d", trt_version="8.x")
 @converter_registry.register("pd_op.conv2d", trt_version="8.x")
+@converter_registry.register("pd_op.conv2d_transpose", trt_version="8.x")
+@converter_registry.register(
+    "pd_op.depthwise_conv2d_transpose", trt_version="8.x"
+)
 def conv2d_converter(network, paddle_op, inputs):
-    input_tensor, weight = inputs
-    weight_shape = paddle_op.operands()[1].source().shape
-
-    padding = paddle_op.attrs().get("paddings", [0, 0])
-    stride = paddle_op.attrs().get("strides", [1, 1])
-    dilation = paddle_op.attrs().get("dilations", [1, 1])
-    groups = paddle_op.attrs().get("groups", 1)
-
-    # weight_tensor = network.add_constant(weight_shape, weight).get_output(0)
-    kernel_shape = trt.Dims((weight_shape[2], weight_shape[3]))
-
-    conv_layer = network.add_convolution_nd(
-        input_tensor, weight_shape[0], kernel_shape, weight
-    )
-    conv_layer.stride_nd = stride
-    conv_layer.padding_nd = padding
-    conv_layer.dilation_nd = dilation
-    conv_layer.num_groups = groups
-
-    return conv_layer.get_output(0)
+    return convert_conv2d(network, paddle_op, inputs)

@@ -516,6 +516,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "group_norm_silu_xpu_fuse_pass",
+      "layer_norm_relu_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "qk_qkv_attention_xpu_fuse_pass",
       "block_multihead_attention_xpu_pass",

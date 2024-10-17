@@ -1685,7 +1685,7 @@ void topk_grad(const Tensor& x,
                const Tensor& indices,
                const Tensor& out_grad,
                const Scalar& k,
-               const int& axis,
+               int axis,
                const bool& largest,
                const bool& sorted,
                Tensor* x_grad) {
@@ -1695,6 +1695,12 @@ void topk_grad(const Tensor& x,
       by_pass<T>(out_grad, x_grad);
       return;
     }
+
+    // function `put_along_axis` requires a non-negative axis
+    if (axis < 0) {
+      axis += x.dims().size();
+    }
+
     Tensor zero_tensor;
     if (has_dynamic_shape(x.shape())) {
       zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());

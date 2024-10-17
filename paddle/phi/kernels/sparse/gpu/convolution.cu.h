@@ -197,7 +197,7 @@ __global__ void UpdateOutIndexAndCounterAfterLowerBound(
  * non_zero_num: the number of input features
  * rulebook: the rulebook to save the kernel index, input index and output index
  * counter: save the number of times each location in the kernel participates in
- *the caculation
+ * the calculation
  **/
 template <typename T>
 __global__ void ProductRuleBookKernel(const T* x_indices,

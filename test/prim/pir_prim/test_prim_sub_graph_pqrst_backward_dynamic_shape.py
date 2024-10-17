@@ -171,7 +171,7 @@ def tanh_net(x):
 
 
 def topk_net(x):
-    return paddle.topk(x, k=3, axis=1)[0]
+    return paddle.topk(x, k=3, axis=-1)[0]
 
 
 def transpose_net(x):

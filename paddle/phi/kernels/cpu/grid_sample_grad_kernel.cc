@@ -559,7 +559,7 @@ static void Gather3DBilinearGrad(const CPUContext& ctx,
     grid_grad_x_t = grid_grad_x_t * grid_x_scale_t;
     grid_grad_y_t = grid_grad_y_t * grid_y_scale_t;
     grid_grad_z_t = grid_grad_z_t * grid_z_scale_t;
-    // gather grid_grad [x, y, z] in 4rd Dim
+    // gather grid_grad [x, y, z] in 4th Dim
     T* grid_grad_data = grid_grad->data<T>();
     T* grid_grad_x_data = grid_grad_x.data<T>();
     T* grid_grad_y_data = grid_grad_y.data<T>();

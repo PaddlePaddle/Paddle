@@ -22,9 +22,9 @@ namespace phi {
 /**
  * @brief This kernel generate random value that follow binomial distribution.
  * @param  ctx          device context
- * @param  count  A Tensor with each element inidicating the number of
+ * @param  count  A Tensor with each element indicating the number of
  * bernoulli experiments
- * @param  prob         A Tensor with each element inidicating probability of
+ * @param  prob         A Tensor with each element indicating probability of
  * success for one bernoulli experiment
  * @param  out          A Tensor filled with returned random value
  */

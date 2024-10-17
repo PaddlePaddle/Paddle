@@ -183,7 +183,7 @@ class NormHelper {
 
   /*
   Note(Zhengzekang):
-  Since input `X` and `Residual` in FusedMT will be swaped by preallocated
+  Since input `X` and `Residual` in FusedMT will be swapped by preallocated
   buffer, I have no choice but to pass the data pointer instead of
   phi::DenseTensor.
   */
