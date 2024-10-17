@@ -693,6 +693,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         # are so many hard code depends on `add_n` in the legacy static
         # manual hybrid-parallel.
         self._async_add_n = None
+        self.should_comm_on_shard_dim = False
 
     def __str__(self) -> str:
         return f"Gradient Clip By GlobalNorm, global_norm={self.clip_norm:f}"
@@ -914,9 +915,17 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = []
         if len(sum_square_list_fp16) > 0:
             global_norm_var_fp16 = async_add_n(sum_square_list_fp16)
+            if self.should_comm_on_shard_dim:
+                global_norm_var_fp16 = paddle._C_ops.c_allreduce_sum(
+                    global_norm_var_fp16, self.sharding_group.id, True, False
+                )
             global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
         if len(sum_square_list_fp32) > 0:
             global_norm_var_fp32 = async_add_n(sum_square_list_fp32)
+            if self.should_comm_on_shard_dim:
+                global_norm_var_fp32 = paddle._C_ops.c_allreduce_sum(
+                    global_norm_var_fp32, self.sharding_group.id, True, False
+                )
             if sum_dtype == 'float32':
                 global_norm_var.append(global_norm_var_fp32)
             else:
