@@ -1938,6 +1938,9 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             egr::EagerUtils::SetHistory(x_autograd_meta, grad_node);
           }
           grad_node->SetGradInMeta(self->tensor, 0);
+
+          self->tensor.set_autograd_meta(
+              transback_sub_tensor.mutable_autograd_meta());
         }
       } else {
         self->tensor.set_autograd_meta(
