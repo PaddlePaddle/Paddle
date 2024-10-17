@@ -491,6 +491,7 @@
 
 - op : c_softmax_with_cross_entropy
   backward : c_softmax_with_cross_entropy_grad
+  inplace : (Logits -> Softmax)
   inputs :
     {logits : Logits, label : Label}
   outputs :
