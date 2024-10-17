@@ -297,6 +297,15 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     opts.reduce_op = distributed::ReduceOp::SUM;
     pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
+    ret = xpu::clip<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(sum_exp_logits.data<T>()),
+        reinterpret_cast<XPUType*>(sum_exp_logits.data<T>()),
+        sum_exp_logits.numel(),
+        1e-37,
+        1e37);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "clip");
+
     int64_t dims[4] = {N, D, N, 1};
     ret = xpu::broadcast_div<XPUType>(
         dev_ctx.x_context(),
@@ -563,6 +572,15 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                           BKCL_ADD,
                           stream));
     }
+
+    ret = xpu::clip<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(sum_exp_logits.data<T>()),
+        reinterpret_cast<XPUType*>(sum_exp_logits.data<T>()),
+        sum_exp_logits.numel(),
+        1e-37,
+        1e37);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "clip");
 
     {
       int64_t dims[4] = {N, D, N, 1};
