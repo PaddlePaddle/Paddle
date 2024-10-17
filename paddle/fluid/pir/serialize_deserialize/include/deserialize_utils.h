@@ -88,7 +88,7 @@ template <>
 pir::FloatAttribute deserializeAttrFromJson<pir::FloatAttribute, float>(
     Json* attr_json, pir::IrContext* ctx) {
   if (attr_json->contains(VOILD_DATA)) {
-    auto string = attr_json->at(DATA).template get<std::string>();
+    auto string = attr_json->at(VOILD_DATA).template get<std::string>();
     if (string == "NAN") {
       return pir::FloatAttribute::get(ctx, std::nanf(""));
     } else if (string == "INF") {
