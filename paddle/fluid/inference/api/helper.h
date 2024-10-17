@@ -91,7 +91,7 @@ inline bool IsFloatVar(framework::proto::VarType::Type t) {
   return false;
 }
 
-using paddle::framework::DataTypeToString;
+using phi::DataTypeToString;
 
 // Timer for timer
 class Timer {

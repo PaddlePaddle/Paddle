@@ -268,7 +268,7 @@ phi::DataType AmpAttrs::GetAmpPhiDtype() const { return amp_dtype_; }
 
 template <typename VarType>
 inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {
-  return framework::DataTypeToString(GetDataType<VarType>(var));
+  return phi::DataTypeToString(GetDataType<VarType>(var));
 }
 template <typename VarType>
 inline bool NeedCast(const std::shared_ptr<VarType>& var) {
@@ -443,7 +443,7 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       }
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to "
-              << framework::DataTypeToString(dst_type);
+              << phi::DataTypeToString(dst_type);
       for (auto& var : pair.second) {
         var = (dst_type == framework::proto::VarType::FP32
                    ? CastToFP32<VarType>(var)
@@ -494,7 +494,7 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
     }
     VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
             << GetDtypeStr(*pair.second.cbegin()) << " to "
-            << framework::DataTypeToString(dst_type);
+            << phi::DataTypeToString(dst_type);
     for (auto& var : pair.second) {
       var = (dst_type == framework::proto::VarType::FP32
                  ? CastToFP32<VarType>(var)
@@ -542,7 +542,7 @@ NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to "
-              << framework::DataTypeToString(dst_type);
+              << phi::DataTypeToString(dst_type);
       for (auto& var : pair.second) {
         var = (dst_type == framework::proto::VarType::FP32
                    ? CastToFP32<VarType>(var)
@@ -570,7 +570,7 @@ NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
   for (auto& pair : new_ins) {
     VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
             << GetDtypeStr(*pair.second.cbegin()) << " to "
-            << framework::DataTypeToString(dst_type);
+            << phi::DataTypeToString(dst_type);
     for (auto& var : pair.second) {
       var = (dst_type == framework::proto::VarType::FP32
                  ? CastToFP32<VarType>(var)
