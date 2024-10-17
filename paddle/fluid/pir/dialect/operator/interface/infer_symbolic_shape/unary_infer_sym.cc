@@ -765,6 +765,7 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
   // GetVecFromIntArray is used to get vector from IntArray[]. Sometimes from
   // attribute and other from operand Enter name and index of IntArray[]
   std::vector<symbol::DimExpr> offsets =
