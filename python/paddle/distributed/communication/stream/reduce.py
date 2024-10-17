@@ -24,7 +24,6 @@ from paddle.distributed.communication.group import (
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
-from paddle.distributed.utils.stream_utils import ExecutionStreamType
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -54,7 +53,7 @@ def _reduce_in_dygraph(
 def _reduce_in_static_mode(
     tensor, dst_rank_in_group, reduce_type, group, sync_op, use_calc_stream
 ):
-    op = data_feeder.check_variable_and_dtype(
+    data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
         [
@@ -84,8 +83,6 @@ def _reduce_in_static_mode(
             'reduce_type': int(reduce_type),
         },
     )
-    if sync_op:
-        op.dist_attr.execution_stream = ExecutionStreamType.DefaultStream.value
 
 
 def reduce(
