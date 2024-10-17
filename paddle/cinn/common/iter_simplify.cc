@@ -369,12 +369,6 @@ ir::IndexExpr IterMapRewriter::SplitModConst(ir::IndexExpr lhs_expr,
   return ir::IterSplit::Make(lhs->source, lhs->lower_factor, rhs, lhs->scale);
 }
 
-/*!
- * \brief Find the first possible position where IterSplit->extent = 1.
- * \param expr the input IterSum to search.
- * \return the index of the first IterSplit with extent = 1,
- * return IterSum.args.size if not found.
- */
 int32_t IterMapRewriter::FindFirstPossibleUnitExtentIndex(
     const ir::IterSum& expr) {
   for (int32_t i = 0; i < expr.args.size(); ++i) {
@@ -383,16 +377,7 @@ int32_t IterMapRewriter::FindFirstPossibleUnitExtentIndex(
   return static_cast<int32_t>(expr.args.size());
 }
 
-/*!
- * \brief FindIterWithExactScale find the iter which has the expected scale.
- * \param expr the input IterSum to search.
- * \param skip_flag the flag to indicate whether a Iter should be skipped.
- * \param match_source Whether to only match the same source.
- * \param rbegin the last position in reverse searching. -1 means the last.
- * \param first_possible_unit_extent_pos the first possible position of ext = 1.
- * \return the index of the Iter with expected scale. return -1 if not found.
- */
-int32_t IterMapRewriter::FindIterWithExactScale(
+int32_t IterMapRewriter::FindSplitWithExactScale(
     const ir::IterSum& expr,
     const std::vector<bool>& skip_flag,
     const ir::IndexExpr& expected_scale,
@@ -423,18 +408,10 @@ int32_t IterMapRewriter::FindIterWithExactScale(
   return matched_pos;
 }
 
-/*!
- * \brief FindBaseIter will find the base Iter which has the smallest scale.
- * \param expr the input IterSum to search.
- * \param skip_flag the flag to indicate whether a Iter should be skipped.
- * \param match_source Whether to only match the same source.
- * \param rbegin the last position in reverse searching. -1 means the last.
- * \return the index of the base Iter. return -1 if not found.
- */
-int32_t IterMapRewriter::FindBaseIter(const ir::IterSum& expr,
-                                      const std::vector<bool>& skip_flag,
-                                      const ir::IndexExpr& match_source,
-                                      int32_t rbegin) {
+int32_t IterMapRewriter::FindBaseSplit(const ir::IterSum& expr,
+                                       const std::vector<bool>& skip_flag,
+                                       const ir::IndexExpr& match_source,
+                                       int32_t rbegin) {
   if (rbegin == -1) {
     rbegin = static_cast<int>(expr.args.size()) - 1;
   }
@@ -481,21 +458,6 @@ int32_t IterMapRewriter::FindBaseIter(const ir::IterSum& expr,
   return base_index;
 }
 
-/*!
- * \brief TryFuse will create new IterMark and returns an aggregated Iter.
- *
- * For example:
- * inp:
- *  IterSum(IterSplit(IterMark(i), scale = 32),
- *          IterSplit(IterMark(j), scale = 8),
- *          base = 0)                        // i * 32 + j * 8
- * ret:
- *  IterSum(IterSplit(IterMark(i * 4 + j), scale = 8),
- *          base = 0)                        // Treat `i * 4 + j` as a IterMark
- *
- * \param expr the input IterSum.
- * \return the IterSum after fused.
- */
 std::optional<ir::IndexExpr> IterMapRewriter::TryFuse(
     const ir::IndexExpr& expr) {
   auto iter_sum = expr.As<ir::IterSum>();
@@ -512,7 +474,7 @@ std::optional<ir::IndexExpr> IterMapRewriter::TryFuse(
 
   // Select iter with smallest scale as base iter.
   std::vector<bool> visited(iter_sum->args.size(), false);
-  int base_index = FindBaseIter(*iter_sum, visited, ir::IndexExpr(), -1);
+  int base_index = FindBaseSplit(*iter_sum, visited, ir::IndexExpr(), -1);
   if (base_index == -1) return std::nullopt;
   ir::IndexExpr base_scale =
       iter_sum->args[base_index].As<ir::IterSplit>()->scale;
@@ -534,12 +496,12 @@ std::optional<ir::IndexExpr> IterMapRewriter::TryFuse(
     ir::IndexExpr matched_scale{nullptr};
     int matched_pos =
         i == 0 ? base_index
-               : FindIterWithExactScale(*iter_sum,
-                                        visited,
-                                        expected_scale,
-                                        ir::IndexExpr(),
-                                        -1,
-                                        first_possible_unit_extent_pos);
+               : FindSplitWithExactScale(*iter_sum,
+                                         visited,
+                                         expected_scale,
+                                         ir::IndexExpr(),
+                                         -1,
+                                         first_possible_unit_extent_pos);
     // If not found iter with expected scale, return nullopt.
     if (matched_pos == -1) return std::nullopt;
 
@@ -572,21 +534,6 @@ std::optional<ir::IndexExpr> IterMapRewriter::TryFuse(
   }
 }
 
-/*!
- * \brief TryFuseSameSource will simplify the IterSum by fusing iterators with.
- *
- * For example:
- * inp:
- *  IterSum(IterSplit(IterMark(f), lower = 4, ext = 8 scale = 4),
- *          IterSplit(IterMark(f), lower = 1, ext = 4 scale = 1),
- *          base = 0)                        // f /4 * 4 + f % 4
- * ret:
- *  IterSum(IterSplit(IterMark(f), scale = 1),
- *          base = 0)                        // f
- *
- * \param expr the input IterSum
- * \return the IterSum after fused.
- */
 std::optional<ir::IndexExpr> IterMapRewriter::TryFuseSameSource(
     const ir::IndexExpr& expr) {
   auto iter_sum = expr.As<ir::IterSum>();
@@ -630,7 +577,7 @@ std::optional<ir::IndexExpr> IterMapRewriter::TryFuseSameSource(
       --rend;
       continue;
     }
-    int matched_index = FindBaseIter(*iter_sum, visited, split->source, rend);
+    int matched_index = FindBaseSplit(*iter_sum, visited, split->source, rend);
     visited[matched_index] = true;
     auto split_copy = ir::ir_utils::IRCopy(iter_sum->args[matched_index]);
     auto rhs_iter = split_copy.As<ir::IterSplit>();
@@ -642,12 +589,12 @@ std::optional<ir::IndexExpr> IterMapRewriter::TryFuseSameSource(
     while (true) {
       ir::IndexExpr lhs_scale =
           MulAndNormalize(rhs_iter->extent, rhs_iter->scale);
-      matched_index = FindIterWithExactScale(*iter_sum,
-                                             visited,
-                                             lhs_scale,
-                                             rhs_iter->source,
-                                             rend,
-                                             first_possible_unit_extent_pos);
+      matched_index = FindSplitWithExactScale(*iter_sum,
+                                              visited,
+                                              lhs_scale,
+                                              rhs_iter->source,
+                                              rend,
+                                              first_possible_unit_extent_pos);
       if (matched_index == -1) break;
       auto lhs_iter = iter_sum->args[matched_index].As<ir::IterSplit>();
       ir::IndexExpr lhs_lower_factor =
@@ -722,6 +669,31 @@ void IterMapRewriter::MulToLhs(ir::IterSum* lhs, const ir::IndexExpr& rhs) {
     lsplit->scale = lsplit->scale * rhs;
   }
   lhs->base = lhs->base * rhs;
+}
+
+void IterMapSimplify(std::vector<Expr>& indices,  // NOLINT
+                     const std::vector<cinn::ir::Var>& input_iters,
+                     const SymbolicExprAnalyzer& analyzer) {
+  IterMapRewriter rewriter(input_iters, analyzer);
+  IterMapToExprNormalizer converter(analyzer);
+  for (auto& value : indices) {
+    rewriter.Rewrite(&value);
+    converter.Convert(&value);
+  }
+}
+
+void SimplifyBlockBinding::Visit(const ir::For* op, Expr* expr) {
+  auto for_op = expr->As<ir::For>();
+  loop_var_.emplace_back(op->loop_var);
+  IRMutator::Visit(for_op, expr);
+  loop_var_.pop_back();
+}
+
+void SimplifyBlockBinding::Visit(const ir::ScheduleBlockRealize* op,
+                                 Expr* expr) {
+  auto sch_block_rlz_op = expr->As<ir::ScheduleBlockRealize>();
+  if (sch_block_rlz_op->iter_values.empty()) return;
+  IterMapSimplify(sch_block_rlz_op->iter_values, loop_var_, analyzer_);
 }
 
 }  // namespace common
