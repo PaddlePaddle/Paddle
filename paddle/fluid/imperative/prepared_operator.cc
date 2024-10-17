@@ -28,6 +28,10 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/core/platform/onednn_op_list.h"
 #endif
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -296,6 +300,33 @@ PreparedOp PrepareImpl(
               phi::TransToPhiBackend(dev_ctx->GetPlace()))) {
         dev_ctx = pool.Get(phi::TransToPhiPlace(expected_kernel_key.backend()));
       }
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      if (attrs.find("ring_id") != attrs.end()) {
+        auto ring_id_attr = attrs.at("ring_id");
+        int ring_id = PADDLE_GET(int, ring_id_attr);
+        auto map = distributed::ProcessGroupMapFromGid::getInstance();
+        if (map->has(ring_id)) {
+          distributed::ProcessGroup* pg = map->get(ring_id);
+          auto comm_context =
+              static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
+                  ->GetOrCreateCommContext(place);
+          auto default_stream =
+              static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
+          dev_ctx =
+              static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+                  ->GetDevContext();
+          dev_ctx->SetCommContext(comm_context);
+          // Note: In dynamic mode, c_softmax_with_cross_entropy need use global
+          // calculate stream (default stream). Using the comm_ctx's stream
+          // will lead to synchronization issues, causing accuracy diff in
+          // test_parallel_dygraph_mp_layers.
+          if (phi_kernel_name == "c_softmax_with_cross_entropy") {
+            static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                default_stream, false);
+          }
+        }
+      }
+#endif
       return PreparedOp(op,
                         empty_ctx,
                         expected_kernel_key,
