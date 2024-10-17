@@ -11,8 +11,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
