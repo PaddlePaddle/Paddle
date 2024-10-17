@@ -25,8 +25,8 @@ from ..process_group import get_process_group
 from ..utils import _get_comm_group, _get_idx_in_axis
 
 COMM_OP_TYPE = [
-    "send_v2",
-    "recv_v2",
+    "p_send",
+    "p_recv",
     "c_broadcast",
     "all_gather",
     "c_allreduce_sum",
@@ -781,23 +781,32 @@ class CommOpCost(OpCost):
         from ..reshard import get_var_with_recursion
 
         if self._comm_count is None:
+            print("---------self._comm_count is None-----------")
             dtype = None
             shape = None
             if self.op is not None:
                 vars = self.op.block.vars
-                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overridden
+                # NOTE: The tensor communicated input_name is "X" or "x" in default. Otherwise, this function should be overridden
                 try:
-                    var_name = self.op.input("X")[0]
+                    try:
+                        var_name = self.op.input("X")[0]
+                    except:
+                        var_name = self.op.input("x")[0]
                 except:
-                    var_name = self.op.output("Out")[0]
+                    try:
+                        var_name = self.op.output("Out")[0]
+                    except:
+                        var_name = self.op.output("out")[0]
                 var = get_var_with_recursion(
                     var_name, self.op.block, self.op.block.program
                 )
                 dtype = var.dtype
                 shape = var.shape
             elif self.op_desc is not None:
+                print("---------self.op_desc is not None-----------")
                 dtype = self.op_desc["inputs"]["X"][0][0]
                 shape = self.op_desc["inputs"]["X"][0][1]
+                print(dtype, shape)
 
             factor = None
             if dtype == paddle.float32 or dtype == paddle.int32:

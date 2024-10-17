@@ -57,6 +57,7 @@ BACKENDS_BLACK_LIST = [
     "isclose",
     "send_v2",
     "assert",
+    "p_send",
     "embedding_sparse_grad",
     "embedding_grad",
     "full",
