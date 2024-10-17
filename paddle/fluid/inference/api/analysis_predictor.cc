@@ -882,32 +882,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     if (config_.use_gpu()) {
       // gpu
       if (!config_.custom_pass_only_) {
-        for (const auto &gpu_pass : kPirGpuPasses) {
+        for (const auto &gpu_pass : ShouldRunPass(kPirGpuPasses, config_)) {
           if (std::find(config_.deleted_passes_.begin(),
                         config_.deleted_passes_.end(),
                         gpu_pass) == config_.deleted_passes_.end()) {
-            if (gpu_pass == "transfer_layout_pass" &&
-                config_.autolayout_enabled()) {
-              // Author(liujinnan): `auto_layout_pass` is a substitute for
-              // `transfer_layout_pass` and is temporarily controlled by Flag.
-              // After complete verification, `transfer_layout_pass` will be
-              // completely replaced and this branch will be deleted.
-              pass_pm.AddPass(
-                  pir::PassRegistry::Instance().Get("auto_layout_pass"));
-              pass_pm.AddPass(pir::PassRegistry::Instance().Get(
-                  "auto_layout_simplify_pass"));
-              continue;
-            } else if (config_.cinn_enabled() &&
-                       std::find(BeforeCINNPasses.begin(),
-                                 BeforeCINNPasses.end(),
-                                 gpu_pass) != config_.deleted_passes_.end()) {
-              // Because this pass is executed before the CINN‘s passes for
-              // performance reasons, we need to skip this pass.
-              continue;
-            } else {
-              // Added pass normally.
-              pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
-            }
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
           }
         }
       }
@@ -2245,27 +2224,11 @@ void AnalysisPredictor::PrepareArgument() {
         }
       } else if (config_.use_gpu()) {
         pass_builder->ClearPasses();
-        for (const auto &pass : kGpuLowerPrecisionPasses) {
+
+        for (const auto &pass :
+             ShouldRunPass(kGpuLowerPrecisionPasses, config_)) {
           if (deleted_passes.count(pass)) continue;
-          if (pass == "transfer_layout_pass" && config_.autolayout_enabled()) {
-            // Author(liujinnan): `auto_layout_pass` is a substitute for
-            // `transfer_layout_pass` and is temporarily controlled by Flag.
-            // After complete verification, `transfer_layout_pass` will be
-            // completely replaced and this branch will be deleted.
-            pass_builder->AppendPass("auto_layout_pass");
-            pass_builder->AppendPass("auto_layout_simplify_pass");
-            continue;
-          } else if (config_.cinn_enabled() &&
-                     std::find(BeforeCINNPasses.begin(),
-                               BeforeCINNPasses.end(),
-                               pass) != config_.deleted_passes_.end()) {
-            // Because this pass is executed before the CINN‘s passes for
-            // performance reasons, we need to skip this pass.
-            continue;
-          } else {
-            // Added pass normally.
-            pass_builder->AppendPass(pass);
-          }
+          pass_builder->AppendPass(pass);
         }
       } else if (config_.use_xpu()) {  // NOLINT
         // All passes support fp16. Not reset pass_builder.
