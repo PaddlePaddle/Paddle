@@ -18,8 +18,8 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/phi/core/framework/reader.h"
 
 namespace paddle {
 namespace operators {
