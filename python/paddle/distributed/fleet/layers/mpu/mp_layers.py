@@ -38,7 +38,9 @@ def is_fused_matmul_bias_supported():
 
 
 def is_fused_linear_param_grad_add_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+    if (
+        paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm()
+    ) or paddle.is_compiled_with_xpu():
         return hasattr(paddle._C_ops, 'fused_linear_param_grad_add')
     else:
         return False
