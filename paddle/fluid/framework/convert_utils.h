@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/common/layout.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/phi/core/framework/var_type_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 // TODO(chenweihang): this file may need to be removed

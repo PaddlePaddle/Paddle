@@ -280,7 +280,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
       PADDLE_THROW(common::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
           "supported in imperative mode",
-          framework::DataTypeToString(data_type),
+          phi::DataTypeToString(data_type),
           place));
     }
     return;
@@ -290,7 +290,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   PADDLE_THROW(common::errors::Unimplemented(
       "Gradient accumulation of data type (%s) on place (%s) is not "
       "supported in imperative mode",
-      framework::DataTypeToString(data_type),
+      phi::DataTypeToString(data_type),
       place));
 }
 
@@ -340,7 +340,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 
   PADDLE_THROW(common::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsAddToTensor",
-      framework::DataTypeToString(data_type)));
+      phi::DataTypeToString(data_type)));
 }
 
 template void SelectedRowsAddToTensor(const framework::Variable& src,
@@ -393,7 +393,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
 
   PADDLE_THROW(common::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsAddToTensor",
-      framework::DataTypeToString(data_type)));
+      phi::DataTypeToString(data_type)));
 
 #undef PADDLE_SELECTED_ROWS_ADD_TENSOR
 }
@@ -468,7 +468,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 #undef PADDLE_SELECTED_ROWS_ADD
   PADDLE_THROW(common::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsMerge",
-      framework::DataTypeToString(data_type)));
+      phi::DataTypeToString(data_type)));
 }
 
 template std::shared_ptr<paddle::Tensor> SelectedRowsMerge(

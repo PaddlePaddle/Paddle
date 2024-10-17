@@ -131,7 +131,7 @@ static void ConcatTensorsWithType(
       PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
-          framework::DataTypeToString(type)));
+          phi::DataTypeToString(type)));
   }
 }
 
@@ -158,7 +158,7 @@ static void SplitTensorsWithType(const DeviceContext &context,
       PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
-          framework::DataTypeToString(type)));
+          phi::DataTypeToString(type)));
   }
 }
 
@@ -199,7 +199,7 @@ void ConcatTensorsWithType<phi::XPUContext>(
       PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
-          framework::DataTypeToString(type)));
+          phi::DataTypeToString(type)));
   }
 }
 
@@ -219,7 +219,7 @@ void SplitTensorsWithType<phi::XPUContext>(
       PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
-          framework::DataTypeToString(type)));
+          phi::DataTypeToString(type)));
   }
 }
 #endif
@@ -396,8 +396,8 @@ void Reducer::InitializeDenseGroups(
               "Tensor %s has different dtype. Expected dtype is %s, but actual "
               "dtype is %s",
               var_name,
-              framework::DataTypeToString(p_group->dtype_),
-              framework::DataTypeToString(dtype)));
+              phi::DataTypeToString(p_group->dtype_),
+              phi::DataTypeToString(dtype)));
       PADDLE_ENFORCE_EQ(place,
                         place_,
                         common::errors::PreconditionNotMet(
@@ -1103,7 +1103,7 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
     }
 
     const auto &var_dtype = var->DataType();
-    const auto var_dtype_str = framework::DataTypeToString(var_dtype);
+    const auto var_dtype_str = phi::DataTypeToString(var_dtype);
     VLOG(3) << "var[" << var->GradVarName() << "] 's type is "
             << var->DataType();
     auto &group_info = next_group[var_dtype_str];

@@ -671,8 +671,7 @@ static void inline CreateVariableIfNotExist(
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(common::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
-            exe->GetPlace(),
-            framework::TransToPhiDataType(var_desc.GetDataType()));
+            exe->GetPlace(), phi::TransToPhiDataType(var_desc.GetDataType()));
       }
     }
   } else {
@@ -1174,10 +1173,9 @@ PYBIND11_MODULE(libpaddle, m) {
         [](const std::string &op_name,
            framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
-          return phi::NeedTypePromotionOldIr(
-              op_name,
-              framework::TransToPhiDataType(type_x),
-              framework::TransToPhiDataType(type_y));
+          return phi::NeedTypePromotionOldIr(op_name,
+                                             phi::TransToPhiDataType(type_x),
+                                             phi::TransToPhiDataType(type_y));
         });
   m.def("get_promote_dtype_old_ir",
         [](const std::string &op_name,
@@ -1185,15 +1183,14 @@ PYBIND11_MODULE(libpaddle, m) {
            framework::proto::VarType::Type type_y) {
           return framework::TransToProtoVarType(
               phi::GetPromoteDtypeOldIr(op_name,
-                                        framework::TransToPhiDataType(type_x),
-                                        framework::TransToPhiDataType(type_y)));
+                                        phi::TransToPhiDataType(type_x),
+                                        phi::TransToPhiDataType(type_y)));
         });
   m.def("is_common_dtype_for_scalar",
         [](framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
           return phi::is_common_dtype_for_scalar(
-              framework::TransToPhiDataType(type_x),
-              framework::TransToPhiDataType(type_y));
+              phi::TransToPhiDataType(type_x), phi::TransToPhiDataType(type_y));
         });
   m.def("disable_signal_handler", &DisableSignalHandler);
 
