@@ -745,17 +745,6 @@
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : reduce
-  args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
-  output : Tensor(out)
-  infer_meta :
-    func : DistReduceInferMeta
-    param: [x]
-  kernel :
-    func : reduce
-    param: [x, root_id, reduce_type]
-  traits : paddle::dialect::ForwardOnlyTrait
-
 - op : remainder
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor (out)
