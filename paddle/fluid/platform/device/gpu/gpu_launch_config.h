@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/kernel_utils.h"
 
 /* CUDA performs better as thread_per_block
    num is between [64, 512] */
@@ -82,6 +83,11 @@ struct GpuLaunchConfig {
 
   size_t GetBlockSize() const {
     return thread_per_block.x * thread_per_block.y * thread_per_block.z;
+  }
+
+  bool IsEmpty() const {
+    return phi::IsEmptyKernelDim(block_per_grid) ||
+           phi::IsEmptyKernelDim(thread_per_block);
   }
 
   int compute_capability = 0;
