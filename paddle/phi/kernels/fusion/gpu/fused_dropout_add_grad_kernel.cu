@@ -263,5 +263,5 @@ PD_REGISTER_KERNEL(fused_dropout_add_grad,
                    double,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {
-  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);  // seed_offset
 }
