@@ -14,26 +14,18 @@
 
 import os
 import unittest
-from site import getsitepackages
 
 import numpy as np
+from utils import (
+    extra_cc_args,
+    extra_nvcc_args,
+    paddle_includes,
+    paddle_libraries,
+)
 
 import paddle
-from paddle.utils.cpp_extension import IS_WINDOWS, get_build_directory, load
+from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-
-extra_cc_args = ['-w', '-g'] if not IS_WINDOWS else ['/w']
-extra_nvcc_args = ['-O3']
-
-paddle_includes = []
-paddle_libraries = []
-for site_packages_path in getsitepackages():
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include')
-    )
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
-    )
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
