@@ -243,7 +243,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   bool CheckUseOps(
       const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
-      if (use_op->isa<pir::CombineOp>()) {
+      if (use_op->isa<pir::CombineOp>() ||
+          use_op->isa<paddle::dialect::StackOp>()) {
         if (!ReplaceResultByParameterOp(use_op)) {
           return false;
         }

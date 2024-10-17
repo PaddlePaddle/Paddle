@@ -868,17 +868,13 @@ void DeleterBridge(phi::Allocation* alloc) {
 phi::DenseTensor from_blob(void* data,
                            DLManagedTensor* src,
                            const phi::DDim& shape,
+                           const phi::DDim& strides,
                            phi::DataType dtype,
-                           phi::DataLayout layout,
                            const phi::Place& place,
                            const Deleter& deleter) {
-  PADDLE_ENFORCE_NOT_NULL(
-      data, phi::errors::InvalidArgument("data can not be nullptr."));
+  auto meta = phi::DenseTensorMeta(dtype, shape, strides);
 
-  auto meta = phi::DenseTensorMeta(dtype, shape, layout);
-  size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
   phi::Allocation::DeleterFnPtr f = nullptr;
-
   if (deleter) {
     auto g = [deleter, src](phi::Allocation* p) {
       if (src->manager_ctx) {
@@ -894,43 +890,59 @@ phi::DenseTensor from_blob(void* data,
     f = DeleterBridge;
   }
 
-  auto alloc = std::make_shared<phi::Allocation>(data, size, f, place);
+  // Calculate the number of elements of underlying storage
+  size_t size = 1;
+  for (auto i = 0; i < shape.size(); ++i) {
+    if (shape[i] == 0) {
+      size = 0;
+      break;
+    }
+    size += strides[i] * (shape[i] - 1);
+  }
+
+  auto alloc =
+      std::make_shared<phi::Allocation>(data, size * SizeOf(dtype), f, place);
   return phi::DenseTensor(alloc, meta);
 }
 
 phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
-  std::vector<int64_t> vec;
+  std::vector<int64_t> shape_vec;
   std::copy(src->dl_tensor.shape,
             src->dl_tensor.shape + src->dl_tensor.ndim,
-            std::back_inserter(vec));
+            std::back_inserter(shape_vec));
 
   phi::Place place;
   if (src->dl_tensor.device.device_type == kDLCPU) {
     place = phi::CPUPlace();
   } else if (src->dl_tensor.device.device_type == kDLCUDA) {
-    place = phi::GPUPlace();
+    place = phi::GPUPlace(src->dl_tensor.device.device_id);
   } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
     place = phi::GPUPinnedPlace();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Given Place is not supported"));
+    PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
   }
 
   ::DLDataType type = src->dl_tensor.dtype;
   auto dtype = GetDstPtrByDLDataType(type);
   if (!src->dl_tensor.strides) {
-    return from_blob(src->dl_tensor.data,
-                     src,
-                     common::make_ddim(vec),
-                     dtype,
-                     phi::DataLayout::NCHW,
-                     place,
-                     std::move(deleter));
+    return from_blob(
+        src->dl_tensor.data,
+        src,
+        common::make_ddim(shape_vec),
+        phi::DenseTensorMeta::calc_strides(common::make_ddim(shape_vec)),
+        dtype,
+        place,
+        std::move(deleter));
   } else {
+    std::vector<int64_t> strides_vec;
+    std::copy(src->dl_tensor.strides,
+              src->dl_tensor.strides + src->dl_tensor.ndim,
+              std::back_inserter(strides_vec));
     return from_blob(src->dl_tensor.data,
                      src,
-                     common::make_ddim(vec),
+                     common::make_ddim(shape_vec),
+                     common::make_ddim(strides_vec),
                      dtype,
-                     phi::DataLayout::NCHW,
                      place,
                      deleter);
   }

@@ -1249,6 +1249,12 @@
     out_scale : OutScale
     out_scales : OutScales
 
+- op : faster_tokenizer
+  inputs:
+    {vocab : Vocab, text : Text, text_pair : TextPair}
+  outputs:
+    {input_ids : InputIds, segment_ids : SegmentIds}
+
 - op : fc
   inputs :
     input : Input
@@ -1684,6 +1690,7 @@
     {x : X, cvm : CVM}
   outputs:
     out : Out
+  drop_empty_grad : [x_grad]
 
 - op : fused_transpose
   inputs:
@@ -2206,6 +2213,21 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : legacy_reshape (reshape)
+  backward : legacy_reshape_grad (reshape_grad)
+  inputs:
+    x : X
+  outputs:
+    out : Out
+    xshape: XShape
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : ShapeTensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
+
 - op : lerp
   backward : lerp_grad
   inputs :
@@ -2246,6 +2268,13 @@
   inputs :
     {start : Start, stop : Stop, number : Num}
   outputs :
+    out : Out
+
+- op : lod_reset
+  backward : lod_reset_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
     out : Out
 
 - op : log
@@ -3595,22 +3624,22 @@
   outputs:
     out : Out
   int_array:
-      sections :
-          data_type : int
-          support_tensor : true
+    sections :
+      data_type : int
+      support_tensor : true
   scalar :
-      axis :
-        data_type : int
-        support_tensor : true
+    axis :
+      data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : split_with_num
   scalar :
-      axis :
-        data_type : int
-        support_tensor : true
-        tensor_name : AxisTensor
+    axis :
+      data_type : int
+      support_tensor : true
+      tensor_name : AxisTensor
 
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
@@ -4649,6 +4678,12 @@
     out : Out
 
 - op: sync_calc_stream(c_sync_calc_stream)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: sync_comm_stream
   inputs :
     x : X
   outputs :

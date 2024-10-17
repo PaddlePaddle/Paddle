@@ -280,6 +280,9 @@ struct CollectBucketStrategyHostFunctionVisitor
     infer_shape_func_body_stmts.insert(
         infer_shape_func_body_stmts.end(),
         op->infer_shape_func.as_lowered_func()->body);
+    if (temp_space_infer_shape_body_.defined()) {
+      infer_shape_func_body_stmts.push_back(temp_space_infer_shape_body_);
+    }
 
     std::vector<ir::Argument> infer_shape_arguments = {
         ir::Argument(kernel_args_, ir::Argument::IO::kOutput),
@@ -307,6 +310,7 @@ struct CollectBucketStrategyHostFunctionVisitor
  private:
   std::vector<ir::Expr> buckets_;
   std::vector<ir::Expr> arg_defs_;
+  ir::Expr temp_space_infer_shape_body_;
 
   ir::Var kernel_args_;
   ir::Var kernel_args_num_;

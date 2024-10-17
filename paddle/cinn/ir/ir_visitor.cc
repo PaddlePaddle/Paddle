@@ -28,5 +28,12 @@ bool operator==(Expr a, Expr b) {
 
 bool operator!=(Expr a, Expr b) { return !(a == b); }
 
+bool operator==(IndexExpr a, IndexExpr b) {
+  if (a.get() == b.get()) return true;
+  return ir_utils::IRCompare(a, b);
+}
+
+bool operator!=(IndexExpr a, IndexExpr b) { return !(a == b); }
+
 }  // namespace ir
 }  // namespace cinn

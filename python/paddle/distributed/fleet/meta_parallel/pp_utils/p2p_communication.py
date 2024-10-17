@@ -24,6 +24,7 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
+from paddle.framework.recall_error import check_naninf
 from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
@@ -291,13 +292,14 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
         return
 
     need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
-    naninf_checker = []
     if need_check:
-        naninf_checker = [
-            paddle.isfinite(p2p_op.tensor).all()
-            for p2p_op in p2p_op_list
-            if p2p_op.op == _send_on_calc_stream
-        ]
+        for p2p_op in p2p_op_list:
+            if p2p_op.op == _send_on_calc_stream:
+                err_msg = check_naninf(p2p_op.tensor)
+                if err_msg is not None:
+                    raise ValueError(
+                        f"{err_msg}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                    )
 
     group = _get_global_group() if group is None else group
     backend = group.backend
@@ -311,13 +313,6 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
             nranks = p2p_op.nranks
             rank_id = p2p_op.rank_id
             op(tensor, comm_group, peer, nranks, rank_id)
-
-    if need_check:
-        for idx, t in enumerate(naninf_checker):
-            if not t.item():
-                raise ValueError(
-                    f"Tensor at index {idx} contains inf or nan values at rank {paddle.distributed.get_rank()}"
-                )
 
 
 def _batch_p2p_tuple_or_tensor(
@@ -477,6 +472,17 @@ def _batched_p2p_ops(
 def _p2p_ops_tuple_or_tensor(tensors, p2p_func, pp_rank, pp_group):
     if not isinstance(tensors, tuple):
         tensors = (tensors,)
+
+    need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
+    if need_check:
+        if p2p_func == paddle.distributed.isend:
+            for t in tensors:
+                err_msg = check_naninf(t)
+                if err_msg is not None:
+                    raise ValueError(
+                        f"{err_msg}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                    )
+
     reqs = []
     for tensor in tensors:
         reqs.append(p2p_func(tensor, pp_rank, pp_group))

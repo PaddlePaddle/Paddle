@@ -1262,8 +1262,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
                               pack_args->size()));
 
         std::string tensor_name = pack_args.back().operator std::string();
-        ir::Tensor out = pe::GenerateShape(
-            inputs, symbol_bindings, output_dim_exprs, tensor_name);
+        ir::Tensor out = pe::GenerateShape(inputs,
+                                           symbol_bindings,
+                                           output_dim_exprs,
+                                           output_shapes[0],
+                                           tensor_name);
         std::vector<CINNValue> res;
         res.push_back(CINNValue(out));
         PADDLE_ENFORCE(!out_type.empty(),
