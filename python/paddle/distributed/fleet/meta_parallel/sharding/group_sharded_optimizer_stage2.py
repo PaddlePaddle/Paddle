@@ -74,7 +74,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         optim,
         group=None,
         offload=False,
-        device="gpu",
+        device="xpu" if core.is_compiled_with_xpu() else "gpu",
         pretrain_sync_models=True,
         dp_group=None,
         **kw,
@@ -588,6 +588,12 @@ class GroupShardedOptimizerStage2(Optimizer):
                                 ),
                                 True,
                             )
+                            .cast(dtype=param.dtype)
+                        )
+                    elif self._default_device == "xpu":
+                        param.set_value(
+                            self._master_params[param.name]
+                            .to("xpu:" + str(self.dev_id))
                             .cast(dtype=param.dtype)
                         )
                     else:

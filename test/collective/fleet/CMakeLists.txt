@@ -61,22 +61,20 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21204;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if(WITH_NCCL)
-  if((WITH_GPU) AND LOCAL_ALL_PLAT)
-    bash_test_modules(
-      test_parallel_dygraph_mp_layers
-      START_BASH
-      ../../legacy_test/dist_test.sh
-      TIMEOUT
-      "120"
-      LABELS
-      "RUN_TYPE=DIST"
-      ENVS
-      "PADDLE_DIST_UT_PORT=21210;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-    )
-    set_tests_properties(test_parallel_dygraph_mp_layers PROPERTIES TIMEOUT
-                                                                    "120")
-  endif()
+if(((WITH_NCCL AND WITH_GPU) OR (WITH_XPU_BKCL AND WITH_XPU))
+   AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_mp_layers
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "120"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21210;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_mp_layers PROPERTIES TIMEOUT "120")
 endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
   bash_test_modules(

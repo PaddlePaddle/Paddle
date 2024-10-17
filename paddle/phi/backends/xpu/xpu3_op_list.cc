@@ -1033,6 +1033,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT64,
                      phi::DataType::FLOAT16})},
+      {"sgd", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"silu_grad",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,

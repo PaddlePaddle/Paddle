@@ -104,7 +104,7 @@ class GroupShardedStage3(nn.Layer):
         optimizer,
         group=None,
         sync_buffers=False,
-        device="gpu",
+        device="xpu" if core.is_compiled_with_xpu() else "gpu",
         segment_size=2**20,
         pretrain_sync_models=True,
         offload=False,
@@ -310,7 +310,10 @@ class GroupShardedStage3(nn.Layer):
                         paddle.CustomPlace(self._default_device, DEV_ID), True
                     )
                 else:
-                    tmp_var = param.cuda(DEV_ID)
+                    # both GPU and XPU
+                    tmp_var = param.to(
+                        self._default_device + ":" + (str)(DEV_ID)
+                    )
 
                 if (
                     tmp_var.dtype == Type.fp32.value
@@ -1197,7 +1200,8 @@ def _cpu2device(param):
     if DEV in paddle.device.get_all_custom_device_type():
         tmp_p = param.fw_storage._copy_to(paddle.CustomPlace(DEV, DEV_ID), True)
     else:
-        tmp_p = param.fw_storage.cuda(DEV_ID)
+        # both GPU and XPU
+        tmp_p = param.fw_storage.to(DEV + ":" + (str)(DEV_ID))
     if (
         tmp_p.dtype == Type.fp32.value
         and param2dtype[param.name] == Type.fp16.value
