@@ -123,8 +123,8 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // The matrix is invertible
   // let |A| = Determinant(A)
   // Ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
-  // we set d|A| = unsqueeze(dA * |A|, [-1, -2]) * inverse(A).transpose(-2,
-  // -1)
+  // we set d|A| = unsqueeze(dA * |A|.conj(), [-1, -2]) *
+  // inverse(A).conj().transpose(-2, -1)
 
   // First: inverse(A)
   DenseTensor inverse_A;
@@ -141,17 +141,19 @@ void DeterminantGradKernel(const Context& dev_ctx,
     mat_inv(dev_ctx, x, &inverse_A);
   }
 
-  VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
+  auto conj_inverse_A = phi::Conj<MPType>(dev_ctx, inverse_A);
+  VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
 
-  // Second: inverse(A).transpose(-2, -1)
+  // Second: inverse(A).conj().transpose(-2, -1)
   DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<MPType>(dev_ctx, inverse_A);
+      phi::TransposeLast2Dim<MPType>(dev_ctx, conj_inverse_A);
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
-  // Third: dA * |A|
-  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, out);
+  // Third: dA * |A|.conj()
+  auto conj_out = phi::Conj<MPType>(dev_ctx, out);
+  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, conj_out);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])
@@ -168,12 +170,6 @@ void DeterminantGradKernel(const Context& dev_ctx,
         phi::Cast<MPType, Context>(dev_ctx, transpose_inverse_A, origin_dt));
   } else {
     res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
-  }
-
-  // result for complex input should conjugate at the last step
-  if (std::is_same<MPType, phi::dtype::complex<float>>::value ||
-      std::is_same<MPType, phi::dtype::complex<double>>::value) {
-    res = phi::Conj<MPType, Context>(dev_ctx, res);
   }
 
   VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
