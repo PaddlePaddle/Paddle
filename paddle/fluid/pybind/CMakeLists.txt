@@ -44,7 +44,7 @@ set(PYBIND_DEPS
     fluid_jit
     prim_utils
     detail_op_handle
-    static_tensor_operants
+    # static_tensor_operants
     type_info
     auto_parallel)
 
