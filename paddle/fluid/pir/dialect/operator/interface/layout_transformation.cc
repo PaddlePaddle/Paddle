@@ -325,7 +325,7 @@ void RewriteByLayoutImpl<ConcatOp>(pir::Operation* op,
   auto axis = concrete_op.axis();
   if (!axis || !(axis.defining_op()->isa<FullOp>())) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Concat's axis must be processed when rewirte by layout."));
+        "Concat's axis must be processed when rewrite by layout."));
   }
 
   // TODO(lyk): we must assert this full int array op has one user which is

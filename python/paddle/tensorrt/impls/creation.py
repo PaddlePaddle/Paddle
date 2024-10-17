@@ -20,9 +20,11 @@ from paddle.tensorrt.register import converter_registry
 
 @converter_registry.register("pd_op.full_int_array", trt_version="8.x")
 def full_int_array_converter(network, paddle_op, inputs):
-    shape = paddle_op.attrs()["value"]
-    shape_weight = trt.Weights(np.array(shape, dtype=np.int32))
-    full_int_array_layer = network.add_constant([len(shape)], shape_weight)
+    value = paddle_op.attrs()["value"]
+    if len(value) == 0:
+        return ()
+    value_weight = trt.Weights(np.array(value, dtype=np.int32))
+    full_int_array_layer = network.add_constant([len(value)], value_weight)
     return full_int_array_layer.get_output(0)
 
 

@@ -87,8 +87,8 @@ T deserializeAttrFromJson(Json* attr_json, pir::IrContext* ctx) {
 template <>
 pir::FloatAttribute deserializeAttrFromJson<pir::FloatAttribute, float>(
     Json* attr_json, pir::IrContext* ctx) {
-  if (attr_json->contains(VOILD_DATA)) {
-    auto string = attr_json->at(VOILD_DATA).template get<std::string>();
+  if (attr_json->contains(VOID_DATA)) {
+    auto string = attr_json->at(VOID_DATA).template get<std::string>();
     if (string == "NAN") {
       return pir::FloatAttribute::get(ctx, std::nanf(""));
     } else if (string == "INF") {
@@ -105,8 +105,8 @@ pir::FloatAttribute deserializeAttrFromJson<pir::FloatAttribute, float>(
 template <>
 pir::DoubleAttribute deserializeAttrFromJson<pir::DoubleAttribute, double>(
     Json* attr_json, pir::IrContext* ctx) {
-  if (attr_json->contains(VOILD_DATA)) {
-    auto string = attr_json->at(VOILD_DATA).template get<std::string>();
+  if (attr_json->contains(VOID_DATA)) {
+    auto string = attr_json->at(VOID_DATA).template get<std::string>();
     if (string == "NAN") {
       return pir::DoubleAttribute::get(ctx, std::nanf(""));
     } else if (string == "INF") {

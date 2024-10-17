@@ -72,7 +72,7 @@ void AddNKernel(const Context& dev_ctx,
       PADDLE_THROW(common::errors::InvalidArgument(
           "Expected type of Input(X) of %d-th must be Tensor, "
           "SelectedRows. But got "
-          "unsupport type: %s.",
+          "unsupported type: %s.",
           x[i]->type_info().name()));
     }
   }

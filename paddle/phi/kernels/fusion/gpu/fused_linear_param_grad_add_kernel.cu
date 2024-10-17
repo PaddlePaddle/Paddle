@@ -174,12 +174,12 @@ void FusedLinearParamGradAdd(const Context &ctx,
         PADDLE_ENFORCE_EQ(
             dweight_out->dtype(),
             phi::CppTypeToDataType<MT>::Type(),
-            common::errors::InvalidArgument("Invaid data type error."));
+            common::errors::InvalidArgument("Invalid data type error."));
       } else {
         PADDLE_ENFORCE_EQ(
             dweight_out->dtype(),
             phi::CppTypeToDataType<T>::Type(),
-            common::errors::InvalidArgument("Invaid data type error."));
+            common::errors::InvalidArgument("Invalid data type error."));
       }
     } else {
       if (multi_precision) {
@@ -197,12 +197,12 @@ void FusedLinearParamGradAdd(const Context &ctx,
         PADDLE_ENFORCE_EQ(
             dbias_out->dtype(),
             phi::CppTypeToDataType<MT>::Type(),
-            common::errors::InvalidArgument("Invaid data type error."));
+            common::errors::InvalidArgument("Invalid data type error."));
       } else {
         PADDLE_ENFORCE_EQ(
             dbias_out->dtype(),
             phi::CppTypeToDataType<T>::Type(),
-            common::errors::InvalidArgument("Invaid data type error."));
+            common::errors::InvalidArgument("Invalid data type error."));
       }
     } else {
       if (multi_precision) {

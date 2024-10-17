@@ -114,12 +114,12 @@ Json serializeAttrToJson<pir::FloatAttribute>(const pir::FloatAttribute& attr) {
   auto data = attr.data();
 
   if (std::isnan(data)) {
-    json_obj[VOILD_DATA] = "NaN";
+    json_obj[VOID_DATA] = "NaN";
   } else if (std::isinf(data)) {
     if (static_cast<float>(data) > 0.0) {
-      json_obj[VOILD_DATA] = "INF";
+      json_obj[VOID_DATA] = "INF";
     } else {
-      json_obj[VOILD_DATA] = "-INF";
+      json_obj[VOID_DATA] = "-INF";
     }
   } else {
     json_obj[DATA] = data;
@@ -135,12 +135,12 @@ Json serializeAttrToJson<pir::DoubleAttribute>(
   auto data = attr.data();
 
   if (std::isnan(data)) {
-    json_obj[VOILD_DATA] = "NaN";
+    json_obj[VOID_DATA] = "NaN";
   } else if (std::isinf(data)) {
     if (static_cast<double>(data) > 0.0) {
-      json_obj[VOILD_DATA] = "INF";
+      json_obj[VOID_DATA] = "INF";
     } else if (static_cast<double>(data) < 0.0) {
-      json_obj[VOILD_DATA] = "-INF";
+      json_obj[VOID_DATA] = "-INF";
     }
   } else {
     json_obj[DATA] = data;

@@ -599,6 +599,16 @@
     func : layer_norm_act_xpu
     data_type : x
 
+- op : layer_norm_relu_xpu
+  args : (Tensor x, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon = 1e-5)
+  output : Tensor(out)
+  infer_meta :
+    func : LayerNormalizeReluXPUInferMeta
+  kernel :
+    func : layer_norm_relu_xpu
+    data_type : x
+  optional : scale, bias
+
 - op : mask_adaptive_xpu
   args : (Tensor mask)
   output : Tensor (length), Tensor (seq_lod), Tensor (pad_seq_len)
