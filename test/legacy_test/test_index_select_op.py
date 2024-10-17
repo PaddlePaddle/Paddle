@@ -33,7 +33,9 @@ class TestIndexSelectOp(OpTest):
         self.init_dtype_type()
 
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.dim], size=self.index_size
+            low=-self.x_shape[self.dim],
+            high=self.x_shape[self.dim],
+            size=self.index_size,
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         if self.dtype == np.complex64 or self.dtype == np.complex128:

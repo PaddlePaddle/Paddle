@@ -66,7 +66,9 @@ class TestIndexAddOp(OpTest):
         self.op_type = "index_add"
         self.init_dtype_type()
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.axis], size=self.index_size
+            low=-self.x_shape[self.axis],
+            high=self.x_shape[self.axis],
+            size=self.index_size,
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         add_value_np = np.random.random(self.add_value_shape).astype(

@@ -38,6 +38,7 @@ void IndexSelectKernel(const Context& ctx,
   int64_t stride = stride_dim[dim];
   int64_t size = output_dim[dim];
   int64_t delta = input_dim[dim] - size;
+  int64_t dim_size = input_dim[dim];
   const auto& index_type = index.dtype();
 
   bool index_type_match =
@@ -67,11 +68,11 @@ void IndexSelectKernel(const Context& ctx,
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     index_select_cuda_kernel<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
-        in_data, out_data, index_data, numel, stride, size, delta);
+        in_data, out_data, index_data, numel, stride, size, delta, dim_size);
   } else {
     const int* index_data = index.data<int>();
     index_select_cuda_kernel<T, int><<<grid_dim, block_dim, 0, stream>>>(
-        in_data, out_data, index_data, numel, stride, size, delta);
+        in_data, out_data, index_data, numel, stride, size, delta, dim_size);
   }
 }
 

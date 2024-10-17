@@ -116,6 +116,9 @@ void IndexSelectInner(const Context& ctx,
 
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
+    if (index_value < 0) {
+      index_value += input_dim[dim];
+    }
     auto output_t = output_tensor.chip(j, 1);
     output_t.device(place) = input_tensor.chip(index_value, 1);
   }
@@ -167,6 +170,9 @@ void IndexSelectGradInner(const Context& ctx,
 
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
+      if (index_value < 0) {
+        index_value += input_dim[dim];
+      }
       auto src = input_data + input_start_offset + j * slice_size;
       auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;

@@ -331,6 +331,9 @@ void IndexSelect(const Context& context,
 
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_vec[j];
+      if (index_value < 0) {
+        index_value += input_dim[dim];
+      }
       for (auto k = 0; k < slice_size; k++) {
         out_vec[output_start_offset + j * slice_size + k] =
             input_vec[input_start_offset + index_value * slice_size + k];

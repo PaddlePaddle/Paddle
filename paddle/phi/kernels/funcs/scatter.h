@@ -131,7 +131,9 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
 
   for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
-
+    if (index_ < 0) {
+      index_ += dst_dims[0];
+    }
     PADDLE_ENFORCE_GE(index_,
                       0,
                       common::errors::OutOfRange(
@@ -209,7 +211,8 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
   // if not in overwrite mode, need to init output data
   auto max_index = dst_dims[0];
   for (int64_t i = 0; i < index_size; ++i) {
-    const IndexT& index_val = p_index[i];
+    const IndexT& index_val =
+        (p_index[i] < 0 ? p_index[i] + max_index : p_index[i]);
     PADDLE_ENFORCE_GE(index_val,
                       0,
                       common::errors::OutOfRange(
@@ -289,6 +292,9 @@ void ScatterNdAdd(const phi::CPUContext& ctx,
     IndexT temp = 1;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = p_index[i * end_size + j];
+      if (index_value < 0) {
+        index_value += output_dims[j];
+      }
       PADDLE_ENFORCE_EQ(
           (index_value >= 0 && index_value < output_dims[j]),
           true,
