@@ -297,6 +297,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(add_layernorm_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(layer_norm_relu_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(xpu_delete_cast_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
