@@ -29,6 +29,8 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/eliminate_common_factor_of_local_index.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/longlong2int.cc"
+#include "paddle/cinn/optim/longlong2int.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/resize_buffer.h"
 #include "paddle/cinn/optim/update_buffer_axis_pass.h"
@@ -40,6 +42,8 @@
 
 namespace cinn {
 namespace optim {
+
+PD_DECLARE_bool(cinn_narrow_range_for_integer);
 
 /**
  * 1. Determine the grid and block dimensions.
@@ -483,6 +487,10 @@ void OptimizeExprGPU(Expr *expr) {
 
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);
+
+  if (FLAGS_cinn_narrow_range_for_integer) {
+    TryNarrowLonglong2Int(expr);
+  }
 
   VLOG(4) << "After Optimize Expr: \n" << *expr;
 }
