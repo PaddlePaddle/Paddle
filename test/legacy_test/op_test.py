@@ -1653,7 +1653,8 @@ class OpTest(unittest.TestCase):
         kernel_sig = self.get_kernel_signature(place)
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
-            with scope_guard(Scope()):
+            scope = Scope()
+            with scope_guard(scope):
                 # prepare inps attributes feed
                 (
                     static_inputs,
@@ -1708,8 +1709,22 @@ class OpTest(unittest.TestCase):
                 # executor run
                 executor = Executor(place)
                 outs = executor.run(program, feed=feed, fetch_list=[fetch_list])
+                # get fetch program
+                fetch_list = executor._check_fetch_list([fetch_list])
+                fetch_program, _, _ = (
+                    executor._executor_cache.get_pir_program_and_executor(
+                        program=program,
+                        feed=feed,
+                        fetch_list=fetch_list,
+                        feed_var_name='feed',
+                        fetch_var_name='fetch',
+                        place=place,
+                        scope=scope,
+                        plan=None,
+                    )
+                )
 
-                self._compare_symbol(program, outs)
+                self._compare_symbol(fetch_program, outs)
 
     def _compare_expect_and_actual_outputs(
         self, place, fetch_list, expect_outs, actual_outs, inplace_atol=None

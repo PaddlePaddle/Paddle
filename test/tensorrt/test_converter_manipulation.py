@@ -211,5 +211,121 @@ class TestSliceWithInputStartTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestSplitWithNumTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.api_args = {
+            "x": np.random.randn(3, 9, 5).astype(np.float32),
+            "num_or_sections": 3,
+            "axis": 1,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 9, 5]}
+        self.max_shape = {"x": [3, 9, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestSplitWithNumAxisTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.api_args = {
+            "x": np.random.randn(3, 9, 5).astype(np.float32),
+            "num_or_sections": 3,
+            "axis": np.array([1]).astype("int32"),
+        }
+        self.program_config = {"feed_list": ["x", "axis"]}
+        self.min_shape = {"x": [1, 9, 5]}
+        self.max_shape = {"x": [3, 9, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestSplitWithNumNegativeAxisTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.api_args = {
+            "x": np.random.randn(3, 9, 5).astype(np.float32),
+            "num_or_sections": 3,
+            "axis": -2,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 9, 5]}
+        self.max_shape = {"x": [3, 9, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestSplitTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.api_args = {
+            "x": np.random.randn(3, 9, 5).astype("float32"),
+            "num_or_sections": [2, 4, 3],
+            "axis": -2,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 9, 5]}
+        self.max_shape = {"x": [3, 9, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestSplitAxisTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.api_args = {
+            "x": np.random.randn(3, 9, 5).astype("float32"),
+            "num_or_sections": [2, 4, 3],
+            "axis": np.array([1]).astype("int32"),
+        }
+        self.program_config = {"feed_list": ["x", "axis"]}
+        self.min_shape = {"x": [1, 9, 5]}
+        self.max_shape = {"x": [3, 9, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+def split_api(input, num_or_sections, dim):
+    return _C_ops.split(input, num_or_sections, dim)
+
+
+class TestSplitDynamicSectionsTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = split_api
+        self.api_args = {
+            "x": np.random.randn(3, 9, 5).astype("float32"),
+            "num_or_sections": np.array([2, 4, 3]).astype("int32"),
+            "axis": 1,
+        }
+        self.program_config = {"feed_list": ["x", "num_or_sections"]}
+        self.min_shape = {"x": [1, 9, 5]}
+        self.max_shape = {"x": [3, 9, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestSplitDynamicSectionAndAxisTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = split_api
+        self.api_args = {
+            "x": np.random.randn(3, 9, 5).astype("float32"),
+            "num_or_sections": np.array([2, 4, 3]).astype("int32"),
+            "axis": np.array([1]).astype("int32"),
+        }
+        self.program_config = {"feed_list": ["x", "num_or_sections", "axis"]}
+        self.min_shape = {"x": [1, 9, 5]}
+        self.max_shape = {"x": [3, 9, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 if __name__ == '__main__':
     unittest.main()
