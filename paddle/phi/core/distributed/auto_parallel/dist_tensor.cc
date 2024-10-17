@@ -49,16 +49,16 @@ TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
     auto& placement = placements[i];
     if (placement->is_shard()) {
       auto shard_dim = dynamic_cast<const Shard&>(*placement).get_dim();
-      PADDLE_ENFORCE_EQ(
-          dim_map[shard_dim],
-          -1,
-          common::errors::InvalidArgument(
-              "Tensor dim %lld is already sharded on mesh dim %lld,"
-              " DistTensor operator implementation does not support things "
-              "like hybrid"
-              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
-              shard_dim,
-              dim_map[shard_dim]));
+      // PADDLE_ENFORCE_EQ(
+      //     dim_map[shard_dim],
+      //     -1,
+      //     common::errors::InvalidArgument(
+      //         "Tensor dim %lld is already sharded on mesh dim %lld,"
+      //         " DistTensor operator implementation does not support things "
+      //         "like hybrid"
+      //         " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
+      //         shard_dim,
+      //         dim_map[shard_dim]));
       dim_map[shard_dim] = i;
     }
   }
