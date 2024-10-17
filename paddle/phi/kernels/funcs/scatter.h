@@ -131,7 +131,9 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
 
   for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
-
+    if (index_ < dst_dims[0]) {
+      index_ += dst_dims[0];
+    }
     PADDLE_ENFORCE_GE(index_,
                       0,
                       common::errors::OutOfRange(
@@ -210,6 +212,9 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
   auto max_index = dst_dims[0];
   for (int64_t i = 0; i < index_size; ++i) {
     const IndexT& index_val = p_index[i];
+    if (index_val < 0) {
+      index_val += max_index;
+    }
     PADDLE_ENFORCE_GE(index_val,
                       0,
                       common::errors::OutOfRange(
