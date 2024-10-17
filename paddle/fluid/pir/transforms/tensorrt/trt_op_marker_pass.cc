@@ -1220,68 +1220,6 @@ class ArgmaxOpPattern
     return true;
   }
 };
-class MaxOpPattern : public pir::OpRewritePattern<paddle::dialect::MaxOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::MaxOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::MaxOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-    if (!op->HasAttribute("keepdim")) {
-      VLOG(3) << "the max does not have attr keep_dim ";
-      return false;
-    }
-    pir::Value x = op.operand_source(0);
-    auto x_dtype = pir::GetDataTypeFromValue(x);
-    if (!(x_dtype.isa<pir::Float32Type>() || x_dtype.isa<pir::Float64Type>() ||
-          x_dtype.isa<pir::Int32Type>() || x_dtype.isa<pir::Int64Type>())) {
-      VLOG(3) << "max input data type must be int32 or int64 or "
-                 "float32 or "
-                 "float64";
-      return false;
-    }
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
-class MeanOpPattern : public pir::OpRewritePattern<paddle::dialect::MeanOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::MeanOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::MeanOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-
-    if (!op->HasAttribute("axis")) {
-      VLOG(3) << "The axis attribute does not exist";
-      return false;
-    }
-
-    if (!op->HasAttribute("keepdim")) {
-      VLOG(3) << "The keepdim attribute does not exist";
-      return false;
-    }
-
-    pir::Value input = op.operand_source(0);
-    auto input_type = pir::GetDataTypeFromValue(input);
-    if (!input_type.isa<pir::Int32Type>() &&
-        !input_type.isa<pir::Int64Type>() &&
-        !input_type.isa<pir::Float32Type>() &&
-        !input_type.isa<pir::Float64Type>()) {
-      VLOG(3) << "The input type of pd_op.mean is not int32 or int64 or "
-                 "float32 or float64";
-      return false;
-    }
-
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
 
 class BilinearInterpV2Pattern
     : public pir::OpRewritePattern<paddle::dialect::BilinearInterpOp> {
@@ -1459,90 +1397,145 @@ class NearestInterV2Pattern
   }
 };
 
-class TrtOpMarkerPass : public pir::PatternRewritePass {
+// Add ReduceCommonOpPattern base class to simplify code
+template <typename OpType>
+class ReduceCommonOpPattern : public pir::OpRewritePattern<OpType> {
  public:
-  TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
+  using pir::OpRewritePattern<OpType>::OpRewritePattern;
+  bool MatchAndRewrite(OpType op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->template attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op->HasAttribute("keepdim")) {
+      VLOG(3) << "the max does not have attr keep_dim ";
+      return false;
+    }
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+    if constexpr (std::is_same_v<OpType, paddle::dialect::MeanOp>) {
+      if (!op->HasAttribute("axis")) {
+        VLOG(3) << "The axis attribute does not exist";
+        return false;
+      }
+    }
+
+    pir::Value x = op.operand_source(0);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    if (!(x_dtype.isa<pir::Float32Type>() || x_dtype.isa<pir::Float64Type>() ||
+          x_dtype.isa<pir::Int32Type>() || x_dtype.isa<pir::Int64Type>())) {
+      if constexpr (std::is_same_v<OpType, paddle::dialect::MinOp>) {
+        VLOG(3) << "min input data type must be int32 or int64 or "
+                   "float32 or "
+                   "float64";
+        return false;
+      } else if constexpr (std::is_same_v<OpType, paddle::dialect::MaxOp>) {
+        VLOG(3) << "max input data type must be int32 or int64 or "
+                   "float32 or "
+                   "float64";
+        return false;
+      } else if constexpr (std::is_same_v<OpType, paddle::dialect::MeanOp>) {
+        VLOG(3) << "mean input data type must be int32 or int64 or "
+                   "float32 or "
+                   "float64";
+        return false;
+      }
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+      return true;
+    }
+  };
+
+  // use type aliases to simplify usage
+  using MinOpPattern = ReduceCommonOpPattern<paddle::dialect::MinOp>;
+  using MaxOpPattern = ReduceCommonOpPattern<paddle::dialect::MaxOp>;
+  using MeanOpPattern = ReduceCommonOpPattern<paddle::dialect::MeanOp>;
+
+  class TrtOpMarkerPass : public pir::PatternRewritePass {
+   public:
+    TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
+
+    pir::RewritePatternSet InitializePatterns(
+        pir::IrContext *context) override {
+      pir::RewritePatternSet ps(context);
 
 #define ADD_PATTERN(OpName) \
   ps.Add(std::make_unique<OpName##OpPattern>(context));
-    ADD_PATTERN(Matmul)
-    ADD_PATTERN(BatchNorm)
-    ADD_PATTERN(BatchNorm_)
-    ADD_PATTERN(Softmax)
-    ADD_PATTERN(Relu)
-    ADD_PATTERN(FullIntArray)
-    ADD_PATTERN(Reshape)
-    ADD_PATTERN(Dropout)
-    ADD_PATTERN(Bmm)
-    ADD_PATTERN(Concat)
-    ADD_PATTERN(Full)
-    ADD_PATTERN(Fused_gemm_epilogue)
-    ADD_PATTERN(Add)
-    ADD_PATTERN(Silu)
-    ADD_PATTERN(Conv2d)
-    ADD_PATTERN(FusedConv2dAddAct)
-    ADD_PATTERN(DepthwiseConv2d)
-    ADD_PATTERN(Nonzero)
-    ADD_PATTERN(Gelu)
-    ADD_PATTERN(Shape)
-    ADD_PATTERN(Expand)
-    ADD_PATTERN(ExpandAs)
-    ADD_PATTERN(Sigmoid)
-    ADD_PATTERN(Sqrt)
-    ADD_PATTERN(Hardsigmoid)
-    ADD_PATTERN(Hardswish)
+      ADD_PATTERN(Matmul)
+      ADD_PATTERN(BatchNorm)
+      ADD_PATTERN(BatchNorm_)
+      ADD_PATTERN(Softmax)
+      ADD_PATTERN(Relu)
+      ADD_PATTERN(FullIntArray)
+      ADD_PATTERN(Reshape)
+      ADD_PATTERN(Dropout)
+      ADD_PATTERN(Bmm)
+      ADD_PATTERN(Concat)
+      ADD_PATTERN(Full)
+      ADD_PATTERN(Fused_gemm_epilogue)
+      ADD_PATTERN(Add)
+      ADD_PATTERN(Silu)
+      ADD_PATTERN(Conv2d)
+      ADD_PATTERN(FusedConv2dAddAct)
+      ADD_PATTERN(DepthwiseConv2d)
+      ADD_PATTERN(Nonzero)
+      ADD_PATTERN(Gelu)
+      ADD_PATTERN(Shape)
+      ADD_PATTERN(Expand)
+      ADD_PATTERN(ExpandAs)
+      ADD_PATTERN(Sigmoid)
+      ADD_PATTERN(Sqrt)
+      ADD_PATTERN(Hardsigmoid)
+      ADD_PATTERN(Hardswish)
 #if IS_TRT_VERSION_GE(8600)
-    ADD_PATTERN(Layer_norm)
+      ADD_PATTERN(Layer_norm)
 #endif
 #undef ADD_PATTERN
-    ps.Add(std::make_unique<Pool2dOpPattern>(context));
-    ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
-    ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
-    ps.Add(std::make_unique<DeformableConvOpPattern>(context));
-    ps.Add(std::make_unique<ArangeOpPattern>(context));
-    ps.Add(std::make_unique<SignOpPattern>(context));
-    ps.Add(std::make_unique<LogicalNotOpPattern>(context));
-    ps.Add(std::make_unique<GroupNormOpPattern>(context));
-    ps.Add(std::make_unique<TransposeOpPattern>(context));
-    ps.Add(std::make_unique<GatherOpPattern>(context));
-    ps.Add(std::make_unique<GatherNdOpPattern>(context));
-    ps.Add(std::make_unique<ScaleOpPattern>(context));
-    ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
-    ps.Add(std::make_unique<SqueezeOpPattern>(context));
-    ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
-    ps.Add(std::make_unique<SliceOpPattern>(context));
-    ps.Add(std::make_unique<IndexSelectOpPattern>(context));
-    ps.Add(std::make_unique<FlattenOpPattern>(context));
-    ps.Add(std::make_unique<CastOpPattern>(context));
-    ps.Add(std::make_unique<SplitOpPattern>(context));
-    ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
-    ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
-    ps.Add(std::make_unique<MultiplyOpPattern>(context));
-    ps.Add(std::make_unique<SubtractOpPattern>(context));
-    ps.Add(std::make_unique<DivideOpPattern>(context));
-    ps.Add(std::make_unique<ElementwisePowOpPattern>(context));
-    ps.Add(std::make_unique<MinimumOpPattern>(context));
-    ps.Add(std::make_unique<MaximumOpPattern>(context));
-    ps.Add(std::make_unique<FloorDivideOpPattern>(context));
-    ps.Add(std::make_unique<MeanOpPattern>(context));
-    ps.Add(std::make_unique<RemainderOpPattern>(context));
-    ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
-    ps.Add(std::make_unique<ArgmaxOpPattern>(context));
-    ps.Add(std::make_unique<MaxOpPattern>(context));
-    ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
-    ps.Add(std::make_unique<NearestInterV2Pattern>(context));
-    return ps;
-  }
-};
+      ps.Add(std::make_unique<Pool2dOpPattern>(context));
+      ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
+      ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
+      ps.Add(std::make_unique<DeformableConvOpPattern>(context));
+      ps.Add(std::make_unique<ArangeOpPattern>(context));
+      ps.Add(std::make_unique<SignOpPattern>(context));
+      ps.Add(std::make_unique<LogicalNotOpPattern>(context));
+      ps.Add(std::make_unique<GroupNormOpPattern>(context));
+      ps.Add(std::make_unique<TransposeOpPattern>(context));
+      ps.Add(std::make_unique<GatherOpPattern>(context));
+      ps.Add(std::make_unique<GatherNdOpPattern>(context));
+      ps.Add(std::make_unique<ScaleOpPattern>(context));
+      ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
+      ps.Add(std::make_unique<SqueezeOpPattern>(context));
+      ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
+      ps.Add(std::make_unique<SliceOpPattern>(context));
+      ps.Add(std::make_unique<IndexSelectOpPattern>(context));
+      ps.Add(std::make_unique<FlattenOpPattern>(context));
+      ps.Add(std::make_unique<CastOpPattern>(context));
+      ps.Add(std::make_unique<SplitOpPattern>(context));
+      ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
+      ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
+      ps.Add(std::make_unique<MultiplyOpPattern>(context));
+      ps.Add(std::make_unique<SubtractOpPattern>(context));
+      ps.Add(std::make_unique<DivideOpPattern>(context));
+      ps.Add(std::make_unique<ElementwisePowOpPattern>(context));
+      ps.Add(std::make_unique<MinimumOpPattern>(context));
+      ps.Add(std::make_unique<MaximumOpPattern>(context));
+      ps.Add(std::make_unique<FloorDivideOpPattern>(context));
+      ps.Add(std::make_unique<MeanOpPattern>(context));
+      ps.Add(std::make_unique<RemainderOpPattern>(context));
+      ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
+      ps.Add(std::make_unique<ArgmaxOpPattern>(context));
+      ps.Add(std::make_unique<MaxOpPattern>(context));
+      ps.Add(std::make_unique<MinOpPattern>(context));
+      ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
+      ps.Add(std::make_unique<NearestInterV2Pattern>(context));
+      return ps;
+    }
+  };
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateTrtOpMarkerPass() {
-  return std::make_unique<TrtOpMarkerPass>();
-}
+  std::unique_ptr<Pass> CreateTrtOpMarkerPass() {
+    return std::make_unique<TrtOpMarkerPass>();
+  }
 }  // namespace pir
 
 REGISTER_IR_PASS(trt_op_marker_pass, TrtOpMarkerPass);
