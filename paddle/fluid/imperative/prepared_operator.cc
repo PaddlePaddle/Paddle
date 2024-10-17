@@ -317,8 +317,9 @@ PreparedOp PrepareImpl(
                   ->GetDevContext();
           dev_ctx->SetCommContext(comm_context);
           // Note: In dynamic mode, c_softmax_with_cross_entropy need use global
-          // calculate stream (default stream)。 Using the comm_ctx's stream
-          // will lead to synchronization issues, causing accuracy diff.
+          // calculate stream (default stream). Using the comm_ctx's stream
+          // will lead to synchronization issues, causing accuracy diff in
+          // test_parallel_dygraph_mp_layers.
           if (phi_kernel_name == "c_softmax_with_cross_entropy") {
             static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
                 default_stream, false);
