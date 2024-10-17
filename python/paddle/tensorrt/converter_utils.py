@@ -136,20 +136,23 @@ def get_positive_dim(dim, dim_size):
     return dim
 
 
+def convert_trt_weights_to_tensor(network, input, shape):
+    if isinstance(input, trt.Weights):
+        return network.add_constant(shape, input).get_output(0)
+    return input
+
+
 def add_elementwise_layer(network, paddle_op, inputs, op_type):
     weight_shape = paddle_op.operands()[1].source().shape
     input_shape = paddle_op.operands()[0].source().shape
 
-    weight_tensor = inputs[1]
-    input_tensor = inputs[0]
-    if type(inputs[1]) == trt.Weights:
-        weight_tensor = network.add_constant(
-            weight_shape, inputs[1]
-        ).get_output(0)
-    if type(inputs[0]) == trt.Weights:
-        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
-            0
-        )
+    input_tensor = convert_trt_weights_to_tensor(
+        network, inputs[0], input_shape
+    )
+    weight_tensor = convert_trt_weights_to_tensor(
+        network, inputs[1], weight_shape
+    )
+
     lhs_val, rhs_val = broadcast(
         network,
         input_tensor,
