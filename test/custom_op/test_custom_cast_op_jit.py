@@ -57,6 +57,9 @@ def custom_cast_dynamic(device, dtype, np_x):
 
     out.backward()
 
+    # NOTE: debug code to trigger UT
+    print("xxxxx")
+
     assert str(out.dtype).split(".")[-1] == dtype
     assert str(x.grad.dtype).split(".")[-1] == dtype
 

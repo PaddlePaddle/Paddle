@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -501,6 +502,45 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
               ->InplaceVersionCounter();
       return inplace_version_counter.SetInplaceVersionToZero();
     }
+  }
+}
+
+/* Part 7: Contiguous methods */
+
+bool Tensor::is_contiguous() const {
+  if (is_dense_tensor() || is_dist_tensor()) {
+    phi::DenseTensor *dense_tensor = nullptr;
+    if (is_dist_tensor()) {
+      dense_tensor = static_cast<phi::distributed::DistTensor *>(impl_.get())
+                         ->unsafe_mutable_value();
+    } else {
+      dense_tensor = static_cast<phi::DenseTensor *>(impl_.get());
+    }
+    return dense_tensor->meta().is_contiguous();
+  } else {
+    PADDLE_THROW(
+        common::errors::Unimplemented("Only support is_contiguous operation on "
+                                      "DenseTensor or DistTensor now."));
+  }
+}
+
+Tensor &Tensor::contiguous() {
+  if (is_dense_tensor() || is_dist_tensor()) {
+    phi::DenseTensor *dense_tensor = nullptr;
+    if (is_dist_tensor()) {
+      dense_tensor = static_cast<phi::distributed::DistTensor *>(impl_.get())
+                         ->unsafe_mutable_value();
+    } else {
+      dense_tensor = static_cast<phi::DenseTensor *>(impl_.get());
+    }
+
+    if (!dense_tensor->meta().is_contiguous()) {
+      *dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
+    }
+    return *this;
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Only support contiguous operation on DenseTensor or DistTensor now."));
   }
 }
 

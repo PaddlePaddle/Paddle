@@ -630,6 +630,24 @@ class PADDLE_API Tensor final {
    */
   Tensor to_dense() const;
 
+  /* Part 12: Contiguous methods */
+
+  /**
+   * @brief Determine whether tensor is contiguous
+   *
+   * @return bool
+   */
+  bool is_contiguous() const;
+
+  /**
+   * @brief Returns a contiguous in memory tensor containing the same data as
+   * current Tensor. If self tensor is already contiguous, this function returns
+   * the current Tensor.
+   *
+   * @return Tensor
+   */
+  Tensor& contiguous();
+
  private:
   /**
    * [ Why use abstract TensorImpl interface here? ]
