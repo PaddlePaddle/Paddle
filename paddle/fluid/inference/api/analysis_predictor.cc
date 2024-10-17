@@ -389,6 +389,8 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
   if (FLAGS_enable_pir_api) {
     config_.EnableNewExecutor(true);
     config_.EnableNewIR(true);
+  } else {
+    config_.EnableNewIR(false);
   }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
