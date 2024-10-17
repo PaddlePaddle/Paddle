@@ -114,13 +114,3 @@ REGISTER_OPERATOR(global_scatter,
                   ops::GlobalScatterOpMaker,
                   ops::GlobalScatterOpGradMaker<paddle::framework::OpDesc>,
                   ops::GlobalScatterOpGradMaker<paddle::imperative::OpBase>)
-
-PD_REGISTER_STRUCT_KERNEL(global_scatter,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::GlobalScatterOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          phi::dtype::float16) {}
