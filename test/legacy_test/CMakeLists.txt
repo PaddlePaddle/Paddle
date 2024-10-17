@@ -101,7 +101,8 @@ endif()
 
 if(WITH_ROCM)
   add_test(NAME test_hygon_llama_ops
-           COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/hygon_dcu/test_hygon_llama_op.sh)
+           COMMAND bash
+                   ${CMAKE_CURRENT_SOURCE_DIR}/hygon_dcu/test_hygon_llama_op.sh)
 endif()
 
 if(NOT WITH_NCCL)

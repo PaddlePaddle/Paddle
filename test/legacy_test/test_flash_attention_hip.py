@@ -55,7 +55,8 @@ def attention_naive_with_mask(q, k, v, attn_bias):
 
 
 @unittest.skipIf(
-    not paddle.device.cuda.get_device_name(paddle.CUDAPlace(0)) == 'K100_AI', 'Only K100_AI surpport FA'
+    not paddle.device.cuda.get_device_name(paddle.CUDAPlace(0)) == 'K100_AI',
+    'Only K100_AI surpport FA',
 )
 class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
@@ -274,7 +275,8 @@ class TestFlashAttentionAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.device.cuda.get_device_name(paddle.CUDAPlace(0)) == 'K100_AI', 'Only K100_AI surpport FA'
+    not paddle.device.cuda.get_device_name(paddle.CUDAPlace(0)) == 'K100_AI',
+    'Only K100_AI surpport FA',
 )
 class TestFlashAttentionGQA(unittest.TestCase):
     def setUp(self):

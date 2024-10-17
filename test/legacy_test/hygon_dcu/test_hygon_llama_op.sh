@@ -99,9 +99,9 @@ py_tests=(
     # add, add_grad, any, cos, divide, elementwise_pow, matmul, matmul_grad
     # mean, mean_grad, multiply, multiply_grad, rsqrt, rsqrt_grad, scale, silu, silu_grad
     # sin, sqrt, sum
-    "test_hygon_llama_op.py"
+    "hygon_llama_ops.py"
     # flash_attn, flash_attn_grad
-    "test_flash_attention_hip.py"
+    "flash_attention_hip.py"
     )
 
 run_ctest() {
@@ -137,11 +137,11 @@ run_pytest(){
 
             PYTHONPATH=.. timeout $timeout_limit python -m unittest "$test_name" > /dev/null 2>&1
             local test_result=$?
-            
+
             if [ $test_result -eq 0 ]; then
                 echo -e "${GREEN}Test $test_name PASSED${RESET}"
                 pass_count=$((pass_count + 1))
-            elif [ $test_result -eq 124 ]; then 
+            elif [ $test_result -eq 124 ]; then
                 echo -e "${RED}Test $test_name TIMEOUT${RESET}"
                 timeout_count=$((timeout_count + 1))
                 timeout_tests+=("$test_name")
