@@ -40,9 +40,8 @@ def has_dynamic_shape(shape):
     return any(s == -1 for s in shape)
 
 
-def append_ones(network, input, name, num_prepend_ones):
+def add_ones(network, input, name, num_prepend_ones, prepend=True):
     layer = network.add_shuffle(input)
-
     if has_dynamic_shape(input.shape):
         input_shape_layer = network.add_shape(input)
         input_shape_layer.name = f"{name}_broadcast_orig_shape"
@@ -50,28 +49,42 @@ def append_ones(network, input, name, num_prepend_ones):
             (num_prepend_ones,), np.ones((num_prepend_ones,), dtype=np.int32)
         )
         prepend_shape_layer.name = f"{name}_broadcast_prepend_ones"
-        reshape_dim_layer = network.add_concatenation(
-            [prepend_shape_layer.get_output(0), input_shape_layer.get_output(0)]
-        )
+        if prepend:
+            reshape_dim_layer = network.add_concatenation(
+                [
+                    prepend_shape_layer.get_output(0),
+                    input_shape_layer.get_output(0),
+                ]
+            )
+        else:
+            reshape_dim_layer = network.add_concatenation(
+                [
+                    input_shape_layer.get_output(0),
+                    prepend_shape_layer.get_output(0),
+                ]
+            )
         reshape_dim_layer.axis = 0
         reshape_dim_layer.name = f"{name}_broadcast_final_shape"
         layer.set_input(1, reshape_dim_layer.get_output(0))
     else:
-        layer.reshape_dims = (1,) * num_prepend_ones + tuple(input.shape)
+        if prepend:
+            layer.reshape_dims = (1,) * num_prepend_ones + tuple(input.shape)
+        else:
+            layer.reshape_dims = tuple(input.shape) + (1,) * num_prepend_ones
 
     layer.name = name
     return layer.get_output(0)
 
 
-def broadcast(network, a, b, a_name, b_name, preset_diff=0):
+def broadcast(network, a, b, a_name, b_name, preset_diff=0, prepend_ones=True):
     a_shape = tuple(a.shape)
     b_shape = tuple(b.shape)
 
     diff = len(a_shape) - len(b_shape) - preset_diff
     if diff > 0:
-        b = append_ones(network, b, f"{b_name}_broadcast", diff)
+        b = add_ones(network, b, f"{b_name}_broadcast", diff, prepend_ones)
     elif diff < 0:
-        a = append_ones(network, a, f"{a_name}_broadcast", -diff)
+        a = add_ones(network, a, f"{a_name}_broadcast", -diff, prepend_ones)
 
     return a, b
 
