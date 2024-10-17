@@ -290,35 +290,35 @@ void BindTensor(pybind11::module &m) {  // NOLINT
               phi::CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
-                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+                 self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
               phi::CustomPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
-                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+                 self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
               phi::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
-                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+                 self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
               phi::GPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
-                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+                 self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
               phi::GPUPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
-                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+                 self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_clear", &phi::DenseTensor::clear)
       .def("_copy_from",

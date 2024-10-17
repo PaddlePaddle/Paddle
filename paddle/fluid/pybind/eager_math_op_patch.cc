@@ -1149,7 +1149,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
         _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
       phi::DataType promote_dtype =
-          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
+          phi::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
               framework::TransToProtoVarType(lhs_dtype),
               framework::TransToProtoVarType(rhs_dtype)));
       if (lhs_dtype != promote_dtype) {
