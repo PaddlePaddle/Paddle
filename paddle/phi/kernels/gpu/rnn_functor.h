@@ -121,7 +121,8 @@ class RNNDescriptors {
 
     // ------------------- cudnn dropout descriptors ---------------------
     size_t state_size = 0;
-    bool is_initialized = dropout_state->initialized();
+    bool is_initialized =
+        (dropout_state->initialized() && dropout_state->numel() != 0);
 #ifdef PADDLE_WITH_HIP
     if (!is_initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
