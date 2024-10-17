@@ -257,7 +257,7 @@ class ClipHelper:
                 op.type == "c_allreduce_sum"
                 or (
                     op.type == "reduce"
-                    and op.desc.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                    and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
                 )
                 and not is_data_parallel_reduce_op(op)
             ):

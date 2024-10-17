@@ -213,7 +213,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
 
                 if op.type == "c_allreduce_sum" or (
                     op.type == "reduce"
-                    and op.desc.attr('reduce_type') == str(dist.ReduceOp.SUM)
+                    and op.desc.attr('reduce_type') == dist.ReduceOp.SUM
                 ):
                     scale_index = idx + 1
                     if scale_index < len(len(ops)):

@@ -538,17 +538,17 @@ class ShardingPass(PassBase):
             if _is_param_grad_allreduce_op(op, main_block):
                 if op.type == "c_allreduce_sum":
                     reduce_op_type = "reduce"
-                    reduce_type = str(dist.ReduceOp.SUM)
+                    reduce_type = dist.ReduceOp.SUM
                     op_role = op.attr("op_role")
                 elif op.type == "reduce" and op.attr("reduce_type") == str(
                     dist.ReduceOp.SUM
                 ):
                     reduce_op_type = "reduce"
-                    reduce_type = str(dist.ReduceOp.SUM)
+                    reduce_type = dist.ReduceOp.SUM
                     op_role = op.attr("op_role")
                 else:
                     reduce_op_type = "reduce"
-                    reduce_type = str(dist.ReduceOp.AVG)
+                    reduce_type = dist.ReduceOp.AVG
                     op_role = op.attr("op_role")
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
@@ -1004,8 +1004,8 @@ class ShardingPass(PassBase):
             op = ops[i]
             if is_data_parallel_reduce_op(op):
                 is_reduce = op.type == "reduce" and op.attr("reduce_type") in [
-                    str(dist.ReduceOp.AVG),
-                    str(dist.ReduceOp.SUM),
+                    dist.ReduceOp.AVG,
+                    dist.ReduceOp.SUM,
                 ]
                 assert (
                     is_reduce
@@ -1324,7 +1324,7 @@ class ShardingPass(PassBase):
                 # This issue should be fixed using CUDAMallocAsyncAllocator in the future.
                 if (
                     op.type == "reduce"
-                    and op.attr("reduce_type") == str(dist.ReduceOp.AVG)
+                    and op.attr("reduce_type") == dist.ReduceOp.AVG
                     and not grad_group.is_in_local_shard
                     and not self.get_attr("gradient_sync_after_accumulate")
                 ):
@@ -1435,9 +1435,10 @@ class ShardingPass(PassBase):
             # update program
             for idx, op in reversed(list(enumerate(block.ops))):
                 if is_data_parallel_reduce_op(op):
-                    assert op.type == "reduce" and op.attr(
-                        "reduce_type"
-                    ) == str(dist.ReduceOp.SUM)
+                    assert (
+                        op.type == "reduce"
+                        and op.attr("reduce_type") == dist.ReduceOp.SUM
+                    )
                     grad_comm_stream_idx = grad_comm_op_to_stream_idx[op]
                     inter_node_group = inter_node_groups[grad_comm_stream_idx]
                     intra_node_group = intra_node_groups[grad_comm_stream_idx]
