@@ -54,9 +54,6 @@ void IndexAddInner(const Context& ctx,
   }
 
   for (int i = 0; i < index_size; i++) {
-    if (index_data[i] < 0) {
-      index_data[i] += input_dim[axis];
-    }
     PADDLE_ENFORCE_GE(
         index_data[i],
         0,
@@ -91,6 +88,9 @@ void IndexAddInner(const Context& ctx,
   auto& place = *ctx.eigen_device();
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
+    if (index_value < 0) {
+      index_value += input_dim[axis];
+    }
     auto output_t = output_tensor.chip(index_value, 1);
     output_t.device(place) = output_t + add_value_tensor.chip(j, 1);
   }

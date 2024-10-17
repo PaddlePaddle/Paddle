@@ -83,9 +83,6 @@ void IndexSelectInner(const Context& ctx,
   }
 
   for (int i = 0; i < index_size; i++) {
-    if (index_data[i] < 0) {
-      index_data[i] += input_dim[dim];
-    }
     PADDLE_ENFORCE_GE(
         index_data[i],
         0,
@@ -119,6 +116,9 @@ void IndexSelectInner(const Context& ctx,
 
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
+    if (index_value < 0) {
+      index_value += input_dim[dim];
+    }
     auto output_t = output_tensor.chip(j, 1);
     output_t.device(place) = input_tensor.chip(index_value, 1);
   }
