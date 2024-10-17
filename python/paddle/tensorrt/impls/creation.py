@@ -15,6 +15,7 @@
 import numpy as np
 import tensorrt as trt
 
+import paddle
 from paddle.tensorrt.register import converter_registry
 
 
@@ -34,3 +35,46 @@ def full_converter(network, paddle_op, inputs):
         shape, np.full(shape, value, dtype=np.float32)
     )
     return full_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.assign", trt_version="8.x")
+def assign_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    identity_layer = network.add_identity(input_tensor)
+    return identity_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.assign_value_", trt_version="8.x")
+def assign_value_converter(network, paddle_op, inputs):
+    attrs = paddle_op.attrs()
+    shape = attrs['shape']
+    dtype = attrs['dtype']
+    values = attrs['values']
+
+    if dtype == paddle.float32:
+        dtype = np.float32
+    elif dtype == paddle.float16:
+        dtype = np.float16
+    elif dtype == paddle.int32:
+        dtype = np.int32
+    elif dtype == paddle.bool:
+        dtype = np.bool
+
+    constant_layer = network.add_constant(
+        shape, np.array(values, dtype=np.float32)
+    )
+    return constant_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.assign_out_", trt_version="8.x")
+def assign_out_converter(network, paddle_op, inputs):
+    x_tensor = inputs[0]
+    output_tensor = inputs[1]
+
+    identity_layer = network.add_identity(x_tensor)
+    out_tensor = identity_layer.get_output(0)
+
+    output_name = paddle_op.get_output_names()[0]
+    out_tensor.name = output_name
+
+    return out_tensor
