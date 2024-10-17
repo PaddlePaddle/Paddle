@@ -377,7 +377,7 @@ void OpTester::CreateVariables(framework::Scope *scope) {
 
     VLOG(3) << "Set lod for tensor " << var_name;
     std::vector<std::vector<size_t>> &lod_vec = item.second.lod;
-    framework::LoD lod;
+    phi::LoD lod;
     for (auto &item : lod_vec) {
       lod.push_back(item);
     }
