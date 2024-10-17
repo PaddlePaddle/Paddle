@@ -203,6 +203,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'legacy_reshape',
     'legacy_reshape_',
     'legacy_reshape_grad',
+    'lod_array_length',
     'lookup_table',
     'lrn',
     'lod_reset',

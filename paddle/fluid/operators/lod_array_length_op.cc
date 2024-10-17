@@ -30,22 +30,15 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-class LoDArrayLengthOp : public framework::OperatorBase {
+class LoDArrayLengthOp : public framework::OperatorWithKernel {
  public:
-  LoDArrayLengthOp(const std::string &type,
-                   const framework::VariableNameMap &inputs,
-                   const framework::VariableNameMap &outputs,
-                   const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const phi::Place &place) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<phi::TensorArray>();
-    auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
-    out.Resize({1});
-    auto cpu = phi::CPUPlace();
-    *out.mutable_data<int64_t>(cpu) = static_cast<int64_t>(x.size());
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -70,7 +63,7 @@ CPU and the length of phi::TensorArray should be used as control variables.
 
 class LoDArrayLengthInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
+  void operator()(framework::InferShapeContext* context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "LDArrayLength");
     OP_INOUT_CHECK(
         context->HasOutput("Out"), "Output", "Out", "LoDArrayLength");
