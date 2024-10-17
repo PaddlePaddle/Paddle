@@ -35,6 +35,7 @@ from .impls.common import *  # noqa: F403
 from .impls.conv import *  # noqa: F403
 from .impls.creation import *  # noqa: F403
 from .impls.linalg import *  # noqa: F403
+from .impls.logic import *  # noqa: F403
 from .impls.manipulation import *  # noqa: F403
 from .impls.math import *  # noqa: F403
 from .impls.norm import *  # noqa: F403
