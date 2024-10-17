@@ -21,6 +21,7 @@ set(XPU_PROJECT "extern_xpu")
 set(XPU_API_LIB_NAME "libxpuapi.so")
 set(XPU_RT_LIB_NAME "libxpurt.so")
 set(XPU_CUDA_LIB_NAME "libxpucuda.so")
+set(XPU_CUDA_RT_LIB_NAME "libcudart.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
@@ -30,7 +31,7 @@ if(NOT DEFINED XPU_XRE_BASE_VERSION)
   set(XPU_XRE_BASE_VERSION "4.32.0.1")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "eb35/20240927")
+  set(XPU_XHPC_BASE_DATE "dev/20241011")
 endif()
 set(XPU_XCCL_BASE_VERSION "1.2.11e")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
@@ -138,6 +139,7 @@ set(XPU_API_LIB "${XPU_LIB_DIR}/${XPU_API_LIB_NAME}")
 set(XPU_XBLAS_LIB "${XPU_LIB_DIR}/${XPU_XBLAS_LIB_NAME}")
 set(XPU_RT_LIB "${XPU_LIB_DIR}/${XPU_RT_LIB_NAME}")
 set(XPU_CUDA_LIB "${XPU_LIB_DIR}/${XPU_CUDA_LIB_NAME}")
+set(XPU_CUDA_RT_LIB "${XPU_LIB_DIR}/${XPU_CUDA_RT_LIB_NAME}")
 set(XPU_XFA_LIB "${XPU_LIB_DIR}/${XPU_XFA_LIB_NAME}")
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XPU_INSTALL_DIR}/lib")
@@ -178,6 +180,7 @@ ExternalProject_Add(
   BUILD_BYPRODUCTS ${XPU_API_LIB} BUILD_BYPORDUCTS ${XPU_XBLAS_LIB}
   BUILD_BYPRODUCTS ${XPU_XFA_LIB}
   BUILD_BYPRODUCTS ${XPU_RT_LIB}
+  BUILD_BYPRODUCTS ${XPU_CUDA_RT_LIB}
   BUILD_BYPRODUCTS ${XPU_BKCL_LIB})
 
 include_directories(${XPU_INC_DIR})
@@ -188,7 +191,11 @@ set_property(TARGET shared_xpuapi PROPERTY IMPORTED_LOCATION "${XPU_API_LIB}")
 # for cc_library(xxx SRCS xxx.c DEPS xpulib)
 generate_dummy_static_lib(LIB_NAME "xpulib" GENERATOR "xpu.cmake")
 
-target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
+if(WITH_XPU_XRE5)
+  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_CUDA_RT_LIB})
+else()
+  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
+endif()
 
 if(WITH_XPU_XFT)
   message(STATUS "Compile with XPU XFT!")
@@ -227,8 +234,14 @@ if(WITH_XPTI)
 endif()
 
 if(WITH_XPU_XRE5)
-  target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
-                        ${XPU_API_LIB} ${XPU_XFA_LIB})
+  target_link_libraries(
+    xpulib
+    ${XPU_RT_LIB}
+    ${XPU_CUDA_RT_LIB}
+    ${XPU_BKCL_LIB}
+    ${XPU_XBLAS_LIB}
+    ${XPU_API_LIB}
+    ${XPU_XFA_LIB})
 else()
   target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
                         ${XPU_API_LIB})
