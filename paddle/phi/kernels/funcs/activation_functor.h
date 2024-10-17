@@ -2960,11 +2960,11 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
     if (decimals == 0) {
       out.device(d) = x.round();
     } else if (decimals > 0) {
-      auto ten_pow_deciamls = static_cast<T>(std::pow(10, decimals));
-      out.device(d) = (x * ten_pow_deciamls).round() / ten_pow_deciamls;
+      auto ten_pow_decimals = static_cast<T>(std::pow(10, decimals));
+      out.device(d) = (x * ten_pow_decimals).round() / ten_pow_decimals;
     } else {
-      auto ten_pow_deciamls = static_cast<T>(std::pow(10, -decimals));
-      out.device(d) = (x / ten_pow_deciamls).round() * ten_pow_deciamls;
+      auto ten_pow_decimals = static_cast<T>(std::pow(10, -decimals));
+      out.device(d) = (x / ten_pow_decimals).round() * ten_pow_decimals;
     }
   }
 };
@@ -5187,13 +5187,13 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
     if (decimals == 0) {
       return static_cast<T>(round(x));
     } else if (decimals > 0) {
-      float ten_pow_deciamls = powf(10., decimals);
-      return static_cast<T>(round(x * static_cast<MPType>(ten_pow_deciamls)) /
-                            ten_pow_deciamls);
+      float ten_pow_decimals = powf(10., decimals);
+      return static_cast<T>(round(x * static_cast<MPType>(ten_pow_decimals)) /
+                            ten_pow_decimals);
     } else {
-      float ten_pow_deciamls = powf(10., -decimals);
-      return static_cast<T>(round(x / static_cast<MPType>(ten_pow_deciamls)) *
-                            ten_pow_deciamls);
+      float ten_pow_decimals = powf(10., -decimals);
+      return static_cast<T>(round(x / static_cast<MPType>(ten_pow_decimals)) *
+                            ten_pow_decimals);
     }
   }
 };
