@@ -473,8 +473,7 @@ ExprTransformer UnsqueezeForTransformer(
     } else {
       PADDLE_THROW(::common::errors::PreconditionNotMet(
           "UnsqueezeForTransformer: only support insert after a (For / "
-          "ScheduleBlockRealizer): %s",
-          followed_expr));
+          "ScheduleBlockRealizer)"));
     }
     VLOG(6) << "UnsqueezeForTransformer: After changed: " << copied_e;
     return copied_e;
