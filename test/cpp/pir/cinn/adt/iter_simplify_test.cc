@@ -17,6 +17,8 @@
 #include <gtest/gtest.h>
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/schedule_base.h"
 
 namespace cinn {
 namespace common {
@@ -378,5 +380,118 @@ TEST_F(TestIterSimplify, fuse_not_same_source) {
   EXPECT_ANY_THROW(rewriter.Rewrite(&e3));
 }
 
+TEST_F(TestIterSimplify, fuse_same_source) {
+  IterMapRewriter rewriter{{i, j, k, i_j_k_fused}, analyzer};
+  IterMapToExprNormalizer normalizer{analyzer};
+
+  auto gt1 = ITER_SUM(ITER_SPLIT(ITER_MARK_VAR(i_j_k_fused),
+                                 ir::IndexExpr(32),
+                                 ir::IndexExpr(2),
+                                 ir::IndexExpr(1)));
+  auto gt2 = ITER_SUM(ITER_SPLIT(ITER_MARK_VAR(i_j_k_fused),
+                                 ir::IndexExpr(8),
+                                 ir::IndexExpr(4),
+                                 ir::IndexExpr(1)));
+  auto gt3 = ITER_SUM(ITER_SPLIT(ITER_MARK_VAR(i_j_k_fused),
+                                 ir::IndexExpr(1),
+                                 ir::IndexExpr(8),
+                                 ir::IndexExpr(1)));
+  auto gt4 = ITER_SUM(ITER_SPLIT(ITER_MARK_VAR(i_j_k_fused),
+                                 ir::IndexExpr(32),
+                                 ir::IndexExpr(2),
+                                 ir::IndexExpr(1)),
+                      ITER_SPLIT(ITER_MARK_VAR(i_j_k_fused),
+                                 ir::IndexExpr(32),
+                                 ir::IndexExpr(1),
+                                 ir::IndexExpr(1)));
+
+  ir::Expr e1 = (i_j_k_fused / 16 / 2 * 32 + i_j_k_fused / 16 % 2 * 16 +
+                 i_j_k_fused % 16) /
+                8 / 4;
+  ir::Expr e2 =
+      (i_j_k_fused / 32 * 32 + i_j_k_fused / 16 % 2 * 16 + i_j_k_fused % 16) /
+      8 % 4;
+  ir::Expr e3 =
+      (i_j_k_fused / 32 * 32 + i_j_k_fused / 16 % 2 * 16 + i_j_k_fused % 16) %
+      8;
+
+  ir::Expr e4 =
+      ((i_j_k_fused / 16) / 2) +
+      ((((i_j_k_fused % 16) / 8) + (2 * ((i_j_k_fused / 16) % 2))) / 4);
+  ir::Expr e5 = (((i_j_k_fused % 16) / 8) + ((4 * ((i_j_k_fused / 16) / 2)) +
+                                             (2 * ((i_j_k_fused / 16) % 2)))) %
+                4;
+  ir::Expr e6 = ((i_j_k_fused % 16) + ((32 * ((i_j_k_fused / 16) / 2)) +
+                                       (16 * ((i_j_k_fused / 16) % 2)))) %
+                8;
+
+  TEST_EXPR(e1, gt1, i_j_k_fused / 32);
+  TEST_EXPR(e2, gt2, i_j_k_fused % 32 / 8);
+  TEST_EXPR(e3, gt3, i_j_k_fused % 8);
+  TEST_EXPR(e4, gt4, i_j_k_fused / 32);
+  TEST_EXPR(e5, gt2, i_j_k_fused % 32 / 8);
+  TEST_EXPR(e6, gt3, i_j_k_fused % 8);
+}
+
+TEST_F(TestIterSimplify, SimplifyBindings) {
+  std::vector<ir::Var> block_vars;
+  std::vector<ir::Expr> iter_values;
+  std::vector<ir::Expr> shape = {Expr(2), Expr(4), Expr(8)};
+  std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(3);
+
+  // Create block vars and axis vars
+  for (int i = 0; i < shape.size(); ++i) {
+    block_vars.push_back(ir::Var(Expr(0),
+                                 shape[i],
+                                 cinn::UniqName("b" + std::to_string(i)),
+                                 false,
+                                 false));
+    axis_vars[i]->is_reduce_axis = false;
+    iter_values.push_back(axis_vars[i]);
+  }
+
+  // Create ScheduleBlock body
+  ir::Expr body = ir::ScheduleBlockRealize::Make(
+      iter_values,
+      ir::ScheduleBlock::Make(block_vars, {}, {}, "Test", Expr(0)));
+
+  // Create For loops
+  for (int i = shape.size() - 1; i >= 0; --i) {
+    ir::Var loop_var = axis_vars[i];
+    ir::Expr loop_extent = shape[i];
+    body = ir::For::Make(loop_var,
+                         Expr(0),
+                         loop_extent,
+                         ir::ForType::Serial,
+                         ir::DeviceAPI::Host,
+                         ir::Block::Make({body}));
+  }
+
+  // Create ir schedule
+  ir::ModuleExpr mod_expr(std::vector<ir::Expr>({body}));
+  ir::IRSchedule ir_sch(mod_expr);
+  auto blocks = ir_sch.GetAllBlocks();
+  std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
+
+  // Apply Fuse and Split
+  ir::Expr loop_fuse = ir_sch.Fuse(loops);
+  std::vector<ir::Expr> loops_split = ir_sch.Split(loop_fuse, {2, 2, 16});
+  ir::Expr loop_fuse_2 = ir_sch.Fuse(loops_split);
+
+  // Apply SimplifyBindings
+  SimplifyBlockBinding::SimplifyBindings(loop_fuse_2, {}, analyzer);
+
+  // Check result
+  auto for_op = loop_fuse_2.As<ir::For>();
+  auto simplified_values = for_op->body.As<ir::Block>()
+                               ->stmts[0]
+                               .As<ir::ScheduleBlockRealize>()
+                               ->iter_values;
+  auto f = for_op->loop_var;
+
+  EXPECT_EQ(simplified_values[0], f / 32);
+  EXPECT_EQ(simplified_values[1], f % 32 / 8);
+  EXPECT_EQ(simplified_values[2], f % 8);
+}
 }  // namespace common
 }  // namespace cinn

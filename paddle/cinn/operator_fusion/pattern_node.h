@@ -27,10 +27,10 @@ struct PatternNode {
       std::function<StmtPattern(const StmtPattern&, const StmtPattern&)>;
 
   explicit PatternNode(const PatternContent& content,
-                       const ShardableAxesSignature& axes)
+                       const FusionItersSignature& fusion_iters)
       : sink_op_(content.op),
         stmt_pattern_(ConvertToStmtPattern(content)),
-        fusion_iters_(FusionItersSignature(content.op, axes)) {}
+        fusion_iters_(fusion_iters) {}
 
   explicit PatternNode(PatternNodePtr fused_up_node,
                        PatternNodePtr fused_down_node,
@@ -50,8 +50,7 @@ struct PatternNode {
 
   std::string DebugStr() const {
     std::stringstream ss;
-    ss << "Node: " << this << ", Pattern: " << GetPatternName(stmt_pattern())
-       << ", ID: " << GetPatternId(stmt_pattern());
+    ss << "Node: " << this << ", ID: " << GetPatternId(stmt_pattern());
     ss << "\n    -u>:  ";
     for (const auto& u : upstream_) {
       ss << GetPatternId(u->stmt_pattern()) << "(" << u << "), ";
@@ -61,13 +60,6 @@ struct PatternNode {
       ss << GetPatternId(d->stmt_pattern()) << "(" << d << "), ";
     }
     ss << "\n" << fusion_iters_.DebugStr();
-    pir::IrPrinter printer(ss);
-    if (GetPatternName(stmt_pattern_) == AnchorPattern::name()) {
-      ss << "\n anchor: ";
-      auto anchor_op =
-          std::get<AnchorPattern>(stmt_pattern_).anchor().defining_op();
-      printer.PrintOperation(*anchor_op);
-    }
     ss << "\nOps in pattern:" << std::endl;
     ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));
     return ss.str();
@@ -100,7 +92,6 @@ struct PatternNode {
   FusionItersSignature fusion_iters() const { return fusion_iters_; }
   void set_fusion_iters(const FusionItersSignature& fusion_iters) {
     fusion_iters_ = fusion_iters;
-    VLOG(4) << "set_fusion_iters";
   }
 
  private:

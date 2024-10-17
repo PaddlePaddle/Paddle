@@ -51,6 +51,7 @@ ShardableAxesSignature ShardableAxesInfoManager::GetModifiedSignature(
     result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes, true));
   }
   result.loop = ReplaceShardableAxesWithRootName(origin_sig.loop, true);
+  result.reduce_size = origin_sig.reduce_size;
   return result;
 }
 
@@ -117,14 +118,12 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
                     1,
                     ::common::errors::PreconditionNotMet(
                         "Required reduce_op->num_results() shall be equal 1."));
-  ShardableAxesSignature result = ShardableAxesSignature();
   const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
   auto input_axes = CreateNewNamesWithRank(input_rank);
 
-  const auto reduce_axis_idx = [&]() -> decltype(auto) {
-    const std::vector<int64_t> axis_idx = GetReduceAxisIdx(reduce_op);
-    return std::unordered_set<int64_t>(axis_idx.begin(), axis_idx.end());
-  }();
+  const std::vector<int64_t> reduce_axis_idx = GetReduceAxisIdx(reduce_op);
+  auto reduce_axis_idx_set = std::unordered_set<int64_t>(
+      reduce_axis_idx.begin(), reduce_axis_idx.end());
   PADDLE_ENFORCE_NE(
       reduce_axis_idx.size(),
       0,
@@ -139,7 +138,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
       return axes;
     }
     for (int64_t i = 0; i < input_rank; i++) {
-      if (!reduce_axis_idx.count(i)) {
+      if (!reduce_axis_idx_set.count(i)) {
         axes.emplace_back(input_axes[i]);
       } else if (keep_dim) {
         axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
@@ -150,10 +149,12 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
     return axes;
   }();
 
+  ShardableAxesSignature result = ShardableAxesSignature();
   result.inputs.emplace_back(input_axes);
   result.outputs.emplace_back(output_axes);
-  result.loop = result.inputs.back();
-
+  result.loop = ShardableAxes(
+      ConcatVector(output_axes, GatherVector(input_axes, reduce_axis_idx)));
+  result.reduce_size = reduce_axis_idx.size();
   return result;
 }
 
@@ -470,7 +471,7 @@ std::string ShardableAxes::DebugStr() const {
 std::string ShardableAxesSignature::DebugStr() const {
   std::stringstream ss;
   ss << "ShardableAxes Signature:";
-  ss << "\n    loop: " << loop.DebugStr();
+  ss << "\n    loop: " << loop.DebugStr() << ", reduce_size: " << reduce_size;
   for (int i = 0; i < inputs.size(); i++) {
     ss << "\n    input " << i << ": " << inputs[i].DebugStr();
   }

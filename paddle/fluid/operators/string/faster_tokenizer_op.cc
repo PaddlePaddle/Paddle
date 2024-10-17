@@ -22,7 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/string_array.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 namespace paddle {
 namespace operators {
