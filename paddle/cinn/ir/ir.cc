@@ -237,6 +237,27 @@ void Not::Verify() const {
 
 Type Not::type() const { return type_; }
 
+Expr StructElement::Make(Expr val, std::string name) {
+  auto *n = make_shared<StructElement>();
+
+  PADDLE_ENFORCE_EQ(val.type().valid(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The type of the val in StructElement is not valid. "));
+
+  n->value = val;
+  n->name = name;
+  n->set_type(val->type());
+
+  return n;
+}
+
+void StructElement::Verify() const {
+  // TODO(phlrain): udpate here
+}
+
+Type StructElement::type() const { return type_; }
+
 Expr Let::Make(Expr symbol, Expr body) {
   auto *n = make_shared<Let>();
   PADDLE_ENFORCE_EQ(

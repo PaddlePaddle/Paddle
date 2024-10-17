@@ -313,6 +313,19 @@ struct Not : public UnaryOpNode<Not> {
   static const IrNodeTy _node_type_ = IrNodeTy::Not;
 };
 
+struct StructElement : public ExprNode<StructElement> {
+  Expr value;
+  std::string name;
+
+  static Expr Make(Expr val, std::string name);
+
+  Type type() const override;
+
+  void Verify() const override;
+
+  static const IrNodeTy _node_type_ = IrNodeTy::StructElement;
+};
+
 struct Let : public ExprNode<Let> {
   Expr symbol;
   Expr body;
