@@ -49,6 +49,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
@@ -2415,6 +2416,17 @@ void BindPassManager(pybind11::module *m) {
              }
              self.AddPass(std::move(pass));
            })
+      .def("register_pass",
+           [](PassManager &self,
+              const std::string &pass_name,
+              DrrPatternContext &pattern_ctx) {
+                auto auto_drr_pattern = AutoDrrPattern(pass_name, pattern_ctx, true);
+                using AutoFinalPass = AutoDrrPass<auto_drr_pattern>
+                // == REGISTER_IR_PASS(pass_name, AutoDrrPass);
+                static ::pir::PassRegistrar<AutoFinalPass> auto_drr_pass_registrar(pass_name);
+                auto_drr_pass_registrar.Touch();
+              }
+            )
       .def("passes",
            [](PassManager &self) {
              std::vector<std::string> pass_names;
@@ -2430,6 +2442,122 @@ void BindPassManager(pybind11::module *m) {
            [](PassManager &self) { self.EnableIRPrinting(); })
       .def("enable_print_statistics",
            [](PassManager &self) { self.EnablePrintStatistics(); });
+}
+
+void BindDrrPatternContext(pybind11::module *m) {
+  // bind DrrPatternContext
+  pybind11::class_<DrrPatternContext, std::shared_ptr<DrrPatternContext>> drr_pattern_context(
+      *m,
+      "DrrPatternContext",
+      R"DOC(
+    A class that manages DRR (Dynamic Rewrite Rule) pattern context.
+
+  )DOC");
+  drr_pattern_context
+      .def(pybind11::init([]() {
+             return std::make_unique<DrrPatternContext>();
+           }))
+      .def("SourcePattern", []() {return drr::SourcePattern})
+
+  // bind drr::SourcePattern
+  pybind11::class_<drr::SourcePattern, std::shared_ptr<drr::SourcePattern>> source_pattern(
+      *m,
+      "SourcePattern",
+      R"DOC(
+      Represents a source pattern for matching in the DRR framework.
+      
+  )DOC");
+  source_pattern
+      .def(pybind11::init([]() {
+              return std::make_unique<SourcePattern>();
+            }))
+      .def("ResultPattern", [](SourcePattern& self) { return self.ResultPattern() } )
+      .def("Op",
+           [](SourcePattern& self
+              const std::string& op_type
+              const std::unordered_map<std:string, Attribute>& attributes = {}) {
+                return self.Op(op_type, attributes);
+              })
+      .def("Tensor",
+           [](SourcePattern& self,
+              const std::string& name) {
+                return self.Tensor(name);
+              })
+      .def("Attr",
+           [](SourcePattern& self,
+              const std::string& attr_name) {
+                return self.Attr(attr_name);
+              })
+      .def("AddConstraint",
+           [](SourcePattern& self,
+              const pyfunction& func) {
+                self.AddConstraint(func);
+              })
+  
+  // bind drr::ResultPattern
+  pybind11::class_<drr::ResultPattern, std::shared_ptr<drr::ResultPattern>> result_pattern(
+      *m,
+      "ResultPattern",
+      R"DOC(
+      Represents a result pattern for matching in the DRR framework
+      
+  )DOC");
+  result_pattern
+      .def(pybind11::init([]() {
+        return std::make_unique<ReusltPattern>();
+      }))
+      .def("Op",
+           [](ReusltPattern& self,
+              const std::string& op_type,
+              const std::unordered_map<std:string, Attribute>& attributes = {}) {
+                return self.Op(op_type, attributes);
+              })
+      .def("Tensor",
+           [](ReusltPattern& self,
+              const std::string& name) {
+                return self.Tensor(name);
+              })
+      // Attr
+      .def("StrAttr",
+           [](ResultPattern& self,
+              const std::string& value) {
+                return self.StrAttr(value);
+              })
+      .def("BoolAttr",
+           [](ResultPattern& self,
+              bool value) {
+                return self.BoolAttr(value);
+              })
+      .def("Int32Attr",
+           [](ResultPattern& self,
+              int32_t value) {
+                return self.Int32Attr(value);
+              })
+      .def("Int64Attr",
+           [](ResultPattern& self,
+              int64_t value) {
+                return self.Int64Attr(value);
+              })
+      .def("Float32Attr",
+           [](ResultPattern& self,
+              float value) {
+                return self.Float32Attr(value);
+              })
+      .def("VectorInt64Attr",
+           [](ResultPattern& self,
+              const std::vector<int64_t>& value) {
+                return self.VectorInt64Attr(value);
+              })
+      .def("VectorFloatAttr",
+           [](ResultPattern& self,
+              const std::vector<float>& value) {
+                return self.VectorFloatAttr(value);
+              })
+      .def("ComputeAttr",
+           [](ResultPattern& self,
+              pyfunc11 func) {
+                return self.ComputeAttr(func);
+              })
 }
 
 void BindShapeOrDataDimExprs(pybind11::module *m) {
@@ -2566,6 +2694,7 @@ void BindPir(pybind11::module *module) {
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
   BindIrParser(&ir_module);
+  BindDrrPatternContext(&ir_module)
 }
 
 }  // namespace pybind
