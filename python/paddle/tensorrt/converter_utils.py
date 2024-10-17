@@ -322,25 +322,3 @@ def build_size_tensor(
     ).get_output(0)
 
     return size_tensor
-
-
-def trt_tanh(network, inputs):
-    layer = network.add_activation(inputs[0], trt.ActivationType.TANH)
-    return layer.get_output(0)
-
-
-def trt_relu(network, inputs):
-    layer = network.add_activation(inputs[0], trt.ActivationType.RELU)
-    return layer.get_output(0)
-
-
-def trt_sigmoid(network, inputs):
-    layer = network.add_activation(inputs[0], trt.ActivationType.SIGMOID)
-    return layer.get_output(0)
-
-
-activation_map = {
-    "pd_op.tanh": trt_tanh,
-    "pd_op.relu": trt_relu,
-    "pd_op.sigmoid": trt_sigmoid,
-}
