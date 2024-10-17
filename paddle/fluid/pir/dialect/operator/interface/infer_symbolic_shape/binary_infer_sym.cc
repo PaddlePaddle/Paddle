@@ -428,7 +428,7 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
-bool convtransposefunction(pir::Operation *op,
+bool ConvTransposeFunction(pir::Operation *op,
                            pir::InferSymbolicShapeContext *infer_context,
                            std::vector<symbol::DimExpr> output_size) {
   auto x_shape =
@@ -517,14 +517,14 @@ bool convtransposefunction(pir::Operation *op,
             "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
 
-  const bool channel_last = (data_format != "NHWC");
+  const bool normal_data = (data_format != "NHWC");
   const symbol::DimExpr C =
-      (channel_last ? x_shape[1] : x_shape[x_shape.size() - 1]);
+      (normal_data ? x_shape[1] : x_shape[x_shape.size() - 1]);
 
   infer_context->AddEqualCstr(filter_shape[0], C);
 
   const std::vector<symbol::DimExpr> x_data_dims =
-      channel_last
+      normal_data
           ? std::vector<symbol::DimExpr>(x_shape.begin() + 2, x_shape.end())
           : std::vector<symbol::DimExpr>(x_shape.begin() + 1,
                                          x_shape.end() - 1);
@@ -542,10 +542,10 @@ bool convtransposefunction(pir::Operation *op,
                            ksize);
   std::vector<symbol::DimExpr> output_shape({x_shape[0]});
 
-  if (channel_last) {
+  if (normal_data) {
     output_shape.push_back(filter_shape[1] * groups);
   }
-  const int offset = (channel_last ? 2 : 1);  // kNHWC
+  const int offset = (normal_data ? 2 : 1);  // NHWC
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     symbol::DimExpr filter_extent =
         new_dilations[i] * (filter_shape[i + 2] - 1) + 1;
@@ -568,7 +568,7 @@ bool convtransposefunction(pir::Operation *op,
     }
   }
 
-  if (!channel_last) {
+  if (!normal_data) {
     output_shape.push_back(filter_shape[1] * groups);
   }
   infer_context->SetShapeOrDataForValue(
@@ -577,13 +577,6 @@ bool convtransposefunction(pir::Operation *op,
           symbol::TensorShapeOrDataDimExprs(output_shape)});
   return true;
 }
-
-// bool ConvTransposeOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
 
 bool CrossOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
@@ -631,7 +624,7 @@ bool Conv3dTransposeOpInferSymbolicShape(
   for (const auto &i : out_size) {
     output_size.emplace_back(symbol::DimExpr{i});
   }
-  return convtransposefunction(op, infer_context, output_size);
+  return ConvTransposeFunction(op, infer_context, output_size);
 }
 
 bool Conv2dTransposeOpInferSymbolicShape(
@@ -644,7 +637,7 @@ bool Conv2dTransposeOpInferSymbolicShape(
     for (const auto &i : out_size) {
       output_size.emplace_back(symbol::DimExpr{i});
     }
-    return convtransposefunction(op, infer_context, output_size);
+    return ConvTransposeFunction(op, infer_context, output_size);
   } else {
     const auto &output_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
@@ -652,7 +645,7 @@ bool Conv2dTransposeOpInferSymbolicShape(
         output_shape_or_data.data().has_value()
             ? output_shape_or_data.data().value()
             : output_shape_or_data.shape();
-    return convtransposefunction(op, infer_context, output_size);
+    return ConvTransposeFunction(op, infer_context, output_size);
   }
 }
 
@@ -664,7 +657,7 @@ bool Conv2dTransposeBiasOpInferSymbolicShape(
   for (const auto &i : out_size) {
     output_size.emplace_back(symbol::DimExpr{i});
   }
-  return convtransposefunction(op, infer_context, output_size);
+  return ConvTransposeFunction(op, infer_context, output_size);
 }
 // bool CorrelationOpInferSymbolicShape(pir::Operation *op,
 //                                      pir::InferSymbolicShapeContext
