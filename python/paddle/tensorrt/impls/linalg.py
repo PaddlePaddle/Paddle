@@ -51,6 +51,7 @@ def matmul_converter(network, paddle_op, inputs):
         0,
         False,
     )
+
     out = network.add_matrix_multiply(
         lhs_val, self_matrix_op, rhs_val, other_matrix_op
     )
