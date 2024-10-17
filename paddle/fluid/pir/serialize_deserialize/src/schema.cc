@@ -83,7 +83,7 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
     PADDLE_ENFORCE(
         false,
         common::errors::InvalidArgument(
-            "Unknown id %s for decompress dialect, pleace check your file",
+            "Unknown id %s for decompress dialect, please check your file",
             id));
   }
   return "";
