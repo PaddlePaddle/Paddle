@@ -176,7 +176,7 @@ static int xpu2_wrapper(Context* ctx,
                                                      gather_strides[3],
                                                      casted_y);
       return api::SUCCESS;
-    defaut:
+    default:
       break;
   }
   return gather_nd(ctx, x, index, y, x_shape, index_shape);

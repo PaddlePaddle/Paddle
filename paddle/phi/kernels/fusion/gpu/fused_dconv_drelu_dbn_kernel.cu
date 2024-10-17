@@ -749,7 +749,7 @@ void _BnActWgradImpl(const Context& dev_ctx,
   auto tensor_format = phi::backends::gpu::ToCudnnDataType(conv_input->dtype());
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
-  // create tensor discriptors
+  // create tensor descriptors
   auto dim_x = phi::backends::gpu::TransformDimOrder(
       phi::vectorize<int64_t>(conv_input->dims()));
   auto dim_filt = phi::backends::gpu::TransformDimOrder(
@@ -1010,7 +1010,7 @@ void FusedDconvDreluDbnKernel(
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
                     common::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
   // update padding and dilation
   std::vector<int> paddings_vec = paddings;
