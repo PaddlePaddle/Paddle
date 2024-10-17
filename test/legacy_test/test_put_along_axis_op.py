@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard
 
 import paddle
 from paddle.framework import core
@@ -1352,17 +1353,20 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
         ]
         self.arr = np.random.random([10, 10, 10, 10]).astype(self.dtype)
 
-    def train(self, net, to_static):
+    def train(self, to_static):
         arr = paddle.to_tensor(self.arr, stop_gradient=False)
         if to_static:
             build_strategy = paddle.static.BuildStrategy()
             build_strategy.build_cinn_pass = self.enable_cinn
             net = paddle.jit.to_static(
-                net,
+                self.net,
                 input_spec=self.input_specs,
                 build_strategy=build_strategy,
                 full_graph=True,
             )
+            net.train()
+        else:
+            net = self.net
 
         res = net(arr)
         res.backward()
@@ -1370,16 +1374,17 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
         return res, arr_grad
 
     def test_dynamic_static(self):
-        st_out, st_grads = self.train(self.net, to_static=True)
-        dy_out, dy_grads = self.train(self.net, to_static=False)
+        with dygraph_guard():
+            st_out, st_grads = self.train(to_static=True)
+            dy_out, dy_grads = self.train(to_static=False)
 
-        for ref, actual in zip(dy_out, st_out):
-            np.testing.assert_allclose(
-                ref, actual, rtol=self.tol, atol=self.tol
-            )
+            for ref, actual in zip(dy_out, st_out):
+                np.testing.assert_allclose(
+                    ref, actual, rtol=self.tol, atol=self.tol
+                )
 
-        for dr, d in zip(dy_grads, st_grads):
-            np.testing.assert_allclose(dr, d, rtol=self.tol, atol=self.tol)
+            for dr, d in zip(dy_grads, st_grads):
+                np.testing.assert_allclose(dr, d, rtol=self.tol, atol=self.tol)
 
 
 if __name__ == "__main__":
