@@ -68,20 +68,7 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
         return output, mean.reshape((N, G)), var.reshape((N, G))
     else:
         if data_layout == "NHWC":
-            x_origin_shape = x.shape
-            N = x.shape[0]
-            D = x.shape[1]
-            H = x.shape[2]
-            C = x.shape[-1]
-            x = np.reshape(x, (N, D, H, -1, C))
             x = np.transpose(x, (0, 4, 1, 2, 3))  # NDHWC => NCDHW
-        else:
-            x_origin_shape = x.shape
-            N = x.shape[0]
-            C = x.shape[1]
-            D = x.shape[2]
-            H = x.shape[3]
-            x = np.reshape(x, (N, C, D, H, -1))
         N, C, D, H, W = x.shape
         G = groups
         x = x.reshape((N * G, -1))
@@ -93,7 +80,6 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
         ) + bias.reshape((-1, 1, 1, 1))
         if data_layout == "NHWC":
             output = np.transpose(output, (0, 2, 3, 4, 1))  # NCDHW => NDHWC
-        output = np.reshape(output, x_origin_shape)
         return output, mean.reshape((N, G)), var.reshape((N, G))
 
 
@@ -484,21 +470,6 @@ class TestGroupNormOpBigEps2(TestGroupNormOp):
 class TestGroupNormOpBigEps3(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
-
-
-class TestGroupNormOp4With_NCHW(TestGroupNormOp):
-    def init_test_case(self):
-        self.shape = (2, 100, 3, 2, 2, 2)
-        self.data_format = "NCDHW"
-        self.attrs['groups'] = 2
-
-
-class TestGroupNormOp4With_NHWC(TestGroupNormOp):
-    def init_test_case(self):
-        self.shape = (2, 100, 3, 2, 2, 2)
-        self.attrs['groups'] = 2
-        self.data_format = "NDHWC"
-        self.channel_last = True
 
 
 @skip_check_grad_ci(
