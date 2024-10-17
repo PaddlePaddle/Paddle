@@ -99,9 +99,9 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
 endif()
 
-if(NOT WITH_ROCM)
-  list(REMOVE_ITEM TEST_OPS test_hygon_llama_op)
-  list(REMOVE_ITEM TEST_OPS test_flash_attention_hip)
+if(WITH_ROCM)
+  add_test(NAME test_hygon_llama_ops
+           COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/hygon_dcu/test_hygon_llama_op.sh)
 endif()
 
 if(NOT WITH_NCCL)
