@@ -602,4 +602,12 @@ struct hash<cinn::ir::Expr> {
   }
 };
 
+template <>
+struct equal_to<cinn::ir::Expr> {
+  bool operator()(const cinn::ir::Expr& first,
+                  const cinn::ir::Expr& second) const {
+    return first.get() == second.get();
+  }
+};
+
 }  // namespace std
