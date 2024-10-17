@@ -3314,9 +3314,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<phi::Strings>()) {
           tensor_out = var->template GetMutable<phi::Strings>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::RawTensor>() ||
+        } else if (var->template IsType<phi::Vocab>()) {
+          tensor_out = var->template GetMutable<phi::Vocab>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::RawTensor>() ||
                    !var->IsInitialized()) {
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
+          tensor_out = var->template GetMutable<phi::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
