@@ -62,7 +62,7 @@ class SameStatusReshardFunction(ReshardFunction):
                     src_value,
                     comm_group.id,
                     comm_group.ranks.index(dst),
-                    False,
+                    True,
                 )
                 point = paddle.base.libpaddle.pir.get_current_insertion_point()
                 point.prev()
@@ -91,7 +91,7 @@ class SameStatusReshardFunction(ReshardFunction):
                     comm_group.id,
                     comm_group.ranks.index(src),
                     dst_type.dtype,
-                    False,
+                    True,
                 )
                 new_op = recv_value.get_defining_op()
                 new_op.dist_attr = (

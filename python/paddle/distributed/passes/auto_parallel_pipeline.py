@@ -96,7 +96,7 @@ class PipelinePass(PassBase):
             for index, op in enumerate(list(block.ops)):
                 # NOTE: pipeline might hang when dynamic_shape is True
                 if op.type in ['p_send', 'p_recv']:
-                    op._set_attr("dynamic_shape", False)
+                    op._set_attr("dynamic_shape", True)
                 # set send op on comm stream
                 if op.type == 'p_send':
                     op_role = op.attr('op_role')
