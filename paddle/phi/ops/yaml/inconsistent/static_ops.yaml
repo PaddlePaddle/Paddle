@@ -119,6 +119,7 @@
   infer_meta :
     func : CEmbeddingInferMeta
     param : [weight, x, start_index]
+    spmd_rule: CEmbeddingInferSpmd
   kernel :
     func : c_embedding
     param : [weight, x, start_index, vocab_size]
@@ -1011,6 +1012,7 @@
     data_type : x
   interfaces : paddle::dialect::ParseKernelKeyInterface
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : write_to_array
   args : (Tensor i, Tensor x)
@@ -1021,10 +1023,22 @@
   output: Tensor(softmax), Tensor(loss)
   infer_meta:
     func : CSoftmaxWithCrossEntropyInferMeta
+    spmd_rule : CSoftmaxWithCrossEntropyInferSpmd
   kernel:
     func: c_softmax_with_cross_entropy
     data_type : logits
   backward: c_softmax_with_cross_entropy_grad
+
+- op: faster_tokenizer
+  args: (Tensor vocab, Tensor text, Tensor text_pair, bool do_lower_case = false,
+    bool is_split_into_words = false, int max_seq_len = 0, bool pad_to_max_seq_len
+    = false)
+  output: Tensor (input_ids), Tensor (segment_ids)
+  infer_meta:
+    func: FasterTokenizerInferMeta
+  kernel:
+    func: faster_tokenizer
+  optional: text_pair
 
 - op: fused_attention
   args: (Tensor x, Tensor ln_scale, Tensor ln_bias, Tensor qkv_weight, Tensor qkv_bias, Tensor cache_kv, Tensor src_mask, Tensor out_linear_weight, Tensor out_linear_bias, Tensor ln_scale_2, Tensor ln_bias_2, int num_heads, bool transpose_qkv_wb, bool pre_layer_norm, float epsilon, float attn_dropout_rate, bool is_test, bool attn_dropout_fix_seed, int attn_dropout_seed, str attn_dropout_implementation, float dropout_rate, bool dropout_fix_seed, int dropout_seed, str dropout_implementation, float ln_epsilon, bool add_residual, int ring_id)
@@ -1048,7 +1062,7 @@
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: moving_average_abs_max_scale
   args: (Tensor x, Tensor in_accum, Tensor in_state, float moving_rate=0.9f, bool is_test=false)

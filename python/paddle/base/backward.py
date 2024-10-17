@@ -1252,7 +1252,7 @@ def _get_sub_block_path(
 
     Args:
         sub_block(Block): The sub-block in which to get op path.
-        sub_block_op_desc: The op desc of the sub-block op such as 'while', 'conditional_block' and 'recurrent'.
+        sub_block_op_desc: The op desc of the sub-block op such as 'while', 'conditional_block'.
         no_grad_set(set): The set of no grad var name. no_grad_set will be changed.
         op_path_dict(dict): op_path_dict will be changed.
             key(int) block index

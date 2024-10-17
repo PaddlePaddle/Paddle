@@ -16,7 +16,6 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -24,6 +23,7 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/vocab/string_array.h"
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "onnxruntime_c_api.h"    // NOLINT
 #include "onnxruntime_cxx_api.h"  // NOLINT
@@ -79,8 +79,7 @@ void Tensor::ReshapeStrings(const size_t &shape) {
       var,
       common::errors::PreconditionNotMet(
           "No tensor called [%s] in the runtime scope", name_));
-  paddle::framework::Strings *tensor =
-      var->GetMutable<paddle::framework::Strings>();
+  phi::Strings *tensor = var->GetMutable<phi::Strings>();
   tensor->resize(shape);
 }
 
@@ -368,7 +367,7 @@ void Tensor::ShareExternalData(const T *data,
 }
 
 void Tensor::CopyStringsFromCpu(const paddle_infer::Strings *data) {
-  EAGER_GET_TENSOR(paddle::framework::Strings);
+  EAGER_GET_TENSOR(phi::Strings);
   PADDLE_ENFORCE_GE(tensor->size(),
                     0,
                     common::errors::PreconditionNotMet(
