@@ -998,8 +998,6 @@ def _pir_get_backward_op_type(all_ops, op_idx):
 def _split_program_for_vpp(
     program, num_model_chunks, oprole_names, split_bw=False
 ):
-    print(program)
-
     def get_var_name(op_idx, result_idx):
         result_value = all_ops[op_idx].result(result_idx)
         all_used_ops = result_value.all_used_ops()
