@@ -167,20 +167,7 @@ PreparedOp PrepareImpl(
     const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  if (attrs.find("ring_id") != attrs.end()) {
-    auto ring_id_attr = attrs.at("ring_id");
-    int ring_id = PADDLE_GET(int, ring_id_attr);
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(ring_id)) {
-      distributed::ProcessGroup* pg = map->get(ring_id);
-      auto comm_context =
-          static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
-              ->GetOrCreateCommContext(place);
-      dev_ctx->SetCommContext(comm_context);
-    }
-  }
-#endif
+
 #ifdef PADDLE_WITH_DNNL
   // OneDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
@@ -313,6 +300,32 @@ PreparedOp PrepareImpl(
               phi::TransToPhiBackend(dev_ctx->GetPlace()))) {
         dev_ctx = pool.Get(phi::TransToPhiPlace(expected_kernel_key.backend()));
       }
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      if (attrs.find("ring_id") != attrs.end()) {
+        auto ring_id_attr = attrs.at("ring_id");
+        int ring_id = PADDLE_GET(int, ring_id_attr);
+        auto map = distributed::ProcessGroupMapFromGid::getInstance();
+        if (map->has(ring_id)) {
+          distributed::ProcessGroup* pg = map->get(ring_id);
+          auto comm_context =
+              static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
+                  ->GetOrCreateCommContext(place);
+          auto default_stream =
+              static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
+          dev_ctx =
+              static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+                  ->GetDevContext();
+          dev_ctx->SetCommContext(comm_context);
+          // Note: In dynamic mode, c_softmax_with_cross_entropy need use global
+          // calculate stream (default stream)。 Using the comm_ctx's stream
+          // will lead to synchronization issues, causing accuracy diff.
+          if (phi_kernel_name == "c_softmax_with_cross_entropy") {
+            static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                default_stream, false);
+          }
+        }
+      }
+#endif
       return PreparedOp(op,
                         empty_ctx,
                         expected_kernel_key,
