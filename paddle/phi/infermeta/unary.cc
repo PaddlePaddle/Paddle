@@ -1439,6 +1439,8 @@ void FillAnyLikeInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void FeedInferMeta(MetaTensor* out) {}
+
 void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
                            int trainer_id,
                            const std::vector<std::string>& endpoints,
