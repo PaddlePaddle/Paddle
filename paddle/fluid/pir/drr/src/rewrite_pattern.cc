@@ -631,12 +631,15 @@ std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(
     pir::IrContext* ir_context,
     const std::shared_ptr<DrrPatternBase>& drr_pattern) {
   DrrPatternContext drr_context;
-  drr_pattern->operator()(&drr_context);
+  if (drr_pattern->should_create_ctx_) {
+    drr_pattern->operator()(&drr_context);
+  } else {
+   drr_context = drr_pattern->get_python_drr_context();
+  }
   return std::make_unique<DrrRewritePattern>(drr_pattern->name(),
                                              drr_context,
                                              ir_context,
                                              drr_pattern->benefit(),
                                              drr_pattern->shared_from_this());
 }
-
 }  // namespace paddle::drr
