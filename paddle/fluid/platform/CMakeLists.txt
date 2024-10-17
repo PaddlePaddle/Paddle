@@ -1,39 +1,9 @@
-if(WITH_ONEDNN)
-  set(ONEDNN_CTX_DEPS onednn)
-else()
-  set(ONEDNN_CTX_DEPS)
-endif()
-
 add_subdirectory(device)
-
-set(dgc_deps "")
-if(WITH_DGC)
-  set(dgc_deps dgc)
-endif()
 
 if(WITH_IPU)
   set(IPU_CTX_DEPS ipu_info)
 else()
   set(IPU_CTX_DEPS)
-endif()
-
-if(WITH_GPU)
-  nv_library(
-    stream_callback_manager
-    SRCS stream_callback_manager.cc
-    DEPS simple_threadpool phi common)
-endif()
-if(WITH_ROCM)
-  hip_library(
-    stream_callback_manager
-    SRCS stream_callback_manager.cc
-    DEPS simple_threadpool phi common)
-endif()
-
-if(WITH_GPU OR WITH_ROCM)
-  set(STREAM_CALLBACK_DEPS stream_callback_manager)
-else()
-  set(STREAM_CALLBACK_DEPS)
 endif()
 
 if(WITH_GLOO)
@@ -57,11 +27,8 @@ cc_library(
   SRCS device_context.cc
   DEPS simple_threadpool
        xxhash
-       ${STREAM_CALLBACK_DEPS}
        eigen3
        ${IPU_CTX_DEPS}
-       ${ONEDNN_CTX_DEPS}
-       ${dgc_deps}
        dlpack
        phi
        common)
