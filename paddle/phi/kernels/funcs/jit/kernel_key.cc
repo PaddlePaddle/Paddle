@@ -67,7 +67,16 @@ int64_t JitCodeKey<sgd_attr_t>(const sgd_attr_t& attr) {
 
 template <>
 int64_t JitCodeKey<adam_attr_t>(const adam_attr_t& attr) {
-  return static_cast<int64_t>(attr.beta1 + attr.beta2);
+  // if use amsgrad, we add `10` for hashcode
+  return static_cast<int64_t>(attr.beta1 + attr.beta2 +
+                              (attr.amsgrad ? 10 : 0));
+}
+
+template <>
+int64_t JitCodeKey<adamw_attr_t>(const adamw_attr_t& attr) {
+  // if use amsgrad, we add `10` for hashcode
+  return static_cast<int64_t>(attr.beta1 + attr.beta2 + attr.coeff +
+                              (attr.amsgrad ? 10 : 0));
 }
 
 }  // namespace phi::jit

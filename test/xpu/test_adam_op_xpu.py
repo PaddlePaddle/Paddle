@@ -45,7 +45,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.set_shape()
             self.set_inputs()
             self.set_steps()
-            param_out, moment1_out, moment2_out = adam_step(
+            param_out, moment1_out, moment2_out, moment2_out_max = adam_step(
                 self.inputs, self.attrs
             )
 
@@ -109,7 +109,11 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             }
 
         def test_check_output(self):
-            self.check_output_with_place(place=paddle.XPUPlace(0), atol=1e-2)
+            self.check_output_with_place(
+                no_check_set=['Moment2MaxOut'],
+                place=paddle.XPUPlace(0),
+                atol=1e-2,
+            )
 
     class TestAdamOp2(TestAdamOp):
         '''Test Adam Op with supplied attributes'''
@@ -163,7 +167,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.set_shape()
             self.set_inputs()
             self.set_steps()
-            param_out, moment1_out, moment2_out = adam_step(
+            param_out, moment1_out, moment2_out, moment2_out_max = adam_step(
                 self.inputs, self.attrs
             )
 
@@ -207,8 +211,8 @@ class XPUTestAdamOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             for _ in range(self.num_steps):
-                param_out, moment1_out, moment2_out = adam_step(
-                    self.inputs, self.attrs
+                param_out, moment1_out, moment2_out, moment2_out_max = (
+                    adam_step(self.inputs, self.attrs)
                 )
 
                 beta1_pow_out = self.inputs['Beta1Pow'] * self.beta1
@@ -223,7 +227,9 @@ class XPUTestAdamOp(XPUOpTestWrapper):
 
                 # Verify output for this step
                 self.check_output_with_place(
-                    place=paddle.XPUPlace(0), atol=1e-2
+                    no_check_set=['Moment2MaxOut'],
+                    place=paddle.XPUPlace(0),
+                    atol=1e-2,
                 )
 
                 # Output of this step becomes input for next step
@@ -246,13 +252,14 @@ def adam_step(inputs, attributes):
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
     :param attributes: dict of attributes
-    :return tuple: tuple of output param, moment1, moment2,
+    :return tuple: tuple of output param, moment1, moment2, moment2_max
     beta1 power accumulator and beta2 power accumulator
     '''
     param = inputs['Param']
     grad = inputs['Grad']
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
+    moment2_max = inputs.get('Moment2Max', None)
     lr = inputs['LearningRate']
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
@@ -268,13 +275,27 @@ def adam_step(inputs, attributes):
     else:
         beta2 = inputs['Beta2Tensor'][0]
 
+    amsgrad = attributes.get('amsgrad', False)
+
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
+
     lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-    param_out = param - lr_t * (
-        moment1_out / (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow))
-    )
-    return param_out, moment1_out, moment2_out
+
+    if amsgrad:
+        moment2_max_out = np.maximum(moment2_out, moment2_max)
+        param_out = param - lr_t * (
+            moment1_out
+            / (np.sqrt(moment2_max_out) + epsilon * np.sqrt(1 - beta2_pow))
+        )
+    else:
+        moment2_max_out = np.empty_like(moment2_out)
+        param_out = param - lr_t * (
+            moment1_out
+            / (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow))
+        )
+
+    return param_out, moment1_out, moment2_out, moment2_max_out
 
 
 def adam_step_sparse(
@@ -291,6 +312,7 @@ def adam_step_sparse(
     # grad = inputs['Grad']
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
+    moment2_max = inputs.get('Moment2Max', None)
     lr = inputs['LearningRate']
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
@@ -298,9 +320,11 @@ def adam_step_sparse(
     beta1 = attributes['beta1']
     beta2 = attributes['beta2']
     epsilon = attributes['epsilon']
+    amsgrad = attributes.get('amsgrad', False)
 
     moment1_out = np.zeros(shape=[height, row_numel])
     moment2_out = np.zeros(shape=[height, row_numel])
+    moment2_max_out = np.zeros(shape=[height, row_numel])
     param_out = np.zeros(shape=[height, row_numel])
 
     def update_row(row_id, update_value):
@@ -311,9 +335,20 @@ def adam_step_sparse(
             update_value
         )
         lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-        param_out[row_id] = param[row_id] - lr_t * (
-            moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
-        )
+
+        if amsgrad:
+            moment2_max_out[row_id] = np.maximum(
+                moment2_out[row_id], moment2_max[row_id]
+            )
+            param_out[row_id] = param[row_id] - lr_t * (
+                moment1_out[row_id]
+                / (np.sqrt(moment2_max_out[row_id]) + epsilon)
+            )
+        else:
+            moment2_max_out[row_id] = np.empty_like(moment2_out[row_id])
+            param_out[row_id] = param[row_id] - lr_t * (
+                moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
+            )
 
     if lazy_mode:
         for idx, row_id in enumerate(rows):
@@ -325,7 +360,7 @@ def adam_step_sparse(
                 update_value = np_grad[rows.index(row_id)]
             update_row(row_id, update_value)
 
-    return param_out, moment1_out, moment2_out
+    return param_out, moment1_out, moment2_out, moment2_max_out
 
 
 class TestSparseAdamOp(unittest.TestCase):
@@ -355,6 +390,7 @@ class TestSparseAdamOp(unittest.TestCase):
             'beta1': beta1,
             'beta2': beta2,
             'min_row_size_to_use_multithread': 2,
+            'amsgrad': False,  # Currently, xpu NOT support amsgrad.
         }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
@@ -369,7 +405,7 @@ class TestSparseAdamOp(unittest.TestCase):
 
         self.sparse_inputs = ["Grad"]
 
-        param_out, mom1, mom2 = adam_step_sparse(
+        param_out, mom1, mom2, mom2_max = adam_step_sparse(
             self.dense_inputs,
             self.attrs,
             height,
@@ -410,6 +446,9 @@ class TestSparseAdamOp(unittest.TestCase):
         adam_op.run(scope, place)
 
         for key, np_array in self.outputs.items():
+            if key in ['Moment2MaxOut']:  # Currently, xpu NOT support amsgrad.
+                continue
+
             out_var = scope.var(key).get_tensor()
             actual = np.array(out_var)
             actual = actual.reshape([actual.size])
@@ -452,6 +491,7 @@ class TestSparseAdamOp1(TestSparseAdamOp):
             'beta1': beta1,
             'beta2': beta2,
             'min_row_size_to_use_multithread': 2,
+            'amsgrad': False,  # Currently, xpu NOT support amsgrad.
         }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
@@ -466,7 +506,7 @@ class TestSparseAdamOp1(TestSparseAdamOp):
 
         self.sparse_inputs = ["Grad"]
 
-        param_out, mom1, mom2 = adam_step_sparse(
+        param_out, mom1, mom2, mom2_max = adam_step_sparse(
             self.dense_inputs,
             self.attrs,
             height,

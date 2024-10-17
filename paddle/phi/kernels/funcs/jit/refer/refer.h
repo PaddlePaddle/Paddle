@@ -523,16 +523,29 @@ void Adam(T beta1,
           const T* grad_ptr,
           const T* mom1_ptr,
           const T* mom2_ptr,
+          const T* mom2_max_ptr,
           const T* param_ptr,
           T* mom1_out_ptr,
           T* mom2_out_ptr,
-          T* param_out_ptr) {
+          T* mom2_max_out_ptr,
+          T* param_out_ptr,
+          bool amsgrad) {
   for (int i = 0; i < numel; ++i) {
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
     mom2_out_ptr[i] =
         beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
-    param_out_ptr[i] =
-        param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_out_ptr[i]) + eps));
+
+    if (amsgrad) {
+      T mom2_max_ = std::max(mom2_out_ptr[i], mom2_max_ptr[i]);
+      mom2_max_out_ptr[i] = mom2_max_;
+
+      param_out_ptr[i] =
+          param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_max_) + eps));
+    } else {
+      T mom2_ = mom2_out_ptr[i];
+      param_out_ptr[i] =
+          param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_) + eps));
+    }
   }
 }
 
@@ -548,17 +561,30 @@ void AdamW(T beta1,
            const T* grad_ptr,
            const T* mom1_ptr,
            const T* mom2_ptr,
+           const T* mom2_max_ptr,
            const T* param_ptr,
            T* mom1_out_ptr,
            T* mom2_out_ptr,
-           T* param_out_ptr) {
+           T* mom2_max_out_ptr,
+           T* param_out_ptr,
+           bool amsgrad) {
   for (int i = 0; i < numel; ++i) {
     auto param_tmp = param_ptr[i] - old_lr * lr_ratio * coeff * param_ptr[i];
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
     mom2_out_ptr[i] =
         beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
-    param_out_ptr[i] =
-        param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_out_ptr[i]) + eps));
+
+    if (amsgrad) {
+      T mom2_max_ = std::max(mom2_out_ptr[i], mom2_max_ptr[i]);
+      mom2_max_out_ptr[i] = mom2_max_;
+
+      param_out_ptr[i] =
+          param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_max_) + eps));
+    } else {
+      T mom2_ = mom2_out_ptr[i];
+      param_out_ptr[i] =
+          param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_) + eps));
+    }
   }
 }
 
