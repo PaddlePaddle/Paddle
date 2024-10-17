@@ -279,6 +279,8 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
       inout_columns,
       false,
   };
+  // if XPUInOutType is bfloat16, another FcFusionDesc with TINTER_RES being set
+  // to float will be consturcted below to achieve higher accuracy
   xblas::FcFusionDesc<FCT, float, XPUInOutType> desc{
       alpha,
       beta,
@@ -354,16 +356,37 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 #endif
   } else {
 #ifdef PADDLE_WITH_XPU_XRE5
-    r = xblas::fc_fusion<XPUType,
-                         XPUType,
-                         XPUInOutType,
-                         XPUInOutType,
-                         FCT,
-                         float,
-                         XPUInOutType,
-                         float,
-                         float>(ctx, t_x, t_w, t_input, t_y, desc, epilogue);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+    // set TINTER_RES to float if XPUInOutType is bfloat16 to achieve higher
+    // accuracy
+    using BF16CHECKTYPE = typename XPUTypeTrait<bfloat16>::Type;
+    if (std::is_same<XPUInOutType, BF16CHECKTYPE>::value) {
+      xblas::FcFusionDesc<FCT, float, float> desc_subs{
+          alpha,
+          beta,
+      };
+      r = xblas::fc_fusion<XPUType,
+                           XPUType,
+                           XPUInOutType,
+                           XPUInOutType,
+                           FCT,
+                           float,
+                           float,
+                           float,
+                           float>(
+          ctx, t_x, t_w, t_input, t_y, desc_subs, epilogue);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+    } else {
+      r = xblas::fc_fusion<XPUType,
+                           XPUType,
+                           XPUInOutType,
+                           XPUInOutType,
+                           FCT,
+                           float,
+                           XPUInOutType,
+                           float,
+                           float>(ctx, t_x, t_w, t_input, t_y, desc, epilogue);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+    }
 #else
     if (input != nullptr) {
       r = xpu::Error_t::NOT_IMPLEMENT;
