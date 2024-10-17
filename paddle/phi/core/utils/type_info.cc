@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -51,6 +52,7 @@ template class TypeInfoTraits<phi::TensorBase, SparseCsrTensor>;
 template class TypeInfoTraits<phi::TensorBase, StringTensor>;
 template class TypeInfoTraits<phi::TensorBase, TensorArray>;
 template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
+template class TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>;
 template class TypeInfoTraits<phi::TensorBase, Vocab>;
 template class TypeInfoTraits<phi::TensorBase, Strings>;
 
