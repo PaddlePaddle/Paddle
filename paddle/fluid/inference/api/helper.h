@@ -497,5 +497,39 @@ static std::string Precision2String(AnalysisConfig::Precision precision) {
     return "none";
 }
 
+inline std::vector<std::string> ShouldRunPass(
+    const std::vector<std::string> &origin_pass, const AnalysisConfig &config) {
+  std::vector<std::string> res, res_tmp;
+
+  // Author(liujinnan): `auto_layout_pass` is a substitute for
+  // `transfer_layout_pass` and is temporarily controlled by Flag. After
+  // complete verification, `transfer_layout_pass` will be completely replaced
+  // and this for loop will be deleted.
+  for (auto &&pass : origin_pass) {
+    if (pass == "transfer_layout_pass" && config.autolayout_enabled()) {
+      res_tmp.push_back(("auto_layout_pass"));
+      res_tmp.push_back(("auto_layout_simplify_pass"));
+      continue;
+    }
+    res_tmp.push_back(pass);
+  }
+  // Just return `origin_pass` when `transfer_layout_pass` replaced by
+  // `auto_layout_pass`.
+  if (!config.cinn.enabled()) return res_tmp;
+
+  for (auto &&pass : res_tmp) {
+    // This `if` branch will be deleted after `transfer_layout_pass` replaced by
+    // `auto_layout_pass`
+    if (pass == "transfer_layout_pass" || pass == "auto_layout_pass" ||
+        pass == "auto_layout_simplify_pass")
+      continue;
+    if (std::find(BeforeCINNPasses.begin(), BeforeCINNPasses.end(), pass) !=
+        BeforeCINNPasses.end())
+      continue;
+    res.push_back(pass);
+  }
+
+  return res;
+}
 }  // namespace inference
 }  // namespace paddle
