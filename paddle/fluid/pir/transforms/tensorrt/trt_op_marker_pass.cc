@@ -1459,6 +1459,41 @@ class NearestInterV2Pattern
   }
 };
 
+class ClipPattern : public pir::OpRewritePattern<paddle::dialect::ClipOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ClipOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::ClipOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+
+    auto x_shape = op.operand_source(0)
+                       .type()
+                       .dyn_cast<paddle::dialect::DenseTensorType>()
+                       .dims();
+    if (x_shape.size() == 0) {
+      VLOG(3) << " clip op does not support input's dim is 0 in tensorrt.";
+      return false;
+    }
+
+    auto min_tensor = op.operand_source(1);
+    if (!min_tensor) {
+      VLOG(3) << "clip op does not have input min tensor";
+      return false;
+    }
+    auto max_tensor = op.operand_source(2);
+    if (!max_tensor) {
+      VLOG(3) << "clip op does not have input max tensor";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1534,6 +1569,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MaxOpPattern>(context));
     ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
     ps.Add(std::make_unique<NearestInterV2Pattern>(context));
+    ps.Add(std::make_unique<ClipPattern>(context));
     return ps;
   }
 };

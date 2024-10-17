@@ -162,12 +162,32 @@ def add_elementwise_layer(network, paddle_op, inputs, op_type):
 
 
 # Create and add 1D constant layer
-def add_1D_constant_layer(network, data, dtype=np.int32):
+def add_1D_constant_layer(network, data, dtype=np.int32, scalar=False):
     if not isinstance(data, list):
         data = [data]
     constant_data = np.array(data, dtype=dtype)
-    constant_layer = network.add_constant(constant_data.shape, constant_data)
-    return constant_layer.get_output(0)
+    constant_data_shape = [] if scalar else constant_data.shape
+    constant_layer = network.add_constant(constant_data_shape, constant_data)
+    test = constant_layer.get_output(0)
+    return test
+
+
+# Create an constant layer with shape_tensor and value
+def fill_constant_layer(
+    network, shape_tensor, tensor_rank, data, dtype=np.int32
+):
+    fill_layer = network.add_fill(
+        trt.Dims([tensor_rank]), trt.FillOperation.LINSPACE
+    )
+    fill_layer.set_input(0, shape_tensor)
+    fill_layer.set_input(
+        1, add_1D_constant_layer(network, data, dtype, scalar=True)
+    )
+    beta = [0] * tensor_rank
+    fill_layer.set_input(
+        2, add_1D_constant_layer(network, beta, dtype, scalar=False)
+    )
+    return fill_layer.get_output(0)
 
 
 # Concat not make rank changed
