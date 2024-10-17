@@ -312,7 +312,7 @@ class CublasLtAlgoCache {
                                                &num_algo_ids);
     PADDLE_ENFORCE_GPU_SUCCESS(status);
 
-    // Traverse all posssible algo combinations
+    // Traverse all possible algo combinations
     int step = 0;
     int limit = 20000;
     std::vector<CublasLtAlgoSelectorParam> params;
