@@ -313,7 +313,7 @@ def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
                 # if a value is renamed by shadow_output,
                 # it will be used by other sub_programs
                 type_to_var_names[job_type].add(op.attrs()["output_name"])
-        if job_type == "backward":
+        if job_type in ["backward", "backward_w"]:
             assert (
                 len(type_to_var_names[job_type]) == 0
             ), f"The {job_type} sub_program can't have skip_gc_vars. But it is {type_to_var_names[job_type]}."
@@ -945,9 +945,73 @@ def _split_program_into_forward_backward_optimize(
     return fwd_program, bwd_program, opt_program
 
 
-def _pir_program_for_vpp(
-    program, num_model_chunks, enable_send_recv_overlap=False
+def _pir_get_backward_op_type(all_ops, op_idx):
+    cur_op = all_ops[op_idx]
+
+    # deal the ops pattern:
+    # [reshape, reshape, matmul, reshape, add(grad_merge)]
+    def is_reshape_matmul_pattern():
+        ops_pattern = [
+            "pd_op.full_int_array",
+            "pd_op.reshape",
+            "pd_op.full_int_array",
+            "pd_op.reshape",
+            "pd_op.matmul",
+            "pd_op.full_int_array",
+            "pd_op.reshape",
+            "pd_op.add_",
+        ]
+        if not cur_op.has_attr("grad_merge_add"):
+            return False
+        if op_idx < 8:
+            return False
+
+        for i in range(8):
+            if all_ops[op_idx - i].name() != ops_pattern[i]:
+                return False
+        return True
+
+    def used_by_grad_merge_add(value):
+        for op in value.all_used_ops():
+            if op.has_attr("grad_merge_add"):
+                return True
+        return False
+
+    # For the cur_op doesn't have output such as 'send_v2', it should be backward_b.
+    if cur_op.num_results() == 0:
+        return ["backward_b"]
+
+    if is_reshape_matmul_pattern():
+        return ["backward_w"] * 8
+
+    if cur_op.has_attr("grad_merge_add"):
+        return ["backward_w"]
+
+    # backward_w type op should only output grad of parameters
+    for output in cur_op.results():
+        if not used_by_grad_merge_add(output):
+            return ["backward_b"]
+
+    return ["backward_w"]
+
+
+def _split_program_for_vpp(
+    program, num_model_chunks, oprole_names, split_bw=False
 ):
+    def get_var_name(op_idx, result_idx):
+        result_value = all_ops[op_idx].result(result_idx)
+        all_used_ops = result_value.all_used_ops()
+        shadow_output_op_used = None
+        for op in all_used_ops:
+            if op.name() == "builtin.shadow_output":
+                shadow_output_op_used = op
+
+        if shadow_output_op_used is not None:
+            var_name = shadow_output_op_used.attrs()["output_name"]
+        else:
+            var_name = f"var_{op_idx}_{all_ops[op_idx].name()}_{result_idx}"
+        return var_name
+
     def add_persistable_var(op_idx, program_type):
         all_program_types = list(type_to_program.keys())
         following_program_types = all_program_types[
@@ -969,21 +1033,8 @@ def _pir_program_for_vpp(
                     if op_name in ["pd_op.data", "builtin.parameter"]:
                         var_name = op_result.name
                     else:
-                        result_value = all_ops[op_idx].result(idx)
-                        all_used_ops = result_value.all_used_ops()
-                        shadow_output_op_used = None
-                        for op in all_used_ops:
-                            if op.name() == "builtin.shadow_output":
-                                shadow_output_op_used = op
-
-                        if shadow_output_op_used is not None:
-                            var_name = shadow_output_op_used.attrs()[
-                                "output_name"
-                            ]
-                        else:
-                            var_name = (
-                                f"var_{op_idx}_{all_ops[op_idx].name()}_{idx}"
-                            )
+                        var_name = get_var_name(op_idx, idx)
+                        if "var_" in var_name:
                             paddle.pir.set_insertion_point_after(
                                 type_to_ops[program_type][op_idx]
                             )
@@ -1004,12 +1055,11 @@ def _pir_program_for_vpp(
         for type in following_program_types:
             type_to_ops[type][op_idx].erase()
 
-    oprole_type = {0: "forward", 1: "backward", 2: "optimizer"}
     type_to_program = OrderedDict()
     type_to_ops = OrderedDict()
 
     # Step1: create programs and ops for each type
-    for type in oprole_type.values():
+    for type in oprole_names:
         if type == "optimizer":
             type_to_program["optimizer"] = program.clone()
             type_to_ops["optimizer"] = (
@@ -1017,7 +1067,8 @@ def _pir_program_for_vpp(
             )
         else:
             chunk_ids = list(range(num_model_chunks))
-            chunk_ids = chunk_ids if type != "backward" else reversed(chunk_ids)
+            if "backward" in type:
+                chunk_ids.reverse()
             for chunk_id in chunk_ids:
                 type_to_program[type + str(chunk_id)] = program.clone()
                 type_to_ops[type + str(chunk_id)] = (
@@ -1030,10 +1081,12 @@ def _pir_program_for_vpp(
     all_ops = program.global_block().ops
     chunk_ids = list(range(num_model_chunks))
 
+    bwd_pattern_ops_type = []
     for idx in range(len(all_ops) - 1, -1, -1):
         op = all_ops[idx]
         op_role = op.op_role
         op_chunk_id = op.attrs()["chunk_id"]
+        # Step2.1: infer chunk_id for ops that don't have chunk_id
         if op_role != int(OpRole.Optimize) and op_chunk_id == -1:
             op_chunk_id = infer_chunk_id(idx, all_ops, False)
             if op_chunk_id == -1:
@@ -1041,29 +1094,55 @@ def _pir_program_for_vpp(
                     f"Cannot infer chunk_id for op {op.name()} at index {idx}"
                 )
 
+        # Step2.2: indentify the job_type of the op
         if op_role == int(OpRole.Optimize):
-            # in optimize program, both forward and backward ops should be removed
-            for chunk_id in chunk_ids:
-                type_to_ops["forward" + str(chunk_id)][idx].erase()
-                type_to_ops["backward" + str(chunk_id)][idx].erase()
-        elif op.op_role == int(OpRole.Backward):
-            for chunk_id in chunk_ids:
-                type_to_ops["forward" + str(chunk_id)][idx].erase()
-            for chunk_id in range(num_model_chunks - 1, op_chunk_id, -1):
-                type_to_ops["backward" + str(chunk_id)][idx].erase()
-
-            add_persistable_var(idx, "backward" + str(op_chunk_id))
-        elif op.op_role == int(OpRole.Forward):
-            for chunk_id in range(0, op_chunk_id):
-                type_to_ops["forward" + str(chunk_id)][idx].erase()
-
-            add_persistable_var(idx, "forward" + str(op_chunk_id))
+            job_type = "optimizer"
+        elif op_role == int(OpRole.Backward) and split_bw:
+            if len(bwd_pattern_ops_type) == 0:
+                bwd_pattern_ops_type = _pir_get_backward_op_type(all_ops, idx)
+            job_type = bwd_pattern_ops_type.pop()
+        elif op_role == int(OpRole.Backward) and (not split_bw):
+            job_type = "backward"
+        elif op_role == int(OpRole.Forward):
+            job_type = "forward"
         else:
             raise ValueError(
                 f"The op[{op.name()}]'s op role: {op_role} isn't one of Forward, Backward or Optimizer."
             )
 
+        # Step2.3: delete ops not belong to the type
+        for type in oprole_names:
+            if type == job_type:
+                break
+            for chunk_id in chunk_ids:
+                type_to_ops[type + str(chunk_id)][idx].erase()
+
+        chunk_order = range(0, op_chunk_id)
+        if "backward" in job_type:
+            chunk_order = range(num_model_chunks - 1, op_chunk_id, -1)
+        for chunk_id in chunk_order:
+            type_to_ops[job_type + str(chunk_id)][idx].erase()
+
+        # Step2.4: add persistable var used between multiple programs
+        if job_type != "optimizer":
+            add_persistable_var(idx, job_type + str(op_chunk_id))
+
     return list(type_to_program.keys()), list(type_to_program.values())
+
+
+def _pir_program_for_vpp(
+    program, num_model_chunks, split_bw=False, enable_send_recv_overlap=False
+):
+    _pir_overlap_send_recv(program)
+
+    oprole_names = ["forward", "backward", "optimizer"]
+    if split_bw:
+        oprole_names = ["forward", "backward_b", "backward_w", "optimizer"]
+
+    program_types, programs = _split_program_for_vpp(
+        program, num_model_chunks, oprole_names, split_bw=split_bw
+    )
+    return program_types, programs
 
 
 def _program_for_vpp(
@@ -1781,6 +1860,96 @@ def split_matmul_grad_to_matmul(
     )
 
     block._remove_op(matmul_grad_id, sync=False)
+
+
+def _pir_split_matmul_grad_to_matmul(block, matmul_grad_id):
+    ops = block.ops
+    matmul_grad_op = ops[matmul_grad_id]
+
+    assert not matmul_grad_op.has_attr(
+        "trans_x"
+    ), f"matmul_grad(id={matmul_grad_id}) with tran_x == True is not supported for spliting matmul_grad to matmul"
+
+    assert not matmul_grad_op.has_attr(
+        "trans_y"
+    ), f"matmul_grad(id={matmul_grad_id}) with tran_y == True is not supported for spliting matmul_grad to matmul"
+
+    x = matmul_grad_op.operand_source(0)
+    y = matmul_grad_op.operand_source(1)
+    out_grad = matmul_grad_op.operand_source(2)
+    x_grad = matmul_grad_op.result(0)
+    y_grad = matmul_grad_op.result(1)
+    op_role = matmul_grad_op.op_role
+
+    x_dims = x.shape
+    out_grad_dims = out_grad.shape
+    y_grad_dims = y_grad.shape
+
+    assert len(x_dims) == len(
+        out_grad_dims
+    ), f"The rank of x must be equal to that of out_grad, but got x rank = {len(x_dims)} and out_grad rank = {len(out_grad_dims)}."
+
+    if len(x_dims) > 2:
+        assert (
+            x_dims[0:2] == out_grad_dims[0:2]
+        ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
+
+    new_x_dims = [x_dims[0] * x_dims[1], *list(x_dims[2:])]
+    new_out_grad_dims = [
+        out_grad_dims[0] * out_grad_dims[1],
+        *out_grad_dims[2:],
+    ]
+
+    # NOTE(Ruibiao): Why insert reshape op here?
+    # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.
+    # If we directly append matmul op to calculate y_grad without FoldInitDims, blas.BatchedGEMM is actually called in MatmulKernel, which has a larger cost than using blas.Matmul after dimension folding.
+    # Therefore, we imitate MatmulGradKernel here by inserting reshape op before matmul.
+    chunk_id = matmul_grad_op.attrs()["chunk_id"]
+
+    paddle.pir.set_insertion_point_after(matmul_grad_op)
+    new_x = paddle._C_ops.reshape(x, new_x_dims)
+    x_reshape_op = new_x.get_defining_op()
+    x_reshape_op.op_role = op_role
+    x_reshape_op.set_int_attr("chunk_id", chunk_id)
+    x_reshape_op.operand_source(1).get_defining_op().op_role = op_role
+    x_reshape_op.operand_source(1).get_defining_op().set_int_attr(
+        "chunk_id", chunk_id
+    )
+
+    paddle.pir.set_insertion_point_after(x_reshape_op)
+    new_out_grad = paddle._C_ops.reshape(out_grad, new_out_grad_dims)
+    out_grad_reshape_op = new_out_grad.get_defining_op()
+    out_grad_reshape_op.op_role = op_role
+    out_grad_reshape_op.set_int_attr("chunk_id", chunk_id)
+    out_grad_reshape_op.operand_source(1).get_defining_op().op_role = op_role
+    out_grad_reshape_op.operand_source(1).get_defining_op().set_int_attr(
+        "chunk_id", chunk_id
+    )
+
+    paddle.pir.set_insertion_point_after(out_grad_reshape_op)
+    new_y_grad = paddle._C_ops.matmul(new_x, new_out_grad, True, False)
+    new_matmul_op = new_y_grad.get_defining_op()
+    new_matmul_op.op_role = op_role
+    new_matmul_op.set_int_attr("chunk_id", chunk_id)
+
+    paddle.pir.set_insertion_point_after(new_matmul_op)
+    new_y_grad_reshape = paddle._C_ops.reshape(new_y_grad, y_grad_dims)
+    y_grad_reshape_op = new_y_grad_reshape.get_defining_op()
+    y_grad_reshape_op.op_role = op_role
+    y_grad_reshape_op.set_int_attr("chunk_id", chunk_id)
+    y_grad_reshape_op.operand_source(1).get_defining_op().op_role = op_role
+    y_grad_reshape_op.operand_source(1).get_defining_op().set_int_attr(
+        "chunk_id", chunk_id
+    )
+
+    paddle.pir.set_insertion_point_after(matmul_grad_op)
+    new_x_grad = paddle._C_ops.matmul(out_grad, y, False, True)
+    new_x_grad.get_defining_op().op_role = op_role
+    new_x_grad.get_defining_op().set_int_attr("chunk_id", chunk_id)
+
+    x_grad.replace_all_uses_with(new_x_grad)
+    y_grad.replace_all_uses_with(new_y_grad_reshape)
+    matmul_grad_op.erase()
 
 
 class PipelineMemoryEstimator:
