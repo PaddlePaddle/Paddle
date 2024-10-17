@@ -209,7 +209,7 @@ def _strong_wolfe(
             bracket_gtd = [gtd_prev, gtd_new]
             break
 
-        if paddle.abs(gtd_new) <= -c2 * gtd:
+        if abs(gtd_new) <= -c2 * gtd:
             bracket = [alpha]
             bracket_f = [loss_new]
             bracket_g = [grad_new]
@@ -262,10 +262,7 @@ def _strong_wolfe(
     low_pos, high_pos = (0, 1) if bracket_f[0] <= bracket_f[-1] else (1, 0)
     while not done and ls_iter < max_ls:
         # line-search bracket is so small
-        bracket_ls = bracket[1] - bracket[0]
-        if not isinstance(bracket_ls, paddle.Tensor):
-            bracket_ls = paddle.to_tensor(bracket_ls, dtype=gtd_new.dtype)
-        if paddle.abs(bracket_ls) * d_norm < tolerance_change:
+        if abs(bracket[1] - bracket[0]) * d_norm < tolerance_change:
             break
 
         # compute new trial value
@@ -291,9 +288,7 @@ def _strong_wolfe(
             # interpolation close to boundary
             if insuf_progress or alpha >= max(bracket) or alpha <= min(bracket):
                 # evaluate at 0.1 away from boundary
-                if paddle.abs(alpha - max(bracket)) < paddle.abs(
-                    alpha - min(bracket)
-                ):
+                if abs(alpha - max(bracket)) < abs(alpha - min(bracket)):
                     alpha = max(bracket) - eps
                 else:
                     alpha = min(bracket) + eps
@@ -321,7 +316,7 @@ def _strong_wolfe(
                 (0, 1) if bracket_f[0] <= bracket_f[1] else (1, 0)
             )
         else:
-            if paddle.abs(gtd_new) <= -c2 * gtd:
+            if abs(gtd_new) <= -c2 * gtd:
                 # Wolfe conditions satisfied
                 done = True
             elif gtd_new * (bracket[high_pos] - bracket[low_pos]) >= 0:

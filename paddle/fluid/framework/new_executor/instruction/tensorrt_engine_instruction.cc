@@ -466,8 +466,8 @@ void TensorRTEngineInstruction::BindInputTensor(
   PADDLE_ENFORCE_GE(
       bind_index,
       0,
-      phi::errors::InvalidArgument("Cannot find input name %s in TRT engine",
-                                   input_name.c_str()));
+      common::errors::InvalidArgument("Cannot find input name %s in TRT engine",
+                                      input_name.c_str()));
 #else
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(input_name.c_str()) +
@@ -640,8 +640,8 @@ void TensorRTEngineInstruction::BindOutputTensor(
   PADDLE_ENFORCE_GE(
       bind_index,
       0,
-      phi::errors::InvalidArgument("Cannot find input name %s in TRT engine",
-                                   output_name.c_str()));
+      common::errors::InvalidArgument("Cannot find input name %s in TRT engine",
+                                      output_name.c_str()));
 #else
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(output_name.c_str()) +

@@ -257,6 +257,7 @@ class TestAudioFuncitons(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             window_scipy_exp, window_paddle_exp.numpy(), decimal=5
         )
+
         try:
             window_paddle = paddle.audio.functional.get_window("hann", -1)
         except ValueError:
@@ -290,7 +291,14 @@ class TestAudioFuncitons(unittest.TestCase):
         np.testing.assert_array_almost_equal(librosa_dct, paddle_dct, decimal=5)
 
     @parameterize(
-        [128, 256, 512], ["hamming", "hann", "triang", "bohman"], [True, False]
+        [128, 256, 512],
+        [
+            "hamming",
+            "hann",
+            "triang",
+            "bohman",
+        ],
+        [True, False],
     )
     def test_stft_and_spect(
         self, n_fft: int, window_str: str, center_flag: bool
@@ -345,7 +353,14 @@ class TestAudioFuncitons(unittest.TestCase):
         )
 
     @parameterize(
-        [128, 256, 512], [64, 82], ["hamming", "hann", "triang", "bohman"]
+        [128, 256, 512],
+        [64, 82],
+        [
+            "hamming",
+            "hann",
+            "triang",
+            "bohman",
+        ],
     )
     def test_istft(self, n_fft: int, hop_length: int, window_str: str):
         if len(self.waveform.shape) == 2:  # (C, T)

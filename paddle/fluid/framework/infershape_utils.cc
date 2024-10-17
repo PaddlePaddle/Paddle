@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/int_array.h"
@@ -27,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/tensor_utils.h"

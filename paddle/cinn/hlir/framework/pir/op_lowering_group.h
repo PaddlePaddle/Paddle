@@ -185,6 +185,14 @@ class OpLoweringGroup {
     return this->symbol_args_map_;
   }
 
+  const std::vector<int64_t>& temp_space_sizes() const {
+    return this->temp_space_sizes_;
+  }
+
+  std::vector<int64_t>& mut_temp_space_sizes() {
+    return this->temp_space_sizes_;
+  }
+
  private:
   using alignment_schedule_info_t = std::unordered_map<
       ::pir::Operation*,
@@ -231,6 +239,7 @@ class OpLoweringGroup {
   std::vector<std::string> output_names_;
   std::vector<::pir::Value> output_values_;
   std::map<int, CINNKernelInfo::SymbolArgBindInfo> symbol_args_map_;
+  std::vector<int64_t> temp_space_sizes_;
 
   alignment_schedule_info_t alignment_schedule_info_;
   std::vector<int64_t> reduce_axis_;

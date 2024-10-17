@@ -256,7 +256,7 @@ class XPUOpTest(OpTest):
             a3,
             inputs_to_check,
             max_relative_error,
-            "Gradient Check On cpu & xpu",
+            "Gradient Check On xpu & cpu",
         )
 
     def get_grad_with_place(

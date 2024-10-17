@@ -26,9 +26,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
+#include "paddle/phi/core/framework/data_feed.pb.h"
 #ifdef PADDLE_WITH_BOX_PS
 #include <boxps_public.h>
 #endif

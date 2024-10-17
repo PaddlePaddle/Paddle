@@ -303,7 +303,12 @@ class ModuleApiTest(unittest.TestCase):
         else:
             base.disable_dygraph()
         gen = paddle.seed(self._random_seed)
-        paddle.framework.random._manual_program_seed(self._random_seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(self._random_seed)
+            paddle.framework.random._manual_program_seed(self._random_seed)
+        else:
+            paddle.framework.random._manual_program_seed(self._random_seed)
         scope = base.core.Scope()
         with base.scope_guard(scope):
             layer = (
@@ -311,10 +316,12 @@ class ModuleApiTest(unittest.TestCase):
                 if isinstance(self.attrs, dict)
                 else self.model_cls(*self.attrs)
             )
+
             model = Model(layer, inputs=self.make_inputs())
             model.prepare()
             if self.param_states:
                 model.load(self.param_states, optim_state=None)
+
             return model.predict_batch(self.inputs)
 
     def check_output_with_place(self, place, mode="test"):
@@ -363,17 +370,18 @@ class TestBeamSearch(ModuleApiTest):
         beam_size=4,
         max_step_num=20,
     ):
-        embedder = Embedding(vocab_size, embed_dim)
-        output_layer = nn.Linear(hidden_size, vocab_size)
-        cell = nn.LSTMCell(embed_dim, hidden_size)
+        self.embedder = Embedding(vocab_size, embed_dim)
+        self.output_layer = nn.Linear(hidden_size, vocab_size)
+        self.cell = nn.LSTMCell(embed_dim, hidden_size)
+
         self.max_step_num = max_step_num
         self.beam_search_decoder = BeamSearchDecoder(
-            cell,
+            self.cell,
             start_token=bos_id,
             end_token=eos_id,
             beam_size=beam_size,
-            embedding_fn=embedder,
-            output_fn=output_layer,
+            embedding_fn=self.embedder,
+            output_fn=self.output_layer,
         )
 
     @staticmethod
@@ -396,8 +404,7 @@ class TestBeamSearch(ModuleApiTest):
     def test_check_output(self):
         self.setUp()
         self.make_inputs()
-        if not paddle.framework.in_pir_mode():
-            self.check_output()
+        self.check_output()
 
 
 class EncoderCell(SimpleRNNCell):
@@ -701,8 +708,7 @@ class TestDynamicDecode(ModuleApiTest):
     def test_check_output(self):
         self.setUp()
         self.make_inputs()
-        if not paddle.framework.in_pir_mode():
-            self.check_output()
+        self.check_output()
 
 
 if __name__ == '__main__':

@@ -304,7 +304,7 @@ endif()
 
 copy(
   inference_lib_dist
-  SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+  SRCS ${CMAKE_BINARY_DIR}/paddle/phi/core/framework/framework.pb.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/internal)
 copy(
   inference_lib_dist

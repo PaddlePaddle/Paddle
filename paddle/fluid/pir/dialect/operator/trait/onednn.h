@@ -22,20 +22,20 @@ namespace paddle {
 namespace dialect {
 class OneDNNTrait : public pir::OpTraitBase<OneDNNTrait> {
  public:
-  explicit OneDNNTrait(pir::Operation *op)
+  explicit OneDNNTrait(const pir::Operation *op)
       : pir::OpTraitBase<OneDNNTrait>(op) {}
 };
 
 class OneDNNOnlyTrait : public pir::OpTraitBase<OneDNNOnlyTrait> {
  public:
-  explicit OneDNNOnlyTrait(pir::Operation *op)
+  explicit OneDNNOnlyTrait(const pir::Operation *op)
       : pir::OpTraitBase<OneDNNOnlyTrait>(op) {}
 };
 
 class OneDNNDynamicFallbackTrait
     : public pir::OpTraitBase<OneDNNDynamicFallbackTrait> {
  public:
-  explicit OneDNNDynamicFallbackTrait(pir::Operation *op)
+  explicit OneDNNDynamicFallbackTrait(const pir::Operation *op)
       : pir::OpTraitBase<OneDNNDynamicFallbackTrait>(op) {}
 };
 

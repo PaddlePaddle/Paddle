@@ -67,7 +67,10 @@ TEST(IROpFusionPass, ElementWise_Fusion_0) {
   PADDLE_ENFORCE_EQ(pm.Run(&program),
                     true,
                     common::errors::Fatal("Pass manager run failed."));
-  ASSERT_EQ(program.block()->size(), 2u);
+  PADDLE_ENFORCE_EQ(program.block()->size(),
+                    2u,
+                    common::errors::PreconditionNotMet(
+                        "The number of FusionOp does not meet expectations。"));
 }
 
 // Real test 0
@@ -100,8 +103,10 @@ TEST(IROpFusionPass, Broadcast_Test_0) {
   PADDLE_ENFORCE_EQ(pm.Run(&program),
                     true,
                     common::errors::Fatal("Pass manager run failed."));
-
-  ASSERT_EQ(program.block()->size(), 2u);
+  PADDLE_ENFORCE_EQ(program.block()->size(),
+                    2u,
+                    common::errors::PreconditionNotMet(
+                        "The number of FusionOp does not meet expectations。"));
 }
 
 // Real test 1
@@ -135,8 +140,10 @@ TEST(IROpFusionPass, Broadcast_Test_1) {
   PADDLE_ENFORCE_EQ(pm.Run(&program),
                     true,
                     common::errors::Fatal("Pass manager run failed."));
-
-  ASSERT_EQ(program.block()->size(), 4u);
+  PADDLE_ENFORCE_EQ(program.block()->size(),
+                    3u,
+                    common::errors::PreconditionNotMet(
+                        "The number of FusionOp does not meet expectations。"));
 }
 
 TEST(IROpFusionPass, softmax) {
@@ -183,5 +190,8 @@ TEST(IROpFusionPass, softmax) {
   PADDLE_ENFORCE_EQ(pm.Run(&program),
                     true,
                     common::errors::Fatal("Pass manager run failed."));
-  ASSERT_EQ(program.block()->size(), 2u);
+  PADDLE_ENFORCE_EQ(program.block()->size(),
+                    2u,
+                    common::errors::PreconditionNotMet(
+                        "The number of FusionOp does not meet expectations。"));
 }

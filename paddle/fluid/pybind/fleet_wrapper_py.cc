@@ -27,11 +27,11 @@ limitations under the License. */
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/framework/data_feed.pb.h"
 
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 

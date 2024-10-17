@@ -2150,6 +2150,7 @@ void GatherTreeMeta(const MetaTensor& ids,
                         "The shape of Input(Parents) must be same with the "
                         "shape of Input(Ids)."));
   out->set_dims(ids_dims);
+  out->set_dtype(ids.dtype());
 }
 
 void GridSampleBaseInferMeta(const MetaTensor& x,
@@ -2803,7 +2804,7 @@ void LookupTableInferMeta(const MetaTensor& w,
   PADDLE_ENFORCE_EQ(
       table_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: The dimensions of the 'lookup table' must be 2. "
           "But received lookup table's dimensions = %d, "
           "lookup table's shape = [%s].",
@@ -2812,7 +2813,7 @@ void LookupTableInferMeta(const MetaTensor& w,
   PADDLE_ENFORCE_EQ(
       ids_dims[ids_rank - 1],
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
           "But received Ids's last dimensions = %d, Ids's shape = [%s].",
           ids_dims[ids_rank - 1],

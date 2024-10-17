@@ -1,0 +1,32 @@
+#Docker Image for PaddlePaddle Kunlun XPU
+
+FROM registry.baidubce.com / device / paddle - cpu : ubuntu20 - x86_64 - gcc84 -
+                                                     py310 LABEL maintainer =
+    "PaddlePaddle Authors <paddle-dev@baidu.com>"
+
+    ARG XRE_VERSION = 4.31.0 ARG XRE_INSTALL = / usr / local / xpu -
+                                               ${XRE_VERSION}
+
+                                                   WORKDIR /
+                                                   opt RUN wget -
+                                               q https
+    :  //klx-sdk-release-public.su.bcebos.com/xre/release/${XRE_VERSION}.1/xre-ubuntu_2004_x86_64.tar.gz && \
+    tar -zxf xre-ubuntu_2004_x86_64.tar.gz && \
+    mkdir -p ${XRE_INSTALL} && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/bin/ ${XRE_INSTALL}/ && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/include/ ${XRE_INSTALL}/ && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/tools/ ${XRE_INSTALL}/ && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/version.txt ${XRE_INSTALL}/ && \
+    mkdir -p ${XRE_INSTALL}/lib64 && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/lib/* ${XRE_INSTALL}/lib64/ && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/so/* ${XRE_INSTALL}/lib64/ && \
+    ln -sf ${XRE_INSTALL} /usr/local/xpu && \
+    ln -sf ${XRE_INSTALL}/bin/xpu_smi /usr/local/bin/xpu_smi && \
+    rm -rf xre-ubuntu_2004_x86_64.tar.gz && rm -rf xre-ubuntu_2004_x86_64/
+       ENV PATH = ${XRE_INSTALL} / bin
+    : $PATH
+
+#upgrade pip
+          RUN pip install-- upgrade pip setuptools wheel RUN pip cache purge
+
+              EXPOSE 22

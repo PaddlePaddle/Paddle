@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/pass_desc.pb.h"
+#include "paddle/phi/core/framework/pass_desc.pb.h"
 
 namespace paddle {
 namespace framework {

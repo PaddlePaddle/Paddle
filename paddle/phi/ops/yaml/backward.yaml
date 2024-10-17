@@ -2183,6 +2183,7 @@
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param: [x]
+    spmd_rule : PNormGradInferSpmd
   kernel :
     func : p_norm_grad
 

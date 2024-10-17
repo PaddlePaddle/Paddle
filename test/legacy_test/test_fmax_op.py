@@ -133,7 +133,9 @@ class TestElementwiseFmaxOp(OpTest):
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmax"
+        self.prim_op_type = "prim"
         self.python_api = paddle.fmax
+        self.public_python_api = paddle.fmax
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -149,7 +151,7 @@ class TestElementwiseFmaxOp(OpTest):
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True)
 
     def test_check_grad_ignore_x(self):
         """test_check_grad_ignore_x"""
@@ -178,7 +180,9 @@ class TestElementwiseFmax2Op(OpTest):
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmax"
+        self.prim_op_type = "prim"
         self.python_api = paddle.fmax
+        self.public_python_api = paddle.fmax
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -196,7 +200,7 @@ class TestElementwiseFmax2Op(OpTest):
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True)
 
     def test_check_grad_ignore_x(self):
         """test_check_grad_ignore_x"""
@@ -225,7 +229,9 @@ class TestElementwiseFmax3Op(OpTest):
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmax"
+        self.prim_op_type = "prim"
         self.python_api = paddle.fmax
+        self.public_python_api = paddle.fmax
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -242,7 +248,7 @@ class TestElementwiseFmax3Op(OpTest):
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 @unittest.skipIf(
@@ -253,7 +259,9 @@ class TestElementwiseFmax3Op(OpTest):
 class TestFmaxBF16OP(OpTest):
     def setUp(self):
         self.op_type = "elementwise_fmax"
+        self.prim_op_type = "prim"
         self.python_api = paddle.fmax
+        self.public_python_api = paddle.fmax
         self.dtype = np.uint16
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float32")
         sgn = np.random.choice([-1, 1], [13, 17]).astype("float32")
@@ -271,7 +279,9 @@ class TestFmaxBF16OP(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
+        )
 
 
 if __name__ == "__main__":

@@ -103,23 +103,3 @@ REGISTER_OPERATOR(save_combine,
                   ops::SaveCombineOp,
                   ops::SaveCombineOpProtoMaker,
                   ops::SaveCombineOpInferVarType);
-
-PD_REGISTER_KERNEL(save_combine_tensor,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::operators::SaveCombineTensorKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(save_combine_vocab,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::operators::SaveCombineVocabKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::bfloat16) {}

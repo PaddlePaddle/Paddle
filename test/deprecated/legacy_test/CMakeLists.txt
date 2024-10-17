@@ -78,6 +78,7 @@ list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
+list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass_deprecated)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
@@ -575,6 +576,11 @@ if(WITH_DISTRIBUTE)
       endif()
     endforeach()
   endif()
+endif()
+
+if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
+  py_test_modules(test_fuse_gemm_epilogue_pass_deprecated MODULES
+                  test_fuse_gemm_epilogue_pass_deprecated)
 endif()
 
 if(WIN32)

@@ -121,7 +121,7 @@ TEST(MoECombineSPMDRule, test_moe_combine_spmd) {
   // replicated case, backward
   input_dims_mappings = {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}};
   expected_dims_mappings = {{{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}},
-                            {{-1, -1}, {-1, -1}}};
+                            {{-1, -1}, {-1, -1}, {-1, -1}}};
   test_moe_combine_spmd(
       backward_input_shapes, input_dims_mappings, expected_dims_mappings, true);
 
@@ -134,7 +134,7 @@ TEST(MoECombineSPMDRule, test_moe_combine_spmd) {
   // mp case, backward
   input_dims_mappings = {{1, -1}, {1, -1}, {-1, -1}, {1, -1}};
   expected_dims_mappings = {{{1, -1}, {1, -1}, {1, -1}, {1, -1}},
-                            {{1, -1}, {1, -1}}};
+                            {{1, -1}, {1, -1}, {1, -1}}};
   test_moe_combine_spmd(
       backward_input_shapes, input_dims_mappings, expected_dims_mappings, true);
 }

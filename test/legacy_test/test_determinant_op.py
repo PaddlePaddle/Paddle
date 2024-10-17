@@ -78,17 +78,76 @@ class TestDeterminantOpCase2FP16(TestDeterminantOp):
         )
 
 
+class TestDeterminantOpCase3(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.vectorize(complex)(
+            np.random.rand(10, 10), np.random.rand(10, 10)
+        ).astype('complex64')
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase4(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.vectorize(complex)(
+            np.random.rand(10, 10), np.random.rand(10, 10)
+        ).astype('complex128')
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase5(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        # not invertible matrix
+        self.case = np.ones([4, 2, 4, 4]).astype('complex64')
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase6(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        # not invertible matrix
+        self.case = np.ones([4, 2, 4, 4]).astype('complex128')
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase7(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.vectorize(complex)(
+            np.random.rand(5, 3, 10, 10), np.random.rand(5, 3, 10, 10)
+        ).astype('complex64')
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase8(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.vectorize(complex)(
+            np.random.rand(5, 3, 10, 10), np.random.rand(5, 3, 10, 10)
+        ).astype('complex128')
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
+        self.dtype = np.float32
         self.shape = [3, 3, 5, 5]
-        self.x = np.random.random(self.shape).astype(np.float32)
+        self.x = np.random.random(self.shape).astype(self.dtype)
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', self.shape)
+            x = paddle.static.data('X', self.shape, dtype=self.dtype)
             out_value = paddle.linalg.det(x)
             exe = paddle.static.Executor(self.place)
             (out_np,) = exe.run(feed={'X': self.x}, fetch_list=[out_value])
@@ -105,6 +164,28 @@ class TestDeterminantAPI(unittest.TestCase):
         out_ref = np.linalg.det(self.x)
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
+
+
+class TestDeterminantAPIComplex(TestDeterminantAPI):
+    def setUp(self):
+        np.random.seed(0)
+        self.dtype = np.complex64
+        self.shape = [2, 1, 4, 3, 6, 6]
+        self.x = np.vectorize(complex)(
+            np.random.random(self.shape), np.random.random(self.shape)
+        ).astype(self.dtype)
+        self.place = paddle.CPUPlace()
+
+
+class TestDeterminantAPIComplex2(TestDeterminantAPI):
+    def setUp(self):
+        np.random.seed(0)
+        self.dtype = np.complex128
+        self.shape = [3, 3, 5, 5]
+        self.x = np.vectorize(complex)(
+            np.random.random(self.shape), np.random.random(self.shape)
+        ).astype(self.dtype)
+        self.place = paddle.CPUPlace()
 
 
 class TestSlogDeterminantOp(OpTest):

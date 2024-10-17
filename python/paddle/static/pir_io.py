@@ -172,11 +172,15 @@ def pir_prune_with_input(program, feed_vars, target_vars):
 
     total_ops = program.global_block().ops
     intersection_op_flags = [True] * len(total_ops)
+    skip_prune_ops = ["builtin.parameter"]
 
     # from output to input
     target_vars_ = ValueSet(target_vars)
     for i, op in reversed(list(enumerate(total_ops))):
-        if some_in_set(get_real_op_outputs(op), target_vars_):
+        if (
+            some_in_set(get_real_op_outputs(op), target_vars_)
+            or op.name() in skip_prune_ops
+        ):
             for operand in get_real_op_inputs(op):
                 target_vars_.add(operand)
         else:
@@ -322,10 +326,13 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
 
     fetch_vars_tuple = []
     for i, var in enumerate(clone_fetch_vars):
-        if "name" in var.get_defining_op().attrs():
-            fetch_vars_tuple.append(
-                (var, var.get_defining_op().attrs()['name'])
-            )
+        scale_op = var.get_defining_op()
+        if scale_op.name() == "pd_op.scale":
+            orig_var = scale_op.operand_source(0)
+        else:
+            orig_var = var
+        if orig_var.has_name:
+            fetch_vars_tuple.append((orig_var, orig_var.name))
         else:
             fetch_vars_tuple.append((var, "fetch_name_" + str(i)))
     with paddle.static.program_guard(copy_program):

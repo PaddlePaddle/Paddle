@@ -199,13 +199,29 @@ def sparse_coo_tensor(
         return out
 
 
+def _infer_dense_csr_shape(crows, cols):
+    crows_numpy = crows.numpy()
+    cols_numpy = cols.numpy()
+    batchs = np.sum(crows_numpy[:-1] > crows_numpy[1:]) + 1
+    if (int(len(crows_numpy) / batchs) * batchs) != len(crows_numpy):
+        raise ValueError(
+            f"The calculated original matrix batch size is {batchs}, but it cannot correctly split the row data. Please carefully check the data or the input shape."
+        )
+    col = cols_numpy.max() + 1
+    row = int(len(crows_numpy) / batchs) - 1
+    if batchs == 1:
+        return [row, col]
+    else:
+        return [batchs, row, col]
+
+
 # TODO: need to support shape is None
 @dygraph_only
 def sparse_csr_tensor(
     crows: list[int] | tuple[int, ...] | npt.NDArray[np.int_] | Tensor,
     cols: list[int] | tuple[int, ...] | npt.NDArray[np.int_] | Tensor,
     values: NumbericSequence | npt.NDArray[Any] | Tensor,
-    shape: ShapeLike,
+    shape: ShapeLike | None = None,
     dtype: DTypeLike | None = None,
     place: CPUPlace | CUDAPinnedPlace | CUDAPlace | str | None = None,
     stop_gradient: bool = True,
@@ -268,10 +284,14 @@ def sparse_csr_tensor(
     _check_indices_dtype(crows.dtype)
     _check_indices_dtype(cols.dtype)
 
-    if len(shape) != 2 and len(shape) != 3:
-        raise ValueError(
-            f"SparseCsrTensor only support 2-D or 3-D matrix. but get shape {shape}"
-        )
+    if shape is not None:
+        if len(shape) != 2 and len(shape) != 3:
+            raise ValueError(
+                f"SparseCsrTensor only support 2-D or 3-D matrix. but get shape {shape}"
+            )
+    else:
+        shape = _infer_dense_csr_shape(crows, cols)
+
     rows = shape[len(shape) - 2]
 
     if not crows.place._equals(place):

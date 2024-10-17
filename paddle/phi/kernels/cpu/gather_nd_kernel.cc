@@ -26,7 +26,7 @@ void GatherNdKernel(const Context &ctx,
                     const DenseTensor &index,
                     DenseTensor *out) {
   ctx.template Alloc<T>(out);
-  if (x.numel() == 0) return;
+  if (x.numel() == 0 || out->numel() == 0) return;
   if (index.dims()[0] == 0 && index.numel() == 0) return;
   auto index_type = index.dtype();
   bool index_type_match =

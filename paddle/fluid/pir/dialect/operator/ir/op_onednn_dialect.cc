@@ -129,20 +129,21 @@ pir::Attribute OneDNNOperatorDialect::ParseAttribute(
   }
 }
 
-pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(pir::Operation *op) const {
-  if (auto if_op = op->dyn_cast<IfOp>()) {
-    return [](pir::Operation *op, pir::IrPrinter &printer) {
-      auto if_op = op->dyn_cast<IfOp>();
+pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(
+    const pir::Operation &op) const {
+  if (auto if_op = op.dyn_cast<IfOp>()) {
+    return [](const pir::Operation &op, pir::IrPrinter &printer) {
+      auto if_op = op.dyn_cast<IfOp>();
       if_op.Print(printer);
     };
-  } else if (auto pylayer_op = op->dyn_cast<PyLayerOp>()) {
-    return [](pir::Operation *op, pir::IrPrinter &printer) {
-      auto pylayer_op = op->dyn_cast<PyLayerOp>();
+  } else if (auto pylayer_op = op.dyn_cast<PyLayerOp>()) {
+    return [](const pir::Operation &op, pir::IrPrinter &printer) {
+      auto pylayer_op = op.dyn_cast<PyLayerOp>();
       pylayer_op.Print(printer);
     };
-  } else if (auto while_op = op->dyn_cast<WhileOp>()) {
-    return [](pir::Operation *op, pir::IrPrinter &printer) {
-      auto while_op = op->dyn_cast<WhileOp>();
+  } else if (auto while_op = op.dyn_cast<WhileOp>()) {
+    return [](const pir::Operation &op, pir::IrPrinter &printer) {
+      auto while_op = op.dyn_cast<WhileOp>();
       while_op.Print(printer);
     };
   }

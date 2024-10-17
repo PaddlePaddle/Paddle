@@ -6,7 +6,6 @@ set(op_handle_deps
     operator
     phi
     common
-    framework_proto
     node
     device_context
     op_registry
@@ -39,7 +38,7 @@ else()
     DEPS ${op_handle_deps})
 endif()
 
-add_dependencies(detail_op_handle framework_proto auto_parallel_proto xxhash)
+add_dependencies(detail_op_handle auto_parallel_proto xxhash)
 
 set(IR_PASS_DEPS
     graph_viz_pass

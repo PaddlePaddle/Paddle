@@ -241,27 +241,29 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-5)
 
     def test_fuse_bn_add_act(self):
-        place = base.CUDAPlace(0)
-        self.check(place, use_cuda=True)
+        with paddle.pir_utils.OldIrGuard():
+            place = base.CUDAPlace(0)
+            self.check(place, use_cuda=True)
 
     def test_fuse_bn_add_act_API(self):
-        # build_fused_program: use fused_bn_add_act python API
-        main_program = base.Program()
-        startup_program = base.Program()
-        place = base.CUDAPlace(0)
-        x, y, loss = self.build_fused_program(
-            main_program, startup_program, use_cuda=True
-        )
-        exe = base.Executor(place)
-        scope = base.Scope()
-        with base.scope_guard(scope):
-            exe.run(startup_program)
-            for _ in range(5):
-                x = np.random.random((4, 1, 28, 28)).astype("float32")
-                y = np.random.random((4, 1)).astype("int64")
-                loss_v = exe.run(
-                    main_program, feed={"x": x, "y": y}, fetch_list=[loss]
-                )
+        with paddle.pir_utils.OldIrGuard():
+            # build_fused_program: use fused_bn_add_act python API
+            main_program = base.Program()
+            startup_program = base.Program()
+            place = base.CUDAPlace(0)
+            x, y, loss = self.build_fused_program(
+                main_program, startup_program, use_cuda=True
+            )
+            exe = base.Executor(place)
+            scope = base.Scope()
+            with base.scope_guard(scope):
+                exe.run(startup_program)
+                for _ in range(5):
+                    x = np.random.random((4, 1, 28, 28)).astype("float32")
+                    y = np.random.random((4, 1)).astype("int64")
+                    loss_v = exe.run(
+                        main_program, feed={"x": x, "y": y}, fetch_list=[loss]
+                    )
 
 
 if __name__ == '__main__':

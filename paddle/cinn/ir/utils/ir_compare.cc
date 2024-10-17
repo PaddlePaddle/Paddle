@@ -24,7 +24,7 @@ namespace ir {
 
 namespace ir_utils {
 bool EqualIntImmm(const Expr& lhs, const Expr& rhs) {
-  if (lhs == rhs) return true;
+  if (lhs.get() == rhs.get()) return true;
   if (auto* plhs = lhs.As<ir::IntImm>()) {
     auto* prhs = rhs.As<ir::IntImm>();
     return plhs->type() == prhs->type() && plhs->value == prhs->value;
@@ -425,7 +425,8 @@ bool IrEqualVisitor::Visit(const IterSum* lhs, const Expr* other) {
   for (size_t i = 0; i < lhs->args.size(); ++i) {
     if (!Compare(lhs->args.at(i), rhs->args.at(i))) return false;
   }
-  return Compare(lhs->base, rhs->base);
+  return EqualIntImmm(lhs->base, rhs->base) ? true
+                                            : Compare(lhs->base, rhs->base);
 }
 
 bool IRCompare(const Expr& lhs, const Expr& rhs, bool allow_name_suffix_diff) {

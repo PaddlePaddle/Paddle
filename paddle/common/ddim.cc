@@ -282,6 +282,18 @@ DDim ComputeCompatibleDim(const DDim& dim1, const DDim& dim2) {
   return make_ddim(result);
 }
 
+bool AreDimsWithDynamicShapeCompatible(const DDim& dim1, const DDim& dim2) {
+  if (dim1.size() != dim2.size()) {
+    return false;
+  }
+  for (int i = 0; i < dim1.size(); ++i) {
+    if (dim1[i] >= 0 && dim2[i] >= 0 && dim1[i] != dim2[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace common
 
 namespace std {

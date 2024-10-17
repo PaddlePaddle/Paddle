@@ -69,7 +69,6 @@ from paddle.distributed.auto_parallel.static.cost.comp_op_cost import (
     ReduceSumOpCost,
     Reshape2GradOpCost,
     Reshape2OpCost,
-    SamplingIdOpCost,
     ScaleOpCost,
     SliceOpCost,
     SoftmaxGradOpCost,
@@ -331,11 +330,6 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.memory >= 0)
 
         op_cost = ReduceMeanGradOpCost(cluster=cluster)
-        self.assertTrue(op_cost.flops >= 0)
-        self.assertTrue(op_cost.time >= 0)
-        self.assertTrue(op_cost.memory >= 0)
-
-        op_cost = SamplingIdOpCost(cluster=cluster)
         self.assertTrue(op_cost.flops >= 0)
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)

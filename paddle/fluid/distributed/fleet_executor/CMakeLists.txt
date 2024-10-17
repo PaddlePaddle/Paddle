@@ -38,7 +38,6 @@ cc_library(
        fleet_executor_desc_proto
        interceptor_message_proto
        task_loop_thread_pool
-       collective_helper
        executor_gc_helper
        op_registry
        phi

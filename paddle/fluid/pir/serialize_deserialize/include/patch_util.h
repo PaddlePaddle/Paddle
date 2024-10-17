@@ -35,6 +35,7 @@ Json ParseAttrPatches(const YAML::Node &root);
 
 Json ParseTypePatches(const YAML::Node &root);
 
-Json YamlParser(const std::string &yaml_file);
+/* Yaml file is set to be empty by default. It's only used for testing. */
+Json YamlParser(const std::string &version, const std::string &yaml_file = "");
 
 }  // namespace pir

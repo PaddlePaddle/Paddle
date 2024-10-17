@@ -1205,6 +1205,31 @@ std::string DiscreteReduceExternalFuncName(const ir::Expr& op,
   return "";
 }
 
+std::string GridReduceExternalFuncName(const ir::Expr& op,
+                                       const cinn::common::Type type) {
+  if (op.As<ir::Add>()) {
+    if (type.is_bool()) {
+      return "cinn_grid_reduce_any";
+    }
+    return "cinn_grid_reduce_sum" + Type2StrForReduce(type);
+  } else if (op.As<ir::Mul>()) {
+    if (type.is_bool()) {
+      return "cinn_grid_reduce_all";
+    }
+    return "cinn_grid_reduce_prod" + Type2StrForReduce(type);
+  } else if (op.As<ir::Max>()) {
+    return "cinn_grid_reduce_max" + Type2StrForReduce(type);
+  } else if (op.As<ir::Min>()) {
+    return "cinn_grid_reduce_min" + Type2StrForReduce(type);
+  } else if (op.As<ir::And>()) {
+    return "cinn_grid_reduce_all";
+  } else if (op.As<ir::Or>()) {
+    return "cinn_grid_reduce_any";
+  }
+  PADDLE_THROW(::common::errors::InvalidArgument(
+      "No matching grid reduce template for op: %s, type: %s", op, type));
+}
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn

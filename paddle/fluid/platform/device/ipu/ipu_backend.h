@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/timer.h"
 
 namespace paddle {
 namespace framework {

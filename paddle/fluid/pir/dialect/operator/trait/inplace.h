@@ -20,7 +20,7 @@ namespace paddle {
 namespace dialect {
 class InplaceTrait : public pir::OpTraitBase<InplaceTrait> {
  public:
-  explicit InplaceTrait(pir::Operation *op)
+  explicit InplaceTrait(const pir::Operation *op)
       : pir::OpTraitBase<InplaceTrait>(op) {}
 };
 

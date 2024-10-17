@@ -158,7 +158,7 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
   // step 1 : infer sharding
   std::string x_axes = "sh", combine_weights_axes = "sk",
               scatter_index_axes = "sk", grad_y_axes = "sh", grad_x_axes = "sh",
-              grad_combine_weights_axes = "sk";
+              grad_combine_weights_axes = "sk", grad_scatter_index_axes = "sk";
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
           {{x_axes, x_dims_mapping_src},
@@ -173,6 +173,8 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
       GetDimsMappingForAxes(grad_x_axes, axis_to_dim_map);
   std::vector<int64_t> grad_combine_weights_dims_mapping =
       GetDimsMappingForAxes(grad_combine_weights_axes, axis_to_dim_map);
+  std::vector<int64_t> grad_scatter_index_dims_mapping =
+      GetDimsMappingForAxes(grad_scatter_index_axes, axis_to_dim_map);
 
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   TensorDistAttr combine_weights_dist_attr_dst =
@@ -184,6 +186,8 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
   TensorDistAttr grad_x_dist_attr_dst =
       CopyTensorDistAttrForOutput(grad_y_dist_attr_src);
   TensorDistAttr grad_combine_weights_dist_attr_dst =
+      CopyTensorDistAttrForOutput(grad_y_dist_attr_src);
+  TensorDistAttr grad_scatter_index_dist_attr_dst =
       CopyTensorDistAttrForOutput(grad_y_dist_attr_src);
 
   x_dist_attr_dst.set_dims_mapping(
@@ -197,6 +201,8 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
   grad_x_dist_attr_dst.set_dims_mapping(grad_x_dims_mapping);
   grad_combine_weights_dist_attr_dst.set_dims_mapping(
       grad_combine_weights_dims_mapping);
+  grad_scatter_index_dist_attr_dst.set_dims_mapping(
+      grad_scatter_index_dims_mapping);
 
   // Step 2: Log messages
   LOG_SPMD_INPUT(x);
@@ -210,7 +216,9 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
            combine_weights_dist_attr_dst,
            scatter_index_dist_attr_dst,
            grad_y_dist_attr_dst},
-          {grad_x_dist_attr_dst, grad_combine_weights_dist_attr_dst}};
+          {grad_x_dist_attr_dst,
+           grad_combine_weights_dist_attr_dst,
+           grad_scatter_index_dist_attr_dst}};
 }
 
 }  // namespace distributed

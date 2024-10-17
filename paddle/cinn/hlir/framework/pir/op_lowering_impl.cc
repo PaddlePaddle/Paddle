@@ -117,6 +117,12 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   func_bodies = OperationFusion(ops, func_bodies, group->fusion_tracker_ptr);
   std::shared_ptr<FusionGroupInfo> fusion_group_info =
       GetFusionGroupInfo(func_bodies);
+  // TODO(liangshuhao): grid reduce is disabled for broadcast-leaf group now,
+  // because grid reduce introduces extra func args that currently cannot be
+  // unified with other broadcast-leaf groups.
+  if (group->IsBroadcastLeaf()) {
+    fusion_group_info->can_apply_grid_reduce = false;
+  }
 
   if (FLAGS_cinn_check_tensor_buffer_map) {
     optim::CheckTensorBufferMap(func_bodies, "BucketLower OpFusion");
@@ -386,7 +392,19 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       func = optim::Optimize(Expr(func), common::DefaultHostTarget(), false)
                  .as_lowered_func_ref();
     }
+    func->num_output_tensors = infer_shape_arg_tensor->size();
     lowered_funcs.push_back(std::move(func));
+  }
+
+  // collect temp space sizes
+  if (lowered_funcs.size() > 1) {
+    for (auto& temp_space : lowered_funcs[0]->temp_spaces) {
+      int64_t size = -1;
+      if (temp_space.size().is_constant()) {
+        size = temp_space.size().as_int64();
+      }
+      group->mut_temp_space_sizes().push_back(size);
+    }
   }
 
   return lowered_funcs;

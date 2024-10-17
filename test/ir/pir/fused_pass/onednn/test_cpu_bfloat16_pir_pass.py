@@ -456,13 +456,8 @@ class TestReshapeBf16Pass(PassTest):
                 x = paddle.static.data(
                     name='x', shape=[5, 5, 5, 5], dtype='float32'
                 )
-                y = paddle.static.data(
-                    name='y', shape=[5, 5, 5, 5], dtype='float32'
-                )
-                reshape_x = paddle.reshape(x, [5, 125])
-                reshape_y = paddle.reshape(y, [125, 5])
 
-                out = paddle.matmul(reshape_x, reshape_y)
+                out = paddle.reshape(x, [5, 125])
                 out = paddle.assign(out)
                 self.pass_attr_list = [
                     {'onednn_placement_pass': {}},
@@ -472,12 +467,12 @@ class TestReshapeBf16Pass(PassTest):
                 ]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
-                    "y": np.random.random((5, 5, 5, 5)).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
-                    "onednn_op.matmul": 1,
-                    "pd_op.add": 0,
+                    "onednn_op.reshape": 1,
+                    "onednn_op.quantize": 1,
+                    "onednn_op.dequantize": 1,
                 }
                 return [main_prog, start_prog]
 

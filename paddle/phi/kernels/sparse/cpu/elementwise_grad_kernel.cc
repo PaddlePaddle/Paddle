@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -161,6 +162,32 @@ void CopyCsrValues(const Context& dev_ctx,
 }
 
 template <typename T, typename IntT, typename Context>
+void ConjugateCsrValues(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        SparseCsrTensor* x_conj) {
+  AllocCsrPtr<T, IntT>(dev_ctx, x, x_conj);
+  CopyCsrValues<T, IntT, Context>(dev_ctx, x, x, x_conj);
+  DenseTensor x_conj_values = x_conj->values();
+  x_conj_values = phi::Conj<T, Context>(dev_ctx, x_conj_values);
+  DenseTensor x_conj_crows = x_conj->crows();
+  DenseTensor x_conj_cols = x_conj->cols();
+  x_conj->SetMember(x_conj_crows, x_conj_cols, x_conj_values, x_conj->dims());
+}
+
+template <typename T, typename IntT, typename Context>
+void ConjugateCooValues(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        SparseCooTensor* x_conj) {
+  AllocCooPtr<T, IntT>(dev_ctx, x, x_conj);
+  CopyCooValues<T, IntT, Context>(dev_ctx, x, x, x_conj);
+  DenseTensor x_conj_values = x_conj->values();
+  x_conj_values = phi::Conj<T, Context>(dev_ctx, x_conj_values);
+  DenseTensor x_conj_indices = x_conj->indices();
+  x_conj->SetMember(
+      x_conj_indices, x_conj_values, x_conj->dims(), x_conj->coalesced());
+}
+
+template <typename T, typename IntT, typename Context>
 void ElementWiseAddCsrGradCPUKernel(const Context& dev_ctx,
                                     const SparseCsrTensor& x,
                                     const SparseCsrTensor& y,
@@ -212,20 +239,40 @@ void ElementWiseMultiplyCsrGradCPUKernel(const Context& dev_ctx,
                                          SparseCsrTensor* dx,
                                          SparseCsrTensor* dy) {
   if (dx) {
-    //    dout*y
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     SparseCsrTensor tmp_dx;
     AllocCsrPtr<T, IntT>(dev_ctx, x, &tmp_dx);
-    sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      //    dout*y_conj
+      SparseCsrTensor y_conj;
+      ConjugateCsrValues<T, IntT, Context>(dev_ctx, y, &y_conj);
+      sparse::ElementWiseMultiplyCsrKernel<T, Context>(
+          dev_ctx, dout, y_conj, &tmp_dx);
+    } else {
+      //    dout*y
+      sparse::ElementWiseMultiplyCsrKernel<T, Context>(
+          dev_ctx, dout, y, &tmp_dx);
+    }
     CopyCsrValues<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
   }
 
   if (dy) {
-    //    dout*x
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     SparseCsrTensor tmp_dy;
     AllocCsrPtr<T, IntT>(dev_ctx, y, &tmp_dy);
-    sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, x, &tmp_dy);
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      //    dout*x_conj
+      SparseCsrTensor x_conj;
+      ConjugateCsrValues<T, IntT, Context>(dev_ctx, x, &x_conj);
+      sparse::ElementWiseMultiplyCsrKernel<T, Context>(
+          dev_ctx, dout, x_conj, &tmp_dy);
+    } else {
+      //    dout*x
+      sparse::ElementWiseMultiplyCsrKernel<T, Context>(
+          dev_ctx, dout, x, &tmp_dy);
+    }
     CopyCsrValues<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
   }
 }
@@ -239,11 +286,20 @@ void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
                                        SparseCsrTensor* dx,
                                        SparseCsrTensor* dy) {
   if (dx) {
-    //    dout/y
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     SparseCsrTensor tmp_dx;
     AllocCsrPtr<T, IntT>(dev_ctx, x, &tmp_dx);
-    sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      //    dout/y_conj
+      SparseCsrTensor y_conj;
+      ConjugateCsrValues<T, IntT, Context>(dev_ctx, y, &y_conj);
+      sparse::ElementWiseDivideCsrKernel<T, Context>(
+          dev_ctx, dout, y_conj, &tmp_dx);
+    } else {
+      //    dout/y
+      sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
+    }
     CopyCsrValues<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
   }
 
@@ -256,8 +312,22 @@ void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, &tmp_dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.values(), tmp_dy.mutable_values());
-    auto tmp = sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, tmp_dy, out);
-    sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, tmp, y, &tmp_dy);
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      //    -dout * (out / y)_conj = -dout * out_conj / y_conj
+      SparseCsrTensor out_conj;
+      ConjugateCsrValues<T, IntT, Context>(dev_ctx, out, &out_conj);
+      SparseCsrTensor y_conj;
+      ConjugateCsrValues<T, IntT, Context>(dev_ctx, y, &y_conj);
+      auto tmp =
+          sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, tmp_dy, out_conj);
+      sparse::ElementWiseDivideCsrKernel<T, Context>(
+          dev_ctx, tmp, y_conj, &tmp_dy);
+    } else {
+      auto tmp =
+          sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, tmp_dy, out);
+      sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, tmp, y, &tmp_dy);
+    }
     CopyCsrValues<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
   }
 }
@@ -314,20 +384,40 @@ void ElementWiseMultiplyCooGradCPUKernel(const Context& dev_ctx,
                                          SparseCooTensor* dx,
                                          SparseCooTensor* dy) {
   if (dx) {
-    //    dout*y
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     SparseCooTensor tmp_dx;
     AllocCooPtr<T, IntT>(dev_ctx, x, &tmp_dx);
-    sparse::ElementWiseMultiplyCooKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      //    dout*y_conj
+      SparseCooTensor y_conj;
+      ConjugateCooValues<T, IntT, Context>(dev_ctx, y, &y_conj);
+      sparse::ElementWiseMultiplyCooKernel<T, Context>(
+          dev_ctx, dout, y_conj, &tmp_dx);
+    } else {
+      //    dout*y
+      sparse::ElementWiseMultiplyCooKernel<T, Context>(
+          dev_ctx, dout, y, &tmp_dx);
+    }
     CopyCooValues<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
   }
 
   if (dy) {
-    //    dout*x
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     SparseCooTensor tmp_dy;
     AllocCooPtr<T, IntT>(dev_ctx, y, &tmp_dy);
-    sparse::ElementWiseMultiplyCooKernel<T, Context>(dev_ctx, dout, x, &tmp_dy);
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      //    dout*x_conj
+      SparseCooTensor x_conj;
+      ConjugateCooValues<T, IntT, Context>(dev_ctx, x, &x_conj);
+      sparse::ElementWiseMultiplyCooKernel<T, Context>(
+          dev_ctx, dout, x_conj, &tmp_dy);
+    } else {
+      //    dout*x
+      sparse::ElementWiseMultiplyCooKernel<T, Context>(
+          dev_ctx, dout, x, &tmp_dy);
+    }
     CopyCooValues<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
   }
 }
@@ -341,11 +431,20 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
                                        SparseCooTensor* dx,
                                        SparseCooTensor* dy) {
   if (dx) {
-    //    dout/y
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     SparseCooTensor tmp_dx;
     AllocCooPtr<T, IntT>(dev_ctx, x, &tmp_dx);
-    sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      //    dout/y_conj
+      SparseCooTensor y_conj;
+      ConjugateCooValues<T, IntT, Context>(dev_ctx, y, &y_conj);
+      sparse::ElementWiseDivideCooKernel<T, Context>(
+          dev_ctx, dout, y_conj, &tmp_dx);
+    } else {
+      //    dout/y
+      sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, dout, y, &tmp_dx);
+    }
     CopyCooValues<T, IntT, Context>(dev_ctx, tmp_dx, x, dx);
   }
 
@@ -357,8 +456,22 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, &tmp_dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.values(), tmp_dy.mutable_values());
-    auto tmp = sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, tmp_dy, out);
-    sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, tmp, y, &tmp_dy);
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      //    -dout * (out / y)_conj = -dout * out_conj / y_conj
+      SparseCooTensor out_conj;
+      ConjugateCooValues<T, IntT, Context>(dev_ctx, out, &out_conj);
+      SparseCooTensor y_conj;
+      ConjugateCooValues<T, IntT, Context>(dev_ctx, y, &y_conj);
+      auto tmp =
+          sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, tmp_dy, out_conj);
+      sparse::ElementWiseDivideCooKernel<T, Context>(
+          dev_ctx, tmp, y_conj, &tmp_dy);
+    } else {
+      auto tmp =
+          sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, tmp_dy, out);
+      sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, tmp, y, &tmp_dy);
+    }
     CopyCooValues<T, IntT, Context>(dev_ctx, tmp_dy, y, dy);
   }
 }
@@ -473,7 +586,9 @@ PD_REGISTER_KERNEL(multiply_csr_csr_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
@@ -487,7 +602,9 @@ PD_REGISTER_KERNEL(divide_csr_csr_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
@@ -534,7 +651,9 @@ PD_REGISTER_KERNEL(multiply_coo_coo_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -548,7 +667,9 @@ PD_REGISTER_KERNEL(divide_coo_coo_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);

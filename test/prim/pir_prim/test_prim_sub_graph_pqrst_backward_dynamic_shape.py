@@ -162,16 +162,24 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
+def swish_net(x):
+    return paddle.nn.functional.swish(x)
+
+
 def tanh_net(x):
     return paddle.tanh(x)
 
 
 def topk_net(x):
-    return paddle.topk(x, k=3, axis=1)[0]
+    return paddle.topk(x, k=3, axis=-1)[0]
 
 
 def transpose_net(x):
     return paddle.transpose(x, perm=[0, 3, 1, 2])
+
+
+def trunc_net(x):
+    return paddle.trunc(x)
 
 
 class TestPrimPadWithGrad(TestPrimBaseWithGrad):
@@ -1022,6 +1030,19 @@ class TestPrimSwigluWithGrad2(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
+class TestPrimSwishWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.op_name = "pd_op.swish_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = swish_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
 class TestPrimTanhWithGrad(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
@@ -1070,6 +1091,19 @@ class TestPrimTransposeWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, None, 70]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = transpose_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimTruncWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.trunc_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = trunc_net
         self.enable_cinn = False
         self.tol = 1e-6
 

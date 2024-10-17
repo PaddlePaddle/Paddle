@@ -19,6 +19,7 @@
 
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -167,6 +168,12 @@ void DeterminantGradKernel(const Context& dev_ctx,
         phi::Cast<MPType, Context>(dev_ctx, transpose_inverse_A, origin_dt));
   } else {
     res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
+  }
+
+  // result for complex input should conjugate at the last step
+  if (std::is_same<MPType, phi::dtype::complex<float>>::value ||
+      std::is_same<MPType, phi::dtype::complex<double>>::value) {
+    res = phi::Conj<MPType, Context>(dev_ctx, res);
   }
 
   VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();

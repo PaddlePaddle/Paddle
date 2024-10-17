@@ -255,6 +255,10 @@ SpmdInfo Conv2dGradInferSpmdBase(const DistMetaTensor& input,
       GetReplicatedDistAttr(input_dist_attr_src);
   input_grad_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(input_axes, axis_to_dim_map_1));
+  // handle partial for input_grad
+  std::vector<int64_t> partial_on_m_dim =
+      ResoluteOutputPartialDimension(axis_to_dim_map_1, input_axes);
+  input_grad_dist_attr_dst.set_partial_status(partial_on_m_dim);
   TensorDistAttr filter_dist_attr_dst =
       CopyTensorDistAttrForOutput(filter_dist_attr_src);
   filter_dist_attr_dst.set_dims_mapping(
@@ -267,6 +271,10 @@ SpmdInfo Conv2dGradInferSpmdBase(const DistMetaTensor& input,
       GetReplicatedDistAttr(filter_dist_attr_src);
   filter_grad_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(filter_axes, axis_to_dim_map_2));
+  // handle partial for filter_grad
+  std::vector<int64_t> partial_on_n_dim =
+      ResoluteOutputPartialDimension(axis_to_dim_map_2, filter_axes);
+  filter_grad_dist_attr_dst.set_partial_status(partial_on_n_dim);
   TensorDistAttr input_dist_attr_dst =
       CopyTensorDistAttrForOutput(input_dist_attr_src);
   input_dist_attr_dst.set_dims_mapping(

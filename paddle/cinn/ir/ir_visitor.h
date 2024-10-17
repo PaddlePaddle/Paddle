@@ -102,5 +102,8 @@ struct IRVisitor : public IRVisitorRequireReImpl<void> {
 bool operator==(Expr a, Expr b);
 bool operator!=(Expr a, Expr b);
 
+bool operator==(IndexExpr a, IndexExpr b);
+bool operator!=(IndexExpr a, IndexExpr b);
+
 }  // namespace ir
 }  // namespace cinn

@@ -33,10 +33,12 @@ class BackendResource final {
       const Target& target,
       const std::string& host_fn_name,
       const std::string& infer_fn_name,
-      const std::map<int, CINNKernelInfo::SymbolArgBindInfo>& symbol_args_map)
+      const std::map<int, CINNKernelInfo::SymbolArgBindInfo>& symbol_args_map,
+      const std::vector<int64_t>& temp_space_sizes)
       : host_fn_name_(host_fn_name),
         infer_fn_name_(infer_fn_name),
-        symbol_args_map_(symbol_args_map) {
+        symbol_args_map_(symbol_args_map),
+        temp_space_sizes_(temp_space_sizes) {
     backend_compiler_ = backends::Compiler::Create(target);
   }
 
@@ -46,6 +48,9 @@ class BackendResource final {
   const std::map<int, CINNKernelInfo::SymbolArgBindInfo>& GetSymbolArgsMap()
       const {
     return symbol_args_map_;
+  }
+  const std::vector<int64_t>& GetTempSpaceSizes() const {
+    return temp_space_sizes_;
   }
   const std::shared_ptr<backends::Compiler>& GetBackendCompiler() const {
     return backend_compiler_;
@@ -57,6 +62,7 @@ class BackendResource final {
   std::string host_fn_name_;
   std::string infer_fn_name_;
   std::map<int, CINNKernelInfo::SymbolArgBindInfo> symbol_args_map_;
+  std::vector<int64_t> temp_space_sizes_;
 
   std::shared_ptr<backends::Compiler> backend_compiler_{nullptr};
 };

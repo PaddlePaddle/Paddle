@@ -21,7 +21,6 @@ import paddle
 from paddle.base.framework import in_pir_mode
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
-op_list_complex = [__add__, __sub__]
 
 
 def get_actual_res(x, y, op):
@@ -226,7 +225,7 @@ class TestSparseElementWiseAPI(unittest.TestCase):
 class TestSparseElementWiseAPIComplex(unittest.TestCase):
     def setUp(self):
         np.random.seed(2022)
-        self.op_list = op_list_complex
+        self.op_list = op_list
         self.csr_shape = [8, 10]
         self.coo_shape = [3, 7, 2, 9]
         self.support_dtypes = ['complex64', 'complex128']
@@ -738,19 +737,36 @@ class TestSparseMulStaticAPI(unittest.TestCase):
         np.random.seed(2022)
         self.op_list = op_list
         self.coo_shape = [4, 8, 3, 5]
-        self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
+        self.support_dtypes = [
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'complex64',
+            'complex128',
+        ]
 
     def test_coo(self):
         if in_pir_mode():
             sparse_dim = len(self.coo_shape) - 1
             op = __mul__
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.coo_shape).astype(
-                    dtype
-                )
-                y = np.random.randint(-255, 255, size=self.coo_shape).astype(
-                    dtype
-                )
+                if 'complex' in dtype:
+                    x = np.vectorize(complex)(
+                        np.random.randint(-255, 255, size=self.coo_shape),
+                        np.random.randint(-255, 255, size=self.coo_shape),
+                    ).astype(dtype)
+                    y = np.vectorize(complex)(
+                        np.random.randint(-255, 255, size=self.coo_shape),
+                        np.random.randint(-255, 255, size=self.coo_shape),
+                    ).astype(dtype)
+                else:
+                    x = np.random.randint(
+                        -255, 255, size=self.coo_shape
+                    ).astype(dtype)
+                    y = np.random.randint(
+                        -255, 255, size=self.coo_shape
+                    ).astype(dtype)
 
                 self.dense_x = paddle.to_tensor(
                     x, dtype=dtype, stop_gradient=True
@@ -839,19 +855,36 @@ class TestSparseDivStaticAPI(unittest.TestCase):
         np.random.seed(2022)
         self.op_list = op_list
         self.coo_shape = [4, 8, 3, 5]
-        self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
+        self.support_dtypes = [
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'complex64',
+            'complex128',
+        ]
 
     def test_coo(self):
         if in_pir_mode():
             sparse_dim = len(self.coo_shape) - 1
             op = __truediv__
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.coo_shape).astype(
-                    dtype
-                )
-                y = np.random.randint(-255, 255, size=self.coo_shape).astype(
-                    dtype
-                )
+                if 'complex' in dtype:
+                    x = np.vectorize(complex)(
+                        np.random.randint(-255, 255, size=self.coo_shape),
+                        np.random.randint(-255, 255, size=self.coo_shape),
+                    ).astype(dtype)
+                    y = np.vectorize(complex)(
+                        np.random.randint(-255, 255, size=self.coo_shape),
+                        np.random.randint(-255, 255, size=self.coo_shape),
+                    ).astype(dtype)
+                else:
+                    x = np.random.randint(
+                        -255, 255, size=self.coo_shape
+                    ).astype(dtype)
+                    y = np.random.randint(
+                        -255, 255, size=self.coo_shape
+                    ).astype(dtype)
 
                 self.dense_x = paddle.to_tensor(
                     x, dtype=dtype, stop_gradient=True

@@ -81,8 +81,8 @@ op_library(generated_op UNITY SRCS generated_op1.cc generated_op2.cc generated_o
 op_library(run_program_op DEPS executor_cache ${OP_HEADER_DEPS})
 target_link_libraries(run_program_op phi common)
 op_library(quantize_linear_op DEPS phi common)
-op_library(save_combine_op DEPS string_array phi common)
-op_library(load_combine_op DEPS string_array)
+op_library(save_combine_op DEPS phi)
+op_library(load_combine_op DEPS phi)
 
 op_library(activation_op SRCS activation_op.cc DEPS ${OP_HEADER_DEPS})
 

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from functools import wraps
-
 import paddle
 from paddle.framework.dtype import bind_datatype, bind_vartype
 
@@ -180,27 +178,6 @@ class DygraphOldIrGuard:
             paddle.base.framework.global_var._use_pir_api_ = True
             bind_datatype()
             _switch_to_pir_()
-
-
-def test_with_old_ir_only(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        with OldIrGuard():
-            func(*args, **kwargs)
-
-    return impl
-
-
-def test_with_dygraph_pir(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        with DygraphOldIrGuard():
-            func(*args, **kwargs)
-
-        with DygraphPirGuard():
-            func(*args, **kwargs)
-
-    return impl
 
 
 def get_memory(value):

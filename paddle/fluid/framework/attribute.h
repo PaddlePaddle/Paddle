@@ -24,10 +24,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/errors.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/variant.h"
 

@@ -21,7 +21,6 @@ if(WITH_TESTING)
       SRCS paddle_gtest_main.cc
       DEPS gtest
            xxhash
-           framework_proto
            eigen3
            dlpack
            common

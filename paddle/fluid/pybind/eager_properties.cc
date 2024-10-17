@@ -581,12 +581,12 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   if (egr::IsVariableCompatTensor(self->tensor)) {
     auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
         self->tensor.impl().get());
-    if (var_tensor->IsType<paddle::framework::Vocab>()) {
-      value.emplace_back(static_cast<int64_t>(
-          var_tensor->Get<paddle::framework::Vocab>().size()));
-    } else if (var_tensor->IsType<paddle::framework::Strings>()) {
-      value.emplace_back(static_cast<int64_t>(
-          var_tensor->Get<paddle::framework::Strings>().size()));
+    if (var_tensor->IsType<phi::Vocab>()) {
+      value.emplace_back(
+          static_cast<int64_t>(var_tensor->Get<phi::Vocab>().size()));
+    } else if (var_tensor->IsType<phi::Strings>()) {
+      value.emplace_back(
+          static_cast<int64_t>(var_tensor->Get<phi::Strings>().size()));
     } else {
       PADDLE_THROW(common::errors::Unavailable(
           "VariableCompatTensor only support get shape from Vocab or "
@@ -856,9 +856,9 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
     if (egr::IsVariableCompatTensor(self->tensor)) {
       auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
           self->tensor.impl().get());
-      if (var_tensor->IsType<paddle::framework::Vocab>()) {
+      if (var_tensor->IsType<phi::Vocab>()) {
         return ToPyObject(phi::DataType::UNDEFINED);
-      } else if (var_tensor->IsType<paddle::framework::Strings>()) {
+      } else if (var_tensor->IsType<phi::Strings>()) {
         return ToPyObject(phi::DataType::PSTRING);
       } else {
         PADDLE_THROW(common::errors::Unavailable(
@@ -876,9 +876,9 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
     if (egr::IsVariableCompatTensor(self->tensor)) {
       auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
           self->tensor.impl().get());
-      if (var_tensor->IsType<paddle::framework::Vocab>()) {
+      if (var_tensor->IsType<phi::Vocab>()) {
         return ToPyObject(framework::proto::VarType::RAW);
-      } else if (var_tensor->IsType<paddle::framework::Strings>()) {
+      } else if (var_tensor->IsType<phi::Strings>()) {
         return ToPyObject(framework::proto::VarType::STRING);
       } else {
         PADDLE_THROW(common::errors::Unavailable(

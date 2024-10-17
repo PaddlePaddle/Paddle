@@ -44,31 +44,31 @@ void DyScheduleImpl::MergeExprs() {
   if (exprs.size() <= 1U) return;
   PADDLE_ENFORCE_NOT_NULL(
       exprs[0].As<ir::Block>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MergeExprs>.\n"
           "[Error info] Expr[0] of module_expr should be a Block!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
   PADDLE_ENFORCE_EQ(
       exprs[0].As<ir::Block>()->stmts.size(),
       1U,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MergeExprs>.\n"
           "[Error info] Expr[0] of module_expr should have only one stmt!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
   PADDLE_ENFORCE_NOT_NULL(
       exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MergeExprs>.\n"
           "[Error info] Expr[0] of module_expr should be Block with only one "
           "stmt which is "
           "a "
           "ScheduleBlockRealize!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
@@ -77,14 +77,14 @@ void DyScheduleImpl::MergeExprs() {
           ->stmts[0]
           .As<ir::ScheduleBlockRealize>()
           ->schedule_block.As<ir::ScheduleBlock>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MergeExprs>.\n"
           "[Error info] Expr[0] of module_expr should be Block with only one "
           "stmt which is "
           "a "
           "ScheduleBlockRealize with a defined ScheduleBlock!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   std::vector<Expr> merged_block;
@@ -209,22 +209,22 @@ void DyScheduleImpl::Annotate(const Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Annotate>.\n"
           "[Error info] Expr parameter 'block' must be a "
           "ScheduleBlockRealize!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Annotate>.\n"
           "[Error info] Expr parameter 'block' must be a ScheduleBlockRealize "
           "with a defined ScheduleBlock!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   auto copied_block = ir::ir_utils::IRCopy(block);
@@ -242,22 +242,22 @@ void DyScheduleImpl::Unannotate(Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Unannotate>.\n"
           "[Error info] Expr parameter 'block' must be a "
           "ScheduleBlockRealize!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Unannotate>.\n"
           "[Error info] Expr parameter 'block' must be a ScheduleBlockRealize "
           "with a defined ScheduleBlock!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   auto* schedule_block = block.As<ir::ScheduleBlockRealize>()
@@ -280,22 +280,22 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
 
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Expr parameter 'block' must be a "
           "ScheduleBlockRealize!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_NOT_NULL(
       block_target.As<ir::ScheduleBlockRealize>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Expr parameter 'block_target' must be a "
           "ScheduleBlockRealize!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   auto exprs = this->GetModule().GetExprs();
@@ -303,11 +303,11 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   PADDLE_ENFORCE_EQ(
       exprs.size(),
       1U,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Size of exprs of current module must be 1!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   auto expr = exprs[0];
@@ -325,12 +325,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
     PADDLE_ENFORCE_EQ(
         vars[i]->upper_bound.defined() && vars_target[i]->upper_bound.defined(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<CopyTransformAndLoopInfo>.\n"
             "[Error info] Upper bound of iter_vars in both Expr parameter "
             "'block' and Expr parameter 'block_target' must be defined!\n"
-            "[Error info] The Expr of current schedule is: %s.",
+            "[Expr info] The Expr of current schedule is: %s.",
             module_expr_.GetExprs()));
 
     if (vars[i]->upper_bound.is_constant() &&
@@ -348,7 +348,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   PADDLE_ENFORCE_EQ(
       !new_iter_values.empty(),
       true,
-      phi::errors::InvalidArgument([&]() -> std::string {
+      ::common::errors::InvalidArgument([&]() -> std::string {
         std::ostringstream oss;
         oss << "[IRScheduleError] An error occurred in the schedule primitive <"
             << primitive << ">.\n"
@@ -356,7 +356,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                "source and target is not equal! "
             << vars[0]->upper_bound << " vs " << vars_target[0]->upper_bound
             << "\n"
-            << "[Error info] The Expr of current schedule is: "
+            << "[Expr info] The Expr of current schedule is: "
             << module_expr_.GetExprs() << ".";
         return oss.str();
       }()));
@@ -373,12 +373,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
 
   PADDLE_ENFORCE_EQ(!used_target_loop_vars.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <CopyTransformAndLoopInfo>.\n"
                         "[Error info] Cannot CopyTransformAndLoopInfo since "
                         "there is no loop var in the new_iter_values!\n"
-                        "[Error info] The Expr of current schedule is: %s.",
+                        "[Expr info] The Expr of current schedule is: %s.",
                         module_expr_.GetExprs()));
 
   std::vector<Expr> used_target_loops;
@@ -393,13 +393,13 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         true);
     PADDLE_ENFORCE_EQ(find_loop_var.size(),
                       1U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <CopyTransformAndLoopInfo>.\n"
                           "[Error info] Number of loop with iter_var which is "
                           "used in ScheduleBlockRealize for indexing in "
                           "Exprs[0] of module_exprs must be 1!\n"
-                          "[Error info] The Expr of current schedule is: %s.",
+                          "[Expr info] The Expr of current schedule is: %s.",
                           module_expr_.GetExprs()));
     used_target_loops.push_back(*find_loop_var.begin());
     VLOG(3) << "used_target_loops push_back " << used_target_loops.back();
@@ -411,14 +411,14 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   for (int i = new_iter_values.size(); i < old_iter_values.size(); ++i) {
     PADDLE_ENFORCE_EQ(old_iter_values[i].as_var() != nullptr,
                       true,
-                      phi::errors::InvalidArgument([&]() -> std::string {
+                      ::common::errors::InvalidArgument([&]() -> std::string {
                         std::ostringstream oss;
                         oss << "[IRScheduleError] An error occurred in the "
                                "schedule primitive <"
                             << primitive << ">.\n"
                             << "[Error info] iter_vars[" << i
                             << "] in Expr parameter 'block' must be vars!\n"
-                            << "[Error info] The Expr of current schedule is: "
+                            << "[Expr info] The Expr of current schedule is: "
                             << module_expr_.GetExprs() << ".";
                         return oss.str();
                       }()));
@@ -433,14 +433,14 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   } else {
     PADDLE_ENFORCE_EQ(old_iter_values[changed_loop_num].as_var() != nullptr,
                       true,
-                      phi::errors::InvalidArgument([&]() -> std::string {
+                      ::common::errors::InvalidArgument([&]() -> std::string {
                         std::ostringstream oss;
                         oss << "[IRScheduleError] An error occurred in the "
                                "schedule primitive <"
                             << primitive << ">.\n"
                             << "[Error info] iter_vars[" << changed_loop_num
                             << "] in Expr parameter 'block' must be vars!\n"
-                            << "[Error info] The Expr of current schedule is: "
+                            << "[Expr info] The Expr of current schedule is: "
                             << module_expr_.GetExprs() << ".";
                         return oss.str();
                       }()));
@@ -457,14 +457,14 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
     PADDLE_ENFORCE_EQ(
         find_partial_loop.size(),
         1U,
-        phi::errors::InvalidArgument([&]() -> std::string {
+        ::common::errors::InvalidArgument([&]() -> std::string {
           std::ostringstream oss;
           oss << "[IRScheduleError] An error occurred in the schedule "
                  "primitive <"
               << primitive << ">.\n"
               << "[Error info] Number of loop with iter_var which is "
               << old_var->name << " should be 1 in Exprs[0] of module_expr!\n"
-              << "[Error info] The Expr of current schedule is: "
+              << "[Expr info] The Expr of current schedule is: "
               << module_expr_.GetExprs() << ".";
           return oss.str();
         }()));
@@ -475,12 +475,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         true);
     PADDLE_ENFORCE_EQ(find_schedule_block.size(),
                       1U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
                           "primitive <CopyTransformAndLoopInfo>.\n"
                           "[Error info] Number of ScheduleBlockRealize in "
                           "partial_loop should be 1!\n"
-                          "[Error info] The Expr of current schedule is: %s.",
+                          "[Expr info] The Expr of current schedule is: %s.",
                           module_expr_.GetExprs()));
 
     Expr sch_block = (*find_schedule_block.begin());
@@ -491,12 +491,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   PADDLE_ENFORCE_EQ(
       !used_target_loops.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<CopyTransformAndLoopInfo>.\n"
           "[Error info] Cannot CopyTransformAndLoopInfo since there is no loop "
           "which uses vars in the new_iter_values in Expr[0] of module_expr!\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   Expr res;
@@ -521,12 +521,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
 
   PADDLE_ENFORCE_EQ(!all_loops.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <CopyTransformAndLoopInfo>.\n"
                         "[Error info] Cannot CopyTransformAndLoopInfo since "
                         "there is no loop in Expr parameter 'block'!\n"
-                        "[Error info] The Expr of current schedule is: %s.",
+                        "[Expr info] The Expr of current schedule is: %s.",
                         module_expr_.GetExprs()));
 
   this->Replace(all_loops[0], res);
@@ -554,13 +554,13 @@ Expr DyScheduleImpl::SampleCategorical(
 
   PADDLE_ENFORCE_EQ(candidates.size(),
                     probs.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SampleCategorical>.\n"
                         "[Error info] vector<int> params(candidates) and "
                         "vector<int> params(probs) must "
                         "have same size in SampleCategorical!\n"
-                        "[Error info] The Expr of current schedule is: %s.",
+                        "[Expr info] The Expr of current schedule is: %s.",
                         module_expr_.GetExprs()));
 
   int seed_idx = utils::SampleDiscreteFromDistribution(probs, rand_seed);
@@ -580,42 +580,42 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
 
   PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<SampleCategorical>.\n"
           "[Error info] Expr parameter 'loop' should be a For loop.\n"
-          "[Error info] The Expr of current schedule is: %s.",
+          "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_GE(n,
                     2,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SamplePerfectTile>.\n"
                         "[Error info] The number of tile factors (n) should be "
                         "at least 2, but got %d.\n"
-                        "[Error info] The Expr of current schedule is: %s.",
+                        "[Expr info] The Expr of current schedule is: %s.",
                         n,
                         module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_GE(max_innermost_factor,
                     1,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SamplePerfectTile>.\n"
                         "[Error info] The max innermost factor should be at "
                         "least 1, but got %d.\n"
-                        "[Error info] The Expr of current schedule is: %s.",
+                        "[Expr info] The Expr of current schedule is: %s.",
                         max_innermost_factor,
                         module_expr_.GetExprs()));
 
   PADDLE_ENFORCE_EQ(cinn::common::is_zero(loop.As<ir::For>()->min),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SamplePerfectTile>.\n"
                         "[Error info] The For loop should start from 0.\n"
-                        "[Error info] The Expr of current schedule is: %s.",
+                        "[Expr info] The Expr of current schedule is: %s.",
                         module_expr_.GetExprs()));
 
   int loop_extent = GetLoopExtent(loop);
@@ -629,12 +629,12 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
   // 检查是否找到合适的 innermost_factor
   PADDLE_ENFORCE_EQ(!innermost_factors.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
                         "primitive <SamplePerfectTile>.\n"
                         "[Error info] No innermost factor found for loop "
                         "extent %d with max_innermost_factor %d.\n"
-                        "[Error info] The Expr of current schedule is: %s.",
+                        "[Expr info] The Expr of current schedule is: %s.",
                         loop_extent,
                         max_innermost_factor,
                         module_expr_.GetExprs()));

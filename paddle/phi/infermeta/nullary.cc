@@ -184,6 +184,8 @@ void PartialRecvInferMeta(int ring_id,
   out->set_dtype(dtype);
 }
 
+void LoadInferMeta(MetaTensor* out, MetaConfig config) {}
+
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
   out->set_dims(common::make_ddim({n}));
   out->set_dtype(dtype);

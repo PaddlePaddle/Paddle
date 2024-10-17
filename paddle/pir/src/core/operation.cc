@@ -460,4 +460,10 @@ void *Operation::value_property(const std::string &key, size_t index) const {
 
 COMPONENT_IMPL(op_result, OpResult)
 COMPONENT_IMPL(op_operand, OpOperand)
+
+IR_API std::ostream &operator<<(std::ostream &os, const Operation &op) {
+  op.Print(os);
+  return os;
+}
+
 }  // namespace pir

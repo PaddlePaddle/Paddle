@@ -57,7 +57,9 @@ def logsumexp_ref_grad(x):
 class TestLogsumexp(OpTest):
     def setUp(self):
         self.op_type = 'logsumexp'
+        self.prim_op_type = "prim"
         self.python_api = logsumexp_wrapper
+        self.public_python_api = logsumexp_wrapper
         self.shape = [2, 3, 4, 5]
         self.dtype = 'float64'
         self.axis = [-1]
@@ -87,7 +89,10 @@ class TestLogsumexp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -96,6 +101,7 @@ class TestLogsumexp(OpTest):
             user_defined_grads=self.user_defined_grads,
             user_defined_grad_outputs=self.user_defined_grad_outputs,
             check_pir=True,
+            check_prim_pir=True,
         )
 
     def calc_grad(self):
@@ -165,24 +171,25 @@ class TestLogsumexp_FP16(TestLogsumexp):
         self.dtype = 'float16'
 
     def test_check_output(self):
-        ref_x = self.inputs['X'].astype(np.float32)
-        out_ref = ref_logsumexp(ref_x)
-        paddle.disable_static()
-        x = self.inputs['X'].astype(np.float16)
-        tensor_x = paddle.to_tensor(x)
-        out_pad = logsumexp_wrapper(tensor_x)
-        paddle.enable_static()
-        np.testing.assert_allclose(
-            out_pad.numpy(), out_ref, rtol=1e-03, atol=1e-08
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_grad(self):
-        self.__class__.dtype = self.dtype
-        ref_x = self.inputs['X'].astype(np.float32)
-        ref_x_grad = logsumexp_ref_grad(ref_x)
-        x = self.inputs['X'].astype(np.float16)
-        x_grad = logsumexp_op_grad(x)
-        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-05)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+    def set_attrs_addition(self):
+        pass
 
 
 @unittest.skipIf(
@@ -193,7 +200,9 @@ class TestLogsumexp_FP16(TestLogsumexp):
 class TestLogsumexpBF16Op(TestLogsumexp):
     def setUp(self):
         self.op_type = 'logsumexp'
+        self.prim_op_type = "prim"
         self.python_api = logsumexp_wrapper
+        self.public_python_api = logsumexp_wrapper
         self.dtype = np.uint16
         self.shape = [2, 3, 4, 5]
         self.axis = [-1]
@@ -213,11 +222,21 @@ class TestLogsumexpBF16Op(TestLogsumexp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def set_attrs(self):
         pass
@@ -227,7 +246,6 @@ class TestLogsumexpBF16Op(TestLogsumexp):
 
 
 class TestLogsumexpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)

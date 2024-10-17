@@ -494,10 +494,14 @@ ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
           accumulate_shape = cinn::common::AutoSimplify(
               accumulate_shape + input_tensors[i]->shape[axis]);
           std::vector<Expr> new_indice = indice;
-          new_indice[axis] = indice[axis] - accumulate_shape;
-          ret = ir::Select::Make(indice[axis] < accumulate_shape,
-                                 ret,
-                                 input_tensors[i + 1](new_indice));
+          new_indice[axis] =
+              ir::Cast::Make(accumulate_shape.type(), indice[axis]) -
+              accumulate_shape;
+          ret =
+              ir::Select::Make(ir::Cast::Make(accumulate_shape.type(),
+                                              indice[axis]) < accumulate_shape,
+                               ret,
+                               input_tensors[i + 1](new_indice));
         }
         return ret;
       },
@@ -1342,7 +1346,7 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
                  });
 
   for (int i = 0; i < axes.size(); i++) {
-    if (input_shape[axes[i]].is_constant()) {
+    if (input_shape[axes[i]].is_constant() && new_starts[i].is_constant()) {
       if (new_starts[i].as_int64() < -input_shape[axes[i]].as_int64()) {
         new_starts[i] = ir::Expr(0);
       } else if (new_starts[i].as_int64() < 0) {

@@ -147,8 +147,14 @@ API_INNER_CODE_TEMPLATE = """
     {set_null_type}
     {handle_optional_outputs}
     {out_split}
+    {set_stop_gradient}
     {return_result}"""
 
+SET_STOP_GRADIENT_TEMPLATE = """
+    if (!egr::Controller::Instance().HasGrad()) {{
+        SetStopGradient({value_list});
+    }}
+"""
 
 AMP_LOGIC_TEMPLATE = """
     if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
@@ -698,6 +704,14 @@ class CodeGen:
                 ret_list.append(f'{op_inst_name}.result({i})')
         return split_op_str, ret_list
 
+    def _gen_set_stop_gradient(self, ret_list):
+        if len(ret_list) > 0:
+            return SET_STOP_GRADIENT_TEMPLATE.format(
+                value_list=', '.join(ret_list)
+            )
+        else:
+            return ''
+
     def _gen_return_result(self, ret_list):
         if len(ret_list) > 1:
             return 'return std::make_tuple({});'.format(', '.join(ret_list))
@@ -1043,6 +1057,7 @@ class CodeGen:
                     ),
                     set_null_type=self._gen_set_null_type(op_info, kernel_name),
                     out_split=out_split,
+                    set_stop_gradient=self._gen_set_stop_gradient(ret_list),
                     return_result=self._gen_return_result(ret_list),
                 )
                 if_inner_code = if_inner_code.split('\n')
@@ -1105,6 +1120,7 @@ class CodeGen:
                 ),
                 set_null_type=self._gen_set_null_type(op_info, op_name),
                 out_split=out_split,
+                set_stop_gradient=self._gen_set_stop_gradient(ret_list),
                 return_result=self._gen_return_result(ret_list),
             )
             if op_info.is_sparse_op:

@@ -15,6 +15,7 @@
 #include "paddle/cinn/ir/ir.h"
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 #include "paddle/cinn/common/cinn_value.h"
@@ -319,12 +320,12 @@ void _Var_::Verify() const {
                         "A valid name is required to identify the variable."));
 }
 
-Expr IterMark::Make(const Expr &source, const Expr &extent) {
+IndexExpr IterMark::Make(const IndexExpr &source, const IndexExpr &extent) {
   auto *n = make_shared<IterMark>();
   n->source = source;
   n->extent = extent;
   n->set_type(source.type());
-  return Expr(n);
+  return IndexExpr(n);
 }
 
 IterMark &IterMark::operator=(const IterMark &other) {
@@ -333,39 +334,39 @@ IterMark &IterMark::operator=(const IterMark &other) {
   extent = other.extent;
   return *this;
 }
-Expr IterSplit::Make(const Expr &source,
-                     const Expr &lower_factor,
-                     const Expr &extent,
-                     const Expr &scale) {
+IndexExpr IterSplit::Make(const IndexExpr &source,
+                          const IndexExpr &lower_factor,
+                          const IndexExpr &extent,
+                          const IndexExpr &scale) {
   auto *n = make_shared<IterSplit>();
   n->set_type(source.type());
   n->source = source;
   n->lower_factor = lower_factor;
   n->extent = extent;
   n->scale = scale;
-  return Expr(n);
+  return IndexExpr(n);
 }
 
-Expr IterSplit::Make(const Expr &source) {
+IndexExpr IterSplit::Make(const IndexExpr &source) {
   auto *n = make_shared<IterSplit>();
   auto source_mark = source.As<IterMark>();
   n->set_type(source.type());
   n->source = source;
   n->extent = source_mark->extent;
-  n->lower_factor = One(source.type());
-  n->scale = One(source.type());
-  return Expr(n);
+  n->lower_factor = One(source.type()).as_index();
+  n->scale = One(source.type()).as_index();
+  return IndexExpr(n);
 }
 
-Expr IterSplit::Make(const Expr &source, const Expr &scale) {
+IndexExpr IterSplit::Make(const IndexExpr &source, const IndexExpr &scale) {
   auto *n = make_shared<IterSplit>();
   auto source_mark = source.As<IterMark>();
   n->set_type(source.type());
   n->source = source;
   n->extent = source_mark->extent;
-  n->lower_factor = One(source.type());
+  n->lower_factor = One(source.type()).as_index();
   n->scale = scale;
-  return Expr(n);
+  return IndexExpr(n);
 }
 IterSplit &IterSplit::operator=(const IterSplit &other) {
   this->set_type(other.type());
@@ -376,12 +377,13 @@ IterSplit &IterSplit::operator=(const IterSplit &other) {
   return *this;
 }
 
-Expr IterSum::Make(const std::vector<Expr> &args, const Expr &base) {
+IndexExpr IterSum::Make(const std::vector<IndexExpr> &args,
+                        const IndexExpr &base) {
   auto *n = make_shared<IterSum>();
   n->set_type(base.type());
   n->args = std::move(args);
   n->base = base;
-  return Expr(n);
+  return IndexExpr(n);
 }
 
 void Mul::Verify() const { BinaryNodeVerify(a(), b(), "Mul"); }
@@ -412,6 +414,9 @@ Expr For::Make(Var loop_var,
       true,
       ::common::errors::InvalidArgument("The extent is not defined. "
                                         "A valid extent is required."));
+
+  if (!(loop_var->lower_bound.defined())) loop_var->lower_bound = min;
+  if (!(loop_var->upper_bound.defined())) loop_var->upper_bound = extent;
 
   node->loop_var = loop_var;
   node->min = min;
@@ -1516,5 +1521,115 @@ void Block::Verify() const {}
 
 void PrimitiveNode::Verify() const {}
 
+IndexExpr &IndexExpr::operator=(const IndexExpr &other) {
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&other);
+  return *this;
+}
+
+static std::optional<IndexExpr> SimplifyAdd(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value + rhsConst->value);
+  }
+
+  if (lhsConst && !rhsConst) {
+    return rhs + lhs;
+  }
+  if (rhsConst && rhsConst->value == 0) {
+    return lhs;
+  }
+
+  return std::nullopt;
+}
+static std::optional<IndexExpr> SimplifySub(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value - rhsConst->value);
+  }
+
+  if (rhsConst && rhsConst->value == 0) {
+    return lhs;
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<IndexExpr> SimplifyMul(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value * rhsConst->value);
+  }
+
+  if (lhsConst && !rhsConst) {
+    return rhs * lhs;
+  }
+
+  if (rhsConst) {
+    if (rhsConst->value == 0) {
+      return IndexExpr(0);
+    }
+    if (rhsConst->value == 1) {
+      return lhs;
+    }
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<IndexExpr> SimplifyDiv(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value / rhsConst->value);
+  }
+
+  if (rhsConst && rhsConst->value == 1) {
+    return lhs;
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<IndexExpr> SimplifyMod(IndexExpr lhs, IndexExpr rhs) {
+  auto lhsConst = lhs.As<IntImm>();
+  auto rhsConst = rhs.As<IntImm>();
+
+  if (lhsConst && rhsConst) {
+    return IndexExpr(lhsConst->value % rhsConst->value);
+  }
+
+  if (rhsConst && rhsConst->value == 1) {
+    return IndexExpr(0);
+  }
+
+  return std::nullopt;
+}
+
+#define DEFINE_BINARY_OPERATOR(op, simplifyFunc, makeFunc)  \
+  IndexExpr IndexExpr::operator op(int64_t v) const {       \
+    return *this op IndexExpr(v);                           \
+  }                                                         \
+  IndexExpr IndexExpr::operator op(int32_t v) const {       \
+    return *this op IndexExpr(v);                           \
+  }                                                         \
+  IndexExpr IndexExpr::operator op(IndexExpr other) const { \
+    if (auto simplified = simplifyFunc(*this, other))       \
+      return simplified.value();                            \
+    return makeFunc(*this, other);                          \
+  }
+
+DEFINE_BINARY_OPERATOR(+, SimplifyAdd, Add::Make)
+DEFINE_BINARY_OPERATOR(-, SimplifySub, Sub::Make)
+DEFINE_BINARY_OPERATOR(*, SimplifyMul, Mul::Make)
+DEFINE_BINARY_OPERATOR(/, SimplifyDiv, Div::Make)
+DEFINE_BINARY_OPERATOR(%, SimplifyMod, Mod::Make)
+
+#undef DEFINE_BINARY_OPERATOR
 }  // namespace ir
 }  // namespace cinn

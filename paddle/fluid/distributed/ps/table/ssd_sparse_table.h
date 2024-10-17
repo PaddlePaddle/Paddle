@@ -144,6 +144,7 @@ class SSDSparseTable : public MemorySparseTable {
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   paddle::framework::AfsWrapper _afs_wrapper;  // afs api wrapper
 #endif
+  bool _use_afs_api = false;
 };
 
 }  // namespace distributed

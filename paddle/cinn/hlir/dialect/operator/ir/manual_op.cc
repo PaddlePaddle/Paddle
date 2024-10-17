@@ -103,15 +103,15 @@ void GroupOp::VerifySig() {}
 void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
-  printer.PrintOpResult(op);
+  printer.PrintOpResult(*op);
   os << " = \"" << name() << "\" [id:" << op->id() << "]";
-  printer.PrintOpOperands(op);
+  printer.PrintOpOperands(*op);
   os << " -> ";
-  printer.PrintOpReturnType(op);
+  printer.PrintOpReturnType(*op);
   os << " {\n";
   printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    printer.PrintOperation(sub_op);
+    printer.PrintOperation(*sub_op);
     os << "\n";
   }
   printer.DecreaseIndentation();
@@ -187,15 +187,15 @@ void FusionOp::VerifySig() {}
 void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
-  printer.PrintOpResult(op);
+  printer.PrintOpResult(*op);
   os << " = \"" << name() << "\" [id:" << op->id() << "]";
-  printer.PrintOpOperands(op);
+  printer.PrintOpOperands(*op);
   os << " -> ";
-  printer.PrintOpReturnType(op);
+  printer.PrintOpReturnType(*op);
   os << " {\n";
   printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    printer.PrintOperation(sub_op);
+    printer.PrintOperation(*sub_op);
     os << "\n";
   }
   printer.DecreaseIndentation();

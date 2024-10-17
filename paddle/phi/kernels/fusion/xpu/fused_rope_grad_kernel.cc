@@ -18,6 +18,22 @@
 
 namespace phi {
 namespace fusion {
+#define LAUNCH_XPU_FUSED_ROPE_GRAD(T, SCT)                 \
+  XPUFusedRopeImpl<T, SCT, Context>(dev_ctx,               \
+                                    dout_q,                \
+                                    dout_k,                \
+                                    dout_v,                \
+                                    sin,                   \
+                                    cos,                   \
+                                    position_ids,          \
+                                    use_neox_rotary_style, \
+                                    time_major,            \
+                                    true,                  \
+                                    rotary_emb_base,       \
+                                    dq,                    \
+                                    dk,                    \
+                                    dv);
+
 template <typename T, typename Context>
 void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& sin,
@@ -32,175 +48,33 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  if (dout_q.numel() <= 0) {
-    return;
+  dev_ctx.template Alloc<T>(dq);
+  if (dout_k) {
+    dev_ctx.template Alloc<T>(dk);
   }
-  int64_t batch_size = dout_q.dims()[0];
-  int64_t seq_len = dout_q.dims()[1];
-  int64_t num_heads = dout_q.dims()[2];
-  int64_t head_dim = dout_q.dims()[3];
-  PADDLE_ENFORCE_EQ(head_dim % 2,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The head_dim of input must be a multiple of 2."));
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-
-  int64_t sin_cos_len = batch_size * seq_len * head_dim;
-  if (use_neox_rotary_style) {
-    auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
-    auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
-    if (sin.get_ptr() && cos.get_ptr()) {
-      PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
-                        cos.get_ptr()->dims(),
-                        common::errors::InvalidArgument(
-                            "The dims of sin and cos must be the same. But "
-                            "received sin's dims is {%s}, cos's dims is {%s}.",
-                            sin.get_ptr()->dims(),
-                            cos.get_ptr()->dims()));
-    }
-    XPUGetSinCosData<XPUType, Context>(
-        dev_ctx, sin, position_ids, sin_data, batch_size, seq_len, head_dim);
-    XPUGetSinCosData<XPUType, Context>(
-        dev_ctx, cos, position_ids, cos_data, batch_size, seq_len, head_dim);
-    if (!dout_k.get_ptr()) {
-      auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
-      int ret = xpu::rotary_embedding_v3_single_grad<XPUType, XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(dout_q.data<T>()),
-          cos_data,
-          sin_data,
-          dq_data,
-          batch_size,
-          seq_len,
-          num_heads,
-          head_dim,
-          {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1});
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_embedding_v3_single_grad");
+  if (dout_v) {
+    dev_ctx.template Alloc<T>(dv);
+  }
+  if (sin && cos) {
+    PADDLE_ENFORCE_EQ(sin->dims(),
+                      cos->dims(),
+                      common::errors::InvalidArgument(
+                          "The dims of sin and cos must be the same. But "
+                          "received sin's dims is {%s}, cos's dims is {%s}.",
+                          sin->dims(),
+                          cos->dims()));
+    if (sin->dtype() == phi::DataType::FLOAT32) {
+      LAUNCH_XPU_FUSED_ROPE_GRAD(T, float);
     } else {
-      int64_t num_heads_k = dout_k->dims()[2];
-      auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
-      auto* dk_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
-      int ret = xpu::rotary_embedding_v3_grad<XPUType, XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(dout_q.data<T>()),
-          reinterpret_cast<const XPUType*>(dout_k->data<T>()),
-          cos_data,
-          sin_data,
-          dq_data,
-          dk_data,
-          batch_size,
-          seq_len,
-          num_heads,
-          head_dim,
-          {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
-          {seq_len * num_heads_k * head_dim,
-           num_heads_k * head_dim,
-           head_dim,
-           1},
-          num_heads_k);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_embedding_v3_grad");
-    }
-    if (dout_v.get_ptr()) {
-      int64_t num_heads_v = dout_v->dims()[2];
-      auto* dv_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dv));
-      int ret = xpu::rotary_embedding_v3_single_grad<XPUType, XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(dout_v->data<T>()),
-          cos_data,
-          sin_data,
-          dv_data,
-          batch_size,
-          seq_len,
-          num_heads_v,
-          head_dim,
-          {seq_len * num_heads_v * head_dim,
-           num_heads_v * head_dim,
-           head_dim,
-           1});
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_embedding_v3_single_grad");
+      PADDLE_ENFORCE_EQ(
+          phi::CppTypeToDataType<T>::Type(),
+          sin->dtype(),
+          common::errors::InvalidArgument(
+              "The embedding dtype and sin/cos dtype mismatched."));
+      LAUNCH_XPU_FUSED_ROPE_GRAD(T, T);
     }
   } else {
-    auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
-    auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
-    if (sin.get_ptr() && cos.get_ptr()) {
-      PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
-                        cos.get_ptr()->dims(),
-                        common::errors::InvalidArgument(
-                            "The dims of sin and cos must be the same. But "
-                            "received sin's dims is {%s}, cos's dims is {%s}.",
-                            sin.get_ptr()->dims(),
-                            cos.get_ptr()->dims()));
-    }
-    XPUGetSinCosData<XPUType, Context>(
-        dev_ctx, sin, position_ids, sin_data, batch_size, seq_len, head_dim);
-    XPUGetSinCosData<XPUType, Context>(
-        dev_ctx, cos, position_ids, cos_data, batch_size, seq_len, head_dim);
-    if (head_dim * sizeof(T) <= 1024 && head_dim % 64 == 0 && dout_k) {
-      int64_t num_heads_k = dout_k->dims()[2];
-      auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
-      auto* dk_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
-      int ret = xpu::rotary_no_freqs_qk_embedding_v2_grad<XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(dout_q.data<T>()),
-          reinterpret_cast<const XPUType*>(dout_k->data<T>()),
-          sin_data,
-          cos_data,
-          dq_data,
-          dk_data,
-          {batch_size, seq_len, num_heads, head_dim},
-          {batch_size, seq_len, 1, head_dim},
-          {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
-          {seq_len * head_dim, head_dim, head_dim, 1},
-          num_heads_k);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_no_freqs_qk_embedding_v2_grad");
-    } else {
-      auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
-      XPUFusedRotaryHalf<XPUType, Context>(
-          dev_ctx,
-          reinterpret_cast<const XPUType*>(dout_q.data<T>()),
-          sin_data,
-          cos_data,
-          dq_data,
-          batch_size,
-          seq_len,
-          num_heads,
-          head_dim,
-          true);
-
-      if (dout_k.get_ptr()) {
-        int64_t num_heads_k = dout_k->dims()[2];
-        auto* dk_data =
-            reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
-        XPUFusedRotaryHalf<XPUType, Context>(
-            dev_ctx,
-            reinterpret_cast<const XPUType*>(dout_k->data<T>()),
-            sin_data,
-            cos_data,
-            dk_data,
-            batch_size,
-            seq_len,
-            num_heads_k,
-            head_dim,
-            true);
-      }
-    }
-
-    if (dout_v.get_ptr()) {
-      int64_t num_heads_v = dout_v->dims()[2];
-      auto* dv_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dv));
-      XPUFusedRotaryHalf<XPUType, Context>(
-          dev_ctx,
-          reinterpret_cast<const XPUType*>(dout_v->data<T>()),
-          sin_data,
-          cos_data,
-          dv_data,
-          batch_size,
-          seq_len,
-          num_heads_v,
-          head_dim,
-          true);
-    }
+    LAUNCH_XPU_FUSED_ROPE_GRAD(T, float);
   }
 }
 }  // namespace fusion

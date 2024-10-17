@@ -31,8 +31,8 @@
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/platform/timer.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/string_helper.h"
 

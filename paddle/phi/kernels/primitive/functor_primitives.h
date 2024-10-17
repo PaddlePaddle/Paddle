@@ -234,7 +234,7 @@ struct DivFunctor<T,
   inline T initial() { return static_cast<T>(1.0f); }
 
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    // For int32/int64, need to check whether the divison is zero.
+    // For int32/int64, need to check whether the division is zero.
     PADDLE_ENFORCE_NE(b,
                       0,
                       common::errors::InvalidArgument(

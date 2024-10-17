@@ -31,15 +31,25 @@ struct ScopeElement {
   }
 };
 using ScopeElementPtr = std::shared_ptr<ScopeElement>;
+using cinn::hlir::framework::pir::trivial_fusion_detail::GetOutputTensor;
 
 struct FusionInterpreter {
   FusionInterpreter(const FusionTrackerPtr& tracker,
+                    const std::vector<::pir::Operation*>& ops,
                     const std::vector<FusibleOp>& init_fusible_op)
       : tracker(tracker), initialized_lowered_op(init_fusible_op) {
+    for (size_t i = 0; i < ops.size(); i++) {
+      if (ops[i]->name() == "cinn_op.yield_store" ||
+          ops[i]->name() == "pd_op.assign_out_") {
+        global_var_names.push_back(GetOutputTensor(init_fusible_op[i])->name);
+      }
+    }
     VLOG(4) << "Create FusionInterpreter, Tracker is:\n" << tracker->DebugStr();
+    VLOG(4) << "Global var names: " << utils::Join(global_var_names, ", ");
   }
 
   std::vector<FusibleOp> initialized_lowered_op;
+  std::vector<std::string> global_var_names;
   std::unordered_map<std::string, ScopeElementPtr> scope;
   FusionTrackerPtr tracker;
 

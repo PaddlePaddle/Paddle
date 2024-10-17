@@ -41,12 +41,12 @@ from paddle.base import core
 from paddle.base.executor import global_scope
 from paddle.base.framework import (
     Variable,
-    _current_expected_place as _get_device,
+    _current_expected_place_ as _get_device,
     _get_paddle_place,
 )
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, in_pir_mode
 from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -89,7 +89,9 @@ def to_list(value):
 
 
 def to_numpy(var):
-    assert isinstance(var, (Variable, base.core.eager.Tensor)), "not a variable"
+    assert isinstance(
+        var, (Variable, base.core.eager.Tensor, paddle.base.libpaddle.pir.Value)
+    ), "not a variable"
     if isinstance(var, base.core.eager.Tensor):
         return np.array(var)
     t = global_scope().find_var(var.name).get_tensor()
@@ -318,6 +320,394 @@ def _update_input_info(inputs):
     else:
         return None
     return shapes, dtypes
+
+
+class StaticPIRGraphAdapter:
+    """
+
+    Model training/inference with PIR.
+
+    """
+
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+        # with `_build_once` gone, parameters are now created in `__init__`
+        # so we need to keep track of the parameters already created
+        self._startup_prog = paddle.pir.core.default_startup_program()
+        self._orig_prog = paddle.pir.core.default_main_program()
+
+        self._label_vars = {}
+        self._input_vars = {}
+        self._endpoints = {}
+        self._loss_endpoint = None
+        self._executor = None
+        self._progs = {}
+        self._compiled_progs = {}
+
+        self._merge_count = {
+            'eval_total': 0,
+            'test_total': 0,
+            'eval_batch': 0,
+            'test_batch': 0,
+        }
+
+        self._nranks = paddle.distributed.ParallelEnv().nranks
+        self._local_rank = paddle.distributed.ParallelEnv().local_rank
+
+        self._amp_level = "O0"
+        self._amp_configs = {}
+        self._amp_custom_lists = {}
+        self._use_fp16_guard = None
+
+    @property
+    def mode(self):
+        return self.model.mode
+
+    @mode.setter
+    def mode(self, value):
+        self.model.mode = value
+
+    def train_batch(self, inputs, labels=None, update=True):
+        assert (
+            self.model._optimizer
+        ), "model not ready, please call `model.prepare()` first"
+        self.mode = 'train'
+        assert (
+            update is True
+        ), "Does not support `update == False` in static graph mode by now."
+        return self._run(inputs, labels)
+
+    def eval_batch(self, inputs, labels=None):
+        self.mode = 'eval'
+        return self._run(inputs, labels)
+
+    def predict_batch(self, inputs):
+        self.mode = 'test'
+        return self._run(inputs, None)
+
+    def parameters(self, *args, **kwargs):
+        return self.model.network.parameters(*args, **kwargs)
+
+    def save(self, path):
+        def _save(state, path):
+            if not state:
+                return
+            state = {
+                k: (
+                    to_numpy(v)
+                    if isinstance(v, paddle.base.libpaddle.pir.Value)
+                    else v
+                )
+                for k, v in state.items()
+            }
+            with open(path, 'wb') as f:
+                pickle.dump(state, f)
+
+        def get_tensor(var):
+            t = global_scope().find_var(var.name).get_tensor()
+            return np.array(t)
+
+        base = os.path.basename(path)
+        assert base != "", "path should be of 'dirname/filename' format"
+        dir_name = os.path.dirname(path)
+        if dir_name and not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        param_path = path + ".pdparams"
+        _save(self.model.network.state_dict(), param_path)
+
+        prog = self._progs.get('train', None)
+
+        if prog is None or self.model._optimizer is None:
+            return
+        # XXX `optimizer.state_dict()` only work in dygraph mode
+        optim_path = path + ".pdopt"
+
+        opts = []
+        for var in prog.list_vars():
+            if var.persistable and var.get_defining_op().name() == "pd_op.data":
+                opts.append(var)
+
+        opt_dict = {
+            var.name: get_tensor(var) for var in opts if var.persistable
+        }
+        if not opt_dict:
+            return
+
+        _save(opt_dict, optim_path)
+
+    def _set_var(self, name, ndarray):
+        t = global_scope().find_var(name).get_tensor()
+        p = t._place()
+        if p.is_cpu_place():
+            place = paddle.base.CPUPlace()
+        elif p.is_cuda_pinned_place():
+            place = paddle.base.CUDAPinnedPlace()
+        elif p.is_xpu_place():
+            p = paddle.base.core.Place()
+            p.set_place(t._place())
+            place = paddle.base.XPUPlace(p.xpu_device_id())
+        elif p.is_custom_place():
+            p = paddle.base.core.Place()
+            p.set_place(t._place())
+            place = paddle.base.CustomPlace(
+                paddle.device.get_device().split(':')[0], p.custom_device_id()
+            )
+        else:
+            p = paddle.base.core.Place()
+            p.set_place(t._place())
+            place = paddle.base.CUDAPlace(p.gpu_device_id())
+
+        t.set(ndarray, place)
+
+    def load(self, param_state_pairs, optim_state):
+        if self._executor is None:
+            executor = base.Executor(base.CPUPlace())._default_executor
+        else:
+            executor = self._executor._default_executor
+
+        paddle.base.libpaddle.pir.create_loaded_parameter(
+            [param for param, state in param_state_pairs],
+            global_scope(),
+            executor,
+        )
+        for param, state in param_state_pairs:
+            self._set_var(param.name, state)
+
+        # restore optimizer states
+        # FIXME what if a different optimizer is used?
+        if not self.model._optimizer or not optim_state:
+            return
+        self._load_optimizer(optim_state, executor)
+
+    def _load_optimizer(self, state, executor):
+        prog = self._progs.get('train', None)
+        optim = []
+        for var in prog.list_vars():
+            if not var.is_parameter:
+                if var.persistable:
+                    optim.append(var)
+
+        if not optim:
+            return
+
+        base.core._create_loaded_parameter(optim, global_scope(), executor)
+
+        converted_state = dict(state)
+        for var in optim:
+            if var.name.startswith("learning_rate_"):
+                # When using static learning rate, static-graph would make it
+                # a persistable var named 'unique_name.generate("learning_rate")',
+                # However, dygraph wouldn't save it.
+                if var.name not in state:
+                    continue
+            assert (
+                var.name in converted_state
+            ), f"variable [{var.name}] is not in optimizer state file"
+            self._set_var(var.name, converted_state[var.name])
+
+    def _run(self, inputs, labels=None):
+        compiled_prog = self._compiled_progs.get(self.mode, None)
+        assert (
+            compiled_prog
+        ), "Model is not ready, please call `model.prepare()` first"
+
+        inputs = to_list(inputs)
+        if labels is not None:
+            labels = to_list(labels)
+        assert len(inputs) == len(self._input_vars[self.mode]), (
+            "number of inputs"
+            + " does not match number of arguments of `forward` method"
+        )
+
+        feed = {}
+        input_names = [v.name for v in self._input_vars[self.mode]]
+        input_dtypes = [v.dtype for v in self._input_vars[self.mode]]
+
+        for idx, n in enumerate(input_names):
+            # train and test may take different arguments
+            if inputs[idx] is not None:
+                feed[n] = inputs[idx]
+            if self._amp_level == 'O2' and input_dtypes[idx] == paddle.float16:
+                if isinstance(feed[n], core.LoDTensor):
+                    feed[n] = feed[n]._as_type(paddle.pir.core.DataType.FLOAT16)
+                elif isinstance(feed[n], np.ndarray):
+                    feed[n] = feed[n].astype('float16')
+
+        if labels is not None:
+            for idx, v in enumerate(self._label_vars[self.mode]):
+                feed[v.name] = labels[idx]
+
+        endpoints = self._endpoints[self.mode]
+        if self.mode == 'test':
+            fetch_list = endpoints['output']
+        else:
+            metric_list, metric_splits = flatten_list(endpoints['metric'])
+            fetch_list = endpoints['loss'] + metric_list
+            num_loss = len(endpoints['loss'])
+
+        # if fetch Variable is same as input Variable, do not fetch
+        # from program, get it from input directly
+        pruned_fetch_list = []
+        pruned_fetch_idx_name_map = [""] * len(fetch_list)
+        for i, fetch_var in enumerate(fetch_list):
+            if fetch_var in feed.keys():
+                pruned_fetch_idx_name_map[i] = fetch_var
+            else:
+                pruned_fetch_list.append(fetch_var)
+
+        rets = self._executor.run(
+            compiled_prog,
+            feed=feed,
+            fetch_list=pruned_fetch_list,
+            return_numpy=False,
+        )
+
+        # restore pruned fetch_list Variable from feeds
+        for i, name in enumerate(pruned_fetch_idx_name_map):
+            if len(name) > 0:
+                rets.insert(i, feed[name])
+
+        # LoDTensor cannot be fetch as numpy directly
+        rets = [np.array(v) for v in rets]
+        if self.mode == 'test':
+            return rets[:]
+
+        metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
+        metrics = []
+        for metric, state in zip(self.model._metrics, metric_states):
+            metrics.append(metric.update(*state))
+
+        if num_loss and len(metrics):
+            return rets[:num_loss], metrics
+        else:
+            return rets[:num_loss] if num_loss else metrics
+
+    def prepare(self):
+        modes = ['train', 'test', 'eval']
+        for mode in modes:
+            self._make_program(mode)
+            self._initialize(self._progs[mode], mode)
+
+    def _make_program(self, mode):
+        prog = self._progs.get(mode, None)
+        if prog is not None:
+            return
+
+        prog = self._orig_prog.clone()
+
+        losses = []
+        metrics = []
+        prog_param = prog.get_all_parameter_values()
+
+        named_sublayers = self.model.network.named_sublayers(
+            prefix='',
+            include_self=True,
+            remove_duplicate=True,
+        )
+        for layer_prefix, sublayer in named_sublayers:
+            params = sublayer._parameters.items()
+            for key, param in params:
+                sublayer._parameters[key] = prog_param[param.name]
+
+        with base.program_guard(prog, self._startup_prog):
+            inputs = self.model._inputs
+            labels = self.model._labels if self.model._labels else []
+            inputs = [k._create_feed_layer() for k in to_list(inputs)]
+            labels = [k._create_feed_layer() for k in to_list(labels)]
+            self._label_vars[mode] = labels
+
+            if mode == 'train' and self.model._optimizer:
+                opt_param = []
+                for key, value in prog_param.items():
+                    opt_param.append(value)
+
+                self.model._optimizer._parameter_list = list(opt_param)
+
+                if self._amp_level != "O0" and core.is_compiled_with_cuda:
+                    self.model.network, self.model._optimizer = (
+                        paddle.amp.decorate(
+                            models=self.model.network,
+                            optimizers=self.model._optimizer,
+                            level=self._amp_level,
+                        )
+                    )
+
+                    with paddle.amp.auto_cast(
+                        level=self._amp_level, dtype='float16', use_promote=True
+                    ):
+                        outputs = to_list(self.model.network.forward(*inputs))
+
+                        if mode != 'test' and self.model._loss:
+                            losses = self.model._loss(*(outputs + labels))
+
+                        if mode != 'test':
+                            for metric in self.model._metrics:
+                                metrics.append(
+                                    to_list(metric.compute(*(outputs + labels)))
+                                )
+                else:
+                    outputs = to_list(self.model.network.forward(*inputs))
+
+                    if mode != 'test' and self.model._loss:
+                        losses = self.model._loss(*(outputs + labels))
+
+                    if mode != 'test':
+                        for metric in self.model._metrics:
+                            metrics.append(
+                                to_list(metric.compute(*(outputs + labels)))
+                            )
+
+                self._loss_endpoint = paddle.add_n(losses)
+
+                self.model._optimizer.minimize(self._loss_endpoint)
+            else:
+                outputs = to_list(self.model.network.forward(*inputs))
+
+                if mode != 'test' and self.model._loss:
+                    losses = self.model._loss(*(outputs + labels))
+
+                if mode != 'test':
+                    for metric in self.model._metrics:
+                        metrics.append(
+                            to_list(metric.compute(*(outputs + labels)))
+                        )
+
+        if mode != 'train':
+            # Some operators, e.g., :ref:`api_paddle_base_layers_batch_norm` , behave differently between
+            # training and testing. They have an attribute, :code:`is_test`, to
+            # control this behaviour. This method will change the :code:`is_test`
+            # attribute of them to :code:`True` when :code:`for_test=True`.
+            prog.set_is_test_attr()
+
+        self._input_vars[mode] = inputs
+
+        self._progs[mode] = prog
+        self._endpoints[mode] = {
+            "output": outputs,
+            "loss": to_list(losses),
+            "metric": metrics,
+        }
+
+    def _initialize(self, prog, mode):
+        assert (
+            self.model._place is not None
+        ), "device is not set, please call `model.prepare()` first"
+
+        place = self.model._place
+
+        if self._executor is None:
+            self._executor = base.Executor(place)
+            self._executor.run(self._startup_prog)
+
+        if (
+            self._amp_level == "O2"
+            and mode == 'train'
+            and core.is_compiled_with_cuda()
+        ):
+            self.model._optimizer.amp_init(place)
+
+        self._compiled_progs[mode] = prog
 
 
 class StaticGraphAdapter:
@@ -1227,6 +1617,8 @@ class Model:
         # init backend
         if in_dynamic_mode():
             self._adapter = DynamicGraphAdapter(self)
+        elif in_pir_mode():
+            self._adapter = StaticPIRGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
 
@@ -2361,7 +2753,10 @@ class Model:
                 prog
             ), "Model is not ready, please call `model.prepare()` first"
 
-            infer_prog = prog.clone(for_test=True)
+            if in_pir_mode():
+                infer_prog = prog
+            else:
+                infer_prog = prog.clone(for_test=True)
 
             inputs = list(self._adapter._input_vars['test'])
             endpoints = self._adapter._endpoints['test']['output']

@@ -76,6 +76,7 @@ UNARY_PRIM_VJP_OPS = [
     'sin_grad',
     'cos_grad',
     'tanh_grad',
+    'trunc_grad',
     'square_grad',
 ]
 
@@ -89,6 +90,8 @@ BINARY_PRIM_VJP_OPS = [
     'elementwise_pow_grad',
     'maximum_grad',
     'reduce_as_grad',
+    'fmax_grad',
+    'fmin_grad',
     'dot_grad',
 ]
 
@@ -124,6 +127,7 @@ OTHER_PRIM_VJP_OPS = [
     'unsqueeze_grad',
     'where_grad',
     'logcumsumexp_grad',
+    'logsumexp_grad',
 ]
 
 # whole vjp list of primitive op vjp
@@ -150,6 +154,7 @@ CUSTOM_VJP = [
     'sqrt_grad',
     'stack_grad',
     'swiglu',
+    'swish_grad',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP

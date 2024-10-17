@@ -18,7 +18,6 @@ import unittest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.pir_utils import test_with_dygraph_pir
 
 
 def getModelOp(model_path):
@@ -87,7 +86,7 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestConditionalOp(unittest.TestCase):
-    @test_with_dygraph_pir
+
     def test_while_op(self):
         paddle.disable_static()
         net = WhileNet()
@@ -128,7 +127,6 @@ class TestConditionalOp(unittest.TestCase):
             )
         root_path.cleanup()
 
-    @test_with_dygraph_pir
     def test_for_op(self):
         paddle.disable_static()
         net = ForNet()
@@ -165,7 +163,6 @@ class TestConditionalOp(unittest.TestCase):
             )
         root_path.cleanup()
 
-    @test_with_dygraph_pir
     def test_if_op(self):
         paddle.disable_static()
         net = IfElseNet()

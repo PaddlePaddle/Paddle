@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/pir/include/core/builtin_type.h"
 
 namespace paddle::translator {

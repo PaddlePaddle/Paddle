@@ -17,12 +17,12 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/framework/trainer_desc.pb.h"
 #include "paddle/phi/core/platform/profiler.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
