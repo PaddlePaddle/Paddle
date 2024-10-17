@@ -613,7 +613,7 @@ class HybridParallelInferenceHelper:
                     else:
                         ring_id = self._pp_ring_map[pair_key]
 
-                    send_op = block._insert_op_without_sync(
+                    block._insert_op_without_sync(
                         index=index + extra_index_info['index'],
                         type='p_send',
                         inputs={'x': var},
@@ -621,10 +621,9 @@ class HybridParallelInferenceHelper:
                             'peer': 1,
                             'ring_id': ring_id,
                             self._op_role_key: op_role,
+                            'dynamic_shape': True,
                         },
                     )
-                    print("---------hybrid_parallel_inference----------")
-                    print(send_op)
                     extra_index_info['index'] += 1
                     var_shape = list(var.shape)
                     if var_shape[0] < 0:
@@ -635,7 +634,7 @@ class HybridParallelInferenceHelper:
                         else:
                             var_shape[0] = self.micro_batch_size
 
-                    recv_op = block._insert_op_without_sync(
+                    block._insert_op_without_sync(
                         index=index + extra_index_info['index'],
                         type='p_recv',
                         outputs={'out': [var]},
@@ -644,10 +643,9 @@ class HybridParallelInferenceHelper:
                             'peer': 0,
                             'ring_id': ring_id,
                             self._op_role_key: op_role,
+                            'dynamic_shape': True,
                         },
                     )
-                    print("---------hybrid_parallel_inference----------")
-                    print(recv_op)
                     extra_index_info['index'] += 1
 
                 _insert_send_recv(
@@ -711,7 +709,7 @@ class HybridParallelInferenceHelper:
             for var_name in var_names:
                 var = block._var_recursive(var_name)
                 if stage == cur_id:
-                    send_op = block._insert_op_without_sync(
+                    block._insert_op_without_sync(
                         index=index,
                         type='p_send',
                         inputs={'x': var},
@@ -719,10 +717,9 @@ class HybridParallelInferenceHelper:
                             'peer': 0,
                             'ring_id': ring_id,
                             self._op_role_key: int(self._op_role.Forward),
+                            'dynamic_shape': True,
                         },
                     )
-                    print("---------hybrid_parallel_inference----------")
-                    print(send_op)
 
                 else:
                     var_shape = list(var.shape)
@@ -733,7 +730,7 @@ class HybridParallelInferenceHelper:
                             if var_shape[0] < 0
                             else var_shape[0]
                         )
-                    recv_op = block._insert_op_without_sync(
+                    block._insert_op_without_sync(
                         index=index,
                         type='p_recv',
                         outputs={'out': [var]},
@@ -742,10 +739,9 @@ class HybridParallelInferenceHelper:
                             'peer': 1,
                             'ring_id': ring_id,
                             self._op_role_key: int(self._op_role.Forward),
+                            'dynamic_shape': True,
                         },
                     )
-                    print("---------hybrid_parallel_inference----------")
-                    print(recv_op)
                 index += 1
         block._sync_with_cpp()
 

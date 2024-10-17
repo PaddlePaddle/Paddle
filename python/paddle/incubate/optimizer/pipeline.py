@@ -798,7 +798,7 @@ class PipelineOptimizer:
                         ring_id = self._pp_ring_map[pair_key]
 
                     if self.schedule_mode == 'F-then-B':  # F-then-B
-                        send_op = block._insert_op_without_sync(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='p_send',
                             inputs={'x': var},
@@ -806,11 +806,9 @@ class PipelineOptimizer:
                                 'peer': 1,
                                 self._op_role_key: op_role,
                                 'ring_id': ring_id,
+                                'dynamic_shape': True,
                             },
                         )
-                        print("---------pipeline----------")
-                        print(send_op)
-                        # send_op.dist_attr.execution_stream = "default"
                         extra_index_info['index'] += 1
                         var_shape = list(var.shape)
                         var_shape[0] = (
@@ -818,7 +816,7 @@ class PipelineOptimizer:
                             if var_shape[0] < 0
                             else var_shape[0]
                         )
-                        recv_op = block._insert_op_without_sync(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='p_recv',
                             outputs={'out': [var]},
@@ -827,11 +825,9 @@ class PipelineOptimizer:
                                 'peer': 0,
                                 'ring_id': ring_id,
                                 self._op_role_key: op_role,
+                                'dynamic_shape': True,
                             },
                         )
-                        print("---------pipeline----------")
-                        print(recv_op)
-                        # recv_op.dist_attr.execution_stream = "default"
                         extra_index_info['index'] += 1
                     elif self.schedule_mode == '1F1B':  # 1F1B
                         var_shape = list(var.shape)
@@ -891,7 +887,7 @@ class PipelineOptimizer:
                             True if isinstance(prefix_var, Parameter) else False
                         )
                         if not use_mp or is_param:
-                            send_op = block._insert_op_without_sync(
+                            block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='p_send',
                                 inputs={'x': var},
@@ -899,11 +895,9 @@ class PipelineOptimizer:
                                     'ring_id': ring_id,
                                     'peer': 1,
                                     self._op_role_key: op_role,
+                                    'dynamic_shape': True,
                                 },
                             )
-                            print("---------pipeline----------")
-                            print(send_op)
-                            # send_op.dist_attr.execution_stream = "default"
                         else:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
@@ -943,7 +937,7 @@ class PipelineOptimizer:
                             sync_comm_op._set_attr('pipeline_flag', '')
                             extra_index_info['index'] += 1
                         if not use_mp or is_param:
-                            recv_op = block._insert_op_without_sync(
+                            block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='p_recv',
                                 outputs={'out': [var]},
@@ -952,11 +946,9 @@ class PipelineOptimizer:
                                     'peer': 0,
                                     'ring_id': ring_id,
                                     self._op_role_key: op_role,
+                                    'dynamic_shape': True,
                                 },
                             )
-                            print("---------pipeline----------")
-                            print(recv_op)
-                            # recv_op.dist_attr.execution_stream = "default"
                         else:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
@@ -984,7 +976,6 @@ class PipelineOptimizer:
                                     self._op_role_key: op_role,
                                     'use_calc_stream': True,
                                     'ring_id': 0,
-                                    # if p_recv, num&id attr is not in op_attrs, will not insert
                                     'nranks': self.mp_degree,
                                     'rank': self.mp_rank,
                                 },
@@ -1637,10 +1628,9 @@ class PipelineOptimizer:
                         'peer': read_dev_index,
                         'ring_id': ring_id,
                         self._op_role_key: self._op_role.LRSched,
+                        'dynamic_shape': True,
                     },
                 )
-                print("---------pipeline----------")
-                # print(recv_op)
                 read_block._insert_op(
                     index=0,
                     type='p_recv',
@@ -1652,6 +1642,7 @@ class PipelineOptimizer:
                         'peer': write_dev_index,
                         'ring_id': ring_id,
                         self._op_role_key: self._op_role.LRSched,
+                        'dynamic_shape': True,
                     },
                 )
                 read_block._insert_op(
