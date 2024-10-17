@@ -1220,334 +1220,332 @@ class ArgmaxOpPattern
     return true;
   }
 };
-class MaxOpPattern : public pir::OpRewritePattern<paddle::dialect::MaxOp> {
+
+// Add ReduceCommonOpPattern base class to simplify code
+template <typename OpType>
+class ReduceCommonOpPattern : public pir::OpRewritePattern<OpType> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::MaxOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::MaxOp op,
+  using pir::OpRewritePattern<OpType>::OpRewritePattern;
+  bool MatchAndRewrite(OpType op,
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+        op->template attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
     if (!op->HasAttribute("keepdim")) {
       VLOG(3) << "the max does not have attr keep_dim ";
       return false;
     }
+
+    if constexpr (std::is_same_v<OpType, paddle::dialect::MeanOp>) {
+      if (!op->HasAttribute("axis")) {
+        VLOG(3) << "The axis attribute does not exist";
+        return false;
+      }
+    }
+
     pir::Value x = op.operand_source(0);
     auto x_dtype = pir::GetDataTypeFromValue(x);
     if (!(x_dtype.isa<pir::Float32Type>() || x_dtype.isa<pir::Float64Type>() ||
           x_dtype.isa<pir::Int32Type>() || x_dtype.isa<pir::Int64Type>())) {
-      VLOG(3) << "max input data type must be int32 or int64 or "
-                 "float32 or "
-                 "float64";
-      return false;
-    }
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
-class MeanOpPattern : public pir::OpRewritePattern<paddle::dialect::MeanOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::MeanOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::MeanOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-
-    if (!op->HasAttribute("axis")) {
-      VLOG(3) << "The axis attribute does not exist";
-      return false;
-    }
-
-    if (!op->HasAttribute("keepdim")) {
-      VLOG(3) << "The keepdim attribute does not exist";
-      return false;
-    }
-
-    pir::Value input = op.operand_source(0);
-    auto input_type = pir::GetDataTypeFromValue(input);
-    if (!input_type.isa<pir::Int32Type>() &&
-        !input_type.isa<pir::Int64Type>() &&
-        !input_type.isa<pir::Float32Type>() &&
-        !input_type.isa<pir::Float64Type>()) {
-      VLOG(3) << "The input type of pd_op.mean is not int32 or int64 or "
-                 "float32 or float64";
-      return false;
-    }
-
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
-class BilinearInterpV2Pattern
-    : public pir::OpRewritePattern<paddle::dialect::BilinearInterpOp> {
- public:
-  using pir::OpRewritePattern<
-      paddle::dialect::BilinearInterpOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::BilinearInterpOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-    const std::vector<std::string> required_attrs = {"data_format",
-                                                     "interp_method",
-                                                     "align_corners",
-                                                     "scale",
-                                                     "out_h",
-                                                     "out_w"};
-    for (const auto &attr : required_attrs) {
-      if (!op->HasAttribute(attr)) {
-        VLOG(3) << "BilinearInterpV2 " << attr << " attribute does not exist";
+      if constexpr (std::is_same_v<OpType, paddle::dialect::MinOp>) {
+        VLOG(3) << "min input data type must be int32 or int64 or "
+                   "float32 or "
+                   "float64";
+        return false;
+      } else if constexpr (std::is_same_v<OpType, paddle::dialect::MaxOp>) {
+        VLOG(3) << "max input data type must be int32 or int64 or "
+                   "float32 or "
+                   "float64";
+        return false;
+      } else if constexpr (std::is_same_v<OpType, paddle::dialect::MeanOp>) {
+        VLOG(3) << "mean input data type must be int32 or int64 or "
+                   "float32 or "
+                   "float64";
         return false;
       }
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+      return true;
     }
-    pir::Value size_tensor = op.operand_source(2);
-    if (size_tensor != nullptr) {
-      VLOG(3) << "The Paddle-TRT doesn't support the SizeTensor for "
-                 "BilinearInterpV2";
-      return false;
-    }
+  };
 
-    auto data_format =
-        op->attribute<pir::StrAttribute>("data_format").AsString();
-    if (data_format != "NCHW" && data_format != "NHWC") {
-      VLOG(3) << "BilinearInterpV2: data format must be NCHW or NHWC";
-      return false;
-    }
-    auto interp_method =
-        op->attribute<pir::StrAttribute>("interp_method").AsString();
-    if (interp_method != "bilinear") {
-      VLOG(3) << "The interp_method of BilinearInterpV2 is not bilinear";
-      return false;
-    }
+  // use type aliases to simplify usage
+  using MinOpPattern = ReduceCommonOpPattern<paddle::dialect::MinOp>;
+  using MaxOpPattern = ReduceCommonOpPattern<paddle::dialect::MaxOp>;
+  using MeanOpPattern = ReduceCommonOpPattern<paddle::dialect::MeanOp>;
 
-    pir::Value scale_tensor = op.operand_source(3);
-
-    bool has_scale_input = false;
-    if (scale_tensor) {
-      has_scale_input = true;
-    }
-
-    if (has_scale_input) {
-      VLOG(3) << "BilinearInterpV2 has scale input can not into trt,support "
-                 "scale attribute into trt";
-      return false;
-    }
-    if (!has_scale_input && op->HasAttribute("scale")) {
-      std::vector<float> scale;
-      auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
-      for (const auto &attr : scale_attr.AsVector()) {
-        scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+  class BilinearInterpV2Pattern
+      : public pir::OpRewritePattern<paddle::dialect::BilinearInterpOp> {
+   public:
+    using pir::OpRewritePattern<
+        paddle::dialect::BilinearInterpOp>::OpRewritePattern;
+    bool MatchAndRewrite(paddle::dialect::BilinearInterpOp op,
+                         pir::PatternRewriter &rewriter) const override {
+      if (op->HasAttribute(kCanRunTrtAttr) &&
+          op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+        return false;
       }
-      if (scale.size() <= 1) {
-        if (!op->HasAttribute("out_h") || !op->HasAttribute("out_w")) {
-          VLOG(3) << "BilinearInterpV2 doesn't have scale_tensor and the scale "
-                     "size <=1 and without"
-                     "out_h / out_w, it will return false";
+      const std::vector<std::string> required_attrs = {"data_format",
+                                                       "interp_method",
+                                                       "align_corners",
+                                                       "scale",
+                                                       "out_h",
+                                                       "out_w"};
+      for (const auto &attr : required_attrs) {
+        if (!op->HasAttribute(attr)) {
+          VLOG(3) << "BilinearInterpV2 " << attr << " attribute does not exist";
           return false;
+        }
+      }
+      pir::Value size_tensor = op.operand_source(2);
+      if (size_tensor != nullptr) {
+        VLOG(3) << "The Paddle-TRT doesn't support the SizeTensor for "
+                   "BilinearInterpV2";
+        return false;
+      }
+
+      auto data_format =
+          op->attribute<pir::StrAttribute>("data_format").AsString();
+      if (data_format != "NCHW" && data_format != "NHWC") {
+        VLOG(3) << "BilinearInterpV2: data format must be NCHW or NHWC";
+        return false;
+      }
+      auto interp_method =
+          op->attribute<pir::StrAttribute>("interp_method").AsString();
+      if (interp_method != "bilinear") {
+        VLOG(3) << "The interp_method of BilinearInterpV2 is not bilinear";
+        return false;
+      }
+
+      pir::Value scale_tensor = op.operand_source(3);
+
+      bool has_scale_input = false;
+      if (scale_tensor) {
+        has_scale_input = true;
+      }
+
+      if (has_scale_input) {
+        VLOG(3) << "BilinearInterpV2 has scale input can not into trt,support "
+                   "scale attribute into trt";
+        return false;
+      }
+      if (!has_scale_input && op->HasAttribute("scale")) {
+        std::vector<float> scale;
+        auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
+        for (const auto &attr : scale_attr.AsVector()) {
+          scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+        }
+        if (scale.size() <= 1) {
+          if (!op->HasAttribute("out_h") || !op->HasAttribute("out_w")) {
+            VLOG(3)
+                << "BilinearInterpV2 doesn't have scale_tensor and the scale "
+                   "size <=1 and without"
+                   "out_h / out_w, it will return false";
+            return false;
+          }
+          auto out_h = op->attribute<pir::Int32Attribute>("out_h").data();
+          auto out_w = op->attribute<pir::Int32Attribute>("out_w").data();
+          if (!(out_h <= 0 && out_w <= 0)) {
+            if (out_h <= 0) {
+              VLOG(3)
+                  << "BilinearInterpV2 out_h must be greater than 0 if scale "
+                     "is not set.";
+              return false;
+            }
+            if (out_w <= 0) {
+              VLOG(3)
+                  << "BilinearInterpV2 out_w must be greater than 0 if scale "
+                     "is not set.";
+              return false;
+            }
+          }
+        } else {
+          for (size_t i = 0; i < scale.size(); i++) {
+            if (scale[i] <= 0) {
+              VLOG(3)
+                  << "BilinearInterpV2  dynamic shape not support Attr(scale["
+                  << i << "]" << scale[i]
+                  << " less than 1 and Input(Scale) Vector not set.";
+              return false;
+            }
+          }
+        }
+      }
+
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+      return true;
+    }
+  };
+
+  class NearestInterV2Pattern
+      : public pir::OpRewritePattern<paddle::dialect::NearestInterpOp> {
+   public:
+    using pir::OpRewritePattern<
+        paddle::dialect::NearestInterpOp>::OpRewritePattern;
+    bool MatchAndRewrite(paddle::dialect::NearestInterpOp op,
+                         pir::PatternRewriter &rewriter) const override {
+      if (op->HasAttribute(kCanRunTrtAttr) &&
+          op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+        return false;
+      }
+      const std::vector<std::string> required_attrs = {"data_format",
+                                                       "interp_method",
+                                                       "align_corners",
+                                                       "scale",
+                                                       "out_h",
+                                                       "out_w"};
+      for (const auto &attr : required_attrs) {
+        if (!op->HasAttribute(attr)) {
+          VLOG(3) << "NearestInterV2 " << attr << " attribute does not exist";
+          return false;
+        }
+      }
+
+      pir::Value size_tensor = op.operand_source(2);
+
+      auto data_format =
+          op->attribute<pir::StrAttribute>("data_format").AsString();
+      if (data_format != "NCHW" && data_format != "NHWC") {
+        VLOG(3) << "NearestInterV2: data format must be NCHW or NHWC";
+        return false;
+      }
+      auto interp_method =
+          op->attribute<pir::StrAttribute>("interp_method").AsString();
+      if (interp_method != "nearest") {
+        VLOG(3) << "The interp_method of NearestInterV2 is not nearest";
+        return false;
+      }
+      bool has_size_input = false;
+      if (size_tensor) {
+        has_size_input = true;
+      }
+
+#if IS_TRT_VERSION_GE(8200)
+      if (has_size_input) {
+        auto size_tensor_type = size_tensor.type();
+        if (size_tensor_type.isa<pir::VectorType>()) {
+          auto vector_type = size_tensor.type().dyn_cast<pir::VectorType>();
+          if (vector_type.size() == 2) {
+            op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+            return true;
+          }
+        }
+      }
+#endif
+
+      if (op->HasAttribute("scale")) {
+        std::vector<float> scale;
+        auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
+        for (const auto &attr : scale_attr.AsVector()) {
+          scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
         }
         auto out_h = op->attribute<pir::Int32Attribute>("out_h").data();
         auto out_w = op->attribute<pir::Int32Attribute>("out_w").data();
-        if (!(out_h <= 0 && out_w <= 0)) {
-          if (out_h <= 0) {
-            VLOG(3) << "BilinearInterpV2 out_h must be greater than 0 if scale "
-                       "is not set.";
+        if (!(out_h > 0 && out_w > 0)) {
+          if (scale.size() < 2) {
+            VLOG(3) << "NearestInterV2 scale attribute size < 2";
             return false;
           }
-          if (out_w <= 0) {
-            VLOG(3) << "BilinearInterpV2 out_w must be greater than 0 if scale "
-                       "is not set.";
-            return false;
-          }
-        }
-      } else {
-        for (size_t i = 0; i < scale.size(); i++) {
-          if (scale[i] <= 0) {
-            VLOG(3) << "BilinearInterpV2  dynamic shape not support Attr(scale["
-                    << i << "]" << scale[i]
-                    << " less than 1 and Input(Scale) Vector not set.";
+          if (scale[0] <= 0.f || scale[1] <= 0.f) {
+            VLOG(3)
+                << "scale factor must be greater than 0 if out_h or out_w is "
+                   "not set.";
             return false;
           }
         }
       }
+
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+      return true;
     }
+  };
 
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
+  class TrtOpMarkerPass : public pir::PatternRewritePass {
+   public:
+    TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
 
-class NearestInterV2Pattern
-    : public pir::OpRewritePattern<paddle::dialect::NearestInterpOp> {
- public:
-  using pir::OpRewritePattern<
-      paddle::dialect::NearestInterpOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::NearestInterpOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-    const std::vector<std::string> required_attrs = {"data_format",
-                                                     "interp_method",
-                                                     "align_corners",
-                                                     "scale",
-                                                     "out_h",
-                                                     "out_w"};
-    for (const auto &attr : required_attrs) {
-      if (!op->HasAttribute(attr)) {
-        VLOG(3) << "NearestInterV2 " << attr << " attribute does not exist";
-        return false;
-      }
-    }
-
-    pir::Value size_tensor = op.operand_source(2);
-
-    auto data_format =
-        op->attribute<pir::StrAttribute>("data_format").AsString();
-    if (data_format != "NCHW" && data_format != "NHWC") {
-      VLOG(3) << "NearestInterV2: data format must be NCHW or NHWC";
-      return false;
-    }
-    auto interp_method =
-        op->attribute<pir::StrAttribute>("interp_method").AsString();
-    if (interp_method != "nearest") {
-      VLOG(3) << "The interp_method of NearestInterV2 is not nearest";
-      return false;
-    }
-    bool has_size_input = false;
-    if (size_tensor) {
-      has_size_input = true;
-    }
-
-#if IS_TRT_VERSION_GE(8200)
-    if (has_size_input) {
-      auto size_tensor_type = size_tensor.type();
-      if (size_tensor_type.isa<pir::VectorType>()) {
-        auto vector_type = size_tensor.type().dyn_cast<pir::VectorType>();
-        if (vector_type.size() == 2) {
-          op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-          return true;
-        }
-      }
-    }
-#endif
-
-    if (op->HasAttribute("scale")) {
-      std::vector<float> scale;
-      auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
-      for (const auto &attr : scale_attr.AsVector()) {
-        scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
-      }
-      auto out_h = op->attribute<pir::Int32Attribute>("out_h").data();
-      auto out_w = op->attribute<pir::Int32Attribute>("out_w").data();
-      if (!(out_h > 0 && out_w > 0)) {
-        if (scale.size() < 2) {
-          VLOG(3) << "NearestInterV2 scale attribute size < 2";
-          return false;
-        }
-        if (scale[0] <= 0.f || scale[1] <= 0.f) {
-          VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
-                     "not set.";
-          return false;
-        }
-      }
-    }
-
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
-class TrtOpMarkerPass : public pir::PatternRewritePass {
- public:
-  TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
-
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+    pir::RewritePatternSet InitializePatterns(
+        pir::IrContext *context) override {
+      pir::RewritePatternSet ps(context);
 
 #define ADD_PATTERN(OpName) \
   ps.Add(std::make_unique<OpName##OpPattern>(context));
-    ADD_PATTERN(Matmul)
-    ADD_PATTERN(BatchNorm)
-    ADD_PATTERN(BatchNorm_)
-    ADD_PATTERN(Softmax)
-    ADD_PATTERN(Relu)
-    ADD_PATTERN(FullIntArray)
-    ADD_PATTERN(Reshape)
-    ADD_PATTERN(Dropout)
-    ADD_PATTERN(Bmm)
-    ADD_PATTERN(Concat)
-    ADD_PATTERN(Full)
-    ADD_PATTERN(Fused_gemm_epilogue)
-    ADD_PATTERN(Add)
-    ADD_PATTERN(Silu)
-    ADD_PATTERN(Conv2d)
-    ADD_PATTERN(FusedConv2dAddAct)
-    ADD_PATTERN(DepthwiseConv2d)
-    ADD_PATTERN(Nonzero)
-    ADD_PATTERN(Gelu)
-    ADD_PATTERN(Shape)
-    ADD_PATTERN(Expand)
-    ADD_PATTERN(ExpandAs)
-    ADD_PATTERN(Sigmoid)
-    ADD_PATTERN(Sqrt)
-    ADD_PATTERN(Hardsigmoid)
-    ADD_PATTERN(Hardswish)
+      ADD_PATTERN(Matmul)
+      ADD_PATTERN(BatchNorm)
+      ADD_PATTERN(BatchNorm_)
+      ADD_PATTERN(Softmax)
+      ADD_PATTERN(Relu)
+      ADD_PATTERN(FullIntArray)
+      ADD_PATTERN(Reshape)
+      ADD_PATTERN(Dropout)
+      ADD_PATTERN(Bmm)
+      ADD_PATTERN(Concat)
+      ADD_PATTERN(Full)
+      ADD_PATTERN(Fused_gemm_epilogue)
+      ADD_PATTERN(Add)
+      ADD_PATTERN(Silu)
+      ADD_PATTERN(Conv2d)
+      ADD_PATTERN(FusedConv2dAddAct)
+      ADD_PATTERN(DepthwiseConv2d)
+      ADD_PATTERN(Nonzero)
+      ADD_PATTERN(Gelu)
+      ADD_PATTERN(Shape)
+      ADD_PATTERN(Expand)
+      ADD_PATTERN(ExpandAs)
+      ADD_PATTERN(Sigmoid)
+      ADD_PATTERN(Sqrt)
+      ADD_PATTERN(Hardsigmoid)
+      ADD_PATTERN(Hardswish)
 #if IS_TRT_VERSION_GE(8600)
-    ADD_PATTERN(Layer_norm)
+      ADD_PATTERN(Layer_norm)
 #endif
 #undef ADD_PATTERN
-    ps.Add(std::make_unique<Pool2dOpPattern>(context));
-    ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
-    ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
-    ps.Add(std::make_unique<DeformableConvOpPattern>(context));
-    ps.Add(std::make_unique<ArangeOpPattern>(context));
-    ps.Add(std::make_unique<SignOpPattern>(context));
-    ps.Add(std::make_unique<LogicalNotOpPattern>(context));
-    ps.Add(std::make_unique<GroupNormOpPattern>(context));
-    ps.Add(std::make_unique<TransposeOpPattern>(context));
-    ps.Add(std::make_unique<GatherOpPattern>(context));
-    ps.Add(std::make_unique<GatherNdOpPattern>(context));
-    ps.Add(std::make_unique<ScaleOpPattern>(context));
-    ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
-    ps.Add(std::make_unique<SqueezeOpPattern>(context));
-    ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
-    ps.Add(std::make_unique<SliceOpPattern>(context));
-    ps.Add(std::make_unique<IndexSelectOpPattern>(context));
-    ps.Add(std::make_unique<FlattenOpPattern>(context));
-    ps.Add(std::make_unique<CastOpPattern>(context));
-    ps.Add(std::make_unique<SplitOpPattern>(context));
-    ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
-    ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
-    ps.Add(std::make_unique<MultiplyOpPattern>(context));
-    ps.Add(std::make_unique<SubtractOpPattern>(context));
-    ps.Add(std::make_unique<DivideOpPattern>(context));
-    ps.Add(std::make_unique<ElementwisePowOpPattern>(context));
-    ps.Add(std::make_unique<MinimumOpPattern>(context));
-    ps.Add(std::make_unique<MaximumOpPattern>(context));
-    ps.Add(std::make_unique<FloorDivideOpPattern>(context));
-    ps.Add(std::make_unique<MeanOpPattern>(context));
-    ps.Add(std::make_unique<RemainderOpPattern>(context));
-    ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
-    ps.Add(std::make_unique<ArgmaxOpPattern>(context));
-    ps.Add(std::make_unique<MaxOpPattern>(context));
-    ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
-    ps.Add(std::make_unique<NearestInterV2Pattern>(context));
-    return ps;
-  }
-};
+      ps.Add(std::make_unique<Pool2dOpPattern>(context));
+      ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
+      ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
+      ps.Add(std::make_unique<DeformableConvOpPattern>(context));
+      ps.Add(std::make_unique<ArangeOpPattern>(context));
+      ps.Add(std::make_unique<SignOpPattern>(context));
+      ps.Add(std::make_unique<LogicalNotOpPattern>(context));
+      ps.Add(std::make_unique<GroupNormOpPattern>(context));
+      ps.Add(std::make_unique<TransposeOpPattern>(context));
+      ps.Add(std::make_unique<GatherOpPattern>(context));
+      ps.Add(std::make_unique<GatherNdOpPattern>(context));
+      ps.Add(std::make_unique<ScaleOpPattern>(context));
+      ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
+      ps.Add(std::make_unique<SqueezeOpPattern>(context));
+      ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
+      ps.Add(std::make_unique<SliceOpPattern>(context));
+      ps.Add(std::make_unique<IndexSelectOpPattern>(context));
+      ps.Add(std::make_unique<FlattenOpPattern>(context));
+      ps.Add(std::make_unique<CastOpPattern>(context));
+      ps.Add(std::make_unique<SplitOpPattern>(context));
+      ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
+      ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
+      ps.Add(std::make_unique<MultiplyOpPattern>(context));
+      ps.Add(std::make_unique<SubtractOpPattern>(context));
+      ps.Add(std::make_unique<DivideOpPattern>(context));
+      ps.Add(std::make_unique<ElementwisePowOpPattern>(context));
+      ps.Add(std::make_unique<MinimumOpPattern>(context));
+      ps.Add(std::make_unique<MaximumOpPattern>(context));
+      ps.Add(std::make_unique<FloorDivideOpPattern>(context));
+      ps.Add(std::make_unique<MeanOpPattern>(context));
+      ps.Add(std::make_unique<MinOpPattern>(context));
+      ps.Add(std::make_unique<RemainderOpPattern>(context));
+      ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
+      ps.Add(std::make_unique<ArgmaxOpPattern>(context));
+      ps.Add(std::make_unique<MaxOpPattern>(context));
+      ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
+      ps.Add(std::make_unique<NearestInterV2Pattern>(context));
+      return ps;
+    }
+  };
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateTrtOpMarkerPass() {
-  return std::make_unique<TrtOpMarkerPass>();
-}
+  std::unique_ptr<Pass> CreateTrtOpMarkerPass() {
+    return std::make_unique<TrtOpMarkerPass>();
+  }
 }  // namespace pir
 
 REGISTER_IR_PASS(trt_op_marker_pass, TrtOpMarkerPass);
