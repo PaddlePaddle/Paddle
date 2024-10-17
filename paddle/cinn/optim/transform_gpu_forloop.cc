@@ -43,6 +43,8 @@
 namespace cinn {
 namespace optim {
 
+PD_DECLARE_bool(cinn_narrow_range_for_integer);
+
 /**
  * 1. Determine the grid and block dimensions.
  * It takes the domains like `[0, 20]` or `[0, min(20, M/2)]`, the domain should
@@ -486,9 +488,9 @@ void OptimizeExprGPU(Expr *expr) {
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);
 
-  VLOG(4) << "Before longlong2int pass: \n" << *expr;
-  TryNarrowLonglong2Int(expr);
-  VLOG(4) << "After longlong2int pass: \n" << *expr;
+  if (FLAGS_cinn_narrow_range_for_integer) {
+    TryNarrowLonglong2Int(expr);
+  }
 
   VLOG(4) << "After Optimize Expr: \n" << *expr;
 }
