@@ -75,9 +75,6 @@ void IndexAddGradKernel(const Context& ctx,
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    if (index_data < input_dim[dim]) {
-      index_data += input_dim[dim];
-    }
     index_select_cuda_kernel<T, int64_t>
         <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
                                              add_value_grad_data,
@@ -85,12 +82,10 @@ void IndexAddGradKernel(const Context& ctx,
                                              numel,
                                              stride,
                                              size,
-                                             delta);
+                                             delta,
+                                             input_dim[dim]);
   } else {
     const int* index_data = index.data<int>();
-    if (index_data < input_dim[dim]) {
-      index_data += input_dim[dim];
-    }
     index_select_cuda_kernel<T, int>
         <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
                                              add_value_grad_data,
@@ -98,7 +93,8 @@ void IndexAddGradKernel(const Context& ctx,
                                              numel,
                                              stride,
                                              size,
-                                             delta);
+                                             delta,
+                                             input_dim[dim]);
   }
 }
 
