@@ -512,6 +512,15 @@
   optional: ids, parent_idx
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : beam_search_softmax
+  args : (Tensor logits, Tensor seq_lens, Tensor stop_flags, Tensor end_ids, Tensor step_ids,  Tensor max_dec_lens, Tensor block_tables, Tensor cum_scores, Tensor beam_cache_ids, Tensor beam_hyps, Tensor beam_hyps_score, Tensor beam_finished, Tensor beam_width, Tensor beam_group_num, Tensor length_penalty, Tensor diversity_penalty, bool fuse_softmax, bool early_stop)
+  output : Tensor(next_tokens), Tensor(parent_ids)
+  infer_meta :
+    func : BeamSearchSoftmaxInferMeta
+  kernel :
+    func : beam_search_softmax
+    data_type : logits
+
 - op : bernoulli
   args : (Tensor x)
   output : Tensor(out)
