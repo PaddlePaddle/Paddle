@@ -293,6 +293,7 @@ void FusedAttentionGradKernel(
                             false,
                             nullptr,
                             nullptr,
+                            nullptr,
                             nullptr);
   const XPUTypeT *a_1 = reinterpret_cast<const XPUTypeT *>(NULL);
   const XPUTypeT *b_1 = reinterpret_cast<const XPUTypeT *>(NULL);
@@ -320,11 +321,11 @@ void FusedAttentionGradKernel(
                                       d_dropout_grad_ptr);
 
   std::tie(info_dfmha, info_dlinear_w, a_1, b_1, a_2, b_2) = fc_info;
-  phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_2, b_2, c_2, info_dlinear_w, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+      xpu_ctx, a_2, b_2, nullptr, c_2, info_dlinear_w, 1.0f, 0.f, true);
 
-  phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_1, b_1, c_1, info_dfmha, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+      xpu_ctx, a_1, b_1, nullptr, c_1, info_dfmha, 1.0f, 0.f, true);
 
   // dlinear_bias
   r = xpu::reduce_sum(xpu_ctx,
@@ -357,6 +358,7 @@ void FusedAttentionGradKernel(
                             false,
                             nullptr,
                             nullptr,
+                            nullptr,
                             nullptr);
 
     const XPUTypeT *a_1 = reinterpret_cast<const XPUTypeT *>(NULL);
@@ -384,10 +386,10 @@ void FusedAttentionGradKernel(
                                         d_fmha_out_transpose_tmp_ptr);
 
     std::tie(info_d_qk, info_d_v, a_1, b_1, a_2, b_2) = fc_info;
-    phi::MatMulXPUFunction<XPUTypeT>(
-        xpu_ctx, a_1, b_1, c_1, info_d_qk, 1.0f, 0.f, true);
-    phi::MatMulXPUFunction<XPUTypeT>(
-        xpu_ctx, a_2, b_2, c_2, info_d_v, 1.0f, 0.f, true);
+    phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+        xpu_ctx, a_1, b_1, nullptr, c_1, info_d_qk, 1.0f, 0.f, true);
+    phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+        xpu_ctx, a_2, b_2, nullptr, c_2, info_d_v, 1.0f, 0.f, true);
 
     DropoutGrad<XPUTypeT>(xpu_ctx,
                           d_qk_ptr,
@@ -420,6 +422,7 @@ void FusedAttentionGradKernel(
                           true,
                           nullptr,
                           nullptr,
+                          nullptr,
                           nullptr);
 
     a_1 = reinterpret_cast<const XPUTypeT *>(NULL);
@@ -442,14 +445,20 @@ void FusedAttentionGradKernel(
 
     std::tie(info_d_q, info_d_k, a_1, b_1, a_2, b_2) = fc_info;
 
-    phi::MatMulXPUFunction<XPUTypeT>(
-        xpu_ctx, a_1, b_1, c_1, info_d_q, 1.0f / sqrt(head_dims), 0.f, true);
+    phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(xpu_ctx,
+                                               a_1,
+                                               b_1,
+                                               nullptr,
+                                               c_1,
+                                               info_d_q,
+                                               1.0f / sqrt(head_dims),
+                                               0.f,
+                                               true);
 
-    phi::MatMulXPUFunction<XPUTypeT>(
-        xpu_ctx, a_2, b_2, c_2, info_d_k, 1.0f, 0.f, true);
+    phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+        xpu_ctx, a_2, b_2, nullptr, c_2, info_d_k, 1.0f, 0.f, true);
   }
 
-  //
   r = xpu::transpose<XPUTypeT>(xpu_ctx,
                                d_combination_qkv_ptr,
                                d_transpose_qkv_ptr,
@@ -464,6 +473,7 @@ void FusedAttentionGradKernel(
                          embed_dims,
                          false,
                          true,
+                         nullptr,
                          nullptr,
                          nullptr,
                          nullptr);
@@ -490,10 +500,10 @@ void FusedAttentionGradKernel(
                                   d_transpose_qkv_ptr);
 
   std::tie(info_d_x, info_d_qkv_w, a_1, b_1, a_2, b_2) = fc_info;
-  phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_1, b_1, c_1, info_d_x, 1.0f, 0.f, true);
-  phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_2, b_2, c_2, info_d_qkv_w, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+      xpu_ctx, a_1, b_1, nullptr, c_1, info_d_x, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+      xpu_ctx, a_2, b_2, nullptr, c_2, info_d_qkv_w, 1.0f, 0.f, true);
 
   // d_qkv_bias
   r = xpu::reduce_sum(xpu_ctx,

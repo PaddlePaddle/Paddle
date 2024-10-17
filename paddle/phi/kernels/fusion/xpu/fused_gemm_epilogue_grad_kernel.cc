@@ -118,10 +118,12 @@ void FusedGemmEpilogueXPUGradKernel(
                                       dout_fc_ptr);
   std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
   if (x_grad) {
-    phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
+    phi::MatMulXPUFunction<XPUType, XPUType>(
+        xpu_ctx, a_1, b_1, nullptr, c_1, info_dx, 1.0f);
   }
   if (y_grad) {
-    phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+    phi::MatMulXPUFunction<XPUType, XPUType>(
+        xpu_ctx, a_2, b_2, nullptr, c_2, info_dy, 1.0f);
   }
   // 3. dbias
   if (bias_grad) {
