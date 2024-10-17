@@ -22,11 +22,11 @@
 
 #include "paddle/common/flags.h"
 
-PD_DEFINE_bool(xpu_top_p_sampling_use_fp16,
-               false,
-               "use fp16 to improve the inference performance of "
-               "top_p_sampling xpu kernel");
-PD_DEFINE_int32(
+PHI_DEFINE_EXPORTED_bool(xpu_top_p_sampling_use_fp16,
+                         false,
+                         "use fp16 to improve the inference performance of "
+                         "top_p_sampling xpu kernel");
+PHI_DEFINE_EXPORTED_bool(
     xpu_top_p_sampling_heuristic_threshold,
     20,
     "threshold of heuristic method used for xpu_top_p_sampling, default 20; if "
@@ -94,7 +94,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
                               rand_coeff_cpu.size() * sizeof(float));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "do_host2device");
   int heuristic_threshold = FLAGS_xpu_top_p_sampling_heuristic_threshold;
-  // if ((!FLAGS_xpu_top_p_sampling_use_fp16) ||
+
   if ((!FLAGS_xpu_top_p_sampling_use_fp16) ||
       std::is_same<T, phi::dtype::float16>::value) {
     r = xpu::faster_top_p_sampling<XPUType, int>(dev_ctx.x_context(),
