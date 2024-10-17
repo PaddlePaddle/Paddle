@@ -96,7 +96,9 @@ __global__ void ScatterNdCUDAKernel(const T* update,
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = indices[indices_i * end_size + j];
-
+      if (index_value < 0) {
+        index_value += output_dims[j];
+      }
       PADDLE_ENFORCE(
           index_value >= 0 && index_value < output_dims[j],
           "The index is out of bounds, "

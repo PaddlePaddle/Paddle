@@ -54,6 +54,9 @@ void IndexAddInner(const Context& ctx,
   }
 
   for (int i = 0; i < index_size; i++) {
+    if (index_data[i] < 0) {
+      index_data[i] += input_dim[axis];
+    }
     PADDLE_ENFORCE_GE(
         index_data[i],
         0,

@@ -125,6 +125,9 @@ void CPUGatherNd(const phi::CPUContext& ctx UNUSED,
     int64_t temp = 1;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = p_index[i * end_size + j];
+      if (index_value < 0) {
+        index_value += input_dims[j];
+      }
       PADDLE_ENFORCE_LT(
           index_value,
           input_dims[j],

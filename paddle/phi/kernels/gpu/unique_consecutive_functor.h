@@ -305,6 +305,9 @@ void IndexSelect(const Context& context,
   std::vector<InT> out_vec(output->numel());
 
   for (int i = 0; i < index_size; i++) {
+    if (index_vec[i] < 0) {
+      index_vec[i] += input_dim[dim];
+    }
     PADDLE_ENFORCE_GE(
         index_vec[i],
         0,
