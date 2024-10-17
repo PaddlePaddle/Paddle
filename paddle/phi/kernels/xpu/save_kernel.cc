@@ -1,4 +1,4 @@
-//   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/platform/collective_helper.h"
+#include "paddle/phi/kernels/impl/save_kernel_impl.h"
 
-namespace paddle {
-namespace platform {}  // namespace platform
-}  // namespace paddle
+PD_REGISTER_KERNEL(save,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}

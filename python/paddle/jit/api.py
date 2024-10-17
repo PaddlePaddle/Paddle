@@ -1511,6 +1511,7 @@ def save(
             extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
             with open(extra_var_info_path, 'wb') as f:
                 pickle.dump(extra_var_info, f, protocol=2)
+    scope.erase(scope.local_var_names())
 
 
 @dygraph_only
