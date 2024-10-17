@@ -1113,6 +1113,15 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
       x_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   size_t rank = shape_data_list.at(0).shape().size();
+  std::cerr << "rank size " << rank << std::endl;
+
+  std::stringstream ss;
+  op->Print(ss);
+  std::cerr << "op info\n" << ss.str() << std::endl;
+
+  for (size_t i = 0; i < shape_data_list.size(); ++i) {
+    std::cerr << "i  " << i << "\t " << shape_data_list[i] << std::endl;
+  }
   const int64_t axis = [&] {
     int64_t axis = axis_expr.data()->at(0).dyn_cast<int64_t>();
     return axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
@@ -1128,23 +1137,7 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
       infer_context->SetShapeOrDataForValue(res, shape_data);
 
       return true;
-    } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          op->name() +
-          " 's InferSymbolicShape can NOT deal with rank > 1 now."));
     }
-    std::vector<symbol::DimExpr> data;
-    data.reserve(shape_data_list.size());
-    for (auto &data_elem : shape_data_list) {
-      data.push_back(data_elem.data().value().at(0));
-    }
-    const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
-    symbol::ShapeOrDataDimExprs shape_data{
-        symbol::TensorShapeOrDataDimExprs(shape, data)};
-    pir::Value res = op->result(0);
-    infer_context->SetShapeOrDataForValue(res, shape_data);
-
-    return true;
   }
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {

@@ -734,9 +734,9 @@ Tensor full_like_decomp(const Tensor& x,
 
 template <typename T>
 Tensor floor_divide_decomp(const Tensor& x, const Tensor& y) {
-  auto x_cast = cast<T>(x, DataType::INT64);
-  auto y_cast = cast<T>(y, DataType::INT64);
-  auto res = x_cast / y_cast;
+  // auto x_cast = cast<T>(x, DataType::INT64);
+  // auto y_cast = cast<T>(y, DataType::INT64);
+  auto res = backend::divide<T>(x, y);
   return cast<T>(res, x.dtype());
 }
 

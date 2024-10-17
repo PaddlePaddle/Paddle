@@ -86,6 +86,19 @@ static std::vector<int64_t> get_unsqueeze_dims(
   auto total_shape_size = origin_dims.size() + sort_axis.size();
   std::vector<int64_t> result;
   size_t j = 0, k = 0;
+
+  std::cerr << "axis\n";
+  for (auto s : sort_axis) {
+    std::cerr << s << " , ";
+  }
+  std::cerr << std::endl;
+
+  std::cerr << "shape \n";
+  for (auto d : origin_dims) {
+    std::cerr << d << " , ";
+  }
+  std::cerr << std::endl;
+
   for (size_t i = 0; i < total_shape_size; ++i) {
     if (j < sort_axis.size() && sort_axis[j] == int64_t(i)) {
       result.push_back(1);

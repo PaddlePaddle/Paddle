@@ -167,6 +167,8 @@ class IR_API InferSymbolicShapeContext {
 
   std::unordered_map<std::string, symbol::DimExpr>
       input_dynamic_dim_name_spec_to_dimexpr_map_;
+
+  // std::unordered_map<pir::Value, >
 };
 
 class IR_API ShapeConstraintIRAnalysis final

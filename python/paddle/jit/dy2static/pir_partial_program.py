@@ -924,6 +924,7 @@ class PartialProgramLayer:
         if forward_end_idx > 0:
             forward_end_op = program.global_block().ops[-1]
         grad_info_map = [None] * len(combined_inputs)
+        print("orignal program ", program)
         with backend_guard(self._backend):
             check_type(
                 targets,
