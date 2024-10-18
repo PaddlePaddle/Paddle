@@ -1685,7 +1685,7 @@ void topk_grad(const Tensor& x,
                const Tensor& indices,
                const Tensor& out_grad,
                const Scalar& k,
-               const int& axis,
+               int axis,
                const bool& largest,
                const bool& sorted,
                Tensor* x_grad) {
@@ -1695,6 +1695,12 @@ void topk_grad(const Tensor& x,
       by_pass<T>(out_grad, x_grad);
       return;
     }
+
+    // function `put_along_axis` requires a non-negative axis
+    if (axis < 0) {
+      axis += x.dims().size();
+    }
+
     Tensor zero_tensor;
     if (has_dynamic_shape(x.shape())) {
       zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
@@ -2433,12 +2439,14 @@ void put_along_axis_grad(const Tensor& x,
     if (include_self == false || reduce == "assign") {
       Tensor zero_tensor = full<T>(index.shape(), 0, out_grad.dtype());
       x_grad_tmp = put_along_axis<T>(out_grad, index, zero_tensor, axis);
+      set_output<T>(x_grad_tmp, x_grad);
     } else if (reduce == "multiply" || reduce == "mul") {
       Tensor zero_tensor_x = full<T>(x.shape(), 0, x.dtype());
       Tensor one_tensor_idx = full<T>(index.shape(), 1, x.dtype());
       Tensor mask =
           put_along_axis<T>(zero_tensor_x, index, one_tensor_idx, axis);
       x_grad_tmp = where<T>(mask > zero_tensor_x, out_grad * out / x, out_grad);
+      set_output<T>(x_grad_tmp, x_grad);
     } else if (reduce == "amin" || reduce == "amax") {
       Tensor zero_tensor = full<T>(x.shape(), 0, x.dtype());
       Tensor one_tensor = full<T>(x.shape(), 1, x.dtype());
@@ -2455,6 +2463,7 @@ void put_along_axis_grad(const Tensor& x,
         num = num + put_along_axis<T>(zero_tensor, sub_index, sub_count, axis);
       }
       x_grad_tmp = zero_result * out_grad / (num + 1);
+      set_output<T>(x_grad_tmp, x_grad);
     } else if (reduce == "mean") {
       Tensor zero_tensor_x = full<T>(x.shape(), 0, x.dtype());
 
@@ -2468,9 +2477,12 @@ void put_along_axis_grad(const Tensor& x,
       }
       x_grad_tmp =
           where<T>(num > zero_tensor_x, out_grad / (num + 1), out_grad);
+      set_output<T>(x_grad_tmp, x_grad);
+    } else if (reduce == "add") {
+      by_pass<T>(out_grad, x_grad);
     }
-    set_output<T>(x_grad_tmp, x_grad);
   }
+
   if (value_grad) {
     Tensor value_grad_tmp = full<T>(index.shape(), 0, x.dtype());
     if (reduce == "assign") {
