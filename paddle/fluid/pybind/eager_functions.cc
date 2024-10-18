@@ -677,8 +677,11 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         const auto& input_range = ctx.InputRangeAt(in_idx);
         const auto& input_tensor = ctx.InputAt(input_range.first);
         // inplace optional [Tensor or vector<Tensor>], un-initialized tensor.
-        if (paddle::framework::detail::IsOptionalVar(output) &&
-            !input_tensor.initialized()) {
+        if ((paddle::framework::detail::IsOptionalVar(output) &&
+             !input_tensor.initialized()) ||
+            (paddle::framework::detail::IsOptionalVar(output) &&
+             input_tensor.is_dense_tensor() &&
+             !input_tensor.has_allocation())) {
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add un-initialized tensor "
                      "because the inplace optional input is None";
@@ -715,7 +718,11 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
         paddle::Tensor* out_tensor =
             ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
-        if (!out_tensor->initialized()) {
+        // TODO(gongwb): it's tmp solution, we should use a better way to check.
+        bool valid =
+            (!out_tensor->is_dense_tensor() && out_tensor->initialized()) ||
+            (out_tensor->is_dense_tensor() && out_tensor->has_allocation());
+        if (!valid) {
           PADDLE_ENFORCE(
               paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
                   out_tensor->is_dist_tensor(),
