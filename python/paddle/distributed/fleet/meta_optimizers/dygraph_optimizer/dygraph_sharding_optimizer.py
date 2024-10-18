@@ -15,6 +15,7 @@
 ######
 import os
 import warnings
+from collections import defaultdict
 from distutils.util import strtobool
 from functools import reduce
 
@@ -735,26 +736,37 @@ class DygraphShardingOptimizerV2:
         if self.pp_overlap:
             return
 
+        comm_group = self._hcg.get_sharding_parallel_group()
+
+        color_dict = defaultdict(list)
+        for param in self._parameter_list:
+            color = getattr(param, 'color', -1)
+            color_dict[color].append(param)
+
         # NOTE(shenliang03): If comm_overlap is not used, the parameter list is sorted by data type to
         # to reduce communication overhead.
-        all_params = self._parameter_list
         if not self.comm_overlap:
-            all_params = sorted(all_params, key=lambda x: str(x.dtype))
+            for color, params in color_dict.items():
+                params.sort(key=lambda x: str(x.dtype))
 
-        comm_group = self._hcg.get_sharding_parallel_group()
-        var_groups = assign_group_by_size(all_params, group_size)
-        for group_idx, parameters in var_groups.items():
-            buffer = FusedCommBuffer(
-                group_idx,
-                parameters,
-                comm_group,
-                acc_steps,
-                act=HOOK_ACTION.REDUCE_SCATTER,
-                release_grads=self.sd_release_grads,
-                use_reduce_avg=self.use_reduce_avg,
-                free_grads_in_comm=free_grads_in_comm,
-            )
-            self._comm_buffer_list.append(buffer)
+        all_var_groups = []
+        group_idx = 0
+        for color, params in color_dict.items():
+            logger.info(f"Tensor Fusion Color {color}: ")
+            var_groups = assign_group_by_size(params, group_size)
+            for _, parameters in var_groups.items():
+                buffer = FusedCommBuffer(
+                    group_idx,
+                    parameters,
+                    comm_group,
+                    acc_steps,
+                    act=HOOK_ACTION.REDUCE_SCATTER,
+                    release_grads=self.sd_release_grads,
+                    use_reduce_avg=self.use_reduce_avg,
+                    free_grads_in_comm=free_grads_in_comm,
+                )
+                group_idx += 1
+                self._comm_buffer_list.append(buffer)
 
     def clear_grad(self, set_to_zero=True):
         """
