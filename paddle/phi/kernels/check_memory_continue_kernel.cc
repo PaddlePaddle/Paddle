@@ -64,8 +64,8 @@ void CheckMemoryContinueKernel(const Context &dev_ctx,
         infer_next_address,
         next_address,
         errors::InvalidArgument(
-            "The infered address of the next tensor should be equal to the "
-            "real address of the next tensor. But got infered address is %p "
+            "The inferred address of the next tensor should be equal to the "
+            "real address of the next tensor. But got inferred address is %p "
             "and real address is %p.",
             infer_next_address,
             next_address));

@@ -635,6 +635,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
         pipeline_strategy.pp_degree
     )
     pass_attr["vpp_degree"] = pipeline_strategy.vpp_degree
+    pass_attr["split_backward"] = pipeline_strategy.split_backward
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
