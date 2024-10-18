@@ -28,4 +28,11 @@ void ClipKernel(const Context& dev_ctx,
                 const Scalar& max,
                 DenseTensor* out);
 
+template <typename T, typename Context>
+void ClipKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& min,
+                const DenseTensor& max,
+                DenseTensor* out);
+
 }  // namespace phi

@@ -3708,8 +3708,8 @@ def log10_(x: Tensor, name: str | None = None) -> Tensor:
 
 def clip(
     x: Tensor,
-    min: float | None = None,
-    max: float | None = None,
+    min: float | int | Tensor | None = None,
+    max: float | int | Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -3765,9 +3765,23 @@ def clip(
 
     if in_dynamic_or_pir_mode():
         if isinstance(min, Variable):
-            min = min.item(0)
+            if min.shape == [] or min.shape == [0] or min.shape == [1]:
+                min = min.item(0)
+            else:
+                min.stop_gradient = True
+                assert min.shape == x.shape[-len(min.shape):], (
+                    "The dimension of the min parameter must be the same as that of x,"
+                    f"received Input x's dimensional: {x.shape}.\n"
+                )
         if isinstance(max, Variable):
-            max = max.item(0)
+            if max.shape == [] or max.shape == [0] or max.shape == [1]:
+                max = max.item(0)
+            else:
+                max.stop_gradient = True
+                assert max.shape == x.shape[-len(max.shape):], (
+                    "The dimension of the max parameter must be the same as that of x,"
+                    f"received Input x's dimensional: {x.shape}.\n"
+                )
         min = min_ if min is None else min
         max = max_ if max is None else max
         return _C_ops.clip(x, min, max)
@@ -3775,6 +3789,13 @@ def clip(
         if min is not None:
             check_type(min, 'min', (float, int, Variable), 'clip')
             if isinstance(min, Variable):
+                if min.shape == [] or min.shape == [0] or min.shape == [1]:
+                    min = min.item(0)
+                else:
+                    assert min.shape == x.shape[-len(min.shape):], (
+                        "The dimension of the min parameter must be the same as that of x,"
+                        f"received Input x's dimensional: {x.shape}.\n"
+                    )
                 check_dtype(
                     min.dtype,
                     'min',
@@ -3785,6 +3806,13 @@ def clip(
         if max is not None:
             check_type(max, 'max', (float, int, Variable), 'clip')
             if isinstance(max, Variable):
+                if max.shape == [] or max.shape == [0] or max.shape == [1]:
+                    max = max.item(0)
+                else:
+                    assert max.shape == x.shape[-len(max.shape):], (
+                        "The dimension of the max parameter must be the same as that of x,"
+                        f"received Input x's dimensional: {x.shape}.\n"
+                    )
                 check_dtype(
                     max.dtype,
                     'max',
@@ -3792,7 +3820,6 @@ def clip(
                     'clip',
                     '(When the type of max in clip is Variable.)',
                 )
-
         check_variable_and_dtype(
             x,
             'x',
