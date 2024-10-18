@@ -698,6 +698,7 @@ std::vector<std::vector<pir::Value>> MoEGlobalMeshTensorOp::Vjp(
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShareVarOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ReshardOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MoESubMeshTensorsOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MoEGlobalMeshTensorOp)

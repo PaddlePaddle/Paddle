@@ -41,6 +41,21 @@ class ShardTensorOp : public pir::Op<ShardTensorOp> {
   void VerifySig();
 };
 
+class ShareVarOp : public pir::Op<ShareVarOp> {
+ public:
+  using Op::Op;
+  static const char* name() { return "dist_op.share_var"; }
+  static constexpr const char** attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  TEST_API static void Build(pir::Builder& builder,             // NOLINT
+                             pir::OperationArgument& argument,  // NOLINT
+                             const std::vector<pir::Value>& inputs) {
+    argument.AddInputs(inputs);
+  }
+  std::vector<pir::Value> inputs() { return (*this)->operands_source(); }
+  void VerifySig() {}
+};
+
 class ReshardOp : public pir::Op<ReshardOp, VjpInterface, OpYamlInfoInterface> {
  public:
   using Op::Op;
@@ -119,6 +134,7 @@ class MoEGlobalMeshTensorOp
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShareVarOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ReshardOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MoESubMeshTensorsOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MoEGlobalMeshTensorOp)

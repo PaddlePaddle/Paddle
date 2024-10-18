@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
@@ -30,6 +31,8 @@ pir::Value shard_tensor(
     const phi::distributed::ProcessMesh& process_mesh,
     const std::vector<int64_t>& dims_mapping,
     const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {});
+
+pir::Operation* share_var(const std::vector<pir::Value>& x);
 
 pir::Value reshard(
     const pir::Value& x,
