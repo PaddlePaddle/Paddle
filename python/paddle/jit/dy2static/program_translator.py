@@ -387,20 +387,13 @@ class StaticFunction(Generic[_InputT, _RetT]):
         # save the instance `self` while decorating a method of class.
 
         if inspect.ismethod(function):
-            self._dygraph_function = function.__func__
-            self._class_instance = function.__self__
-
-            if not hasattr(self._class_instance, '_original_funcs'):
-                raise TypeError(
-                    "When using 'to_static' to convert method of a class, "
-                    "please ensure the class inherits from nn.Layer"
-                )
-            self._class_instance._original_funcs[function.__name__] = (
-                self._dygraph_function
+            raise TypeError(
+                "StaticFunction(method) is a deprecated usage, please use StaticFunction(method.__func__).bind(method.__self__) instead."
             )
-        else:
-            self._dygraph_function = function
-            self._class_instance = None
+        self._should_convert_all_instances = False
+        self._need_convert_instances = weakref.WeakSet()
+        self._dygraph_function = function
+        self._class_instance = None
 
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
@@ -474,12 +467,36 @@ class StaticFunction(Generic[_InputT, _RetT]):
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticFunction` instance.
         """
+        # TODO(SigureMo): Maybe take some performance effects in dygraph mode.
+        if (
+            not self._should_convert_all_instances
+            and instance not in self._need_convert_instances
+        ):
+            return self._dygraph_function.__get__(instance, owner)
+        return self.bind(instance)
+
+    def _clone(self) -> Self:
+        return self.__class__(
+            self.dygraph_function, self._input_spec, **self._kwargs
+        )
+
+    def bind(self, instance) -> StaticFunction:
+        if self._class_instance is not None:
+            raise RuntimeError(
+                "The method 'bind' can only be called on the original StaticFunction instance."
+            )
+        if not isinstance(instance, paddle.nn.Layer):
+            raise TypeError(
+                "When using 'to_static' to convert method of a class, "
+                "please ensure the class inherits from nn.Layer"
+            )
         if instance not in self._descriptor_cache:
+            # TODO(SigureMo): Which case need check the instance is a None?
             if instance is None:
                 return self
             # Note(Aurelius84): To construct new instance of StaticFunction when we
-            # first encouter the bound function of layer and cache it.
-            new_static_layer = self._clone()
+            # first encounter the bound function of layer and cache it.
+            new_static_fn = self._clone()
             if (
                 isinstance(instance, layers.Layer)
                 and self._dygraph_function.__name__
@@ -488,15 +505,22 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 instance._original_funcs[self._dygraph_function.__name__] = (
                     self._dygraph_function
                 )
-            new_static_layer._class_instance = instance
-            self._descriptor_cache[instance] = new_static_layer
+            new_static_fn._class_instance = instance
+            self._descriptor_cache[instance] = new_static_fn
 
         return self._descriptor_cache[instance]
 
-    def _clone(self) -> Self:
-        return self.__class__(
-            self.dygraph_function, self._input_spec, **self._kwargs
-        )
+    def enable_convert_all_instances(self) -> None:
+        """For a unbound method, enable to convert all instances of the class."""
+        self._should_convert_all_instances = True
+
+    def add_need_convert_instance(self, instance) -> None:
+        """For a bound method, we can mark the instance to be converted."""
+        self._need_convert_instances.add(instance)
+
+    def remove_need_convert_instance(self, instance) -> None:
+        """For a bound method rollback"""
+        self._need_convert_instances.discard(instance)
 
     def __call__(self, *args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         """

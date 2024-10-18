@@ -69,7 +69,6 @@ from paddle.utils.environments import (
     EnvironmentVariableGuard,
 )
 
-from .dy2static import logging_utils
 from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
 from .dy2static.program_translator import (
     ASTStaticFunction,
@@ -280,7 +279,7 @@ def to_static(
     property = kwargs.get("property", False)
     full_graph = kwargs.get("full_graph", None)
 
-    def decorated(python_func):
+    def decorated(dygraph_fn) -> StaticFunction:
         """
         Decorates a python function into a ASTStaticFunction object.
         """
@@ -302,13 +301,13 @@ def to_static(
         }[full_graph]
 
         # Step 1. unwrap the function if it is already decorated.
-        _, python_func = unwrap_decorators(python_func)
+        _, dygraph_fn = unwrap_decorators(dygraph_fn)
 
         # Step 2. copy some attributes from original python function.
-        static_layer = copy_decorator_attrs(
-            original_func=python_func,
+        static_fn = copy_decorator_attrs(
+            original_func=dygraph_fn,
             decorated_obj=StaticClass(
-                function=python_func,
+                function=dygraph_fn,
                 input_spec=input_spec,
                 build_strategy=build_strategy,
                 property=property,
@@ -316,7 +315,7 @@ def to_static(
             ),
         )
 
-        return static_layer
+        return static_fn
 
     build_strategy = build_strategy or BuildStrategy()
     if not isinstance(build_strategy, BuildStrategy):
@@ -328,15 +327,26 @@ def to_static(
     # for usage: `to_static(foo, ...)`
     if function is not None:
         if isinstance(function, Layer):
-            if isinstance(function.forward, StaticFunction):
-                class_name = function.__class__.__name__
-                logging_utils.warn(
-                    f"`{class_name}.forward` has already been decorated somewhere. It will be redecorated to replace previous one."
-                )
-            function.forward = decorated(function.forward)
-            return function
+            layer = function
+            # if isinstance(layer.forward, StaticFunction):
+            #     class_name = layer.__class__.__name__
+            #     logging_utils.warn(
+            #         f"`{class_name}.forward` has already been decorated somewhere. It will be redecorated to replace previous one."
+            #     )
+            # function.forward = decorated(function.forward)
+            if isinstance(layer.__class__.forward, StaticFunction):
+                new_cls_forward = layer.__class__.forward
+            else:
+                new_cls_forward = decorated(layer.__class__.forward)
+                function.__class__.forward = new_cls_forward
+            new_cls_forward.add_need_convert_instance(layer)
+            return layer
         else:
-            return decorated(function)
+            if inspect.ismethod(function):
+                return decorated(function.__func__).bind(function.__self__)
+            static_fn = decorated(function)
+            static_fn.enable_convert_all_instances()
+            return static_fn
 
     # for usage: `@to_static`
     return decorated
