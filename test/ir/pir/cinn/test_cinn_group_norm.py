@@ -152,5 +152,85 @@ class TestGroupNormSubGraphNCHW(TestGroupNormSubGraphRank3):
         np.testing.assert_allclose(cinn_bias_grad, dy_bias_grad, rtol=1e-5)
 
 
+class TestGroupNormSubGraphRank6NHWC(TestGroupNormSubGraph):
+    def setUp(self):
+        paddle.seed(2024)
+        self.shape = [80, 4, 4, 4, 4, 128]
+        self.dtype = "float32"
+        self.data_format = "NHWC"
+        self.prepare_data()
+
+    def test_prim(self):
+        cinn_out, cinn_x_grad, cinn_weight_grad, cinn_bias_grad = self.eval(
+            use_cinn=False, use_prim=True
+        )
+        dy_out, dy_x_grad, dy_weight_grad, dy_bias_grad = self.eval(
+            use_cinn=False
+        )
+        np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-5, rtol=1e-5)
+        np.testing.assert_allclose(cinn_weight_grad, dy_weight_grad, atol=5e-4)
+        np.testing.assert_allclose(cinn_bias_grad, dy_bias_grad, rtol=1e-5)
+
+
+class TestGroupNormSubGraphRank6NCHW(TestGroupNormSubGraph):
+    def setUp(self):
+        paddle.seed(2024)
+        self.shape = [80, 128, 8, 4, 4, 4]
+        self.dtype = "float32"
+        self.data_format = "NCHW"
+        self.prepare_data()
+
+    def test_prim(self):
+        cinn_out, cinn_x_grad, cinn_weight_grad, cinn_bias_grad = self.eval(
+            use_cinn=False, use_prim=True
+        )
+        dy_out, dy_x_grad, dy_weight_grad, dy_bias_grad = self.eval(
+            use_cinn=False
+        )
+        np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-5, rtol=1e-5)
+        np.testing.assert_allclose(cinn_weight_grad, dy_weight_grad, atol=5e-4)
+        np.testing.assert_allclose(cinn_bias_grad, dy_bias_grad, rtol=1e-5)
+
+
+class TestGroupNormSubGraphRank7NHWC(TestGroupNormSubGraph):
+    def setUp(self):
+        paddle.seed(2024)
+        self.shape = [80, 4, 4, 4, 4, 4, 128]
+        self.dtype = "float32"
+        self.data_format = "NHWC"
+        self.prepare_data()
+
+    def test_prim(self):
+        cinn_out, cinn_x_grad, cinn_weight_grad, cinn_bias_grad = self.eval(
+            use_cinn=False, use_prim=True
+        )
+        dy_out, dy_x_grad, dy_weight_grad, dy_bias_grad = self.eval(
+            use_cinn=False
+        )
+        np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-5, rtol=1e-5)
+        np.testing.assert_allclose(cinn_weight_grad, dy_weight_grad, atol=5e-4)
+        np.testing.assert_allclose(cinn_bias_grad, dy_bias_grad, rtol=1e-5)
+
+
+class TestGroupNormSubGraphRank7NCHW(TestGroupNormSubGraph):
+    def setUp(self):
+        paddle.seed(2024)
+        self.shape = [80, 128, 8, 4, 4, 4, 4]
+        self.dtype = "float32"
+        self.data_format = "NCHW"
+        self.prepare_data()
+
+    def test_prim(self):
+        cinn_out, cinn_x_grad, cinn_weight_grad, cinn_bias_grad = self.eval(
+            use_cinn=False, use_prim=True
+        )
+        dy_out, dy_x_grad, dy_weight_grad, dy_bias_grad = self.eval(
+            use_cinn=False
+        )
+        np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-5, rtol=1e-5)
+        np.testing.assert_allclose(cinn_weight_grad, dy_weight_grad, atol=5e-4)
+        np.testing.assert_allclose(cinn_bias_grad, dy_bias_grad, rtol=1e-5)
+
+
 if __name__ == '__main__':
     unittest.main()
