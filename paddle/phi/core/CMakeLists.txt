@@ -5,6 +5,7 @@ add_subdirectory(memory)
 add_subdirectory(platform)
 add_subdirectory(framework)
 add_subdirectory(vocab)
+add_subdirectory(operators)
 
 if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)

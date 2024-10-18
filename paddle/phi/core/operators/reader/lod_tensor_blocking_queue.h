@@ -19,9 +19,9 @@
 #include <vector>
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/operators/reader/blocking_queue.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,9 @@ class LoDTensorBlockingQueue {
   explicit LoDTensorBlockingQueue(size_t capacity, bool speed_test_mode = false)
       : queue_(capacity, speed_test_mode) {}
 
-  ~LoDTensorBlockingQueue() { VLOG(10) << "Destruct LoDTensorBlockingQueue"; }
+  ~LoDTensorBlockingQueue() {
+    // VLOG(10) << "Destruct LoDTensorBlockingQueue";
+  }
 
   bool Push(const phi::TensorArray& lod_tensor_vec) {
     return queue_.Send(lod_tensor_vec);
@@ -56,7 +58,7 @@ class LoDTensorBlockingQueue {
   inline void ReOpen() { queue_.ReOpen(); }
 
   inline void Close() {
-    VLOG(1) << "LoDTensorBlockingQueue close";
+    // VLOG(1) << "LoDTensorBlockingQueue close";
     queue_.Close();
   }
 
@@ -77,7 +79,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
       : capacity_(capacity), speed_test_mode_(speed_test_mode) {}
 
   ~OrderedMultiDeviceLoDTensorBlockingQueue() {
-    VLOG(10) << "Destruct OrderedMultiDeviceLoDTensorBlockingQueue";
+    // VLOG(10) << "Destruct OrderedMultiDeviceLoDTensorBlockingQueue";
   }
 
   bool WaitForInited(size_t milliseconds) {
@@ -104,7 +106,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
         return;
       }
 
-      VLOG(1) << "Init queue with size " << dev_cnt;
+      // VLOG(1) << "Init queue with size " << dev_cnt;
       queues_.resize(dev_cnt);
       for (auto& item : queues_) {
         auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;

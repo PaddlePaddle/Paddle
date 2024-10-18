@@ -122,11 +122,6 @@ cc_library(
   DEPS device_context phi common glog)
 
 cc_library(
-  reader
-  SRCS reader.cc
-  DEPS lod_tensor phi common)
-
-cc_library(
   var_type_traits
   SRCS var_type_traits.cc
   DEPS scope phi common)

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
+#include "paddle/phi/core/operators/reader/buffered_reader.h"
 
 namespace paddle::operators::reader {
 class CreateDoubleBufferReaderOp : public framework::OperatorBase {
