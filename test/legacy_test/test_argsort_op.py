@@ -468,6 +468,7 @@ class TestArgsortFP16Op(OpTest):
         self.init()
         self.init_direction()
         self.op_type = "argsort"
+        self.prim_op_type = "prim"
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
         self.python_out_sig = ["Out"]
@@ -496,7 +497,13 @@ class TestArgsortFP16Op(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_dygraph=False,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
@@ -514,6 +521,7 @@ class TestArgsortBF16Op(OpTest):
         self.init()
         self.init_direction()
         self.op_type = "argsort"
+        self.prim_op_type = "prim"
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
         self.python_out_sig = ["Out"]
@@ -546,7 +554,12 @@ class TestArgsortBF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_dygraph=False, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_dygraph=False,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
