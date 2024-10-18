@@ -1177,7 +1177,8 @@ void ConstructAttrMapForRunProgram(
     } else if (std::set<std::string>({"forward_program", "backward_program"})
                    .count(key)) {
       CastPyArg2AttrIRProgram(obj, attrs, key, op_type, arg_pos);
-    } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
+    } else if (std::set<std::string>(
+                   {"is_test", "use_interpretorcore", "in_sot_mode"})
                    .count(key)) {
       CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);
     } else if (std::set<std::string>({"start_op_index",

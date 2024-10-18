@@ -140,6 +140,7 @@ void ExecutionConfig::Log(int log_level) {
           << "used_for_cinn = " << used_for_cinn << "\n"
           << "used_for_control_flow_op = " << used_for_control_flow_op << "\n"
           << "used_for_jit = " << used_for_jit << "\n"
+          << "used_for_sot = " << used_for_sot << "\n"
           << "device_num_threads = " << device_num_threads << "\n"
           << "host_num_threads = " << host_num_threads << "\n";
 
