@@ -46,20 +46,22 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& x,
                            int col,
                            phi::DenseTensor* out) {
-  PADDLE_ENFORCE_NOT_NULL(
-      out,
-      common::errors::NotFound(
-          "Output cannot be found in scope for operator 'Feed'"));
-  const auto& feed_item = CheckAndGetFeedItem(x, col);
-  const auto& in_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
-  const auto& place = dev_ctx.GetPlace();
-  if (phi::is_same_place(in_tensor.place(), place)) {
-    out->ShareDataWith(in_tensor);
-  } else {
-    phi::Copy(dev_ctx, in_tensor, place, false, out);
-  }
+  /*
+PADDLE_ENFORCE_NOT_NULL(
+out,
+common::errors::NotFound(
+"Output cannot be found in scope for operator 'Feed'"));
+const auto& feed_item = CheckAndGetFeedItem(x, col);
+const auto& in_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
+const auto& place = dev_ctx.GetPlace();
+if (phi::is_same_place(in_tensor.place(), place)) {
+out->ShareDataWith(in_tensor);
+} else {
+phi::Copy(dev_ctx, in_tensor, place, false, out);
+}
 
-  out->set_lod(in_tensor.lod());
+out->set_lod(in_tensor.lod());
+*/
 }
 
 }  // namespace phi
