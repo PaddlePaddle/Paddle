@@ -37,6 +37,8 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     set_insertion_point_to_block_end,
     translate_to_pir,
     translate_to_pir_with_param_map,
+    set_op_role,
+    get_op_role,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
