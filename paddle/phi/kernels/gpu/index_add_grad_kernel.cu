@@ -82,7 +82,8 @@ void IndexAddGradKernel(const Context& ctx,
                                              numel,
                                              stride,
                                              size,
-                                             delta);
+                                             delta,
+                                             input_dim[dim]);
   } else {
     const int* index_data = index.data<int>();
     index_select_cuda_kernel<T, int>
@@ -92,7 +93,8 @@ void IndexAddGradKernel(const Context& ctx,
                                              numel,
                                              stride,
                                              size,
-                                             delta);
+                                             delta,
+                                             input_dim[dim]);
   }
 }
 

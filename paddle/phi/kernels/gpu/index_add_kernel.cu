@@ -36,11 +36,13 @@ __global__ void index_add_cuda_kernel(const T* input,
                                       int64_t stride,
                                       int64_t size,
                                       int64_t delta,
-                                      T* output) {
+                                      T* output,
+                                      int64_t index_dim_size) {
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t pre_idx = idx / (stride * size);
     int64_t dim_idx = idx % (stride * size) / stride;
-    IndexT src_dim_idx = index[dim_idx];
+    IndexT src_dim_idx =
+        (index[dim_idx] < 0 ? index[dim_idx] + index_dim_size : index[dim_idx]);
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
     phi::CudaAtomicAdd(&output[input_idx], add_value[idx]);
@@ -88,7 +90,7 @@ void IndexAddKernel(const Context& ctx,
     block_dim = 1;
     grid_dim.x = 1;
   }
-
+  auto index_dim_size = input_dim[dim];
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     index_add_cuda_kernel<T, int64_t>
@@ -99,7 +101,8 @@ void IndexAddKernel(const Context& ctx,
                                              stride,
                                              size,
                                              delta,
-                                             out_data);
+                                             out_data,
+                                             index_dim_size);
   } else {
     const int* index_data = index.data<int>();
     index_add_cuda_kernel<T, int>
@@ -110,7 +113,8 @@ void IndexAddKernel(const Context& ctx,
                                              stride,
                                              size,
                                              delta,
-                                             out_data);
+                                             out_data,
+                                             index_dim_size);
   }
 }
 

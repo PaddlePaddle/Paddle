@@ -79,7 +79,9 @@ class TestScatterNdAddSimpleOp(OpTest):
         else:
             target_dtype = "float32"
         ref_np = np.random.random([100]).astype(target_dtype)
-        index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
+        index_np = np.random.randint(
+            -ref_np.shape[0], ref_np.shape[0], [100, 1]
+        ).astype("int32")
         updates_np = np.random.random([100]).astype(target_dtype)
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
         if self.dtype == np.uint16:
@@ -252,7 +254,7 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         shape = (3, 2, 2, 1, 10)
         ref_np = np.random.rand(*shape).astype(target_dtype)
         index_np = np.vstack(
-            [np.random.randint(0, s, size=100) for s in shape]
+            [np.random.randint(-s, s, size=100) for s in shape]
         ).T.astype("int32")
         update_shape = judge_update_shape(ref_np, index_np)
         updates_np = np.random.rand(*update_shape).astype(target_dtype)
@@ -325,7 +327,7 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.prim_op_type = "prim"
         shape = (8, 2, 2, 1, 10)
         ref_np = np.random.rand(*shape).astype("double")
-        index = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
+        index = np.vstack([np.random.randint(-s, s, size=500) for s in shape]).T
         index_np = index.reshape([10, 5, 10, 5]).astype("int64")
         update_shape = judge_update_shape(ref_np, index_np)
         updates_np = np.random.rand(*update_shape).astype("double")
@@ -448,36 +450,39 @@ class TestScatterNdOpAPI(unittest.TestCase):
             paddle.set_device(device)
 
         def test_static_graph():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
-                index_t = paddle.static.data(
-                    name="index", dtype=index.dtype, shape=index.shape
-                )
-                val_t = paddle.static.data(
-                    name="val", dtype=val.dtype, shape=val.shape
-                )
-                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
-                cpu_exe = paddle.static.Executor(paddle.CPUPlace())
-                out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
-                gpu_value = gpu_exe.run(
-                    feed={
-                        'x': x,
-                        'index': index,
-                        'val': val,
-                    },
-                    fetch_list=[out_t],
-                )
-                cpu_value = cpu_exe.run(
-                    feed={
-                        'x': x,
-                        'index': index,
-                        'val': val,
-                    },
-                    fetch_list=[out_t],
-                )
-            np.testing.assert_array_equal(gpu_value, cpu_value)
+            with static_guard():
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x_t = paddle.static.data(
+                        name="x", dtype=x.dtype, shape=x.shape
+                    )
+                    index_t = paddle.static.data(
+                        name="index", dtype=index.dtype, shape=index.shape
+                    )
+                    val_t = paddle.static.data(
+                        name="val", dtype=val.dtype, shape=val.shape
+                    )
+                    gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                    cpu_exe = paddle.static.Executor(paddle.CPUPlace())
+                    out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
+                    gpu_value = gpu_exe.run(
+                        feed={
+                            'x': x,
+                            'index': index,
+                            'val': val,
+                        },
+                        fetch_list=[out_t],
+                    )
+                    cpu_value = cpu_exe.run(
+                        feed={
+                            'x': x,
+                            'index': index,
+                            'val': val,
+                        },
+                        fetch_list=[out_t],
+                    )
+                np.testing.assert_array_equal(gpu_value, cpu_value)
 
         test_static_graph()
 

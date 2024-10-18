@@ -27,6 +27,10 @@ void GatherGradKernel(const Context& dev_ctx,
                       const Scalar& axis,
                       DenseTensor* x_grad) {
   auto axis_v = axis.to<int>();
+  if (axis_v < 0) {
+    axis_v += static_cast<int>(x.dims().size());
+  }
+
   const auto& index_type = index.dtype();
 
   if (out_grad.numel() == 0) {
