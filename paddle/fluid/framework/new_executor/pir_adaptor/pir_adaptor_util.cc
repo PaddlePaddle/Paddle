@@ -692,7 +692,7 @@ bool IsNeedVarInplace(pir::Operation* op,
                       pir::Value value,
                       std::string op_name) {
   return (value.type().isa<paddle::dialect::DenseTensorArrayType>() ||
-          op_name == "pd_op.assign_value_");
+          op_name == "pd_op.assign_value_" || op_name == "pd_op.assign_out_");
 }
 
 // NOTE(chenxi67): Here, we only perform inplace processing for variables that
