@@ -96,6 +96,15 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         return false;
       }
     }
+    if (op->name() == "onednn_op.scale" || op->name() == "onednn_op.scale_") {
+      bool bias_after_scale =
+          op_attr.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data();
+      if (bias_after_scale) {
+        // If bias after scale, add quant/dequant for sacle will cause some
+        // error
+        return false;
+      }
+    }
 
     const std::vector<std::string> permitted_input_names = {
         "x", "y", "input", "residual_param", "residual_data"};
