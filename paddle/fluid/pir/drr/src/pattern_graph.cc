@@ -31,7 +31,7 @@ const drr::OpCall &PatternGraph::AddOpCall(
         id2owned_tensor_.count(tensor_name),
         0,
         common::errors::NotFound("Not found tensor."
-                                 "The intput tensor [%s] must exist "
+                                 "The input tensor [%s] must exist "
                                  "in pattern graph to be obtained.",
                                  tensor_name));
     id2owned_tensor_.at(tensor_name)->AddConsumer(op_call.get());

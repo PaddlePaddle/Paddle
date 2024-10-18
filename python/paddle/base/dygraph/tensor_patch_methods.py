@@ -17,10 +17,11 @@ from __future__ import annotations
 import hashlib
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, overload
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, profiler
@@ -912,6 +913,12 @@ def monkey_patch_tensor():
 
         return tensor_to_string(self)
 
+    def __format__(self, format_spec: str) -> str:
+        if self.ndim == 0:
+            return self.item().__format__(format_spec)
+
+        return object.__format__(self, format_spec)
+
     def __deepcopy__(self, memo: dict[int, Tensor]) -> Tensor:
         """
         Deep copy Tensor, it will always performs Tensor copy.
@@ -1340,6 +1347,7 @@ def monkey_patch_tensor():
         ("register_hook", register_hook),
         ("__str__", __str__),
         ("__repr__", __str__),
+        ("__format__", __format__),
         ("__deepcopy__", __deepcopy__),
         ("__module__", "paddle"),
         ("__array__", __array__),

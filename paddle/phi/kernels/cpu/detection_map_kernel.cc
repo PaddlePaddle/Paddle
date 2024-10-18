@@ -368,7 +368,7 @@ T CalcMAP(APType ap_type,
       ++count;
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unkown ap version %s. Now only supports integral and l1point.",
+          "Unknown ap version %s. Now only supports integral and l1point.",
           ap_type));
     }
   }

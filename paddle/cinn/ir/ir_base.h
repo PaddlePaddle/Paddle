@@ -347,6 +347,7 @@ struct StringImm : public ExprNode<StringImm> {
 };
 
 class Var;
+class IndexExpr;
 /**
  * An expression that represents some value or the result of some operations.
  */
@@ -432,6 +433,11 @@ struct Expr : public IrNodeRef {
   bool is_cmp() const;
 
   bool is_var() const;
+
+  bool is_index() const;
+
+  IndexExpr as_index();
+  const IndexExpr as_index() const;
 
   operator Var();
 
@@ -591,7 +597,7 @@ namespace std {
 
 template <>
 struct hash<cinn::ir::Expr> {
-  size_t operator()(const cinn::ir::Expr& x) {
+  size_t operator()(const cinn::ir::Expr& x) const {
     return reinterpret_cast<size_t>(x.get());
   }
 };

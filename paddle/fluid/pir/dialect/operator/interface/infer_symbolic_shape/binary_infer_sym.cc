@@ -2054,20 +2054,20 @@ bool IndexSelectOpInferSymbolicShape(
   std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
   std::vector<symbol::DimExpr> index_shape = index_shape_or_data.shape();
 
-  int64_t dim = op->attribute<pir::Int32Attribute>("dim").data();
+  int64_t axis = op->attribute<pir::Int32Attribute>("axis").data();
 
   auto input_rank = x_shape.size();
   auto index_rank = index_shape.size();
   PADDLE_ENFORCE_EQ(
-      dim < static_cast<int64_t>(input_rank) &&
-          dim >= (0 - static_cast<int64_t>(input_rank)),
+      axis < static_cast<int64_t>(input_rank) &&
+          axis >= (0 - static_cast<int64_t>(input_rank)),
       true,
       common::errors::OutOfRange(
-          "Attr(dim) is out of range, It's expected "
-          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
           input_rank,
           input_rank - 1,
-          dim));
+          axis));
 
   PADDLE_ENFORCE_EQ(index_rank == 1 || index_rank == 2,
                     true,
@@ -2082,12 +2082,12 @@ bool IndexSelectOpInferSymbolicShape(
   if (index_rank == 2)
     infer_context->AddEqualCstr(index_shape[1], symbol::DimExpr{1});
 
-  if (dim < 0) {
-    dim += input_rank;
+  if (axis < 0) {
+    axis += input_rank;
   }
 
   std::vector<symbol::DimExpr> output_shape = x_shape;
-  output_shape[dim] = index_shape[0];
+  output_shape[axis] = index_shape[0];
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
