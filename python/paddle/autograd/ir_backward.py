@@ -79,6 +79,19 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
             )
             full_like_op = value_grad.get_defining_op()
             backward_ops_ = [full_like_op]
+        elif copy_value.is_combine():
+            vec_value = copy_value.type().as_vec_type()
+            values = vec_value.as_list()
+            value_grad = []
+            backward_ops_ = []
+            for v in values:
+                grad = paddle.full(
+                    v.shape,
+                    float_value,
+                    dtype=v.dtype,
+                )
+                value_grad.append(grad)
+                backward_ops_.append(grad.get_defining_op())
         else:
             value_grad = paddle.full_like(
                 copy_value,
@@ -93,7 +106,10 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
             state.op_to_opgrad[value.get_defining_op()],
             backward_ops_,
         )
-        state.value_to_valuegrad[value] = [[value_grad]]
+        if copy_value.is_combine():
+            state.value_to_valuegrad[value] = [value_grad]
+        else:
+            state.value_to_valuegrad[value] = [[value_grad]]
         return value_grad
 
 
