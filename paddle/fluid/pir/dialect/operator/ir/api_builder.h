@@ -75,8 +75,8 @@ class ApiBuilder {
   // pop the insertion point and set it to the current insertion point.
   void LoadInsertionPoint();
 
-  void SetOpRole(int op_role) { builder_->SetCurrentOpRole(op_role); }
-  int GetOpRole() const { return builder_->GetCurrentOpRole(); }
+  void SetOpRole(int op_role) { builder_->set_op_role(op_role); }
+  int GetOpRole() const { return builder_->get_op_role(); }
 
  private:
   ApiBuilder();
