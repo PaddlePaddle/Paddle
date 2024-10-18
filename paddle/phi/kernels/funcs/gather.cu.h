@@ -60,17 +60,19 @@ __global__ void GatherNdCUDAKernel(const T* input,
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
+      PADDLE_ENFORCE(
+          index_value >= 0 && index_value < input_dims[j],
+          "The index is out of bounds, "
+          "please check whether the dimensions of index and "
+          "input meet the requirements. It should "
+          "be less than [%ld] and greater than or equal to [%ld], but "
+          "received [%ld]",
+          -input_dims[j],
+          input_dims[j],
+          index_value);
       if (index_value < 0) {
         index_value += input_dims[j];
       }
-      PADDLE_ENFORCE(index_value >= 0 && index_value < input_dims[j],
-                     "The index is out of bounds, "
-                     "please check whether the dimensions of index and "
-                     "input meet the requirements. It should "
-                     "be less than [%ld] and greater than or equal to 0, but "
-                     "received [%ld]",
-                     input_dims[j],
-                     index_value);
       gather_i += (index_value * temp);
       temp *= input_dims[j];
     }
@@ -184,18 +186,19 @@ __global__ void GatherGPUKernel(const T* input,
     int64_t next_idx = idx - outer_size * inner_dim_index;
     int64_t index_dim_index = next_idx / outer_dim_size;
     U index_val = index[index_dim_index];
+
+    PADDLE_ENFORCE(index_val >= 0 && index_val < input_index_dim_size,
+                   "The index is out of bounds, "
+                   "please check whether the dimensions of index and "
+                   "input meet the requirements. It should "
+                   "be less than [%ld] and greater than or equal to [%ld], but "
+                   "received [%ld]",
+                   input_index_dim_size,
+                   -input_index_dim_size,
+                   index_val);
     if (index_val < 0) {
       index_val += input_index_dim_size;
     }
-
-    PADDLE_ENFORCE(
-        index_val >= 0 && index_val < input_index_dim_size,
-        "The index is out of bounds, "
-        "please check whether the dimensions of index and "
-        "input meet the requirements. It should "
-        "be less than [%ld] and greater than or equal to 0, but received [%ld]",
-        input_index_dim_size,
-        index_val);
 
     int64_t out_dim_index = next_idx - outer_dim_size * index_dim_index;
     int64_t input_index =

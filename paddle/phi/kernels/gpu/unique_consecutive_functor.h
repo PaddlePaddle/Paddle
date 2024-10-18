@@ -307,11 +307,12 @@ void IndexSelect(const Context& context,
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_vec[i],
-        0,
+        -input_dim[dim],
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
             "value.",
+            -input_dim[dim],
             input_dim[dim],
             index_vec[i]));
     PADDLE_ENFORCE_LT(
@@ -319,8 +320,9 @@ void IndexSelect(const Context& context,
         input_dim[dim],
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
             "value.",
+            -input_dim[dim],
             input_dim[dim],
             index_vec[i]));
   }

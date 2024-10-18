@@ -38,10 +38,18 @@ class TestScatterOp(OpTest):
         updates_np = np.random.random((10, 50)).astype(target_dtype)
 
         index_np = np.random.choice(
-            np.arange(ref_np.shape[0]) - ref_np.shape[0],
+            np.arange(ref_np.shape[0]),
             size=(updates_np.shape[0],),
             replace=False,
         ).astype("int32")
+
+        # randomly mapping index into equivalent negative index(mod ref_np.shape[0])
+        # to test for negative index
+        random_negative_mask = (np.random.rand(index_np.shape[0]) > 0.5).astype(
+            "bool"
+        )
+        index_np[random_negative_mask] -= ref_np.shape[0]
+
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
         if self.dtype == np.uint16:

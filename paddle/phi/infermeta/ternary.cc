@@ -1800,12 +1800,12 @@ void ScatterInferMeta(const MetaTensor& x,
         index_dims[0],
         updates_dims[0],
         common::errors::InvalidArgument(
-            "The fist dimension size of Input(updates) shoud be no larger than "
-            "Input(index), but received first dimension size of Input(updates) "
+            "The first dimension size of Input(Ids) shoud be no greater than "
+            "Input(Updates), but received first dimension size of Input(Ids) "
             "is %d, "
-            "Input(index) is  %d.",
-            updates_dims[0],
-            index_dims[0]));
+            "Input(Updates) is  %d.",
+            index_dims[0],
+            updates_dims[0]));
   } else {
     PADDLE_ENFORCE_EQ(
         (ref_dims.size() - 1 == updates_dims.size()),
