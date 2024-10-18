@@ -95,6 +95,7 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
       std::make_shared<ScheduleConfig::BaseInfo>();
   base_info->data_rank = group_info->loop_ranges.size();
   base_info->loop_strides = group_info->loop_strides;
+  base_info->can_apply_grid_reduce = group_info->can_apply_grid_reduce;
 
   std::set<int64_t> reduce_dim_loc;
   for (int64_t dim : group_info->reduce_axis) {
@@ -179,6 +180,19 @@ BuildPureStaticShapeConfig(
           /* spatial_inner_num = */ 1,
           /* reduce_method = */ BlockReduceMethod()};
       return {{bucket_info, tile_config}};
+    } else if (base_info->can_apply_grid_reduce &&
+               base_info->reduce_numel > 65536) {
+      BucketInfo bucket_info{/* sp_lower_bound = */ 1,
+                             /* sp_upper_bound = */ 1,
+                             /* rb_lower_bound = */ 2049,
+                             /* rb_upper_bound = */ kMaxNumel};
+      ScheduleConfig::TileConfig tile_config{
+          /* warp_num = */ 32,
+          /* tree_reduce_num = */ 1024,
+          /* spatial_inner_num = */ 1,
+          /* reduce_method = */ BlockReduceMethod(),
+          /* grid_reduce_num = */ 8};
+      return {{bucket_info, tile_config}};
     } else {
       BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                              /* sp_upper_bound = */ 1,
@@ -243,6 +257,20 @@ BuildPureStaticShapeConfig(
         /* tree_reduce_num = */ tree_reduce_num,
         /* spatial_inner_num = */ spatial_inner_num,
         /* reduce_method = */ BlockReduceMethod()};
+    return {{bucket_info, tile_config}};
+  } else if (base_info->can_apply_grid_reduce &&
+             base_info->spatial_numel <= 256 &&
+             base_info->reduce_numel > 65536) {
+    BucketInfo bucket_info{/* sp_lower_bound = */ 1,
+                           /* sp_upper_bound = */ 256,
+                           /* rb_lower_bound = */ 65537,
+                           /* rb_upper_bound = */ kMaxNumel};
+    ScheduleConfig::TileConfig tile_config{
+        /* warp_num = */ 32,
+        /* tree_reduce_num = */ 1024,
+        /* spatial_inner_num = */ 1,
+        /* reduce_method = */ BlockReduceMethod(),
+        /* grid_reduce_num = */ 8};
     return {{bucket_info, tile_config}};
   } else {
     int64_t warp_num = 32;

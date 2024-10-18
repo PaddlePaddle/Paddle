@@ -68,26 +68,10 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
   if (phi::is_same_place(in_tensor.place(), place)) {
     out->ShareDataWith(in_tensor);
   } else {
-    framework::TensorCopy(in_tensor, place, dev_ctx, out);
+    phi::Copy(dev_ctx, in_tensor, place, false, out);
   }
 
   out->set_lod(in_tensor.lod());
-}
-
-template <typename Context>
-void FeedStringsKernel(const Context& dev_ctx UNUSED,
-                       const phi::ExtendedTensor& x,
-                       int col,
-                       phi::ExtendedTensor* out) {
-  PADDLE_ENFORCE_NOT_NULL(
-      out,
-      common::errors::NotFound(
-          "Output cannot be found in scope for operator 'Feed'"));
-  const auto& feed_item = CheckAndGetFeedItem(x, col);
-  auto strs_out = static_cast<framework::Strings*>(out);
-  const auto& in_str = paddle::get<framework::Strings>(feed_item);
-  strs_out->resize(in_str.size());
-  *strs_out = in_str;
 }
 
 class FeedOp : public framework::OperatorWithKernel {
@@ -119,24 +103,9 @@ class FeedOp : public framework::OperatorWithKernel {
           meta.strides = meta.calc_strides(meta.dims);
         }
         out_tensor->set_meta(meta);
-      } else if (feed_item.index() == 1) {  // Strings
-        auto& feed_str = PADDLE_GET_CONST(framework::Strings, feed_item);
-        out_var->GetMutable<framework::Strings>()->resize(feed_str.size());
-      } else if (feed_item.index() == 2) {  // SparseCooTensor
-        auto& feed_sparse_tensor =
-            PADDLE_GET_CONST(phi::SparseCooTensor, feed_item);
-        out_var->GetMutable<phi::SparseCooTensor>()->set_meta(
-            feed_sparse_tensor.meta());
-        out_var->GetMutable<phi::SparseCooTensor>()->SetCoalesced(
-            feed_sparse_tensor.coalesced());
-        out_var->GetMutable<phi::SparseCooTensor>()->SetIndicesDict(
-            feed_sparse_tensor.GetIndicesDict());
-        out_var->GetMutable<phi::SparseCooTensor>()->SetKmaps(
-            feed_sparse_tensor.GetKmaps());
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
-            "Only support DenseTensor, Strings, and "
-            "SparseCooTensor for feed op now."));
+            "Only support DenseTensor for feed op now."));
       }
     }
   }
@@ -197,4 +166,4 @@ REGISTER_OPERATOR(
     paddle::operators::FeedOpInfoMaker);
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(
-    feed_dense_tensor, ALL_LAYOUT, paddle::operators::FeedDenseTensorKernel) {}
+    feed, ALL_LAYOUT, paddle::operators::FeedDenseTensorKernel) {}

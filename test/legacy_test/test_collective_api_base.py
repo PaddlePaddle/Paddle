@@ -508,7 +508,7 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
-        elif col_type == "alltoall":
+        elif col_type == "all_to_all":
             need_result1 = np.vstack(
                 (
                     input1[0 : input1.shape[0] // 2, :],

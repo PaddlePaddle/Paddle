@@ -37,8 +37,8 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   PADDLE_ENFORCE_EQ(
       ctx->HasValue(in_variable),
       true,
-      phi::errors::NotFound("The param id's out_iter must contain "
-                            "its in_iter's value"));
+      ::common::errors::NotFound("The param id's out_iter must contain "
+                                 "its in_iter's value"));
   return {{out_iter.value(), ctx->GetValue(in_variable)}};
 }
 
@@ -49,8 +49,8 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   PADDLE_ENFORCE_EQ(
       ctx->HasValue(in_variable),
       true,
-      phi::errors::NotFound("The param id's out_iter must contain "
-                            "its in_iter's value"));
+      ::common::errors::NotFound("The param id's out_iter must contain "
+                                 "its in_iter's value"));
   return {{out_index.value(), ctx->GetValue(in_variable)}};
 }
 
@@ -215,7 +215,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
     PADDLE_ENFORCE_EQ(
         ret.emplace(out_msg_in_indexes.value()->at(i), value).second,
         true,
-        phi::errors::AlreadyExists([&]() {
+        ::common::errors::AlreadyExists([&]() {
           std::ostringstream oss;
           oss << "Failed to insert the variable '"
               << "out_msg_in_indexes.value()->at(" << i
@@ -229,7 +229,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
     if (out_index.has_value()) {
       PADDLE_ENFORCE_EQ(ret.emplace(out_index.value(), value).second,
                         true,
-                        phi::errors::AlreadyExists([&]() {
+                        ::common::errors::AlreadyExists([&]() {
                           std::ostringstream oss;
                           oss << "Failed to insert the variable '"
                               << "out_index.value()"
@@ -306,7 +306,9 @@ void SolveEquations(
         tValueInferSuccess<bool> has_unique_value =
             MergeInferedValuesIntoCtx(function, ctx);
         PADDLE_ENFORCE_EQ(
-            has_unique_value.value(), true, phi::errors::InvalidArgument([&]() {
+            has_unique_value.value(),
+            true,
+            ::common::errors::InvalidArgument([&]() {
               std::ostringstream oss;
               oss << "Failed to merge inferred values into the context for "
                      "function '"
