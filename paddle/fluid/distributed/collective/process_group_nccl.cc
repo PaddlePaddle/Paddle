@@ -851,20 +851,20 @@ void ProcessGroupNCCL::EagerConnect() {
 }
 
 void ProcessGroupNCCL::EagerConnectRingExchange() {
-  std::vector<std::pair<size_t, size_t>> peers;
+  std::vector<std::pair<int, int>> peers;
   const auto& place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
 
-  for (size_t rank = 0; rank < size_; rank++) {
+  for (int rank = 0; rank < size_; rank++) {
     auto peer_rank = rank + 1 >= size_ ? 0 : rank + 1;
     peers.push_back(std::make_pair(rank, peer_rank));
   }
 
   for (auto& peer : peers) {
-    size_t f_rank = peer.first;
-    size_t s_rank = peer.second;
+    int f_rank = peer.first;
+    int s_rank = peer.second;
 
-    size_t peer_rank = 0;
-    size_t cur_rank = rank_;
+    int peer_rank = 0;
+    int cur_rank = rank_;
     if (rank_ == f_rank) {
       peer_rank = s_rank;
     } else if (rank_ == s_rank) {
