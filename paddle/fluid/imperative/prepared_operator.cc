@@ -316,8 +316,21 @@ PreparedOp PrepareImpl(
               static_cast<phi::distributed::NCCLCommContext*>(comm_context)
                   ->GetDevContext();
           dev_ctx->SetCommContext(comm_context);
-          static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(original_stream,
-                                                                false);
+          // Note(lizhenxing): In dynamic mode, c_softmax_with_cross_entropy
+          // need use global calculate stream (original_stream). Using the
+          // comm_ctx's stream will lead to synchronization issues, causing
+          // accuracy diff in test_parallel_dygraph_mp_layers.
+          if (phi::is_gpu_place(place) &&
+              ((attrs.find("use_calc_stream") != attrs.end() &&
+                PADDLE_GET(bool, attrs.at("use_calc_stream"))) ||
+               phi_kernel_name == "c_softmax_with_cross_entropy")) {
+            static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                original_stream, false);
+            auto& instance =
+                paddle::memory::allocation::AllocatorFacade::Instance();
+            dev_ctx->SetAllocator(
+                instance.GetAllocator(place, original_stream).get());
+          }
         }
       }
 #endif
