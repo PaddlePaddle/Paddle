@@ -51,7 +51,7 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
       common::errors::NotFound(
           "Output cannot be found in scope for operator 'Feed'"));
   const auto& feed_item = CheckAndGetFeedItem(x, col);
-  const auto& in_tensor = paddle::get<phi::DenseTensor>(feed_item);
+  const auto& in_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
   const auto& place = dev_ctx.GetPlace();
   if (phi::is_same_place(in_tensor.place(), place)) {
     out->ShareDataWith(in_tensor);
