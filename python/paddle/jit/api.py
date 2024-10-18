@@ -279,7 +279,7 @@ def to_static(
     property = kwargs.get("property", False)
     full_graph = kwargs.get("full_graph", None)
 
-    def decorated(dygraph_fn) -> StaticFunction:
+    def dygraph_to_static_fn(dygraph_fn) -> StaticFunction:
         """
         Decorates a python function into a ASTStaticFunction object.
         """
@@ -324,8 +324,7 @@ def to_static(
         )
     _check_and_set_backend(backend, build_strategy)
 
-    # for usage: `to_static(foo, ...)`
-    if function is not None:
+    def decorated(function):
         if isinstance(function, Layer):
             layer = function
             # if isinstance(layer.forward, StaticFunction):
@@ -337,16 +336,22 @@ def to_static(
             if isinstance(layer.__class__.forward, StaticFunction):
                 new_cls_forward = layer.__class__.forward
             else:
-                new_cls_forward = decorated(layer.__class__.forward)
+                new_cls_forward = dygraph_to_static_fn(layer.__class__.forward)
                 layer.__class__.forward = new_cls_forward
             new_cls_forward.add_need_convert_instance(layer)
             return layer
         else:
             if inspect.ismethod(function):
-                return decorated(function.__func__).bind(function.__self__)
-            static_fn = decorated(function)
+                return dygraph_to_static_fn(function.__func__).bind(
+                    function.__self__
+                )
+            static_fn = dygraph_to_static_fn(function)
             static_fn.enable_convert_all_instances()
             return static_fn
+
+    # for usage: `to_static(foo, ...)`
+    if function is not None:
+        return decorated(function)
 
     # for usage: `@to_static`
     return decorated

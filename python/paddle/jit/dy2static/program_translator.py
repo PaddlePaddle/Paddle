@@ -664,16 +664,15 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
         def rollback_impl(class_instance, rollback_fn_name=None):
             for name, func in class_instance.__class__._fn_memos.items():
-                if not isinstance(
-                    getattr(class_instance.__class__, name), StaticFunction
-                ):
-                    continue
                 if rollback_fn_name is not None and name != rollback_fn_name:
                     continue
                 static_fn = getattr(class_instance.__class__, name)
-                static_fn.remove_need_convert_instance(class_instance)
-                if static_fn._need_convert_instances:
-                    continue
+                if isinstance(
+                    getattr(class_instance.__class__, name), StaticFunction
+                ):
+                    static_fn.remove_need_convert_instance(class_instance)
+                    if static_fn._need_convert_instances:
+                        continue
                 setattr(class_instance.__class__, name, func)
 
             for sublayer in class_instance.sublayers(include_self=False):
