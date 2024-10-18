@@ -38,7 +38,7 @@ extern size_t workspace_size;
 //  [in_i],
 //  [out_i],
 //]
-// x_grad = out_grad * transpose(kenrel)
+// x_grad = out_grad * transpose(kernel)
 // kernel_grad = transpose(x) * out_grad
 template <typename T, typename IntT>
 void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,

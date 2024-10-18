@@ -217,6 +217,9 @@ void DrrRewritePattern::DfsVisitor(
       return;
     }
     auto* ir_producer_op = ir_operand_value.defining_op();
+    if (!ir_producer_op) {
+      continue;
+    }
     drr_visited_ops->insert(drr_producer_op);
     DfsVisitor(drr_producer_op,
                ir_producer_op,
@@ -315,7 +318,7 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     return source_pattern_match_ctx->tensor_map().count(tensor_name) != 0 &&
            ir_value != source_pattern_match_ctx->tensor_map().at(tensor_name);
   };
-  // Update drr_q et.al information. Return false if faild.
+  // Update drr_q et.al information. Return false if failed.
   const auto& TryUpdateDrrQueue = [&](const OpCall* drr_producer_op,
                                       pir::Operation* ir_producer_op) -> bool {
     // still return true if both visited.
@@ -392,15 +395,15 @@ bool DrrRewritePattern::MatchFromOutputToInput(
       if (drr_input_tensors[i]->consumers().size() !=
           ir_input_values[i].use_count()) {
         matched = false;
-        VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
+        VLOG(8) << drr_node->name() << " Match failed: consumers of drr input["
                 << i << "] { " << drr_input_tensors[i]->consumers().size()
-                << " } != consumers of pir intput[" << i << "] { "
+                << " } != consumers of pir input[" << i << "] { "
                 << ir_input_values[i].use_count() << " }.";
         break;
       }
 
       auto* ir_producer_op = ir_input_values[i].defining_op();
-      // Tigger early stop while operand is BlockArgument with
+      // Trigger early stop while operand is BlockArgument with
       // producer_op==nullptr.
       if (drr_producer_op && ir_producer_op == nullptr) {
         matched = false;
