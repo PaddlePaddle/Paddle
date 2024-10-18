@@ -834,7 +834,7 @@ class FusedLinearPromotionPass(PassBase):
                             if output_var not in to_delete_extra_vars:
                                 to_delete_extra_vars.append(output_var)
             else:
-                if op.type == "c_broadcast":
+                if op.type == "broadcast":
                     input_vars = op.input_arg_names
                     if (
                         input_vars[0] in deleted_bias_names
