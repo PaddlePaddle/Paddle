@@ -45,7 +45,7 @@ def matmul_converter(network, paddle_op, inputs):
 
     if len(weight_shape) == 1:
         layer = network.add_shuffle(weight_tensor)
-        layer.reshape_dims = tuple(weight_shape) + (1)
+        layer.reshape_dims = (*tuple(weight_shape), 1)
         weight_tensor = layer.get_output(0)
 
     lhs_val, rhs_val = broadcast(
