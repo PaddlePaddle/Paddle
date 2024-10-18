@@ -167,6 +167,8 @@ class GroupShardedClipGrad:
                 global_norm_var = global_norm_var._copy_to(
                     paddle.CustomPlace(dev_type, dev_id), True
                 )
+            elif dev_type == "xpu":
+                global_norm_var = global_norm_var.to(self._device)
             else:
                 global_norm_var = global_norm_var.cuda(dev_id)
 
