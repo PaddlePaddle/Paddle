@@ -63,7 +63,7 @@ def _recv_in_static_mode(
         attrs={
             'ring_id': ring_id,
             'peer': src_rank_in_group,
-            'out_shape': tensor.shape,
+            # 'out_shape': tensor.shape,
             'dtype': tensor.dtype,
             # 'use_calc_stream': sync_op,
         },

@@ -91,11 +91,9 @@ class SameStatusReshardFunction(ReshardFunction):
 
                 comm_group = new_process_group([src, dst], group_type="p2p")
                 recv_value = paddle._C_ops.p_recv(
-                    dst_type._local_shape,
-                    dst_type.dtype,
-                    comm_group.ranks.index(src),
                     comm_group.id,
-                    # True,
+                    comm_group.ranks.index(src),
+                    dst_type.dtype,
                     False,
                 )
                 new_op = recv_value.get_defining_op()
