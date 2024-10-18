@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
@@ -694,6 +695,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     auto vars = ctx_.MultiOutputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
       return var->IsType<phi::DenseTensor>();
+    });
+  }
+
+  bool IsVocabOutput(const std::string& name) const override {
+    auto vars = ctx_.MultiOutputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::Vocab>();
     });
   }
 

@@ -140,6 +140,15 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
                        });
   }
 
+  bool IsVocabOutput(const std::string& name) const override {
+    auto var_types = ctx_.GetOutputsVarType(name);
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::VOCAB;
+                       });
+  }
+
   bool IsSelectedRowsOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
     return std::all_of(var_types.begin(),
