@@ -2394,6 +2394,11 @@ void KthvalueInferMeta(const MetaTensor& x,
   indices->set_dtype(DataType::INT64);
 }
 
+void LodArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims({1});
+  out->set_dtype(DataType::INT64);
+}
+
 void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out) {
   UnchangedInferMeta(x, out);
   if (!(out->is_same_tensor(x))) {
