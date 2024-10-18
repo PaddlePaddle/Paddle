@@ -437,6 +437,7 @@ class ProgramHelper:
                 pir_scope_param._share_data_with(
                     param.get_tensor().get_tensor()
                 )
+                param.get_tensor()._clear()
 
         world_group = get_world_process_group()
         if (

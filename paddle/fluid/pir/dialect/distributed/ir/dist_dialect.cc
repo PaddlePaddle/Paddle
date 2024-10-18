@@ -36,6 +36,7 @@ void DistDialect::initialize() {
                      OperationDistAttribute>();
   RegisterTypes<DistDenseTensorType>();
   RegisterOps<ShardTensorOp,
+              ShareVarOp,
               ReshardOp,
               MoESubMeshTensorsOp,
               MoEGlobalMeshTensorOp>();

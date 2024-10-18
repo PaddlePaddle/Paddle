@@ -45,6 +45,10 @@ pir::Value shard_tensor(
   return shard_tensor_op.out();
 }
 
+pir::Operation* share_var(const std::vector<pir::Value>& x) {
+  return ApiBuilder::Instance().GetBuilder()->Build<ShareVarOp>(x);
+}
+
 pir::Value reshard(
     const pir::Value& x,
     const phi::distributed::ProcessMesh& process_mesh,
