@@ -300,6 +300,10 @@ PD_DEFINE_bool(cinn_check_tensor_buffer_map,
                BoolFromEnv("FLAGS_cinn_check_tensor_buffer_map", false),
                "Whether to check tensor buffer mapping in cinn ir.");
 
+PD_DEFINE_bool(cinn_narrow_range_for_integer,
+               BoolFromEnv("FLAGS_cinn_narrow_range_for_integer", true),
+               "Whether to narrow range for integer.");
+
 namespace cinn {
 namespace runtime {
 
