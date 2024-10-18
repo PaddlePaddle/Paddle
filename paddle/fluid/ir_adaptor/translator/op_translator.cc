@@ -1527,6 +1527,19 @@ struct DataOpTranscriber : public FeedOpTranscriber {
              ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
     };
 
+    if (static_cast<phi::AllocationType>(allocate_type) ==
+        phi::AllocationType::CUSTOM) {
+      int place_device_id =
+          PADDLE_GET_CONST(int, op_desc.GetAttr("place_device_id"));
+      std::string place_device_type =
+          PADDLE_GET_CONST(std::string, op_desc.GetAttr("place_device_type"));
+      attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
+          ctx,
+          phi::Place(static_cast<phi::AllocationType>(allocate_type),
+                     place_device_id,
+                     place_device_type));
+    }
+
     return attribute_map;
   }
 };

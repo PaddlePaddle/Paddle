@@ -78,6 +78,8 @@ void GaussianInferMeta(const IntArray& shape,
                        DataType dtype,
                        MetaTensor* out);
 
+void LoadInferMeta(MetaTensor* out, MetaConfig config = MetaConfig());
+
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
 
 void RandintInferMeta(

@@ -97,9 +97,29 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
       }
     }
 
-    int i = 0;
-    for (auto& value : op->operands_source()) {
-      pir::Type type = op->operand_type(i++);
+    const std::vector<std::string> permitted_input_names = {
+        "x", "y", "input", "residual_param", "residual_data"};
+    auto op_name = op->name();
+    auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+    if (!op_info) return false;
+    paddle::dialect::OpYamlInfoParser yaml_parser(
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+            ->get_op_info_(op_name),
+        paddle::dialect::IsLegacyOp(op_name));
+    auto input_names = yaml_parser.InputNames();
+
+    for (size_t i = 0; i < op->num_operands(); i++) {
+      pir::Value value = op->operand_source(i);
+      if (!value) continue;
+      std::string input_name = input_names[i];
+      auto iter = std::find(permitted_input_names.begin(),
+                            permitted_input_names.end(),
+                            input_name);
+      if (iter == permitted_input_names.end()) {
+        continue;
+      }
+      pir::Type type = op->operand_type(i);
+      if (!type) continue;
       if (!type.isa<paddle::dialect::DenseTensorType>()) {
         // We skip pir::VectorType
         // TODO(Lirong, Xinyi): Support pir::VectorType in bf16
@@ -364,24 +384,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
       }
     }
 
-    bool unsupported_op = false;
-    int i = 0;
-    for (auto& value : op->operands_source()) {
-      pir::Type type = op->operand_type(i++);
-      if (!type.isa<paddle::dialect::DenseTensorType>()) {
-        return false;
-      }
-      pir::Type op_dtype = pir::GetDataTypeFromValue(value);
-      // Only float input can be converted to bfloat16
-      if (!op_dtype.isa<pir::Float32Type>()) {
-        unsupported_op = true;
-        break;
-      }
-    }
-
-    if (!unsupported_op) {
-      return false;
-    }
     return true;
   }
 
