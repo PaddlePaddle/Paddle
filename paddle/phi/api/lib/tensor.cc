@@ -524,7 +524,7 @@ bool Tensor::is_contiguous() const {
   }
 }
 
-Tensor &Tensor::contiguous() {
+Tensor Tensor::contiguous() {
   if (is_dense_tensor() || is_dist_tensor()) {
     phi::DenseTensor *dense_tensor = nullptr;
     if (is_dist_tensor()) {
@@ -533,11 +533,16 @@ Tensor &Tensor::contiguous() {
     } else {
       dense_tensor = static_cast<phi::DenseTensor *>(impl_.get());
     }
-
     if (!dense_tensor->meta().is_contiguous()) {
-      *dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
+      phi::DenseTensor *new_dense_tensor = nullptr;
+      *new_dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
+
+      return Tensor(std::make_shared<phi::TensorBase>(new_dense_tensor),
+                    autograd_meta_,
+                    name_);
+    } else {
+      return *this;
     }
-    return *this;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Only support contiguous operation on DenseTensor or DistTensor now."));
