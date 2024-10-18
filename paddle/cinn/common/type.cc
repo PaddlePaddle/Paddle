@@ -298,6 +298,8 @@ bool Type::is_float(int bits, specific_type_t st) const {
 }
 bool Type::is_float16() const { return is_float(16, specific_type_t::FP16); }
 bool Type::is_bfloat16() const { return is_float(16, specific_type_t::BF16); }
+bool Type::is_half2() const { return is_float(32, specific_type_t::HALF2); }
+
 bool Type::is_uint(int bits) const {
   return type() == type_t::UInt && (bits < 0 || bits == this->bits());
 }
@@ -617,6 +619,8 @@ std::string Type2Str(const Type &type) {
           return "bfloat16";
         case Type::specific_type_t::FP16:
           return "float16";
+        case Type::specific_type_t::HALF2:
+          return "half2";
         default:
           break;
       }

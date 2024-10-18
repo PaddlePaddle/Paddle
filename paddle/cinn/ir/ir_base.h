@@ -114,6 +114,7 @@ class Dim;
   macro__(ScheduleBlock)                    \
   macro__(ScheduleBlockRealize)             \
   macro__(_Dim_)                            \
+  macro__(StructElement)                    \
 
 #define NODETY_CONTROL_OP_FOR_INTRINSIC(macro__) \
   macro__(IntrinsicOp)                      \
