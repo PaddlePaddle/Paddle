@@ -1800,10 +1800,9 @@ void ScatterInferMeta(const MetaTensor& x,
         index_dims[0],
         updates_dims[0],
         common::errors::InvalidArgument(
-            "The first dimension size of Input(Ids) shoud be no greater than "
-            "Input(Updates), but received first dimension size of Input(Ids) "
-            "is %d, "
-            "Input(Updates) is  %d.",
+            "The first dimension size of Input(Index) shoud be no greater than "
+            "Input(Updates), but received first dimension size of Input(Index) "
+            "is %d, Input(Updates) is  %d.",
             index_dims[0],
             updates_dims[0]));
   } else {

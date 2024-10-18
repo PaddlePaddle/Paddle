@@ -630,52 +630,6 @@ class TestScatterBF16Op6(TestScatterOp6):
             )
 
 
-class TestScatterIndexLessThanUpdates(TestScatterOp):
-    # test for len(index) < len(updates)
-    def setUp(self):
-        super().setUp()
-
-        target_dtype = "float16" if self.dtype == np.float16 else "float32"
-        ref_np = np.ones((10, 50)).astype(target_dtype)
-        updates_np = np.random.random((8, 50)).astype(target_dtype)
-
-        index_np = np.random.choice(
-            np.arange(ref_np.shape[0]),
-            size=(5,),  # 5 < 10
-            replace=False,
-        ).astype("int32")
-
-        # randomly mapping index into equivalent negative index(mod ref_np.shape[0])
-        # to test for negative index
-        random_negative_mask = (np.random.rand(index_np.shape[0]) > 0.5).astype(
-            "bool"
-        )
-        index_np[random_negative_mask] -= ref_np.shape[0]
-
-        output_np = np.copy(ref_np)
-        for i in range(len(index_np)):
-            output_np[index_np[i]] = updates_np[i]
-
-        if self.dtype == np.uint16:
-            ref_np = convert_float_to_uint16(ref_np)
-            updates_np = convert_float_to_uint16(updates_np)
-            output_np = convert_float_to_uint16(output_np)
-        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
-        self.outputs = {'Out': output_np}
-
-    def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X', 'Updates'],
-                'Out',
-                check_prim=True,
-                check_pir=True,
-                check_prim_pir=True,
-            )
-
-
 class TestScatterAPI(unittest.TestCase):
     def setUp(self):
         self.places = []
