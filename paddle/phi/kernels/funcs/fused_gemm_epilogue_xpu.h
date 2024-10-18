@@ -78,6 +78,13 @@ void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
                        d_act_input_ptr,
                        dout->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
+  } else if (activation_grad == "none") {
+    // pass
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "activation_grad of fused_gemm_epilogue_grad should be one of {none, "
+        "relu, gelu}, but received %s",
+        activation_grad));
   }
   auto x_mat_dims =
       common::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
