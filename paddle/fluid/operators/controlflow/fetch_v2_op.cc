@@ -167,12 +167,6 @@ class FetchV2Kernel {
         dst_item->ShareDataWith(src_item);
         dst_item->set_lod(src_item.lod());
       }
-    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
-      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
-        return;
-      }
-      fetch_list->at(col) = src_item;
     } else {
       auto &src_item = fetch_var->Get<phi::TensorArray>();
       phi::TensorArray tmp(src_item.size());
@@ -226,20 +220,3 @@ REGISTER_OPERATOR(
     ops::FetchV2OpProtoMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(fetch_v2,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FetchV2Kernel,
-                          float,
-                          double,
-                          int,
-                          int8_t,
-                          int16_t,
-                          int64_t,
-                          uint8_t,
-                          bool,
-                          phi::dtype::float16,
-                          phi::dtype::bfloat16,
-                          phi::dtype::complex<float>,
-                          phi::dtype::complex<double>) {}

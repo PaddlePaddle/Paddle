@@ -1268,7 +1268,10 @@
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false, str fuse_activation = "" , float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, 'int[] fused_reshape2_shape = {}']
 
 - op : feed
+  inputs: {x: X}
   outputs: {out: Out}
+  get_expected_kernel_type :
+    feed : GetFeedExpectedKernelType
 
 - op : fetch_barrier
   inputs:

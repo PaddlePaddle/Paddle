@@ -308,8 +308,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : feed
-  args : (str name, int col)
+  args : (Tensor x, int col)
   output : Tensor(out)
+  infer_meta :
+    func : FeedInferMeta
+    param: []
+  kernel :
+    func : feed
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits: pir::ImmutableLayoutTrait
 

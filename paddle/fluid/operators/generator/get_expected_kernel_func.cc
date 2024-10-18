@@ -447,4 +447,22 @@ phi::KernelKey GetMulticlassNmsExpectedKernelType(
                         phi::CPUPlace());
 }
 
+phi::KernelKey GetFeedExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  const framework::Variable* x_var = ctx.InputVar("X");
+  auto& x = x_var->Get<framework::FeedList>();
+  int col = ctx.Attr<int>("col");
+  auto& feed_item = x[col];
+
+  framework::proto::VarType::Type expected_data_type;
+  if (feed_item.index() == 0) {  // DenseTensor
+    expected_data_type = framework::TransToProtoVarType(
+        PADDLE_GET_CONST(phi::DenseTensor, feed_item).dtype());
+  } else {
+    expected_data_type = framework::proto::VarType::FP32;
+  }
+
+  return phi::KernelKey(expected_data_type, ctx.GetPlace());
+}
 }  // namespace paddle::operators
