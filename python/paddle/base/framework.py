@@ -8467,11 +8467,12 @@ def auto_complete_op_role(program, op_role):
             always_forward_ops = ["pd_op.data", "builtin.parameter"]
             set_op_roles(block, op_role, always_forward_ops)
 
+
 # set op when op_role when it is add by apibuilder
-# pir_op_role_guard could not distinguish "always_forward_ops", therefore if 
+# pir_op_role_guard could not distinguish "always_forward_ops", therefore if
 # there would be always_forward_ops in your region, you should use "auto_complete_op_role"
 @signature_safe_contextmanager
-def pir_op_role_guard(op_role: int -1) -> Generator[None, None, None]:
+def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
 
     if paddle.framework.in_pir_mode():
         original_op_rope = pir.get_op_role()
@@ -8480,4 +8481,4 @@ def pir_op_role_guard(op_role: int -1) -> Generator[None, None, None]:
         yield
     finally:
         if paddle.framework.in_pir_mode():
-            pir.set_op_role(original_op_rope)        
+            pir.set_op_role(original_op_rope)

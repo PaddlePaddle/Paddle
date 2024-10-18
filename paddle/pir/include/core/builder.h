@@ -174,6 +174,7 @@ class Builder {
   InsertionPoint insertion_point_;
 
   bool forbid_insert_without_position_;
+
   // by now the op_role is used by autoparallel for vpp.
   int current_op_role_ = -1;
 };

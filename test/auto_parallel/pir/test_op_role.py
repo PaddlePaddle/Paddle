@@ -16,10 +16,16 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
+from paddle.base.framework import auto_complete_op_role, pir_op_role_guard
 from paddle.distributed import Replicate, Shard
-from paddle.base.framework import pir_op_role_guard, auto_complete_op_role
-from paddle.distributed.auto_parallel.static.pir_pass import ReshardPasses, apply_partition_pass
-from paddle.distributed.auto_parallel.static.mix_to_dist_pass import apply_mix2dist_pass
+from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
+    apply_mix2dist_pass,
+)
+from paddle.distributed.auto_parallel.static.pir_pass import (
+    ReshardPasses,
+    apply_partition_pass,
+)
+
 
 class TestOpRole(unittest.TestCase):
     def test_signle(self):
@@ -27,7 +33,7 @@ class TestOpRole(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
             with paddle.base.program_guard(main_program):
-                
+
                 # op_role = -1
                 x0 = paddle.static.data(name='x0', shape=[1, 128, 512])
                 x1 = paddle.nn.functional.relu(x0)
@@ -50,7 +56,11 @@ class TestOpRole(unittest.TestCase):
                 z4 = paddle.add(y0, z3)
 
         # check global shape
-        std_ops = ["pd_op.data:-1", "pd_op.data:1", "pd_op.relu:-1", "pd_op.relu:-1",
+        std_ops = [
+            "pd_op.data:-1",
+            "pd_op.data:1",
+            "pd_op.relu:-1",
+            "pd_op.relu:-1",
             "pd_op.relu:1",
             "pd_op.add:1",
             "pd_op.full:1",
@@ -62,12 +72,15 @@ class TestOpRole(unittest.TestCase):
             "pd_op.split:3",
             "builtin.split:3",
             "pd_op.add:0",
-            "pd_op.add:-1",         
+            "pd_op.add:-1",
         ]
 
-        cur_ops = ["{}:{}".format(op.name(), op.op_role) for op in main_program.global_block().ops]
+        cur_ops = [
+            f"{op.name()}:{op.op_role}"
+            for op in main_program.global_block().ops
+        ]
         self.assertEqual(cur_ops, std_ops)
-        
+
     def test_dist(self):
         paddle.enable_static()
 
@@ -76,58 +89,61 @@ class TestOpRole(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
             with paddle.base.program_guard(main_program):
-                
+
                 with auto_complete_op_role(main_program, 0):
                     x0 = paddle.static.data(name='x0', shape=[1, 128, 512])
                     x0 = dist.shard_tensor(
-                    x0,
-                    mesh,
-                    [Shard(1), Replicate()],
-                    stop_gradient=False)                
+                        x0, mesh, [Shard(1), Replicate()], stop_gradient=False
+                    )
                     x1 = x0 / 2.0
 
                     with pir_op_role_guard(3):
                         x2 = dist.reshard(x1, mesh, [Shard(2), Replicate()])
-                        with pir_op_role_guard(1):   
-                            x3 = dist.reshard(x2, mesh, [Replicate(), Replicate()])  
+                        with pir_op_role_guard(1):
+                            x3 = dist.reshard(
+                                x2, mesh, [Replicate(), Replicate()]
+                            )
                         x4 = dist.reshard(x3, mesh, [Shard(1), Replicate()])
 
-                    x5 = dist.reshard(x4, mesh, [Replicate(), Replicate()]) 
-
+                    x5 = dist.reshard(x4, mesh, [Replicate(), Replicate()])
 
         apply_mix2dist_pass(main_program)
         apply_partition_pass(main_program)
         ReshardPasses.apply_reshard_pass(main_program, [])
 
         std_ops = [
-            'pd_op.data:0', 
-            'pd_op.full:0', 
-            'pd_op.scale:0', 
-            'pd_op.all_gather:3', 
-            'pd_op.full:3', 
-            'pd_op.split_with_num:3', 
-            'pd_op.full:3', 
-            'pd_op.concat:3', 
-            'pd_op.full_int_array:3', 
-            'pd_op.full_int_array:3', 
-            'pd_op.slice:3', 
-            'pd_op.all_gather:1', 
-            'pd_op.full:1', 
-            'pd_op.split_with_num:1', 
-            'pd_op.full:1', 
-            'pd_op.concat:1', 
-            'pd_op.full_int_array:3', 
-            'pd_op.full_int_array:3', 
-            'pd_op.slice:3', 
-            'pd_op.all_gather:0', 
-            'pd_op.full:0', 
-            'pd_op.split_with_num:0', 
-            'pd_op.full:0', 
-            'pd_op.concat:0']
+            'pd_op.data:0',
+            'pd_op.full:0',
+            'pd_op.scale:0',
+            'pd_op.all_gather:3',
+            'pd_op.full:3',
+            'pd_op.split_with_num:3',
+            'pd_op.full:3',
+            'pd_op.concat:3',
+            'pd_op.full_int_array:3',
+            'pd_op.full_int_array:3',
+            'pd_op.slice:3',
+            'pd_op.all_gather:1',
+            'pd_op.full:1',
+            'pd_op.split_with_num:1',
+            'pd_op.full:1',
+            'pd_op.concat:1',
+            'pd_op.full_int_array:3',
+            'pd_op.full_int_array:3',
+            'pd_op.slice:3',
+            'pd_op.all_gather:0',
+            'pd_op.full:0',
+            'pd_op.split_with_num:0',
+            'pd_op.full:0',
+            'pd_op.concat:0',
+        ]
 
-        cur_ops = ["{}:{}".format(op.name(), op.op_role) for op in main_program.global_block().ops]
+        cur_ops = [
+            f"{op.name()}:{op.op_role}"
+            for op in main_program.global_block().ops
+        ]
         self.assertEqual(cur_ops, std_ops)
-                  
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -76,7 +76,6 @@ class ApiBuilder {
   void LoadInsertionPoint();
 
   void SetOpRole(int op_role) { builder_->SetCurrentOpRole(op_role); }
-
   int GetOpRole() const { return builder_->GetCurrentOpRole(); }
 
  private:
@@ -87,7 +86,6 @@ class ApiBuilder {
   pir::IrContext* ctx_;
   std::shared_ptr<pir::Builder> builder_;
   std::stack<pir::InsertionPoint> insertion_point_stack_;
-
 };
 
 }  // namespace dialect
