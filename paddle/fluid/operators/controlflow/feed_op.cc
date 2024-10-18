@@ -53,27 +53,6 @@ const framework::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
   return feed_list->at(static_cast<size_t>(col));
 }
 
-template <typename Context>
-void FeedDenseTensorKernel(const Context& dev_ctx,
-                           const phi::ExtendedTensor& x,
-                           int col,
-                           phi::DenseTensor* out) {
-  PADDLE_ENFORCE_NOT_NULL(
-      out,
-      common::errors::NotFound(
-          "Output cannot be found in scope for operator 'Feed'"));
-  const auto& feed_item = CheckAndGetFeedItem(x, col);
-  const auto& in_tensor = paddle::get<phi::DenseTensor>(feed_item);
-  const auto& place = dev_ctx.GetPlace();
-  if (phi::is_same_place(in_tensor.place(), place)) {
-    out->ShareDataWith(in_tensor);
-  } else {
-    phi::Copy(dev_ctx, in_tensor, place, false, out);
-  }
-
-  out->set_lod(in_tensor.lod());
-}
-
 class FeedOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -164,6 +143,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
-
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(
-    feed, ALL_LAYOUT, paddle::operators::FeedDenseTensorKernel) {}
