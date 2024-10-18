@@ -114,21 +114,6 @@ struct CanFuseItersPermutationMatcher {
   }
 };
 
-struct LiftToAnchorPatternMatcher {
-  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
-    bool not_reduce_tree =
-        !StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
-        !StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>()(graph, node) &&
-        !StmtPatternGraphMatcher<ReducePattern>()(graph, node);
-    // TODO(huangjiyi): Support anchor value is reduce output.
-    // bool reduce_tree_with_single_reduce =
-    //     StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
-    //     std::get<ReduceTreePattern>(node->stmt_pattern()).childs().size()
-    //     == 0;
-    return not_reduce_tree /* || reduce_tree_with_single_reduce */;
-  }
-};
-
 struct RecomputeNodeMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     const auto can_recompute_fn = [](const PatternNodePtr& node) -> bool {
@@ -152,40 +137,6 @@ struct RecomputeNodeMatcher {
 
     return StmtPatternGraphMatcher<ItersPermutationPattern>()(graph, node) &&
            node->downstream().size() >= 1 && can_recompute_fn(node);
-  }
-};
-
-struct HasUpstreamAnchorMatcher {
-  bool operator()(const PatternGraph& graph,
-                  const PatternNodePtr& upstream,
-                  const PatternNodePtr& downstream) {
-    if (!StmtPatternGraphMatcher<AnchorPattern>()(graph, upstream) ||
-        !StmtPatternGraphMatcher<AnchorPattern>()(graph, downstream)) {
-      return false;
-    }
-    return graph.policy_manager()
-               .template GetPolicy<GeneralTopoPolicy>()
-               ->CanFuse(upstream, downstream) &&
-           graph.policy_manager()
-               .template GetPolicy<AnchorSearchPolicy>()
-               ->HasUpstreamAnchor(upstream, downstream);
-  }
-};
-
-struct HasDownstreamAnchorMatcher {
-  bool operator()(const PatternGraph& graph,
-                  const PatternNodePtr& upstream,
-                  const PatternNodePtr& downstream) {
-    if (!StmtPatternGraphMatcher<AnchorPattern>()(graph, upstream) ||
-        !StmtPatternGraphMatcher<AnchorPattern>()(graph, downstream)) {
-      return false;
-    }
-    return graph.policy_manager()
-               .template GetPolicy<GeneralTopoPolicy>()
-               ->CanFuse(upstream, downstream) &&
-           graph.policy_manager()
-               .template GetPolicy<AnchorSearchPolicy>()
-               ->HasDownstreamAnchor(upstream, downstream);
   }
 };
 

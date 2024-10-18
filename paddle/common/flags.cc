@@ -1370,27 +1370,6 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
                          "Whether enable fallback fusion ops in cinn.");
 
 /**
- * CINN sink all trivial pattren FLAG
- * Name: FLAGS_enable_all_trivial_sink
- * Since Version: 3.0 beta
- * Value Range: bool, default=false
- */
-PHI_DEFINE_EXPORTED_bool(
-    enable_all_trivial_sink,
-    false,
-    "Whether enable sink all trivial pattren first in cinn fusion.");
-
-/**
- * CINN AnchorFusion FLAG
- * Name: FLAGS_enable_anchor_fusion
- * Since Version: 3.0 beta
- * Value Range: bool, default=true
- */
-PHI_DEFINE_EXPORTED_bool(enable_anchor_fusion,
-                         true,
-                         "Whether enable anchorfusion in cinn fusion.");
-
-/**
  * CINN TransposeItesr transform fusion FLAG
  * Name: FLAGS_enable_transpose_iters_in_fusion
  * Since Version: 3.0 beta

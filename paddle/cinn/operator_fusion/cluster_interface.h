@@ -67,9 +67,6 @@ inline std::vector<fusion::PatternNodePtr> ClusterOps(
   const auto& general_topo_policy =
       std::make_shared<fusion::GeneralTopoPolicy>();
 
-  const auto& anchor_search_policy =
-      std::make_shared<fusion::AnchorSearchPolicy>();
-
   auto iters_manager = std::make_shared<FusionItersManager>(
       shape_analysis, &(relative_judge_policy->GetAxesInfoManager()));
   const auto& iters_fusion_policy =
@@ -79,7 +76,6 @@ inline std::vector<fusion::PatternNodePtr> ClusterOps(
 
   policy_manager.SetPolicy(relative_judge_policy);
   policy_manager.SetPolicy(general_topo_policy);
-  policy_manager.SetPolicy(anchor_search_policy);
   policy_manager.SetPolicy(iters_fusion_policy);
 
   VLOG(4) << "Start Create PatternGraph";

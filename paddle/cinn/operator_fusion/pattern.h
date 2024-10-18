@@ -20,7 +20,6 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
-#include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/pir/include/core/operation.h"
 
@@ -236,70 +235,6 @@ struct ItersPermutationPattern {
   LoopFramework loop_dims() const { return loop_dims_; }
 };
 
-struct AnchorPattern {
-  explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
-                         const pir::Value& anchor,
-                         const AnchorState& init_anchor_state,
-                         const FusionTrackerPtr& tracker)
-      : ops_(ops),
-        anchor_(anchor),
-        anchor_state(init_anchor_state),
-        tracker_(tracker) {
-    id_ = UniqueId();
-  }
-  AnchorState anchor_state;
-
-  std::vector<pir::Operation*> ops() const { return ops_; }
-  pir::Value anchor() const { return anchor_; }
-  bool can_recompute() const {
-    // Current Algorithm:
-    // An AnchorPattern can be recomputed if:
-    // 1. It didn't go through any pattern merging during prior fusions, which
-    // means it only has one output_expr in anchor_state.
-    // 2. It only contains trivial ops.
-
-    if (anchor_state.promise.size() > 1) {
-      return false;
-    }
-
-    for (const auto& op : ops_) {
-      const auto& op_kind = GetOpPatternKind(op);
-      if (op_kind >= hlir::framework::kReduction) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  static std::string name() { return "Anchor"; }
-
-  static std::string UniqueId() {
-    static std::atomic<int64_t> counter = 0;
-    counter += 1;
-    return name() + "_" + std::to_string(counter);
-  }
-  std::string id() const { return id_; }
-  std::string id_;
-
-  FusionTrackerPtr tracker_;
-  void update_tracker() const {
-    std::vector<std::string> tmp_names;
-    for (int i = 0; i < anchor_state.promise.size(); i++) {
-      auto promise = anchor_state.promise[i];
-      std::string tmp_name = "tmp_" + std::to_string(i);
-      tmp_names.emplace_back(tmp_name);
-      tracker_->append(std::make_shared<AnchorTransformInstr>(
-          promise.id_, tmp_name, promise.transform_route));
-    }
-    tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
-  }
-
- private:
-  std::vector<pir::Operation*> ops_;
-  pir::Value anchor_;  // Choose only one anchor
-};
-
 struct HorizontalFusionPattern {
   struct PaddingStmtPattern;
   explicit HorizontalFusionPattern(
@@ -353,8 +288,7 @@ using StmtPattern = std::variant<TrivialPattern,
                                  ReduceTreePlusTrivialPattern,
                                  HorizontalFusionPattern,
                                  UnsupportPattern,
-                                 ItersPermutationPattern,
-                                 AnchorPattern>;
+                                 ItersPermutationPattern>;
 
 static std::string GetPatternId(const StmtPattern& s);
 static std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
