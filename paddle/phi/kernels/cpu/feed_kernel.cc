@@ -18,51 +18,48 @@
 
 namespace phi {
 
-// const phi::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
-//                                          int col) {
-//   PADDLE_ENFORCE_GE(col,
-//                     0,
-//                     common::errors::InvalidArgument(
-//                         "Expected the column index (the attribute 'col' of "
-//                         "operator 'Feed') of current feeding variable to be "
-//                         "no less than 0. But received column index = %d.",
-//                         col));
-//   auto feed_list = reinterpret_cast<const phi::FeedList*>(&x);
-//   PADDLE_ENFORCE_LT(
-//       static_cast<size_t>(col),
-//       feed_list->size(),
-//       common::errors::InvalidArgument(
-//           "The column index of current feeding variable is expected to be "
-//           "less than the length of feeding list. But received column index =
-//           "
-//           "%d, the length of feeding list = %d",
-//           col,
-//           feed_list->size()));
+const phi::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
+                                         int col) {
+  PADDLE_ENFORCE_GE(col,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Expected the column index (the attribute 'col' of "
+                        "operator 'Feed') of current feeding variable to be "
+                        "no less than 0. But received column index = %d.",
+                        col));
+  const auto feed_list = reinterpret_cast<const phi::FeedList*>(&x);
+  PADDLE_ENFORCE_LT(
+      static_cast<size_t>(col),
+      feed_list->size(),
+      common::errors::InvalidArgument(
+          "The column index of current feeding variable is expected to be "
+          "less than the length of feeding list. But received column index = "
+          "%d, the length of feeding list = %d",
+          col,
+          feed_list->size()));
 
-//   return feed_list->at(static_cast<size_t>(col));
-// }
+  return feed_list->at(static_cast<size_t>(col));
+}
 
 template <typename Context>
 void FeedDenseTensorKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& x,
                            int col,
                            phi::DenseTensor* out) {
-  /*
-PADDLE_ENFORCE_NOT_NULL(
-out,
-common::errors::NotFound(
-"Output cannot be found in scope for operator 'Feed'"));
-const auto& feed_item = CheckAndGetFeedItem(x, col);
-const auto& in_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
-const auto& place = dev_ctx.GetPlace();
-if (phi::is_same_place(in_tensor.place(), place)) {
-out->ShareDataWith(in_tensor);
-} else {
-phi::Copy(dev_ctx, in_tensor, place, false, out);
-}
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      common::errors::NotFound(
+          "Output cannot be found in scope for operator 'Feed'"));
+  const auto& feed_item = CheckAndGetFeedItem(x, col);
+  const auto& in_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
+  const auto& place = dev_ctx.GetPlace();
+  if (phi::is_same_place(in_tensor.place(), place)) {
+    out->ShareDataWith(in_tensor);
+  } else {
+    phi::Copy(dev_ctx, in_tensor, place, false, out);
+  }
 
-out->set_lod(in_tensor.lod());
-*/
+  out->set_lod(in_tensor.lod());
 }
 
 }  // namespace phi
