@@ -338,7 +338,7 @@ def to_static(
                 new_cls_forward = layer.__class__.forward
             else:
                 new_cls_forward = decorated(layer.__class__.forward)
-                function.__class__.forward = new_cls_forward
+                layer.__class__.forward = new_cls_forward
             new_cls_forward.add_need_convert_instance(layer)
             return layer
         else:

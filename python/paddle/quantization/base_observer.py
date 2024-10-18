@@ -17,10 +17,12 @@ from __future__ import annotations
 
 import abc
 
+from paddle.nn.layer.layers import LayerABCMeta
+
 from .base_quanter import BaseQuanter
 
 
-class BaseObserver(BaseQuanter, metaclass=abc.ABCMeta):
+class BaseObserver(BaseQuanter, metaclass=LayerABCMeta):
     r"""
     Built-in observers and customized observers should extend this base observer
     and implement abstract methods.

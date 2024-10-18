@@ -17,6 +17,7 @@ import abc
 from typing import TYPE_CHECKING, Any
 
 from paddle.nn import Layer
+from paddle.nn.layer.layers import LayerABCMeta
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -26,7 +27,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-class BaseQuanter(Layer, metaclass=abc.ABCMeta):
+class BaseQuanter(Layer, metaclass=LayerABCMeta):
+    # class BaseQuanter(Layer):
     r"""
     Built-in quanters and customized quanters should extend this base quanter
     and implement abstract methods.

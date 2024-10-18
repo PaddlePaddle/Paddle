@@ -366,12 +366,12 @@ def convert_call(func):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
-                func._original_funcs['forward'] = forward_func.__func__
+                func.__class__._fn_memos['forward'] = forward_func.__func__
                 forward_func = convert_to_static(forward_func)
                 # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
-                func.forward = forward_func.__get__(func)
+                func.forward = forward_func
             except (OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self

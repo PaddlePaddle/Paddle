@@ -20,6 +20,7 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base import unique_name
 from paddle.framework import in_dynamic_mode, in_pir_mode
+from paddle.nn.layer.layers import LayerABCMeta
 
 from ..layer.layers import Layer
 
@@ -405,7 +406,7 @@ class LinearDequanter(Layer):
         )
 
 
-class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
+class ConvertibleQuantedLayer(Layer, metaclass=LayerABCMeta):
     r"""Abstract class to help convert quantized layer to inference model.
     It defines some functions to convert quantizers and observers to quantize
     or dequantize operators that maintain the quantization parameters used
