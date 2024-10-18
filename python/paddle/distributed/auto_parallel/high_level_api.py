@@ -123,6 +123,19 @@ def transpose_reshard_mlp_layer_output(layer, inputs, outputs):
         return new_mlp_out
 
 
+def reshard_transpose_rms_norm_layer_output(layer, inputs, outputs):
+    # print(f"inputs are: {inputs}")
+    # print(f"outputs are: {outputs}")
+    # breakpoint()
+    if hasattr(layer, "current_mesh"):
+        current_mesh = layer.__getattr__("current_mesh")
+        new_output = dist.reshard(
+            outputs, current_mesh, [dist.Shard(1), dist.Replicate()]
+        )
+        new_output = paddle.transpose(new_output, [1, 0, 2])
+        return new_output
+
+
 def reshard_all_inputs(layer, inputs):
     # print(f"inputs are {inputs}")
     if hasattr(layer, "current_mesh"):
@@ -246,6 +259,7 @@ def to_distributed(model, mesh, config):
     )
     pir_program = static_func.concrete_program.main_program
     print(f"convert to pir program: {pir_program}")
+    # breakpoint()
 
     # record pir_program ops_to_ids
     op_to_id = {}
@@ -391,7 +405,13 @@ def to_distributed(model, mesh, config):
     EMBEDDING_LAYER_NAME = "embedding"
     ATTENTION_LAYER_NAME = "attention"
     MLP_LAYER_NAME = "mlp"
-    used_patterns = [EMBEDDING_LAYER_NAME, ATTENTION_LAYER_NAME, MLP_LAYER_NAME]
+    RMS_NORM_LAYER_NAME = "rmsnorm"
+    used_patterns = [
+        EMBEDDING_LAYER_NAME,
+        ATTENTION_LAYER_NAME,
+        MLP_LAYER_NAME,
+        RMS_NORM_LAYER_NAME,
+    ]
     register_used_patterns(used_patterns)
     results = match_all_patterns(pir_program)
     print(f"match patterns based on pir program is: {results}")
@@ -461,7 +481,16 @@ def to_distributed(model, mesh, config):
                     transpose_reshard_mlp_layer_output
                 )
 
-    # todo: how to deal with the last norm
+    # rms norm: for the last rms norm (after decoder blocks), input from [s/mp_degree, b/dp_degree, h] to [b, s, h]
+    rms_norm_layers = matched_layers[RMS_NORM_LAYER_NAME]
+    if rms_norm_layers is not None:
+        if "pp" in mesh.dim_names:
+            last_rms_norm_layer = rms_norm_layers[-1]
+            current_mesh = GLOBAL_MESH[-1]
+            last_rms_norm_layer.__setattr__("current_mesh", current_mesh)
+            post_hook_helper = last_rms_norm_layer.register_forward_post_hook(
+                reshard_transpose_rms_norm_layer_output
+            )
 
     # # # # step8: clean layer_op recorder hooks
     for layer in model.sublayers():
