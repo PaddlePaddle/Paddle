@@ -293,7 +293,7 @@ class GroupShardedStage2(nn.Layer):
         """
         assert isinstance(device, str), "Device must be type str"
         assert (
-            device == self._default_device
+            device.split(":")[0] == self._default_device
         ), "New devices are not supported, because of the optimizer state is not sync"
 
         self._layer.to(device=device, dtype=dtype, blocking=blocking)

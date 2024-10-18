@@ -150,6 +150,8 @@ def train_mlp(
 
         for batch_id, data in enumerate(train_loader()):
             img, label = data
+            img = img.to(device=f"gpu:{dist.get_rank()}")
+            label = label.to(device=f"gpu:{dist.get_rank()}")
             label.stop_gradient = True
             img.stop_gradient = True
 
