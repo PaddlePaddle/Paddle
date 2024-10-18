@@ -1197,6 +1197,10 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(actual_ret)):
+            # print(actual_ret[i])
+            # print(i, "=" * 20)
+            # print(self.eager_desire[i])
+            # print(i, '*' * 20)
             np.testing.assert_allclose(
                 actual_ret[i],
                 self.eager_desire[i],
@@ -1206,6 +1210,7 @@ class PrimGradChecker(PrimForwardChecker):
                     'Check static comp grad out failed. Mismatch between static comp '
                     'and eager on %s, when enable_fw_comp is %s,enable_rev_comp is %s,the forward api out tensor\'s index is : %d \n'
                     'static comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
+                    'with shape: \n%s\n'
                     % (
                         str(self.place),
                         self.enable_fw_comp,
@@ -1213,6 +1218,7 @@ class PrimGradChecker(PrimForwardChecker):
                         i,
                         actual_ret[i],
                         self.eager_desire[i],
+                        str(actual_ret[i].shape),
                     )
                 ),
             )

@@ -85,7 +85,7 @@ void IndexSelectInner(const Context& ctx,
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_data[i],
-        0,
+        -input_dim[dim],
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= %ld and < %ld, but got %ld. Please check input "
