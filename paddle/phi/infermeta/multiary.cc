@@ -1247,7 +1247,7 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                     common::errors::InvalidArgument(
                         "The size of input meta vector should be greater"
                         "than 0."));
-  if (axis_scalar.FromTensor()) {
+  if (axis_scalar.FromTensor() && !config.is_runtime) {
     auto out_dims =
         common::make_ddim(std::vector<int>(x.at(0)->dims().size(), -1));
     out->set_dims(out_dims);
