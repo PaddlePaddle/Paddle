@@ -20,25 +20,26 @@ namespace phi {
 
 const phi::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
                                          int col) {
-  PADDLE_ENFORCE_GE(col,
-                    0,
-                    common::errors::InvalidArgument(
-                        "Expected the column index (the attribute 'col' of "
-                        "operator 'Feed') of current feeding variable to be "
-                        "no less than 0. But received column index = %d.",
-                        col));
-  auto feed_list = static_cast<const phi::FeedList*>(&x);
-  PADDLE_ENFORCE_LT(
-      static_cast<size_t>(col),
-      feed_list->size(),
-      common::errors::InvalidArgument(
-          "The column index of current feeding variable is expected to be "
-          "less than the length of feeding list. But received column index = "
-          "%d, the length of feeding list = %d",
-          col,
-          feed_list->size()));
+  // PADDLE_ENFORCE_GE(col,
+  //                   0,
+  //                   common::errors::InvalidArgument(
+  //                       "Expected the column index (the attribute 'col' of "
+  //                       "operator 'Feed') of current feeding variable to be "
+  //                       "no less than 0. But received column index = %d.",
+  //                       col));
+  // auto feed_list = reinterpret_cast<const phi::FeedList*>(&x);
+  // PADDLE_ENFORCE_LT(
+  //     static_cast<size_t>(col),
+  //     feed_list->size(),
+  //     common::errors::InvalidArgument(
+  //         "The column index of current feeding variable is expected to be "
+  //         "less than the length of feeding list. But received column index =
+  //         "
+  //         "%d, the length of feeding list = %d",
+  //         col,
+  //         feed_list->size()));
 
-  return feed_list->at(static_cast<size_t>(col));
+  // return feed_list->at(static_cast<size_t>(col));
 }
 
 template <typename Context>
