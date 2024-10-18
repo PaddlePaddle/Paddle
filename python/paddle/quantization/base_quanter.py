@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 
 
 class BaseQuanter(Layer, metaclass=LayerABCMeta):
-    # class BaseQuanter(Layer):
     r"""
     Built-in quanters and customized quanters should extend this base quanter
     and implement abstract methods.
