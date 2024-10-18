@@ -270,9 +270,6 @@ void ReduceKernel(const Context& dev_ctx,
     case ReduceType::kRedProd:
       red_type = ncclProd;
       break;
-    case ReduceType::kRedAvg:
-      red_type = ncclAvg;
-      break;
   }
   comm_ctx->Reduce(out, x, red_type, root, stream);
 #else

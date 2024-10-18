@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import base, nn, static, utils
 from paddle.base import core
@@ -624,14 +623,10 @@ class TestAutoParallelMapper(unittest.TestCase):
             self.assertEqual(get_comm_volume(allgather_op, 0, 1), 400)
             self.assertIsNone(get_comm_volume(allgather_op, 0, 0))
             reduce_op = train_program.global_block().append_op(
-                type="reduce",
-                inputs={'x': input},
-                attrs={
-                    'ring_id': ring_id,
-                    'root_id': root_id,
-                    'reduce_type': int(dist.ReduceOp.SUM),
-                },
-                outputs={'out': output},
+                type="c_reduce_sum",
+                inputs={'X': input},
+                attrs={'ring_id': ring_id, 'root_id': root_id},
+                outputs={'Out': output},
             )
             self.assertIsNone(get_comm_volume(reduce_op, 0, 1))
             self.assertEqual(get_comm_volume(reduce_op, 1, 0), 400)

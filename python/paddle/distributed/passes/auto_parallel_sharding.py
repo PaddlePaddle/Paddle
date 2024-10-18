@@ -16,7 +16,6 @@ import logging
 from functools import reduce
 
 import paddle
-import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.operators.common import (
     ParallelMode,
     is_data_parallel_reduce_op,
@@ -536,20 +535,11 @@ class ShardingPass(PassBase):
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
             if _is_param_grad_allreduce_op(op, main_block):
-                if op.type == "c_allreduce_sum":
-                    reduce_op_type = "reduce"
-                    reduce_type = dist.ReduceOp.SUM
-                    op_role = op.attr("op_role")
-                elif op.type == "reduce" and op.attr("reduce_type") == str(
-                    dist.ReduceOp.SUM
-                ):
-                    reduce_op_type = "reduce"
-                    reduce_type = dist.ReduceOp.SUM
-                    op_role = op.attr("op_role")
-                else:
-                    reduce_op_type = "reduce"
-                    reduce_type = dist.ReduceOp.AVG
-                    op_role = op.attr("op_role")
+                reduce_op_type = (
+                    "c_reduce_sum"
+                    if op.type in ["c_allreduce_sum", "c_reduce_sum"]
+                    else "c_reduce_avg"
+                )
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
@@ -561,8 +551,6 @@ class ShardingPass(PassBase):
                     sharding_info.group.id,
                     sharding_info.get_var_rank(base_name),
                     self._dist_context,
-                    reduce_type,
-                    op_role,
                 )
                 if (
                     not self.sharding_hybrid_dp
@@ -1003,13 +991,10 @@ class ShardingPass(PassBase):
         while i < len(ops):
             op = ops[i]
             if is_data_parallel_reduce_op(op):
-                is_reduce = op.type == "reduce" and op.attr("reduce_type") in [
-                    dist.ReduceOp.AVG,
-                    dist.ReduceOp.SUM,
-                ]
-                assert (
-                    is_reduce
-                ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                assert op.type in [
+                    "c_reduce_avg",
+                    "c_reduce_sum",
+                ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
 
                 grad_name = op.output_arg_names[0]
                 param_name = _get_base_name_from_grad_name(grad_name)
@@ -1323,8 +1308,7 @@ class ShardingPass(PassBase):
                 # increase in memory usage. For more details, see the code of StreamSafeCUDAAllocator.
                 # This issue should be fixed using CUDAMallocAsyncAllocator in the future.
                 if (
-                    op.type == "reduce"
-                    and op.attr("reduce_type") == dist.ReduceOp.AVG
+                    op.type == "c_reduce_avg"
                     and not grad_group.is_in_local_shard
                     and not self.get_attr("gradient_sync_after_accumulate")
                 ):
@@ -1435,10 +1419,7 @@ class ShardingPass(PassBase):
             # update program
             for idx, op in reversed(list(enumerate(block.ops))):
                 if is_data_parallel_reduce_op(op):
-                    assert (
-                        op.type == "reduce"
-                        and op.attr("reduce_type") == dist.ReduceOp.SUM
-                    )
+                    assert op.type == "c_reduce_sum"
                     grad_comm_stream_idx = grad_comm_op_to_stream_idx[op]
                     inter_node_group = inter_node_groups[grad_comm_stream_idx]
                     intra_node_group = intra_node_groups[grad_comm_stream_idx]
@@ -1460,17 +1441,16 @@ class ShardingPass(PassBase):
                         inter_node_dst = dst_rank // nranks_per_node
                         new_op = block._insert_op_without_sync(
                             idx + 1,
-                            type='reduce',
-                            inputs={"x": reduce_varname},
+                            type='c_reduce_sum',
+                            inputs={"X": reduce_varname},
                             outputs={
-                                "out": reduce_varname,
+                                "Out": reduce_varname,
                             },
                             attrs={
                                 'ring_id': inter_node_group.id,
                                 'root_id': inter_node_dst,
-                                'reduce_type': int(dist.ReduceOp.SUM),
+                                'use_calc_stream': True,
                                 OP_ROLE_KEY: OpRole.Backward,
-                                'op_role': OpRole.Backward,
                             },
                         )
                         new_op._set_attr(
@@ -1560,8 +1540,8 @@ def _insert_reduce_op(
     ring_id,
     root_id,
     dist_context,
-    reduce_type,
-    op_role,
+    op_role=OpRole.Backward,
+    use_calc_stream=True,
 ):
     assert (
         root_id >= 0
@@ -1569,12 +1549,12 @@ def _insert_reduce_op(
     new_op = block._insert_op_without_sync(
         insert_idx,
         type=op_type,
-        inputs={'x': [reduce_var]},
-        outputs={'out': [reduce_var]},
+        inputs={'X': [reduce_var]},
+        outputs={'Out': [reduce_var]},
         attrs={
             'ring_id': ring_id,
             'root_id': root_id,
-            'reduce_type': int(reduce_type),
+            'use_calc_stream': use_calc_stream,
             OP_ROLE_KEY: op_role,
         },
     )

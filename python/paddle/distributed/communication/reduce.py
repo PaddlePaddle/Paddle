@@ -178,22 +178,49 @@ def reduce(
     gdst = dst if group is None else group.get_group_rank(dst)
     assert gdst >= 0, "dst rank out of group, need global rank"
 
-    if (
-        op == ReduceOp.SUM
-        or op == ReduceOp.MAX
-        or op == ReduceOp.MIN
-        or op == ReduceOp.PROD
-        or op == ReduceOp.AVG
-    ):
-        return paddle._C_ops.reduce(
+    if op == ReduceOp.SUM:
+        return paddle._legacy_C_ops.c_reduce_sum(
             tensor,
             tensor,
+            'use_calc_stream',
+            use_calc_stream,
             'ring_id',
             ring_id,
             'root_id',
             gdst,
-            'reduce_type',
-            op,
+        )
+    elif op == ReduceOp.MAX:
+        return paddle._legacy_C_ops.c_reduce_max(
+            tensor,
+            tensor,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+            'root_id',
+            gdst,
+        )
+    elif op == ReduceOp.MIN:
+        return paddle._legacy_C_ops.c_reduce_min(
+            tensor,
+            tensor,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+            'root_id',
+            gdst,
+        )
+    elif op == ReduceOp.PROD:
+        return paddle._legacy_C_ops.c_reduce_prod(
+            tensor,
+            tensor,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+            'root_id',
+            gdst,
         )
     else:
         raise ValueError(f"Unknown parameter: {op}.")

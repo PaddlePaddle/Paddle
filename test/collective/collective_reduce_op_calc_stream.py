@@ -18,7 +18,6 @@ from legacy_test.test_collective_base import (
 )
 
 import paddle
-import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
 
@@ -46,14 +45,14 @@ class TestCollectiveReduce(TestCollectiveRunnerBase):
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
-                type="reduce",
-                inputs={'x': tindata},
+                type="c_reduce_sum",
+                inputs={'X': tindata},
                 attrs={
                     'ring_id': ring_id,
+                    'use_calc_stream': True,
                     'root_id': rootid,
-                    'reduce_type': int(dist.ReduceOp.SUM),
                 },
-                outputs={'out': toutdata},
+                outputs={'Out': toutdata},
             )
             main_prog.global_block().append_op(
                 type="c_sync_comm_stream",
