@@ -147,7 +147,7 @@ pir::Operation* CreateOpeartionByName(const std::string& op_name,
       op_name, inputs, attrs, const_cast<pir::PatternRewriter&>(rewriter));
 }
 
-pir::Attribute CreateDataTypeAttr(pir::IrContext * contex, phi::DataType dtype) {
+pir::Attribute CreateDataTypeAttr(pir::IrContext* contex, phi::DataType dtype) {
   return paddle::dialect::DataTypeAttribute::get(contex, dtype);
 }
 
