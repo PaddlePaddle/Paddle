@@ -85,6 +85,7 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(L1Norm_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(LpPool2d)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logcumsumexp)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logsumexp)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(LogSoftmax)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Lrn)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Lu)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Lu_)
@@ -161,5 +162,10 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unfold)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unstack)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(WeightQuantize)
+
+bool UnchangedCheckAxisInferSymbolicShape(
+    pir::Operation *op,
+    pir::InferSymbolicShapeContext *infer_context,
+    const std::string &axisAttrName);
 
 }  // namespace paddle::dialect
