@@ -515,7 +515,7 @@ inline std::vector<std::string> ShouldRunPass(
   }
   // Just return `origin_pass` when `transfer_layout_pass` replaced by
   // `auto_layout_pass`.
-  if (!config.cinn.enabled()) return res_tmp;
+  if (!config.cinn_enabled()) return res_tmp;
 
   for (auto &&pass : res_tmp) {
     // This `if` branch will be deleted after `transfer_layout_pass` replaced by
