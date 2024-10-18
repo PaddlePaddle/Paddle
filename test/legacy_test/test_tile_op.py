@@ -161,7 +161,7 @@ class TestTileOpRank4(TestTileOpRank1):
 
 class TestTileOpRank5(TestTileOpRank1):
     def init_data(self):
-        self.ori_shape = (2, 2, 2, 2, 6)
+        self.ori_shape = (4, 2, 2, 2, 6)
         self.repeat_times = (2, 3, 4, 5, 7)
 
     def if_enable_cinn(self):
