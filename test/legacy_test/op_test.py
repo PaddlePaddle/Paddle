@@ -3108,10 +3108,6 @@ class OpTest(unittest.TestCase):
                         b.flatten()[offset],
                     )
 
-                # print(a)
-                # print("*" * 20)
-                # print(b)
-
                 self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):

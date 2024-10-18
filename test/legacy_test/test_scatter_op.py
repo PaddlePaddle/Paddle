@@ -34,11 +34,11 @@ class TestScatterOp(OpTest):
         self._set_dtype()
         self.if_enable_cinn()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
-        ref_np = np.ones((3, 50)).astype(target_dtype)
-        updates_np = np.random.random((2, 50)).astype(target_dtype)
+        ref_np = np.ones((10, 50)).astype(target_dtype)
+        updates_np = np.random.random((10, 50)).astype(target_dtype)
 
         index_np = np.random.choice(
-            np.arange(-ref_np.shape[0], ref_np.shape[0]),
+            np.arange(ref_np.shape[0]) - ref_np.shape[0],
             size=(updates_np.shape[0],),
             replace=False,
         ).astype("int32")
