@@ -61,14 +61,14 @@ __global__ void GatherNdCUDAKernel(const T* input,
     for (int64_t j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
       PADDLE_ENFORCE(
-          index_value >= 0 && index_value < input_dims[j],
+          index_value >= -input_dims[j] && index_value < input_dims[j],
           "The index is out of bounds, "
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
           "be less than [%ld] and greater than or equal to [%ld], but "
           "received [%ld]",
-          -input_dims[j],
           input_dims[j],
+          -input_dims[j],
           index_value);
       if (index_value < 0) {
         index_value += input_dims[j];
