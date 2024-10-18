@@ -26,6 +26,7 @@ namespace paddle {
 namespace dialect {
 
 pir::Value builtin_combine(const std::vector<pir::Value>& x);
+std::vector<pir::Value> builtin_split(const pir::Value& x);
 
 std::vector<pir::Value> add_n_grad(const std::vector<pir::Value>& inputs,
                                    const pir::Value& out_grad);

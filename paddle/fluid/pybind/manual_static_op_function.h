@@ -982,6 +982,26 @@ static PyObject *builtin_combine_op(PyObject *self,
   }
 }
 
+static PyObject *builtin_split_op(PyObject *self,
+                                  PyObject *args,
+                                  PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add builtin_split op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(x_obj, "builtin_split", 0, false);
+    CallStackRecorder callstack_recoder("builtin_builtin_split");
+    callstack_recoder.Record();
+    auto static_api_out = paddle::dialect::builtin_split(x);
+    callstack_recoder.AttachToOps();
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_fused_gemm_epilogue(PyObject *self,
                                                 PyObject *args,
                                                 PyObject *kwargs) {
@@ -1216,6 +1236,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))builtin_combine_op,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for builtin_combine_op."},
+    {"builtin_split",
+     (PyCFunction)(void (*)(void))builtin_split_op,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for builtin_split_op."},
     {"tensorrt_engine",
      (PyCFunction)(void (*)(void))static_api_tensorrt_engine,
      METH_VARARGS | METH_KEYWORDS,

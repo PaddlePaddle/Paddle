@@ -940,12 +940,10 @@ static phi::Backend GetKernelBackendByYaml(
 
   for (const auto& slot_name : backend_info) {
     auto& input_map = op_info_parser->InputName2Id();
-
     if (input_map.count(slot_name)) {
       // parse from input
       int in_index = static_cast<int>(input_map.at(slot_name));
       auto type = map_value_pair.at(op->operand_source(in_index)).type();
-
       if (type.isa<AllocatedDenseTensorType>()) {
         kernel_backend = paddle::experimental::ParseBackend(
             type.dyn_cast<AllocatedDenseTensorType>().place());
@@ -2183,6 +2181,8 @@ void HandleForSpecialOp(
   // only deal with single output
   if (op_item->num_results() > 0) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
+      VLOG(6) << "2816:" << op_item->result(i).type();
+      VLOG(6) << "2817:" << op->result(i).type();
       (*map_value_pair)[op_item->result(i)] = op->result(i);
     }
   }
@@ -3027,9 +3027,7 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
                                           pir::IrContext* ctx) {
   for (auto it = block->begin(); it != block->end(); ++it) {
     if (it->isa<PhiKernelOp>() &&
-        (it->dyn_cast<PhiKernelOp>().op_name() == "pd_op.shadow_feed" ||
-         it->dyn_cast<PhiKernelOp>().op_name() ==
-             "pd_op.shadow_feed_tensors")) {
+        (it->dyn_cast<PhiKernelOp>().op_name() == "pd_op.shadow_feed")) {
       pir::Value shadow_value = it->result(0);
       if (shadow_value.use_count() == 1) {
         pir::Operation* next_op = shadow_value.first_use().owner();
@@ -3320,11 +3318,11 @@ void ProcessBlock(
     for (auto& [name, attr] : arg.dyn_cast<pir::BlockArgument>().attributes()) {
       new_arg.set_attribute(name, attr);
     }
-    (*map_value_pair)[arg] = new_arg;
     if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
       new_arg.set_type(
           AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
     }
+    (*map_value_pair)[arg] = new_arg;
   }
   if (phi::is_accelerat_place(place)) {
     for (auto& [keyword, arg] : block->kwargs()) {
@@ -3351,6 +3349,46 @@ void ProcessBlock(
 
         new_block->push_back(shadow_op);
         (*map_value_pair)[arg] = shadow_op->result(0);
+      } else if (auto vec_type = arg.type().dyn_cast<pir::VectorType>()) {
+        for (size_t i = 0; i < vec_type.size(); ++i) {
+          PADDLE_ENFORCE_EQ(
+              vec_type[i].isa<DenseTensorType>(),
+              true,
+              common::errors::PreconditionNotMet(
+                  "AddShadowFeedTensors only support DenseTensorType Now"));
+        }
+        // Add ShadowFeedTensors Op
+        phi::KernelKey shadow_key{
+            paddle::experimental::get_accelerat_backend(),
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                vec_type[0].dyn_cast<DenseTensorType>().dtype())};
+
+        std::unordered_map<std::string, pir::Attribute> attr_map{
+            {"op_name",
+             pir::StrAttribute::get(ctx, "pd_op.shadow_feed_tensors")},
+            {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed_tensors")},
+            {"kernel_key", KernelAttribute::get(ctx, shadow_key)},
+            {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
+
+        pir::OpInfo phi_kernel_op_info =
+            ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+
+        std::vector<pir::Type> vec_out_types;
+        for (size_t i = 0; i < vec_type.size(); ++i) {
+          vec_out_types.push_back(AllocatedDenseTensorType::get(
+              ctx,
+              phi::TransToPhiPlace(shadow_key.backend()),
+              vec_type[i].dyn_cast<DenseTensorType>()));
+        }
+        auto out_type = pir::VectorType::get(ctx, vec_out_types);
+        pir::Operation* shadow_tensors_op = pir::Operation::Create(
+            {(*map_value_pair)[arg]}, attr_map, {out_type}, phi_kernel_op_info);
+        shadow_tensors_op->set_attribute(
+            "origin_id",
+            pir::Int64Attribute::get(ctx, shadow_tensors_op->id()));
+        new_block->push_back(shadow_tensors_op);
+        (*map_value_pair)[arg] = shadow_tensors_op->result(0);
       }
     }
   }
