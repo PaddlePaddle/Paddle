@@ -2124,6 +2124,10 @@ void BindUtils(pybind11::module *m) {
          []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
          []() { ApiBuilder::Instance().ResetInsertionPointToEnd(); });
+  m->def("set_op_role",
+         [](int op_role) { ApiBuilder::Instance().SetOpRole(op_role); });
+  m->def("get_op_role",
+         []() { return ApiBuilder::Instance().GetOpRole(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();

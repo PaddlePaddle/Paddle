@@ -115,7 +115,9 @@ class Builder {
         common::errors::PreconditionNotMet("argument of block is nullptr"));
     set_insertion_point(block, block->end());
   }
-
+  /// Set/Get the op_role
+  void SetCurrentOpRole(int op_role) { current_op_role_ = op_role; }
+  int GetCurrentOpRole() const { return current_op_role_; }
   IrContext *ir_context() const { return context_; }
 
   Block *block() const { return insertion_point_.first; }
@@ -172,6 +174,8 @@ class Builder {
   InsertionPoint insertion_point_;
 
   bool forbid_insert_without_position_;
+  // by now the op_role is used by autoparallel for vpp.
+  int current_op_role_ = -1;
 };
 
 template <typename OpTy, typename... Args>
