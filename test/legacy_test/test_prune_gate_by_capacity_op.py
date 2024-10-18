@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
 from paddle.base import core
@@ -63,6 +64,40 @@ def assert_allclose(output, expected, n_expert):
     c1 = count(output, n_expert)
     c2 = count(expected, n_expert)
     np.testing.assert_allclose(c1, c2)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestPruneGateByCapacityOp(OpTest):
+    def _get_places(self):
+        return [paddle.CUDAPlace(0)]
+
+    def setUp(self):
+        self.op_type = "prune_gate_by_capacity"
+        self.python_api = utils._prune_gate_by_capacity
+        self.dtype = np.int64
+        self.n_expert = 24
+        self.n_worker = 2
+        self.gate_idx = np.random.randint(0, self.n_expert, size=(200,)).astype(
+            self.dtype
+        )
+        self.expert_count = count(self.gate_idx, self.n_expert * self.n_worker)
+        self.out = prune_gate_by_capacity(
+            self.gate_idx, self.expert_count, self.n_expert, self.n_worker
+        ).astype(self.dtype)
+        self.inputs = {
+            "GateIdx": self.gate_idx,
+            "ExpertCount": self.expert_count,
+        }
+        self.attrs = {
+            'n_expert': self.n_expert,
+            'n_worker': self.n_worker,
+        }
+        self.outputs = {"NewGateIdx": self.out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 @unittest.skipIf(
