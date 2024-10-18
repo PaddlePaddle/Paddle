@@ -26,9 +26,8 @@ Operation *Builder::Build(OperationArgument &&argument) {
   Operation *op = Insert(Operation::Create(std::move(argument)));
   // TODO(ljz): Generalize here to be a hook function in the future.
   // we add op_role attribute only when it is not equal to -1.
-  if (current_op_role_ != -1) {
-    op->set_attribute("op_role",
-                      Int32Attribute::get(context_, current_op_role_));
+  if (op_role_ != -1) {
+    op->set_attribute("op_role", Int32Attribute::get(context_, op_role_));
   }
   return op;
 }

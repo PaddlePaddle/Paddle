@@ -116,8 +116,8 @@ class Builder {
     set_insertion_point(block, block->end());
   }
   /// Set/Get the op_role
-  void SetCurrentOpRole(int op_role) { current_op_role_ = op_role; }
-  int GetCurrentOpRole() const { return current_op_role_; }
+  void SetCurrentOpRole(int op_role) { op_role_ = op_role; }
+  int GetCurrentOpRole() const { return op_role_; }
   IrContext *ir_context() const { return context_; }
 
   Block *block() const { return insertion_point_.first; }
@@ -177,7 +177,7 @@ class Builder {
 
   // by now the op_role is used by autoparallel for distinguish the op in fw,
   // bw, opt region.
-  int current_op_role_ = -1;
+  int op_role_ = -1;
 };
 
 template <typename OpTy, typename... Args>
