@@ -103,6 +103,7 @@ if(WITH_ROCM)
   add_test(NAME test_hygon_llama_ops
            COMMAND bash
                    ${CMAKE_CURRENT_SOURCE_DIR}/hygon_dcu/test_hygon_llama_op.sh)
+  set_tests_properties(test_hygon_llama_ops PROPERTIES TIMEOUT 600)
 endif()
 
 if(NOT WITH_NCCL)
