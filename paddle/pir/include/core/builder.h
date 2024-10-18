@@ -175,7 +175,8 @@ class Builder {
 
   bool forbid_insert_without_position_;
 
-  // by now the op_role is used by autoparallel for vpp.
+  // by now the op_role is used by autoparallel for distinguish the op in fw,
+  // bw, opt region.
   int current_op_role_ = -1;
 };
 
