@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -201,11 +203,3 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(c_softmax_with_cross_entropy_grad,
                   ops::CSoftmaxWithCrossEntropyOpGrad,
                   ops::CSoftmaxWithCrossEntropyGradInplaceInferer);
-
-PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CSoftmaxWithCrossEntropyOpCPUKernel,
-                          float,
-                          double,
-                          phi::dtype::float16) {}
