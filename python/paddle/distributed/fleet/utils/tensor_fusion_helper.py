@@ -622,6 +622,8 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def sync_params(self, sync=True, param2task={}):
+        if not self.need_reduce_scale_sync():
+            return
         assert self._act == HOOK_ACTION.REDUCE_SCATTER
         full_buffer = self.param_storage
         group = self._comm_group
@@ -654,7 +656,7 @@ class FusedCommBuffer:
         )
         self._comm_grads()
 
-    def need_comm_and_scale(self):
+    def need_reduce_scale_sync(self):
         stop_gradient_values = [param.stop_gradient for param in self.params]
         if all(stop_gradient_values):
             return False
@@ -668,7 +670,7 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def _comm_grads(self):
-        if not self.need_comm_and_scale():
+        if not self.need_reduce_scale_sync():
             return
 
         reduce_op = (
@@ -729,7 +731,7 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def scale_grads(self):
-        if self.need_comm_and_scale():
+        if self.need_reduce_scale_sync():
             assert self._task is not None, "Task is not initialized."
             self._task.wait()
 
