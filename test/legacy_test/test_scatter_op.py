@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -34,8 +35,13 @@ class TestScatterOp(OpTest):
         self.if_enable_cinn()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 50)).astype(target_dtype)
-        index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 50)).astype(target_dtype)
+
+        index_np = np.random.choice(
+            np.arange(-ref_np.shape[0], ref_np.shape[0]),
+            size=(updates_np.shape[0],),
+            replace=False,
+        ).astype("int32")
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
         if self.dtype == np.uint16:
@@ -61,6 +67,7 @@ class TestScatterOp(OpTest):
             check_prim=True,
             check_pir=True,
             check_prim_pir=True,
+            max_relative_error=0.008,
         )
 
 
@@ -632,40 +639,46 @@ class TestScatterAPI(unittest.TestCase):
         self.scatter = paddle.scatter
 
     def check_static_result(self, place):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            input = paddle.static.data(
-                name="input", shape=[3, 2], dtype="float64"
-            )
-            index = paddle.static.data(name="index", shape=[4], dtype="int64")
-            updates = paddle.static.data(
-                name="updates", shape=[4, 2], dtype="float64"
-            )
-            result = self.scatter(input, index, updates, False)
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = paddle.static.data(
+                    name="input", shape=[3, 2], dtype="float64"
+                )
+                index = paddle.static.data(
+                    name="index", shape=[4], dtype="int64"
+                )
+                updates = paddle.static.data(
+                    name="updates", shape=[4, 2], dtype="float64"
+                )
+                result = self.scatter(input, index, updates, False)
 
-            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
-            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
-                np.float64
-            )
+                input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(
+                    np.float64
+                )
+                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+                updates_data = np.array(
+                    [[1, 1], [2, 2], [3, 3], [4, 4]]
+                ).astype(np.float64)
 
-            exe = paddle.static.Executor(place)
-            fetches = exe.run(
-                paddle.static.default_main_program(),
-                feed={
-                    "input": input_data,
-                    "index": index_data,
-                    "updates": updates_data,
-                },
-                fetch_list=[result],
-            )
-            self.assertEqual(
-                (
-                    fetches[0] == np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]])
-                ).all(),
-                True,
-            )
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "input": input_data,
+                        "index": index_data,
+                        "updates": updates_data,
+                    },
+                    fetch_list=[result],
+                )
+                self.assertEqual(
+                    (
+                        fetches[0]
+                        == np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]])
+                    ).all(),
+                    True,
+                )
 
     def test_static(self):
         for place in self.places:

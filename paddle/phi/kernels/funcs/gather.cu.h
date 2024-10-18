@@ -32,11 +32,14 @@ __global__ void GatherCUDAKernel(const T* params,
                                  const IndexT* indices,
                                  T* output,
                                  size_t index_size,
-                                 size_t slice_size) {
+                                 size_t slice_size,
+                                 int64_t index_dim_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
-    IndexT gather_i = indices[indices_i];
+    IndexT gather_i =
+        (indices[indices_i] < 0 ? (indices[indices_i] + index_dim_size)
+                                : indices[indices_i]);
     int64_t params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
   }
@@ -115,7 +118,7 @@ void GPUGather(const phi::GPUContext& ctx,
   phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   GatherCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size);
+      p_src, p_index, p_output, index_size, slice_size, src_dims[0]);
 }
 
 template <typename T, typename IndexT = int>
@@ -181,6 +184,9 @@ __global__ void GatherGPUKernel(const T* input,
     int64_t next_idx = idx - outer_size * inner_dim_index;
     int64_t index_dim_index = next_idx / outer_dim_size;
     U index_val = index[index_dim_index];
+    if (index_val < 0) {
+      index_val += input_index_dim_size;
+    }
 
     PADDLE_ENFORCE(
         index_val >= 0 && index_val < input_index_dim_size,

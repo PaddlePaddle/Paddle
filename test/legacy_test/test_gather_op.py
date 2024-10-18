@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -610,39 +611,47 @@ class TestGatherOp4Complex128(TestGatherOp4):
 class API_TestGather(unittest.TestCase):
 
     def test_out1(self):
-        with base.program_guard(base.Program(), base.Program()):
-            data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
-            index = paddle.static.data('index', shape=[-1, 1], dtype='int64')
-            out = paddle.gather(data1, index)
-            place = base.CPUPlace()
-            exe = base.Executor(place)
-            input = np.array([[1, 2], [3, 4], [5, 6]]).astype('float64')
-            index_1 = np.array([1, 2]).astype('int64')
-            (result,) = exe.run(
-                feed={"data1": input, "index": index_1}, fetch_list=[out]
-            )
-            expected_output = np.array([[3, 4], [5, 6]])
-        np.testing.assert_allclose(result, expected_output, rtol=1e-05)
+        with static_guard():
+            with base.program_guard(base.Program(), base.Program()):
+                data1 = paddle.static.data(
+                    'data1', shape=[-1, 2], dtype='float64'
+                )
+                index = paddle.static.data(
+                    'index', shape=[-1, 1], dtype='int64'
+                )
+                out = paddle.gather(data1, index)
+                place = base.CPUPlace()
+                exe = base.Executor(place)
+                input = np.array([[1, 2], [3, 4], [5, 6]]).astype('float64')
+                index_1 = np.array([1, 2]).astype('int64')
+                (result,) = exe.run(
+                    feed={"data1": input, "index": index_1}, fetch_list=[out]
+                )
+                expected_output = np.array([[3, 4], [5, 6]])
+            np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
     def test_out2(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            x = paddle.static.data('x', shape=[-1, 2], dtype='float64')
-            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
-            axis = paddle.static.data('axis', shape=[1], dtype='int32')
-            out = paddle.gather(x, index, axis)
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float64')
-            index_np = np.array([1, 1]).astype('int32')
-            axis_np = np.array([1]).astype('int32')
-            (result,) = exe.run(
-                feed={"x": x_np, "index": index_np, 'axis': axis_np},
-                fetch_list=[out],
-            )
-            expected_output = gather_numpy(x_np, index_np, axis_np[0])
-        np.testing.assert_allclose(result, expected_output, rtol=1e-05)
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data('x', shape=[-1, 2], dtype='float64')
+                index = paddle.static.data(
+                    'index', shape=[-1, 1], dtype='int32'
+                )
+                axis = paddle.static.data('axis', shape=[1], dtype='int32')
+                out = paddle.gather(x, index, axis)
+                place = paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
+                x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float64')
+                index_np = np.array([1, 1]).astype('int32')
+                axis_np = np.array([1]).astype('int32')
+                (result,) = exe.run(
+                    feed={"x": x_np, "index": index_np, 'axis': axis_np},
+                    fetch_list=[out],
+                )
+                expected_output = gather_numpy(x_np, index_np, axis_np[0])
+            np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
 
 class API_TestDygraphGather(unittest.TestCase):
@@ -718,97 +727,114 @@ class API_TestDygraphGather(unittest.TestCase):
 class TestGathertError(unittest.TestCase):
 
     def test_error1(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            shape = [8, 9, 6]
-            x = paddle.static.data(shape=shape, dtype='int8', name='x')
-            axis = paddle.static.data(shape=[1], dtype='float32', name='axis')
-            index = paddle.static.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.static.data(
-                shape=shape, dtype='float32', name='index_float'
-            )
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                shape = [8, 9, 6]
+                x = paddle.static.data(shape=shape, dtype='int8', name='x')
+                axis = paddle.static.data(
+                    shape=[1], dtype='float32', name='axis'
+                )
+                index = paddle.static.data(
+                    shape=shape, dtype='int32', name='index'
+                )
+                index_float = paddle.static.data(
+                    shape=shape, dtype='float32', name='index_float'
+                )
 
-            def test_x_type():
-                paddle.gather(x, index)
+                def test_x_type():
+                    paddle.gather(x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+                self.assertRaises(ValueError, test_x_type)
 
-            def test_index_type():
-                paddle.gather(x, index_float)
+                def test_index_type():
+                    paddle.gather(x, index_float)
 
-            self.assertRaises(TypeError, test_index_type)
+                self.assertRaises(ValueError, test_index_type)
 
-            def test_axis_dtype():
-                paddle.gather(x, index, axis=1.11)
+                def test_axis_dtype():
+                    paddle.gather(x, index, axis=1.11)
 
-            self.assertRaises(TypeError, test_axis_dtype)
+                self.assertRaises(TypeError, test_axis_dtype)
 
-            def test_axis_dtype1():
-                paddle.gather(x, index, axis=axis)
+                def test_axis_dtype1():
+                    paddle.gather(x, index, axis=axis)
 
-            self.assertRaises(TypeError, test_axis_dtype1)
+                self.assertRaises(ValueError, test_axis_dtype1)
 
     def test_error2(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            shape = [8, 9, 6]
-            x = paddle.static.data(shape=shape, dtype='int8', name='x')
-            index = paddle.static.data(shape=shape, dtype='int32', name='mask')
-            index_float = paddle.static.data(
-                shape=shape, dtype='float32', name='index_float'
-            )
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                shape = [8, 9, 6]
+                x = paddle.static.data(shape=shape, dtype='int8', name='x')
+                index = paddle.static.data(
+                    shape=shape, dtype='int32', name='mask'
+                )
+                index_float = paddle.static.data(
+                    shape=shape, dtype='float32', name='index_float'
+                )
 
-            def test_x_type():
-                paddle.gather(x, index)
+                def test_x_type():
+                    paddle.gather(x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+                self.assertRaises(ValueError, test_x_type)
 
-            def test_index_type():
-                paddle.gather(x, index_float)
+                def test_index_type():
+                    paddle.gather(x, index_float)
 
-            self.assertRaises(TypeError, test_index_type)
+                self.assertRaises(ValueError, test_index_type)
 
     def test_error3(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            shape = [8, 9, 6]
-            x = paddle.static.data(shape=shape, dtype='int32', name='x')
-            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
-            index = paddle.static.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.static.data(
-                shape=shape, dtype='float32', name='index_float'
-            )
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                shape = [8, 9, 6]
+                x = paddle.static.data(shape=shape, dtype='int32', name='x')
+                axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
+                index = paddle.static.data(
+                    shape=shape, dtype='int32', name='index'
+                )
+                index_float = paddle.static.data(
+                    shape=shape, dtype='float32', name='index_float'
+                )
 
-            def test_axis_minsize():
-                paddle.gather(x, index, axis=-1)
+                def test_axis_minsize():
+                    paddle.gather(x, index, axis=-1)
 
-            self.assertRaises(ValueError, test_axis_minsize)
+                self.assertRaises(ValueError, test_axis_minsize)
 
-            def test_axis_maxsize():
-                paddle.gather(x, index, axis=512)
+                def test_axis_maxsize():
+                    paddle.gather(x, index, axis=512)
 
-            self.assertRaises(ValueError, test_axis_maxsize)
+                self.assertRaises(ValueError, test_axis_maxsize)
 
 
 class TestCheckOutType(unittest.TestCase):
 
     def test_out_type(self):
-        data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
-        index = paddle.static.data(shape=[4], dtype='int64', name='index')
-        out = paddle.gather(data, index)
-        self.assertTrue(
-            out.dtype == paddle.int64 or out.dtype == core.DataType.INT64
-        )
-
-    def test_pir_out_type(self):
-        with paddle.pir_utils.IrGuard():
+        with static_guard():
             data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
             index = paddle.static.data(shape=[4], dtype='int64', name='index')
             out = paddle.gather(data, index)
-            self.assertTrue(out.dtype == core.DataType.INT64)
+            self.assertTrue(
+                out.dtype == paddle.int64 or out.dtype == core.DataType.INT64
+            )
+
+    def test_pir_out_type(self):
+        with static_guard():
+            with paddle.pir_utils.IrGuard():
+                data = paddle.static.data(
+                    shape=[16, 10], dtype='int64', name='x'
+                )
+                index = paddle.static.data(
+                    shape=[4], dtype='int64', name='index'
+                )
+                out = paddle.gather(data, index)
+                self.assertTrue(out.dtype == core.DataType.INT64)
 
 
 if __name__ == "__main__":

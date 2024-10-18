@@ -67,29 +67,32 @@ void CPUGather(const phi::CPUContext& ctx UNUSED,
   int64_t slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
   // input size
-  int64_t input_size = src_dims[0] * slice_size;
+  // int64_t input_size = src_dims[0] * slice_size;
+  int64_t index_dim_size = src_dims[0];
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
   for (int64_t i = 0; i < index_size; ++i) {
-    IndexT index_ = p_index[i];
+    IndexT index_ = (p_index[i] < 0 ? p_index[i] + index_dim_size : p_index[i]);
     PADDLE_ENFORCE_LT(p_index[i],
-                      input_size,
+                      index_dim_size,
                       common::errors::OutOfRange(
                           "The element of Index must be less than the size of "
                           "input dim size of axis which is %d, but received "
                           "index element which is %d in the %d index.",
-                          input_size,
+                          index_dim_size,
                           p_index[i],
                           i));
-    PADDLE_ENFORCE_GE(p_index[i],
-                      0,
-                      common::errors::OutOfRange(
-                          "The element of Index must be greater than or equal "
-                          "to 0, but received index element which is %d in the "
-                          "%d index.",
-                          p_index[i],
-                          i));
+    PADDLE_ENFORCE_GE(
+        p_index[i],
+        -index_dim_size,
+        common::errors::OutOfRange(
+            "The element of Index must be greater than or equal "
+            "to %d, but received index element which is %d in the "
+            "%d index.",
+            -index_dim_size,
+            p_index[i],
+            i));
     memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
 }
