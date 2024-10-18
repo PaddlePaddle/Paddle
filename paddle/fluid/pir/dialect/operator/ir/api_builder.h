@@ -76,7 +76,7 @@ class ApiBuilder {
   void LoadInsertionPoint();
 
   void SetOpRole(int op_role) { builder_->set_op_role(op_role); }
-  int GetOpRole() const { return builder_->get_op_role(); }
+  int GetOpRole() const { return builder_->op_role(); }
 
  private:
   ApiBuilder();

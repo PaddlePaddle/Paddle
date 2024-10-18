@@ -117,7 +117,7 @@ class Builder {
   }
   /// Set/Get the op_role
   void set_op_role(int op_role) { op_role_ = op_role; }
-  int get_op_role() const { return op_role_; }
+  int op_role() const { return op_role_; }
   IrContext *ir_context() const { return context_; }
 
   Block *block() const { return insertion_point_.first; }
