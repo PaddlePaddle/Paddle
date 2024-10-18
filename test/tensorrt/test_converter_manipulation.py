@@ -243,6 +243,22 @@ class TestSplitWithNumAxisTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestSplitWithNumAllTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.api_args = {
+            "x": np.random.randn(1, 2).astype(np.float32),
+            "num_or_sections": 2,
+            "axis": np.array([1]).astype("int32"),
+        }
+        self.program_config = {"feed_list": ["x", "axis"]}
+        self.min_shape = {"x": [1, 2]}
+        self.max_shape = {"x": [1, 2]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 class TestSplitWithNumNegativeAxisTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.split

@@ -497,19 +497,19 @@ def split_with_num_converter(network, paddle_op, inputs):
     split_size = trt_floor_div(network, input_axis_size, num_splits_tensor)
 
     outputs = []
+    current_offset = add_1D_constant_layer(network, 0)
+
     for idx in range(num_splits):
         idx_tensor = add_1D_constant_layer(network, idx)
-        offset = trt_floor_div(network, idx_tensor, split_size)
-
+        # Calculate the slice start and size
         start_tensor = build_start_tensor(
-            network, input_shape_size, axis_tensor, offset
+            network, input_shape_size, axis_tensor, current_offset
         )
-
         size_tensor = build_size_tensor(
             network,
             input_shape_size,
             axis_tensor,
-            num_splits_tensor,
+            split_size,
             input_shape_tensor,
         )
 
@@ -524,6 +524,9 @@ def split_with_num_converter(network, paddle_op, inputs):
         slice_layer.set_input(2, size_tensor)
 
         outputs.append(slice_layer.get_output(0))
+
+        # Update current_offset for the next slice
+        current_offset = trt_sum(network, current_offset, split_size)
 
     return outputs
 
