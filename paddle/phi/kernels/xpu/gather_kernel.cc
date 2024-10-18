@@ -27,7 +27,7 @@ void GatherKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   auto axis_v = axis.to<int>();
   if (axis_v < 0) {
-    axis_v += x.dims().size();
+    axis_v += static_cast<int>(x.dims().size());
   }
   const auto& index_type = index.dtype();
 

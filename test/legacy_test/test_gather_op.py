@@ -608,6 +608,32 @@ class TestGatherOp4Complex128(TestGatherOp4):
         self.check_grad(['X'], 'Out')
 
 
+class TestGatherOp5(TestGatherOp):
+    def config(self):
+        """
+        Test for negative axis
+        """
+        self.x_shape = (3, 100, 10)
+        self.config_dtype()
+        self.index = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        self.index_type = "int64"
+        self.axis = [-1]
+        self.axis_type = "int32"
+        self.attrs = {'overwrite': False}
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim=True,
+            check_prim_pir=True,
+        )
+
+
 class API_TestGather(unittest.TestCase):
 
     def test_out1(self):

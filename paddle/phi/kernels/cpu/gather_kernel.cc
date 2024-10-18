@@ -29,7 +29,7 @@ void GatherKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
   auto axis_v = axis.to<int>();
   if (axis_v < 0) {
-    axis_v += x.dims().size();
+    axis_v += static_cast<int>(x.dims().size());
   }
 
   // gather at non-zero axis
