@@ -90,78 +90,67 @@ TEST(ConvertUtils, DataType) {
 
   // proto -> enum
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::FP64),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::FP64),
       paddle::DataType::FLOAT64,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::FP64 to "
           "paddle::DataType::FLOAT64"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::FP32),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::FP32),
       paddle::DataType::FLOAT32,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::FP32 to "
           "paddle::DataType::FLOAT32"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::INT64),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::INT64),
       paddle::DataType::INT64,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::INT64 to "
           "paddle::DataType::INT64"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::INT32),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::INT32),
       paddle::DataType::INT32,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::INT32 to "
           "paddle::DataType::INT32"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::INT8),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::INT8),
       paddle::DataType::INT8,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::INT8 to "
           "paddle::DataType::INT8"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::UINT8),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::UINT8),
       paddle::DataType::UINT8,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::UINT8 to "
           "paddle::DataType::UINT8"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::INT16),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::INT16),
       paddle::DataType::INT16,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::INT16 to "
           "paddle::DataType::INT16"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::BOOL),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::BOOL),
       paddle::DataType::BOOL,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::BOOL to "
           "paddle::DataType::BOOL"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::COMPLEX64),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::COMPLEX64),
       paddle::DataType::COMPLEX64,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::COMPLEX64 to "
           "paddle::DataType::COMPLEX64"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::COMPLEX128),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::COMPLEX128),
       paddle::DataType::COMPLEX128,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::COMPLEX128 to "
           "paddle::DataType::COMPLEX128"));
   PADDLE_ENFORCE_EQ(
-      paddle::framework::TransToPhiDataType(
-          paddle::framework::proto::VarType::FP16),
+      phi::TransToPhiDataType(paddle::framework::proto::VarType::FP16),
       paddle::DataType::FLOAT16,
       ::common::errors::InvalidArgument(
           "Failed to convert paddle::framework::proto::VarType::FP16 to "
