@@ -261,6 +261,32 @@ bool IsFakeValue(const pir::Value &value) {
   return value.impl() == nullptr || value.type() == pir::Type();
 }
 
+std::vector<symbol::DimExpr> GetVecFromIntArray(
+    const pir::Operation *op,
+    pir::InferSymbolicShapeContext *infer_context,
+    const std::string &input_name const int &index) {
+  if (op->HasAttribute(input_name)) {
+    std::vector<int> int_operand =
+        paddle::dialect::details::GetVectorAttr<int>(op, input_name);
+    std::vector<symbol::DimExpr> result;
+    for (const auto &i : int_operand) {
+      result.emplace_back(symbol::DimExpr{i});
+    }
+    return result;
+  } else if (op->operand_source(index)) {
+    const auto &shapeordata =
+        infer_context->GetShapeOrDataForValue(op->operand_source(index));
+    const std::vector<symbol::DimExpr> &result =
+        shapeordata.data().has_value() ? shapeordata.data().value()
+                                       : shapeordata.shape();
+    return result;
+  } else {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Don't support get vector from int array, input name is %s"));
+  }
+  return std::vector<symbol::DimExpr>{}
+}
+
 bool GetAxisFromOpInput(pir::Value in_value,
                         pir::InferSymbolicShapeContext *infer_context,
                         std::vector<int64_t> *axis) {
@@ -293,6 +319,5 @@ bool GetAxisFromOpInput(pir::Value in_value,
     axis->swap(tmp_axis);
 
     return true;
-  }
 }
 }  // namespace paddle::dialect::details
