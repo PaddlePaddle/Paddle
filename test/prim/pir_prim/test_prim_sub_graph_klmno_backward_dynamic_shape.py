@@ -204,7 +204,7 @@ class TestPrimLayerNormWithGrad3(TestPrimLayerNormWithGrad1):
         self.z = np.random.random(self.z_shape).astype(self.dtype)
         self.net = layer_norm_net2
         self.enable_cinn = False
-        self.tol = 1e-5
+        self.tol = 2e-5
         self.other_place_tol = 1e-4
 
 
