@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -60,6 +61,7 @@ class TestFusedAttentionOpFP16(OpTest):
         self.dtype = "float16"
         self.rtol = 5e-4
         self.atol = 5e-4
+        self.check_deterministic = False
 
     def setUp(self):
         self._set_shape()
@@ -263,9 +265,15 @@ class TestFusedAttentionOpFP16(OpTest):
             "v_grad",
         ]
 
+        if self.check_deterministic:
+            os.environ["FLAGS_cudnn_deterministic"] = "1"
+
         outputs_ref = self._get_reference_out()
         outputs_fused_1 = self._get_fused_attn_out()
         outputs_fused_2 = self._get_cudnn_flash_attn_out()
+
+        if self.check_deterministic:
+            os.environ["FLAGS_cudnn_deterministic"] = "0"
 
         for i in range(len(output_names)):
             ref_res = outputs_ref[i]
@@ -285,6 +293,14 @@ class TestFusedAttentionOpFP16(OpTest):
                 rtol=self.rtol,
                 err_msg=f"Checking < {output_names[i]} > failed",
             )
+            if self.check_deterministic:
+                np.testing.assert_allclose(
+                    _convert(fused_res_1.numpy()),
+                    _convert(fused_res_2.numpy()),
+                    atol=1e-12,
+                    rtol=1e-12,
+                    err_msg=f"Checking < {output_names[i]} > failed",
+                )
 
     def test_output(self):
         self._compare_output()
@@ -325,6 +341,7 @@ class TestFusedAttentionOpFP16WithCausalMask(TestFusedAttentionOpFP16):
         self.dtype = "float16"
         self.rtol = 1e-3
         self.atol = 1e-3
+        self.check_deterministic = False
 
 
 @unittest.skipIf(skip_unit_test(), skip_msg)
@@ -342,6 +359,7 @@ class TestFusedAttentionOpBF16(TestFusedAttentionOpFP16):
         self.dtype = "bfloat16"
         self.rtol = 5e-4
         self.atol = 5e-4
+        self.check_deterministic = True
 
 
 @unittest.skipIf(skip_unit_test(), skip_msg)
@@ -359,6 +377,7 @@ class TestFusedAttentionOpBF16WithCausalMask(TestFusedAttentionOpFP16):
         self.dtype = "bfloat16"
         self.rtol = 5e-4
         self.atol = 5e-4
+        self.check_deterministic = True
 
 
 if __name__ == "__main__":
