@@ -220,7 +220,9 @@ def fc(
             )
             if in_pir_mode():
                 if len(input_var.shape) > 2:
-                    new_shape = input_var.shape[:num_flatten_dims] + [-1]
+                    new_shape = input_var.shape[:num_flatten_dims] + [
+                        np.prod(input_var.shape[num_flatten_dims:])
+                    ]
                     input_var = paddle.reshape(input_var, new_shape)
                 tmp = paddle.matmul(input_var, w)
             else:
