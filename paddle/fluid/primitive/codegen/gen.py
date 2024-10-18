@@ -96,6 +96,7 @@ BINARY_PRIM_VJP_OPS = [
 ]
 
 OTHER_PRIM_VJP_OPS = [
+    'argsort_grad',
     'assign_grad',
     'atan_grad',
     'atan2_grad',
