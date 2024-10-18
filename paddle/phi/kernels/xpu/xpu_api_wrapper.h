@@ -76,6 +76,7 @@ struct XpuFcInfo {
   int stride_out;
   float* max_x;
   float* max_y;
+  float* max_input;
   float* max_out;
   const float* bias;
   bool is_x_need_broadcast;
@@ -97,6 +98,7 @@ struct XpuFcInfo {
         stride_out(0),
         max_x(nullptr),
         max_y(nullptr),
+        max_input(nullptr),
         max_out(nullptr),
         bias(nullptr),
         is_x_need_broadcast(false),
@@ -113,6 +115,7 @@ struct XpuFcInfo {
                   bool trans_y,
                   float* max_x,
                   float* max_y,
+                  float* max_input,
                   float* max_out) {
     this->bs = bs;
     this->m = m;
@@ -122,6 +125,7 @@ struct XpuFcInfo {
     this->trans_y = trans_y;
     this->max_x = max_x;
     this->max_y = max_y;
+    this->max_input = max_input;
     this->max_out = max_out;
 
     if (this->bs <= 1) {
@@ -205,11 +209,12 @@ static void GetFCInfo(const phi::DDim& x_dims,
   }
 }
 
-template <typename XPUType, typename FCT>
+template <typename XPUType, typename XPUInOutType, typename FCT>
 static void xblas_fc_wrapper(xpu::Context* ctx,
                              const XPUType* x,
                              const XPUType* w,
-                             XPUType* y,
+                             const XPUInOutType* input,
+                             XPUInOutType* y,
                              int m,
                              int n,
                              int k,
@@ -217,6 +222,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                              bool w_trans,
                              const float* x_maxptr,
                              const float* w_maxptr,
+                             const float* input_maxptr,
                              float* y_maxptr,
                              int ldx,
                              int ldw,
@@ -231,6 +237,65 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                              int scale_w_mode) {
   int r = 0;
   xpu::ctx_guard RAII_GUARD(ctx);
+
+#ifdef PADDLE_WITH_XPU_XRE5
+  int64_t x_rows = m, x_columns = k, w_rows = k, w_columns = n, inout_rows = m,
+          inout_columns = n;
+  if (x_trans) {
+    std::swap(x_rows, x_columns);
+  }
+  if (w_trans) {
+    std::swap(w_rows, w_columns);
+  }
+  xblas::FcFusionTensor<const XPUType> t_x{
+      x,
+      x_maxptr,
+      x_rows,
+      x_columns,
+      x_columns,
+      x_trans,
+  };
+  xblas::FcFusionTensor<const XPUType> t_w{
+      w,
+      w_maxptr,
+      w_rows,
+      w_columns,
+      w_columns,
+      w_trans,
+  };
+  xblas::FcFusionTensor<const XPUInOutType> t_input{
+      input,
+      input_maxptr,
+      inout_rows,
+      inout_columns,
+      inout_columns,
+      false,
+  };
+  xblas::FcFusionTensor<XPUInOutType> t_y{
+      y,
+      y_maxptr,
+      inout_rows,
+      inout_columns,
+      inout_columns,
+      false,
+  };
+  // if XPUInOutType is bfloat16, another FcFusionDesc with TINTER_RES being set
+  // to float will be consturcted below to achieve higher accuracy
+  xblas::FcFusionDesc<FCT, float, XPUInOutType> desc{
+      alpha,
+      beta,
+  };
+  xblas::FcFusionEpilogue<float, float> epilogue{
+      act,
+      bias,
+      scale_x,
+      scale_w,
+      scale_x_mode,
+      scale_w_mode,
+      y_maxptr,
+  };
+#endif
+
   if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&
       std::is_same<float, XPUType>::value) {
     XPUType* l3_addr = nullptr;
@@ -242,31 +307,32 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
     r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 #ifdef PADDLE_WITH_XPU_XRE5
-    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
-                                                         l3_addr,
-                                                         w,
-                                                         y,
-                                                         m,
-                                                         n,
-                                                         k,
-                                                         false,
-                                                         w_trans,
-                                                         x_maxptr,
-                                                         w_maxptr,
-                                                         y_maxptr,
-                                                         k,
-                                                         ldw,
-                                                         ldy,
-                                                         alpha,
-                                                         beta,
-                                                         bias,
-                                                         act,
-                                                         scale_x,
-                                                         scale_w,
-                                                         scale_x_mode,
-                                                         scale_w_mode);
+    std::swap(x_rows, x_columns);
+    xblas::FcFusionTensor<const XPUType> t_l3_addr{
+        l3_addr,
+        x_maxptr,
+        x_rows,
+        x_columns,
+        x_columns,
+        false,
+    };
+    r = xblas::fc_fusion<XPUType,
+                         XPUType,
+                         XPUInOutType,
+                         XPUInOutType,
+                         FCT,
+                         float,
+                         XPUInOutType,
+                         float,
+                         float>(
+        ctx, t_l3_addr, t_w, t_input, t_y, desc, epilogue);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
 #else
+    if (input != nullptr) {
+      r = xpu::Error_t::NOT_IMPLEMENT;
+      PADDLE_ENFORCE_XDNN_SUCCESS(
+          r, "xblas_fc_wrapper does not support matrix C in kl2.");
+    }
     r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                        l3_addr,
                                                        w,
@@ -290,32 +356,43 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 #endif
   } else {
 #ifdef PADDLE_WITH_XPU_XRE5
-    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
-                                                         x,
-                                                         w,
-                                                         y,
-                                                         m,
-                                                         n,
-                                                         k,
-                                                         x_trans,
-                                                         w_trans,
-                                                         x_maxptr,
-                                                         w_maxptr,
-                                                         y_maxptr,
-                                                         ldx,
-                                                         ldw,
-                                                         ldy,
-                                                         alpha,
-                                                         beta,
-                                                         bias,
-                                                         act,
-                                                         scale_x,
-                                                         scale_w,
-                                                         scale_x_mode,
-                                                         scale_w_mode);
-
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+    // set TINTER_RES to float if XPUInOutType is bfloat16 to achieve higher
+    // accuracy
+    using BF16CHECKTYPE = typename XPUTypeTrait<bfloat16>::Type;
+    if (std::is_same<XPUInOutType, BF16CHECKTYPE>::value) {
+      xblas::FcFusionDesc<FCT, float, float> desc_subs{
+          alpha,
+          beta,
+      };
+      r = xblas::fc_fusion<XPUType,
+                           XPUType,
+                           XPUInOutType,
+                           XPUInOutType,
+                           FCT,
+                           float,
+                           float,
+                           float,
+                           float>(
+          ctx, t_x, t_w, t_input, t_y, desc_subs, epilogue);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+    } else {
+      r = xblas::fc_fusion<XPUType,
+                           XPUType,
+                           XPUInOutType,
+                           XPUInOutType,
+                           FCT,
+                           float,
+                           XPUInOutType,
+                           float,
+                           float>(ctx, t_x, t_w, t_input, t_y, desc, epilogue);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+    }
 #else
+    if (input != nullptr) {
+      r = xpu::Error_t::NOT_IMPLEMENT;
+      PADDLE_ENFORCE_XDNN_SUCCESS(
+          r, "xblas_fc_wrapper does not support matrix C in kl2.");
+    }
     r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                        x,
                                                        w,
@@ -340,45 +417,48 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
   }
 }
 
-#define DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUType, FCT)          \
-  template <>                                                       \
-  void xblas_fc_wrapper<XPUType, FCT>(xpu::Context * ctx,           \
-                                      const XPUType* x,             \
-                                      const XPUType* w,             \
-                                      XPUType* y,                   \
-                                      int m,                        \
-                                      int n,                        \
-                                      int k,                        \
-                                      bool x_trans,                 \
-                                      bool w_trans,                 \
-                                      const float* x_maxptr,        \
-                                      const float* w_maxptr,        \
-                                      float* y_maxptr,              \
-                                      int ldx,                      \
-                                      int ldw,                      \
-                                      int ldy,                      \
-                                      float alpha,                  \
-                                      float beta,                   \
-                                      const float* bias,            \
-                                      const xpu::Activation_t& act, \
-                                      const float* scale_x,         \
-                                      const float* scale_w,         \
-                                      int scale_x_mode,             \
-                                      int scale_w_mode) {           \
-    int r = xpu::Error_t::INVALID_PARAM;                            \
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_wrapper");             \
+#define DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUType, XPUInOutType, FCT) \
+  template <>                                                            \
+  void xblas_fc_wrapper<XPUType, XPUInOutType, FCT>(                     \
+      xpu::Context * ctx,                                                \
+      const XPUType* x,                                                  \
+      const XPUType* w,                                                  \
+      const XPUInOutType* input,                                         \
+      XPUInOutType* y,                                                   \
+      int m,                                                             \
+      int n,                                                             \
+      int k,                                                             \
+      bool x_trans,                                                      \
+      bool w_trans,                                                      \
+      const float* x_maxptr,                                             \
+      const float* w_maxptr,                                             \
+      const float* input_maxptr,                                         \
+      float* y_maxptr,                                                   \
+      int ldx,                                                           \
+      int ldw,                                                           \
+      int ldy,                                                           \
+      float alpha,                                                       \
+      float beta,                                                        \
+      const float* bias,                                                 \
+      const xpu::Activation_t& act,                                      \
+      const float* scale_x,                                              \
+      const float* scale_w,                                              \
+      int scale_x_mode,                                                  \
+      int scale_w_mode) {                                                \
+    int r = xpu::Error_t::INVALID_PARAM;                                 \
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_wrapper");                  \
   }
 
-DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int_with_ll_t)
-DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int16_t)
-DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int32_t)
-DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, XPUTypeFP16)
-DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, int32_t)
-DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, tfloat32)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, XPUTypeBF16, int_with_ll_t)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, XPUTypeBF16, int16_t)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, XPUTypeBF16, int32_t)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, XPUTypeBF16, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, XPUTypeFP16, int32_t)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, XPUTypeFP16, tfloat32)
 
 #ifndef PADDLE_WITH_XPU_XRE5
 // disable in kl2
-DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(float, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(float, float, XPUTypeFP16)
 #endif
 
 template <typename XPUType, typename FCT, typename TGEMM_OUT>
@@ -496,28 +576,31 @@ DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16,
                                            XPUTypeFP16)
 #endif
 
-template <typename T>
+template <typename T, typename TInOut>
 static void MatMulXPUFunction(
     xpu::Context* xpu_ctx,
     const T* x,
     const T* y,
-    T* out,
+    const TInOut* input,
+    TInOut* out,
     const XpuFcInfo& fcinfo,
     float alpha,
     float beta = 0.f,
     bool is_grad = false,
     xpu::Activation_t act = xpu::Activation_t::LINEAR) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  using XPUInOutType = typename XPUTypeTrait<TInOut>::Type;
   int fc_calc_type = FCCalcType<XPUType>();
 
-  decltype(&xblas_fc_wrapper<XPUType, int16_t>) xblas_fc_api_list[6] = {
-      &xblas_fc_wrapper<XPUType, int16_t>,
-      &xblas_fc_wrapper<XPUType, int32_t>,
-      &xblas_fc_wrapper<XPUType, float>,
-      &xblas_fc_wrapper<XPUType, int_with_ll_t>,
-      &xblas_fc_wrapper<XPUType, tfloat32>,
-      &xblas_fc_wrapper<XPUType, XPUTypeFP16>,
-  };
+  decltype(&xblas_fc_wrapper<XPUType, XPUInOutType, int16_t>)
+      xblas_fc_api_list[6] = {
+          &xblas_fc_wrapper<XPUType, XPUInOutType, int16_t>,
+          &xblas_fc_wrapper<XPUType, XPUInOutType, int32_t>,
+          &xblas_fc_wrapper<XPUType, XPUInOutType, float>,
+          &xblas_fc_wrapper<XPUType, XPUInOutType, int_with_ll_t>,
+          &xblas_fc_wrapper<XPUType, XPUInOutType, tfloat32>,
+          &xblas_fc_wrapper<XPUType, XPUInOutType, XPUTypeFP16>,
+      };
 
   decltype(&xblas_fc_batch_wrapper<XPUType, int16_t, float>)
       xblas_fc_batch_api_list[6] = {
@@ -554,6 +637,7 @@ static void MatMulXPUFunction(
   bool trans_y = fcinfo.trans_y;
   float* max_x = fcinfo.max_x;
   float* max_y = fcinfo.max_y;
+  float* max_input = fcinfo.max_input;
   float* max_out = fcinfo.max_out;
   bool is_x_need_broadcast = fcinfo.is_x_need_broadcast;
   bool is_y_need_broadcast = fcinfo.is_y_need_broadcast;
@@ -568,7 +652,8 @@ static void MatMulXPUFunction(
     xblas_fc_api(xpu_ctx,
                  reinterpret_cast<const XPUType*>(x),
                  reinterpret_cast<const XPUType*>(y),
-                 reinterpret_cast<XPUType*>(out),
+                 reinterpret_cast<const XPUInOutType*>(input),
+                 reinterpret_cast<XPUInOutType*>(out),
                  m,
                  n,
                  k,
@@ -576,6 +661,7 @@ static void MatMulXPUFunction(
                  trans_y,
                  max_x,
                  max_y,
+                 max_input,
                  max_out,
                  ldx,
                  ldy,
@@ -704,6 +790,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         true,
                         nullptr,
                         max_dout,
+                        nullptr,
                         nullptr);
     dx_a = y, dx_b = dout_new;
     dx_shape.is_x_need_broadcast = dout_shape.is_y_need_broadcast;
@@ -715,6 +802,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         true,
                         true,
                         max_dout,
+                        nullptr,
                         nullptr,
                         nullptr);
     dy_a = dout_new, dy_b = x;
@@ -729,6 +817,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         true,
                         nullptr,
                         max_dout,
+                        nullptr,
                         nullptr);
     dx_a = y, dx_b = dout_new;
     dx_shape.is_x_need_broadcast = dout_shape.is_y_need_broadcast;
@@ -741,6 +830,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         false,
                         nullptr,
                         max_dout,
+                        nullptr,
                         nullptr);
     dy_shape.is_x_need_broadcast = dout_shape.is_x_need_broadcast;
     dy_a = x, dy_b = dout_new;
@@ -754,6 +844,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         false,
                         max_dout,
                         nullptr,
+                        nullptr,
                         nullptr);
     dx_a = dout_new, dx_b = y;
     dx_shape.is_y_need_broadcast = dout_shape.is_y_need_broadcast;
@@ -765,6 +856,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         true,
                         false,
                         max_dout,
+                        nullptr,
                         nullptr,
                         nullptr);
     dy_a = dout_new, dy_b = x;
@@ -779,6 +871,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         true,
                         max_dout,
                         nullptr,
+                        nullptr,
                         nullptr);
     dx_a = dout_new, dx_b = y;
     dx_shape.is_y_need_broadcast = dout_shape.is_y_need_broadcast;
@@ -791,6 +884,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         false,
                         nullptr,
                         max_dout,
+                        nullptr,
                         nullptr);
     dy_shape.is_x_need_broadcast = dout_shape.is_x_need_broadcast;
     dy_a = x, dy_b = dout_new;
