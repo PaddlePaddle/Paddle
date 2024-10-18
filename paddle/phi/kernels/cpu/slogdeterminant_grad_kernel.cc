@@ -22,4 +22,6 @@ PD_REGISTER_KERNEL(slogdet_grad,
                    ALL_LAYOUT,
                    phi::SlogDeterminantGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -27,9 +27,16 @@
 
 namespace phi {
 
+// T is not complex
 template <typename T>
 T sign(T val) {
   return static_cast<T>(T(0) < val) - (val < T(0));
+}
+
+// T is complex
+template <typename T>
+T sign(T det, T modulus) {
+  return det / modulus;
 }
 
 template <typename T, typename Context>
@@ -63,6 +70,48 @@ struct SlogDeterminantFunctor {
           ? log_vec.push_back(std::log(det_val))
           : log_vec.push_back(std::log(std::abs(
                 det_val)));  // for computing log value of a negative value.
+    }
+    // merge sign_vec and log_vec as final output_vec
+    output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
+    output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
+    phi::TensorFromVector(output_vec, dev_ctx, output);
+  }
+};
+
+template <typename T, typename Context>
+struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& input,
+                  int64_t rank,
+                  int64_t batch_count,
+                  DenseTensor* output) {
+    using MatrixType =
+        Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
+    std::vector<phi::dtype::complex<T>> input_vec;
+    std::vector<phi::dtype::complex<T>> sign_vec;
+    std::vector<phi::dtype::complex<T>> log_vec;
+    std::vector<phi::dtype::complex<T>> output_vec;
+    phi::TensorToVector(input, dev_ctx, &input_vec);
+    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
+      auto begin_iter = input_vec.begin() + i * rank * rank;
+      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<phi::dtype::complex<T>> sub_vec(
+          begin_iter,
+          end_iter);  // get every square matrix data
+      MatrixType matrix(rank, rank);
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
+          matrix(i, j) = static_cast<std::complex<T>>(sub_vec[rank * i + j]);
+        }
+      }
+      VLOG(2) << "det value: " << matrix.determinant();
+      VLOG(2) << "matrix val: " << matrix;
+      std::complex<T> det_val = matrix.determinant();
+      T abs_det_val = std::abs(det_val);
+      sign_vec.push_back(static_cast<phi::dtype::complex<T>>(
+          sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
+      log_vec.push_back(
+          static_cast<phi::dtype::complex<T>>(std::log(abs_det_val)));
     }
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
