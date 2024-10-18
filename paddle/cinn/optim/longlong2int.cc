@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/optim/longlong2int.h"
 #include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_utils.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 
@@ -61,11 +62,13 @@ class NarrowLonglong2Int : public ir::IRMutator<> {
 };
 
 void TryNarrowLonglong2Int(Expr* expr) {
+  VLOG(6) << "Before TryNarrowLonglong2Int, Expr = \n" << *expr;
   CheckOverflow check_overflow;
   if (!check_overflow.is_overflow(expr)) {
     NarrowLonglong2Int narrow;
     narrow(expr);
   }
+  VLOG(6) << "After TryNarrowLonglong2Int, Expr = \n" << *expr;
 }
 }  // namespace optim
 }  // namespace cinn
