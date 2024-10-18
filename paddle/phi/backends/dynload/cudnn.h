@@ -221,6 +221,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7_REMOVED_IN_E9(
 
 #if CUDNN_VERSION >= 90000
 #define CUDNN_DNN_ROUTINE_EACH_R9(__macro) \
+  __macro(cudnnGetLastErrorString);        \
   __macro(cudnnGetRNNWeightSpaceSize);     \
   __macro(cudnnGetRNNTempSpaceSizes);      \
   __macro(cudnnRNNForward);                \
