@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/cross_entropy_with_softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/cumsum.h"
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
+#include "paddle/phi/infermeta/spmd_rules/einsum.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
 #include "paddle/phi/infermeta/spmd_rules/expand_as.h"
