@@ -19,8 +19,6 @@ import sys
 import numpy as np
 import tensorrt as trt
 
-from .util import get_trt_version_list
-
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 if parent_dir not in sys.path:
@@ -33,15 +31,17 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-version_list = get_trt_version_list()
+version = trt.__version__
+version_list = list(map(int, version.split('.')))
 
 
 def has_dynamic_shape(shape):
     return any(s == -1 for s in shape)
 
 
-def add_ones(network, input, name, num_prepend_ones, prepend=True):
+def append_ones(network, input, name, num_prepend_ones):
     layer = network.add_shuffle(input)
+
     if has_dynamic_shape(input.shape):
         input_shape_layer = network.add_shape(input)
         input_shape_layer.name = f"{name}_broadcast_orig_shape"
@@ -49,42 +49,28 @@ def add_ones(network, input, name, num_prepend_ones, prepend=True):
             (num_prepend_ones,), np.ones((num_prepend_ones,), dtype=np.int32)
         )
         prepend_shape_layer.name = f"{name}_broadcast_prepend_ones"
-        if prepend:
-            reshape_dim_layer = network.add_concatenation(
-                [
-                    prepend_shape_layer.get_output(0),
-                    input_shape_layer.get_output(0),
-                ]
-            )
-        else:
-            reshape_dim_layer = network.add_concatenation(
-                [
-                    input_shape_layer.get_output(0),
-                    prepend_shape_layer.get_output(0),
-                ]
-            )
+        reshape_dim_layer = network.add_concatenation(
+            [prepend_shape_layer.get_output(0), input_shape_layer.get_output(0)]
+        )
         reshape_dim_layer.axis = 0
         reshape_dim_layer.name = f"{name}_broadcast_final_shape"
         layer.set_input(1, reshape_dim_layer.get_output(0))
     else:
-        if prepend:
-            layer.reshape_dims = (1,) * num_prepend_ones + tuple(input.shape)
-        else:
-            layer.reshape_dims = tuple(input.shape) + (1,) * num_prepend_ones
+        layer.reshape_dims = (1,) * num_prepend_ones + tuple(input.shape)
 
     layer.name = name
     return layer.get_output(0)
 
 
-def broadcast(network, a, b, a_name, b_name, preset_diff=0, prepend_ones=True):
+def broadcast(network, a, b, a_name, b_name, preset_diff=0):
     a_shape = tuple(a.shape)
     b_shape = tuple(b.shape)
 
     diff = len(a_shape) - len(b_shape) - preset_diff
     if diff > 0:
-        b = add_ones(network, b, f"{b_name}_broadcast", diff, prepend_ones)
+        b = append_ones(network, b, f"{b_name}_broadcast", diff)
     elif diff < 0:
-        a = add_ones(network, a, f"{a_name}_broadcast", -diff, prepend_ones)
+        a = append_ones(network, a, f"{a_name}_broadcast", -diff)
 
     return a, b
 
