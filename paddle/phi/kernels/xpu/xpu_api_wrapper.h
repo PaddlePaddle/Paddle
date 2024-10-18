@@ -242,6 +242,47 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
     r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 #ifdef PADDLE_WITH_XPU_XRE5
+    if (std::is_same<XPUType, XPUTypeBF16>::value) {
+      // auto fc_fusion_bf16 = xblas::fc_fusion<float, float, float, FCT>;
+      // if (fc_calc_type == XPUFCCalcType::FC_TF32) {
+      //   fc_fusion_bf16 = xblas::fc_fusion<float, float, float, tfloat32>;
+      // }
+      xpu::ctx_guard RAII_GUARD(ctx);
+      float* x_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(m * k);
+      float* w_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(n * k);
+      float* y_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(m * n);
+      int r = xpu::cast<XPUType, float>(ctx, l3_addr, x_fp32, m * k);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::cast<XPUType, float>(ctx, w, w_fp32, n * k);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xblas::fc_fusion<float, float, float, FCT>(ctx,
+                                                     x_fp32,
+                                                     w_fp32,
+                                                     y_fp32,
+                                                     m,
+                                                     n,
+                                                     k,
+                                                     false,
+                                                     w_trans,
+                                                     x_maxptr,
+                                                     w_maxptr,
+                                                     y_maxptr,
+                                                     k,
+                                                     ldw,
+                                                     ldy,
+                                                     alpha,
+                                                     beta,
+                                                     bias,
+                                                     act,
+                                                     nullptr,
+                                                     nullptr,
+                                                     0,
+                                                     0);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+      r = xpu::cast<float, XPUType>(ctx, y_fp32, y, m * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      return;
+    }
     r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                          l3_addr,
                                                          w,
@@ -290,6 +331,44 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 #endif
   } else {
 #ifdef PADDLE_WITH_XPU_XRE5
+    if (std::is_same<XPUType, XPUTypeBF16>::value) {
+      // auto fc_fusion_bf16 = xblas::fc_fusion<float, float, float, FCT>;
+      xpu::ctx_guard RAII_GUARD(ctx);
+      float* x_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(m * k);
+      float* w_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(n * k);
+      float* y_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(m * n);
+      int r = xpu::cast<XPUType, float>(ctx, x, x_fp32, m * k);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::cast<XPUType, float>(ctx, w, w_fp32, n * k);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xblas::fc_fusion<float, float, float, FCT>(ctx,
+                                                     x_fp32,
+                                                     w_fp32,
+                                                     y_fp32,
+                                                     m,
+                                                     n,
+                                                     k,
+                                                     false,
+                                                     w_trans,
+                                                     x_maxptr,
+                                                     w_maxptr,
+                                                     y_maxptr,
+                                                     k,
+                                                     ldw,
+                                                     ldy,
+                                                     alpha,
+                                                     beta,
+                                                     bias,
+                                                     act,
+                                                     nullptr,
+                                                     nullptr,
+                                                     0,
+                                                     0);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+      r = xpu::cast<float, XPUType>(ctx, y_fp32, y, m * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      return;
+    }
     r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                          x,
                                                          w,
@@ -400,6 +479,42 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
                                    const float* x_maxptr,
                                    const float* w_maxptr) {
 #ifdef PADDLE_WITH_XPU_XRE5
+  if (std::is_same<XPUType, XPUTypeBF16>::value) {
+    // auto fc_batched_bf16 = xblas::fc_batched<float, float, float, FCT, float,
+    // 0>; if (std::is_same<FCT, tfloat32>::value) {
+    //   fc_fusion_bf16 = xblas::fc_batched<float, float, float, float, float,
+    //   0>;
+    // }
+    xpu::ctx_guard RAII_GUARD(xpu_ctx);
+    float* x_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(m * k);
+    float* w_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(n * k);
+    float* y_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(m * n);
+    int r = xpu::cast<XPUType, float>(xpu_ctx, x, x_fp32, m * k);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(xpu_ctx, w, w_fp32, n * k);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xblas::fc_batched<float, float, float, FCT, float, 0>(xpu_ctx,
+                                                              bs,
+                                                              trans_x,
+                                                              trans_w,
+                                                              m,
+                                                              n,
+                                                              k,
+                                                              alpha,
+                                                              x_fp32,
+                                                              stride_x,
+                                                              w_fp32,
+                                                              stride_w,
+                                                              beta,
+                                                              y_fp32,
+                                                              stride_y,
+                                                              x_maxptr,
+                                                              w_maxptr);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_batched");
+    r = xpu::cast<float, XPUType>(xpu_ctx, y_fp32, y, m * n);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    return;
+  }
   int r = xblas::fc_batched<XPUType, XPUType, XPUType, FCT, TGEMM_OUT, 0>(
       xpu_ctx,
       bs,

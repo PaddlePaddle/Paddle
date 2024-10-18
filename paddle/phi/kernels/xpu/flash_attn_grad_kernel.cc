@@ -132,6 +132,90 @@ void FlashAttnGradKernel(const Context& ctx,
     flash_attention_grad_kernel =
         baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, XPUTypeFP16, int>;
   }
+  if (std::is_same<phi::dtype::bfloat16, T>::value) {
+    // input
+    float* dout_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(dout.numel());
+    float* q_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(q.numel());
+    float* k_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(k.numel());
+    float* v_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(v.numel());
+    float* out_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(out.numel());
+    // output
+    float* dq_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(dq->numel());
+    float* dk_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(dk->numel());
+    float* dv_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(dv->numel());
+    int r = xpu::cast<XPUType, float>(
+        ctx.x_context(), dout_data, dout_fp32_data, dout.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        ctx.x_context(), q_data, q_fp32_data, q.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        ctx.x_context(), k_data, k_fp32_data, k.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        ctx.x_context(), v_data, v_fp32_data, v.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        ctx.x_context(), out_data, out_fp32_data, out.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    auto flash_attention_grad_kernel_bf16 =
+        baidu::xpu::xfa::mha_varlen_bwd<float, float, tfloat32, int>;
+    if (fa_tgemm == XPU_FA_TGEMM::FA_FLOAT) {
+      flash_attention_grad_kernel_bf16 =
+          baidu::xpu::xfa::mha_varlen_bwd<float, float, float, int>;
+    }
+    r = flash_attention_grad_kernel_bf16(
+        ctx.x_context(),
+        dout_fp32_data,                             // dout
+        q_fp32_data,                                // q
+        k_fp32_data,                                // k
+        v_fp32_data,                                // v
+        out_fp32_data,                              // out
+        softmax_lse_data,                           // softmax_lse
+        dq_fp32_data,                               // dq
+        dk_fp32_data,                               // dk
+        dv_fp32_data,                               // dv
+        qlod,                                       // lod_seqlens_q
+        kvlod,                                      // lod_seqlens_k
+        seqlen_q,                                   // max_seqlen_q
+        seqlen_k,                                   // max_seqlen_k
+        num_heads,                                  // head_num
+        num_heads_k,                                // head_num_k
+        head_size,                                  // head_dim
+        1.0f / std::sqrt(head_size),                // softmax_scale
+        dropout,                                    // p_dropout
+        static_cast<int32_t>(seed_offset_data[0]),  // seed
+        causal,                                     // is_causal
+        nullptr,                                    // attn_mask
+        bias_data,                                  // bias
+        nullptr,                                    // q_maxptr
+        nullptr,                                    // k_maxptr
+        nullptr,                                    // v_maxptr
+        nullptr,                                    // o_maxptr
+        nullptr,                                    // dq_maxptr
+        nullptr,                                    // dk_maxptr
+        nullptr,                                    // dv_maxptr
+        nullptr,                                    // do_maxptr
+        false,                                      // is_qkv_fusion
+        false,                                      // is_dqkv_fusion
+        fa_layout,                                  // qkv_layout
+        nullptr,                                    // alibi_slopes
+        {},                                         // alibi_slopes_shape
+        -1,                                         // window_size_left
+        -1                                          // window_size_right
+    );
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
+    r = xpu::cast<float, XPUType>(
+        ctx.x_context(), dq_fp32_data, dq_data, dq->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<float, XPUType>(
+        ctx.x_context(), dk_fp32_data, dk_data, dk->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<float, XPUType>(
+        ctx.x_context(), dv_fp32_data, dv_data, dv->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    return;
+  }
   // template<typename T, typename TACCUM, typename TGEMM, typename TID = int>
   // int mha_varlen_bwd(xdnn::Context* ctx, const T* dout, const T* q, const T*
   // k, const T* v, const T* out, const TACCUM* softmax_lse, T* dq, T* dk, T*
