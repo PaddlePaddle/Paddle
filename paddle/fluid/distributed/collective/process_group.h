@@ -122,6 +122,10 @@ class ProcessGroup {
       std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>>
           tasks_opt = std::nullopt) {}
 
+  virtual void EagerConnect() {}
+
+  virtual void EagerConnectRingExchange() {}
+
   // without stream APIs
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor UNUSED,

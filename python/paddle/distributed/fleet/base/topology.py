@@ -14,6 +14,7 @@
 
 import collections
 import os
+from distutils.util import strtobool
 from functools import reduce
 from itertools import product
 
@@ -209,6 +210,10 @@ class HybridCommunicateGroup:
             op=paddle.distributed.ReduceOp.SUM,
             group=self._pp_comm_group,
         )
+
+        if strtobool(os.getenv('FLAGS_eager_communication_connection', '0')):
+            if self._pp_comm_group is not None:
+                self._pp_comm_group.process_group.eager_connect_ring_exchange()
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
