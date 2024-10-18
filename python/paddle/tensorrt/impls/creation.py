@@ -90,6 +90,7 @@ def assign_out_converter(network, paddle_op, inputs):
 
     return out_tensor
 
+
 @converter_registry.register("pd_op.arange", trt_version="8.x")
 def arange_converter(network, paddle_op, inputs):
     start, end, step = inputs

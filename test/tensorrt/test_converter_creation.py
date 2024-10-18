@@ -32,7 +32,6 @@ class TestFlattenTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-<<<<<<< HEAD
 class TestAssignTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.assign
@@ -52,15 +51,6 @@ class TestAssignValueTRTPattern(TensorRTBaseTest):
         self.python_api = paddle.assign
         self.api_args = {
             "x": np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')
-=======
-class TestArangeTRTPattern(TensorRTBaseTest):
-    def setUp(self):
-        self.python_api = paddle.arange
-        self.api_args = {
-            "start": np.array([0]).astype("int32"),
-            "end": np.array([6]).astype("int32"),
-            "step": np.array([1]).astype("int32"),
->>>>>>> 079677e1e72efffa4b0691ea3d89992b98493818
         }
         self.program_config = {"feed_list": []}
         self.min_shape = {}
@@ -70,7 +60,22 @@ class TestArangeTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-<<<<<<< HEAD
+class TestArangeTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.arange
+        self.api_args = {
+            "start": np.array([0]).astype("int32"),
+            "end": np.array([6]).astype("int32"),
+            "step": np.array([1]).astype("int32"),
+        }
+        self.program_config = {"feed_list": []}
+        self.min_shape = {}
+        self.max_shape = {}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 class TestAssignOutTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.assign
@@ -86,7 +91,5 @@ class TestAssignOutTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-=======
->>>>>>> 079677e1e72efffa4b0691ea3d89992b98493818
 if __name__ == "__main__":
     unittest.main()
