@@ -310,20 +310,14 @@ PreparedOp PrepareImpl(
           auto comm_context =
               static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
                   ->GetOrCreateCommContext(place);
-          auto default_stream =
+          auto original_stream =
               static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
           dev_ctx =
               static_cast<phi::distributed::NCCLCommContext*>(comm_context)
                   ->GetDevContext();
           dev_ctx->SetCommContext(comm_context);
-          // Note: In dynamic mode, c_softmax_with_cross_entropy need use global
-          // calculate stream (default stream). Using the comm_ctx's stream
-          // will lead to synchronization issues, causing accuracy diff in
-          // test_parallel_dygraph_mp_layers.
-          if (phi_kernel_name == "c_softmax_with_cross_entropy") {
-            static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
-                default_stream, false);
-          }
+          static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(original_stream,
+                                                                false);
         }
       }
 #endif
