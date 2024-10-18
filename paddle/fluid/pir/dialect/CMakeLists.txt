@@ -287,7 +287,9 @@ set(op_dialect_srcs
     ${bwd_sparse_op_source_file}
     ${api_source_file}
     ${api_source_file}
-    ${cache_grad_op_symbol_shape_file})
+    ${cache_grad_op_symbol_shape_file}
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.cc
+)
 
 if(WITH_ONEDNN)
   set(op_dialect_srcs
