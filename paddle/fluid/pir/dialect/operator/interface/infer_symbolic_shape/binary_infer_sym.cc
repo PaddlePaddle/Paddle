@@ -1595,8 +1595,8 @@ bool SolveOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &y_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
-  std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
 
   int x_rank = x_shape.size();
   int y_rank = y_shape.size();
@@ -1623,24 +1623,17 @@ bool SolveOpInferSymbolicShape(pir::Operation *op,
 
   const symbol::DimExpr &m = x_shape[x_rank - 2];
   std::vector<symbol::DimExpr> out_shape;
-  if (y_rank == 1) {
-    // 1. x: [*, m, m] y: [m] -> out: [*, m]
-    // 2. x: [m, m] y: [m] -> out: [m]
-    infer_context->AddEqualCstr(y_shape[0], m);
-    out_shape.assign(x_shape.begin(), x_shape.end() - 1);
-  } else if (y_rank == 2) {
-    // 1. x: [*, m, m] y: [*, m] -> out: [*, m]
-    // 2. x: [m, m] y: [m, n] -> out: [m, n]
-    // 3. x: [*, m, m] y: [m, n] -> out: [*, m, n]
-    out_shape.assign(x_shape.begin(), x_shape.end() - 1);
-    infer_context->AddEqualCstr(y_shape[0], m);
-    out_shape.push_back(y_shape[1]);
+
+  bool y_broadcasted = y_rank == 1;
+  const symbol::DimExpr &n = y_shape[y_rank - 1];
+  if (x_rank >= y_rank) {
+    out_shape.assign(x_shape.begin(), x_shape.end() - 2);
   } else {
-    // 1. x: [*, m, m] y: [*, m, n] -> out: [*, m, n]
-    infer_context->AddEqualCstr(y_shape[y_rank - 2], m);
-    infer_context->AddEqualCstr(x_shape[0], y_shape[0]);
-    out_shape.assign(x_shape.begin(), x_shape.end() - 1);
-    out_shape.push_back(y_shape[y_rank - 1]);
+    out_shape.assign(y_shape.begin(), y_shape.end() - 2);
+  }
+  // out_shape.push_back(m);
+  if (!y_broadcasted) {
+    out_shape.push_back(n);
   }
 
   infer_context->SetShapeOrDataForValue(
