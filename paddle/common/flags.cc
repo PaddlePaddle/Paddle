@@ -1248,6 +1248,10 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
                          "enable nccl debug mode to synchronize nccl comm");
 #endif
 
+PHI_DEFINE_EXPORTED_bool(eager_communication_connection,
+                         false,
+                         "enable eager to create nccl comm");
+
 /**
  * Autotune related FLAG
  * Name: FLAGS_use_autotune
