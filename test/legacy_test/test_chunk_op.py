@@ -58,7 +58,7 @@ class TestChunkOpError(unittest.TestCase):
                 x = paddle.uniform([1, 1, 1], dtype='float32')
                 paddle.chunk(x, chunks=0)
 
-            self.assertRaises(ValueError, test_0_chunks_tensor)
+            self.assertRaises(ZeroDivisionError, test_0_chunks_tensor)
 
 
 class API_TestChunk(unittest.TestCase):
@@ -107,6 +107,20 @@ class API_TestChunk1(unittest.TestCase):
             np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
 
 
+class API_TestChunk2(unittest.TestCase):
+    def test_out(self):
+        with base.program_guard(base.Program(), base.Program()):
+            data1 = paddle.static.data('data1', shape=[2, 3], dtype='float64')
+            x0, x1 = paddle.chunk(data1, chunks=2, axis=1)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            input1 = np.random.random([2, 3]).astype('float64')
+            (r0, r1) = exe.run(feed={"data1": input1}, fetch_list=[x0, x1])
+            ex_x0, ex_x1 = np.array_split(input1, 2, axis=1)
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
+
+
 class API_TestDygraphChunk(unittest.TestCase):
     def test_out1(self):
         with base.dygraph.guard():
@@ -135,6 +149,18 @@ class API_TestDygraphChunk(unittest.TestCase):
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def test_out3(self):
+        with base.dygraph.guard():
+            input_1 = np.random.random([2, 3]).astype("bool")
+            # input is a variable which shape is [2, 3]
+            input = paddle.to_tensor(input_1)
+            x0, x1 = paddle.chunk(input, chunks=2, axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            ex_x0, ex_x1 = np.array_split(input_1, 2, axis=1)
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
 
     def test_axis_tensor_input(self):
         with base.dygraph.guard():
