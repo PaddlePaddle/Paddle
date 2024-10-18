@@ -663,6 +663,7 @@ class FusedCommBuffer:
                 logger.info(
                     "There is at least one parameter whose stop_gradient attribute is True"
                 )
+            self._log_message_printed = True
             return True
 
     @imperative_base.no_grad
