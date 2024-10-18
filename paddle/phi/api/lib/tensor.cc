@@ -537,7 +537,7 @@ Tensor Tensor::contiguous() {
       phi::DenseTensor *new_dense_tensor = nullptr;
       *new_dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
 
-      return Tensor(std::make_shared<phi::TensorBase>(new_dense_tensor),
+      return Tensor(std::shared_ptr<phi::TensorBase>(new_dense_tensor),
                     autograd_meta_,
                     name_);
     } else {
