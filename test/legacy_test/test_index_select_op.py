@@ -67,18 +67,20 @@ class TestIndexSelectOp(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        # if self.x_type == np.complex64 or self.x_type == np.complex128:
-        #     self.check_output(
-        #         check_prim=False, check_pir=True, check_prim_pir=False
-        #     )
-        # else:
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            self.check_output(
+                check_prim=False, check_pir=True, check_prim_pir=False
+            )
+        else:
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
-    # def test_check_grad_normal(self):
-    #     if self.x_type == np.complex64 or self.x_type == np.complex128:
-    #         self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
-    #     else:
-    #         self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+    def test_check_grad_normal(self):
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):

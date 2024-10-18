@@ -187,15 +187,16 @@ __global__ void GatherGPUKernel(const T* input,
     int64_t index_dim_index = next_idx / outer_dim_size;
     U index_val = index[index_dim_index];
 
-    PADDLE_ENFORCE(index_val >= 0 && index_val < input_index_dim_size,
-                   "The index is out of bounds, "
-                   "please check whether the dimensions of index and "
-                   "input meet the requirements. It should "
-                   "be less than [%ld] and greater than or equal to [%ld], but "
-                   "received [%ld]",
-                   input_index_dim_size,
-                   -input_index_dim_size,
-                   index_val);
+    PADDLE_ENFORCE(
+        index_val >= -input_index_dim_size && index_val < input_index_dim_size,
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%ld] and greater than or equal to [%ld], but "
+        "received [%ld]",
+        input_index_dim_size,
+        -input_index_dim_size,
+        index_val);
     if (index_val < 0) {
       index_val += input_index_dim_size;
     }
