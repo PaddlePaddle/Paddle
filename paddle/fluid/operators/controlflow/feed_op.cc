@@ -69,23 +69,18 @@ class FeedOp : public framework::OperatorWithKernel {
       int col = ctx->Attrs().Get<int>("col");
       const auto& feed_item = CheckAndGetFeedItem(x, col);
 
-      if (feed_item.index() == 0) {  // DenseTensor
-        auto& feed_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
-        phi::DenseTensor* out_tensor = out_var->GetMutable<phi::DenseTensor>();
-        phi::DenseTensorMeta meta = out_tensor->meta();
-        meta.dims = feed_tensor.dims();
-        meta.dtype = feed_tensor.dtype();
-        meta.layout = feed_tensor.layout();
-        meta.lod = feed_tensor.lod();
-        meta.strides = feed_tensor.strides();
-        if (meta.strides.size() == -1) {
-          meta.strides = meta.calc_strides(meta.dims);
-        }
-        out_tensor->set_meta(meta);
-      } else {
-        PADDLE_THROW(common::errors::Unimplemented(
-            "Only support DenseTensor for feed op now."));
+      auto& feed_tensor = feed_item;
+      phi::DenseTensor* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensorMeta meta = out_tensor->meta();
+      meta.dims = feed_tensor.dims();
+      meta.dtype = feed_tensor.dtype();
+      meta.layout = feed_tensor.layout();
+      meta.lod = feed_tensor.lod();
+      meta.strides = feed_tensor.strides();
+      if (meta.strides.size() == -1) {
+        meta.strides = meta.calc_strides(meta.dims);
       }
+      out_tensor->set_meta(meta);
     }
   }
 
