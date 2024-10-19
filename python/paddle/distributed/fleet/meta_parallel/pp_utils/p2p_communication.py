@@ -66,27 +66,6 @@ class SendRecvMeta:
         self.has_send_meta = False
         self.has_recv_meta = False
 
-    def _recv_shape_dtype(self, group):
-        # recv len(shape)
-        dims = paddle.to_tensor([0])
-        src_rank = _hcg._get_p2p_prev_rank()
-
-        paddle.distributed.recv(dims, src=src_rank, group=group)
-        dims = dims.item()
-
-        # recv shape
-        shape = paddle.to_tensor([0] * dims)
-        paddle.distributed.recv(shape, src=src_rank, group=group)
-
-        # recv dtype
-        dtype = paddle.to_tensor([0])
-        paddle.distributed.recv(dtype, src=src_rank, group=group)
-
-        # recv stop_gradient
-        stop_grad = paddle.to_tensor([0])
-        paddle.distributed.recv(stop_grad, src=src_rank, group=group)
-        return shape.tolist(), dtype.item(), stop_grad.item()
-
     def recv_meta(self, group):
         src_rank = _hcg._get_p2p_prev_rank()
 
