@@ -224,7 +224,7 @@ Operation* GetDefiningOpForInput(const Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
       index < op->num_operands() && op->operand_source(index),
       true,
-      common::errors::InvalidArgument("Intput operand's index must be valid."));
+      common::errors::InvalidArgument("Input operand's index must be valid."));
   return op->operand_source(index).defining_op();
 }
 

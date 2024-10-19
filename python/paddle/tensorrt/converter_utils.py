@@ -325,6 +325,19 @@ def build_size_tensor(
     return size_tensor
 
 
+# Reduce the given tensor in the TensorRT network to a scalar
+def trt_reduce_to_scalar(network, tensor):
+    if len(tensor.shape) == 0:
+        return tensor
+    axes = 0
+    for i in range(len(tensor.shape)):
+        axes |= 1 << i
+    reduce_layer = network.add_reduce(
+        tensor, trt.ReduceOperation.SUM, axes, keep_dims=False
+    )
+    return reduce_layer.get_output(0)
+
+
 def convert_conv2d(network, paddle_op, inputs):
     if (
         paddle_op.name() == "pd_op.conv2d"

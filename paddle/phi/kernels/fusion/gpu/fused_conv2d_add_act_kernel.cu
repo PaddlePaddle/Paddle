@@ -379,7 +379,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
                     common::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
   size_t workspace_size_limit = 0;

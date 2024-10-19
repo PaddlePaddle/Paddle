@@ -26,7 +26,7 @@ __global__ void test(size_t* a, int size) {
 TEST(LoD, data) {
   paddle::framework::InitDevices();
 
-  paddle::framework::LoD lod{{0, 1, 2}};
+  phi::LoD lod{{0, 1, 2}};
   lod.push_back({0, 2, 4, 5});
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 10, 11}));
 
@@ -58,7 +58,7 @@ TEST(DenseTensor, LoDInGPU) {
   phi::DenseTensor lod_tensor;
   phi::GPUPlace place(0);
 
-  paddle::framework::LoD src_lod;
+  phi::LoD src_lod;
   src_lod.push_back(std::vector<size_t>{0, 2, 4, 6, 8, 10, 12, 14});
 
   lod_tensor.Resize({14, 16});
