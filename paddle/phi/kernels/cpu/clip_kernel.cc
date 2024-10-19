@@ -20,6 +20,3 @@
 
 PD_REGISTER_KERNEL(
     clip, CPU, ALL_LAYOUT, phi::ClipKernel, float, double, int, int64_t) {}
-
-PD_REGISTER_KERNEL(
-    clip, CPU, ALL_LAYOUT, phi::ClipKernel, phi::DenseTensor) {}
