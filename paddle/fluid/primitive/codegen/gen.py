@@ -134,6 +134,7 @@ OTHER_PRIM_VJP_OPS = [
 PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
+    'amin_grad',
     'amax_grad',
     'bce_loss_grad',
     'batch_norm_grad',
