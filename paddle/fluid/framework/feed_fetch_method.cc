@@ -69,7 +69,7 @@ void SetFeedVariable(Scope* scope,
       feed_inputs.resize(index + 1);
     }
     // shared data with input tensor
-    auto& val = PADDLE_GET(phi::DenseTensor, feed_inputs[index]);
+    auto& val = feed_inputs[index];
     val.ShareDataWith(input);
     // set lod
     val.set_lod(input.lod());
