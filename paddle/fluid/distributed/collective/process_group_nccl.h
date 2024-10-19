@@ -239,6 +239,10 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>>
           tasks_opt = std::nullopt);
 
+  void EagerConnect();
+
+  void EagerConnectRingExchange();
+
  private:
   std::shared_ptr<phi::distributed::Store> store_;
 
