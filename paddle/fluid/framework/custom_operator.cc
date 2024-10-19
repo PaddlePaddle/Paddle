@@ -162,6 +162,8 @@ static void RunKernelFunc(
       kernel_ctx.EmplaceBackAttr(ctx.Attr<int>(attr_name));
     } else if (attr_type_str == "float") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<float>(attr_name));
+    } else if (attr_type_str == "double") {
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<double>(attr_name));
     } else if (attr_type_str == "int64_t") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<int64_t>(attr_name));
     } else if (attr_type_str == "std::string") {
@@ -177,7 +179,7 @@ static void RunKernelFunc(
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
-          "Supported data types include `bool`, `int`, `float`, "
+          "Supported data types include `bool`, `int`, `float`, `double`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
           "`std::vector<float>`, `std::vector<int64_t>`, "
           "`std::vector<std::string>`, Please check whether "
@@ -1369,6 +1371,8 @@ void PD_RegisterOperator(const char* kernel_name_cstr,
         op_attrs.push_back("Attr_" + std::to_string(i) + ":int");
       } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_FLOAT32) {
         op_attrs.push_back("Attr_" + std::to_string(i) + ":float");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_FLOAT64) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":double");
       } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_INT64) {
         op_attrs.push_back("Attr_" + std::to_string(i) + ":int64_t");
       } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_STRING) {

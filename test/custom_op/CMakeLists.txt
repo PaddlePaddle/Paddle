@@ -59,6 +59,8 @@ if(WITH_TESTING)
   py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
   py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
   py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
+  py_test(test_custom_extend_attrs_jit SRCS test_custom_extend_attrs_jit.py)
+  set_tests_properties(test_custom_extend_attrs_jit PROPERTIES TIMEOUT 180)
   py_test(test_custom_concat SRCS test_custom_concat.py)
   set_tests_properties(
     test_custom_concat PROPERTIES ENVIRONMENT
@@ -69,6 +71,8 @@ if(WITH_TESTING)
   py_test(test_custom_tanh_double_grad SRCS test_custom_tanh_double_grad.py)
   py_test(test_custom_inplace SRCS test_custom_inplace.py)
   py_test(test_custom_optional SRCS test_custom_optional.py)
+  py_test(test_custom_contiguous SRCS test_custom_contiguous.py)
+  set_tests_properties(test_custom_contiguous PROPERTIES TIMEOUT 180)
 
   # other tests
   py_test(test_sysconfig SRCS test_sysconfig.py)

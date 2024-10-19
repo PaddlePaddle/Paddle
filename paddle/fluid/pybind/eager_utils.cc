@@ -270,6 +270,18 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
+double CastPyArg2AttrDouble(PyObject* obj, ssize_t arg_pos) {
+  if (PyObject_CheckFloat(obj)) {
+    return PyObject_ToDouble(obj);
+  } else {
+    PADDLE_THROW(common::errors::InvalidType(
+        "argument (position %d) must be "
+        "float, but got %s",
+        arg_pos + 1,
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+  }
+}
+
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckStr(obj)) {
     Py_ssize_t size = 0;
