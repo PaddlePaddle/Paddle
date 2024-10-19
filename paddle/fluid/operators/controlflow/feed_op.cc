@@ -98,12 +98,7 @@ class FeedOp : public framework::OperatorWithKernel {
     auto& feed_item = x[col];
 
     framework::proto::VarType::Type expected_data_type;
-    if (feed_item.index() == 0) {  // DenseTensor
-      expected_data_type = framework::TransToProtoVarType(
-          PADDLE_GET_CONST(phi::DenseTensor, feed_item).dtype());
-    } else {  // Strings
-      expected_data_type = framework::proto::VarType::FP32;
-    }
+    expected_data_type = framework::TransToProtoVarType(feed_item.dtype());
 
     return phi::KernelKey(expected_data_type, ctx.GetPlace());
   }
