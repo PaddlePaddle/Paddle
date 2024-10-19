@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-from utils import static_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -277,6 +277,36 @@ class TestScatterNegativeAxis(OpTest):
                 ["X", "Updates"],
                 "Out",
             )
+
+
+class TestOutOfRangeError(unittest.TestCase):
+    def test_dygraph_forward(self):
+        with dygraph_guard():
+            _ = paddle.scatter(
+                x=paddle.randn([100, 3]).cpu(),
+                index=paddle.to_tensor([0, 99, -100]).cpu(),
+                updates=paddle.randn([3, 3]).cpu(),
+                overwrite=False,
+            )
+
+    def test_dygraph_error(self):
+        with dygraph_guard():
+            # out of lower bound
+            with self.assertRaises(IndexError):
+                _ = paddle.scatter(
+                    x=paddle.randn([100, 3]).cpu(),
+                    index=paddle.to_tensor([0, 99, 100]).cpu(),
+                    updates=paddle.randn([3, 3]).cpu(),
+                    overwrite=False,
+                )
+            # out of upper bound
+            with self.assertRaises(IndexError):
+                _ = paddle.scatter(
+                    x=paddle.randn([100, 3]).cpu(),
+                    index=paddle.to_tensor([0, 99, -101]).cpu(),
+                    updates=paddle.randn([3, 3]).cpu(),
+                    overwrite=False,
+                )
 
 
 class TestScatterFP16Op1(TestScatterOp1):

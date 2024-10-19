@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -467,6 +468,36 @@ class TestGatherNegativeAxis(OpTest):
         self.index_type = "int32"
         self.axis = [-1]
         self.axis_type = "int32"
+
+
+class TestOutOfRangeError(unittest.TestCase):
+    def test_dygraph_forwad_and_backward(self):
+        with dygraph_guard():
+            x = paddle.randn([100, 3]).cpu()
+            x.stop_gradient = False
+            y = paddle.gather(
+                x,
+                paddle.to_tensor([0, -2]).cpu(),
+                axis=-1,
+            )
+            grad_x = paddle.grad(y, x)
+
+    def test_dygraph_error(self):
+        with dygraph_guard():
+            # out of lower bound
+            with self.assertRaises(IndexError):
+                _ = paddle.gather(
+                    paddle.randn([100, 3]).cpu(),
+                    paddle.to_tensor([0, -4]).cpu(),
+                    axis=1,
+                )
+            # out of upper bound
+            with self.assertRaises(IndexError):
+                _ = paddle.gather(
+                    paddle.randn([100, 3]).cpu(),
+                    paddle.to_tensor([0, 3]).cpu(),
+                    axis=1,
+                )
 
 
 class TestCase6Complex64(TestCase6):
