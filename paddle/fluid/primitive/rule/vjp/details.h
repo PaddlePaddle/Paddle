@@ -486,7 +486,8 @@ void scatter_grad(const Tensor& index,
       decltype(updates_dims) padding_dims = updates_dims;
       padding_dims[0] = updates_dims[0] - index_dims[0];
       auto padding_zeros = full<T>(padding_dims, 0, updates.dtype());
-      tmp_updates_grad = concat<T>({tmp_updates_grad, padding_zeros}, 0);
+      tmp_updates_grad =
+          concat<T>({tmp_updates_grad, std::move(padding_zeros)}, 0);
     }
     set_output<T>(tmp_updates_grad, updates_grad);
   }
