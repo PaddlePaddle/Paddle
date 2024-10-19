@@ -13,7 +13,7 @@ endif()
 
 if(WITH_XPU)
   list(APPEND DEVICE_SRCS device/xpu/xpu_info.cc
-       device/xpu/xpu_resource_pool.cc)
+       device/xpu/xpu_resource_pool.cc device/xpu/xpu_op_list.cc)
 endif()
 
 if(WITH_CUSTOM_DEVICE)

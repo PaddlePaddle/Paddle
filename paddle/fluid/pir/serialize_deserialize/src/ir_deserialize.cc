@@ -42,7 +42,7 @@ void ProgramReader::ReadProgram(Json* program_json, pir::Program* program) {
       program_json->at(REGIONS).size(),
       1,
       common::errors::InvalidArgument(
-          "The redions size of program module should be 1 but got %d.",
+          "The regions size of program module should be 1 but got %d.",
           program_json->at(REGIONS).size()));
   auto& region_json = program_json->at(REGIONS).at(0);
   auto& block_json = region_json.at(BLOCKS).at(0);
@@ -138,7 +138,7 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
   // attr is_distributed; is_parameter; need_clip; parameter_name; persistable;
   // stop_gradient; trainable;
   if (patch_builder->HasOpPatch(PARAMETEROP)) {
-    VLOG(8) << PARAMETEROP << " brefore: " << *op_json;
+    VLOG(8) << PARAMETEROP << " before: " << *op_json;
     Json op_patch = patch_builder->GetJsonOpPatch(PARAMETEROP);
     VLOG(8) << " get op patch:  " << op_patch;
     patch_builder->ApplyOpPatches(PARAMETEROP, op_json, op_patch);
@@ -231,7 +231,7 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
     return ReadParameterOp(op_json);
   }
   if (patch_builder->HasOpPatch(op_name)) {
-    VLOG(8) << op_name << " brefore: " << *op_json;
+    VLOG(8) << op_name << " before: " << *op_json;
     Json op_patch = patch_builder->GetJsonOpPatch(op_name);
     VLOG(8) << " get op patch:  " << op_patch;
     attr_patch = patch_builder->GetOpAttrPatchMap(op_patch);
@@ -389,7 +389,7 @@ pir::Attribute ProgramReader::ReadAttribute(Json* attr_json) {
   VLOG(6) << "Begin Read Attribute. ";
   auto attr_type = attr_json->at(ATTR_TYPE).at(ID).template get<std::string>();
   if (patch_builder && patch_builder->HasAttrPatch(attr_type)) {
-    VLOG(8) << attr_type << " brefore: " << *attr_json;
+    VLOG(8) << attr_type << " before: " << *attr_json;
     Json attr_patch = patch_builder->GetJsonAttrPatch(attr_type);
     patch_builder->ApplyAttrTypePatches(
         attr_type, &attr_json->at(ATTR_TYPE), attr_patch);
@@ -403,7 +403,7 @@ pir::Type ProgramReader::ReadType(Json* type_json) {
   auto type_name = type_json->at(ID).template get<std::string>();
   VLOG(8) << "Check patches for: " << type_name;
   if (patch_builder && patch_builder->HasTypePatch(type_name)) {
-    VLOG(8) << type_name << " brefore: " << *type_json;
+    VLOG(8) << type_name << " before: " << *type_json;
     Json type_patch = patch_builder->GetJsonTypePatch(type_name);
     patch_builder->ApplyTypePatches(type_name, type_json, type_patch);
     VLOG(8) << type_name << " has been patched: " << *type_json;

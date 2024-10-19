@@ -213,7 +213,7 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
                                     x_grad_data,
                                     out_grad,
                                     y);
-  // Calcuate Y Grad.
+  // Calculate Y Grad.
   CalculateGrad<Context, T, IndexT>(ctx,
                                     out_grad_data,
                                     s_index,

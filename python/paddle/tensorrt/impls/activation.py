@@ -20,11 +20,21 @@ from paddle.tensorrt.converter_utils import (
 )
 from paddle.tensorrt.register import converter_registry
 
+activation_type_map = {
+    "pd_op.tanh": trt.ActivationType.TANH,
+    "pd_op.relu": trt.ActivationType.RELU,
+    "pd_op.sigmoid": trt.ActivationType.SIGMOID,
+}
+
 
 @converter_registry.register("pd_op.relu", trt_version="8.x")
-def relu_converter(network, paddle_op, inputs):
-    relu_layer = network.add_activation(inputs[0], trt.ActivationType.RELU)
-    return relu_layer.get_output(0)
+@converter_registry.register("pd_op.tanh", trt_version="8.x")
+@converter_registry.register("pd_op.sigmoid", trt_version="8.x")
+def activation_converter(network, paddle_op, inputs):
+    layer = network.add_activation(
+        inputs[0], activation_type_map[paddle_op.name()]
+    )
+    return layer.get_output(0)
 
 
 @converter_registry.register("pd_op.softmax", trt_version="8.x")

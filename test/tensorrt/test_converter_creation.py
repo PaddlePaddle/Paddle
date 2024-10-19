@@ -14,6 +14,7 @@
 
 import unittest
 
+import numpy as np
 from tensorrt_test_base import TensorRTBaseTest
 
 import paddle
@@ -23,6 +24,22 @@ class TestFlattenTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.full
         self.api_args = {"shape": [3, 2], "fill_value": 1.0}
+        self.program_config = {"feed_list": []}
+        self.min_shape = {}
+        self.max_shape = {}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestArangeTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.arange
+        self.api_args = {
+            "start": np.array([0]).astype("int32"),
+            "end": np.array([6]).astype("int32"),
+            "step": np.array([1]).astype("int32"),
+        }
         self.program_config = {"feed_list": []}
         self.min_shape = {}
         self.max_shape = {}
