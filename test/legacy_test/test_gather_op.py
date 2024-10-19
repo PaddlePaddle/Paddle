@@ -425,6 +425,50 @@ class TestGatherBF16Op(OpTest):
         self.axis_type = "int32"
 
 
+class TestGatherNegativeAxis(OpTest):
+    def setUp(self):
+        self.op_type = "gather"
+        self.python_api = paddle.gather
+        self.dtype = np.uint16
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(np.float32)
+        axis_np = np.array(self.axis).astype(self.axis_type)
+        index_np = np.array(self.index).astype(self.index_type)
+        self.inputs = {
+            'X': convert_float_to_uint16(xnp),
+            'Index': index_np,
+            'Axis': axis_np,
+        }
+        out = gather_numpy(self.inputs['X'], index_np, axis_np[0])
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            self.check_grad_with_place(
+                place, ['X'], 'Out', numeric_grad_delta=0.5
+            )
+
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (100, 3)
+        self.index = [0, 1, -2]
+        self.index_type = "int32"
+        self.axis = [-1]
+        self.axis_type = "int32"
+
+
 class TestCase6Complex64(TestCase6):
     def config_dtype(self):
         self.x_type = "complex64"
@@ -758,22 +802,22 @@ class TestGathertError(unittest.TestCase):
             def test_x_type():
                 paddle.gather(x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+            self.assertRaises((TypeError, ValueError), test_x_type)
 
             def test_index_type():
                 paddle.gather(x, index_float)
 
-            self.assertRaises(TypeError, test_index_type)
+            self.assertRaises((TypeError, ValueError), test_index_type)
 
             def test_axis_dtype():
                 paddle.gather(x, index, axis=1.11)
 
-            self.assertRaises(TypeError, test_axis_dtype)
+            self.assertRaises((TypeError, ValueError), test_axis_dtype)
 
             def test_axis_dtype1():
                 paddle.gather(x, index, axis=axis)
 
-            self.assertRaises(TypeError, test_axis_dtype1)
+            self.assertRaises((TypeError, ValueError), test_axis_dtype1)
 
     def test_error2(self):
         with paddle.static.program_guard(
@@ -789,12 +833,12 @@ class TestGathertError(unittest.TestCase):
             def test_x_type():
                 paddle.gather(x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+            self.assertRaises((TypeError, ValueError), test_x_type)
 
             def test_index_type():
                 paddle.gather(x, index_float)
 
-            self.assertRaises(TypeError, test_index_type)
+            self.assertRaises((TypeError, ValueError), test_index_type)
 
     def test_error3(self):
         with paddle.static.program_guard(

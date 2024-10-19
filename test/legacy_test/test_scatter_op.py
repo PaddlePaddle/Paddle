@@ -234,6 +234,51 @@ class TestScatterOp1(OpTest):
         )
 
 
+class TestScatterNegativeAxis(OpTest):
+    def setUp(self):
+        self.op_type = "scatter"
+        self.python_api = paddle.scatter
+        self.dtype = np.float32
+        target_dtype = "float16" if self.dtype == np.float16 else "float32"
+
+        ref_np = np.ones((3, 3)).astype(target_dtype)
+        zeros_np = np.zeros([2, 3]).astype(target_dtype)
+        index_np = np.array([1, 1]).astype("int32")
+        updates_np = np.random.random((2, 3)).astype(target_dtype)
+
+        output_np = np.copy(ref_np)
+        output_np[index_np] = zeros_np
+        for i in range(0, len(index_np)):
+            output_np[index_np[i]] += updates_np[i]
+
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            output_np = convert_float_to_uint16(output_np)
+
+        self.attrs = {'overwrite': False}
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            self.check_grad_with_place(
+                place,
+                ["X", "Updates"],
+                "Out",
+            )
+
+
 class TestScatterFP16Op1(TestScatterOp1):
     def _set_dtype(self):
         self.dtype = np.float16

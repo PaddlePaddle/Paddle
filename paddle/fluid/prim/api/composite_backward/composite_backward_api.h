@@ -158,11 +158,11 @@ void gather_grad(const Tensor& x,
   int axis_value = axis.to<int>();
   int rank = x.dims().size();
   if (axis_value < 0) {
-    axis_value = axis_value + rank;
+    axis_value += rank;
   }
   tmp_perm.push_back(axis_value);
   // make other ranks
-  for (int i = 0; i < x.dims().size(); ++i) {
+  for (int i = 0; i < rank; ++i) {
     if (i != axis_value) {
       tmp_perm.push_back(i);
     }

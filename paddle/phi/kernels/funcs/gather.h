@@ -177,14 +177,16 @@ void GatherV2Function(const phi::CPUContext& ctx,
                           input_index_dim_size,
                           index_data[i],
                           i));
-    PADDLE_ENFORCE_GE(index_data[i],
-                      0,
-                      common::errors::OutOfRange(
-                          "The element of Index must be greater than or equal "
-                          "to 0, but received index element which is %d in the "
-                          "%d index.",
-                          index_data[i],
-                          i));
+    PADDLE_ENFORCE_GE(
+        index_data[i],
+        -input_index_dim_size,
+        common::errors::OutOfRange(
+            "The element of Index must be greater than or equal "
+            "to %d, but received index element which is %d in the "
+            "%d index.",
+            -input_index_dim_size,
+            index_data[i],
+            i));
   }
 
   int64_t inner_dim_size = 1;
@@ -210,8 +212,11 @@ void GatherV2Function(const phi::CPUContext& ctx,
   int out_index = 0;
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < index_size; j++) {
+      const int64_t index_data_j =
+          (index_data[j] < 0 ? index_data[j] + input_index_dim_size
+                             : index_data[j]);
       for (int64_t k = 0; k < outer_dim_size; k++) {
-        int64_t index = k + index_data[j] * outer_dim_size +
+        int64_t index = k + index_data_j * outer_dim_size +
                         (i * input_size / inner_dim_size);
         out_data[out_index] = input_data[index];
         out_index++;
@@ -259,8 +264,11 @@ void GatherV2GradFunction(const phi::CPUContext& ctx,
 
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < input_index_dim_size; j++) {
+      const int64_t index_data_j =
+          (index_data[j] < 0 ? index_data[j] + input_index_dim_size
+                             : index_data[j]);
       for (int64_t k = 0; k < outer_dim_size; k++) {
-        int64_t index = k + index_data[j] * outer_dim_size +
+        int64_t index = k + index_data_j * outer_dim_size +
                         i * outer_dim_size * out_index_dim_size;
         out_data[index] += input_data[j * outer_dim_size + k];
       }
