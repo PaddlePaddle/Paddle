@@ -206,7 +206,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             :,
             [-1, -2, 2],
         ] = 8
-        print("here")
+
         if self.dtype == 'bfloat16':
             x = paddle.cast(x, dtype='float32')
         np.testing.assert_allclose(x.numpy(), np_data)
