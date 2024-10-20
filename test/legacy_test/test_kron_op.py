@@ -26,7 +26,9 @@ from paddle.base import core
 class TestKronOp(OpTest):
     def setUp(self):
         self.op_type = "kron"
+        self.prim_op_type = "prim"
         self.python_api = paddle.kron
+        self.public_python_api = paddle.kron
         self.dtype = self._init_dtype()
         x = np.random.uniform(size=(10, 10)).astype(self.dtype)
         y = np.random.uniform(size=(10, 10)).astype(self.dtype)
@@ -41,13 +43,30 @@ class TestKronOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set('X'), check_pir=True)
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set('X'),
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestKronOp2(TestKronOp):
@@ -87,7 +106,9 @@ class TestKronFP16Op(TestKronOp):
 class TestKronBF16Op(TestKronOp):
     def setUp(self):
         self.op_type = "kron"
+        self.prim_op_type = "prim"
         self.python_api = paddle.kron
+        self.public_python_api = paddle.kron
         self.dtype = np.uint16
         self.np_dtype = "float32"
         x = np.random.uniform(size=(10, 10)).astype(self.np_dtype)
@@ -106,17 +127,31 @@ class TestKronBF16Op(TestKronOp):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['X', 'Y'], 'Out', check_pir=True
+            self.place,
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_grad_ignore_x(self):
         self.check_grad_with_place(
-            self.place, ['Y'], 'Out', no_grad_set=set('X'), check_pir=True
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set('X'),
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_grad_ignore_y(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', no_grad_set=set('Y'), check_pir=True
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 

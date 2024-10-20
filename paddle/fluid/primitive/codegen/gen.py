@@ -93,6 +93,7 @@ BINARY_PRIM_VJP_OPS = [
     'fmax_grad',
     'fmin_grad',
     'dot_grad',
+    'kron_grad',
 ]
 
 OTHER_PRIM_VJP_OPS = [
@@ -128,6 +129,7 @@ OTHER_PRIM_VJP_OPS = [
     'where_grad',
     'logcumsumexp_grad',
     'logsumexp_grad',
+    'kthvalue_grad',
 ]
 
 # whole vjp list of primitive op vjp

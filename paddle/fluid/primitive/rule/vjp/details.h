@@ -2867,6 +2867,137 @@ void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void kron_grad(const Tensor& x,
+               const Tensor& y,
+               const Tensor& out_grad,
+               Tensor* x_grad,
+               Tensor* y_grad) {
+  if (x_grad) {
+    int64_t x_dim_size = x.dims().size();
+    int64_t y_dim_size = y.dims().size();
+    auto diff = std::abs(x_dim_size - y_dim_size);
+    // 创造一个list,为range(diff)
+    std::vector<int64_t> range_diff(diff);
+
+    Tensor x_ = x;
+    Tensor y_ = y;
+
+    if (x_dim_size < y_dim_size) {
+      x_ = unsqueeze<T>(x, IntArray(range_diff));
+    } else if (x_dim_size > y_dim_size) {
+      y_ = unsqueeze<T>(y, IntArray(range_diff));
+    }
+
+    Tensor x_grad_tmp_ = full<T>(x.shape(), 0, x.dtype());
+    auto* x_grad_data = x_grad_tmp_.data<float>();
+
+    // 计算stride信息
+    int64_t size = x_.shape().size();
+    auto x_stride = std::vector<int>(size, 0);
+    auto y_stride = std::vector<int>(size, 0);
+    auto out_grad_stride = std::vector<int>(size, 0);
+
+    x_stride[-1] = 1;
+    y_stride[-1] = 1;
+    out_grad_stride[-1] = 1;
+
+    for (int64_t i = x_.shape().size() - 2; i >= 0; i--) {
+      x_stride[i] = x_stride[i + 1] * x_.shape()[i + 1];
+      y_stride[i] = y_stride[i + 1] * y_.shape()[i + 1];
+      out_grad_stride[i] = out_grad_stride[i + 1] * out_grad.shape()[i + 1];
+    }
+
+    auto* out_grad_data =
+        out_grad.data<float>();  // 根据实际数据类型替换 <float>
+    auto* y_data = y_.data<float>();
+    // 计算Kronecker积的梯度
+    for (int64_t i = 0; i < out_grad.numel(); i++) {
+      auto idx = i;
+      auto x_idx = 0;
+      auto y_idx = 0;
+
+      for (int64_t j = 0; j < size; j++) {
+        auto pos_j = idx / out_grad_stride[j];
+        idx = idx % out_grad_stride[j];
+        auto pos_xj = pos_j / y_.shape()[j];
+        auto pos_yj = pos_j % y_.shape()[j];
+        x_idx += x_stride[j] * pos_xj;
+        y_idx += y_stride[j] * pos_yj;
+      }
+      // x_grad_tmp_[x_idx] += out_grad[i] * y_[y_idx];
+      // y_grad_tmp_[y_idx] += out_grad[i] * x_[x_idx];
+      x_grad_data[x_idx] += out_grad_data[i] * y_data[y_idx];
+      LOG(INFO) << "x_idx :" << x_idx;
+    }
+
+    auto x_grad_tmp = reshape<T>(x_grad_tmp_, x.shape());
+    // auto y_grad_tmp = reshape<T>(y_grad_tmp_, y.shape());
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (y_grad) {
+    int64_t x_dim_size = x.dims().size();
+    int64_t y_dim_size = y.dims().size();
+    auto diff = std::abs(x_dim_size - y_dim_size);
+    // 创造一个list,为range(diff)
+    std::vector<int64_t> range_diff(diff);
+
+    Tensor x_ = x;
+    Tensor y_ = y;
+
+    if (x_dim_size < y_dim_size) {
+      x_ = unsqueeze<T>(x, IntArray(range_diff));
+    } else if (x_dim_size > y_dim_size) {
+      y_ = unsqueeze<T>(y, IntArray(range_diff));
+    }
+
+    Tensor y_grad_tmp_ = full<T>(y.shape(), 0, y.dtype());
+    auto* y_grad_data = y_grad_tmp_.data<float>();
+
+    // 计算stride信息
+    int64_t size = x_.shape().size();
+    auto x_stride = std::vector<int>(size, 0);
+    auto y_stride = std::vector<int>(size, 0);
+    auto out_grad_stride = std::vector<int>(size, 0);
+
+    x_stride[-1] = 1;
+    y_stride[-1] = 1;
+    out_grad_stride[-1] = 1;
+
+    for (int64_t i = x_.shape().size() - 2; i >= 0; i--) {
+      x_stride[i] = x_stride[i + 1] * x_.shape()[i + 1];
+      y_stride[i] = y_stride[i + 1] * y_.shape()[i + 1];
+      out_grad_stride[i] = out_grad_stride[i + 1] * out_grad.shape()[i + 1];
+    }
+
+    auto* out_grad_data =
+        out_grad.data<float>();  // 根据实际数据类型替换 <float>
+    auto* x_data = x_.data<float>();
+    // 计算Kronecker积的梯度
+    for (int64_t i = 0; i < out_grad.numel(); i++) {
+      auto idx = i;
+      auto x_idx = 0;
+      auto y_idx = 0;
+
+      for (int64_t j = 0; j < size; j++) {
+        auto pos_j = idx / out_grad_stride[j];
+        idx = idx % out_grad_stride[j];
+        auto pos_xj = pos_j / y_.shape()[j];
+        auto pos_yj = pos_j % y_.shape()[j];
+        x_idx += x_stride[j] * pos_xj;
+        y_idx += y_stride[j] * pos_yj;
+      }
+      // x_grad_tmp_[x_idx] += out_grad[i] * y_[y_idx];
+      // y_grad_tmp_[y_idx] += out_grad[i] * x_[x_idx];
+      y_grad_data[y_idx] += out_grad_data[i] * x_data[x_idx];
+    }
+
+    auto y_grad_tmp = reshape<T>(y_grad_tmp_, y.shape());
+    set_output<T>(y_grad_tmp, y_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
