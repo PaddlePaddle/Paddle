@@ -2923,6 +2923,105 @@ void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void kthvalue_grad(const Tensor& x,
+                   const Tensor& indices,
+                   const Tensor& out_grad,
+                   int k,
+                   int axis,
+                   bool keepdim,
+                   Tensor* x_grad) {
+  if (x_grad) {
+    Tensor x_grad_tmp;
+    // LOG(INFO) << "zrt";
+
+    if (has_dynamic_shape(x.shape())) {
+      const Tensor x_shape = shape<T>(x);
+      const Tensor zero_tensor =
+          backend::full_with_tensor<T>(x_shape, 0.0, x.dtype());
+      const int64_t x_dim_size = x.dims().size();
+
+      if (axis < 0) {
+        axis += x_dim_size;
+      }
+      auto x_axis = std::vector<int64_t>();
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        if (i != axis) {
+          x_axis.push_back(i);
+        }
+      }
+      std::vector<int64_t> x_range_tmp(x.dims()[axis]);
+      for (int64_t i = 0; i < x.dims()[axis]; i++) {
+        x_range_tmp[i] = i;
+      }
+      auto x_range = backend::full_int_array<T>(x_range_tmp);
+      auto x_range_shape = get_unsqueeze_dims<T>(shape<T>(x_range), x_axis);
+      auto x_range_ = backend::reshape<T>(x_range, x_range_shape);
+      auto x_indices = backend::expand<T>(x_range_, x_shape);
+
+      if (x_dim_size == 0 || x_dim_size == 1 || keepdim) {
+        auto out_grad_tmp = backend::expand<T>(out_grad, x_shape);
+        auto indices_tmp = backend::expand<T>(indices, x_shape);
+        auto mask = equal<T>(x_indices, indices_tmp);
+        x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+      } else {
+        auto axis_ = std::vector<int64_t>(1, axis);
+        auto out_grad_shape = get_unsqueeze_dims<T>(shape<T>(out_grad), axis_);
+        auto out_grad_ = backend::reshape<T>(out_grad, out_grad_shape);
+        auto indices_shape = get_unsqueeze_dims(shape<T>(indices), axis_);
+        auto indices_ = backend::reshape<T>(indices, indices_shape);
+        auto out_grad_tmp = backend::expand<T>(out_grad_, x_shape);
+        auto indices_tmp = backend::expand<T>(indices_, x_shape);
+        auto mask = equal<T>(x_indices, indices_tmp);
+        x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+      }
+    } else {
+      auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+      std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+      int64_t x_dim_size = x_dim.size();
+
+      if (axis < 0) {
+        axis += x_dim_size;
+      }
+
+      auto x_axis = std::vector<int64_t>();
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        if (i != axis) {
+          x_axis.push_back(i);
+        }
+      }
+
+      std::vector<int64_t> x_range_tmp(x_dim[axis]);
+      for (int64_t i = 0; i < x_dim[axis]; i++) {
+        x_range_tmp[i] = i;
+      }
+      auto x_range = full_int_array<T>(x_range_tmp);
+      // x_range=[0,1]    x_axis=[0,2]
+      auto x_range_shape = get_unsqueeze_dims(x_range, x_axis);
+      auto x_range_ = reshape<T>(x_range, x_range_shape);
+      auto x_indices = expand<T>(x_range_, IntArray(x_dim));
+
+      if (x_dim_size == 0 || x_dim_size == 1 || keepdim) {
+        auto out_grad_tmp = out_grad.expand(IntArray(x_dim));
+        auto indices_tmp = indices.expand(IntArray(x_dim));
+        auto mask = equal<T>(x_indices, indices_tmp);
+        x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+      } else {
+        auto axis_ = std::vector<int64_t>(1, axis);
+        auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+        auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+        auto indices_shape = get_unsqueeze_dims(indices, axis_);
+        auto indices_ = reshape<T>(indices, indices_shape);
+        auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
+        auto indices_tmp = indices_.expand(IntArray(x_dim));
+        auto mask = equal<T>(x_indices, indices_tmp);
+        x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+      }
+    }
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
