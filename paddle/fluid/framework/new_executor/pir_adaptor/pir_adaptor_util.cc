@@ -238,6 +238,7 @@ const std::unordered_set<std::string> SpecialOps = {
     paddle::dialect::PyLayerOp::name(),
     paddle::dialect::WhileOp::name(),
     pir::StackCreateOp::name(),
+    paddle::dialect::ShareVarOp::name(),
 };
 
 Variable* CreateVar(pir::Value value,
@@ -685,6 +686,13 @@ void HandleForSpecialOp(pir::Operation* op,
     auto outlet_value = stack_create_op.outlet();
     value_exe_info->AddValue2VarName(inlet_value, stack_var_name);
     value_exe_info->AddValue2VarName(outlet_value, stack_var_name);
+  } else if (op_name == "pd_op.share_var") {
+    VLOG(6) << "Handle for pd_op.share_var";
+    auto first_name =
+        value_exe_info->GetValue2VarName().at(op->operand_source(0));
+    for (size_t idx = 1u; idx < op->num_operands(); ++idx) {
+      value_exe_info->UpdateValue2VarName(op->operand_source(idx), first_name);
+    }
   }
 }
 
@@ -692,7 +700,8 @@ bool IsNeedVarInplace(pir::Operation* op,
                       pir::Value value,
                       std::string op_name) {
   return (value.type().isa<paddle::dialect::DenseTensorArrayType>() ||
-          op_name == "pd_op.assign_value_" || op_name == "pd_op.assign_out_");
+          op_name == "pd_op.assign_value_" || op_name == "pd_op.assign_out_" ||
+          op_name == "pd_op.coalesce_tensor_");
 }
 
 // NOTE(chenxi67): Here, we only perform inplace processing for variables that

@@ -112,5 +112,7 @@ std::vector<pir::Value> tensorrt_engine(
     std::vector<std::vector<int64_t>> outputs_shape,
     std::vector<phi::DataType> outputs_dtype,
     const std::string& converter_debug_info);
+
+pir::Operation* share_var(const std::vector<pir::Value>& x);
 }  // namespace dialect
 }  // namespace paddle

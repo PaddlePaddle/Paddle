@@ -180,6 +180,7 @@
   output : Tensor[](output){input.size()}, Tensor(fused_output)
   infer_meta :
     func : CoalesceTensorInferMeta
+    spmd_rule : CoalesceTensorInferSpmd
   kernel :
     func : coalesce_tensor
     data_type : dtype

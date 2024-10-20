@@ -1396,6 +1396,7 @@ class Engine:
                         initial_op = param.get_defining_op()
                         new_param = block.add_kwarg(var_name, param.type())
                         new_param.persistable = True
+                        new_param.place_attr = scope_var.get_tensor()._place()
                         param.replace_all_uses_with(new_param)
                         del_ops.append(op)
                         del_ops.append(initial_op)

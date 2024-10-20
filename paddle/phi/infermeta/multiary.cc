@@ -1166,6 +1166,16 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
   if (size_of_dtype == -1) {
     size_of_dtype = static_cast<int>(phi::SizeOf(dtype));
   }
+  PADDLE_ENFORCE_EQ(
+      input.size(),
+      output.size(),
+      common::errors::InvalidArgument(
+          "The size of output meta vector should be equal to input"));
+  for (size_t idx = 0; idx < input.size(); ++idx) {
+    output[idx]->set_dims(input[idx]->dims());
+    output[idx]->set_dtype(input[idx]->dtype());
+    output[idx]->set_layout(input[idx]->layout());
+  }
   if (config.is_runtime) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     int64_t numel = 0;
