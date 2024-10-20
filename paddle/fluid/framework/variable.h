@@ -49,6 +49,12 @@ class Variable {
     if (!holder_) {
       holder_.reset(new PlaceholderImpl<T>());
     } else {
+      // If holder_ is RawTensor, call holder_->Ptr() GetMutable again. Used for
+      // load_combine.
+      if (holder_->Type() == VarTypeTrait<RawTensor>::kId &&
+          holder_->Type() != VarTypeTrait<T>::kId) {
+        return static_cast<RawTensor*>(holder_->Ptr())->GetMutable<T>();
+      }
       PADDLE_ENFORCE_EQ(
           holder_->Type(),
           VarTypeTrait<T>::kId,
