@@ -15,10 +15,12 @@
 #include <Python.h>
 #include "pybind11/stl.h"
 
+#include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_api.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/transforms/dist_to_dense_pass.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pybind/dist_api.h"
 #include "paddle/fluid/pybind/dist_static_op_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
@@ -44,7 +46,9 @@ using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::ProcessMeshAttribute;
 using paddle::dialect::TensorDistAttribute;
 using pir::ArrayAttribute;
-
+using pir::DenseTensorType;
+using pir::Value;
+using pybind11::return_value_policy;
 namespace paddle::pybind {
 
 void BindOperationDistAttribute(py::module *m) {
@@ -138,6 +142,29 @@ ArrayAttribute CreateArrayAttribute(
   return ArrayAttribute::get(pir::IrContext::Instance(), elements);
 }
 
+std::vector<std::vector<size_t>> AssignValueGroupBySize(
+    const std::vector<Value> &values,
+    const std::vector<size_t> &group_size_limits) {
+  std::vector<Tensor> tensors;
+  tensors.reserve(values.size());
+  for (auto value : values) {
+    auto x = value.type().dyn_cast<DenseTensorType>();
+    PADDLE_ENFORCE_NOT_NULL(
+        x,
+        common::errors::Fatal(
+            "Only support assgin group for dense tensor value!"));
+    auto ir_tensor = std::make_shared<dialect::IrTensor>(
+        dialect::TransToPhiDataType(x.dtype()),
+        x.dims(),
+        x.data_layout(),
+        x.lod(),
+        x.offset());
+    tensors.emplace_back(ir_tensor);
+  }
+  return distributed::Eager_AssignGroupBySize(
+      tensors, std::vector<bool>(tensors.size(), false), group_size_limits);
+}
+
 void BindDistUtils(pybind11::module *m) {
   m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
   m->def("create_array_dist_attribute", CreateArrayAttribute);
@@ -161,6 +188,10 @@ void BindDistUtils(pybind11::module *m) {
          py::arg("global_type"),
          py::arg("dist_attr"),
          py::arg("local_ddim") = std::vector<int64_t>());
+  m->def("assign_value_group_by_size",
+         AssignValueGroupBySize,
+         py::arg("values"),
+         py::arg("group_size_limits"));
 }
 
 void BindDistPassAPI(pybind11::module *module) {

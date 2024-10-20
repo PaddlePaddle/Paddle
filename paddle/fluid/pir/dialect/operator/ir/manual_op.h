@@ -842,6 +842,20 @@ class TEST_API ArrayPopOp
       pir::AttributeMap *p_attributes);
 };
 
+class ShareVarOp : public pir::Op<ShareVarOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.share_var"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  TEST_API static void Build(pir::Builder &builder,             // NOLINT
+                             pir::OperationArgument &argument,  // NOLINT
+                             const std::vector<pir::Value> &inputs) {
+    argument.AddInputs(inputs);
+  }
+  void VerifySig() {}
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -869,3 +883,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShareVarOp)
