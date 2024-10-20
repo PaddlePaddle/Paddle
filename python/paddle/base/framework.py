@@ -2495,6 +2495,65 @@ class Variable(metaclass=VariableMetaClass):
             )
             return out
 
+    @property
+    def mT(self):
+        """
+
+        Returns a view of this tensor with the last two dimensions transposed.
+
+        If `n` is the dimensions of `x` , `x.mT` is equivalent to `x.transpose([0, 1, ..., n-1, n-2])`.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_mT = x.mT
+
+                >>> exe = paddle.static.Executor()
+                >>> x_mT_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_mT])[0]
+                >>> print(x_mT_np.shape)
+                (2, 5, 3)
+
+        """
+        if len(self.shape) < 2:
+            raise ValueError(
+                f"Tenor.ndim({self.ndim}) is required to be greater than or equal to 2."
+            )
+
+        perm = list(range(len(self.shape)))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+
+        with unique_name.guard(self.block.program._name_generator):
+            out = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(
+                    self.name + ".tmp"
+                ),
+                dtype=self.dtype,
+                type=self.type,
+                persistable=False,
+                stop_gradient=False,
+            )
+            input_shape = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(
+                    self.name + ".tmp"
+                ),
+                dtype=self.dtype,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=False,
+            )
+
+            self.block.append_op(
+                type="transpose2",
+                inputs={"X": [self]},
+                outputs={"Out": [out], "XShape": [input_shape]},
+                attrs={"axis": perm},
+            )
+            return out
+
     def clone(self):
         """
         Returns a new static Variable, which is the clone of the original static

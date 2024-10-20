@@ -376,6 +376,20 @@ class TestMathOpPatches(unittest.TestCase):
         np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
+    def test_mT(self):
+        x_np = np.random.randint(-100, 100, [2, 8, 5, 3]).astype("int32")
+        out_np = x_np.transpose([0, 1, 3, 2])
+
+        x = paddle.static.data(name="x", shape=[2, 8, 5, 3], dtype="int32")
+        z = x.mT
+
+        exe = base.Executor()
+        out = exe.run(
+            base.default_main_program(), feed={"x": x_np}, fetch_list=[z]
+        )
+        np.testing.assert_array_equal(out[0], out_np)
+
+    @prog_scope()
     def test_ndim(self):
         a = paddle.static.data(name="a", shape=[10, 1])
         self.assertEqual(a.dim(), 2)
