@@ -553,6 +553,9 @@ class FusedCommBuffer:
             )
 
         grad_var = param.main_grad if self.use_main_grad else param.grad
+        assert (
+            grad_var is not None
+        ), f"The current parameter[{param.name}] has no gradient, its stop_grdient is {param.stop_gradient}"
         grad_var.stop_gradient = True
         grad_var.flatten_()
 
