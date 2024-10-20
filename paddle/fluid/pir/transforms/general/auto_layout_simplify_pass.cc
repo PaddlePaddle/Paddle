@@ -85,7 +85,7 @@ class RedundantTransposePattern
 class AutoLayoutSimplifyPass : public pir::PatternRewritePass {
  public:
   AutoLayoutSimplifyPass()
-      : pir::PatternRewritePass("auto_layout_simplify_pass", 3) {}
+      : pir::PatternRewritePass("auto_layout_simplify_pass", 2) {}
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<RedundantTransposePattern>(context);

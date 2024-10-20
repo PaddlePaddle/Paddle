@@ -63,31 +63,3 @@ if(WITH_GPU)
   set_tests_properties(test_resnet PROPERTIES TIMEOUT 240)
   set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 900)
 endif()
-
-# Legacy IR only tests for dygraph_to_static
-set(LEGACY_ONLY_TEST_FILES test_legacy_error test_local_cast)
-foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
-  if(TEST ${ITEST})
-    set_tests_properties(
-      ${ITEST}
-      PROPERTIES
-        ENVIRONMENT
-        "FLAGS_enable_pir_with_pt_in_dy2st=0;FLAGS_enable_pir_api=False")
-    message(
-      STATUS
-        "PT Disabled OpTest: set FLAGS_enable_pir_with_pt_in_dy2st to False for ${ITEST}"
-    )
-  else()
-    message(
-      STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
-  endif()
-endforeach()
-
-# PIR only tests for dygraph_to_static
-set(PIR_ONLY_TEST_FILES test_error)
-foreach(ITEST ${PIR_ONLY_TEST_FILES})
-  if(TEST ${ITEST})
-    set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT
-                                             "FLAGS_enable_pir_api=True")
-  endif()
-endforeach()

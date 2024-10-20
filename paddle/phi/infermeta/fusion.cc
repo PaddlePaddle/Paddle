@@ -131,6 +131,18 @@ void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void LayerNormalizeReluXPUInferMeta(const MetaTensor& x,
+                                    const MetaTensor& scale,
+                                    const MetaTensor& bias,
+                                    int begin_norm_axis,
+                                    float epsilon,
+                                    MetaTensor* out) {
+  out->set_dims(x.dims());
+  //   y->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 void FusedMultiTransformerInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scales,

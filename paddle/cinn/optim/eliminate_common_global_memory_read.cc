@@ -335,6 +335,9 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
         ::common::errors::InvalidArgument(
             "The input expr should be a ScheduleBlockRealize"));
     current_sbr_ = node;
+    if (current_block_) {
+      insert_block_ = current_block_;
+    }
     IRMutator<>::Visit(op, expr);
   }
 
@@ -387,7 +390,11 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
             "buffer_name %s should not be in global_buffer_to_local_buffer_",
             buffer_name));
     global_buffer_to_local_buffer_[buffer_name] = new_tensor;
-    block_to_insert_stmts_[current_block_].push_back(new_sbr);
+
+    PADDLE_ENFORCE_NOT_NULL(
+        insert_block_,
+        ::common::errors::InvalidArgument("insert block CAN NOT be nullptr"));
+    block_to_insert_stmts_[insert_block_].push_back(new_sbr);
   }
 
   void SubstituteGlobalTensor(ir::Load* load_node,
@@ -405,7 +412,8 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
   std::unordered_map<std::string, ir::Expr> global_buffer_to_local_buffer_;
   std::unordered_map<ir::Block*, std::vector<ir::Expr>> block_to_insert_stmts_;
 
-  ir::Block* current_block_;
+  ir::Block* current_block_{nullptr};
+  ir::Block* insert_block_{nullptr};
   ir::ScheduleBlockRealize* current_sbr_;
 };
 
