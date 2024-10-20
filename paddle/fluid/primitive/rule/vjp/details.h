@@ -2867,6 +2867,21 @@ void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void ceil_grad(const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    Tensor zero_tensor;
+    if (has_dynamic_shape(out_grad.shape())) {
+      zero_tensor = backend::full_with_tensor<T>(
+          shape<T>(out_grad), 0.0, out_grad.dtype());
+    } else {
+      zero_tensor =
+          full<T>(common::vectorize(out_grad.dims()), 0.0, out_grad.dtype());
+    }
+    set_output<T>(zero_tensor, x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
