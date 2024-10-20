@@ -1840,60 +1840,6 @@ bool SequenceMaskOpInferSymbolicShape(
 //   return true;
 // }
 
-bool SolveOpInferSymbolicShape(pir::Operation *op,
-                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &y_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
-  const std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
-
-  int x_rank = x_shape.size();
-  int y_rank = y_shape.size();
-
-  PADDLE_ENFORCE_GT(x_rank,
-                    1,
-                    common::errors::InvalidArgument(
-                        "The input tensor X's dimensions of SolveOp "
-                        "should be larger than 1. But received X's "
-                        "dimensions = %d, X's shape = [%s]",
-                        x_rank,
-                        x_shape));
-
-  PADDLE_ENFORCE_GE(y_rank,
-                    1,
-                    common::errors::InvalidArgument(
-                        "The input tensor Y's dimensions of SolveOp "
-                        "should be larger than or equal 1. But received Y's "
-                        "dimensions = %d, Y's shape = [%s]",
-                        y_rank,
-                        y_shape));
-
-  infer_context->AddEqualCstr(x_shape[x_rank - 2], x_shape[x_rank - 1]);
-
-  const symbol::DimExpr &m = x_shape[x_rank - 2];
-  std::vector<symbol::DimExpr> out_shape;
-
-  bool y_broadcasted = y_rank == 1;
-  const symbol::DimExpr &n = y_shape[y_rank - 1];
-  if (x_rank >= y_rank) {
-    out_shape.assign(x_shape.begin(), x_shape.end() - 2);
-  } else {
-    out_shape.assign(y_shape.begin(), y_shape.end() - 2);
-  }
-  // out_shape.push_back(m);
-  if (!y_broadcasted) {
-    out_shape.push_back(n);
-  }
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
-  return true;
-}
-
 bool StftOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -2136,6 +2082,11 @@ static inline std::vector<symbol::DimExpr> MatrixGetBroadcastBatchPortion(
   // use int to avoid underflow for minus
   int size_x = x.size();
   int size_y = y.size();
+
+  if (size_y == 0) {
+    return {};
+  }
+
   int max_size = std::max(size_x, size_y);
   std::vector<symbol::DimExpr> batchPortion(max_size);
 
@@ -2192,6 +2143,11 @@ bool TriangularSolveOpInferSymbolicShape(
           symbol::TensorShapeOrDataDimExprs(output_shape)});
 
   return true;
+}
+
+bool SolveOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return TriangularSolveOpInferSymbolicShape(op, infer_context);
 }
 
 bool Unpool3dOpInferSymbolicShape(
