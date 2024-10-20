@@ -533,6 +533,9 @@ Tensor Tensor::contiguous() {
     } else {
       dense_tensor = static_cast<phi::DenseTensor *>(impl_.get());
     }
+    PADDLE_ENFORCE_NOT_NULL(dense_tensor,
+                            common::errors::InvalidArgument(
+                                "TensorImpl with nullptr is not supported"));
     if (!dense_tensor->meta().is_contiguous()) {
       phi::DenseTensor *new_dense_tensor = nullptr;
       *new_dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
