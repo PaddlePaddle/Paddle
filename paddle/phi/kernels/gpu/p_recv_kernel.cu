@@ -128,6 +128,7 @@ template <typename T, typename Context>
 void PRecvKernel(const Context& dev_ctx,
                  int peer,
                  DataType dtype,
+                 const std::vector<int>& out_shape,
                  bool dynamic_shape,
                  DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || \
