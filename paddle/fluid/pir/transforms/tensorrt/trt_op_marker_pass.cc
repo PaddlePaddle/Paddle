@@ -1469,14 +1469,14 @@ class GirdSampleOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-#if !IS_TRT_VERSION_GE(8510)
+#if IS_TRT_VERSION_LT(8510)
     VLOG(3) << "grid_sample is not supported when TensorRT < 8.5.1";
     return false;
 #else
     if (!op->HasAttribute("mode") || !op->HasAttribute("padding_mode") ||
         !op->HasAttribute("align_corners")) {
-      VLOG(3) << "grid_sample need attributes: mode, padding_mode, "
-                 "align_corners";
+      VLOG(3)
+          << "grid_sample need attributes: mode, padding_mode, align_corners";
       return false;
     }
     auto x_shape = op.operand_source(0)
