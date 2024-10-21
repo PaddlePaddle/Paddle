@@ -117,13 +117,6 @@ class FetchOp : public framework::OperatorBase {
       auto &src_item = fetch_var->Get<phi::DenseTensor>();
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
       DataCopy(src_item, fetch_var_name, dst_item);
-    } else if (fetch_var->IsType<framework::Vocab>()) {
-      auto &src_item = fetch_var->Get<framework::Vocab>();
-      auto *dst_item = &(PADDLE_GET(framework::Vocab, fetch_list->at(col)));
-      *dst_item = src_item;
-    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
-      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      fetch_list->at(col) = src_item;
     } else {
       auto &src_item = fetch_var->Get<phi::TensorArray>();
       phi::TensorArray tmp(src_item.size());

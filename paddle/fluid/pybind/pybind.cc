@@ -2598,9 +2598,6 @@ All parameter, weight, gradient are variables in Paddle.
               if (data_is_lod_tensor(self[i])) {
                 auto &data = PADDLE_GET(phi::DenseTensor, self[i]);
                 res[i] = py::cast(std::move(data));
-              } else if (data_is_sparse_coo_tensor(self[i])) {
-                auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
-                res[i] = py::cast(std::move(data));
               } else {
                 auto &data = PADDLE_GET(phi::TensorArray, self[i]);
                 py::list tmp(data.size());
