@@ -52,6 +52,11 @@ class TensorBase {
   /// \return Whether the metadata is valid.
   virtual bool valid() const = 0;
 
+  /// \brief Test whether the storage is ready.
+  ///   (For 0-size tensor, storage is always ready)
+  /// \return Whether the storage is ready.
+  virtual bool ready() const = 0;
+
   /// \brief Test whether the storage is allocated.
   /// \return Whether the storage is allocated.
   virtual bool initialized() const = 0;

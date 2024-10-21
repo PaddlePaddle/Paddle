@@ -21,6 +21,22 @@ TensorArray::TensorArray(const std::vector<DenseTensor>& vec) {
   tensors_ = vec;
 }
 
+/// \brief Test whether the storage is ready.
+///   (For 0-size tensor, storage is always ready)
+/// \return Whether the storage is ready.
+bool TensorArray::ready() const {
+  if (tensors_.empty()) {
+    return false;
+  }
+
+  for (auto const& tensor : tensors_) {
+    if (!tensor.ready()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /// \brief Test whether the tensor's storage in TensorArray is allocated.
 /// return Whether all tensors in TensorArray is allocated.
 bool TensorArray::initialized() const {

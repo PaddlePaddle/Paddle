@@ -97,6 +97,13 @@ class StringTensor : public TensorBase,
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }
 
+  /// \brief Test whether the storage is ready.
+  ///   (For 0-size tensor, storage is always ready)
+  /// \return Whether the storage is ready.
+  bool ready() const override {
+    return holder_ && (holder_->ptr() || numel() == 0);
+  }
+
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
   bool initialized() const override { return holder_ && holder_->ptr(); }

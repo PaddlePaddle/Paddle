@@ -47,6 +47,8 @@ class TEST_API ExtendedTensor : public TensorBase {
 
   bool valid() const override;
 
+  bool ready() const override;
+
   bool initialized() const override;
 
   void* AllocateFrom(Allocator* allocator,

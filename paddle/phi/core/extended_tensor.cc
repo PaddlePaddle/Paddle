@@ -47,6 +47,11 @@ bool ExtendedTensor::valid() const {
       "ExtendedTensor does not support `valid` method."));
 }
 
+bool ExtendedTensor::ready() const {
+  PADDLE_THROW(common::errors::Unavailable(
+      "ExtendedTensor does not support `ready` method."));
+}
+
 bool ExtendedTensor::initialized() const {
   PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `initialized` method."));
