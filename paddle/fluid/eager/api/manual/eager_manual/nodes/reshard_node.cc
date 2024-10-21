@@ -18,7 +18,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 paddle::small_vector<std::vector<paddle::Tensor>,
                      egr::kSlotSmallVectorSize>  // NOLINT

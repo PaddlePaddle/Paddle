@@ -19,12 +19,12 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/os_info.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #ifdef PADDLE_WITH_DNNL

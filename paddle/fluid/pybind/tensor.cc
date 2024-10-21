@@ -74,7 +74,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
@@ -112,6 +111,7 @@ limitations under the License. */
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/monitor.h"
 #include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/utils/none.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
