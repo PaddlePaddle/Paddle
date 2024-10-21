@@ -40,6 +40,21 @@ struct GetSplitedExprFromFusionOp {
   }
 };
 
+struct ApplyItersTransform {
+  explicit ApplyItersTransform(const ir::Expr& expr,
+                               const ir::Expr& aligned_expr)
+      : expr_(expr), aligned_expr_(aligned_expr) {}
+  ir::Expr operator()(const IdentityItersTransform& trans) { return expr_; }
+  ir::Expr operator()(const RemoveOnesTransform& trans);
+  ir::Expr operator()(const TransposeItersTransform& trans);
+  ir::Expr operator()(const AppendItersTransform& trans);
+  ir::Expr operator()(const ReuseItersTransform& trans) { return expr_; }
+
+ private:
+  ir::Expr expr_;
+  ir::Expr aligned_expr_;
+};
+
 struct ApplyTransform {
   explicit ApplyTransform(const ir::Expr& expr) : expr_(expr) {}
   ir::Expr operator()(const UnsupportTransformPtr& transform) {
@@ -61,8 +76,12 @@ struct ApplyTransform {
 };
 
 std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops);
+
 std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs);
+
 std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
                                  const std::vector<int>& padding_pos);
+
+std::vector<ir::Tensor> GetOutputTensors(const ir::Expr& op_expr);
 
 }  // namespace cinn::fusion

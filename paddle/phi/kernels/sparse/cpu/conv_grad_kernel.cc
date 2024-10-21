@@ -27,7 +27,7 @@ namespace phi::sparse {
 //  [in_i],
 //  [out_i],
 //]
-// x_grad = out_grad * transpose(kenrel)
+// x_grad = out_grad * transpose(kernel)
 // kernel_grad = transpose(x) * out_grad
 template <typename T, typename IntT = int>
 void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,

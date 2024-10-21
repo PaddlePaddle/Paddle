@@ -35,8 +35,7 @@ class TestConv2dApiForSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=paddle.nn.functional.conv2d,
-            # Todo(jeff41404): the spmd rule of conv2d_grad is fixing, after that, we can set with_backward to True.
-            with_backward=False,
+            with_backward=True,
         )
         self.check_placements(outputs, [dist.Shard(0)])
 

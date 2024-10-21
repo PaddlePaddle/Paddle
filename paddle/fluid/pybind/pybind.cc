@@ -65,7 +65,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
-#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
@@ -79,6 +78,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
+#include "paddle/phi/core/raw_tensor.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
@@ -160,14 +160,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #ifndef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -2472,12 +2472,6 @@ All parameter, weight, gradient are variables in Paddle.
         static_cast<void (*)(  // NOLINT
             Scope *,
             const phi::DenseTensor &,
-            const std::string &,
-            size_t)>(&framework::SetFeedVariable));
-  m.def("set_feed_variable",
-        static_cast<void (*)(  // NOLINT
-            Scope *,
-            const std::vector<std::string> &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",

@@ -721,19 +721,19 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_IMPL)
 #undef CINN_BLOCK_REDUCE_IMPL
 
 #define CINN_GRID_REDUCE_IMPL(REDUCE_TYPE, init_value, DTYPE)                    \
-  __shared__ DTYPE tmp_val;                                                      \
   int tid = (threadIdx.z * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x; \
   if (tid < spatial_threads) {                                                   \
-    tmp_val = init_value;                                                        \
+    DTYPE tmp_val = init_value;                                                  \
     for (int y = 0; y < gridDim.y; y++) {                                        \
       tmp_val = cinn_##REDUCE_TYPE(tmp_val, mem[(y * gridDim.x + blockIdx.x) * spatial_threads + tid]); \
     }                                                                            \
+    mem[blockIdx.x * spatial_threads + tid] = tmp_val;                           \
   }                                                                              \
   __syncthreads();                                                               \
-  return tmp_val;
+  return mem[spatial_index];
 
 #define CINN_GRID_REDUCE_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                \
-  __device__ inline DTYPE cinn_grid_reduce_##REDUCE_TYPE(const DTYPE* mem, int spatial_threads) { \
+  __device__ inline DTYPE cinn_grid_reduce_##REDUCE_TYPE(DTYPE* mem, int spatial_threads, int spatial_index) { \
     CINN_GRID_REDUCE_IMPL(REDUCE_TYPE, (DTYPE)(INITIAL_VALUE), DTYPE);           \
   }
 

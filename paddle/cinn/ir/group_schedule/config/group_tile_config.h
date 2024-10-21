@@ -40,6 +40,7 @@ struct ScheduleConfig {
     bool has_dynamic_spatial{false};
     bool has_dynamic_reduce{false};
     bool is_reduce_all{false};
+    bool can_apply_grid_reduce{false};
     IterSpaceType iter_space_type;
   };
 
@@ -48,6 +49,7 @@ struct ScheduleConfig {
     int64_t tree_reduce_num{1};
     int64_t spatial_inner_num{1};
     ReduceMethod reduce_method{NoneReduceMethod()};
+    int64_t grid_reduce_num{1};
   };
 
   std::shared_ptr<BaseInfo> base_info;

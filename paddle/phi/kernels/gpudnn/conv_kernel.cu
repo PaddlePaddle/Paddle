@@ -329,7 +329,7 @@ void ConvCudnnKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
                     common::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
