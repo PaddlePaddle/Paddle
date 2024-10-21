@@ -387,20 +387,13 @@ class StaticFunction(Generic[_InputT, _RetT]):
         # save the instance `self` while decorating a method of class.
 
         if inspect.ismethod(function):
-            self._dygraph_function = function.__func__
-            self._class_instance = function.__self__
-
-            if not hasattr(self._class_instance, '_original_funcs'):
-                raise TypeError(
-                    "When using 'to_static' to convert method of a class, "
-                    "please ensure the class inherits from nn.Layer"
-                )
-            self._class_instance._original_funcs[function.__name__] = (
-                self._dygraph_function
+            raise TypeError(
+                "StaticFunction(method) is a deprecated usage, please use StaticFunction(method.__func__).bind(method.__self__) instead."
             )
-        else:
-            self._dygraph_function = function
-            self._class_instance = None
+        self._should_convert_all_instances = False
+        self._need_convert_instances = weakref.WeakSet()
+        self._dygraph_function = function
+        self._class_instance = None
 
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
@@ -474,29 +467,60 @@ class StaticFunction(Generic[_InputT, _RetT]):
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticFunction` instance.
         """
-        if instance not in self._descriptor_cache:
-            if instance is None:
-                return self
-            # Note(Aurelius84): To construct new instance of StaticFunction when we
-            # first encouter the bound function of layer and cache it.
-            new_static_layer = self._clone()
-            if (
-                isinstance(instance, layers.Layer)
-                and self._dygraph_function.__name__
-                not in instance._original_funcs.keys()
-            ):
-                instance._original_funcs[self._dygraph_function.__name__] = (
-                    self._dygraph_function
-                )
-            new_static_layer._class_instance = instance
-            self._descriptor_cache[instance] = new_static_layer
-
-        return self._descriptor_cache[instance]
+        # TODO(SigureMo): Maybe take some performance effects in dygraph mode.
+        # NOTE(SigureMo): If call function from class (e.g. `Net.forward(x, y)`), the `instance` is None.
+        # In this case, we should return the original `StaticFunction` instance.
+        if instance is None:
+            return self
+        if (
+            not self._should_convert_all_instances
+            and instance not in self._need_convert_instances
+        ):
+            return self._dygraph_function.__get__(instance, owner)
+        return self.bind(instance)
 
     def _clone(self) -> Self:
         return self.__class__(
             self.dygraph_function, self._input_spec, **self._kwargs
         )
+
+    def bind(self, instance) -> StaticFunction:
+        if self._class_instance is not None:
+            raise RuntimeError(
+                "The method 'bind' can only be called on the original StaticFunction instance."
+            )
+        if not isinstance(instance, paddle.nn.Layer):
+            raise TypeError(
+                "When using 'to_static' to convert method of a class, "
+                "please ensure the class inherits from nn.Layer"
+            )
+        if instance not in self._descriptor_cache:
+            # Note(Aurelius84): To construct new instance of StaticFunction when we
+            # first encounter the bound function of layer and cache it.
+            new_static_fn = self._clone()
+            if (
+                isinstance(instance, layers.Layer)
+                and self._dygraph_function.__name__ not in instance._fn_memos
+            ):
+                instance._fn_memos[self._dygraph_function.__name__] = (
+                    self._dygraph_function
+                )
+            new_static_fn._class_instance = instance
+            self._descriptor_cache[instance] = new_static_fn
+
+        return self._descriptor_cache[instance]
+
+    def enable_convert_all_instances(self) -> None:
+        """For a unbound method, enable to convert all instances of the class."""
+        self._should_convert_all_instances = True
+
+    def add_need_convert_instance(self, instance) -> None:
+        """For a bound method, we can mark the instance to be converted."""
+        self._need_convert_instances.add(instance)
+
+    def remove_need_convert_instance(self, instance) -> None:
+        """For a bound method rollback"""
+        self._need_convert_instances.discard(instance)
 
     def __call__(self, *args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         """
@@ -638,9 +662,18 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 >>> out = net(x)
         """
 
-        def rollback_impl(class_instance):
-            for name, func in class_instance._original_funcs.items():
-                setattr(class_instance, name, func.__get__(class_instance))
+        def rollback_impl(class_instance, rollback_fn_name=None):
+            for name, func in class_instance.__class__._fn_memos.items():
+                if rollback_fn_name is not None and name != rollback_fn_name:
+                    continue
+                static_fn = getattr(class_instance.__class__, name)
+                if isinstance(
+                    getattr(class_instance.__class__, name), StaticFunction
+                ):
+                    static_fn.remove_need_convert_instance(class_instance)
+                    if static_fn._need_convert_instances:
+                        continue
+                setattr(class_instance.__class__, name, func)
 
             for sublayer in class_instance.sublayers(include_self=False):
                 rollback_impl(sublayer)
@@ -651,15 +684,14 @@ class StaticFunction(Generic[_InputT, _RetT]):
         # only rollback sub-functions on path of top _dygraph_function
         func_name = self._dygraph_function.__name__
         assert (
-            func_name in self._class_instance._original_funcs
+            func_name in self._class_instance._fn_memos
         ), f"Not Found function '{func_name}' in class '{self._class_instance.__class__}'."
-        func = self._class_instance._original_funcs[func_name]
-        setattr(
-            self._class_instance, func_name, func.__get__(self._class_instance)
-        )
+        rollback_impl(self._class_instance, func_name)
+        # func = self._class_instance._fn_memos[func_name]
+        # setattr(self._class_instance.__class__, func_name, func)
 
-        for sublayer in self._class_instance.sublayers(include_self=False):
-            rollback_impl(sublayer)
+        # for sublayer in self._class_instance.sublayers(include_self=False):
+        #     rollback_impl(sublayer)
 
         return getattr(self._class_instance, func_name)
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import abc
 import copy
 import inspect
 import re
@@ -20,7 +21,7 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Callable, Dict, Union
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Union
 
 import numpy as np
 from typing_extensions import Self
@@ -56,6 +57,7 @@ from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
 if TYPE_CHECKING:
+    import types
     from collections.abc import Iterable, Sequence
 
     from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
@@ -351,7 +353,18 @@ class HookRemoveHelper:
             del hooks[self._hook_id]
 
 
-class Layer:
+class LayerMeta(type):
+    def __new__(cls, name, bases, namespace, **kwd):
+        result = type.__new__(cls, name, bases, namespace)
+        # Records original functions after @to_static to support to rollback
+        result._fn_memos = {}
+        return result
+
+
+class LayerABCMeta(abc.ABCMeta, LayerMeta): ...
+
+
+class Layer(metaclass=LayerMeta):
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -407,6 +420,7 @@ class Layer:
     """
 
     training: bool
+    _fn_memos: ClassVar[dict[str, types.FunctionType]]
 
     def __init__(
         self, name_scope: str | None = None, dtype: DTypeLike = "float32"
@@ -445,8 +459,6 @@ class Layer:
         self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
             OrderedDict()
         )
-        # Records original functions after @to_static to support to rollback
-        self._original_funcs = OrderedDict()
 
     def train(self) -> None:
         """
