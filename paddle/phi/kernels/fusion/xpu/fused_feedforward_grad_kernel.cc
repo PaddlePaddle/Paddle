@@ -203,6 +203,7 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
                              false,
                              nullptr,
                              nullptr,
+                             nullptr,
                              nullptr);
 
   const XPUTypeT* a_1 = reinterpret_cast<const XPUTypeT*>(NULL);
@@ -245,11 +246,11 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
     info_dw2.stride_x = info_dw2.k;
   }
 
-  phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_1, b_1, c_1, info_d_dropout1, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+      xpu_ctx, a_1, b_1, nullptr, c_1, info_d_dropout1, 1.0f, 0.f, true);
 
-  phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_2, b_2, c_2, info_dw2, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+      xpu_ctx, a_2, b_2, nullptr, c_2, info_dw2, 1.0f, 0.f, true);
 
   // dropout_grad1
   DropoutGrad(xpu_ctx,
@@ -298,6 +299,7 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
                              false,
                              nullptr,
                              nullptr,
+                             nullptr,
                              nullptr);
 
   a_1 = reinterpret_cast<const XPUTypeT*>(NULL);
@@ -335,11 +337,11 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
 
   std::tie(info_dx, info_dw1, a_1, b_1, a_2, b_2) = fc_info;
 
-  phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+      xpu_ctx, a_1, b_1, nullptr, c_1, info_dx, 1.0f, 0.f, true);
 
-  phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_2, b_2, c_2, info_dw1, 1.0f, 0.f, true);
+  phi::MatMulXPUFunction<XPUTypeT, XPUTypeT>(
+      xpu_ctx, a_2, b_2, nullptr, c_2, info_dw1, 1.0f, 0.f, true);
 
   if (pre_layer_norm) {
     r = xpu::layer_norm_grad(xpu_ctx,

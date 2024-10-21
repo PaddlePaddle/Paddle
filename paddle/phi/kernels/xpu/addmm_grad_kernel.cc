@@ -105,7 +105,8 @@ void AddmmGradKernel(const Context& dev_ctx,
                                  out_grad_ptr);
   std::tie(info_x_grad, info_y_grad, a_1, b_1, a_2, b_2) = fc_info;
   if (x_grad) {
-    MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_x_grad, alpha, 0.f);
+    MatMulXPUFunction<XPUType, XPUType>(
+        xpu_ctx, a_1, b_1, nullptr, c_1, info_x_grad, alpha, 0.f);
     if (info_forward.is_x_need_broadcast) {
       r = xpu::reduce_sum<XPUType>(
           xpu_ctx,
@@ -117,7 +118,8 @@ void AddmmGradKernel(const Context& dev_ctx,
     }
   }
   if (y_grad) {
-    MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_y_grad, alpha, 0.f);
+    MatMulXPUFunction<XPUType, XPUType>(
+        xpu_ctx, a_2, b_2, nullptr, c_2, info_y_grad, alpha, 0.f);
     if (info_forward.is_y_need_broadcast) {
       r = xpu::reduce_sum<XPUType>(
           xpu_ctx,
