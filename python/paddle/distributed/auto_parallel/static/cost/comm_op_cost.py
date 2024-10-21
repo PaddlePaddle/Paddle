@@ -23,7 +23,7 @@ from .base_cost import CommOpCost, register_op_cost
 
 @register_op_cost
 class AllreduceSumOpCost(CommOpCost):
-    OP_TYPE = "c_allreduce_sum"
+    OP_TYPE = "all_reduce"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
         super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)

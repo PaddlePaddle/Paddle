@@ -190,7 +190,7 @@ class TestBaseCost(unittest.TestCase):
                 if op.input_arg_names:
                     var_names = op.input_arg_names[0]
                     comm_descs = build_comm_desc_from_dist_op(
-                        "c_allreduce_sum",
+                        "all_reduce",
                         dist_op,
                         dist_context,
                         var_names,
@@ -200,7 +200,7 @@ class TestBaseCost(unittest.TestCase):
                     )
                     self.assertTrue(isinstance(comm_descs, dict) and comm_descs)
                     comm_descs = build_comm_desc_from_dist_op(
-                        "c_allreduce_sum",
+                        "all_reduce",
                         dist_op,
                         dist_context,
                         var_names,

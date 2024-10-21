@@ -195,6 +195,18 @@
     param: [x, nranks]
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : all_reduce
+  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param: [x]
+  kernel :
+    func : all_reduce
+    param: [x, reduce_type]
+  inplace : (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : all_to_all
   args : (Tensor x, int ring_id = 0)
   output : Tensor(out)

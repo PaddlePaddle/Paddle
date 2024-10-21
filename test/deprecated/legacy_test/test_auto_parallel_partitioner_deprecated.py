@@ -453,7 +453,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
         ]
@@ -546,7 +546,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
         ]
@@ -845,7 +845,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
         ]
         self.assertTrue(dist_ops == ref_ops)
@@ -952,7 +952,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
         ]
         self.assertTrue(dist_ops == ref_ops)
@@ -1296,7 +1296,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'c_embedding',
-            'c_allreduce_sum',
+            'all_reduce',
             'lookup_table_v2',
             'elementwise_add',
             'dropout',
@@ -1321,7 +1321,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
             'elementwise_add',
@@ -1330,7 +1330,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
             'elementwise_add',

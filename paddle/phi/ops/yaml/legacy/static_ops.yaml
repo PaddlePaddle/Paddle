@@ -7,17 +7,6 @@
     func : all
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : all_reduce
-  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
-  output : Tensor(out)
-  infer_meta :
-    func : AllReduceInferMeta
-    param: [x]
-  kernel :
-    func : all_reduce
-    param: [x, reduce_type]
-  traits : paddle::dialect::ForwardOnlyTrait
-
 - op : amax
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)

@@ -91,10 +91,10 @@ class TestCost(unittest.TestCase):
         CommContext._instance = None
         comm_context = CommContext(cluster)
         desc = {}
-        desc["op"] = "c_allreduce_sum"
-        desc["inputs"] = {"X": [(paddle.float32, [100, 200])]}
+        desc["op"] = "all_reduce"
+        desc["inputs"] = {"x": [(paddle.float32, [100, 200])]}
         desc["group_ranks"] = [0, 1]
-        allreduce_cost = cost_model._g_op_cost_factory["c_allreduce_sum"](
+        allreduce_cost = cost_model._g_op_cost_factory["all_reduce"](
             op_desc=desc, comm_context=CommContext(cluster)
         )
         self.assertTrue(check_cost(allreduce_cost.cost))
