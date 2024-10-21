@@ -2504,13 +2504,13 @@ set +x
             IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
             echo ${DEVICES[0]}
 
-            #echo "Starting to predict ResNet50 model..."
-            #python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
-            #    -o Global.mode=predict \
-            #    -o Predict.model_dir="./resnet50_output/best_model" \
-            #    -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
-            #    -o Global.device="xpu:${DEVICES[0]}"
-            #echo "Predicting Resnet50 completed!"
+            echo "Starting to predict ResNet50 model..."
+            python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
+                -o Global.mode=predict \
+                -o Predict.model_dir="./resnet50_output/best_model/inference" \
+                -o Predict.input="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
+                -o Global.device="xpu:${DEVICES[0]}"
+            echo "Predicting Resnet50 completed!"
             cd ..
             export FLAGS_enable_pir_api=1
         fi
