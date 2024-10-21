@@ -37,7 +37,7 @@ class TestBase(unittest.TestCase):
             self.set_input_grad()
 
     def set_input_grad(self):
-        if self.with_train:
+        if True:
             for i in range(len(self.inputs)):
                 if self.inputs[i].dtype in [paddle.float32, paddle.float64]:
                     self.inputs[i].stop_gradient = False
@@ -65,7 +65,7 @@ class TestBase(unittest.TestCase):
                 net = paddle.jit.to_static(
                     net(), full_graph=True, input_spec=self.input_specs
                 )
-        if self.with_train:
+        if True:
             net.train()
         else:
             net.eval()
@@ -87,7 +87,7 @@ class TestBase(unittest.TestCase):
             self.net,
             to_static=True,
             with_prim=self.with_prim,
-            with_cinn=self.with_cinn,
+            with_cinn=True,
         )
         if self.with_precision_compare:
             for st, cinn in zip(
@@ -96,7 +96,7 @@ class TestBase(unittest.TestCase):
                 np.testing.assert_allclose(
                     st.numpy(), cinn.numpy(), atol=self.atol
                 )
-        if self.with_train:
+        if True:
             if isinstance(st_out, (tuple, list)):
                 st_loss, cinn_loss = 0, 0
                 for i in range(len(st_out)):
