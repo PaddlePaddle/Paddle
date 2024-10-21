@@ -2923,6 +2923,31 @@ void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void argsort_grad(const Tensor& indices,
+                  const Tensor& x,
+                  const Tensor& out_grad,
+                  int axis,
+                  bool descending,
+                  bool stable,
+                  Tensor* x_grad) {
+  if (x_grad) {
+    if (axis < 0) {
+      axis += x.dims().size();
+    }
+    Tensor zero_tensor;
+    auto x_grad_tmp = Tensor();
+    if (has_dynamic_shape(x.shape())) {
+      zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
+    } else {
+      zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+    }
+    x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
