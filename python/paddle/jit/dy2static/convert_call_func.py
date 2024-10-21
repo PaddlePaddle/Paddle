@@ -54,6 +54,17 @@ __all__ = []
 translator_logger = TranslatorLogger()
 
 
+class WeakMethod:
+    def __init__(self, fn, instance):
+        self.fn = fn
+        self.instance = weakref.ref(instance)
+
+    def __call__(self, *args, **kwargs):
+        if self.instance() is None:
+            raise RuntimeError("The object has been destroyed")
+        return self.fn(self.instance(), *args, **kwargs)
+
+
 class ConversionOptions:
     """
     A container for conversion flags of a function in dynamic-to-static.
@@ -372,7 +383,7 @@ def convert_call(func):
                 # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
-                func.forward = weakref.WeakMethod(forward_func.__get__(func))
+                func.forward = WeakMethod(forward_func, func)
             except (OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
