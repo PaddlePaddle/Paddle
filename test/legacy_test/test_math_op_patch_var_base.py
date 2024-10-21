@@ -828,7 +828,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         x_np = np.random.randn(3, 6, 9, 7)
         x = paddle.to_tensor(x_np)
         x_mT = x.mT
-        self.assertTrue(x_mT.shape, [7, 9, 6, 3])
+        self.assertTrue(x_mT.shape, [3, 6, 7, 9])
         np.testing.assert_array_equal(
             x_mT.numpy(), x_np.transpose([0, 1, 3, 2])
         )

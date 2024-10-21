@@ -483,6 +483,50 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     (output_x,) = exe.run(main_program, fetch_list=[x_mT])
                     self.assertEqual(output_x.shape, tuple(out_shape))
 
+            shape = [1, 2, 3, 0, 1]
+            out_shape = list(shape)
+            out_shape[-2], out_shape[-1] = out_shape[-1], out_shape[-2]
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.rand(shape, dtype="float32")
+                x_mT = x.mT
+                self.assertEqual(x_mT.shape, out_shape)
+                (output_x,) = exe.run(main_program, fetch_list=[x_mT])
+                self.assertEqual(output_x.shape, tuple(out_shape))
+
+            shape = [1, 2, 3, 1, 0]
+            out_shape = list(shape)
+            out_shape[-2], out_shape[-1] = out_shape[-1], out_shape[-2]
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.rand(shape, dtype="float32")
+                x_mT = x.mT
+                self.assertEqual(x_mT.shape, out_shape)
+                (output_x,) = exe.run(main_program, fetch_list=[x_mT])
+                self.assertEqual(output_x.shape, tuple(out_shape))
+
+            shape = [1, 2, 3, 0, 0]
+            out_shape = list(shape)
+            out_shape[-2], out_shape[-1] = out_shape[-1], out_shape[-2]
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.rand(shape, dtype="float32")
+                x_mT = x.mT
+                self.assertEqual(x_mT.shape, out_shape)
+                (output_x,) = exe.run(main_program, fetch_list=[x_mT])
+                self.assertEqual(output_x.shape, tuple(out_shape))
+
+            shape = [0, 2, 3, 0, 0]
+            out_shape = list(shape)
+            out_shape[-2], out_shape[-1] = out_shape[-1], out_shape[-2]
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.rand(shape, dtype="float32")
+                x_mT = x.mT
+                self.assertEqual(x_mT.shape, out_shape)
+                (output_x,) = exe.run(main_program, fetch_list=[x_mT])
+                self.assertEqual(output_x.shape, tuple(out_shape))
+
     def test_hash(self):
         with paddle.pir_utils.IrGuard():
             _, _, program_guard = new_program()

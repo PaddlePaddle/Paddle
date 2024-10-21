@@ -95,8 +95,8 @@ class TestTensorMethod(TestCaseBase):
         self.assert_results(middle_tensor_name, x, y)
 
     def test_tensor_method_property_mT(self):
-        x = paddle.rand([42, 24], dtype='float64')
-        y = paddle.rand([42, 24], dtype='float32')
+        x = paddle.rand([42, 24, 2, 2, 3, 2], dtype='float64')
+        y = paddle.rand([42, 24, 2, 3, 3, 2], dtype='float32')
         self.assert_results(tensor_method_property_mT, x)
         self.assert_results(tensor_method_property_mT, y)
 

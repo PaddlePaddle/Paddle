@@ -528,7 +528,6 @@ class TensorVariable(VariableBase):
 
         perm = list(range(len(self.meta.shape) - 1, -1, -1))
         perm_var = ListVariable(perm, self.graph, tracker=ConstTracker(perm))
-        assert perm_var is not None
         out = self.graph.call_paddle_api(paddle.transpose, self, perm_var)
         return out
 
@@ -546,9 +545,7 @@ class TensorVariable(VariableBase):
 
         perm = list(range(len(self.meta.shape)))
         perm[-1], perm[-2] = perm[-2], perm[-1]
-
-        perm_var = ListVariable(perm, self.graph, tracker=ConstTracker(perm))
-        assert perm_var is not None
+        perm_var = ListVariable(perm, self.graph, tracker=DummyTracker(self))
         out = self.graph.call_paddle_api(paddle.transpose, self, perm_var)
         return out
 

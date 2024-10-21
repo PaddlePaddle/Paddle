@@ -502,8 +502,11 @@ def monkey_patch_value():
                 (2, 5, 3)
 
         """
-        if len(self.shape) == 1:
-            return self
+        if len(self.shape) < 2:
+            raise ValueError(
+                f"Tensor.ndim({len(self.shape)}) is required to be greater than or equal to 2."
+            )
+
         perm = list(range(len(self.shape)))
         perm[-1], perm[-2] = perm[-2], perm[-1]
 
