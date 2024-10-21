@@ -18,6 +18,7 @@ import os
 from collections import deque
 
 import paddle
+import paddle.distributed as dist
 
 from .cluster import DeviceType
 from .graph import Graph
@@ -30,14 +31,18 @@ def is_collective_comm_op(op):
         "c_allreduce_min",
         "c_allreduce_max",
         "c_allreduce_prod",
-        "c_reduce_sum",
-        "c_reduce_min",
-        "c_reduce_max",
-        "c_reduce_prod",
         "c_broadcast",
         "all_gather",
         "all_reduce",
     ]
+    reduce_tyep = [
+        dist.ReduceOp.SUM,
+        dist.ReduceOp.MIN,
+        dist.ReduceOp.MAX,
+        dist.ReduceOp.PROD,
+    ]
+    if op.type == "reduce" and op.attr("reduce_tyep") in reduce_tyep:
+        return True
     if op.type in comm_list:
         return True
     else:
@@ -109,6 +114,11 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
         else:
             comm_volume = None
     elif "c_reduce" in comm_op_type:
+        if comm_op.attr("root_id") == src_rank:
+            comm_volume = None
+        else:
+            comm_volume = tensor_bytes
+    elif "reduce" == comm_op_type:
         if comm_op.attr("root_id") == src_rank:
             comm_volume = None
         else:
