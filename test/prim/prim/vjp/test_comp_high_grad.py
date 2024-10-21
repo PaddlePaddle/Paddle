@@ -1066,9 +1066,9 @@ class TestBmmHighGradCheck2(unittest.TestCase):
         return dx
 
     def func_double(self, place, x_stop, y_stop):
-        x = paddle.randn(self.shape1).astype("float32")
+        x = paddle.randn(self.shape1).astype("float32").to(device=place)
         x.stop_gradient = x_stop
-        y = paddle.randn(self.shape2).astype("float32")
+        y = paddle.randn(self.shape2).astype("float32").to(device=place)
         y.stop_gradient = y_stop
 
         # wraping with tanh to enable high order gradient
@@ -1085,7 +1085,7 @@ class TestBmmHighGradCheck2(unittest.TestCase):
         y = paddle.randn(self.shape2).astype("float32")
         y.stop_gradient = y_stop
 
-        z = paddle.bmm(x, y)
+        z = paddle.bmm(paddle.tanh(x), paddle.tanh(y))
 
         if not x.stop_gradient:
             dzdx = self._grad(z, x, 3)
@@ -1093,7 +1093,13 @@ class TestBmmHighGradCheck2(unittest.TestCase):
             dzdy = self._grad(z, y, 3)
 
     def test_high_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

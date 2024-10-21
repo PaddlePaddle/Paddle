@@ -947,7 +947,7 @@ void bmm_double_grad(const Tensor& x,
   if (x_grad) {
     // dx' = bmm(dout, ddy.mT)
     Tensor x_grad_tmp;
-    if (grad_x_grad) {
+    if (grad_y_grad) {
       x_grad_tmp = bmm<T>(grad_out, transpose<T>(grad_y_grad.get(), {0, 2, 1}));
     } else {
       x_grad_tmp = full<T>(common::vectorize(x.dims()), 0, x.dtype());
