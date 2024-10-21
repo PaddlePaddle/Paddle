@@ -104,6 +104,7 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'use_empty',
         'is_dist_dense_tensor_type',
         'dist_attr',
+        'place_attr',
         'update_dist_attr',
         'is_combine',
         'value_assign',

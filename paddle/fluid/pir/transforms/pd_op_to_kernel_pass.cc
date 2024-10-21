@@ -3319,14 +3319,18 @@ void ProcessBlock(
       new_arg.set_attribute(name, attr);
     }
     if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
+      auto place_attr = arg.attribute<PlaceAttribute>("palce");
+      auto var_place = place_attr ? place_attr.data() : phi::Place();
       new_arg.set_type(
-          AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
+          AllocatedDenseTensorType::get(ctx, var_place, dense_tensor_type));
     }
     (*map_value_pair)[arg] = new_arg;
   }
   if (phi::is_accelerat_place(place)) {
     for (auto& [keyword, arg] : block->kwargs()) {
       if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
+        auto place_attr = arg.attribute<PlaceAttribute>("palce");
+        if (place_attr && place_attr.data() == place) continue;
         auto dtype = dense_tensor_type.dtype();
         phi::KernelKey shadow_key{paddle::experimental::get_accelerat_backend(),
                                   phi::DataLayout::ANY,

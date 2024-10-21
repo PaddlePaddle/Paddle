@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/c_embedding.h"
 #include "paddle/phi/infermeta/spmd_rules/c_softmax_with_cross_entropy.h"
 #include "paddle/phi/infermeta/spmd_rules/cast.h"
+#include "paddle/phi/infermeta/spmd_rules/coalesce_tensor.h"
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/conv2d.h"
 #include "paddle/phi/infermeta/spmd_rules/cross_entropy_with_softmax.h"

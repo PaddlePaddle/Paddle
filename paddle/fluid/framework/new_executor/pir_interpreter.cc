@@ -924,7 +924,7 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
       VLOG(6) << "process " << op_name;
-
+      if (op_name == "pd_op.share_var") continue;
       if (op.isa<paddle::dialect::LegacyKernelOp>()) {  // NOLINT
         CREATE_INSTR(LegacyKernelInstruction);
       } else {

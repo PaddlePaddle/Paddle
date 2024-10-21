@@ -368,4 +368,8 @@ std::vector<pir::Value> tensorrt_engine(
   return out_split_op.outputs();
 }
 
+pir::Operation* share_var(const std::vector<pir::Value>& x) {
+  return ApiBuilder::Instance().GetBuilder()->Build<ShareVarOp>(x);
+}
+
 }  // namespace paddle::dialect
