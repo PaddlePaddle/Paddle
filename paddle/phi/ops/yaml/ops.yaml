@@ -3813,6 +3813,7 @@
     data_type : prob
   inplace : (topk_idx -> out)
   traits : pir::SideEffectTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : randperm
   args : (int n, DataType dtype, Place place={})

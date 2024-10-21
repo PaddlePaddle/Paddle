@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.common_ops_import import check_variable_and_dtype
 from paddle.framework import (
     LayerHelper,
-    in_dynamic_mode,
     in_dynamic_or_pir_mode,
 )
 
@@ -125,8 +124,8 @@ def _random_routing(topk_idx, topk_value, prob, topk=2):
         prob: random prob, shape=(topk_idx.shape[0],)
     """
     if topk == 2:
-        if in_dynamic_mode():
-            return _legacy_C_ops.random_routing(prob, topk_value, topk_idx)
+        if in_dynamic_or_pir_mode():
+            return _C_ops.random_routing(prob, topk_value, topk_idx)
         else:
             raise RuntimeError("Not supporting static graph mode now")
     else:

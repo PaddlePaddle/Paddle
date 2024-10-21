@@ -2755,37 +2755,24 @@ bool Pool3dOpInferSymbolicShape(pir::Operation *op,
 
 bool ProdOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const std::vector<symbol::DimExpr> out_shape = {};
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
-  return true;
-  // bool keepdim = GetBoolAttr(op, "keepdim");
-  // bool reduce_all = GetBoolAttr(op, "reduce_all");
+  bool keepdim = GetBoolAttr(op, "keepdim");
+  bool reduce_all = GetBoolAttr(op, "reduce_all");
 
-  // std::vector<int64_t> axis;
-  // if (paddle::dialect::details::GetAxisFromOpInput(
-  //         op->operand_source(1), infer_context, &axis)) {
-  //   if (axis.size() == 0) {
-  //     reduce_all = true;
-  //   }
+  std::vector<int64_t> axis;
+  if (paddle::dialect::details::GetAxisFromOpInput(
+          op->operand_source(1), infer_context, &axis)) {
+    if (axis.size() == 0) {
+      reduce_all = true;
+    }
 
-  //   // return paddle::dialect::details::ReduceInferDim(
-  //   //     op, infer_context, axis, keepdim, reduce_all);
-
-  //   const std::vector<symbol::DimExpr> out_shape = {};
-  //   infer_context->SetShapeOrDataForValue(
-  //       op->result(0),
-  //       symbol::ShapeOrDataDimExprs{
-  //           symbol::TensorShapeOrDataDimExprs(out_shape)});
-  //   return true;
-  // } else {
-  //   PADDLE_THROW(common::errors::Unimplemented(
-  //       "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
-  //       "support FullIntArrayOp's result or constant DimExpr now."));
-  // }
-  // return false;
+    return paddle::dialect::details::ReduceInferDim(
+        op, infer_context, axis, keepdim, reduce_all);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Reduction[Sum|Max|Prod|Mean..] OpInferSymbolicShape: 'axis' only "
+        "support FullIntArrayOp's result or constant DimExpr now."));
+  }
+  return false;
 }
 
 bool QrOpInferSymbolicShape(pir::Operation *op,
@@ -3463,8 +3450,7 @@ bool SetValueWithTensor_OpInferSymbolicShape(
 // }
 
 // bool TraceOpInferSymbolicShape(pir::Operation *op,
-//                                pir::InferSymbolicShapeContext
-//                                *infer_context)
+//                                pir::InferSymbolicShapeContext *infer_context)
 //                                {
 //   // pass
 //   return true;
@@ -3626,9 +3612,9 @@ bool TraceOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_GE(
       rank,
       2,
-      common::errors::OutOfRange("Input(x)'s dim is out of range (expected "
-                                 "at least 2, but got %ld).",
-                                 rank));
+      common::errors::OutOfRange(
+          "Input(x)'s dim is out of range (expected at least 2, but got %ld).",
+          rank));
   PADDLE_ENFORCE_LT(
       dim1_,
       rank,
@@ -3794,8 +3780,8 @@ bool SqueezeOpInferSymbolicShape(
   // Mark dimensions need to be squeezed.
   if (num_squeeze_dims == 0) {
     for (size_t i = 0; i < in_dims_sym.size(); ++i) {
-      // TODO(lanxianghit): if symbol here, maybe we need the result of dim
-      // expr simplification
+      // TODO(lanxianghit): if symbol here, maybe we need the result of dim expr
+      // simplification
       if (in_dims_sym.at(i) == 1) {
         should_squeeze.at(i) = true;
       }
