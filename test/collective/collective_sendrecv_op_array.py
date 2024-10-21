@@ -64,6 +64,7 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                         'peer': 0,
                         'ring_id': ring_id,
                         'dtype': data1.dtype,
+                        'out_shape': [1, 3],
                     },
                 )
             return tensor_array

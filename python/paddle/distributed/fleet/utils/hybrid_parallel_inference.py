@@ -618,10 +618,10 @@ class HybridParallelInferenceHelper:
                         type='p_send',
                         inputs={'x': var},
                         attrs={
+                            self._op_device_key: prev_dev,
+                            self._op_role_key: op_role,
                             'peer': 1,
                             'ring_id': ring_id,
-                            self._op_role_key: op_role,
-                            'dynamic_shape': True,
                         },
                     )
                     extra_index_info['index'] += 1
@@ -639,11 +639,12 @@ class HybridParallelInferenceHelper:
                         type='p_recv',
                         outputs={'out': [var]},
                         attrs={
+                            'out_shape': var_shape,
                             'dtype': var.dtype,
+                            self._op_device_key: cur_dev,
+                            self._op_role_key: op_role,
                             'peer': 0,
                             'ring_id': ring_id,
-                            self._op_role_key: op_role,
-                            'dynamic_shape': True,
                         },
                     )
                     extra_index_info['index'] += 1
@@ -714,13 +715,14 @@ class HybridParallelInferenceHelper:
                         type='p_send',
                         inputs={'x': var},
                         attrs={
+                            self._op_device_key: self._device
+                            + ':'
+                            + str(cur_id),
+                            self._op_role_key: int(self._op_role.Forward),
                             'peer': 0,
                             'ring_id': ring_id,
-                            self._op_role_key: int(self._op_role.Forward),
-                            'dynamic_shape': True,
                         },
                     )
-
                 else:
                     var_shape = list(var.shape)
                     print(var_name)
@@ -735,11 +737,14 @@ class HybridParallelInferenceHelper:
                         type='p_recv',
                         outputs={'out': [var]},
                         attrs={
+                            'out_shape': var_shape,
                             'dtype': var.dtype,
+                            self._op_device_key: self._device
+                            + ':'
+                            + str(prev_id),
+                            self._op_role_key: int(self._op_role.Forward),
                             'peer': 1,
                             'ring_id': ring_id,
-                            self._op_role_key: int(self._op_role.Forward),
-                            'dynamic_shape': True,
                         },
                     )
                 index += 1

@@ -42,7 +42,7 @@ class TestSemiAutoParallelLlama3DVPP(test_base.CommunicationTestDistBase):
             "use_param_group": ["true"],
             "recompute": ["true"],
             "recompute_granularity": ["full"],
-            "virtual_pp_degree": ["1"],
+            "virtual_pp_degree": ["2"],
         }
 
     def test_simple_net_hybrid_strategy(self):
