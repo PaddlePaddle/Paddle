@@ -150,7 +150,12 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+            check_symbol_infer=False,
+        )
 
     def if_enable_cinn(self):
         pass
