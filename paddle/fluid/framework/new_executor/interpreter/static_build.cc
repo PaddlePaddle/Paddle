@@ -281,9 +281,11 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
       return var->template GetMutable<phi::TensorArray>();
     } else if (var->template IsType<phi::Strings>()) {
       return var->template GetMutable<phi::Strings>();
-    } else if (var->template IsType<paddle::framework::RawTensor>() ||
+    } else if (var->template IsType<phi::FetchList>()) {
+      return var->template GetMutable<phi::FetchList>();
+    } else if (var->template IsType<phi::RawTensor>() ||
                !var->IsInitialized()) {
-      return var->template GetMutable<paddle::framework::RawTensor>();
+      return var->template GetMutable<phi::RawTensor>();
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type when get tensor.",

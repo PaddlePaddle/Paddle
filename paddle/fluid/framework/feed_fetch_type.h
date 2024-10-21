@@ -19,21 +19,16 @@ namespace paddle {
 namespace framework {
 
 inline bool data_is_lod_tensor(const FetchType &data) {
-  if (data.type() == typeid(phi::DenseTensor)) {
+  // if (data.type() == typeid(phi::DenseTensor)) {
+  if (data.IsType<phi::DenseTensor>()) {
     return true;
   }
   return false;
 }
 
 inline bool data_is_lod_tensor_array(const FetchType &data) {
-  if (data.type() == typeid(phi::TensorArray)) {
-    return true;
-  }
-  return false;
-}
-
-inline bool data_is_sparse_coo_tensor(const FetchType &data) {
-  if (data.type() == typeid(phi::SparseCooTensor)) {
+  // if (data.type() == typeid(phi::TensorArray)) {
+  if (data.IsType<phi::TensorArray>()) {
     return true;
   }
   return false;

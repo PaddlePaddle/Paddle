@@ -16,16 +16,16 @@
 
 #include <vector>
 #include "paddle/phi/core/extended_tensor.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
 using FeedType = phi::DenseTensor;
-using FetchType = paddle::variant<phi::DenseTensor,
-                                  phi::TensorArray,
-                                  phi::Vocab,
-                                  phi::SparseCooTensor>;
+// using FetchType = paddle::variant<phi::DenseTensor,
+//                                   phi::TensorArray;
+using FetchType = RawTensor;
 
 template <>
 struct PhiVectorType<FeedType> {

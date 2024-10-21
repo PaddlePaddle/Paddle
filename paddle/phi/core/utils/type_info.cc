@@ -55,6 +55,7 @@ template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
 template class TypeInfoTraits<phi::TensorBase, Vocab>;
 template class TypeInfoTraits<phi::TensorBase, Strings>;
 template class TypeInfoTraits<phi::TensorBase, FeedList>;
+template class TypeInfoTraits<phi::TensorBase, FetchList>;
 
 template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
 template class TypeInfoTraits<phi::DeviceContext, CustomContext>;
