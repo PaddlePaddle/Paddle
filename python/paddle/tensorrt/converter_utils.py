@@ -162,29 +162,28 @@ def add_elementwise_layer(network, paddle_op, inputs, op_type):
 
 
 # Create and add 1D constant layer
-def add_1D_constant_layer(network, data, dtype=np.int32, scalar=False):
+def add_1D_constant_layer(network, data, np_dtype=np.int32, scalar=False):
     if not isinstance(data, list):
         data = [data]
-    constant_data = np.array(data, dtype=dtype)
+    constant_data = np.array(data, dtype=np_dtype)
     constant_data_shape = [] if scalar else constant_data.shape
     constant_layer = network.add_constant(constant_data_shape, constant_data)
     return constant_layer.get_output(0)
 
 
 # Create an constant layer with shape_tensor and value
-def fill_constant_layer(
-    network, shape_tensor, tensor_rank, data, dtype=np.int32
-):
+def fill_constant_layer(network, shape_tensor, tensor_rank, data, trt_dtype):
     fill_layer = network.add_fill(
         trt.Dims([tensor_rank]), trt.FillOperation.LINSPACE
     )
+    np_dtype = map_trt_dtype(trt_dtype)
     fill_layer.set_input(0, shape_tensor)
     fill_layer.set_input(
-        1, add_1D_constant_layer(network, data, dtype, scalar=True)
+        1, add_1D_constant_layer(network, data, np_dtype, scalar=True)
     )
     beta = [0] * tensor_rank
     fill_layer.set_input(
-        2, add_1D_constant_layer(network, beta, dtype, scalar=False)
+        2, add_1D_constant_layer(network, beta, np_dtype, scalar=False)
     )
     return fill_layer.get_output(0)
 
@@ -374,22 +373,19 @@ def build_size_tensor(
     return size_tensor
 
 
-# def map_trt_dtype(trt_dtype):
-#     if trt_dtype == trt.float32:
-#         return np.
-#     if pd_dtype == "FLOAT32":
-#         return trt.float32
-#     elif pd_dtype == "FLOAT16":
-#         return trt.float16
-#     elif pd_dtype == "INT32":
-#         return trt.int32
-#     elif pd_dtype == "INT8":
-#         return trt.int8
-#     elif pd_dtype == "BOOL":
-#         return trt.bool
-#     # Add other dtype mappings as needed
-#     else:
-#         raise TypeError(f"Unsupported dtype: {pd_dtype}")
+# convert trt_dtype to numpy dtype
+def map_trt_dtype(trt_dtype):
+    dtype_map = {
+        trt.DataType.FLOAT: np.float32,
+        trt.DataType.HALF: np.float16,
+        trt.DataType.INT32: np.int32,
+        trt.DataType.INT8: np.int8,
+        trt.DataType.BOOL: np.bool,
+    }
+    if trt_dtype in dtype_map:
+        return dtype_map[trt_dtype]
+    else:
+        raise TypeError(f"Unsupported trt_dtype: {trt_dtype}")
 
 
 # Reduce the given tensor in the TensorRT network to a scalar

@@ -126,23 +126,17 @@ def multiply_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.clip", trt_version="8.x")
 def clip_converter(network, paddle_op, inputs):
-    def _get_constant_or_tensor(
-        op, constant_inputs, input_shape_tensor, rank, dtype
+    def _get_constant_or_expand_tensor(
+        op, constant_inputs, input_shape_tensor, rank
     ):
         if op.name() == "pd_op.full":
-            value = (
-                int(op.attrs()["value"])
-                if dtype == np.int32
-                else op.attrs()["value"]
-            )
-            # test
+            value = op.attrs()["value"]
             return fill_constant_layer(
                 network, input_shape_tensor, rank, value, input_tensor.dtype
             )
         else:
-            tensor = constant_inputs
             expanded_tensor = trt_expend(
-                network, tensor, 1, input_shape_tensor, rank
+                network, constant_inputs, 1, input_shape_tensor, rank
             )
             if expanded_tensor.dtype != input_tensor.dtype:
                 expanded_tensor = cast_tensor(
@@ -154,18 +148,17 @@ def clip_converter(network, paddle_op, inputs):
     input_shape = paddle_op.operands()[0].source().shape
     rank = len(input_shape)
     input_shape_tensor = network.add_shape(input_tensor).get_output(0)
-    dtype = np.float32 if input_tensor.dtype == trt.float32 else np.int32
 
     # handle min operation
     min_op = paddle_op.operands()[1].source().get_defining_op()
-    alpha_t = _get_constant_or_tensor(
-        min_op, inputs[1], input_shape_tensor, rank, dtype
+    alpha_t = _get_constant_or_expand_tensor(
+        min_op, inputs[1], input_shape_tensor, rank
     )
 
     # handle max operation
     max_op = paddle_op.operands()[2].source().get_defining_op()
-    beta_t = _get_constant_or_tensor(
-        max_op, inputs[2], input_shape_tensor, rank, dtype
+    beta_t = _get_constant_or_expand_tensor(
+        max_op, inputs[2], input_shape_tensor, rank
     )
 
     # run the clip operation
