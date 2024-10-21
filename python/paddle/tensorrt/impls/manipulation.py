@@ -21,18 +21,17 @@ from paddle.tensorrt.converter_utils import (
     build_size_tensor,
     build_start_tensor,
     cast_tensor,
-    fill_constant_layer,
     get_axes_for_reduce_op,
     get_positive_dim,
     get_shape_tensor_element,
     has_dynamic_shape,
     trt_concat,
+    trt_expend,
     trt_floor_div,
     trt_less,
     trt_max,
     trt_min,
     trt_mul,
-    trt_reshape,
     trt_shape,
     trt_sub,
     trt_sum,
@@ -224,36 +223,6 @@ def squeeze_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-def get_expand_output(network, input, rank, shape_tensor, shape_rank):
-    if rank < shape_rank:
-        one_rank_tensor = add_1D_constant_layer(
-            network, [1] * (shape_rank - rank)
-        )
-        in_shape_tensor = trt_shape(network, input)
-        itensors = [one_rank_tensor, in_shape_tensor]
-        input_shape_tensor = trt_concat(network, itensors)
-    else:
-        input_shape_tensor = trt_shape(network, input)
-
-    new_input_tensor = trt_reshape(network, input, input_shape_tensor, "", True)
-
-    start = [0] * shape_rank
-    starts_tensor = add_1D_constant_layer(network, start)
-    one_tensor = add_1D_constant_layer(network, 1)
-    sizes_tensor = trt_max(network, input_shape_tensor, shape_tensor)
-    input_sub_tensor = trt_sub(network, input_shape_tensor, one_tensor)
-    strides_tensor = trt_min(network, one_tensor, input_sub_tensor)
-
-    slice_layer = network.add_slice(
-        new_input_tensor, start, [0] * len(start), [0] * len(start)
-    )
-    slice_layer.set_input(1, starts_tensor)
-    slice_layer.set_input(2, sizes_tensor)
-    slice_layer.set_input(3, strides_tensor)
-
-    return slice_layer.get_output(0)
-
-
 @converter_registry.register("pd_op.expand", trt_version="8.x")
 def expand_converter(network, paddle_op, inputs):
     input = inputs[0]
@@ -273,7 +242,7 @@ def expand_converter(network, paddle_op, inputs):
     else:
         shape_tensor = inputs[1]
         shape_rank = shape_tensor.shape[0]
-    return get_expand_output(network, input, rank, shape_tensor, shape_rank)
+    return trt_expend(network, input, rank, shape_tensor, shape_rank)
 
 
 @converter_registry.register("pd_op.expand_as", trt_version="8.x")
@@ -291,7 +260,7 @@ def expand_as_converter(network, paddle_op, inputs):
         shape = paddle_op.attrs().get("target_shape")
         shape_tensor = add_1D_constant_layer(network, shape)
         shape_rank = len(shape)
-    return get_expand_output(network, input, rank, shape_tensor, shape_rank)
+    return trt_expend(network, input, rank, shape_tensor, shape_rank)
 
 
 @converter_registry.register("pd_op.cast", trt_version="8.x")
@@ -652,55 +621,3 @@ def split_converter(network, paddle_op, inputs):
             ).get_output(0)
 
     return outputs
-
-
-@converter_registry.register("pd_op.clip", trt_version="8.x")
-def clip_converter(network, paddle_op, inputs):
-    def _get_constant_or_tensor(
-        op, constant_inputs, input_shape_tensor, rank, dtype
-    ):
-        if op.name() == "pd_op.full":
-            value = (
-                int(op.attrs()["value"])
-                if dtype == np.int32
-                else op.attrs()["value"]
-            )
-            return fill_constant_layer(
-                network, input_shape_tensor, rank, value, dtype
-            )
-        else:
-            tensor = constant_inputs
-            expanded_tensor = get_expand_output(
-                network, tensor, 1, input_shape_tensor, rank
-            )
-            if expanded_tensor.dtype != input_tensor.dtype:
-                expanded_tensor = cast_tensor(
-                    network, expanded_tensor, input_tensor.dtype
-                )
-            return expanded_tensor
-
-    input_tensor = inputs[0]
-    input_shape = paddle_op.operands()[0].source().shape
-    rank = len(input_shape)
-    input_shape_tensor = network.add_shape(input_tensor).get_output(0)
-    dtype = np.float32 if input_tensor.dtype == trt.float32 else np.int32
-
-    # handle min operation
-    min_op = paddle_op.operands()[1].source().get_defining_op()
-    alpha_t = _get_constant_or_tensor(
-        min_op, inputs[1], input_shape_tensor, rank, dtype
-    )
-
-    # handle max operation
-    max_op = paddle_op.operands()[2].source().get_defining_op()
-    beta_t = _get_constant_or_tensor(
-        max_op, inputs[2], input_shape_tensor, rank, dtype
-    )
-
-    # run the clip operation
-    lower_clip = trt_max(network, input_tensor, alpha_t)
-    layer = network.add_elementwise(
-        lower_clip, beta_t, trt.ElementWiseOperation.MIN
-    )
-
-    return layer.get_output(0)
