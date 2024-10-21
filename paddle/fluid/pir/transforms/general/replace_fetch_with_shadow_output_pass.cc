@@ -15,6 +15,7 @@
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -28,6 +29,10 @@ class ReplaceFetchWithShadowOutputPattern
   bool MatchAndRewrite(
       paddle::dialect::FetchOp op,
       pir::PatternRewriter& rewriter) const override {  // NOLINT
+    if (pir::GetDefiningOpForInput(op, 0)->HasAttribute("name")) {
+      // DataOp/FeedOp
+      return false;
+    }
     rewriter.Build<pir::ShadowOutputOp>(
         op->operand_source(0),
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
