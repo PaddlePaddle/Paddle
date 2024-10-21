@@ -6381,9 +6381,10 @@ def take_along_axis(
     Take values from the input array by given indices matrix along the designated axis.
 
     Args:
-        arr (Tensor) : The input Tensor. Supported data types are float32 and float64.
+        arr (Tensor) : The input Tensor. Supported data types are bfloat16, float16, float32, float64,
+            int32, int64, uint8.
         indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
-            and need to broadcast against arr. Supported data type are int and int64.
+            and need to broadcast against arr. Supported data type are int32 and int64.
         axis (int) : The axis to take 1d slices along.
         broadcast (bool, optional): whether the indices broadcast.
 
@@ -6477,9 +6478,10 @@ def put_along_axis(
     Put values into the destination array by given indices matrix along the designated axis.
 
     Args:
-        arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
+        arr (Tensor) : The Destination Tensor. Supported data types are bfloat16, float16, float32, float64,
+            int32, int64, uint8.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
-            and need to broadcast against arr if broadcast is 'True'. Supported data type are int and int64.
+            and need to broadcast against arr if broadcast is 'True'. Supported data type are int32 and int64.
         values (scalar|Tensor) : The value element(s) to put. The data types should be same as arr.
         axis (int) : The axis to put 1d slices along.
         reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul', 'multiply', 'mean', 'amin' and 'amax'.

@@ -77,7 +77,7 @@ def abs(x: Tensor, name: str | None = None) -> Tensor:
         out = |x|
 
     Args:
-        x (Tensor): The input Tensor with data type int32, int64, float16, float32 and float64.
+        x (Tensor): The input Tensor with data type int32, int64, float16, float32, float64, complex64 and complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -517,7 +517,7 @@ def exp(x: Tensor, name: str | None = None) -> Tensor:
         out = e^x
 
     Args:
-        x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, float16, float32, float64, complex64 or complex128.
+        x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -567,7 +567,7 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
         out = e^x - 1
 
     Args:
-        x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, float16, float32, float64, complex64 or complex128.
+        x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -702,7 +702,7 @@ def round(x: Tensor, decimals: int = 0, name: str | None = None) -> Tensor:
           out.data = [1., -1., 3., 1.]
 
     Args:
-        x (Tensor): Input of Round operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, float32, float64 or float16.
         decimals(int): Rounded decimal place (default: 0).
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -975,7 +975,7 @@ def square(x: Tensor, name: str | None = None) -> Tensor:
        out = x^2
 
     Args:
-        x (Tensor): Input of Square operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Square operator, an N-D Tensor, with data type int32, int64, float32, float64, float16, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
