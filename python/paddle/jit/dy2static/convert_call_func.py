@@ -22,7 +22,6 @@ import logging
 import os
 import pdb  # noqa: T100
 import re
-import weakref
 from typing import TYPE_CHECKING, Any, Callable
 
 import numpy
@@ -43,7 +42,7 @@ from .program_translator import (
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import is_builtin, is_paddle_func
+from .utils import WeakMethod, is_builtin, is_paddle_func
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -52,17 +51,6 @@ __all__ = []
 
 
 translator_logger = TranslatorLogger()
-
-
-class WeakMethod:
-    def __init__(self, fn, instance):
-        self.fn = fn
-        self.instance = weakref.ref(instance)
-
-    def __call__(self, *args, **kwargs):
-        if self.instance() is None:
-            raise RuntimeError("The object has been destroyed")
-        return self.fn(self.instance(), *args, **kwargs)
 
 
 class ConversionOptions:
