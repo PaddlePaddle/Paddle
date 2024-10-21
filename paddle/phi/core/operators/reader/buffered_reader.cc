@@ -196,7 +196,7 @@ void BufferedReader::ReadAsync(size_t i) {
         }
 
         // NOTE(zjl): cudaStreamWaitEvent() must be called after all
-        // cuda[i].mutable_data() is called, since some ops release
+        // Alloc(cuda[i]) is called, since some ops release
         // cuda memory immediately without waiting cuda kernel ends
         platform::SetDeviceId(place_.device);
 #ifdef PADDLE_WITH_HIP
