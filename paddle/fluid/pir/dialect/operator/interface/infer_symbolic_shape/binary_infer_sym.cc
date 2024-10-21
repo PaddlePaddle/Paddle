@@ -1693,11 +1693,60 @@ bool PriorBoxOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool RepeatInterleaveWithTensorIndexOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool RepeatInterleaveWithTensorIndexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &repeats_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const auto &attributes = op->attributes();
+  int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      repeats_shape_or_data.shape().size(),
+      1,
+      common::errors::InvalidArgument(
+          "The shape of Input(Repeats) should be 1-D Tensor, but received "
+          "shape is %d-D.",
+          repeats_shape_or_data.shape().size()));
+
+  ExprVec repeat_times_shape =
+      paddle::dialect::details::GetOrCreateExprVecFromData(
+          repeats_shape_or_data, infer_context);
+
+  const auto &GetSum = [&](const auto &dim_exprs) {
+    symbol::DimExpr sum{0};
+    for (const auto &dim_expr : dim_exprs) {
+      sum = sum + dim_expr;
+    }
+    return sum;
+  };
+
+  int x_rank = x_shape.size();
+  if (axis < 0) axis += x_rank;
+
+  const auto &out_sym_shape = [&] {
+    std::vector<symbol::DimExpr> out_sym_shape;
+    for (int i = 0; i < x_rank; i++) {
+      if (i == axis) {
+        out_sym_shape.push_back(GetSum(repeat_times_shape));
+      } else {
+        out_sym_shape.push_back(x_shape.at(i));
+      }
+    }
+    return out_sym_shape;
+  }();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_sym_shape)});
+
+  return true;
+}
 
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1787,12 +1836,6 @@ bool SequenceMaskOpInferSymbolicShape(
 // bool ShuffleBatchOpInferSymbolicShape(pir::Operation *op,
 //                                       pir::InferSymbolicShapeContext
 //                                       *infer_context) {
-//   // pass
-//   return true;
-// }
-
-// bool SolveOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
 //   // pass
 //   return true;
 // }
@@ -2039,6 +2082,11 @@ static inline std::vector<symbol::DimExpr> MatrixGetBroadcastBatchPortion(
   // use int to avoid underflow for minus
   int size_x = x.size();
   int size_y = y.size();
+
+  if (size_y == 0) {
+    return {};
+  }
+
   int max_size = std::max(size_x, size_y);
   std::vector<symbol::DimExpr> batchPortion(max_size);
 
@@ -2095,6 +2143,11 @@ bool TriangularSolveOpInferSymbolicShape(
           symbol::TensorShapeOrDataDimExprs(output_shape)});
 
   return true;
+}
+
+bool SolveOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return TriangularSolveOpInferSymbolicShape(op, infer_context);
 }
 
 bool Unpool3dOpInferSymbolicShape(
