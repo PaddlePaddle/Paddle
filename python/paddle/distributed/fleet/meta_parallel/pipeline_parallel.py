@@ -161,6 +161,13 @@ def register_bubble_pipeline_parallel_hook(location: int, hook: Callable):
     pipeline_bubble_hooks_.register_hook(location, hook)
 
 
+pipeline_parallel_hooks_ = []
+
+
+def register_pipeline_parallel_hook(hook: Callable):
+    pipeline_parallel_hooks_.append(hook)
+
+
 class PipelineParallel(MetaParallelBase):
     def __init__(self, layers, hcg, strategy):
         if not isinstance(layers, PipelineLayer):
@@ -343,6 +350,9 @@ class PipelineParallel(MetaParallelBase):
             self.register_allreduce_overlap_hook(
                 self._layers, self.dp_group, self.accumulate_steps, True
             )
+
+        for hook in pipeline_parallel_hooks_:
+            hook(self)
 
     def is_pipeline_first_stage(self, ignore_virtual=False):
         if not ignore_virtual:
