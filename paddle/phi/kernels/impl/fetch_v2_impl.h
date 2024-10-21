@@ -58,7 +58,7 @@ void FetchV2Kernel(const Context &dev_ctx,
                    const DenseTensor &x,
                    int col,
                    bool deepcopy,
-                   phi::FetchList *out) {
+                   phi::ExtendedTensor *out) {
   PADDLE_ENFORCE_GE(col,
                     0,
                     errors::InvalidArgument(
