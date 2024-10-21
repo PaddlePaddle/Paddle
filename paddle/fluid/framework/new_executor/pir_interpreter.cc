@@ -1330,7 +1330,8 @@ void PirInterpreter::CalculateLastLiveOps() {
         // skip no_need_buffer input vars
         if ((ins.count(item.first) &&
              instr->NoNeedBuffer().count(item.first)) ||
-            instr->Name() == "builtin_combine_instruction") {
+            instr->Name() == "builtin_combine_instruction" ||
+            instr->Name() == "pd_op.shadow_feed_tensors") {
           continue;
         }
         gc_check_vars.insert(var_id);
@@ -1343,8 +1344,10 @@ void PirInterpreter::CalculateLastLiveOps() {
           value_exe_info_->GetNameById(static_cast<int>(var_id)));
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          common::errors::NotFound("Var(id=%d) should not be nullptr.",
-                                   static_cast<int>(var_id)));
+          common::errors::NotFound(
+              "Var(id=%d,%s) should not be nullptr.",
+              static_cast<int>(var_id),
+              value_exe_info_->GetNameById(static_cast<int>(var_id))));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
