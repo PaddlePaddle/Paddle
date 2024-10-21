@@ -15,11 +15,11 @@
 #include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
 namespace paddle {

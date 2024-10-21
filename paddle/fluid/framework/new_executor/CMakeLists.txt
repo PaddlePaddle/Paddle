@@ -24,7 +24,6 @@ set(standalone_executor_deps
     program_translator
     op_dialect_vjp
     global_utils
-    buffered_reader
     framework_io
     garbage_collector
     executor_gc_helper

@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/platform/cuda_device_guard.h"

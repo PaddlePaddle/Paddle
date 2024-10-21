@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/ctr_reader.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
+#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
