@@ -82,6 +82,13 @@ void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
                                     float epsilon,
                                     MetaTensor* out);
 
+void LayerNormalizeReluXPUInferMeta(const MetaTensor& x,
+                                    const MetaTensor& scale,
+                                    const MetaTensor& bias,
+                                    int begin_norm_axis,
+                                    float epsilon,
+                                    MetaTensor* out);
+
 void BlhaGetMaxLenInferMeta(const MetaTensor& seq_lens_encoder,
                             const MetaTensor& seq_lens_decoder,
                             const MetaTensor& batch_size,

@@ -471,10 +471,9 @@ ExprTransformer UnsqueezeForTransformer(
       schedule_block->body =
           WrapForTransformer(to_append_var)(schedule_block->body);
     } else {
-      PADDLE_THROW(
+      PADDLE_THROW(::common::errors::PreconditionNotMet(
           "UnsqueezeForTransformer: only support insert after a (For / "
-          "ScheduleBlockRealizer): %s",
-          followed_expr);
+          "ScheduleBlockRealizer)"));
     }
     VLOG(6) << "UnsqueezeForTransformer: After changed: " << copied_e;
     return copied_e;
@@ -547,9 +546,12 @@ ExprTransformer RemoveVarInScheduleBlockRealize(const ir::Var& target_vars,
     VLOG(4) << "Start RemoveVarInScheduleBlockRealize(" << target_vars << ", "
             << replaced_expr << ")";
     VLOG(4) << "      Input is " << e;
-    PADDLE_ENFORCE(e.As<ir::ScheduleBlockRealize>() != nullptr,
-                   "RemoveVarInScheduleBlockRealize: input expr is not a "
-                   "ScheduleBlockRealize.");
+    PADDLE_ENFORCE_NE(
+        e.As<ir::ScheduleBlockRealize>(),
+        nullptr,
+        ::common::errors::InvalidArgument(
+            "RemoveVarInScheduleBlockRealize: input expr is not a "
+            "ScheduleBlockRealize."));
     auto copied_ir = ir::ir_utils::IRCopy(e);
     auto schedule_block_iter_vars =
         copied_ir.As<ir::ScheduleBlockRealize>()->iter_values;
@@ -557,9 +559,11 @@ ExprTransformer RemoveVarInScheduleBlockRealize(const ir::Var& target_vars,
                                 ->schedule_block.As<ir::ScheduleBlock>()
                                 ->iter_vars;
     for (const auto& i_var : schedule_block_iter_vars) {
-      PADDLE_ENFORCE(
+      PADDLE_ENFORCE_EQ(
           i_var.is_var(),
-          "RemoveVarInScheduleBlockRealize: axes.bind rhs is is not a Var.");
+          true,
+          ::common::errors::InvalidArgument("RemoveVarInScheduleBlockRealize: "
+                                            "axes.bind rhs is is not a Var."));
     }
     // find replace idx
     int target_idx = -1;
@@ -686,10 +690,11 @@ ExprTransformer RemoveOneTransformer(int one) {
       VLOG(4) << "RemoveOneTransformer: father block is root realize";
       ir::Expr shedule_block =
           target_block.As<ir::ScheduleBlockRealize>()->schedule_block;
-      PADDLE_ENFORCE_EQ(shedule_block.As<ir::ScheduleBlock>()->body,
-                        target_for,
-                        ::common::errors::PreconditionNotMet(
-                            "Root realize body should be equal to target for"));
+      PADDLE_ENFORCE_EQ(
+          shedule_block.As<ir::ScheduleBlock>()->body,
+          target_for,
+          ::common::errors::InvalidArgument(
+              "Root realize body should be equal to target for."));
       const auto for_body = target_for.As<ir::For>()->body;
       const auto for_body_stmts = for_body.As<ir::Block>()->stmts;
       if (for_body_stmts.size() == 1 &&
@@ -747,12 +752,17 @@ ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones) {
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
   const auto& f = [=](const ir::Expr& root) -> ir::Expr {
     const auto& iters = GetNonReduceLoopVars(root);
-    PADDLE_ENFORCE_EQ(iters.size(),
-                      perm.size(),
-                      "Transposed iters size and perm size should be equal.");
+    PADDLE_ENFORCE_EQ(
+        iters.size(),
+        perm.size(),
+        ::common::errors::InvalidArgument(
+            "Transposed iters size and perm size should be equal."));
     for (size_t i = 0; i < perm.size(); ++i) {
       if (iters[i]->is_reduce_axis) {
-        PADDLE_ENFORCE_EQ(i, perm[i], "Can only transpose non reduce iters.");
+        PADDLE_ENFORCE_EQ(i,
+                          perm[i],
+                          ::common::errors::InvalidArgument(
+                              "Can only transpose non reduce iters."));
       }
     }
     const auto transposed_iters = cinn::fusion::TransposeVector(iters, perm);
@@ -773,7 +783,7 @@ ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
         axis.size(),
         vars.size(),
         ::common::errors::InvalidArgument(
-            "The number of axis to insert and vars should be equal"));
+            "The number of axis to insert and vars should be equal."));
     const size_t reduce_size =
         std::count_if(iters.begin(), iters.end(), [](const ir::Var& v) {
           return v->is_reduce_axis;
@@ -782,7 +792,7 @@ ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
       PADDLE_ENFORCE_LE(axis[i],
                         iters.size() - reduce_size,
                         ::common::errors::OutOfRange(
-                            "Insert axis should not be behind reduce axis"));
+                            "Insert axis should not be behind reduce axis."));
       iters.insert(iters.begin() + axis[i], vars[i]);
     }
     const auto non_reduce_iters =
@@ -837,7 +847,7 @@ int InplaceMutateSingleExpr(ir::Expr* root,
   PADDLE_ENFORCE_EQ(
       source.size(),
       1,
-      ::common::errors::InvalidArgument("Only one expr should be found"));
+      ::common::errors::InvalidArgument("Only one expr should be found."));
   const auto& target = transformer(source[0]);
   ComposeUtils::MappingTargetExprToDestExprMutator(source[0], target)(root);
   return 1;  // operation number.
@@ -880,7 +890,10 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
   VLOG(4) << "      op_patterns.size() = " << op_compute_bodies.size();
   VLOG(4) << "op_compute_bodies.size() = " << op_patterns.size();
   PADDLE_ENFORCE_EQ(
-      op_patterns.size(), op_compute_bodies.size(), "ops and  size not equal");
+      op_patterns.size(),
+      op_compute_bodies.size(),
+      ::common::errors::InvalidArgument(
+          "The number of op_compute_bodies and op_patterns should be equal."));
 }
 
 std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
