@@ -188,7 +188,7 @@ TEST(from_blob, Option) {
       data[i] = i;
     }
     auto test_tensor = from_blob(data,
-                                 {1, 2, 2, 1},
+                                 {1, 2, 2, 2},
                                  DataType::INT64,
                                  phi::DataLayout::NHWC,
                                  phi::CPUPlace(),
@@ -201,7 +201,7 @@ TEST(from_blob, Option) {
       f_data[i] = static_cast<float>(i);
     }
     auto test_tensor_f = from_blob(f_data,
-                                   {1, 2, 2, 1},
+                                   {1, 2, 2, 2},
                                    DataType::FLOAT32,
                                    common::DataLayout::NHWC,
                                    phi::CPUPlace(),
@@ -211,4 +211,14 @@ TEST(from_blob, Option) {
   }
   ASSERT_EQ(delete_count, 1);
   ASSERT_EQ(f_delete_count, 1);
+}
+
+TEST(from_blob, Strides) {
+  int64_t data[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  auto test_tensor =
+      from_blob(data, {1, 2, 2, 1}, {0, 4, 2, 0}, DataType::INT64);
+  ASSERT_EQ(test_tensor.shape()[1], 2);
+  ASSERT_EQ(test_tensor.shape()[2], 2);
+  ASSERT_EQ(test_tensor.strides()[1], 4);
+  ASSERT_EQ(test_tensor.strides()[2], 2);
 }

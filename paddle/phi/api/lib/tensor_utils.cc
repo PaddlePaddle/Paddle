@@ -89,10 +89,10 @@ struct DeleterManeger {
 
 using AllocationDeleter = void (*)(phi::Allocation*);
 
-PADDLE_API Tensor from_blob_impl(void* data,
-                                 const phi::DenseTensorMeta& meta,
-                                 const phi::Place& place,
-                                 const Deleter& deleter) {
+Tensor FromBlobImpl(void* data,
+                    const phi::DenseTensorMeta& meta,
+                    const phi::Place& place,
+                    const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
       data, common::errors::InvalidArgument("data can not be nullptr."));
 
@@ -146,7 +146,7 @@ PADDLE_API Tensor from_blob(void* data,
                             const Deleter& deleter) {
   auto meta =
       phi::DenseTensorMeta(dtype, common::make_ddim(shape.GetData()), layout);
-  return from_blob_impl(data, meta, place, deleter);
+  return FromBlobImpl(data, meta, place, deleter);
 }
 
 PADDLE_API Tensor from_blob(void* data,
@@ -159,7 +159,7 @@ PADDLE_API Tensor from_blob(void* data,
   auto meta = phi::DenseTensorMeta(dtype,
                                    common::make_ddim(shape.GetData()),
                                    common::make_ddim(strides.GetData()));
-  return from_blob_impl(data, meta, place, deleter);
+  return FromBlobImpl(data, meta, place, deleter);
 }
 
 #ifdef PADDLE_WITH_DISTRIBUTE
