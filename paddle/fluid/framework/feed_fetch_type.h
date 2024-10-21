@@ -18,27 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-inline bool data_is_lod_tensor(const FetchType &data) {
-  if (data.type() == typeid(phi::DenseTensor)) {
-    return true;
-  }
-  return false;
-}
-
-inline bool data_is_lod_tensor_array(const FetchType &data) {
-  if (data.type() == typeid(phi::TensorArray)) {
-    return true;
-  }
-  return false;
-}
-
-inline bool data_is_sparse_coo_tensor(const FetchType &data) {
-  if (data.type() == typeid(phi::SparseCooTensor)) {
-    return true;
-  }
-  return false;
-}
-
 static const char kFeedOpType[] = "feed";
 static const char kFetchOpType[] = "fetch";
 
