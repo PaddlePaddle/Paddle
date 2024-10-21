@@ -106,6 +106,7 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                 dtype,
                                 all_process_ids,
                                 src_local_rank,
+                                {},
                                 dynamic_shape,
                                 GetMutableTensor(out));
     }

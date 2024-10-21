@@ -93,7 +93,11 @@ void PartialRecvInferMeta(int ring_id,
                           int id,
                           MetaTensor* out);
 
-void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out);
+void PRecvInferMeta(const bool dynamic_shape,
+                    const int peer,
+                    const std::vector<int>& out_shape,
+                    DataType dtype,
+                    MetaTensor* out);
 
 void PRecvArrayInferMeta(int peer,
                          DataType dtype,
