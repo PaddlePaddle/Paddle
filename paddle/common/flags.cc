@@ -1753,6 +1753,10 @@ PHI_DEFINE_EXPORTED_string(cupti_dir,
                            "",
                            "Specify path for loading cupti.so.");  // NOLINT
 
+PHI_DEFINE_EXPORTED_string(nvrtc_dir,
+                           "",
+                           "Specify path for loading nvrtc.so.11.2");  // NOLINT
+
 PHI_DEFINE_EXPORTED_string(  // NOLINT
     tensorrt_dir,
     "",
