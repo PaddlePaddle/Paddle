@@ -43,6 +43,7 @@ from .impls.others import *  # noqa: F403
 from .impls.pooling import *  # noqa: F403
 from .impls.search import *  # noqa: F403
 from .impls.stat import *  # noqa: F403
+from .impls.vision import *  # noqa: F403
 from .register import converter_registry
 from .util import get_trt_version_list, map_dtype
 

@@ -20,9 +20,7 @@ from tensorrt_test_base import TensorRTBaseTest
 import paddle.nn.functional as F
 
 
-class TestGridSampleTRTPatternCase1(TensorRTBaseTest):
-    """default:mode='bilinear', padding_mode='zeros', align_corners=True"""
-
+class TestGridSampleTRTPatternBase(TensorRTBaseTest):
     def setUp(self):
         self.python_api = F.grid_sample
         self.api_args = {
@@ -40,70 +38,62 @@ class TestGridSampleTRTPatternCase1(TensorRTBaseTest):
                 dtype='float32',
             ),
         }
-
         self.program_config = {"feed_list": ["x", "grid"]}
         self.min_shape = {"x": [1, 1, 3, 3], "grid": [1, 3, 4, 2]}
         self.max_shape = {"x": [5, 1, 3, 3], "grid": [5, 3, 4, 2]}
+
+
+class TestGridSampleTRTPatternCase1(TestGridSampleTRTPatternBase):
+    """default:mode='bilinear', padding_mode='zeros', align_corners=True"""
 
     def test_trt_result(self):
         self.check_trt_result()
 
 
-# class TestGridSampleTRTPatternCase2(TensorRTBaseTest):
-#     """ default:mode='nearest', padding_mode='reflection', align_corners=False """
-#     def setUp(self):
-#         self.python_api = F.grid_sample
-#         self.api_args = {
-#             "x": np.array(
-#                 [[[[-0.6, 0.8, -0.5], [-0.5, 0.2, 1.2], [1.4, 0.3, -0.2]]]]
-#             ).astype("float32"),
-#             "grid": np.array(
-#                 [
-#                     [
-#                         [[0.2, 0.3], [-0.4, -0.3], [-0.9, 0.3], [-0.9, -0.6]],
-#                         [[0.4, 0.1], [0.9, -0.8], [0.4, 0.5], [0.5, -0.2]],
-#                         [[0.1, -0.8], [-0.3, -1.0], [0.7, 0.4], [0.2, 0.8]],
-#                     ]
-#                 ],
-#                 dtype='float32',
-#             ),
-#             "mode": "nearest",
-#             "padding_mode":"reflection",
-#             "align_corner":False
-#         }
+class TestGridSampleTRTPatternCase2(TestGridSampleTRTPatternBase):
+    """default:mode='nearest', padding_mode='reflection', align_corners=False"""
 
-#         self.program_config = {"feed_list": ["x", "grid"]}
-#         self.min_shape = {"x": [1, 1, 3, 3], "grid": [1, 3, 4, 2]}
-#         self.max_shape = {"x": [5, 1, 3, 3], "grid": [5, 3, 4, 2]}
+    def setUp(self):
+        super().setUp()
+        self.api_args.update(
+            {
+                "mode": "nearest",
+                "padding_mode": "reflection",
+                "align_corner": False,
+            }
+        )
 
-#     def test_trt_result(self):
-#         self.check_trt_result()
+    def test_trt_result(self):
+        self.check_trt_result()
 
-# class TestGridSampleTRTPatternCase3(TensorRTBaseTest):
-#     def setUp(self):
-#         self.python_api = F.grid_sample
-#         self.api_args = {
-#             "x": np.array(
-#                 [[[[-0.6, 0.8, -0.5], [-0.5, 0.2, 1.2], [1.4, 0.3, -0.2]]]]
-#             ).astype("float32"),
-#             "grid": np.array(
-#                 [
-#                     [
-#                         [[0.2, 0.3], [-0.4, -0.3], [-0.9, 0.3], [-0.9, -0.6]],
-#                         [[0.4, 0.1], [0.9, -0.8], [0.4, 0.5], [0.5, -0.2]],
-#                         [[0.1, -0.8], [-0.3, -1.0], [0.7, 0.4], [0.2, 0.8]],
-#                     ]
-#                 ],
-#                 dtype='float32',
-#             ),
-#         }
 
-#         self.program_config = {"feed_list": ["x", "grid"]}
-#         self.min_shape = {"x": [1, 1, 3, 3], "grid": [1, 3, 4, 2]}
-#         self.max_shape = {"x": [5, 1, 3, 3], "grid": [5, 3, 4, 2]}
+class TestGridSampleTRTPatternCase3(TestGridSampleTRTPatternBase):
+    """default:mode='nearest', padding_mode='border', align_corners=True"""
 
-#     def test_trt_result(self):
-#         self.check_trt_result()
+    def setUp(self):
+        super().setUp()
+        self.api_args.update({"mode": "nearest", "padding_mode": "border"})
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestGridSampleTRTPatternCase4(TestGridSampleTRTPatternBase):
+    """default:mode='bilinear', padding_mode='border', align_corners=False"""
+
+    def setUp(self):
+        super().setUp()
+        self.api_args.update(
+            {
+                "mode": "bilinear",
+                "padding_mode": "border",
+                "align_corner": False,
+            },
+        )
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
 
 if __name__ == '__main__':
     unittest.main()
