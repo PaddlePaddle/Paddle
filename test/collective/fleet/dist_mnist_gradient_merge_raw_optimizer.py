@@ -22,6 +22,7 @@ from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
+import paddle.distributed as dist
 from paddle import base, nn
 from paddle.distributed import fleet
 
@@ -83,7 +84,9 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
             gm_block = paddle.static.default_main_program().block(1)
             start_allreduce_idx = None
             for i, op in enumerate(gm_block.ops):
-                if op.type == "c_allreduce_sum":
+                if op.type == "all_reduce" and op.desc.attr(
+                    "reduce_type"
+                ) == str(dist.ReduceOp.SUM):
                     start_allreduce_idx = i
                     break
             # the magic number 1 below means skip the c_sync_calc_stream op
