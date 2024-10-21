@@ -1397,7 +1397,7 @@ class NearestInterV2Pattern
   }
 };
 
-class GirdSampleOpPattern
+class GridSampleOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GridSampleOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::GridSampleOp>::OpRewritePattern;
@@ -1593,7 +1593,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MinOpPattern>(context));
     ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
     ps.Add(std::make_unique<NearestInterV2Pattern>(context));
-    ps.Add(std::make_unique<GirdSampleOpPattern>(context));
+    ps.Add(std::make_unique<GridSampleOpPattern>(context));
     ps.Add(std::make_unique<TanhOpPattern>(context));
     return ps;
   }
