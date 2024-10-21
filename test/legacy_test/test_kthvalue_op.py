@@ -49,7 +49,7 @@ class TestKthvalueOp(OpTest):
         self.python_api = paddle.kthvalue
         self.public_python_api = paddle.kthvalue
         self.init_dtype()
-        self.input_data = np.random.random((2, 1, 2, 4, 10)).astype(self.dtype)
+        self.input_data = np.random.random([2, 1, 2, 4, 10]).astype(self.dtype)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis}
@@ -65,7 +65,7 @@ class TestKthvalueOp(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         self.check_grad(
-            {'X'},
+            ['X'],
             'Out',
             check_pir=True,
             check_prim_pir=True,
@@ -92,7 +92,7 @@ class TestKthvalueOpWithKeepdim(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.kthvalue
         self.public_python_api = paddle.kthvalue
-        self.input_data = np.random.random((1, 3, 2, 4, 10)).astype(self.dtype)
+        self.input_data = np.random.random([1, 3, 2, 4, 10]).astype(self.dtype)
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'keepdim': True}
         output, indices = cal_kthvalue(
@@ -107,7 +107,7 @@ class TestKthvalueOpWithKeepdim(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         self.check_grad(
-            {'X'},
+            ['X'],
             'Out',
             check_pir=True,
             check_prim_pir=True,
