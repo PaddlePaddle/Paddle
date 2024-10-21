@@ -58,7 +58,7 @@ class TestCommOpCost(unittest.TestCase):
 
         # Check AllreduceSumCost 128MB ring cost
         allreduce_sum_op_desc = build_comm_desc(
-            "c_allreduce_sum",
+            "all_reduce",
             [0, 1, 2, 3, 4, 5, 6, 7],
             paddle.float32,
             [1, 32 * (10**6)],
@@ -138,7 +138,7 @@ class TestCommOpCost(unittest.TestCase):
 
         # Check AllreduceSumCost 128MB ring cost
         allreduce_sum_op_desc = build_comm_desc(
-            "c_allreduce_sum",
+            "all_reduce",
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             paddle.float32,
             [1, 32 * (10**6)],

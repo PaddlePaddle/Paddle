@@ -17,6 +17,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..auto_parallel.process_mesh import ProcessMesh
@@ -252,10 +253,13 @@ class ClipHelper:
                 return False
 
         for op in self.block.ops:
-            if op.type in [
-                "c_reduce_sum",
-                "c_allreduce_sum",
-            ] and not is_data_parallel_reduce_op(op):
+            if (
+                op.type == "c_reduce_sum"
+                or (
+                    op.type == "c_reduce_sum"
+                    and op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                )
+            ) and not is_data_parallel_reduce_op(op):
                 return False
             if op.type in ["send_v2", "recv_v2"]:
                 return False
@@ -474,12 +478,12 @@ class ClipGradByGlobalNormPass(PassBase):
 
                     allreduce_op = block._insert_op(
                         idx + offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': [input_var]},
-                        outputs={'Out': [input_var]},
+                        type='all_reduce',
+                        inputs={'x': [input_var]},
+                        outputs={'out': [input_var]},
                         attrs={
                             'ring_id': 0,
-                            'use_calc_stream': True,
+                            'reduce_type': int(dist.ReduceOp.SUM),
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )

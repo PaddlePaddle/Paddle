@@ -30,17 +30,6 @@
   backward : add_n_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : all_reduce
-  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
-  output : Tensor(out)
-  infer_meta :
-    func : AllReduceInferMeta
-    param: [x]
-  kernel :
-    func : all_reduce
-    param: [x, reduce_type]
-  inplace : (x -> out)
-
 - op : anchor_generator
   args: (Tensor input, float[] anchor_sizes, float[] aspect_ratios, float[] variances, float[] stride={16.0, 16.0}, float offset=0.5)
   output: Tensor (anchors), Tensor (variances_out)

@@ -89,7 +89,7 @@ class TestReshardNdMeshCrossMesh:
 
     def run_pp_to_rr_case(self):
         # [Partial(), Partial()] --> [Replicate(), Replicate()]
-        # ops: c_allreduce_sum + c_allreduce_sum
+        # ops: all_reduce sum + all_reduce sum
         main_program, dist_program = self.create_program(
             [self.BATCH_SIZE, self.SEQ_LEN, self.HIDDEN_SIZE],
             [
@@ -108,8 +108,8 @@ class TestReshardNdMeshCrossMesh:
             assert new_ops_name[2] == "pd_op.send_v2"
         else:
             assert new_ops_name[2] == "pd_op.recv_v2"
-            assert new_ops_name[-2] == "pd_op.c_allreduce_sum"
-            assert new_ops_name[-1] == "pd_op.c_allreduce_sum"
+            assert new_ops_name[-2] == "pd_op.all_reduce"
+            assert new_ops_name[-1] == "pd_op.all_reduce"
 
             # check the first allreduce_sum
             op = new_ops[-2]
