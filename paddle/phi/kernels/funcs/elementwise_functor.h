@@ -109,7 +109,7 @@ struct DivideFunctor<
     T,
     typename std::enable_if<std::is_integral<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    // For int32/int64, need to check whether the divison is zero.
+    // For int32/int64, need to check whether the division is zero.
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     return a / b;
   }
@@ -543,7 +543,7 @@ struct RemainderFunctor {
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     T res = a % b;
 
-    // Accoding to #PR26732: in dividen % divsor
+    // According to #PR26732: in dividen % divsor
     // remainder shall have the same sign as divsor.
     if ((res != 0) && ((b ^ res) < 0)) res += b;
     return res;
@@ -557,7 +557,7 @@ struct RemainderFunctor<
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = fmod(a, b);
 
-    // Accoding to #PR26732: in dividen % divsor
+    // According to #PR26732: in dividen % divsor
     // remainder shall have the same sign as divsor.
     if ((res != 0) && ((res < 0) != (b < 0))) res += b;
     return res;

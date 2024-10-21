@@ -53,10 +53,10 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 COMMON_DECLARE_bool(use_mkldnn);
 #endif
 
@@ -211,6 +211,7 @@ static bool NeedFallBackCpu(const pir::Operation* op,
   return false;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const std::string& kernel_name,
                                        const phi::KernelKey kernel_key) {
@@ -275,6 +276,7 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
 
   return false;
 }
+#endif
 
 bool CanRunOnCpuKernel(const std::vector<::pir::Value>& vec_inputs,
                        ::pir::Operation* op) {
@@ -326,7 +328,7 @@ static phi::Backend DeriveBackend(const std::string& op,
   // NOTE: Parameters are initialized on executor place defined
   if ((op == pir::SetParameterOp::name() ||
        op == pir::ShadowOutputOp::name()) &&
-      place.GetType() == phi::AllocationType::GPU) {
+      phi::is_accelerat_allocation_type(place.GetType())) {
     return phi::TransToPhiBackend(place);
   }
   // Tensor Attribute should on cpu backend for better performance
@@ -486,6 +488,9 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
       case phi::AllocationType::CUSTOM:
         new_backend = phi::Backend::CUSTOM;
         break;
+      case phi::AllocationType::IPU:
+        new_backend = phi::Backend::IPU;
+        break;
       default:
         new_backend = phi::Backend::CPU;
         break;
@@ -494,18 +499,14 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   };
   std::unordered_map<std::string, pir::Attribute> op_attribute;
   if ((src_place.GetType() == phi::AllocationType::CPU) &&
-      (dst_place.GetType() == phi::AllocationType::GPU ||
-       dst_place.GetType() == phi::AllocationType::XPU ||
-       dst_place.GetType() == phi::AllocationType::CUSTOM)) {
+      phi::is_accelerat_allocation_type(dst_place.GetType())) {
     copy_kernel_key.set_backend(place2backend(dst_place.GetType()));
     op_attribute = {
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.memcpy_h2d")},
         {"kernel_name", pir::StrAttribute::get(ctx, "memcpy_h2d")},
         {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
         {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
-  } else if ((src_place.GetType() == phi::AllocationType::GPU ||
-              src_place.GetType() == phi::AllocationType::XPU ||
-              src_place.GetType() == phi::AllocationType::CUSTOM) &&
+  } else if (phi::is_accelerat_allocation_type(src_place.GetType()) &&
              (dst_place.GetType() == phi::AllocationType::CPU)) {
     copy_kernel_key.set_backend(place2backend(src_place.GetType()));
 
@@ -939,12 +940,10 @@ static phi::Backend GetKernelBackendByYaml(
 
   for (const auto& slot_name : backend_info) {
     auto& input_map = op_info_parser->InputName2Id();
-
     if (input_map.count(slot_name)) {
       // parse from input
       int in_index = static_cast<int>(input_map.at(slot_name));
       auto type = map_value_pair.at(op->operand_source(in_index)).type();
-
       if (type.isa<AllocatedDenseTensorType>()) {
         kernel_backend = paddle::experimental::ParseBackend(
             type.dyn_cast<AllocatedDenseTensorType>().place());
@@ -1351,10 +1350,11 @@ phi::KernelKey GetKernelKey(
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_dtype);
 
   // kernel backend infered incorrectly from memcpy op operands,
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // case that place from (not GPU) to GPU.
   // We handle this special case by following code to fix up the problem.
   // This could be further improved if we had another method.
-  if (!phi::is_gpu_place(place)) {
+  if (!phi::is_accelerat_place(place)) {
     if (op->isa<MemcpyOp>()) {
       VLOG(6) << "MemcpyOp need a special handle";
       int dst_place_type = op->attribute("dst_place_type")
@@ -1365,6 +1365,7 @@ phi::KernelKey GetKernelKey(
       }
     }
   }
+#endif
 
   if (op->isa<LoadCombineOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
@@ -1387,11 +1388,13 @@ phi::KernelKey GetKernelKey(
     VLOG(8) << "kernel backend must be on CPU when need fallback";
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (NeedFallBackFromGPUDNN2GPU(op, kernel_fn_str, res)) {
     res.set_backend(phi::Backend::GPU);
     VLOG(8) << "kernel backend must be on GPU when need fallback from GPUDNN "
                "to GPU";
   }
+#endif
 
 #ifdef PADDLE_WITH_DNNL
   std::regex reg(",");
@@ -1651,13 +1654,7 @@ void AddShadowFeedForValue(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
-  phi::Backend backend = phi::Backend::GPU;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  backend = phi::Backend::GPU;
-#endif
-#if defined(PADDLE_WITH_XPU)
-  backend = phi::Backend::XPU;
-#endif
+  phi::Backend backend = paddle::experimental::get_accelerat_backend();
 
   if (op_item->result(index).type().isa<DenseTensorType>()) {
     phi::KernelKey shadow_key{
@@ -1758,8 +1755,7 @@ void AddShadowFeedForTuplePopOp(
   }
 
   // if value place not gpu, add shadow feed op
-  if ((phi::is_gpu_place(place) || phi::is_xpu_place(place)) &&
-      add_shadow_feed) {
+  if (phi::is_accelerat_place(place) && add_shadow_feed) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       AddShadowFeedForValue(i,
                             op_item,
@@ -2154,9 +2150,10 @@ void HandleForSpecialOp(
           auto out_place = phi::TransToPhiPlace(dst_backend);
           auto out_type =
               AllocatedDenseTensorType::get(ctx, out_place, value_type);
-          phi::KernelKey kernel_key(phi::Backend::GPU,
-                                    phi::DataLayout::ANY,
-                                    TransToPhiDataType(value_type.dtype()));
+          phi::KernelKey kernel_key(
+              paddle::experimental::get_accelerat_backend(),
+              phi::DataLayout::ANY,
+              TransToPhiDataType(value_type.dtype()));
           new_in = AddPlaceTransferOp(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
@@ -2184,6 +2181,8 @@ void HandleForSpecialOp(
   // only deal with single output
   if (op_item->num_results() > 0) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
+      VLOG(6) << "2816:" << op_item->result(i).type();
+      VLOG(6) << "2817:" << op->result(i).type();
       (*map_value_pair)[op_item->result(i)] = op->result(i);
     }
   }
@@ -2998,11 +2997,9 @@ void AddShadowFeedOpForDataOrFeed(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   bool feed_op_add_shadow_feed =
-      (op_item->isa<FeedOp>()) &&
-      (phi::is_gpu_place(place) || phi::is_xpu_place(place));
+      (op_item->isa<FeedOp>()) && phi::is_accelerat_place(place);
   bool data_op_add_shadow_feed =
-      (op_item->isa<DataOp>()) &&
-      (phi::is_gpu_place(place) || phi::is_xpu_place(place)) &&
+      (op_item->isa<DataOp>()) && phi::is_accelerat_place(place) &&
       (kernel_op->attributes()
            .at("place")
            .dyn_cast<PlaceAttribute>()
@@ -3030,9 +3027,7 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
                                           pir::IrContext* ctx) {
   for (auto it = block->begin(); it != block->end(); ++it) {
     if (it->isa<PhiKernelOp>() &&
-        (it->dyn_cast<PhiKernelOp>().op_name() == "pd_op.shadow_feed" ||
-         it->dyn_cast<PhiKernelOp>().op_name() ==
-             "pd_op.shadow_feed_tensors")) {
+        (it->dyn_cast<PhiKernelOp>().op_name() == "pd_op.shadow_feed")) {
       pir::Value shadow_value = it->result(0);
       if (shadow_value.use_count() == 1) {
         pir::Operation* next_op = shadow_value.first_use().owner();
@@ -3059,6 +3054,60 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
           it->set_attribute("dst_place_type",
                             pir::Int32Attribute::get(ctx, dst_place_type));
           VLOG(6) << *it;
+        }
+      }
+
+      pir::Value shadow_source = it->operand_source(0);
+      if (!shadow_source.type().isa<AllocatedDenseTensorType>()) {
+        continue;
+      }
+      auto var_src_place =
+          shadow_source.type()
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+
+      if (shadow_value.use_count() >= 1 &&
+          phi::is_cpu_place(var_src_place.place())) {
+        bool all_use_is_scalar = true;
+        for (auto use_it = shadow_value.use_begin();
+             use_it != shadow_value.use_end();
+             ++use_it) {
+          auto use_op = use_it->owner();
+
+          if (!use_op->isa<PhiKernelOp>()) {
+            all_use_is_scalar = false;
+            break;
+          }
+
+          auto op_info = ctx->GetRegisteredOpInfo(
+              use_op->dyn_cast<PhiKernelOp>().op_name());
+
+          if (!op_info) {
+            all_use_is_scalar = false;
+            break;
+          }
+
+          auto* op_info_concept =
+              op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
+          auto [input_infos, _1, _2, _3, _4] =
+              op_info_concept->get_op_info_(op_info.name());
+
+          uint32_t val_index = 0;
+          for (uint32_t index = 0; index < use_op->num_operands(); index++) {
+            if (use_op->operand_source(index) == shadow_value) {
+              val_index = index;
+              break;
+            }
+          }
+
+          if (!input_infos[val_index].is_mutable_attribute) {
+            all_use_is_scalar = false;
+            break;
+          }
+        }
+        if (all_use_is_scalar) {
+          // set dst_place_type for shadow_feed, 0 for cpu_place
+          VLOG(6) << "Reset shadow_feed dst_place_type to 0 for scalar use";
+          it->set_attribute("dst_place_type", pir::Int32Attribute::get(ctx, 0));
         }
       }
     }
@@ -3269,18 +3318,19 @@ void ProcessBlock(
     for (auto& [name, attr] : arg.dyn_cast<pir::BlockArgument>().attributes()) {
       new_arg.set_attribute(name, attr);
     }
-    (*map_value_pair)[arg] = new_arg;
     if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
       new_arg.set_type(
           AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
     }
+    (*map_value_pair)[arg] = new_arg;
   }
-  if (phi::is_gpu_place(place) || phi::is_xpu_place(place)) {
+  if (phi::is_accelerat_place(place)) {
     for (auto& [keyword, arg] : block->kwargs()) {
       if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
         auto dtype = dense_tensor_type.dtype();
-        phi::KernelKey shadow_key{
-            phi::Backend::GPU, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
+        phi::KernelKey shadow_key{paddle::experimental::get_accelerat_backend(),
+                                  phi::DataLayout::ANY,
+                                  TransToPhiDataType(dtype)};
         std::unordered_map<std::string, pir::Attribute> attr_map{
             {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
             {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
@@ -3299,6 +3349,46 @@ void ProcessBlock(
 
         new_block->push_back(shadow_op);
         (*map_value_pair)[arg] = shadow_op->result(0);
+      } else if (auto vec_type = arg.type().dyn_cast<pir::VectorType>()) {
+        for (size_t i = 0; i < vec_type.size(); ++i) {
+          PADDLE_ENFORCE_EQ(
+              vec_type[i].isa<DenseTensorType>(),
+              true,
+              common::errors::PreconditionNotMet(
+                  "AddShadowFeedTensors only support DenseTensorType Now"));
+        }
+        // Add ShadowFeedTensors Op
+        phi::KernelKey shadow_key{
+            paddle::experimental::get_accelerat_backend(),
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                vec_type[0].dyn_cast<DenseTensorType>().dtype())};
+
+        std::unordered_map<std::string, pir::Attribute> attr_map{
+            {"op_name",
+             pir::StrAttribute::get(ctx, "pd_op.shadow_feed_tensors")},
+            {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed_tensors")},
+            {"kernel_key", KernelAttribute::get(ctx, shadow_key)},
+            {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
+
+        pir::OpInfo phi_kernel_op_info =
+            ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+
+        std::vector<pir::Type> vec_out_types;
+        for (size_t i = 0; i < vec_type.size(); ++i) {
+          vec_out_types.push_back(AllocatedDenseTensorType::get(
+              ctx,
+              phi::TransToPhiPlace(shadow_key.backend()),
+              vec_type[i].dyn_cast<DenseTensorType>()));
+        }
+        auto out_type = pir::VectorType::get(ctx, vec_out_types);
+        pir::Operation* shadow_tensors_op = pir::Operation::Create(
+            {(*map_value_pair)[arg]}, attr_map, {out_type}, phi_kernel_op_info);
+        shadow_tensors_op->set_attribute(
+            "origin_id",
+            pir::Int64Attribute::get(ctx, shadow_tensors_op->id()));
+        new_block->push_back(shadow_tensors_op);
+        (*map_value_pair)[arg] = shadow_tensors_op->result(0);
       }
     }
   }

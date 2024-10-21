@@ -21,6 +21,7 @@ import paddle
 from paddle.base import core
 from paddle.tensorrt.converter import PaddleToTensorRTConverter
 from paddle.tensorrt.util import (
+    mark_buitlin_op,
     run_pir_pass,
     warmup_shape_infer,
 )
@@ -51,17 +52,30 @@ class TensorRTBaseTest(unittest.TestCase):
                     for sub_arg_name, sub_arg_value in self.api_args[
                         feed_name
                     ].items():
-                        input_shape_without_dynamic_dim = sub_arg_value.shape[
-                            1:
-                        ]
-                        input_dynamic_shape = [-1]
-                        input_dynamic_shape.extend(
-                            input_shape_without_dynamic_dim
-                        )
+
+                        if (
+                            feed_name in self.min_shape.keys()
+                            and feed_name in self.max_shape.keys()
+                        ):
+                            input_shape_without_dynamic_dim = (
+                                sub_arg_value.shape[1:]
+                            )
+                            input_dynamic_shape = [-1]
+                            input_dynamic_shape.extend(
+                                input_shape_without_dynamic_dim
+                            )
+                            input_shape = input_dynamic_shape
+                        else:
+                            input_shape = []
+                            input_shape_without_dynamic_dim = (
+                                sub_arg_value.shape[0:]
+                            )
+                            input_shape.extend(input_shape_without_dynamic_dim)
+
                         input_dtype = sub_arg_value.dtype
                         input_data = paddle.static.data(
                             name=sub_arg_name,
-                            shape=input_dynamic_shape,
+                            shape=input_shape,
                             dtype=input_dtype,
                         )
                         new_list_args.append(input_data)
@@ -85,6 +99,7 @@ class TensorRTBaseTest(unittest.TestCase):
                         input_shape = self.api_args[feed_name].shape
 
                     input_dtype = self.api_args[feed_name].dtype
+
                     input_data = paddle.static.data(
                         name=feed_name,
                         shape=input_shape,
@@ -150,36 +165,57 @@ class TensorRTBaseTest(unittest.TestCase):
             # init all parameter
             exe.run(startup_program)
             fetch_num = len(fetch_list)
-            fetch_index = [v.index() for v in fetch_list]
+            if isinstance(fetch_list[0], list):
+                fetch_index = [i for i, v in enumerate(fetch_list)]
+            else:
+                fetch_index = [v.index() for v in fetch_list]
             output_expected = self.run_program(main_program, fetch_list)
 
             min_shape_data = dict()  # noqa: C408
             max_shape_data = dict()  # noqa: C408
             for feed_name in self.program_config["feed_list"]:
-                if (
-                    feed_name not in self.min_shape.keys()
-                    and feed_name not in self.max_shape.keys()
-                ):
-                    min_shape_data[feed_name] = self.api_args[feed_name]
-                    max_shape_data[feed_name] = self.api_args[feed_name]
-                    continue
-
                 if isinstance(self.api_args[feed_name], dict):
-                    for i in range(len(self.min_shape[feed_name])):
-                        sub_feed_name = feed_name + str(i)
-                        min_shape_data[sub_feed_name] = np.random.randn(
-                            *self.min_shape[feed_name][i]
-                        ).astype(self.api_args[feed_name][sub_feed_name].dtype)
-                        max_shape_data[sub_feed_name] = np.random.randn(
-                            *self.max_shape[feed_name][i]
-                        ).astype(self.api_args[feed_name][sub_feed_name].dtype)
+                    # shape_tensor
+                    if (
+                        feed_name not in self.min_shape.keys()
+                        and feed_name not in self.max_shape.keys()
+                    ):
+                        for sub_feed_name, sub_feed_value in self.api_args[
+                            feed_name
+                        ].items():
+                            min_shape_data[sub_feed_name] = sub_feed_value
+                            max_shape_data[sub_feed_name] = sub_feed_value
+                            continue
+                    else:
+                        # not shape_tensor
+                        for i in range(len(self.min_shape[feed_name])):
+                            sub_feed_name = feed_name + str(i)
+                            min_shape_data[sub_feed_name] = np.random.randn(
+                                *self.min_shape[feed_name][i]
+                            ).astype(
+                                self.api_args[feed_name][sub_feed_name].dtype
+                            )
+                            max_shape_data[sub_feed_name] = np.random.randn(
+                                *self.max_shape[feed_name][i]
+                            ).astype(
+                                self.api_args[feed_name][sub_feed_name].dtype
+                            )
                 else:
-                    min_shape_data[feed_name] = np.random.randn(
-                        *self.min_shape[feed_name]
-                    ).astype(self.api_args[feed_name].dtype)
-                    max_shape_data[feed_name] = np.random.randn(
-                        *self.max_shape[feed_name]
-                    ).astype(self.api_args[feed_name].dtype)
+                    # shape_tensor is list
+                    if (
+                        feed_name not in self.min_shape.keys()
+                        and feed_name not in self.max_shape.keys()
+                    ):
+                        min_shape_data[feed_name] = self.api_args[feed_name]
+                        max_shape_data[feed_name] = self.api_args[feed_name]
+                        continue
+                    else:
+                        min_shape_data[feed_name] = np.random.randn(
+                            *self.min_shape[feed_name]
+                        ).astype(self.api_args[feed_name].dtype)
+                        max_shape_data[feed_name] = np.random.randn(
+                            *self.max_shape[feed_name]
+                        ).astype(self.api_args[feed_name].dtype)
 
             scope = paddle.static.global_scope()
             main_program = warmup_shape_infer(
@@ -196,6 +232,9 @@ class TensorRTBaseTest(unittest.TestCase):
 
             # run pir pass(including some fusion pass and trt_op_marker_pass)
             main_program = run_pir_pass(main_program, partition_mode=False)
+
+            # Adding marker labels to builtin ops facilitates convert processing, but they ultimately do not enter the TensorRT subgraph.
+            mark_buitlin_op(main_program)
 
             # run trt_sub_graph_extract_pass()
             program_with_trt = run_pir_pass(main_program, partition_mode=True)

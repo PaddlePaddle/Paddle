@@ -802,7 +802,7 @@ void CompareAccuracy(
             "[Error info] avg_acc_ref - avg_acc_quant must be less than or "
             "equal to FLAGS_quantized_accuracy.\n"
             "[Condition info] Please check your input data."));
-  }  // test
+  }
 }
 
 void CompareDeterministic(
@@ -1065,7 +1065,7 @@ std::string LoDTensorSummary(const phi::DenseTensor &tensor) {
   return ss.str();
 }
 
-static bool CompareLoD(const framework::LoD &a, const framework::LoD &b) {
+static bool CompareLoD(const phi::LoD &a, const phi::LoD &b) {
   if (a.size() != b.size()) {
     LOG(ERROR) << string::Sprintf(
         "lod size not match %d != %d", a.size(), b.size());

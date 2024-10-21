@@ -456,14 +456,6 @@ class ReduceMeanGradOpCost(CompOpCost):
 
 
 @register_op_cost
-class SamplingIdOpCost(CompOpCost):
-    OP_TYPE = "sampling_id"
-
-    def __init__(self, op=None, op_desc=None, cluster=None, rank=None):
-        super().__init__(op=op, op_desc=op_desc, cluster=cluster, rank=rank)
-
-
-@register_op_cost
 class ScaleOpCost(CompOpCost):
     OP_TYPE = "scale"
 

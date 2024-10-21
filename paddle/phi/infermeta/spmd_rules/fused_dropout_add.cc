@@ -77,7 +77,9 @@ SpmdInfo FusedDropoutAddSpmd(const DistMetaTensor& x,
                              const std::string& mode,
                              int seed,
                              bool fix_seed) {
-  return FusedDropoutAddSpmdBase(x, y);
+  auto dropout_info = FusedDropoutAddSpmdBase(x, y);
+  dropout_info.first.push_back(seed_tensor.dist_attr());
+  return dropout_info;
 }
 
 SpmdInfo FusedDropoutAddSpmdReverse(const DistMetaTensor& x,

@@ -733,14 +733,6 @@ Tensor full_like_decomp(const Tensor& x,
 }
 
 template <typename T>
-Tensor floor_divide_decomp(const Tensor& x, const Tensor& y) {
-  auto x_cast = cast<T>(x, DataType::INT64);
-  auto y_cast = cast<T>(y, DataType::INT64);
-  auto res = x_cast / y_cast;
-  return cast<T>(res, x.dtype());
-}
-
-template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,
@@ -1519,6 +1511,26 @@ std::vector<Tensor> unstack_decomp(const Tensor& x, int axis, const int num) {
     });
   }
   return res;
+}
+
+template <typename T>
+Tensor numel_decomp(const Tensor& x) {
+  auto x_shape = x.shape();
+  if (has_dynamic_shape(x_shape)) {
+    const Tensor x_shape_tensor = shape<T>(x);
+    Tensor value = full<T>({1}, 1, x_shape_tensor.dtype());
+    for (size_t i = 0; i < x_shape.size(); ++i) {
+      value = value * get_slice<T>(x_shape_tensor, i);
+    }
+    return cast<T>(reshape<T>(value, {}), DataType::INT64);
+  } else {
+    return full_scalar<T>(x.numel(), DataType::INT64);
+  }
+}
+
+template <typename T>
+Tensor swish_decomp(const Tensor& x) {
+  return x * sigmoid<T>(x);
 }
 
 }  // namespace details
