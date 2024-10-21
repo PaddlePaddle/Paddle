@@ -119,6 +119,7 @@ def monkey_patch_tensor():
         attr_not_need_keys = [
             'grad',
             'T',
+            'mT',
             'place',
             '_place_str',
             'data',
