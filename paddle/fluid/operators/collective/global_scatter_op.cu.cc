@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_scatter_op.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
-
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
@@ -74,51 +74,26 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
 
     ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
-    int ring_id = ctx.Attr<int>("ring_id");
-    PADDLE_ENFORCE_GE(
-        ring_id,
-        0,
-        common::errors::InvalidArgument(
-            "The ring_id (%d) for global scatter op must be non-negative.",
-            ring_id));
-
     auto place = ctx.GetPlace();
     gpuStream_t stream = nullptr;
     platform::NCCLComm* comm = nullptr;
     phi::distributed::NCCLCommContext* comm_ctx = nullptr;
     int nranks = 0;
 
-    const auto& comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
+    auto& dev_ctx = ctx.cuda_device_context();
+    auto& dev_ctx2 = *static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(dev_ctx.GetPlace()));
 
-    if (FLAGS_dynamic_static_unified_comm) {
-      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
-                        true,
-                        common::errors::InvalidArgument(
-                            "You choose to use new communication library by "
-                            "setting environment "
-                            "variable FLAGS_dynamic_static_unified_comm True. "
-                            "But ring_id(%d) is "
-                            "not found in comm_context_manager.",
-                            std::to_string(ring_id)));
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(ring_id)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        common::errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
+    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+        dev_ctx2.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
 
-      stream = comm_ctx->GetStream();
-      nranks = comm_ctx->GetSize();
-      VLOG(3) << "new comm_context_manager has ring_id " << ring_id;
-    } else {  // old comm_context
-      comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-
-      stream = comm->stream();
-      nranks = comm->nranks();
-      VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
-    }
+    stream = dev_ctx.stream();
+    nranks = comm_ctx->GetSize();
 
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should ExecutionContext for calc stream.
@@ -329,15 +304,8 @@ template <typename T, typename DeviceContext>
 class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const int rid = ctx.Attr<int>("ring_id");
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(rid)) {
-      GlobalScatterProcessGroupFunctor<phi::GPUContext, T> functor_;
-      functor_(ctx);
-    } else {
-      GlobalScatterFunctor<phi::GPUContext, T> functor_;
-      functor_(ctx);
-    }
+    GlobalScatterFunctor<phi::GPUContext, T> functor_;
+    functor_(ctx);
   }
 };
 
