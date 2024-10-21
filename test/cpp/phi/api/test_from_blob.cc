@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "paddle/phi/api/include/api.h"
@@ -172,31 +173,52 @@ TEST(from_blob, GPU) {
 #endif
 
 TEST(from_blob, Option) {
-  // 1. create data
-  auto data = new int64_t[8];
-  for (int64_t i = 0; i < 8; i++) {
-    data[i] = i;
-  }
-
-  // 2. test Deleter and Layout
-  int isdelete = 0;
-  auto deleter = [&isdelete](void* data) {
+  int delete_count = 0, f_delete_count = 0;
+  auto deleter = [&delete_count](void* data) {
     delete[] static_cast<int64_t*>(data);
-    isdelete++;
+    delete_count++;
+  };
+  auto f_deleter = [&f_delete_count](void* ptr) {
+    delete[] static_cast<float*>(ptr);
+    f_delete_count++;
   };
   {
+    auto data = new int64_t[8];
+    for (int64_t i = 0; i < 8; i++) {
+      data[i] = i;
+    }
     auto test_tensor = from_blob(data,
-                                 {1, 2, 2, 1},
+                                 {1, 2, 2, 2},
                                  DataType::INT64,
                                  phi::DataLayout::NHWC,
                                  phi::CPUPlace(),
                                  deleter);
+    ASSERT_EQ(test_tensor.layout(), phi::DataLayout::NHWC);
+    ASSERT_EQ(delete_count, 0);
 
-    // check tensor attributes
-    ASSERT_EQ(test_tensor.layout(), phi::DataLayout::NHWC);  // check layout
-
-    // check deleter
-    ASSERT_EQ(isdelete, 0);
+    auto f_data = new float[8];
+    for (int i = 0; i < 8; i++) {
+      f_data[i] = static_cast<float>(i);
+    }
+    auto test_tensor_f = from_blob(f_data,
+                                   {1, 2, 2, 2},
+                                   DataType::FLOAT32,
+                                   common::DataLayout::NHWC,
+                                   phi::CPUPlace(),
+                                   f_deleter);
+    ASSERT_EQ(test_tensor_f.layout(), phi::DataLayout::NHWC);
+    ASSERT_EQ(f_delete_count, 0);
   }
-  ASSERT_EQ(isdelete, 1);
+  ASSERT_EQ(delete_count, 1);
+  ASSERT_EQ(f_delete_count, 1);
+}
+
+TEST(from_blob, Strides) {
+  int64_t data[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  auto test_tensor =
+      from_blob(data, {1, 2, 2, 1}, {0, 4, 2, 0}, DataType::INT64);
+  ASSERT_EQ(test_tensor.shape()[1], 2);
+  ASSERT_EQ(test_tensor.shape()[2], 2);
+  ASSERT_EQ(test_tensor.strides()[1], 4);
+  ASSERT_EQ(test_tensor.strides()[2], 2);
 }
