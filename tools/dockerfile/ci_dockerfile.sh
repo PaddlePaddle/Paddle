@@ -44,6 +44,7 @@ function make_cpu_dockerfile(){
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i 's#<install_cpu_package>#RUN apt-get install -y gcc g++ make#g' ${dockerfile_name}
+  echo "FROM ubuntu:22.04" >Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
 }
 
 
