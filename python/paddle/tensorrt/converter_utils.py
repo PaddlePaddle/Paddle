@@ -150,7 +150,6 @@ def add_elementwise_layer(network, paddle_op, inputs, op_type):
         input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
             0
         )
-
     lhs_val, rhs_val = broadcast(
         network,
         input_tensor,
