@@ -2481,10 +2481,10 @@ All parameter, weight, gradient are variables in Paddle.
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {  // NOLINT
             // return py::cast(PADDLE_GET(phi::DenseTensor, var));
-            return py::cast(var.GetMutable<phi::DenseTensor>());
+            return py::cast(var.Get<phi::DenseTensor>());
           } else {
             // return py::cast(PADDLE_GET(phi::TensorArray, var));
-            return py::cast(var.GetMutable<phi::TensorArray>());
+            return py::cast(var.Get<phi::TensorArray>());
           }
         });
   m.def("get_variable_tensor", framework::GetVariableTensor);
@@ -2599,11 +2599,11 @@ All parameter, weight, gradient are variables in Paddle.
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
                 // auto &data = PADDLE_GET(phi::DenseTensor, self[i]);
-                auto &data = self[i].GetMutable<phi::DenseTensor>();
+                auto &data = self[i].Get<phi::DenseTensor>();
                 res[i] = py::cast(std::move(data));
               } else {
                 // auto &data = PADDLE_GET(phi::TensorArray, self[i]);
-                auto &data = self[i].GetMutable<phi::TensorArray>();
+                auto &data = self[i].Get<phi::TensorArray>();
                 py::list tmp(data.size());
                 for (size_t j = 0; j < data.size(); ++j) {
                   tmp[j] = py::cast(std::move(data[j]));
@@ -2650,11 +2650,11 @@ All parameter, weight, gradient are variables in Paddle.
               for (size_t j = 0; j < self[i].size(); ++j) {
                 if (data_is_lod_tensor(self[i][j])) {
                   // auto &var = PADDLE_GET(phi::DenseTensor, self[i][j]);
-                  auto &var = self[i][j].GetMutable<>(phi::DenseTensor);
+                  auto &var = self[i][j].Get<phi::DenseTensor>());
                   tmp[j] = py::cast(std::move(var));
                 } else {
                   // auto &var = PADDLE_GET(phi::TensorArray, self[i][j]);
-                  auto &var = self[i][j].GetMutable<>(phi::TensorArray);
+                  auto &var = self[i][j].Get<phi::TensorArray>();
                   py::list tmp_array(var.size());
                   for (size_t k = 0; k < var.size(); ++k) {
                     tmp_array[k] = std::move(var[k]);

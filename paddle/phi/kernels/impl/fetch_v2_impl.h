@@ -114,7 +114,7 @@ void FetchV2ArrayKernel(const Context &dev_ctx,
   phi::TensorArray tmp(src_item.size());
   fetch_list->at(col) = tmp;
   // auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
-  auto &dst_item = fetch_list->at(col).GetMutable<phi::TensorArray>();
+  auto &dst_item = *fetch_list->at(col).GetMutable<phi::TensorArray>();
   for (size_t i = 0; i < src_item.size(); ++i) {
     PADDLE_ENFORCE_EQ(src_item[i].place().GetType() == phi::AllocationType::CPU,
                       true,
