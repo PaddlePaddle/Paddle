@@ -337,7 +337,6 @@ void Instruction::UpdateRecordStreamForGcInfo() {
     if (FLAGS_dynamic_static_unified_comm) {
       const auto& comm_context_manager =
           phi::distributed::CommContextManager::GetInstance();
-
       stream_ = static_cast<phi::distributed::NCCLCommContext*>(
                     comm_context_manager.Get(std::to_string(ring_id)))
                     ->GetStream();

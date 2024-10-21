@@ -93,7 +93,6 @@ class TestCollectiveSendRecvAPI(TestDistBase):
                     "nccl",
                     dtype=dtype,
                     need_envs={
-                        "FLAGS_dynamic_static_unified_comm": "true",
                         "FLAGS_enable_pir_in_executor": "1",
                     },
                 )

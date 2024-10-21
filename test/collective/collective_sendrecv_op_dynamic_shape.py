@@ -37,7 +37,7 @@ class TestCollectiveSendRecvDynamicShape(TestCollectiveRunnerBase):
             )
             tindata.desc.set_need_check_feed(False)
             if self.rank == 0:
-                send_op = main_prog.global_block().append_op(
+                main_prog.global_block().append_op(
                     type="p_send",
                     inputs={'x': tindata},
                     attrs={
@@ -47,7 +47,7 @@ class TestCollectiveSendRecvDynamicShape(TestCollectiveRunnerBase):
                     },
                 )
             else:
-                recv_op = main_prog.global_block().append_op(
+                main_prog.global_block().append_op(
                     type="p_recv",
                     outputs={'out': tindata},
                     attrs={

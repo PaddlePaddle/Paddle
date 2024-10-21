@@ -57,7 +57,7 @@ def _recv_in_static_mode(
     )
     ring_id = 0 if group is None else group.id
     helper = framework.LayerHelper(op_type, **locals())
-    op = helper.append_op(
+    helper.append_op(
         type=op_type,
         outputs={'out': [tensor]},
         attrs={
