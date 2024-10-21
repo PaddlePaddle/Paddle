@@ -85,11 +85,12 @@ void IndexSelectInner(const Context& ctx,
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_data[i],
-        0,
+        -input_dim[dim],
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
             "value.",
+            -input_dim[dim],
             input_dim[dim],
             index_data[i]));
     PADDLE_ENFORCE_LT(
@@ -97,8 +98,9 @@ void IndexSelectInner(const Context& ctx,
         input_dim[dim],
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
             "value.",
+            -input_dim[dim],
             input_dim[dim],
             index_data[i]));
   }
@@ -116,6 +118,9 @@ void IndexSelectInner(const Context& ctx,
 
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
+    if (index_value < 0) {
+      index_value += input_dim[dim];
+    }
     auto output_t = output_tensor.chip(j, 1);
     output_t.device(place) = input_tensor.chip(index_value, 1);
   }
@@ -167,6 +172,9 @@ void IndexSelectGradInner(const Context& ctx,
 
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
+      if (index_value < 0) {
+        index_value += input_dim[dim];
+      }
       auto src = input_data + input_start_offset + j * slice_size;
       auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;

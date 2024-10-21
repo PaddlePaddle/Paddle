@@ -186,6 +186,31 @@ class TestSetitemInDygraph(unittest.TestCase):
             x = paddle.cast(x, dtype='float32')
         np.testing.assert_allclose(x.numpy(), np_data)
 
+    def test_indexing_with_negative_list2(self):
+        # test list indexing contains negative values
+        np_data = (
+            np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6)).astype(self.ndtype)
+        )
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_data = np_data + 1j * np_data
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+
+        np_data[
+            :,
+            [-1, -2, 2],
+        ] = 8
+
+        x[
+            :,
+            [-1, -2, 2],
+        ] = 8
+
+        if self.dtype == 'bfloat16':
+            x = paddle.cast(x, dtype='float32')
+        np.testing.assert_allclose(x.numpy(), np_data)
+
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = (
@@ -625,6 +650,23 @@ class TestSetitemInStatic(unittest.TestCase):
                     [False, False, True, False],
                     [True, False, False, True, False],
                 ),
+                8,
+            )
+            res = self.exe.run(fetch_list=[y])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_indexing_with_negative_list2(self):
+        # test list indexing contains negative values
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[[1, -2, -3]] = 8
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+            y = _setitem_static(
+                x,
+                ([1, -2, -3],),
                 8,
             )
             res = self.exe.run(fetch_list=[y])

@@ -1796,15 +1796,15 @@ void ScatterInferMeta(const MetaTensor& x,
             "Input(Updates)'s shape is %d.",
             ref_dims.size(),
             updates_dims.size()));
-    PADDLE_ENFORCE_EQ(
-        updates_dims[0],
+    PADDLE_ENFORCE_LE(
         index_dims[0],
+        updates_dims[0],
         common::errors::InvalidArgument(
-            "Input(Updates) and Input(Ids) should have same batch-size, but"
-            " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
-            "batch-size is %d.",
-            updates_dims[0],
-            index_dims[0]));
+            "The first dimension size of Input(Index) shoud be no greater than "
+            "Input(Updates), but received first dimension size of Input(Index) "
+            "is %d, Input(Updates) is  %d.",
+            index_dims[0],
+            updates_dims[0]));
   } else {
     PADDLE_ENFORCE_EQ(
         (ref_dims.size() - 1 == updates_dims.size()),
