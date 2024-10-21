@@ -121,7 +121,7 @@ def multiply_converter(network, paddle_op, inputs):
 
 
 @converter_registry.register("pd_op.floor_divide", trt_version="8.x")
-def floor_divede_converter(network, paddle_op, inputs):
+def floor_divide_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.FLOOR_DIV
     )
