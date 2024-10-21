@@ -964,7 +964,7 @@ class TestGPTPartitioner(unittest.TestCase):
                 for op in auto_parallel_main_prog.global_block().ops
                 if (
                     op.type == "all_reduce"
-                    and op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                    and op.attr("reduce_type") == int(dist.ReduceOp.SUM)
                     and op.attr('op_role') == 1
                     and op.desc.attr("ring_id") == mp_ring_id
                 )
@@ -976,7 +976,7 @@ class TestGPTPartitioner(unittest.TestCase):
                 for op in auto_parallel_main_prog.global_block().ops
                 if (
                     op.type == "all_reduce"
-                    and op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                    and op.attr("reduce_type") == int(dist.ReduceOp.SUM)
                     and op.desc.attr("ring_id") == dp_ring_id
                 )
             ]
