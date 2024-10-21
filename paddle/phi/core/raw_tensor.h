@@ -90,8 +90,6 @@ class RawTensor : public phi::ExtendedTensor,
     return std::type_index(typeid(T)) == data_type_;
   }
 
-  std::type_index type() { return data_type_; }
-
  private:
   paddle::any data_;
   std::function<void(void)> data_deleter_ = []() {};
