@@ -813,5 +813,41 @@ void SetReplicatedDistAttrForOutput(
   }
 }
 
+void CheckAndSBackfillGlobalShape(phi::distributed::DistTensor* out) {
+  if (out && out->defined()) {
+    auto dist_dims = out->dims();
+    auto local_dims = out->local_dims();
+    if (dist_dims.size() < 0 || local_dims.size() < 0) {
+      return;
+    }
+
+    PADDLE_ENFORCE_EQ(
+        dist_dims.size(),
+        local_dims.size(),
+        common::errors::PreconditionNotMet(
+            "dist_dims.size() [%d] and local_dims.size() [%d] not match",
+            dist_dims.size(),
+            local_dims.size()));
+
+    auto new_dims = dist_dims;
+    bool find_illegal_dim = false;
+    for (int i = 0; i < dist_dims.size(); i++) {
+      if (dist_dims[i] == -1) {
+        find_illegal_dim = true;
+        int64_t dim_mapping = out->dist_attr().dims_mapping()[i];
+        if (-1 == dim_mapping) {
+          new_dims[i] = local_dims[i];
+        } else {
+          new_dims[i] = local_dims[i] *
+                        out->dist_attr().process_mesh().shape()[dim_mapping];
+        }
+      }
+    }
+    if (find_illegal_dim) {
+      out->unsafe_set_dims(new_dims);
+    }
+  }
+}
+
 }  // namespace experimental
 }  // namespace paddle
