@@ -32,13 +32,6 @@ inline bool data_is_lod_tensor_array(const FetchType &data) {
   return false;
 }
 
-inline bool data_is_string_tensor(const FeedType &data) {
-  if (data.type() == typeid(Strings)) {
-    return true;
-  }
-  return false;
-}
-
 inline bool data_is_sparse_coo_tensor(const FetchType &data) {
   if (data.type() == typeid(phi::SparseCooTensor)) {
     return true;
