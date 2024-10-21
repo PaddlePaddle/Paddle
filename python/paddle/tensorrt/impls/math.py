@@ -16,7 +16,9 @@ import numpy as np
 import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
+    add_cast_reduce_layer,
     add_elementwise_layer,
+    add_reduce_layer,
     broadcast,
     get_axes_for_reduce_op,
 )
@@ -122,24 +124,23 @@ def multiply_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.min", trt_version="8.x")
 def min_converter(network, paddle_op, inputs):
-    input_tensor = inputs[0]
-    axis = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
-    input_shape = paddle_op.operands()[0].source().shape
-    keepdim = paddle_op.attrs()["keepdim"]
-    if network.has_implicit_batch_dimension:
-        assert (
-            axis != 0
-        ), "can't reduce on axis == 0 when network has implicit batch dimension"
-    output_shape = []
-    if len(axis) == 0:
-        axis = list(range(len(input_shape)))
-    for i in range(len(axis)):
-        if axis[i] < 0:
-            axis[i] = len(input_shape) + axis[i]
-    layer = network.add_reduce(
-        input_tensor,
-        trt.ReduceOperation.MIN,
-        axes=get_axes_for_reduce_op(axis),
-        keep_dims=keepdim,
+    return add_reduce_layer(network, paddle_op, inputs, trt.ReduceOperation.MIN)
+
+
+@converter_registry.register("pd_op.sum", trt_version="8.x")
+def sum_converter(network, paddle_op, inputs):
+    return add_reduce_layer(network, paddle_op, inputs, trt.ReduceOperation.SUM)
+
+
+@converter_registry.register("pd_op.any", trt_version="8.x")
+def any_converter(network, paddle_op, inputs):
+    return add_cast_reduce_layer(
+        network, paddle_op, inputs, trt.ReduceOperation.MAX
     )
-    return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.all", trt_version="8.x")
+def all_converter(network, paddle_op, inputs):
+    return add_cast_reduce_layer(
+        network, paddle_op, inputs, trt.ReduceOperation.MIN
+    )
