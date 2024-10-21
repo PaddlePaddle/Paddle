@@ -1432,8 +1432,11 @@ class StackOpPattern : public pir::OpRewritePattern<paddle::dialect::StackOp> {
               << "], where rank is " << rank << ".";
       return false;
     }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 
-    
 // Add ReduceCommonOpPattern base class to simplify code
 template <typename OpType>
 class ReduceCommonOpPattern : public pir::OpRewritePattern<OpType> {
