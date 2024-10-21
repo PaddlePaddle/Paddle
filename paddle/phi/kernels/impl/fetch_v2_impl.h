@@ -112,7 +112,7 @@ void FetchV2ArrayKernel(const Context &dev_ctx,
   }
   auto &src_item = x;
   phi::TensorArray tmp(src_item.size());
-  fetch_list->at(col) = tmp;
+  *fetch_list->at(col).GetMutable<phi::TensorArray>() = tmp;
   // auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
   auto &dst_item = *fetch_list->at(col).GetMutable<phi::TensorArray>();
   for (size_t i = 0; i < src_item.size(); ++i) {
