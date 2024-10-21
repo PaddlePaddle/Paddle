@@ -66,96 +66,93 @@ class SendRecvMeta:
         self.has_send_meta = False
         self.has_recv_meta = False
 
-    def _recv_shape_dtype(self, group):
-        # recv len(shape)
-        dims = paddle.to_tensor([0])
-        src_rank = _hcg._get_p2p_prev_rank()
-
-        paddle.distributed.recv(dims, src=src_rank, group=group)
-        dims = dims.item()
-
-        # recv shape
-        shape = paddle.to_tensor([0] * dims)
-        paddle.distributed.recv(shape, src=src_rank, group=group)
-
-        # recv dtype
-        dtype = paddle.to_tensor([0])
-        paddle.distributed.recv(dtype, src=src_rank, group=group)
-
-        # recv stop_gradient
-        stop_grad = paddle.to_tensor([0])
-        paddle.distributed.recv(stop_grad, src=src_rank, group=group)
-        return shape.tolist(), dtype.item(), stop_grad.item()
-
     def recv_meta(self, group):
-        tensor_type = paddle.to_tensor([0])
         src_rank = _hcg._get_p2p_prev_rank()
 
-        paddle.distributed.recv(tensor_type, src=src_rank, group=group)
-        tensor_type = tensor_type.item()
+        data_numel = paddle.empty([1], dtype="int64")
+        paddle.distributed.recv(data_numel, src=src_rank, group=group)
+        data_numel = data_numel.item()
+
+        data = paddle.empty([data_numel], dtype="int64")
+
+        paddle.distributed.recv(data, src=src_rank, group=group)
+        data = data.numpy().tolist()
+        # parse data
+        tensor_type = data.pop(0)
+
+        if tensor_type == 1:
+            tensor_num = data.pop(0)
+        else:
+            tensor_num = 1
+
+        shapes = []
+        dtypes = []
+        stop_grads = []
+
+        for _ in range(tensor_num):
+            shape_len = data.pop(0)
+            shape = data[:shape_len]
+            data = data[shape_len:]
+            dtype_number = data.pop(0)
+            stop_gradient = bool(data.pop(0))
+
+            shapes.append(shape)
+            dtypes.append(dtype_number)
+            stop_grads.append(stop_gradient)
+
+        assert (
+            len(data) == 0
+        ), f"send data must be parsed zero, now it is {data}"
 
         if tensor_type == 0:
-            shape, dtype, stop_grad = self._recv_shape_dtype(group)
-            self.recv_shape_message = shape
-            self.recv_dtype_message = dtype
-            self.recv_stop_gradient = bool(stop_grad)
-
-        elif tensor_type == 1:
-            num = paddle.to_tensor([0])
-            paddle.distributed.recv(num, src=src_rank, group=group)
-            num = num.item()
-            shapes = []
-            dtypes = []
-            stop_grads = []
-            for i in range(num):
-                shape, dtype, stop_grad = self._recv_shape_dtype(group)
-                shapes.append(shape)
-                dtypes.append(dtype)
-                stop_grads.append(bool(stop_grad))
-
+            self.recv_shape_message = shapes[0]
+            self.recv_dtype_message = dtypes[0]
+            self.recv_stop_gradient = stop_grads[0]
+        else:
             self.recv_shape_message = tuple(shapes)
             self.recv_dtype_message = tuple(dtypes)
             self.recv_stop_gradient = tuple(stop_grads)
-
-    def _send_dims_shape_dtype(self, tensor, group):
-        # send len(shape)
-        dims = paddle.to_tensor([len(tensor.shape)])
-        dst_rank = _hcg._get_p2p_next_rank()
-
-        paddle.distributed.send(dims, dst=dst_rank, group=group)
-
-        # send shape
-        shape = paddle.to_tensor(tensor.shape)
-        paddle.distributed.send(shape, dst=dst_rank, group=group)
-
-        # send dtype
-        dtype = paddle.to_tensor([paddle_2_number(tensor.dtype)])
-        paddle.distributed.send(dtype, dst=dst_rank, group=group)
-
-        # send trainable
-        stop_grad = paddle.to_tensor([int(tensor.stop_gradient)])
-        paddle.distributed.send(stop_grad, dst=dst_rank, group=group)
 
     def send_meta(self, tensor, group):
         dst_rank = _hcg._get_p2p_next_rank()
 
         if isinstance(tensor, paddle.Tensor):
-            tensor_type = paddle.to_tensor([0])
-            # send tensor type
-            paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
-
-            self._send_dims_shape_dtype(tensor, group)
+            tensor_type = 0
+            tensors_to_send = [tensor]
         elif isinstance(tensor, tuple):
-            tensor_type = paddle.to_tensor([1])
-            # send tensor type
-            paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
+            tensor_type = 1
+            tensors_to_send = list(tensor)
+        else:
+            raise TypeError(
+                "tensor must be paddle.Tensor or Tuple of paddle.Tensor"
+            )
 
-            nums = paddle.to_tensor([len(tensor)])
-            paddle.distributed.send(nums, dst=dst_rank, group=group)
+        # prepare data to send
+        data = [tensor_type]
 
-            for d in tensor:
-                assert isinstance(d, paddle.Tensor)
-                self._send_dims_shape_dtype(d, group=group)
+        if tensor_type == 1:
+            data.append(len(tensors_to_send))
+
+        for t in tensors_to_send:
+            assert isinstance(t, paddle.Tensor)
+            data.extend(
+                [
+                    len(t.shape),
+                    *t.shape,
+                    paddle_2_number(t.dtype),
+                    int(t.stop_gradient),
+                ]
+            )
+
+        data_tensor = paddle.to_tensor(data).astype("int64")
+        data_numel = np.prod(data_tensor.shape)
+
+        paddle.distributed.send(
+            paddle.to_tensor(data_numel).astype("int64"),
+            dst=dst_rank,
+            group=group,
+        )
+        paddle.distributed.send(data_tensor, dst=dst_rank, group=group)
 
     def _obtain_send_message(self, tensor):
         if isinstance(tensor, paddle.Tensor):

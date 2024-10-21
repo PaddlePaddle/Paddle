@@ -1133,6 +1133,10 @@ def init_parallel_env() -> Group:
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
         default_store = core.create_or_get_global_tcp_store()
         _set_default_store(default_store)
+
+        if backend in ["nccl", 'xccl', 'bkcl']:
+            core.CommContextManager.set_device_id(parallel_env.device_id)
+
         pg = _new_process_group_impl(
             backend,
             default_store,
@@ -1148,19 +1152,6 @@ def init_parallel_env() -> Group:
         _set_group_map_backend(group, backend)
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
-
-        # barrier will call CreateNCCLEnvCache which will call CreateNCCLCommContext.
-        # Set device_id to prevent creating null dev_ctx.
-        # TODO(mine): support XPU and other backends.
-        if backend in ["nccl", 'xccl', 'bkcl']:
-            core.CommContextManager.set_device_id(parallel_env.device_id)
-
-        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
-            paddle.distributed.all_reduce(
-                paddle.zeros([1], dtype=paddle.float32),
-                group=group,
-                sync_op=True,
-            )
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}

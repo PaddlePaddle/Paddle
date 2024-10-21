@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import datetime
 import hashlib
-import os
 from typing import (
     TYPE_CHECKING,
     Literal,
@@ -263,14 +262,6 @@ def new_group(
         # TODO: The method below is a new method for group management, will replace the previous
         # three in the future.
         _add_new_group(group)
-
-        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
-            paddle.distributed.all_reduce(
-                paddle.zeros([1], dtype=paddle.float32),
-                group=group,
-                sync_op=True,
-            )
-
         return group
 
     if not backend:
