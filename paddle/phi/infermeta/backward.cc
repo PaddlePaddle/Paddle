@@ -117,6 +117,28 @@ void BmmGradInferMeta(const MetaTensor& x,
   }
 }
 
+void BmmDoubleGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            const MetaTensor& out_grad,
+                            const paddle::optional<MetaTensor>& grad_x_grad,
+                            const paddle::optional<MetaTensor>& grad_y_grad,
+                            MetaTensor* x_grad,
+                            MetaTensor* y_grad,
+                            MetaTensor* grad_out_grad) {
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(x.dtype());
+  }
+  if (y_grad) {
+    y_grad->set_dims(y.dims());
+    y_grad->set_dtype(y.dtype());
+  }
+  if (grad_out_grad) {
+    grad_out_grad->set_dims(out_grad.dims());
+    grad_out_grad->set_dtype(out_grad.dtype());
+  }
+}
+
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                                  int groups,
                                  const std::string& data_format,

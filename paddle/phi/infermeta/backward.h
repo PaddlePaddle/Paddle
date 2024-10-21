@@ -59,6 +59,15 @@ void BmmGradInferMeta(const MetaTensor& x,
                       MetaTensor* x_grad,
                       MetaTensor* y_grad);
 
+void BmmDoubleGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            const MetaTensor& out_grad,
+                            const paddle::optional<MetaTensor>& grad_x_grad,
+                            const paddle::optional<MetaTensor>& grad_y_grad,
+                            MetaTensor* x_grad,
+                            MetaTensor* y_grad,
+                            MetaTensor* grad_out_grad);
+
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                                  int groups,
                                  const std::string& data_format,

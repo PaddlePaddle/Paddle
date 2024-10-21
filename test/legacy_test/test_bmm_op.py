@@ -38,7 +38,7 @@ class TestBmmOp(OpTest):
         self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestBmmFP16Op(OpTest):

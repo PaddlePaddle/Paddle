@@ -486,6 +486,7 @@
     {out : Out}
 
 - op : bmm
+  backward : bmm_grad, bmm_double_grad
   inputs :
     {x : X, y : Y}
   outputs :
