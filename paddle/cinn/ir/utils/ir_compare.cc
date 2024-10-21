@@ -324,6 +324,11 @@ bool IrEqualVisitor::Visit(const Let* lhs, const Expr* other) {
   return Compare(lhs->symbol, rhs->symbol) && Compare(lhs->body, rhs->body);
 }
 
+bool IrEqualVisitor::Visit(const StructElement* lhs, const Expr* other) {
+  auto* rhs = other->As<StructElement>();
+  return Compare(lhs->value, rhs->value) && (lhs->name == rhs->name);
+}
+
 bool IrEqualVisitor::Visit(const Reduce* lhs, const Expr* other) {
   auto* rhs = other->As<Reduce>();
   return Compare(lhs->init, rhs->init) && Compare(lhs->body, rhs->body) &&

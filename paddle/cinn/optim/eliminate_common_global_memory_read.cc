@@ -36,6 +36,7 @@ struct ForVarExtent {
 struct IndicesAndExtent {
   std::vector<ir::Expr> indices;
   std::vector<ForVarExtent> for_var_extents;
+  bool is_vectorized{false};
 };
 
 std::unordered_map<ir::Var, ir::Var> ConstructForVarReplaceMap(
@@ -124,6 +125,9 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
     auto IsGlobalTensorNeedEliminate =
         [&](const std::vector<IndicesAndExtent>& indice_and_extent) -> bool {
+      if (indice_and_extent.front().is_vectorized) {
+        return true;
+      }
       if (indice_and_extent.size() <= 1) return false;
       if (IndiceContainsLoad(indice_and_extent[0])) return false;
       if (contains_select_) return false;
@@ -199,10 +203,10 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     for (const auto& [buffer_name, indice_and_extent] :
          buffer_to_indice_and_extent_) {
       // For buffers disobey SSA principle, we don't substitute them.
-      if (global_store_buffer_names_.find(buffer_name) !=
-          global_store_buffer_names_.end()) {
-        continue;
-      }
+      // if (global_store_buffer_names_.find(buffer_name) !=
+      //     global_store_buffer_names_.end()) {
+      //   continue;
+      // }
       if (IsGlobalTensorNeedEliminate(indice_and_extent)) {
         global_buffer_name.insert(buffer_name);
       }
@@ -243,6 +247,9 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::For* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::For>();
+    if (node->for_type() == ir::ForType::Vectorized) {
+      in_vectorized_for = true;
+    }
     PADDLE_ENFORCE_NOT_NULL(
         node,
         ::common::errors::InvalidArgument("The input expr should be a For"));
@@ -252,6 +259,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       iter_var_name_to_extent_[node->loop_var->name] = node->extent;
     }
     ir::IRMutator<>::Visit(op, expr);
+
+    in_vectorized_for = false;
     for_var_extents_.pop_back();
   }
 
@@ -272,7 +281,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         tensor_indices.push_back(new_indice);
       }
       buffer_to_indice_and_extent_[load_buffer->name].push_back(
-          {tensor_indices, for_var_extents_});
+          {tensor_indices, for_var_extents_, in_vectorized_for});
     }
   }
 
@@ -283,7 +292,18 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         ::common::errors::InvalidArgument("The input expr should be a Store"));
     const auto& store_buffer = node->tensor.as_tensor_ref()->buffer;
     if (store_buffer->memory_type == ir::MemoryType::Heap) {
-      global_store_buffer_names_.insert(store_buffer->name);
+      // global_store_buffer_names_.insert(store_buffer->name);
+
+      std::vector<ir::Expr> tensor_indices;
+      for (const auto& indice : node->indices) {
+        ir::Expr new_indice = ir::ir_utils::IRCopy(indice);
+        for (const auto& [var, sb_expr] : var_to_sb_expr_) {
+          ReplaceVarWithExpr(&new_indice, var, ir::ir_utils::IRCopy(sb_expr));
+        }
+        tensor_indices.push_back(new_indice);
+      }
+      buffer_to_indice_and_extent_[store_buffer->name].push_back(
+          {tensor_indices, for_var_extents_, in_vectorized_for});
     }
     ir::IRMutator<>::Visit(op, expr);
   }
@@ -300,6 +320,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       buffer_to_indice_and_extent_;
   std::unordered_set<std::string> global_store_buffer_names_;
   bool contains_select_ = false;
+  bool in_vectorized_for = false;
 };
 
 struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
@@ -352,10 +373,41 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     }
 
     if (global_buffer_to_local_buffer_.count(buffer_name) == 0) {
-      InsertLocalTensorBlock(node, buffer_name);
+      InsertLocalTensorForBlock(node, buffer_name);
     }
     SubstituteGlobalTensor(node, buffer_name);
   }
+
+  void Visit(const ir::For* op, Expr* expr) override {
+    if (op->for_type() == ir::ForType::Vectorized) {
+      insert_vectorize_block_ = current_block_;
+      std::cerr << "loop vars " << op->loop_var << std::endl;
+      loop_var = op->loop_var;
+      vec_for_ = expr->As<ir::For>();
+    }
+
+    IRMutator<>::Visit(op, expr);
+
+    auto* node = expr->As<ir::For>();
+    node->reset_vectorize_info();
+  }
+
+  // void Visit(const ir::Store* op, Expr* expr) override {
+  //   auto* node = expr->As<ir::Store>();
+  //   PADDLE_ENFORCE_NOT_NULL(
+  //       node,
+  //       ::common::errors::InvalidArgument("The output expr should be a
+  //       Store"));
+  //   const auto& buffer_name = node->tensor.as_tensor_ref()->buffer->name;
+  //   if (eliminate_buffer_names_.count(buffer_name) == 0) {
+  //     return;
+  //   }
+
+  //   if (global_buffer_to_local_buffer_.count(buffer_name) == 0) {
+  //     InsertLocalTensorBlock(node, buffer_name);
+  //   }
+  //   SubstituteGlobalTensor(node, buffer_name);
+  // }
 
   void InsertLocalTensorBlock(ir::Load* load_node,
                               const std::string& buffer_name) {
@@ -397,6 +449,236 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     block_to_insert_stmts_[insert_block_].push_back(new_sbr);
   }
 
+  void InsertLocalTensorForBlock(ir::Load* load_node,
+                                 const std::string& buffer_name) {
+    ir::Expr sb = ir::ir_utils::IRCopy(current_sbr_->schedule_block);
+    ir::ScheduleBlock* sb_node = sb.As<ir::ScheduleBlock>();
+    PADDLE_ENFORCE_NOT_NULL(
+        sb_node,
+        ::common::errors::InvalidArgument(
+            "The input expr should be a ScheduleBlockRealize"));
+    const auto& old_tensor = load_node->tensor.as_tensor_ref();
+    ir::Expr new_tensor =
+        ir::_Tensor_::Make(old_tensor->name + "_local",
+                           old_tensor->type(),
+                           ir::ir_utils::IRCopy(old_tensor->shape),
+                           ir::ir_utils::IRCopy(old_tensor->domain),
+                           old_tensor->reduce_axis);
+    new_tensor.as_tensor_ref()->WithBuffer(
+        "local", new_tensor.as_tensor_ref()->name + "_buffer");
+    ir::Expr new_body =
+        ir::Store::Make(new_tensor,
+                        ir::ir_utils::IRCopy(ir::Expr(load_node)),
+                        ir::ir_utils::IRCopy(load_node->indices));
+    ir::Expr new_sb = ir::ScheduleBlock::Make(
+        sb_node->iter_vars, {}, {}, sb_node->name + "_local", new_body);
+
+    ir::Expr new_sbr = ir::ScheduleBlockRealize::Make(
+        ir::ir_utils::IRCopy(current_sbr_->iter_values), new_sb);
+    PADDLE_ENFORCE_EQ(
+        global_buffer_to_local_buffer_.count(buffer_name),
+        0,
+        ::common::errors::InvalidArgument(
+            "buffer_name %s should not be in global_buffer_to_local_buffer_",
+            buffer_name));
+    global_buffer_to_local_buffer_[buffer_name] = new_tensor;
+
+    PADDLE_ENFORCE_NOT_NULL(
+        insert_block_,
+        ::common::errors::InvalidArgument("insert block CAN NOT be nullptr"));
+
+    ir::Expr new_for = ir::For::Make(vec_for_->loop_var,
+                                     vec_for_->min,
+                                     vec_for_->extent,
+                                     ir::ForType::Vectorized,
+                                     ir::DeviceAPI::UNK,
+                                     new_sbr,
+                                     ir::VectorizeInfo(1, 2));
+
+    block_to_insert_stmts_[insert_vectorize_block_].push_back(new_for);
+  }
+
+  void InsertLocalVectorizeTensorBlock(ir::Load* load_node,
+                                       const std::string& buffer_name) {
+    ir::Expr sb = ir::ir_utils::IRCopy(current_sbr_->schedule_block);
+    // std::cerr << "sb is \n" << *current_sbr_ << std::endl;
+    ir::ScheduleBlock* sb_node = sb.As<ir::ScheduleBlock>();
+    PADDLE_ENFORCE_NOT_NULL(
+        sb_node,
+        ::common::errors::InvalidArgument(
+            "The input expr should be a ScheduleBlockRealize"));
+    const auto& old_tensor = load_node->tensor.as_tensor_ref();
+    ir::Expr new_tensor =
+        ir::_Tensor_::Make(old_tensor->name + "_local",
+                           old_tensor->type(),
+                           ir::ir_utils::IRCopy(old_tensor->shape),
+                           ir::ir_utils::IRCopy(old_tensor->domain),
+                           old_tensor->reduce_axis);
+    new_tensor.as_tensor_ref()->WithBuffer(
+        "local", new_tensor.as_tensor_ref()->name + "_buffer");
+
+    ir::Expr new_body =
+        ir::Store::Make(new_tensor,
+                        ir::ir_utils::IRCopy(ir::Expr(load_node)),
+                        ir::ir_utils::IRCopy(load_node->indices));
+    ir::Expr new_sb = ir::ScheduleBlock::Make(
+        sb_node->iter_vars, {}, {}, sb_node->name + "_local", new_body);
+
+    ir::Expr new_sbr = ir::ScheduleBlockRealize::Make(
+        ir::ir_utils::IRCopy(current_sbr_->iter_values), new_sb);
+    PADDLE_ENFORCE_EQ(
+        global_buffer_to_local_buffer_.count(buffer_name),
+        0,
+        ::common::errors::InvalidArgument(
+            "buffer_name %s should not be in global_buffer_to_local_buffer_",
+            buffer_name));
+    global_buffer_to_local_buffer_[buffer_name] = new_tensor;
+
+    PADDLE_ENFORCE_NOT_NULL(
+        insert_block_,
+        ::common::errors::InvalidArgument("insert block CAN NOT be nullptr"));
+
+    // std::string new_vec_load_name = "reinterpret_cast<half2*>(" +
+    // old_tensor->name + ")";
+    auto data_type =
+        Type(Type::type_t::Float, 32, 1, Type::specific_type_t::HALF2);
+    auto data_ptr_type = data_type;
+    data_ptr_type.set_cpp_handle();
+    ir::Var half2_ptr("var_hl_ptr", data_ptr_type);
+    auto point_convert =
+        ir::Let::Make(half2_ptr, ir::Cast::Make(data_type, old_tensor));
+
+    std::string new_vec_load_name = "var_hl_ptr";
+    // auto new_shape
+    ir::Expr new_load_tensor =
+        ir::_Tensor_::Make(new_vec_load_name,
+                           data_type,
+                           ir::ir_utils::IRCopy(old_tensor->shape),
+                           ir::ir_utils::IRCopy(old_tensor->domain),
+                           old_tensor->reduce_axis);
+
+    // new_load_tensor.as_tensor_ref()->WithBuffer(
+    //     "local", new_tensor.as_tensor_ref()->name + "_buffer");
+
+    ir::Expr vec_load = ir::Load::Make(
+        new_load_tensor, ir::ir_utils::IRCopy(load_node->indices));
+
+    ir::Expr vec_var = ir::_Var_::Make(
+        "var_vec",
+        Type(Type::type_t::Float, 32, 1, Type::specific_type_t::HALF2));
+    std::cerr << "vec var " << vec_var << std::endl;
+    std::cerr << "vec var type " << vec_var.type() << std::endl;
+    ir::Expr load_and_assign = ir::Let::Make(vec_var, vec_load);
+
+    std::vector<Expr> vec_load_iter_value;
+    for (auto& iter_val : current_sbr_->iter_values) {
+      auto new_iter_value = ir::ir_utils::IRCopy(iter_val);
+      ReplaceVarWithExpr(&new_iter_value, loop_var, ir::Expr(0l));
+
+      vec_load_iter_value.push_back(new_iter_value);
+    }
+    ir::Expr vec_load_schedule_block = ir::ScheduleBlock::Make(
+        sb_node->iter_vars,
+        {},
+        {},
+        sb_node->name + "_local_vec_load",
+        ir::Block::Make({point_convert, load_and_assign}));
+    ir::Expr vec_load_schedule_block_realize = ir::ScheduleBlockRealize::Make(
+        vec_load_iter_value, vec_load_schedule_block);
+
+    ir::Expr local_buffer_assign_1 =
+        ir::Store::Make(new_tensor,
+                        ir::Cast::Make(new_tensor.type(),
+                                       ir::StructElement::Make(vec_var, "x")),
+                        ir::ir_utils::IRCopy(load_node->indices));
+
+    ir::Expr local_buffer_assign_1_schedule_block =
+        ir::ScheduleBlock::Make(sb_node->iter_vars,
+                                {},
+                                {},
+                                sb_node->name + "_assign_load_1",
+                                local_buffer_assign_1);
+    ir::Expr local_buffer_assign_1_schedule_realize =
+        ir::ScheduleBlockRealize::Make(vec_load_iter_value,
+                                       local_buffer_assign_1_schedule_block);
+
+    ir::Expr local_buffer_assign_2 =
+        ir::Store::Make(new_tensor,
+                        ir::Cast::Make(new_tensor.type(),
+                                       ir::StructElement::Make(vec_var, "y")),
+                        ir::ir_utils::IRCopy(load_node->indices));
+
+    std::vector<Expr> local_buffer_assign_2_iter_value;
+    for (auto& iter_val : current_sbr_->iter_values) {
+      auto new_iter_value = ir::ir_utils::IRCopy(iter_val);
+      ReplaceVarWithExpr(&new_iter_value, loop_var, ir::Expr(1l));
+
+      local_buffer_assign_2_iter_value.push_back(new_iter_value);
+
+      std::cerr << "new iter value " << new_iter_value << std::endl;
+    }
+    for (auto val : sb_node->iter_vars) {
+      std::cerr << "iter vals  " << val << std::endl;
+    }
+    ir::Expr local_buffer_assign_2_schedule_block =
+        ir::ScheduleBlock::Make(sb_node->iter_vars,
+                                {},
+                                {},
+                                sb_node->name + "_local_vec_load",
+                                local_buffer_assign_2);
+    ir::Expr local_buffer_assign_2_schedule_block_realize =
+        ir::ScheduleBlockRealize::Make(local_buffer_assign_2_iter_value,
+                                       local_buffer_assign_2_schedule_block);
+
+    ir::Expr block_expr = ir::Block::Make(
+        std::vector<ir::Expr>({vec_load_schedule_block_realize,
+                               local_buffer_assign_1_schedule_realize,
+                               local_buffer_assign_2_schedule_block_realize}));
+
+    block_to_insert_stmts_[insert_vectorize_block_].push_back(block_expr);
+  }
+
+  // void InsertStoreLocalTensorBlock(ir::Store* load_node,
+  //                             const std::string& buffer_name) {
+  //   ir::Expr sb = ir::ir_utils::IRCopy(current_sbr_->schedule_block);
+  //   ir::ScheduleBlock* sb_node = sb.As<ir::ScheduleBlock>();
+  //   PADDLE_ENFORCE_NOT_NULL(
+  //       sb_node,
+  //       ::common::errors::InvalidArgument(
+  //           "The input expr should be a ScheduleBlockRealize"));
+  //   const auto& old_tensor = load_node->tensor.as_tensor_ref();
+  //   ir::Expr new_tensor =
+  //       ir::_Tensor_::Make(old_tensor->name + "_local",
+  //                          old_tensor->type(),
+  //                          ir::ir_utils::IRCopy(old_tensor->shape),
+  //                          ir::ir_utils::IRCopy(old_tensor->domain),
+  //                          old_tensor->reduce_axis);
+  //   new_tensor.as_tensor_ref()->WithBuffer(
+  //       "local", new_tensor.as_tensor_ref()->name + "_buffer");
+  //   ir::Expr new_body =
+  //       ir::Store::Make(new_tensor,
+  //                       ir::ir_utils::IRCopy(ir::Expr(load_node)),
+  //                       ir::ir_utils::IRCopy(load_node->indices));
+  //   ir::Expr new_sb = ir::ScheduleBlock::Make(
+  //       sb_node->iter_vars, {}, {}, sb_node->name + "_local", new_body);
+
+  //   ir::Expr new_sbr = ir::ScheduleBlockRealize::Make(
+  //       ir::ir_utils::IRCopy(current_sbr_->iter_values), new_sb);
+  //   PADDLE_ENFORCE_EQ(
+  //       global_buffer_to_local_buffer_.count(buffer_name),
+  //       0,
+  //       ::common::errors::InvalidArgument(
+  //           "buffer_name %s should not be in global_buffer_to_local_buffer_",
+  //           buffer_name));
+  //   global_buffer_to_local_buffer_[buffer_name] = new_tensor;
+
+  //   PADDLE_ENFORCE_NOT_NULL(
+  //       insert_block_,
+  //       ::common::errors::InvalidArgument("insert block CAN NOT be
+  //       nullptr"));
+  //   block_to_insert_stmts_[insert_block_].push_back(new_sbr);
+  // }
+
   void SubstituteGlobalTensor(ir::Load* load_node,
                               const std::string& buffer_name) {
     PADDLE_ENFORCE_GT(
@@ -414,6 +696,10 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
 
   ir::Block* current_block_{nullptr};
   ir::Block* insert_block_{nullptr};
+  ir::Block* insert_vectorize_block_{nullptr};
+  int vectorize_size{0};
+  ir::Var loop_var;
+  ir::For* vec_for_{nullptr};
   ir::ScheduleBlockRealize* current_sbr_;
 };
 
@@ -424,10 +710,18 @@ void EliminateCommonGlobalMemoryRead(Expr* e) {
   GlobalTensorInfoCollector collector;
   collector(e);
 
+  // std::cerr << "before process global memory \n" << *e << std::endl;
   const auto& eliminate_buffer_names = collector.GetEliminateBufferNames();
+
+  // for (auto& name : eliminate_buffer_names) {
+  //   std::cerr << "eliminate buffer name " << name << std::endl;
+  // }
 
   CommonGlobalMemoryEliminator eliminator(eliminate_buffer_names);
   eliminator(e);
+
+  // std::cerr << "after process global memory \n" << *e << std::endl;
+
   VLOG(4) << "After EliminateCommonGlobalMemoryRead: \n" << *e;
 }
 

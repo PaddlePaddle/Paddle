@@ -219,6 +219,11 @@ void IRMutator<T>::Visit(const Let *expr, T op) {
     IRVisitorRequireReImpl<void, T>::Visit(&node->body, &node->body);
 }
 template <typename T>
+void IRMutator<T>::Visit(const StructElement *expr, T op) {
+  auto *node = op->template As<StructElement>();
+  IRVisitorRequireReImpl<void, T>::Visit(&node->value, &node->value);
+}
+template <typename T>
 void IRMutator<T>::Visit(const Reduce *expr, T op) {
   auto *node = op->template As<Reduce>();
   if (node->init.defined())

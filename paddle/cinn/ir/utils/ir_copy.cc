@@ -330,6 +330,10 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     return Let::Make(value, body);
   }
 
+  Expr Visit(const StructElement* op) override {
+    return StructElement::Make(op->value, op->name);
+  }
+
   Expr Visit(const Reduce* op) override {
     auto init = Visit(&op->init);
     auto body = Visit(&op->body);

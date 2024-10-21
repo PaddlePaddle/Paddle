@@ -119,8 +119,9 @@ std::string CodeGenC::GetTypeName(Type type) {
 
   GET_SCALAR_TYPE(type.is_bfloat16(), "bfloat16");
   GET_SCALAR_TYPE(type.is_float16(), "float16");
-  GET_SCALAR_TYPE(type.is_float(32), "float")
-  GET_SCALAR_TYPE(type.is_float(64), "double")
+  GET_SCALAR_TYPE(type.is_half2(), "half2");
+  GET_SCALAR_TYPE(type.is_float(32), "float");
+  GET_SCALAR_TYPE(type.is_float(64), "double");
 #undef GET_SCALAR_TYPE
 
   // customized_type
@@ -572,6 +573,12 @@ void CodeGenC::Visit(const ir::Free *op) {
 
 void CodeGenC::Visit(const ir::_Buffer_ *op) { str_ += op->name; }
 void CodeGenC::Visit(const ir::_Tensor_ *op) { str_ += op->buffer->name; }
+
+void CodeGenC::Visit(const ir::StructElement *op) {
+  IrPrinter::Visit(op->value);
+
+  str_ += "." + op->name;
+}
 void CodeGenC::Visit(const ir::Let *op) {
   bool is_vec = false;
   PADDLE_ENFORCE_EQ(op->type().valid(),
@@ -583,6 +590,7 @@ void CodeGenC::Visit(const ir::Let *op) {
     str_ += "auto";
     is_vec = true;
   } else {
+    std::cerr << "op type " << op->type() << std::endl;
     str_ += GetTypeRepr(op->type());
   }
 
