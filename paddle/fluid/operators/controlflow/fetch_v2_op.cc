@@ -94,11 +94,6 @@ class FetchV2Op : public framework::OperatorWithKernel {
       if (!src_item.IsInitialized()) {
         return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
-    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
-      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
-      }
     } else {
       auto &src_item = fetch_var->Get<phi::TensorArray>();
       if (src_item.empty() || !src_item[0].IsInitialized()) {
@@ -167,12 +162,6 @@ class FetchV2Kernel {
         dst_item->ShareDataWith(src_item);
         dst_item->set_lod(src_item.lod());
       }
-    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
-      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
-        return;
-      }
-      fetch_list->at(col) = src_item;
     } else {
       auto &src_item = fetch_var->Get<phi::TensorArray>();
       phi::TensorArray tmp(src_item.size());
