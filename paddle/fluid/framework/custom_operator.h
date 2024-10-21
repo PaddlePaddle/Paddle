@@ -64,6 +64,9 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
       } else if (attr_type_str == "float") {
         AddAttr<float>(attr_name, "custom operator float attribute.")
             .SetDefault(1.0f);
+      } else if (attr_type_str == "double") {
+        AddAttr<double>(attr_name, "custom operator double attribute.")
+            .SetDefault(1.0f);
       } else if (attr_type_str == "int64_t") {
         AddAttr<int64_t>(attr_name, "custom operator int64_t attribute.")
             .SetDefault(1);
@@ -89,7 +92,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
-            "Supported data types include `bool`, `int`, `float`, "
+            "Supported data types include `bool`, `int`, `float`, `double`"
             "`int64_t`, `std::string`, `std::vector<int>`, "
             "`std::vector<float>`, `std::vector<int64_t>`, "
             "`std::vector<std::string>`, Please check whether "

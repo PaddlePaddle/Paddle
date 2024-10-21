@@ -636,6 +636,9 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     } else if (attr_type_str == "float") {
       ctx.EmplaceBackAttr(
           CastPyArg2AttrFloat(obj, attr_start_idx + i));  // NOLINT
+    } else if (attr_type_str == "double") {
+      ctx.EmplaceBackAttr(
+          CastPyArg2AttrDouble(obj, attr_start_idx + i));  // NOLINT
     } else if (attr_type_str == "int64_t") {
       ctx.EmplaceBackAttr(
           CastPyArg2Long(obj, op_type, attr_start_idx + i));  // NOLINT
