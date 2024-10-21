@@ -76,6 +76,8 @@ DEFINE_GENERAL_PATTERN(Sigmoid, paddle::dialect::SigmoidOp)
 DEFINE_GENERAL_PATTERN(Sqrt, paddle::dialect::SqrtOp)
 DEFINE_GENERAL_PATTERN(Hardsigmoid, paddle::dialect::HardsigmoidOp)
 DEFINE_GENERAL_PATTERN(Hardswish, paddle::dialect::HardswishOp)
+DEFINE_GENERAL_PATTERN(NotEqual, paddle::dialect::NotEqualOp)
+DEFINE_GENERAL_PATTERN(Equal, paddle::dialect::EqualOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -907,6 +909,7 @@ class SplitWithNumOpPattern
     return true;
   }
 };
+
 class GreaterEqualOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GreaterEqualOp> {
  public:
@@ -935,6 +938,63 @@ class GreaterEqualOpPattern
     return true;
   }
 };
+
+class GreaterThanOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GreaterThanOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GreaterThanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GreaterThanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+    VLOG(3) << "GreaterThanOp is not supported when TensorRT < 8.4";
+    return false;
+#else
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "Greater_than op do not support bool datatype";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class LessThanOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::LessThanOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::LessThanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::LessThanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+    VLOG(3) << "LessThanOp is not supported when TensorRT < 8.4";
+    return false;
+#else
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "Less_than op do not support bool datatype";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class MultiplyOpPattern
     : public pir::OpRewritePattern<paddle::dialect::MultiplyOp> {
  public:
@@ -1510,6 +1570,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Sqrt)
     ADD_PATTERN(Hardsigmoid)
     ADD_PATTERN(Hardswish)
+    ADD_PATTERN(NotEqual)
+    ADD_PATTERN(Equal)
 #if IS_TRT_VERSION_GE(8600)
     ADD_PATTERN(Layer_norm)
 #endif
@@ -1536,6 +1598,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<SplitOpPattern>(context));
     ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
     ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
+    ps.Add(std::make_unique<GreaterThanOpPattern>(context));
+    ps.Add(std::make_unique<LessThanOpPattern>(context));
     ps.Add(std::make_unique<MultiplyOpPattern>(context));
     ps.Add(std::make_unique<SubtractOpPattern>(context));
     ps.Add(std::make_unique<DivideOpPattern>(context));
