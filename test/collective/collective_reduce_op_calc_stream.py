@@ -50,8 +50,8 @@ class TestCollectiveReduce(TestCollectiveRunnerBase):
                 inputs={'x': tindata},
                 attrs={
                     'ring_id': ring_id,
-                    'root_id': rootid,
                     'reduce_type': int(dist.ReduceOp.SUM),
+                    'root_id': rootid,
                 },
                 outputs={'out': toutdata},
             )

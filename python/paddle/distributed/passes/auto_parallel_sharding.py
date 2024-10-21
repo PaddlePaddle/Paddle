@@ -538,15 +538,13 @@ class ShardingPass(PassBase):
             if _is_param_grad_allreduce_op(op, main_block):
                 if op.type == "c_allreduce_sum" or (
                     op.type == "reduce"
-                    and op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                    and op.attr("reduce_type") == dist.ReduceOp.SUM
                 ):
                     reduce_op_type = "reduce"
                     reduce_type = dist.ReduceOp.SUM
-                    op_role = op.attr("op_role")
                 else:
                     reduce_op_type = "reduce"
                     reduce_type = dist.ReduceOp.AVG
-                    op_role = op.attr("op_role")
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
@@ -559,7 +557,6 @@ class ShardingPass(PassBase):
                     sharding_info.get_var_rank(base_name),
                     self._dist_context,
                     reduce_type,
-                    op_role,
                 )
                 if (
                     not self.sharding_hybrid_dp
@@ -1465,9 +1462,8 @@ class ShardingPass(PassBase):
                             attrs={
                                 'ring_id': inter_node_group.id,
                                 'root_id': inter_node_dst,
-                                'reduce_type': int(dist.ReduceOp.SUM),
+                                'reduce_type': dist.ReduceOp.SUM,
                                 OP_ROLE_KEY: OpRole.Backward,
-                                'op_role': OpRole.Backward,
                             },
                         )
                         new_op._set_attr(

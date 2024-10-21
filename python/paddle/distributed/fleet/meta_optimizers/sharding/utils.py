@@ -165,10 +165,9 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 var_name = op.desc.input_arg_names()[0]
                 ring_id = op.desc.attr("ring_id")
                 if ring_id == sharding_ring_id:
-                    assert op.type == "reduce" and op.desc.attr(
-                        "reduce_type"
-                    ) == str(
-                        dist.ReduceOp.SUM
+                    assert (
+                        op.type == "reduce"
+                        and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
                     ), "Grad in Sharding group should be reduce rather than allreduce"
                     if var_name in vars_status:
                         _status = vars_status[var_name]
@@ -566,7 +565,7 @@ def insert_fused_reduce_ops(
                     'ring_id': ring_id,
                     'root_id': root_id,
                     'reduce_type': int(dist.ReduceOp.SUM),
-                    'op_role': op_role,
+                    OP_ROLE_KEY: op_role,
                 },
             )
             if not use_calc_stream:

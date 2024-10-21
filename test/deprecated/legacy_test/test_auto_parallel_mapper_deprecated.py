@@ -629,7 +629,7 @@ class TestAutoParallelMapper(unittest.TestCase):
                 attrs={
                     'ring_id': ring_id,
                     'root_id': root_id,
-                    'reduce_type': int(dist.ReduceOp.SUM),
+                    'reduce_type': dist.ReduceOp.SUM,
                 },
                 outputs={'out': output},
             )
