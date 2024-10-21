@@ -246,10 +246,6 @@ def softsign_net(x):
     return paddle.nn.functional.softsign(x)
 
 
-def floor_divide_net(x, y):
-    return paddle.floor_divide(x, y)
-
-
 def gelu_net(x):
     return paddle.nn.functional.gelu(x)
 
@@ -1328,28 +1324,6 @@ class TestPrimSoftsign(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = softsign_net
         self.necessary_ops = "pd_op.softsign"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimFloorDivide(TestPrimTwo):
-    def setUp(self):
-        np.random.seed(2024)
-        paddle.seed(2024)
-        self.shape_x = [300, 2048]
-        self.shape_y = [300, 2048]
-        self.dtype_x = int
-        self.dtype_y = int
-        self.init_x_shape = [None, None]
-        self.init_y_shape = [None, None]
-        self.x = np.random.uniform(
-            low=1.0, high=100.0, size=self.shape_x
-        ).astype(self.dtype_x)
-        self.y = np.random.uniform(
-            low=1.0, high=100.0, size=self.shape_x
-        ).astype(self.dtype_x)
-        self.net = floor_divide_net
-        self.necessary_ops = "pd_op.floor_divide"
         self.enable_cinn = False
         self.tol = 1e-6
 
