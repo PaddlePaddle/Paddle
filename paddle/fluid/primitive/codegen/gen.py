@@ -68,6 +68,7 @@ BACKENDS_BLACK_LIST = [
 # prim op with one input and one output, with no attribute
 UNARY_PRIM_VJP_OPS = [
     'abs_grad',
+    'ceil_grad',
     'erf_grad',
     'exp_grad',
     'floor_grad',

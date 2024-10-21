@@ -34,6 +34,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.assign",
     "pd_op.batch_norm_",
     "pd_op.cast",
+    "pd_op.ceil",
     "pd_op.concat",
     "pd_op.cos",
     "pd_op.cumprod",
