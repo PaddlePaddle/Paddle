@@ -42,5 +42,6 @@ def logic_converter(network, paddle_op, inputs):
         layer_output = add_elementwise_layer(
             network, paddle_op, inputs, trt.ElementWiseOperation.EQUAL
         )
-        layer_output = network.add_unary(layer_output, trt.UnaryOperation.NOT)
+        not_layer = network.add_unary(layer_output, trt.UnaryOperation.NOT)
+        layer_output = not_layer.get_output(0)
     return trt_cast(network, layer_output, inputs[0].dtype)
