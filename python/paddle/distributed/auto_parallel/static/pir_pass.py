@@ -541,6 +541,12 @@ def remove_unuseful_comm_op_pass(program):
             if op.operand_source(0).has_one_use():
                 op.result(0).replace_all_uses_with(op.operand_source(0))
                 op.erase()
+        if (
+            op.name() == "pd_op.cast"
+            and op.result(0).dtype == op.operand_source(0).dtype
+        ):
+            op.result(0).replace_all_uses_with(op.operand_source(0))
+            op.erase()
 
 
 # In sequence_parallel, we need to transpose hidden_states
@@ -629,6 +635,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
         pipeline_strategy.pp_degree
     )
     pass_attr["vpp_degree"] = pipeline_strategy.vpp_degree
+    pass_attr["split_backward"] = pipeline_strategy.split_backward
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and

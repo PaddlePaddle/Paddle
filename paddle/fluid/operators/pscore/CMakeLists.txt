@@ -17,14 +17,12 @@ if(WITH_ARM_BRPC)
     heter_server
     heter_client
     ps_framework_proto
-    framework_proto
     sendrecv_rpc
     arm_brpc
     phi
     common
     glog
-    snappy
-    device_context)
+    snappy)
 else()
   list(
     APPEND
@@ -36,13 +34,11 @@ else()
     heter_server
     heter_client
     ps_framework_proto
-    framework_proto
     sendrecv_rpc
     ${EXTERNAL_BRPC_DEPS}
     phi
     common
-    zlib
-    device_context)
+    zlib)
 endif()
 
 set(DISTRIBUTE_COMPILE_FLAGS

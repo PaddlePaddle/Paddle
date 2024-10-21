@@ -718,6 +718,19 @@ class Engine:
                 mode="all",
             )
 
+            # update self._parameter_name_list after fused_ffn_qkv, otherwise opt stage will not update fused params
+            for k in self.fused_ffn_qkv.keys():
+                for fusion in self.fused_ffn_qkv[k]:
+                    for after_fuse_name, before_fuse_params in fusion.items():
+                        index = self._parameter_name_list.index(
+                            before_fuse_params[0].name
+                        )
+                        self._parameter_name_list.insert(index, after_fuse_name)
+                        for before_fuse_param in before_fuse_params:
+                            self._parameter_name_list.remove(
+                                before_fuse_param.name
+                            )
+
         forward_op_start_idx = 0
         backward_op_start_idx = -1
         opt_op_start_idx = -1
@@ -726,8 +739,15 @@ class Engine:
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
-        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
+        if self._strategy.mp_optimization.replace_with_parallel_cross_entropy:
+            auto_parallel_replace_with_parallel_cross_entropy_pass = new_pass(
+                "replace_with_parallel_cross_entropy", {}
+            )
+            auto_parallel_replace_with_parallel_cross_entropy_pass.apply(
+                [dist_program], [startup_program]
+            )
 
+        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
         if (
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"
@@ -975,7 +995,7 @@ class Engine:
                 for job_type in self._job_plan.job_types():
                     ir_program = self._job_plan.ir_program(job_type)
                     pm.run(ir_program)
-
+        remove_unuseful_comm_op_pass(dense_program)
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
         self._pir_dist_startup_progs[mode] = startup_program
@@ -1412,6 +1432,9 @@ class Engine:
 
                 set_all_ops_op_role(startup_prog.global_block(), OpRole.Forward)
                 ReshardPasses.apply_reshard_pass(startup_prog)
+                paddle.base.libpaddle.pir.apply_dist2dense_pass(startup_prog)
+                remove_unuseful_comm_op_pass(startup_prog)
+
                 for op in changed_ouput_op_list:
                     op.operand_source(0).persistable = True
                 self._executor.run(startup_prog)

@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/custom/custom_device_op_list.h"

@@ -170,6 +170,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_reduce) {
       .SetRetType<DTYPE>()                                                   \
       .AddInputType<cinn_buffer_t *>()                                       \
       .AddInputType<int>()                                                   \
+      .AddInputType<int>()                                                   \
       .End();
 
   EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_GRID_REDUCE_FUNC_IMPL)

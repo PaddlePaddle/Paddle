@@ -39,6 +39,22 @@ def logcumsumexp_net3(x):
     return paddle.logcumsumexp(x, axis=-1)
 
 
+def logsumexp_net1(x):
+    return paddle.logsumexp(x)
+
+
+def logsumexp_net2(x):
+    return paddle.logsumexp(x, keepdim=False)
+
+
+def logsumexp_net3(x):
+    return paddle.logsumexp(x, axis=-1, keepdim=False)
+
+
+def logsumexp_net4(x):
+    return paddle.logsumexp(x, axis=[0, 2], keepdim=False)
+
+
 def matmul_net(x, y):
     return paddle.matmul(x, y)
 
@@ -139,6 +155,71 @@ class TestPrimLogcumsumexpWithGrad3(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = logcumsumexp_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimLogsumexpWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.logsumexp_grad"
+        self.dtype = "float32"
+        self.x_shape = [1000]
+        self.init_x_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = logsumexp_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimLogsumexpWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.logsumexp_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = logsumexp_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimLogsumexpWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.logsumexp_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = logsumexp_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimLogsumexpWithGrad4(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.logsumexp_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = logsumexp_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimLogsumexpWithGrad5(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.logsumexp_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = logsumexp_net4
         self.enable_cinn = False
         self.tol = 1e-6
 
