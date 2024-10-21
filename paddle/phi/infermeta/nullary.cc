@@ -223,13 +223,37 @@ void RandintInferMeta(
   out->set_dtype(dtype);
 }
 
-void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out) {
+void PRecvInferMeta(const bool dynamic_shape,
+                    const int peer,
+                    const std::vector<int>& out_shape,
+                    DataType dtype,
+                    MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       peer,
       0,
       errors::InvalidArgument(
           "The peer (%d) for p_recv op must be non-negative.", peer));
-  // auto data_type = phi::TransToPhiDataType(dtype);
+
+  if (!dynamic_shape) {
+    PADDLE_ENFORCE_GE(out_shape.size(),
+                      1,
+                      errors::InvalidArgument(
+                          "The size of the output shape must be greater than 0 "
+                          "but the value given is %d.",
+                          out_shape.size()));
+    for (size_t i = 0; i < out_shape.size(); ++i) {
+      PADDLE_ENFORCE_GE(out_shape[i],
+                        1,
+                        errors::InvalidArgument(
+                            "The shape attribute for p_recv must be set "
+                            "explicitly, but the %dth element is %d which "
+                            "is less than 1. Or dynamic_shape should be "
+                            "set to True for both p_send and recv_v2.",
+                            i,
+                            out_shape[i]));
+    }
+    out->set_dims(common::make_ddim(out_shape));
+  }
   out->set_dtype(dtype);
 }
 
@@ -274,13 +298,13 @@ void RecvV2InferMeta(const int ring_id,
       peer,
       0,
       errors::InvalidArgument(
-          "The peer (%d) for p_recv op must be non-negative.", peer));
+          "The peer (%d) for recv_v2 op must be non-negative.", peer));
 
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
       errors::InvalidArgument(
-          "The ring_id (%d) for p_recv op must be non-negative.", ring_id));
+          "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
 
   if (!dynamic_shape) {
     PADDLE_ENFORCE_GE(out_shape.size(),
@@ -293,10 +317,10 @@ void RecvV2InferMeta(const int ring_id,
       PADDLE_ENFORCE_GE(out_shape[i],
                         1,
                         errors::InvalidArgument(
-                            "The shape attribute for p_recv must be set "
+                            "The shape attribute for recv_v2 must be set "
                             "explicitly, but the %dth element is %d which "
                             "is less than 1. Or dynamic_shape should be "
-                            "set to True for both p_send and p_recv.",
+                            "set to True for both send_v2 and recv_v2.",
                             i,
                             out_shape[i]));
     }
