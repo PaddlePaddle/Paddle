@@ -3708,8 +3708,8 @@ def log10_(x: Tensor, name: str | None = None) -> Tensor:
 
 def clip(
     x: Tensor,
-    min: float | None = None,
-    max: float | None = None,
+    min: float | int | Tensor | None = None,
+    max: float | int | Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -3763,11 +3763,27 @@ def clip(
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if in_dynamic_or_pir_mode():
-        if isinstance(min, Variable):
+    if isinstance(min, Variable):
+        if min.shape == [] or min.shape == [0] or min.shape == [1]:
             min = min.item(0)
-        if isinstance(max, Variable):
+        else:
+            min.stop_gradient = True
+            assert min.shape == x.shape[-len(min.shape):], (
+                "The dimension of the min parameter must be the same as that of x,"
+                f"received Input x's dimensional: {x.shape}.\n"
+            )
+
+    if isinstance(max, Variable):
+        if max.shape == [] or max.shape == [0] or max.shape == [1]:
             max = max.item(0)
+        else:
+            max.stop_gradient = True
+            assert max.shape == x.shape[-len(max.shape):], (
+                "The dimension of the max parameter must be the same as that of x,"
+                f"received Input x's dimensional: {x.shape}.\n"
+            )
+
+    if in_dynamic_or_pir_mode():
         min = min_ if min is None else min
         max = max_ if max is None else max
         return _C_ops.clip(x, min, max)
@@ -3792,7 +3808,6 @@ def clip(
                     'clip',
                     '(When the type of max in clip is Variable.)',
                 )
-
         check_variable_and_dtype(
             x,
             'x',
@@ -3804,13 +3819,11 @@ def clip(
         attrs = {'min': min_, 'max': max_}
 
         if isinstance(min, Variable):
-            min.stop_gradient = True
             inputs['Min'] = min
         elif min is not None:
             attrs['min'] = min
 
         if isinstance(max, Variable):
-            max.stop_gradient = True
             inputs['Max'] = max
         elif max is not None:
             attrs['max'] = max
