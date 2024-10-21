@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 namespace paddle::framework {
 
