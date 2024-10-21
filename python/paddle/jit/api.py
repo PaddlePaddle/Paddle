@@ -133,7 +133,8 @@ def copy_decorator_attrs(original_func, decorated_obj):
 
     decorated_obj.__name__ = original_func.__name__
     decorated_obj._decorator_name = decorator_name
-    decorated_obj.__wrapped__ = original_func
+    if not inspect.ismethod(original_func):
+        decorated_obj.__wrapped__ = original_func
     decorated_obj.__doc__ = original_func.__doc__
     if hasattr(original_func, "__module__"):
         decorated_obj.__module__ = original_func.__module__

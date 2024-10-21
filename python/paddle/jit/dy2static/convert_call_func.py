@@ -22,6 +22,7 @@ import logging
 import os
 import pdb  # noqa: T100
 import re
+import weakref
 from typing import TYPE_CHECKING, Any, Callable
 
 import numpy
@@ -371,7 +372,7 @@ def convert_call(func):
                 # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
-                func.forward = forward_func.__get__(func)
+                func.forward = weakref.WeakMethod(forward_func.__get__(func))
             except (OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
