@@ -1474,33 +1474,31 @@ class StackOpPattern : public pir::OpRewritePattern<paddle::dialect::StackOp> {
     auto x_type = x.type();
     if (x_type.isa<pir::VectorType>()) {
       rank = x_type.dyn_cast<pir::VectorType>().size();
-    }else{
+    } else {
       auto x_shape = op.operand_source(0)
-                        .type()
-                        .dyn_cast<paddle::dialect::DenseTensorType>()
-                        .dims();
-      rank=x_shape.size();
+                         .type()
+                         .dyn_cast<paddle::dialect::DenseTensorType>()
+                         .dims();
+      rank = x_shape.size();
     }
-  
+
     int axis;
-    if(op->HasAttribute("axis")){
+    if (op->HasAttribute("axis")) {
       axis = op->attribute<pir::Int32Attribute>("axis").data();
-    }else{
-      axis=-1;
+    } else {
+      axis = -1;
     }
-    if(axis > rank || axis < -(rank+1))
-    {
-      VLOG(3) << "Invalid axis value: " << axis 
-              << ". Axis should be in range [-" << (rank + 1) 
-              << ", " << rank << "], where rank is " << rank << ".";
+    if (axis > rank || axis < -(rank + 1)) {
+      VLOG(3) << "Invalid axis value: " << axis
+              << ". Axis should be in range [-" << (rank + 1) << ", " << rank
+              << "], where rank is " << rank << ".";
       return false;
     }
-  
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
 };
-
 
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
