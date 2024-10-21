@@ -65,16 +65,8 @@ def assign_value_converter(network, paddle_op, inputs):
 
     if dtype == paddle.float32:
         dtype = np.float32
-    elif dtype == paddle.float16:
-        dtype = np.float16
-    elif dtype == paddle.int32:
-        dtype = np.int32
-    elif dtype == paddle.bool:
-        dtype = np.bool
 
-    constant_layer = network.add_constant(
-        shape, np.array(values, dtype=np.float32)
-    )
+    constant_layer = network.add_constant(shape, np.array(values, dtype=dtype))
     return constant_layer.get_output(0)
 
 

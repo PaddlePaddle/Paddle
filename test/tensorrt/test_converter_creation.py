@@ -46,7 +46,7 @@ class TestAssignTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-class TestAssignValueTRTPattern(TensorRTBaseTest):
+class TestAssignValueFloat32TRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.api_args = {
@@ -88,7 +88,7 @@ class TestAssignOutTRTPattern(TensorRTBaseTest):
         self.max_shape = {"x": [3, 2], "output": [3, 2]}
 
     def test_trt_result(self):
-        self.check_trt_result()
+        self.check_trt_inplace_result()
 
 
 if __name__ == "__main__":
