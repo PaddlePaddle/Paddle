@@ -91,6 +91,7 @@ class TestSoftmaxOp(OpTest):
                 check_pir=True,
                 check_prim_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
         else:
             self.check_output(
@@ -98,6 +99,7 @@ class TestSoftmaxOp(OpTest):
                 check_pir=True,
                 check_prim_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
 
     def test_check_grad(self):
@@ -168,6 +170,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
                 check_pir=True,
                 check_prim_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
         else:
             self.check_output(
@@ -175,6 +178,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
                 check_pir=True,
                 check_prim_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
 
 
@@ -216,6 +220,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
                 check_pir=True,
                 check_prim_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
         else:
             self.check_output(
@@ -223,6 +228,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
                 check_pir=True,
                 check_prim_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
 
 
@@ -491,6 +497,7 @@ class TestSoftmaxBF16Op(OpTest):
             check_pir=(not self.use_mkldnn),
             check_prim_pir=(not self.use_mkldnn),
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):

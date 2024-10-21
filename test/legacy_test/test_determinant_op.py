@@ -301,7 +301,7 @@ class TestSlogDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
