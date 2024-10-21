@@ -327,6 +327,10 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         self.python_c_function_reg_str = ""
         self.python_c_function_declare_str = ""
 
+        # NOTE: place should be consistent with given input tensors
+        # so that kernel can be executed in different place correctly
+        self.ref_place = None
+
     def CollectIsForwardOnly(self):
         forward_api_contents = self.forward_api_contents
         self.is_forward_only = (
@@ -377,6 +381,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                             "false",
                         )
                     )
+                    if self.ref_place is None:
+                        self.ref_place = f"{name}[0].place()"
             else:
                 if is_optional:
                     get_eager_tensor_str += (
@@ -403,6 +409,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                             "false",
                         )
                     )
+                    if self.ref_place is None:
+                        self.ref_place = f"{name}.place()"
+
         # No inputs, skip convert to DistTensor
         if len(input_names) > 0:
             optional_and_vector_convert_code = ""
@@ -455,9 +464,10 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     inplace_returns_pos_map[name] = pos
 
         parse_attributes_str = ""
-        expected_place_str = (
-            "    auto place = egr::Controller::Instance().GetExpectedPlace();\n"
-        )
+        if self.ref_place is not None:
+            expected_place_str = f"    auto place = {self.ref_place};\n"
+        else:
+            expected_place_str = "    auto place = egr::Controller::Instance().GetExpectedPlace();\n"
 
         # Generate Python-C Attributes Parsing Logic
         for name, atype, _, pos in orig_forward_attrs_list:

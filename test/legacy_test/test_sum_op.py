@@ -22,6 +22,7 @@ import numpy as np
 from decorator_helper import prog_scope
 from op import Operator
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from utils import static_guard
 
 import paddle
 import paddle.inference as paddle_infer
@@ -402,18 +403,19 @@ class TestSumBF16Op(OpTest):
 class API_Test_Add_n(unittest.TestCase):
 
     def test_api(self):
-        with base.program_guard(base.Program(), base.Program()):
-            input0 = paddle.tensor.fill_constant(
-                shape=[2, 3], dtype='int64', value=5
-            )
-            input1 = paddle.tensor.fill_constant(
-                shape=[2, 3], dtype='int64', value=3
-            )
-            expected_result = np.empty((2, 3))
-            expected_result.fill(8)
-            sum_value = paddle.add_n([input0, input1])
-            exe = base.Executor(base.CPUPlace())
-            result = exe.run(fetch_list=[sum_value])
+        with static_guard():
+            with base.program_guard(base.Program(), base.Program()):
+                input0 = paddle.tensor.fill_constant(
+                    shape=[2, 3], dtype='int64', value=5
+                )
+                input1 = paddle.tensor.fill_constant(
+                    shape=[2, 3], dtype='int64', value=3
+                )
+                expected_result = np.empty((2, 3))
+                expected_result.fill(8)
+                sum_value = paddle.add_n([input0, input1])
+                exe = base.Executor(base.CPUPlace())
+                result = exe.run(fetch_list=[sum_value])
 
             self.assertEqual((result == expected_result).all(), True)
 
@@ -473,65 +475,67 @@ class API_Test_Add_n(unittest.TestCase):
 class TestRaiseSumError(unittest.TestCase):
 
     def test_errors(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
 
-            def test_type():
-                paddle.add_n([11, 22])
+                def test_type():
+                    paddle.add_n([11, 22])
 
-            self.assertRaises(TypeError, test_type)
+                self.assertRaises(TypeError, test_type)
 
-            def test_dtype():
-                data1 = paddle.static.data(
-                    name="input1", shape=[10], dtype="int8"
-                )
-                data2 = paddle.static.data(
-                    name="input2", shape=[10], dtype="int8"
-                )
-                paddle.add_n([data1, data2])
+                def test_dtype():
+                    data1 = paddle.static.data(
+                        name="input1", shape=[10], dtype="int8"
+                    )
+                    data2 = paddle.static.data(
+                        name="input2", shape=[10], dtype="int8"
+                    )
+                    paddle.add_n([data1, data2])
 
-            self.assertRaises(TypeError, test_dtype)
+                self.assertRaises(TypeError, test_dtype)
 
-            def test_dtype1():
-                data1 = paddle.static.data(
-                    name="input1", shape=[10], dtype="int8"
-                )
-                paddle.add_n(data1)
+                def test_dtype1():
+                    data1 = paddle.static.data(
+                        name="input1", shape=[10], dtype="int8"
+                    )
+                    paddle.add_n(data1)
 
-            self.assertRaises(TypeError, test_dtype1)
+                self.assertRaises(TypeError, test_dtype1)
 
 
 class TestRaiseSumsError(unittest.TestCase):
 
     def test_errors(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
 
-            def test_type():
-                paddle.add_n([11, 22])
+                def test_type():
+                    paddle.add_n([11, 22])
 
-            self.assertRaises(TypeError, test_type)
+                self.assertRaises(TypeError, test_type)
 
-            def test_dtype():
-                data1 = paddle.static.data(
-                    name="input1", shape=[10], dtype="int8"
-                )
-                data2 = paddle.static.data(
-                    name="input2", shape=[10], dtype="int8"
-                )
-                paddle.add_n([data1, data2])
+                def test_dtype():
+                    data1 = paddle.static.data(
+                        name="input1", shape=[10], dtype="int8"
+                    )
+                    data2 = paddle.static.data(
+                        name="input2", shape=[10], dtype="int8"
+                    )
+                    paddle.add_n([data1, data2])
 
-            self.assertRaises(TypeError, test_dtype)
+                self.assertRaises(TypeError, test_dtype)
 
-            def test_dtype1():
-                data1 = paddle.static.data(
-                    name="input3", shape=[10], dtype="int8"
-                )
-                paddle.add_n(data1)
+                def test_dtype1():
+                    data1 = paddle.static.data(
+                        name="input3", shape=[10], dtype="int8"
+                    )
+                    paddle.add_n(data1)
 
-            self.assertRaises(TypeError, test_dtype1)
+                self.assertRaises(TypeError, test_dtype1)
 
 
 class TestSumOpError(unittest.TestCase):

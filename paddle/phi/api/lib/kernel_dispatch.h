@@ -42,6 +42,9 @@ std::size_t CountLeadingZeros(uint32_t val);
 
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
 
+phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend,
+                                              const int8_t& device_id);
+
 enum class KernelType {
   DENSE_TENSOR_KERNEL,   // kernel for DenseTensor
   SELECTED_ROWS_KERNEL,  // kernel for SelectedRows

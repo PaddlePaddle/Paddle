@@ -89,6 +89,10 @@ class BaseAPI:
                 "dense": self.gene_optional_vec_dense_input
             },
         }
+        self.ref_place = None
+        if 'place' in self.attrs['names']:
+            # if place is specified explicitly, just use it, such as 'full' op
+            self.ref_place = "place"
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['op']
@@ -745,6 +749,24 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);"""
         )
+
+        # NOTE: place context should be consistent with given input tensors or place
+        # so that kernel can be executed in different place correctly
+        if (
+            self.ref_place is None
+            and self.__class__.__name__ == "ForwardAPI"
+            and input_name not in self.optional_vars
+        ):
+            # use the place of first available tensor for forward op
+            self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}->place()"
+        elif (
+            (self.ref_place is None or "_grad" in input_name)
+            and input_name not in self.optional_vars
+            and self.__class__.__name__ == "BackwardAPI"
+        ):
+            # use the place of first available grad tensor for backward op
+            self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}->place()"
+
         return input_tensor_code
 
     def gene_selected_rows_input(
@@ -865,6 +887,24 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
 {code_indent}  }}"""
             )
+
+        # NOTE: place context should be consistent with given input tensors or place
+        # so that kernel can be executed in different place correctly
+        if (
+            self.ref_place is None
+            and self.__class__.__name__ == "ForwardAPI"
+            and input_name not in self.optional_vars
+        ):
+            # use the place of first available tensor for forward op
+            self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}.at(0)->place()"
+        elif (
+            self.__class__.__name__ == "BackwardAPI"
+            and input_name not in self.optional_vars
+            and (self.ref_place is None or "_grad" in input_name)
+        ):
+            # use the place of first available grad tensor for backward op
+            self.ref_place = f"{PREFIX_TENSOR_NAME}{input_name}.at(0)->place()"
+
         return input_tensor_code
 
     def gene_input(self, kernel_tensor_type=None, code_indent=''):
@@ -1333,8 +1373,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 {code_indent}  // add actual_kernel_backend to select actual kernel backend after a potential falling-back to CPU
 {code_indent}  Backend actual_kernel_backend = kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
-{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);
 {input_tensors}
+{code_indent}  phi::DeviceContext* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend{f', {self.ref_place}.device' if self.ref_place else ''});
 {output_create}
 {pre_save_stride}
 {code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
@@ -1363,7 +1403,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {fallback_kernel_output_trans}
 {self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}
 {code_indent}  }}
-{code_indent}  dev_ctx = GetDeviceContextByBackend(kernel_backend);
+{code_indent}  dev_ctx = GetDeviceContextByBackend(kernel_backend{f', {self.ref_place}.device' if self.ref_place else ''});
 {transdata2strided}
 {code_indent}  {self.gene_return_code()}"""
 

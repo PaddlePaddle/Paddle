@@ -115,6 +115,13 @@ phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend) {
   return pool.GetMutable(phi::TransToPhiPlace(backend));
 }
 
+phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend,
+                                              const int8_t& device_id) {
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  return pool.GetMutable(
+      phi::TransToPhiPlace(backend, /*set_device_id*/ true, device_id));
+}
+
 DataType ParseDataType(DataType dtype) { return dtype; }
 DataType ParseDataType(const Tensor& tensor) { return tensor.type(); }
 DataType ParseDataType(const std::vector<Tensor>& tensors) {
