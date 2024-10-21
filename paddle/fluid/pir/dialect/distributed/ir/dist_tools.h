@@ -57,7 +57,7 @@ pir::Type CvtToPirDistType(
 ///    2. The value type's mesh is not equal to mesh_attr argument.
 ///    3. The operation that defines the value contains no inputs and 1 output.
 /// The function first clones the definition operation and replaces the use of
-/// the original value with the cloned ouput， Secondly, the mesh of the
+/// the original value with the cloned output， Secondly, the mesh of the
 /// original operation and value is updated with the 'mesh_attr' argument.
 /// Otherwise, the function does nothing.
 ///

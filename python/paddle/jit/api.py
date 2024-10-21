@@ -660,7 +660,9 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         from paddle.autograd.backward_utils import ValueSet
 
         for var in paddle.utils.flatten(outputs):
-            if isinstance(var, paddle.pir.Value):
+            if isinstance(var, paddle.pir.Value) and var not in ValueSet(
+                result_list
+            ):
                 result_list.append(var)
 
         if output_spec is not None:
@@ -1509,6 +1511,7 @@ def save(
             extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
             with open(extra_var_info_path, 'wb') as f:
                 pickle.dump(extra_var_info, f, protocol=2)
+    scope.erase(scope.local_var_names())
 
 
 @dygraph_only

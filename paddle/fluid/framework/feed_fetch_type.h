@@ -13,34 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include <vector>
-
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/string_array.h"
-#include "paddle/phi/core/extended_tensor.h"
+#include "paddle/phi/core/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace framework {
-using FeedType =
-    paddle::variant<phi::DenseTensor, Strings, phi::SparseCooTensor>;
-
-template <>
-struct PhiVectorType<FeedType> {
-  const char *type_name = "PhiVectorFeedType";
-};
-
-using FeedList = paddle::framework::PhiVector<FeedType>;
-
-using FetchType = paddle::variant<phi::DenseTensor,
-                                  phi::TensorArray,
-                                  framework::Vocab,
-                                  phi::SparseCooTensor>;
-using FetchList = std::vector<FetchType>;
-
-using FetchUnmergedList = std::vector<std::vector<FetchType>>;
-using FetchResultType = paddle::variant<FetchList, FetchUnmergedList>;
 
 inline bool data_is_lod_tensor(const FetchType &data) {
   if (data.type() == typeid(phi::DenseTensor)) {
@@ -51,13 +27,6 @@ inline bool data_is_lod_tensor(const FetchType &data) {
 
 inline bool data_is_lod_tensor_array(const FetchType &data) {
   if (data.type() == typeid(phi::TensorArray)) {
-    return true;
-  }
-  return false;
-}
-
-inline bool data_is_string_tensor(const FeedType &data) {
-  if (data.type() == typeid(Strings)) {
     return true;
   }
   return false;
