@@ -120,6 +120,13 @@ def multiply_converter(network, paddle_op, inputs):
     )
 
 
+@converter_registry.register("pd_op.floor_divide", trt_version="8.x")
+def floor_divede_converter(network, paddle_op, inputs):
+    return add_elementwise_layer(
+        network, paddle_op, inputs, trt.ElementWiseOperation.FLOOR_DIV
+    )
+
+
 @converter_registry.register("pd_op.min", trt_version="8.x")
 def min_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
