@@ -411,6 +411,8 @@ void Tensor::set_name(const std::string &name) { name_ = name; }
 
 bool Tensor::defined() const { return impl_ != nullptr; }
 
+bool Tensor::ready() const { return defined() && impl_->ready(); }
+
 bool Tensor::initialized() const { return defined() && impl_->initialized(); }
 
 bool Tensor::is_initialized() const {

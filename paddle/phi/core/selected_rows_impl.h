@@ -179,6 +179,11 @@ class SelectedRowsImpl {
   /// \return Whether the metadata is valid.
   bool valid() const noexcept { return value_->valid(); }
 
+  /// \brief Test whether the storage is ready.
+  ///   (For 0-size tensor, storage is always ready)
+  /// \return Whether the storage is ready.
+  bool ready() const { return value_->ready(); }
+
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
   bool initialized() const { return value_->initialized(); }

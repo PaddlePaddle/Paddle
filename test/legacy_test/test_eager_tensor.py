@@ -542,6 +542,17 @@ class TestEagerTensor(unittest.TestCase):
                 np.array(selected_rows.get_tensor()),
             )
 
+    def test_deep_copy_0size_tensor(self):
+        x = paddle.to_tensor(np.array([]))
+        x_copy = copy.deepcopy(x)
+        self.assertEqual(x_copy.stop_gradient, x.stop_gradient)
+        self.assertEqual(x_copy.persistable, x.persistable)
+        self.assertEqual(x_copy.type, x.type)
+        self.assertEqual(x_copy.dtype, x.dtype)
+        self.assertEqual(x_copy.shape, x.shape)
+        self.assertEqual(str(x_copy.place), str(x.place))
+        np.testing.assert_array_equal(x.numpy(), x_copy.numpy())
+
     # test some patched methods
     def test_set_value(self):
         var = paddle.to_tensor(self.array)

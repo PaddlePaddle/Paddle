@@ -73,6 +73,8 @@ class IrTensor : public phi::TensorBase,
 
   bool valid() const noexcept override { return true; }
 
+  bool ready() const override { return true; }
+
   bool initialized() const override { return true; }
 
   void* AllocateFrom(phi::Allocator* allocator,

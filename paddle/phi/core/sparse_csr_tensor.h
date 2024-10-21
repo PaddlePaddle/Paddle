@@ -130,6 +130,13 @@ class SparseCsrTensor : public TensorBase,
   /// \return Whether the non_zero_elements_ metadata is valid.
   bool valid() const noexcept override { return non_zero_elements_.valid(); }
 
+  /// \brief Test whether the storage is ready.
+  ///   (For 0-size tensor, storage is always ready)
+  /// \return Whether the storage is ready.
+  bool ready() const override {
+    return values().ready() || (nnz() == 0 && numel() > 0);
+  }
+
   /// \brief Test whether the non_zero_elements_ storage is allocated.
   /// In special cases, when nnz=0, non_zero_elements_ will not need to be
   /// initialized, but it is necessary to return true here, otherwise the
