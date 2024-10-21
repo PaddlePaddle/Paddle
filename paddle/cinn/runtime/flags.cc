@@ -72,6 +72,10 @@ PD_DEFINE_bool(cinn_measure_kernel_time,
                BoolFromEnv("FLAGS_cinn_measure_kernel_time", false),
                "Whether to enable schedule config search mode.");
 
+PD_DEFINE_bool(cinn_enable_grid_reduce,
+               BoolFromEnv("FLAGS_cinn_enable_grid_reduce", true),
+               "Whether to enable the grid reduce method.");
+
 PD_DEFINE_bool(cinn_use_op_fusion,
                BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
                "Whether to use op fusion pass.");

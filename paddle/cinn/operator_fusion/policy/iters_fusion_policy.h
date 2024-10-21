@@ -25,7 +25,8 @@ struct ItersFusionPolicy final : public PolicyBase {
   ItersFusionPolicy(std::shared_ptr<FusionItersManager> iters_manager)
       : iters_manager_(iters_manager) {
     PADDLE_ENFORCE_NOT_NULL(iters_manager,
-                            "iters_manager should not be nullptr.");
+                            ::common::errors::InvalidArgument(
+                                "iters_manager should not be nullptr."));
   }
   static constexpr PolicyKind Kind = PolicyKind::ItersFusion;
   std::string Name() { return "ItersFusionPolicy"; }

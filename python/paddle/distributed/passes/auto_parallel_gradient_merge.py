@@ -320,11 +320,12 @@ def _pir_append_gradient_merge_backward_op(
         new_gradient_merge_var_add = paddle._C_ops.add_(
             new_gradient_merge_var, grad
         )
-        new_gradient_merge_var_add.get_defining_op().op_role = (
-            grad_defining_op.op_role
+        new_gradient_merge_var_add_op = (
+            new_gradient_merge_var_add.get_defining_op()
         )
+        new_gradient_merge_var_add_op.op_role = grad_defining_op.op_role
 
-        new_gradient_merge_var_add.get_defining_op().dist_attr = (
+        new_gradient_merge_var_add_op.dist_attr = (
             paddle.base.libpaddle.pir.create_op_dist_attribute(
                 grad_defining_op.dist_attr.process_mesh,
                 grad_defining_op.dist_attr.operands(),
@@ -332,6 +333,8 @@ def _pir_append_gradient_merge_backward_op(
                 grad_defining_op.dist_attr.chunk_id,
             )
         )
+        new_gradient_merge_var_add_op.set_bool_attr("grad_merge_add", True)
+
         # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather op
         for used_grad_op in grad.all_used_ops():
             if used_grad_op.num_operands() == 1:

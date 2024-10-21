@@ -27,7 +27,7 @@ Usage:
 python test/dygraph_to_static/check_approval.py test/dygraph_to_static/test_return.py
 
 # check multiple files
-python test/dygraph_to_static/check_approval.py test/dygraph_to_static/test_return.py test/dygraph_to_static/test_local_cast.py
+python test/dygraph_to_static/check_approval.py test/dygraph_to_static/test_return.py test/dygraph_to_static/test_break_continue.py
 
 # check whole directory
 python test/dygraph_to_static/check_approval.py test/dygraph_to_static
@@ -108,12 +108,10 @@ class TestClassInheritFromTestCaseDiagnostic(Diagnostic):
 ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
     UseToStaticAsDecoratorDiagnostic: [
         "test_rollback.py",
-        "test_legacy_error.py",
         "test_error.py",
         "test_op_attr.py",
         "test_se_resnet.py",
         "test_convert_call.py",
-        "test_local_cast.py",
         "test_origin_info.py",
         "test_full_name_usage.py",
         "test_pylayer.py",
@@ -123,9 +121,7 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_setter_helper.py",
         "test_eval_frame.py",
         "test_ignore_module.py",
-        "test_legacy_error.py",
         "test_error.py",
-        "test_local_cast.py",
         "test_ordered_set.py",
         "test_origin_info.py",
         "test_logging_utils.py",

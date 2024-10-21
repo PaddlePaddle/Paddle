@@ -11,8 +11,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
@@ -53,27 +53,6 @@ const framework::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
   return feed_list->at(static_cast<size_t>(col));
 }
 
-template <typename Context>
-void FeedDenseTensorKernel(const Context& dev_ctx,
-                           const phi::ExtendedTensor& x,
-                           int col,
-                           phi::DenseTensor* out) {
-  PADDLE_ENFORCE_NOT_NULL(
-      out,
-      common::errors::NotFound(
-          "Output cannot be found in scope for operator 'Feed'"));
-  const auto& feed_item = CheckAndGetFeedItem(x, col);
-  const auto& in_tensor = paddle::get<phi::DenseTensor>(feed_item);
-  const auto& place = dev_ctx.GetPlace();
-  if (phi::is_same_place(in_tensor.place(), place)) {
-    out->ShareDataWith(in_tensor);
-  } else {
-    phi::Copy(dev_ctx, in_tensor, place, false, out);
-  }
-
-  out->set_lod(in_tensor.lod());
-}
-
 class FeedOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -90,23 +69,18 @@ class FeedOp : public framework::OperatorWithKernel {
       int col = ctx->Attrs().Get<int>("col");
       const auto& feed_item = CheckAndGetFeedItem(x, col);
 
-      if (feed_item.index() == 0) {  // DenseTensor
-        auto& feed_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
-        phi::DenseTensor* out_tensor = out_var->GetMutable<phi::DenseTensor>();
-        phi::DenseTensorMeta meta = out_tensor->meta();
-        meta.dims = feed_tensor.dims();
-        meta.dtype = feed_tensor.dtype();
-        meta.layout = feed_tensor.layout();
-        meta.lod = feed_tensor.lod();
-        meta.strides = feed_tensor.strides();
-        if (meta.strides.size() == -1) {
-          meta.strides = meta.calc_strides(meta.dims);
-        }
-        out_tensor->set_meta(meta);
-      } else {
-        PADDLE_THROW(common::errors::Unimplemented(
-            "Only support DenseTensor for feed op now."));
+      auto& feed_tensor = feed_item;
+      phi::DenseTensor* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensorMeta meta = out_tensor->meta();
+      meta.dims = feed_tensor.dims();
+      meta.dtype = feed_tensor.dtype();
+      meta.layout = feed_tensor.layout();
+      meta.lod = feed_tensor.lod();
+      meta.strides = feed_tensor.strides();
+      if (meta.strides.size() == -1) {
+        meta.strides = meta.calc_strides(meta.dims);
       }
+      out_tensor->set_meta(meta);
     }
   }
 
@@ -119,15 +93,7 @@ class FeedOp : public framework::OperatorWithKernel {
     auto& feed_item = x[col];
 
     framework::proto::VarType::Type expected_data_type;
-    if (feed_item.index() == 0) {  // DenseTensor
-      expected_data_type = framework::TransToProtoVarType(
-          PADDLE_GET_CONST(phi::DenseTensor, feed_item).dtype());
-    } else if (feed_item.index() == 2) {  // SparseCooTensor
-      expected_data_type = framework::TransToProtoVarType(
-          PADDLE_GET_CONST(phi::SparseCooTensor, feed_item).dtype());
-    } else {  // Strings
-      expected_data_type = framework::proto::VarType::FP32;
-    }
+    expected_data_type = framework::TransToProtoVarType(feed_item.dtype());
 
     return phi::KernelKey(expected_data_type, ctx.GetPlace());
   }
@@ -164,6 +130,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
-
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(
-    feed, ALL_LAYOUT, paddle::operators::FeedDenseTensorKernel) {}

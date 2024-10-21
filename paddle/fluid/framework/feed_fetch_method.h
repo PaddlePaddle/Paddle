@@ -38,11 +38,6 @@ void SetFeedVariable(Scope* scope,
                      const std::string& var_name,
                      size_t index);
 
-void SetFeedVariable(Scope* scope,
-                     const std::vector<std::string>& input,
-                     const std::string& var_name,
-                     size_t index);
-
 FetchType& GetFetchVariable(const Scope& scope,
                             const std::string& var_name,
                             size_t index);

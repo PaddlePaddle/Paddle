@@ -19,8 +19,8 @@ namespace cinn {
 namespace ir {
 
 // Check whether we can apply grid reduce in this group.
-// We can apply grid reduce if there is exactly one reduce, and whose result is
-// not broadcasted before output.
+// We can apply grid reduce if there is no reduce-then-broadcast dependency
+// in this group.
 bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
                            const std::vector<int64_t>& reduce_axis);
 

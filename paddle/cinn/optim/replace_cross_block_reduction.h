@@ -25,11 +25,13 @@ namespace optim {
  * This pass handles the cross-block reduction properly.
  *
  * Specific transformations:
- * 1. Replaces the cross-block reduction with an external call to the
+ * 1. Reorders the schedule blocks to separate upstreams and downstreams
+ *    of cross-block reduction.
+ * 2. Replaces the cross-block reduction with an external call to the
  *    `grid_reduce` template function.
- * 2. Adds a condition check `is_last_block_done` to the reduction operation
- *    and all subsequent schedule blocks.
- * 3. Pushes global buffers (`rf` and `semaphore`) to the function’s argument
+ * 3. Adds a condition check `is_last_block_done` to the grid reduce and all
+ *    subsequent schedule blocks.
+ * 4. Pushes global buffers (`rf` and `semaphore`) to the function’s argument
  *    list.
  *
  * Example:

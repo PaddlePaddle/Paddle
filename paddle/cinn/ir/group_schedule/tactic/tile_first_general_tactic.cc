@@ -79,6 +79,7 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
   std::vector<int32_t> vec_flatten_axis_;
   std::vector<int32_t> vec_reduce_axis_;
   std::unordered_map<std::string, std::string> map_rf_block_;
+  std::unordered_map<std::string, std::string> map_global_rf_block_;
 };
 
 void TileFirstGeneralTactic::Init(ScheduleContext* context) {
@@ -381,18 +382,45 @@ void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
+  const int64_t rd_block = context_->config.tile_config.grid_reduce_num;
+  const int64_t rd_thread = 16;
+  const int cur_reduce_axis = 2;
+
+  // [ R ] => [ rd_block*rd_thread, rd_inner ]
   auto loops = sch->GetLoops(block_id);
-  // [S(-1), S(32), R] => [S(-1), S(32), R(16), R(-1)]
-  sch->Split(loops[2], std::vector<int>{16, -1});
+  sch->Split(loops[cur_reduce_axis],
+             std::vector<int>{-1, rd_block * rd_thread});
+  loops = sch->GetLoops(block_id);
+  sch->Reorder({loops[cur_reduce_axis + 1], loops[cur_reduce_axis]});
 
   loops = sch->GetLoops(block_id);
   if (IsReductionSBlock(sch->GetBlock(block_id)) &&
       ir::GetLoopExtent(loops[2]) != 1) {
     ir::Expr rf_tensor =
-        sch->FactorizeReduction(loops[2],
-                                0,
+        sch->FactorizeReduction(loops[cur_reduce_axis],
+                                /* rf_axis = */ 0,
                                 /* with_write_back_block_init = */ false);
     map_rf_block_[block_id] = rf_tensor.as_tensor_ref()->name;
+  }
+
+  // [ rd_block*rd_thread ] => [ rd_block, rd_thread ]
+  if (rd_block > 1) {
+    loops = sch->GetLoops(block_id);
+    sch->Split(loops[cur_reduce_axis], {rd_block, rd_thread});
+
+    if (IsReductionSBlock(sch->GetBlock(block_id))) {
+      loops = sch->GetLoops(map_rf_block_[block_id]);
+      sch->Split(loops[cur_reduce_axis], {rd_block, rd_thread});
+
+      loops = sch->GetLoops(block_id);
+      ir::Expr rf_tensor =
+          sch->FactorizeReduction(loops[cur_reduce_axis],
+                                  /* rf_axis = */ 0,
+                                  /* with_write_back_block_init = */ false);
+      std::string tensor_name = rf_tensor.as_tensor_ref()->name;
+      map_global_rf_block_[block_id] = tensor_name;
+      rf_tensor.as_tensor_ref()->WithBuffer("global", "_" + tensor_name);
+    }
   }
 }
 
@@ -435,6 +463,12 @@ void TileFirstGeneralTactic::SetDiscreteReduceType(
                      ->schedule_block.As<ir::ScheduleBlock>();
     block->reduce_method = cinn::ir::DiscreteReduceMethod();
   }
+  if (map_global_rf_block_.count(block_id) > 0) {
+    auto block = sch->GetBlock(map_global_rf_block_[block_id])
+                     .As<ir::ScheduleBlockRealize>()
+                     ->schedule_block.As<ir::ScheduleBlock>();
+    block->reduce_method = cinn::ir::DiscreteReduceMethod();
+  }
 }
 
 void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
@@ -446,13 +480,23 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
     sch->Bind(loops[1], "threadIdx.x");
-    sch->Bind(loops[2], "threadIdx.y");
+    if (context_->config.tile_config.grid_reduce_num > 1) {
+      sch->Bind(loops[2], "blockIdx.y");
+      if (loops.size() > 3) {
+        sch->Bind(loops[3], "threadIdx.y");
+      }
+    } else {
+      sch->Bind(loops[2], "threadIdx.y");
+    }
   };
 
   DoBind(sch->GetLoops(block_id));
 
   if (map_rf_block_.count(block_id) > 0) {
     DoBind(sch->GetLoops(map_rf_block_[block_id]));
+  }
+  if (map_global_rf_block_.count(block_id) > 0) {
+    DoBind(sch->GetLoops(map_global_rf_block_[block_id]));
   }
 }
 

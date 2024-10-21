@@ -36,8 +36,11 @@ struct FusionItersManager {
                      ShardableAxesInfoManager* axes_info)
       : shape_analysis_(shape_analysis), axes_info_(axes_info) {
     PADDLE_ENFORCE_NOT_NULL(shape_analysis,
-                            "shape_analysis should not be nullptr.");
-    PADDLE_ENFORCE_NOT_NULL(axes_info, "axes_info should not be nullptr.");
+                            ::common::errors::InvalidArgument(
+                                "shape_analysis should not be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        axes_info,
+        ::common::errors::InvalidArgument("axes_info should not be nullptr."));
   }
   FusionItersSignature GetItersSignature(pir::Operation* op);
 

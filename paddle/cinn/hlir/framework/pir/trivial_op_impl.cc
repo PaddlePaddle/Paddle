@@ -36,7 +36,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
-PD_DECLARE_bool(group_schedule_tiling_first);
+PD_DECLARE_bool(cinn_enable_grid_reduce);
 
 namespace cinn {
 namespace hlir {
@@ -808,8 +808,10 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
                    });
   }
 
-  group_info->can_apply_grid_reduce =
-      GetCanApplyGridReduce(op_compute_bodies, group_info->reduce_axis);
+  if (FLAGS_cinn_enable_grid_reduce) {
+    group_info->can_apply_grid_reduce =
+        GetCanApplyGridReduce(op_compute_bodies, group_info->reduce_axis);
+  }
 
   VLOG(4) << group_info->DebugPrint();
   return group_info;
