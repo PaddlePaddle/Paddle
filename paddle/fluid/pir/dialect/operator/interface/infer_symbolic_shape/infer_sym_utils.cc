@@ -264,7 +264,8 @@ bool IsFakeValue(const pir::Value &value) {
 std::vector<symbol::DimExpr> GetVecFromIntArray(
     const pir::Operation *op,
     pir::InferSymbolicShapeContext *infer_context,
-    const std::string &input_name const int &index) {
+    const std::string &input_name,
+    const int &index) {
   if (op->HasAttribute(input_name)) {
     std::vector<int> int_operand =
         paddle::dialect::details::GetVectorAttr<int>(op, input_name);
@@ -284,7 +285,7 @@ std::vector<symbol::DimExpr> GetVecFromIntArray(
     PADDLE_THROW(::common::errors::InvalidArgument(
         "Don't support get vector from int array, input name is %s"));
   }
-  return std::vector<symbol::DimExpr>{}
+  return std::vector<symbol::DimExpr> {}
 }
 
 bool GetAxisFromOpInput(pir::Value in_value,
@@ -319,5 +320,6 @@ bool GetAxisFromOpInput(pir::Value in_value,
     axis->swap(tmp_axis);
 
     return true;
+  }
 }
 }  // namespace paddle::dialect::details
