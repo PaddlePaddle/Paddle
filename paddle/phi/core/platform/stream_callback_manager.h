@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@
 #include <memory>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace platform {
