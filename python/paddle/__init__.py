@@ -629,6 +629,9 @@ if __is_metainfo_generated and is_compiled_with_cuda():
         cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
         set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
 
+        nvrtc_lib_path = package_dir + "/.." + "/nvidia/cuda_nvrtc/lib"
+        set_flags({"FLAGS_nvrtc_dir": nvrtc_lib_path})
+
     elif (
         platform.system() == 'Windows'
         and platform.machine() in ('x86_64', 'AMD64')

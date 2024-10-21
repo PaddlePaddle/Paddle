@@ -37,6 +37,7 @@ COMMON_DECLARE_string(cuda_dir);
 COMMON_DECLARE_string(cublas_dir);
 COMMON_DECLARE_string(nccl_dir);
 COMMON_DECLARE_string(cupti_dir);
+COMMON_DECLARE_string(nvrtc_dir);
 COMMON_DECLARE_string(tensorrt_dir);
 COMMON_DECLARE_string(mklml_dir);
 COMMON_DECLARE_string(lapack_dir);
@@ -638,7 +639,11 @@ void* GetNVRTCDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
 #else
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+  return GetDsoHandleFromSearchPath(FLAGS_nvrtc_dir, "libnvrtc.so.11.2", false);
+#else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
+#endif
 #endif
 }
 
