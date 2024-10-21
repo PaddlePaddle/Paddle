@@ -3267,6 +3267,28 @@ bool PyramidHashOpInferSymbolicShape(
 //   // pass
 //   return true;
 // }
+bool RandomRoutingOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &top_value_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &prob_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &top_idx_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+  infer_context->AddEqualCstr(prob_shape[0], top_value_shape[0]);
+  infer_context->AddEqualCstr(top_idx_shape[0], top_value_shape[0]);
+  infer_context->AddEqualCstr(top_idx_shape[1], top_value_shape[1]);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(top_idx_shape)});
+  return true;
+}
+
+bool RandomRouting_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return RandomRoutingOpInferSymbolicShape(op, infer_context);
+}
 
 bool RmsNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
