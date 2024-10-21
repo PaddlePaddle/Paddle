@@ -52,7 +52,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   shuffleidx->Resize(common::make_ddim({elem_size}));
 
   int64_t seed_int = 0;
-  if (seed.initialized()) {
+  if (seed.initialized() && seed.numel() != 0) {
     const auto& seed_place = seed.place().GetType();
     bool is_gpu_place = seed_place == phi::AllocationType::GPU;
     if (is_gpu_place) {
