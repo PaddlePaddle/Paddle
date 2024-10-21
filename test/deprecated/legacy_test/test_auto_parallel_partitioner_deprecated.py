@@ -112,8 +112,7 @@ def initialization_check(
             op
             for op in dist_startup_prog.global_block().ops
             if (
-                op.type == "c_broadcast"
-                and op.desc.attr("ring_id") == mp_ring_id
+                op.type == "broadcast" and op.desc.attr("ring_id") == mp_ring_id
             )
         ]
         broadcast_varnames = sorted(
@@ -133,7 +132,7 @@ def initialization_check(
                 op
                 for op in dist_startup_prog.global_block().ops
                 if (
-                    op.type == "c_broadcast"
+                    op.type == "broadcast"
                     and op.desc.attr("ring_id") == dp_ring_id
                 )
             ]
@@ -146,7 +145,7 @@ def initialization_check(
             [
                 op
                 for op in dist_startup_prog.global_block().ops
-                if op.type == "c_broadcast"
+                if op.type == "broadcast"
             ]
         )
         if len(var_need_broadcast) + nbroadcast_dp != nbroadcast:
@@ -1506,38 +1505,38 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'fill_constant',
             'fill_constant',
             'fill_constant',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
-            'c_broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
+            'broadcast',
         ]
         self.assertTrue(dist_ops == ref_ops)
 
