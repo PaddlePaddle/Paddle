@@ -233,7 +233,7 @@ void FusedDotProductAttentionKernel(
                         ? static_cast<int64_t>(workspace_size)
                         : 1});
   dev_ctx.template Alloc<int8_t>(&workspace);
-  // call the second time to excute the kernel
+  // call the second time to execute the kernel
   fused_attn_arbitrary_seqlen_fwd_impl(
       batch_size,
       num_heads,

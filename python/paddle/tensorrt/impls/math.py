@@ -173,5 +173,29 @@ def clip_converter(network, paddle_op, inputs):
     layer = network.add_elementwise(
         lower_clip, beta_t, trt.ElementWiseOperation.MIN
     )
+    return layer.get_output(0)
 
+
+@converter_registry.register("pd_op.min", trt_version="8.x")
+def min_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    axis = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    input_shape = paddle_op.operands()[0].source().shape
+    keepdim = paddle_op.attrs()["keepdim"]
+    if network.has_implicit_batch_dimension:
+        assert (
+            axis != 0
+        ), "can't reduce on axis == 0 when network has implicit batch dimension"
+    output_shape = []
+    if len(axis) == 0:
+        axis = list(range(len(input_shape)))
+    for i in range(len(axis)):
+        if axis[i] < 0:
+            axis[i] = len(input_shape) + axis[i]
+    layer = network.add_reduce(
+        input_tensor,
+        trt.ReduceOperation.MIN,
+        axes=get_axes_for_reduce_op(axis),
+        keep_dims=keepdim,
+    )
     return layer.get_output(0)

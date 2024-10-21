@@ -17,7 +17,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 using CPUPlace = phi::CPUPlace;
-using LoD = paddle::framework::LoD;
+using LoD = phi::LoD;
 using LoDTensorArray = phi::TensorArray;
 
 template <typename T>

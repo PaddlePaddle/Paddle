@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -42,14 +41,15 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/raw_tensor.h"
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_DNNL
@@ -3314,9 +3314,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<phi::Strings>()) {
           tensor_out = var->template GetMutable<phi::Strings>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::RawTensor>() ||
+        } else if (var->template IsType<phi::Vocab>()) {
+          tensor_out = var->template GetMutable<phi::Vocab>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::RawTensor>() ||
                    !var->IsInitialized()) {
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
+          tensor_out = var->template GetMutable<phi::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
