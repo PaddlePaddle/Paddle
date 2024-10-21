@@ -1031,7 +1031,14 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
                                             sub_scope_);
     basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
   }
-  basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+  auto replace_fetch_with_shadow_output_pass =
+      ::pir::CreateReplaceFetchWithShadowOutputPass();
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                replace_fetch_with_shadow_output_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    basic_pass_pm.AddPass(std::move(replace_fetch_with_shadow_output_pass));
+  }
   if (!config_.glog_info_disabled()) {
     basic_pass_pm.EnablePrintStatistics();
   }
@@ -1048,10 +1055,20 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
   ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
   auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
-  remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
-  lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                remove_shadow_feed_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+    lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
+  }
   if (FLAGS_pir_apply_inplace_pass) {
-    lowered_pm.AddPass(::pir::CreateInplacePass());
+    auto inplace_pass = ::pir::CreateInplacePass();
+    if (std::find(config_.deleted_passes_.begin(),
+                  config_.deleted_passes_.end(),
+                  inplace_pass->name()) == config_.deleted_passes_.end()) {
+      lowered_pm.AddPass(std::move(inplace_pass));
+    }
   }
   if (!config_.glog_info_disabled()) {
     lowered_pm.EnablePrintStatistics();
@@ -1080,6 +1097,8 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
         std::string fetch_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
         idx2fetches_[idx] = fetch_name;
+        fetch_name2shapes_[fetch_name] =
+            pir::GetShapeFromValue(op->operand_source(0));
       }
     } else if (op->isa<paddle::dialect::DataOp>() ||
                op->isa<paddle::dialect::FeedOp>()) {
@@ -1092,6 +1111,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       feed_names_[data_name] = feed_idx;
       feed_idx++;
       pir_feeds_.emplace_back(op);
+      feed_name2shapes_[data_name] = pir::GetShapeFromValue(op->result(0));
     }
 
     if (op->isa<::pir::ParameterOp>()) {
@@ -2535,6 +2555,9 @@ std::vector<std::string> AnalysisPredictor::GetInputNames() {
 
 std::map<std::string, std::vector<int64_t>>
 AnalysisPredictor::GetInputTensorShape() {
+  if (load_pir_model_) {
+    return feed_name2shapes_;
+  }
   std::map<std::string, std::vector<int64_t>> input_shapes;
   std::vector<std::string> names = GetInputNames();
   for (std::string const &name : names) {
@@ -2594,6 +2617,9 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
 
 std::map<std::string, std::vector<int64_t>>
 AnalysisPredictor::GetOutputTensorShape() {
+  if (load_pir_model_) {
+    return fetch_name2shapes_;
+  }
   std::map<std::string, std::vector<int64_t>> output_shapes;
   std::vector<std::string> names = GetOutputNames();
   for (std::string const &name : names) {
