@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
