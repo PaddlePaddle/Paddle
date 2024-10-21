@@ -58,6 +58,35 @@ phi::Place GetPlaceFromPtr(void* data) {
   return phi::CPUPlace();
 }
 
+struct DeleterManeger {
+  static DeleterManeger* Instance() {
+    static DeleterManeger instance;
+    return &instance;
+  }
+  DeleterManeger() = default;
+
+  void DeletePtr(phi::Allocation* p) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = ptr2deleter_.find(p->ptr());
+    if (it != ptr2deleter_.end()) {
+      it->second(p->ptr());
+      ptr2deleter_.erase(it);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The deleter of the pointer is not found."));
+    }
+  }
+
+  void RegisterPtr(void* ptr, const Deleter& deleter) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    ptr2deleter_[ptr] = deleter;
+  }
+
+ private:
+  std::unordered_map<void*, Deleter> ptr2deleter_;
+  std::mutex mutex_;
+};
+
 using AllocationDeleter = void (*)(phi::Allocation*);
 
 PADDLE_API Tensor from_blob(void* data,
@@ -99,8 +128,10 @@ PADDLE_API Tensor from_blob(void* data,
 
   AllocationDeleter alloc_deleter = nullptr;
   if (deleter) {
-    static thread_local Deleter g_deleter = deleter;
-    alloc_deleter = [](phi::Allocation* p) { g_deleter(p->ptr()); };
+    DeleterManeger::Instance()->RegisterPtr(data, deleter);
+    alloc_deleter = [](phi::Allocation* p) {
+      DeleterManeger::Instance()->DeletePtr(p);
+    };
   }
 
   auto alloc =
