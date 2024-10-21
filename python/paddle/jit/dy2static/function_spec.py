@@ -47,7 +47,12 @@ class FunctionSpec:
     """
 
     def __init__(self, function, input_spec=None):
-        self._dygraph_function = weakref.ref(function)
+        if inspect.ismethod(function):
+            self._dygraph_function = function.__func__
+            self._class_instance = weakref.ref(function.__self__)
+        else:
+            self._dygraph_function = function
+            self._class_instance = None
         if input_spec is None:
             self._input_spec = None
             self._flat_input_spec = None
@@ -286,12 +291,21 @@ class FunctionSpec:
         )
 
     @property
-    def dygraph_function(self):
-        if self._dygraph_function() is None:
+    def class_instance(self):
+        if self._class_instance is None:
+            return None
+        if self._class_instance() is None:
             raise RuntimeError(
-                "The original function has been collected by GC, cannot trace the function."
+                "The instance of class has been deleted, please re-create the instance."
             )
-        return self._dygraph_function()
+        return self._class_instance()
+
+    @property
+    def dygraph_function(self):
+        if self.class_instance is not None:
+            return self._dygraph_function.__get__(self.class_instance)
+        else:
+            return self._dygraph_function
 
     @property
     def args_name(self):
@@ -307,7 +321,7 @@ class FunctionSpec:
 
     @property
     def code(self):
-        return func_to_source_code(self.dygraph_function())
+        return func_to_source_code(self.dygraph_function)
 
 
 def get_parameters(layer_instance, include_sublayer=True):
