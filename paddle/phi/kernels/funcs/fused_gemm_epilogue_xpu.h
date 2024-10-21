@@ -130,12 +130,12 @@ void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
   std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
   if (dx) {
     float beta = use_addto_dx ? 1.0f : 0.0f;
-    phi::MatMulXPUFunction<XPUType>(
+    phi::MatMulXPUFunction<XPUType, XPUType>(
         xpu_ctx, a_1, b_1, nullptr, c_1, info_dx, 1.0f, beta);
   }
   if (dy) {
     float beta = use_addto_dy ? 1.0f : 0.0f;
-    phi::MatMulXPUFunction<XPUType>(
+    phi::MatMulXPUFunction<XPUType, XPUType>(
         xpu_ctx, a_2, b_2, nullptr, c_2, info_dy, 1.0f, beta);
   }
   // 3. dbias
