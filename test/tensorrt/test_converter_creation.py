@@ -88,7 +88,7 @@ class TestAssignOutTRTPattern(TensorRTBaseTest):
         self.max_shape = {"x": [3, 2], "output": [3, 2]}
 
     def test_trt_result(self):
-        self.check_trt_inplace_result()
+        self.check_trt_result()
 
 
 if __name__ == "__main__":
