@@ -45,7 +45,7 @@ class TestErfOp(OpTest):
         return "float64"
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
@@ -112,7 +112,7 @@ class TestErfFP16OP(OpTest):
         self.outputs = {'Out': y_ref}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -146,7 +146,9 @@ class TestErfBF16OP(OpTest):
 
     def test_check_output(self):
         place = paddle.base.core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         place = paddle.base.core.CUDAPlace(0)

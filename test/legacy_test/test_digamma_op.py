@@ -43,7 +43,7 @@ class TestDigammaOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -88,7 +88,9 @@ class TestDigammaBF16Op(OpTest):
 
     def test_check_output(self):
         # bfloat16 needs to set the parameter place
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(

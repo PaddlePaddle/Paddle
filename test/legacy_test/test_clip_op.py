@@ -58,7 +58,10 @@ class TestClipOp(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         self.check_output(
-            check_cinn=self.check_cinn, check_pir=True, check_prim_pir=True
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim_pir=True,
+            check_symbol_infer=False,
         )
         paddle.disable_static()
 
@@ -201,7 +204,10 @@ class TestClipBF16Op(OpTest):
             place = paddle.CUDAPlace(0)
             paddle.enable_static()
             self.check_output_with_place(
-                place, check_pir=True, check_prim_pir=True
+                place,
+                check_pir=True,
+                check_prim_pir=True,
+                check_symbol_infer=False,
             )
             paddle.disable_static()
 

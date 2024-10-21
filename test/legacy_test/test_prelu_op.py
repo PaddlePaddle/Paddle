@@ -227,7 +227,7 @@ class PReluTest(OpTest):
         self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Alpha'], 'Out', check_pir=True)

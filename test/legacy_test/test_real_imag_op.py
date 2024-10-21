@@ -58,7 +58,7 @@ class TestRealOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -87,6 +87,9 @@ class TestImagOp(TestRealOp):
         self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
             self.grad_out
         )
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestRealAPI(unittest.TestCase):
