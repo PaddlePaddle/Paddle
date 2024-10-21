@@ -17,6 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -29,13 +30,20 @@ class ReplaceFetchWithShadowOutputPattern
   bool MatchAndRewrite(
       paddle::dialect::FetchOp op,
       pir::PatternRewriter& rewriter) const override {  // NOLINT
+    // for pd_op.data -> value -> pd_op.fetch, we insert pd_op.scale before
+    // pd_op.fetch to solve error likes [what(): (NotFound) Variable 'xxx' is
+    // not found in scope.]
     if (pir::GetDefiningOpForInput(op, 0)->HasAttribute("name")) {
-      // DataOp/FeedOp
-      return false;
+      auto scale_op = rewriter.Build<paddle::dialect::ScaleOp>(
+          op->operand_source(0), 1.0, 0.0, true);
+      rewriter.Build<pir::ShadowOutputOp>(
+          scale_op->result(0),
+          op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
+    } else {
+      rewriter.Build<pir::ShadowOutputOp>(
+          op->operand_source(0),
+          op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
     }
-    rewriter.Build<pir::ShadowOutputOp>(
-        op->operand_source(0),
-        op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
     rewriter.EraseOp(op);
     return true;
   }

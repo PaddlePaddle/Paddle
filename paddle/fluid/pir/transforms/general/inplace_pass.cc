@@ -88,6 +88,10 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     return false;
   }
 
+  // for (auto it = output.use_begin(); it != output.use_end(); ++it) {
+  //   if(it->owner()->isa<pir::ShadowOutputOp>() || )
+  // }
+
   if (input.type().isa<TensorType>() && output.type().isa<TensorType>()) {
     auto input_alloc_tensor_type = input.type().dyn_cast<TensorType>();
     auto output_alloc_tensor_type = output.type().dyn_cast<TensorType>();
