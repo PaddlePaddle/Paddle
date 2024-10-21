@@ -1541,6 +1541,17 @@ Tensor swish_decomp(const Tensor& x) {
   return x * sigmoid<T>(x);
 }
 
+template <typename T>
+Tensor addmm_decomp(const Tensor& input,
+                    const Tensor& x,
+                    const Tensor& y,
+                    const float alpha,
+                    const float beta) {
+  Tensor x_y_mat = matmul<T>(x, y);
+  return full_scalar<T>(alpha, x_y_mat.dtype()) * x_y_mat +
+         full_scalar<T>(beta, input.dtype()) * input;
+}
+
 }  // namespace details
 
 }  // namespace primitive
