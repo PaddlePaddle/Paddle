@@ -285,7 +285,7 @@ std::vector<symbol::DimExpr> GetVecFromIntArray(
     PADDLE_THROW(::common::errors::InvalidArgument(
         "Don't support get vector from int array, input name is %s"));
   }
-  return std::vector<symbol::DimExpr> {}
+  return std::vector<symbol::DimExpr>{};
 }
 
 bool GetAxisFromOpInput(pir::Value in_value,
