@@ -18,7 +18,6 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     add_elementwise_layer,
     broadcast,
-    convert_trt_weights_to_tensor,
     get_axes_for_reduce_op,
 )
 from paddle.tensorrt.register import converter_registry
@@ -107,13 +106,14 @@ def remainder_converter(network, paddle_op, inputs):
 
     weight_tensor = inputs[1]
     input_tensor = inputs[0]
-
-    input_tensor = convert_trt_weights_to_tensor(
-        network, inputs[0], input_shape
-    )
-    weight_tensor = convert_trt_weights_to_tensor(
-        network, inputs[1], weight_shape
-    )
+    if type(inputs[1]) == trt.Weights:
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    if type(inputs[0]) == trt.Weights:
+        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
+            0
+        )
 
     lhs_val, rhs_val = broadcast(
         network,
