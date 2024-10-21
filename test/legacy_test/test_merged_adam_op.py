@@ -27,6 +27,7 @@ def run_adam_op(
     lrs,
     moment1s,
     moment2s,
+    moment2s_max,
     beta1_pows,
     beta2_pows,
     master_params,
@@ -36,11 +37,13 @@ def run_adam_op(
     place,
     multi_precision=False,
     use_merged=False,
+    amsgrad=False,
 ):
     assert len(params) == len(grads)
     assert len(params) == len(lrs)
     assert len(params) == len(moment1s)
     assert len(params) == len(moment2s)
+    assert len(params) == len(moment2s_max)
     assert len(params) == len(beta1_pows)
     assert len(params) == len(beta1_pows)
     assert len(params) == len(master_params)
@@ -52,24 +55,27 @@ def run_adam_op(
     lr_vars = [paddle.to_tensor(l) for l in lrs]
     moment1_vars = [paddle.to_tensor(m) for m in moment1s]
     moment2_vars = [paddle.to_tensor(m) for m in moment2s]
+    moment2_max_vars = [paddle.to_tensor(m) for m in moment2s_max]
     beta1_pow_vars = [paddle.to_tensor(b) for b in beta1_pows]
     beta2_pow_vars = [paddle.to_tensor(b) for b in beta2_pows]
     master_param_vars = [paddle.to_tensor(m_p) for m_p in master_params]
 
     if not use_merged:
         for i in range(len(param_vars)):
-            _, _, _, _, _, _ = _legacy_C_ops.adam(
+            _, _, _, _, _, _, _ = _legacy_C_ops.adam(
                 param_vars[i],
                 grad_vars[i],
                 lr_vars[i],
                 moment1_vars[i],
                 moment2_vars[i],
+                moment2_max_vars[i],
                 beta1_pow_vars[i],
                 beta2_pow_vars[i],
                 master_param_vars[i],
                 param_vars[i],
                 moment1_vars[i],
                 moment2_vars[i],
+                moment2_max_vars[i],
                 beta1_pow_vars[i],
                 beta2_pow_vars[i],
                 master_param_vars[i],
@@ -81,14 +87,17 @@ def run_adam_op(
                 beta2,
                 'multi_precision',
                 multi_precision,
+                'amsgrad',
+                amsgrad,
             )
     else:
-        _, _, _, _, _, _ = _C_ops.merged_adam_(
+        _, _, _, _, _, _, _ = _C_ops.merged_adam_(
             param_vars,
             grad_vars,
             lr_vars,
             moment1_vars,
             moment2_vars,
+            moment2_max_vars,
             beta1_pow_vars,
             beta2_pow_vars,
             master_param_vars,
@@ -97,12 +106,14 @@ def run_adam_op(
             epsilon,
             multi_precision,
             False,
+            amsgrad,
         )
 
     outputs = {
         'ParamOut': param_vars,
         'Moment1Out': moment1_vars,
         'Moment2Out': moment2_vars,
+        'Moment2MaxOut': moment2_max_vars,
         'Beta1PowOut': beta1_pow_vars,
         'Beta2PowOut': beta2_pow_vars,
         'MasterParamOut': master_param_vars,
@@ -112,13 +123,20 @@ def run_adam_op(
 
 
 class TestMergedAdam(unittest.TestCase):
+    def set_amsgrad(self):
+        self.amsgrad = False
+
     def setUp(self):
         paddle.disable_static()
         self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
         self.seed = 10
+        self.set_amsgrad()
 
     def gen_rand_data(self, shapes, dtype):
         return [np.random.random(s).astype(dtype) for s in shapes]
+
+    def gen_zero_data(self, shapes, dtype):
+        return [np.zeros(s).astype(dtype) for s in shapes]
 
     def prepare_data(self, shapes, multi_precision, seed, place):
         np.random.seed(seed)
@@ -129,6 +147,7 @@ class TestMergedAdam(unittest.TestCase):
         lrs = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
         moment1s = self.gen_rand_data(shapes, mp_dtype)
         moment2s = self.gen_rand_data(shapes, mp_dtype)
+        moment2s_max = self.gen_zero_data(shapes, mp_dtype)
         beta1_pows = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
         beta2_pows = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
         master_params = [p.astype(mp_dtype) for p in params]
@@ -138,6 +157,7 @@ class TestMergedAdam(unittest.TestCase):
             lrs,
             moment1s,
             moment2s,
+            moment2s_max,
             beta1_pows,
             beta2_pows,
             master_params,
@@ -150,6 +170,7 @@ class TestMergedAdam(unittest.TestCase):
             lrs,
             moment1s,
             moment2s,
+            moment2s_max,
             beta1_pows,
             beta2_pows,
             master_params,
@@ -162,6 +183,7 @@ class TestMergedAdam(unittest.TestCase):
                 lrs=lrs,
                 moment1s=moment1s,
                 moment2s=moment2s,
+                moment2s_max=moment2s_max,
                 beta1_pows=beta1_pows,
                 beta2_pows=beta2_pows,
                 master_params=master_params,
@@ -171,6 +193,7 @@ class TestMergedAdam(unittest.TestCase):
                 place=place,
                 multi_precision=multi_precision,
                 use_merged=use_merged,
+                amsgrad=self.amsgrad,
             )
 
         outs1 = run_op(True)
@@ -204,6 +227,11 @@ class TestMergedAdam(unittest.TestCase):
         for multi_precision in [False, True]:
             for place in self.get_places():
                 self.check_with_place(place, multi_precision)
+
+
+class TestMergedAdamAMSGrad(TestMergedAdam):
+    def set_amsgrad(self):
+        self.amsgrad = True
 
 
 if __name__ == "__main__":

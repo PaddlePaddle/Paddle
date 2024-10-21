@@ -28,8 +28,12 @@ void AdamJitCode::loadArgs() {
       static_cast<int64_t>(0xFFFFFFFFFFFFFFF8);
   static constexpr int64_t abi_pushes_offset = num_g_abi_regs * 8;
 
-  mov(reg_mom2_out_ptr, ptr[rsp + (abi_pushes_offset + 8)]);
-  mov(reg_param_out_ptr, ptr[rsp + (abi_pushes_offset + 16)]);
+  mov(reg_mom1_out_ptr, ptr[rsp + (abi_pushes_offset + 8)]);
+  mov(reg_mom2_out_ptr, ptr[rsp + (abi_pushes_offset + 16)]);
+  mov(reg_mom2_max_out_ptr, ptr[rsp + (abi_pushes_offset + 24)]);
+  mov(reg_param_out_ptr, ptr[rsp + (abi_pushes_offset + 32)]);
+  mov(reg_amsgrad, byte[rsp + (abi_pushes_offset + 40)]);
+
   mov(eax, one_as_float);
   movd(xmm_one, eax);
 
@@ -54,6 +58,9 @@ void AdamJitCode::loadArgs() {
 }
 
 void AdamJitCode::setTailOpmask() {
+  push(r13);
+  push(r14);
+
   mov(r13, rcx);
 
   mov(rcx, reg_numel);
@@ -65,6 +72,9 @@ void AdamJitCode::setTailOpmask() {
   kmovw(k1, r14d);
 
   mov(rcx, r13);
+
+  pop(r14);
+  pop(r13);
 }
 
 void AdamJitCode::mainCode() {
@@ -84,16 +94,32 @@ void AdamJitCode::mainCode() {
   vmovups(ptr[reg_mom1_out_ptr + reg_offset] | k1, ymm8);
   vmovups(ptr[reg_mom2_out_ptr + reg_offset] | k1, ymm7);
 
-  // sqrt(mom2) + eps
-  vsqrtps(ymm7 | k1, ymm7);
-  vaddps(ymm7 | k1, ymm7, ymm_eps);
+  // make a local label: `.without_amsgrad`
+  inLocalLabel();
+  // if not amsgrad then update params
+  cmp(reg_amsgrad, 0);
+  je(".without_amsgrad", T_NEAR);
+  // load mom2_max
+  vmovups(ymm9 | k1, ptr[reg_mom2_max_ptr + reg_offset]);
+  // compare mom2 and mom2_max and save to mom2
+  vmaxps(ymm7 | k1, ymm7, ymm9);
+  // store mom2_max
+  vmovups(ptr[reg_mom2_max_out_ptr + reg_offset] | k1, ymm7);
 
-  // p + (-lr) * (mom1 / sqrt(mom2) + eps)
-  vdivps(ymm7 | k1, ymm8, ymm7);
-  vfmadd213ps(ymm7 | k1, ymm_lr, ptr[reg_param_ptr + reg_offset]);
+  L(".without_amsgrad");
+  {
+    // sqrt(mom2) + eps
+    vsqrtps(ymm7 | k1, ymm7);
+    vaddps(ymm7 | k1, ymm7, ymm_eps);
 
-  // store p
-  vmovups(ptr[reg_param_out_ptr + reg_offset] | k1, ymm7);
+    // p + (-lr) * (mom1 / sqrt(mom2) + eps)
+    vdivps(ymm7 | k1, ymm8, ymm7);
+    vfmadd213ps(ymm7 | k1, ymm_lr, ptr[reg_param_ptr + reg_offset]);
+
+    // store p
+    vmovups(ptr[reg_param_out_ptr + reg_offset] | k1, ymm7);
+  }
+  outLocalLabel();
 }
 
 void AdamJitCode::genCode() {
@@ -104,18 +130,18 @@ void AdamJitCode::genCode() {
   loadArgs();
 
   cmp(reg_numel, main_loop_elems_size);
-  jl("process_tail");
+  jl("process_tail", T_NEAR);
 
   L("main_loop");
   {
     mainCode();
     add(reg_offset, offset_increment);
     cmp(reg_numel_without_tail, reg_offset);
-    jg("main_loop");
+    jg("main_loop", T_NEAR);
   }
 
   cmp(reg_numel, reg_offset);
-  je("end");
+  je("end", T_NEAR);
 
   L("process_tail");
   {
