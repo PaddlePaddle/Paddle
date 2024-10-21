@@ -75,7 +75,8 @@ void FetchV2Kernel(const Context &dev_ctx,
   if (!src_item.initialized()) {
     return;
   }
-  auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
+  // auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
+  auto *dst_item = fetch_list->at(col).GetMutable<phi::DenseTensor>();
   bool check_place =
       src_item.place().GetType() == phi::AllocationType::CPU ||
       src_item.place().GetType() == phi::AllocationType::GPUPINNED ||
@@ -112,7 +113,8 @@ void FetchV2ArrayKernel(const Context &dev_ctx,
   auto &src_item = x;
   phi::TensorArray tmp(src_item.size());
   fetch_list->at(col) = tmp;
-  auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
+  // auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
+  auto &dst_item = fetch_list->at(col).GetMutable<phi::TensorArray>();
   for (size_t i = 0; i < src_item.size(); ++i) {
     PADDLE_ENFORCE_EQ(src_item[i].place().GetType() == phi::AllocationType::CPU,
                       true,
