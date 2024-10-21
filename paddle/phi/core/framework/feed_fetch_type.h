@@ -24,9 +24,7 @@
 namespace phi {
 using FeedType = phi::DenseTensor;
 // using FetchType = paddle::variant<phi::DenseTensor,
-//                                   phi::TensorArray,
-//                                   phi::Vocab,
-//                                   phi::SparseCooTensor>;
+//                                   phi::TensorArray;
 using FetchType = RawTensor;
 
 template <>
