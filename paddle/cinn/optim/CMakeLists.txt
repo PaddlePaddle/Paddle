@@ -36,7 +36,8 @@ gather_srcs(
   merge_block_utils.cc
   eliminate_common_global_memory_read.cc
   rearrange_load_instruction.cc
-  check_tensor_buffer_map.cc)
+  check_tensor_buffer_map.cc
+  longlong2int.cc)
 
 if(WITH_CUDA OR WITH_ROCM)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
