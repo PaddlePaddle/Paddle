@@ -42,7 +42,7 @@ from .program_translator import (
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import is_builtin, is_paddle_func
+from .utils import WeakMethod, is_builtin, is_paddle_func
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -371,7 +371,7 @@ def convert_call(func):
                 # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
-                func.forward = forward_func.__get__(func)
+                func.forward = WeakMethod(forward_func, func)
             except (OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self

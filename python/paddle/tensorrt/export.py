@@ -480,9 +480,9 @@ def convert(function=None, input_spec=None, config=None, **kwargs):
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
-            if static_func._class_instance:
+            if static_func.class_instance:
                 dygraph_state_dict = (
-                    static_func._class_instance.to_static_state_dict()
+                    static_func.class_instance.to_static_state_dict()
                 )
         if dygraph_state_dict:
             #  we maintain the mapping of variable name to

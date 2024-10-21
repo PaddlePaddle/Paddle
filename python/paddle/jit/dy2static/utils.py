@@ -25,6 +25,7 @@ import sys
 import tempfile
 import textwrap
 import types
+import weakref
 from importlib.machinery import SourceFileLoader
 from typing import Any
 
@@ -143,6 +144,25 @@ class UndefinedVar:
 class Dygraph2StaticException(Exception):
     def __init__(self, message):
         super().__init__(message)
+
+
+class WeakMethod:
+    def __init__(self, fn, instance):
+        self.fn = fn
+        self.instance = weakref.ref(instance)
+
+    @property
+    def __func__(self):
+        return self.fn
+
+    @property
+    def __self__(self):
+        return self.instance()
+
+    def __call__(self, *args, **kwargs):
+        if self.__self__ is None:
+            raise RuntimeError("The object has been destroyed")
+        return self.fn(self.__self__, *args, **kwargs)
 
 
 def saw(x):
@@ -495,6 +515,8 @@ def func_to_source_code(function, dedent=True):
     """
     if isinstance(function, functools.partial):
         function = function.func
+    if isinstance(function, WeakMethod):
+        function = function.__func__
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
             f"The type of 'function' should be a function or method, but received {type(function).__name__}."
