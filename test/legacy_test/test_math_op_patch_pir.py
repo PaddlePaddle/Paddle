@@ -466,6 +466,10 @@ class TestMathOpPatchesPir(unittest.TestCase):
 
     def test_mT(self):
         with paddle.pir_utils.IrGuard():
+            shape = [1]
+            x = paddle.rand(shape, dtype="float32")
+            self.assertRaises(ValueError, getattr, x, 'mT')
+
             for ndim in range(2, 5):
                 # shape is [1, 2], [1, 2, 3], [1, 2, 3, 4]
                 shape = list(range(1, ndim + 1))

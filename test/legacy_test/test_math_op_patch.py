@@ -389,6 +389,11 @@ class TestMathOpPatches(unittest.TestCase):
         )
         np.testing.assert_array_equal(out[0], out_np)
 
+        x_np = np.random.randint(-100, 100, [2]).astype("int32")
+
+        x = paddle.static.data(name="x", shape=[2, 8, 5, 3], dtype="int32")
+        self.assertRaises(ValueError, getattr, x, "mT")
+
     @prog_scope()
     def test_ndim(self):
         a = paddle.static.data(name="a", shape=[10, 1])
