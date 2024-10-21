@@ -23,7 +23,6 @@ from paddle.distributed.communication.group import (
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
-from paddle.distributed.utils.stream_utils import ExecutionStreamType
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -65,11 +64,8 @@ def _send_in_static_mode(
         attrs={
             'ring_id': ring_id,
             'peer': dst_rank_in_group,
-            'dynamic_shape': True,
         },
     )
-    if sync_op:
-        op.dist_attr.execution_stream = ExecutionStreamType.DefaultStream.value
 
 
 def send(

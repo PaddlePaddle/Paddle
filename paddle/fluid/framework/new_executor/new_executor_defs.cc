@@ -330,25 +330,18 @@ void Instruction::UpdateRecordStreamForGcInfo() {
   stream_ = reinterpret_cast<const phi::GPUContext&>(DeviceContext()).stream();
   // TODO(lizhiyu): Only analyse the 'p_send' for GPT pp strategy right now.
   // To support all the operators for communicating in the future.
-  VLOG(0) << "enter new_executor_defs ";
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto operator_base_ptr = OpBase();
   if ((operator_base_ptr->Type() == "p_send")) {
-    VLOG(0) << "enter new_executor_defs func";
     int ring_id = operator_base_ptr->Attr<int>("ring_id");
     if (FLAGS_dynamic_static_unified_comm) {
       const auto& comm_context_manager =
           phi::distributed::CommContextManager::GetInstance();
-      VLOG(0) << "xxx: std::to_string(ring_id): " << std::to_string(ring_id);
-      VLOG(0) << "xxx: distributed::comm_context_manager has: "
-              << comm_context_manager.Has(std::to_string(ring_id));
 
       stream_ = static_cast<phi::distributed::NCCLCommContext*>(
                     comm_context_manager.Get(std::to_string(ring_id)))
                     ->GetStream();
     } else {
-      VLOG(0) << "xxx: std::to_string(ring_id): " << std::to_string(ring_id);
-      VLOG(0) << "xxx: platform::NCCLCommContext has: ";
       stream_ = platform::NCCLCommContext::Instance()
                     .Get(ring_id, DeviceContext().GetPlace())
                     ->stream();

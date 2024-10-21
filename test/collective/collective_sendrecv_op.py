@@ -53,6 +53,7 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                         'peer': 0,
                         'ring_id': ring_id,
                         'dtype': tindata.dtype,
+                        'out_shape': tindata.shape,
                     },
                 )
             return tindata

@@ -1179,7 +1179,6 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
                    .Get(ring_id, instr->DeviceContext().GetPlace())
                    ->stream();
     }
-    // }
   }
 #endif
   auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {

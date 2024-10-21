@@ -803,10 +803,10 @@ class PipelineOptimizer:
                             type='p_send',
                             inputs={'x': var},
                             attrs={
-                                'peer': 1,
+                                self._op_device_key: prev_dev,
                                 self._op_role_key: op_role,
+                                'peer': 1,
                                 'ring_id': ring_id,
-                                'dynamic_shape': True,
                             },
                         )
                         extra_index_info['index'] += 1
@@ -821,11 +821,12 @@ class PipelineOptimizer:
                             type='p_recv',
                             outputs={'out': [var]},
                             attrs={
+                                'out_shape': var_shape,
                                 'dtype': var.dtype,
+                                self._op_device_key: cur_dev,
+                                self._op_role_key: op_role,
                                 'peer': 0,
                                 'ring_id': ring_id,
-                                self._op_role_key: op_role,
-                                'dynamic_shape': True,
                             },
                         )
                         extra_index_info['index'] += 1
@@ -892,10 +893,10 @@ class PipelineOptimizer:
                                 type='p_send',
                                 inputs={'x': var},
                                 attrs={
+                                    self._op_device_key: prev_dev,
+                                    self._op_role_key: op_role,
                                     'ring_id': ring_id,
                                     'peer': 1,
-                                    self._op_role_key: op_role,
-                                    'dynamic_shape': True,
                                 },
                             )
                         else:
@@ -904,12 +905,13 @@ class PipelineOptimizer:
                                 type='partial_send',
                                 inputs={'X': var},
                                 attrs={
+                                    self._op_device_key: prev_dev,
+                                    self._op_role_key: op_role,
+                                    'use_calc_stream': False,
                                     'ring_id': ring_id,
                                     'peer': 1,
-                                    'use_calc_stream': False,
                                     'num': self.mp_degree,
                                     'id': self.mp_rank,
-                                    self._op_role_key: op_role,
                                 },
                             )
                         extra_index_info['index'] += 1
@@ -942,26 +944,29 @@ class PipelineOptimizer:
                                 type='p_recv',
                                 outputs={'out': [var]},
                                 attrs={
+                                    'out_shape': var_shape,
                                     'dtype': var.dtype,
+                                    self._op_device_key: cur_dev,
+                                    self._op_role_key: op_role,
                                     'peer': 0,
                                     'ring_id': ring_id,
-                                    self._op_role_key: op_role,
-                                    'dynamic_shape': True,
                                 },
                             )
                         else:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='partial_recv',
-                                outputs={'out': [var]},
+                                outputs={'Out': [var]},
                                 attrs={
+                                    'out_shape': var_shape,
                                     'dtype': var.dtype,
+                                    self._op_device_key: cur_dev,
+                                    self._op_role_key: op_role,
+                                    'use_calc_stream': True,
                                     'peer': 0,
                                     'ring_id': ring_id,
-                                    'out_shape': var_shape,
                                     'num': self.mp_degree,
                                     'id': self.mp_rank,
-                                    self._op_role_key: op_role,
                                 },
                             )
                         extra_index_info['index'] += 1
@@ -1625,10 +1630,9 @@ class PipelineOptimizer:
                         self._op_device_key: write_device,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
+                        self._op_role_key: self._op_role.LRSched,
                         'peer': read_dev_index,
                         'ring_id': ring_id,
-                        self._op_role_key: self._op_role.LRSched,
-                        'dynamic_shape': True,
                     },
                 )
                 read_block._insert_op(
@@ -1636,13 +1640,14 @@ class PipelineOptimizer:
                     type='p_recv',
                     outputs={'out': [read_block.var(var_name)]},
                     attrs={
+                        'out_shape': read_block.var(var_name).shape,
                         'dtype': read_block.var(var_name).dtype,
+                        self._op_device_key: read_device,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
+                        self._op_role_key: self._op_role.LRSched,
                         'peer': write_dev_index,
                         'ring_id': ring_id,
-                        self._op_role_key: self._op_role.LRSched,
-                        'dynamic_shape': True,
                     },
                 )
                 read_block._insert_op(

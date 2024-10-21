@@ -62,7 +62,7 @@ class SameStatusReshardFunction(ReshardFunction):
                     src_value,
                     comm_group.id,
                     comm_group.ranks.index(dst),
-                    True,
+                    False,
                 )
                 point = paddle.base.libpaddle.pir.get_current_insertion_point()
                 point.prev()
@@ -86,11 +86,13 @@ class SameStatusReshardFunction(ReshardFunction):
                 assert (
                     -1 not in dst_type.shape
                 ), "dynamic shape is not supported by pir-auto parallel yet."
+
                 comm_group = new_process_group([src, dst], group_type="p2p")
                 recv_value = paddle._C_ops.p_recv(
                     comm_group.id,
                     comm_group.ranks.index(src),
                     dst_type.dtype,
+                    dst_type._local_shape,
                     True,
                 )
                 new_op = recv_value.get_defining_op()
