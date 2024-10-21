@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 
@@ -26,17 +26,24 @@ void ArangeTensorKernel(const Context& dev_ctx,
                         const DenseTensor& end,
                         const DenseTensor& step,
                         DenseTensor* out) {
-  T start_value = GetValue<T, Context>(dev_ctx, start);
-  T end_value = GetValue<T, Context>(dev_ctx, end);
-  T step_value = GetValue<T, Context>(dev_ctx, step);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  MPType start_value =
+      static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
+  MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
+  MPType step_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, step));
 
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
   out->Resize(common::make_ddim({size}));
-  auto* out_data = dev_ctx.template Alloc<T>(out);
+  XPUType* out_data =
+      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
-  int ret = xpu::range<T>(
-      dev_ctx.x_context(), out_data, start_value, step_value, size);
+  int ret = xpu::range(dev_ctx.x_context(),
+                       out_data,
+                       static_cast<XPUType>(start_value),
+                       static_cast<XPUType>(step_value),
+                       size);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
 }
 
@@ -47,6 +54,8 @@ PD_REGISTER_KERNEL(arange_tensor,
                    ALL_LAYOUT,
                    phi::ArangeTensorKernel,
                    float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);

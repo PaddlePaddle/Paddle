@@ -55,5 +55,6 @@ PD_REGISTER_KERNEL(clip,
                    phi::ClipKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t,
                    int) {}

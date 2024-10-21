@@ -33,8 +33,6 @@ cc_library(
 if(WITH_UNITY_BUILD)
   target_link_libraries(paddle_operators_controlflow_unity conditional_block_op
                         pylayer_op)
-else()
-  target_link_libraries(conditional_block_infer_op conditional_block_op)
 endif()
 
 file(APPEND ${pybind_file}

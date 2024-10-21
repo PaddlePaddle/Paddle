@@ -6342,6 +6342,24 @@ def non_negative_axis(arr, axis):
     return axis
 
 
+def infer_dynamic_broadcast_shape(
+    arr_shape: Tensor, indices_shape: Tensor, axis: int
+) -> Tensor:
+    """
+    Find the broadcast shape for indices when `arr` has a dynamic shape.
+
+    Args:
+        arr_shape (Tensor): Shape tensor of arr.
+        indices_shape (Tensor): Shape tensor of indices.
+        axis (int): The axis to put 1d slices along.
+
+    Returns:
+        Tensor: The shape tensor for later broadcasting
+    """
+    arr_shape[axis] = indices_shape[axis]
+    return arr_shape
+
+
 def infer_broadcast_shape(
     arr: Tensor, indices: Tensor, axis: int | Tensor
 ) -> tuple[int] | None:
@@ -6525,23 +6543,45 @@ def put_along_axis(
              [60, 40, 50]])
 
     """
+
+    def has_dynamic_shape(shapes):
+        return any(shape < 0 for shape in shapes)
+
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
     if broadcast:
-        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-        values = (
-            paddle.to_tensor(values)
-            if not isinstance(
-                values, (paddle.Tensor, paddle.pir.Value, Variable)
+        if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
+            arr_shape = paddle.shape(arr)
+            indices_shape = paddle.shape(indices)
+            broadcast_shape = infer_dynamic_broadcast_shape(
+                arr_shape, indices_shape, axis
             )
-            else values
-        )
-        if broadcast_shape:
+            values = (
+                paddle.to_tensor(values)
+                if not isinstance(
+                    values, (paddle.Tensor, paddle.pir.Value, Variable)
+                )
+                else values
+            )
             indices = paddle.broadcast_to(indices, broadcast_shape)
-        values = paddle.broadcast_to(values, indices.shape)
+            values = paddle.broadcast_to(values, broadcast_shape)
+        else:
+            broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+            values = (
+                paddle.to_tensor(values)
+                if not isinstance(
+                    values, (paddle.Tensor, paddle.pir.Value, Variable)
+                )
+                else values
+            )
+            if broadcast_shape:
+                indices = paddle.broadcast_to(indices, broadcast_shape)
+                values = paddle.broadcast_to(values, broadcast_shape)
+            else:
+                values = paddle.broadcast_to(values, indices.shape)
     else:
         if isinstance(values, (paddle.Tensor, paddle.pir.Value)):
             if len(indices.shape) != len(values.shape):

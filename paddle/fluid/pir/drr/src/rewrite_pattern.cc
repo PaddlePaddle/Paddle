@@ -217,6 +217,9 @@ void DrrRewritePattern::DfsVisitor(
       return;
     }
     auto* ir_producer_op = ir_operand_value.defining_op();
+    if (!ir_producer_op) {
+      continue;
+    }
     drr_visited_ops->insert(drr_producer_op);
     DfsVisitor(drr_producer_op,
                ir_producer_op,
