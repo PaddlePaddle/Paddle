@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import paddle
 from paddle import pir
 from paddle.autograd.backward_utils import ValueDict
-from paddle.base.framework import auto_complete_op_role
+from paddle.base.framework import pir_op_role_guard
 from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.passes.pass_base import PassContext, new_pass
@@ -65,7 +65,7 @@ def reshard_single_value(program, op, operand, attr):
     if prev_var.is_dist() and prev_var.dist_attr() != attr:
         operand_attr = attr.as_tensor_dist_attr()
         paddle.pir.set_insertion_point(op)
-        with auto_complete_op_role(program, op.op_role):
+        with pir_op_role_guard(op.op_role):
             # fold reshard
             if prev_var.get_defining_op().name() == 'dist_op.reshard':
                 prev_reshard = prev_var.get_defining_op()
@@ -101,7 +101,7 @@ def reshard_combine_value(program, op, operand, attr):
         )
 
     paddle.pir.set_insertion_point(op)
-    with auto_complete_op_role(program, op.op_role):
+    with pir_op_role_guard(op.op_role):
         combine_value = paddle._C_ops.builtin_combine(reshard_vars)
     return combine_value
 
@@ -136,7 +136,7 @@ def apply_partition_pass(program):
 
             # reshard input
             paddle.pir.set_insertion_point(op)
-            with auto_complete_op_role(program, ref_op_role):
+            with pir_op_role_guard(ref_op_role):
                 reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
                 operand.set_source(reshard_var)
 
@@ -151,7 +151,7 @@ def apply_partition_pass(program):
             old_dist_attr = result.dist_attr()
             result.update_dist_attr(result_attr)
 
-            with auto_complete_op_role(program, ref_op_role):
+            with pir_op_role_guard(ref_op_role):
                 prev_op = prev_var.get_defining_op()
 
                 # reshard output to assign out input
@@ -171,7 +171,7 @@ def apply_partition_pass(program):
 
             reshard_var_2 = reshard_var_1
             if old_dist_attr != reshard_var_1.dist_attr():
-                with auto_complete_op_role(program, ref_op_role):
+                with pir_op_role_guard(ref_op_role):
                     reshard_var_2 = paddle._C_ops.reshard_v2(
                         result, old_dist_attr
                     )
@@ -201,7 +201,7 @@ def apply_partition_pass(program):
                 var.update_dist_attr(attr.as_tensor_dist_attr())
 
                 # insert reshard
-                with auto_complete_op_role(program, op.op_role):
+                with pir_op_role_guard(op.op_role):
                     reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
                     var.replace_all_uses_with(reshard_var)
                     reshard_var.get_defining_op().operand(0).set_source(var)
@@ -266,7 +266,7 @@ class ReshardPasses:
                 paddle.pir.set_insertion_point(op)
                 ref_op_role = op.op_role
 
-                with auto_complete_op_role(dist_program, ref_op_role):
+                with pir_op_role_guard(ref_op_role):
                     out_value = reshard_func.reshard(
                         src_dist_attr,
                         dst_dist_attr,
