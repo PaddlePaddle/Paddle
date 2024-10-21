@@ -3285,6 +3285,11 @@ bool RandomRoutingOpInferSymbolicShape(
   return true;
 }
 
+bool RandomRouting_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return RandomRoutingOpInferSymbolicShape(op, infer_context);
+}
+
 bool RmsNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
