@@ -82,7 +82,7 @@ REGISTER_OPERATOR(load_combine,
                   ops::LoadCombineOp,
                   ops::LoadCombineOpProtoMaker);
 
-PD_REGISTER_STRUCT_KERNEL(load_combine,
+PD_REGISTER_STRUCT_KERNEL(load_combine_fluid,
                           CPU,
                           ALL_LAYOUT,
                           ops::LoadCombineOpKernel,
