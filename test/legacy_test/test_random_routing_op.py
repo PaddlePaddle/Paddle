@@ -63,6 +63,7 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), self.out)
 
     def test_api_static(self):
+        paddle.enable_static()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, startup_prog):
@@ -97,5 +98,4 @@ class TestNumberCountAPIFp16(TestNumberCountAPIFp32):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
