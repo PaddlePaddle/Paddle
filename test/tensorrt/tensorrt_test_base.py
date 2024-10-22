@@ -36,6 +36,7 @@ class TensorRTBaseTest(unittest.TestCase):
         self.min_shape = None
         self.max_shape = None
         self.target_marker_op = ""
+        self.dynamic_shape_data = {}
 
     def create_fake_program(self):
         if self.python_api is None:
@@ -210,34 +211,36 @@ class TensorRTBaseTest(unittest.TestCase):
                         max_shape_data[feed_name] = self.api_args[feed_name]
                         continue
                     else:
-                        # This is a special case specific to pd_op.one_hot, where the input values must not be less than 0 and must not exceed the specified num_classes.
                         if np.issubdtype(
                             self.api_args[feed_name].dtype, np.integer
                         ):
-                            if feed_name == 'x':
-                                num_classes = self.api_args.get(
-                                    'num_classes', 10
+                            # Check if there is a custom data generation function
+                            if feed_name in self.dynamic_shape_data:
+                                # Use the custom data generation function
+                                min_shape_data[
+                                    feed_name
+                                ] = self.dynamic_shape_data[feed_name](
+                                    self.min_shape[feed_name]
+                                ).astype(
+                                    self.api_args[feed_name].dtype
                                 )
-                                min_shape_data[feed_name] = np.random.randint(
-                                    0,
-                                    num_classes,
-                                    size=self.min_shape[feed_name],
-                                    dtype=self.api_args[feed_name].dtype,
-                                )
-                                max_shape_data[feed_name] = np.random.randint(
-                                    0,
-                                    num_classes,
-                                    size=self.max_shape[feed_name],
-                                    dtype=self.api_args[feed_name].dtype,
+                                max_shape_data[
+                                    feed_name
+                                ] = self.dynamic_shape_data[feed_name](
+                                    self.max_shape[feed_name]
+                                ).astype(
+                                    self.api_args[feed_name].dtype
                                 )
                             else:
-                                min_shape_data[feed_name] = self.api_args[
-                                    feed_name
-                                ]
-                                max_shape_data[feed_name] = self.api_args[
-                                    feed_name
-                                ]
+                                # Use the default data generation method
+                                min_shape_data[feed_name] = np.random.randint(
+                                    1, 100, size=self.min_shape[feed_name]
+                                ).astype(self.api_args[feed_name].dtype)
+                                max_shape_data[feed_name] = np.random.randint(
+                                    1, 100, size=self.max_shape[feed_name]
+                                ).astype(self.api_args[feed_name].dtype)
                         else:
+                            # For non-integer input, retain the original data generation method
                             min_shape_data[feed_name] = np.random.randn(
                                 *self.min_shape[feed_name]
                             ).astype(self.api_args[feed_name].dtype)
