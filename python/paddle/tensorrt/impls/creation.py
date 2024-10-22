@@ -97,9 +97,4 @@ def arange_converter(network, paddle_op, inputs):
     fill_layer.set_input(1, start_tensor)
     fill_layer.set_input(2, step)
 
-    # 如果 Fill 操作的输出期望为 Float 类型，则确保输入是 Float
-    if step.dtype != trt.DataType.FLOAT:
-        step = cast_tensor(network, step, trt.float32)
-        start_tensor = cast_tensor(network, start_tensor, trt.float32)
-
     return fill_layer.get_output(0)
