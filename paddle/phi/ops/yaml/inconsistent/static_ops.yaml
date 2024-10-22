@@ -692,6 +692,7 @@
     func : p_recv
     param : [peer, dtype, out_shape, dynamic_shape]
     data_type : dtype
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : p_send
   args : (Tensor x, int ring_id = 0, int peer = 0, bool dynamic_shape = false)

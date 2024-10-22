@@ -641,6 +641,7 @@
     param : [peer, dtype, out_shape, dynamic_shape]
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : p_recv_array
   args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, int[] out_shape = {})
