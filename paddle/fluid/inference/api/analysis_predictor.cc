@@ -386,10 +386,6 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
   }
-  if (FLAGS_enable_pir_api) {
-    config_.EnableNewExecutor(true);
-    config_.EnableNewIR(true);
-  }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
     if (config_.new_ir_enabled()) {
@@ -1020,7 +1016,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       config_.deleted_passes_.end()) {
     constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
     constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
-    basic_pass_pm.AddPass(std::move(constant_folding_pass));
+    // basic_pass_pm.AddPass(std::move(constant_folding_pass));
   }
   auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
   if (std::find(config_.deleted_passes_.begin(),
@@ -1029,7 +1025,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       config_.deleted_passes_.end()) {
     dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
                                             sub_scope_);
-    basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
+    // basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
   }
   basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
   if (!config_.glog_info_disabled()) {

@@ -79,7 +79,7 @@ class UseOptimizedModel(InferencePassTest):
     def inference(self):
         # Config
         config = Config(
-            self.path_prefix + ".pdmodel", self.path_prefix + ".pdiparams"
+            self.path_prefix + ".json", self.path_prefix + ".pdiparams"
         )
         config.enable_use_gpu(100, 0)
         config.enable_tensorrt_engine(

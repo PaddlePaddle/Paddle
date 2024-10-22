@@ -746,6 +746,16 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         "conv_bn_swish_split_gelu.tar.gz" 2a5e8791e47b221b4f782151d76da9c6)
     endif()
 
+    inference_analysis_test(
+      trt_dynamic_shape_test
+      SRCS
+      trt_dynamic_shape_test.cc
+      EXTRA_DEPS
+      common
+      paddle_inference_shared
+      ARGS
+      --infer_model=${TRT_MODEL_INSTALL_DIR})
+
     set(TEST_TRT_ERNIE_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test")
     if(NOT EXISTS ${TEST_TRT_ERNIE_MODEL}/ernie_model_4.tar.gz)
       inference_download_and_uncompress(
@@ -959,6 +969,30 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     paddle_infer_api_errors_test
     SRCS paddle_infer_api_errors_tester.cc
     DEPS ${inference_api_tester_deps} common)
+
+  if(WITH_GPU)
+    inference_analysis_test(
+      paddle_infer_api_test
+      SRCS
+      paddle_infer_api_test.cc
+      EXTRA_DEPS
+      common
+      paddle_inference_shared
+      ARGS
+      --infer_model=${RESNET50_MODEL_DIR})
+
+    inference_analysis_test(
+      paddle_infer_api_copy_tensor_tester
+      SRCS
+      paddle_infer_api_copy_tensor_tester.cc
+      EXTRA_DEPS
+      common
+      paddle_inference_shared
+      ARGS
+      --infer_model=${RESNET50_MODEL_DIR})
+    set_tests_properties(paddle_infer_api_copy_tensor_tester PROPERTIES TIMEOUT
+                                                                        30)
+  endif()
 
   if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser

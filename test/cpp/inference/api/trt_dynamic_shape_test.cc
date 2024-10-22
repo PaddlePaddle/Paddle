@@ -33,6 +33,7 @@ void TestDynamic(bool with_dynamic = true,
   }
 
   AnalysisConfig config;
+  config.EnableNewIR(false);
   config.EnableUseGpu(100, 0);
   std::string buffer_prog, buffer_param;
   ReadBinaryFile(model_dir + "/model", &buffer_prog);

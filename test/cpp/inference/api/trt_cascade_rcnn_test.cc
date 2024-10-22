@@ -25,6 +25,7 @@ TEST(TensorRT, cascade_rcnn) {
   std::string model_dir = FLAGS_infer_model + "/cascade_rcnn";
   AnalysisConfig config;
   int batch_size = 1;
+  config.EnableNewIR(false);
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableTensorRtEngine(
