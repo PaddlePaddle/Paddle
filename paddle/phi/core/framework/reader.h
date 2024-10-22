@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,12 +20,12 @@
 #include <vector>
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/framework/framework.pb.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace paddle {
 namespace framework {
-
 class ReaderBase {
  public:
   explicit ReaderBase(const std::vector<DDim>& shapes,
@@ -128,10 +128,7 @@ class DecoratedReader : public ReaderBase,
   }
 
  protected:
-  void ShutdownImpl() override {
-    VLOG(1) << "ShutdownImpl";
-    reader_->Shutdown();
-  }
+  void ShutdownImpl() override { reader_->Shutdown(); }
 
   void StartImpl() override { reader_->Start(); }
 
@@ -161,7 +158,7 @@ class ReaderHolder {
     reader_ = reader_base;
   }
 
-  ~ReaderHolder() { VLOG(1) << "~ReaderHolder"; }
+  ~ReaderHolder() {}
 
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
@@ -174,7 +171,6 @@ class ReaderHolder {
   }
 
   void ResetAll() {
-    VLOG(1) << "ResetAll";
     auto end_readers = reader_->GetEndPoints();
     for (auto* reader : end_readers) {
       reader->Shutdown();
@@ -185,7 +181,6 @@ class ReaderHolder {
   }
 
   void Shutdown() {
-    VLOG(1) << "Shutdown";
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
         common::errors::InvalidArgument(
@@ -194,7 +189,6 @@ class ReaderHolder {
   }
 
   void Start() {
-    VLOG(1) << "start";
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
         common::errors::InvalidArgument(
@@ -226,6 +220,5 @@ inline std::shared_ptr<DecoratedReader> MakeDecoratedReader(ARGS&&... args) {
   reader->RegisterDecorateChain();
   return reader;
 }
-
 }  // namespace framework
 }  // namespace paddle

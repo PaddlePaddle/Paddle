@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reader/buffered_reader.h"
+#include "paddle/phi/core/operators/reader/buffered_reader.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/framework/convert_utils.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -124,6 +124,8 @@ void BufferedReader::ReadAsync(size_t i) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)  // @{ Group GPU Place
     if (place_.GetType() == phi::AllocationType::GPU) {
+      auto dev_ctx_gpu =
+          (phi::GPUContext *)(phi::DeviceContextPool::Instance().Get(place_));
       TensorVec &cuda = cuda_buffer_[i];
       if (cuda.empty()) {
         cuda.resize(cpu.size());
@@ -160,7 +162,10 @@ void BufferedReader::ReadAsync(size_t i) {
             cuda[i].Resize(cpu[i].dims());
             cuda[i].set_layout(cpu[i].layout());
             cuda_pinned_ptrs[i] =
-                cuda[i].mutable_data(cuda_pinned_place, cpu[i].type());
+                dev_ctx_gpu->Alloc(&cuda[i],
+                                   cpu[i].type(),
+                                   0,
+                                   true);  // pinned=true to use GPUPinnedPlace
             auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
 
             phi::memory_utils::Copy(cuda_pinned_place,
@@ -187,11 +192,11 @@ void BufferedReader::ReadAsync(size_t i) {
         for (size_t i = 0; i < cpu.size(); ++i) {
           cuda[i].Resize(cpu[i].dims());
           cuda[i].set_layout(cpu[i].layout());
-          gpu_ptrs.emplace_back(cuda[i].mutable_data(place_, cpu[i].type()));
+          gpu_ptrs.emplace_back(dev_ctx_gpu->Alloc(&cuda[i], cpu[i].type()));
         }
 
         // NOTE(zjl): cudaStreamWaitEvent() must be called after all
-        // cuda[i].mutable_data() is called, since some ops release
+        // Alloc(cuda[i]) is called, since some ops release
         // cuda memory immediately without waiting cuda kernel ends
         platform::SetDeviceId(place_.device);
 #ifdef PADDLE_WITH_HIP
@@ -221,8 +226,11 @@ void BufferedReader::ReadAsync(size_t i) {
             phi::GPUPinnedPlace cuda_pinned_place;
             phi::DenseTensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
-            auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(
-                cuda_pinned_place, cpu[i].type());
+            auto cuda_pinned_ptr =
+                dev_ctx_gpu->Alloc(&cuda_pinned_tensor,
+                                   cpu[i].type(),
+                                   0,
+                                   true);  // pinned=true to use GPUPinnedPlace
             phi::memory_utils::Copy(
                 cuda_pinned_place, cuda_pinned_ptr, cpu_place, cpu_ptr, size);
             phi::memory_utils::Copy(place_,
@@ -243,6 +251,8 @@ void BufferedReader::ReadAsync(size_t i) {
 
 #ifdef PADDLE_WITH_XPU
     if (place_.GetType() == phi::AllocationType::XPU) {
+      auto dev_ctx_xpu =
+          (phi::XPUContext *)(phi::DeviceContextPool::Instance().Get(place_));
       TensorVec &xpu = xpu_buffer_[i];
       if (xpu.empty()) {
         xpu.resize(cpu.size());
@@ -262,7 +272,7 @@ void BufferedReader::ReadAsync(size_t i) {
       for (size_t i = 0; i < cpu.size(); ++i) {
         xpu[i].Resize(cpu[i].dims());
         xpu[i].set_layout(cpu[i].layout());
-        xpu_ptrs.emplace_back(xpu[i].mutable_data(place_, cpu[i].type()));
+        xpu_ptrs.emplace_back(dev_ctx_xpu->Alloc(&xpu[i], cpu[i].type()));
       }
 
       phi::backends::xpu::XPUDeviceGuard guard(place_.device);
@@ -299,6 +309,9 @@ void BufferedReader::ReadAsync(size_t i) {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (place_.GetType() == phi::AllocationType::CUSTOM) {
+      auto dev_ctx_custom =
+          (phi::CustomContext *)(phi::DeviceContextPool::Instance().Get(
+              place_));
       phi::DeviceManager::SetDevice(place_);
 
       TensorVec &custom_device = custom_device_buffer_[i];
@@ -321,7 +334,7 @@ void BufferedReader::ReadAsync(size_t i) {
         custom_device[i].Resize(cpu[i].dims());
         custom_device[i].set_layout(cpu[i].layout());
         custom_device_ptrs.emplace_back(
-            custom_device[i].mutable_data(place_, cpu[i].type()));
+            dev_ctx_custom->Alloc(&custom_device[i], cpu[i].type()));
       }
 
       phi::DeviceManager::GetDeviceWithPlace(place_)->RecordEvent(

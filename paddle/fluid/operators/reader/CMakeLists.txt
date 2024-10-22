@@ -3,7 +3,7 @@ include(operators)
 cc_library(
   reader_op_registry
   SRCS reader_op_registry.cc
-  DEPS operator op_registry reader)
+  DEPS operator op_registry phi)
 set(LOCAL_READER_LIBS)
 
 function(reader_library TARGET_NAME)
@@ -20,20 +20,11 @@ function(reader_library TARGET_NAME)
       PARENT_SCOPE)
 endfunction()
 
-cc_library(
-  py_reader
-  SRCS py_reader.cc
-  DEPS reader)
-cc_library(
-  buffered_reader
-  SRCS buffered_reader.cc
-  DEPS reader simple_threadpool phi common)
-
 reader_library(create_double_buffer_reader_op SRCS
-               create_double_buffer_reader_op.cc DEPS buffered_reader)
-reader_library(create_py_reader_op SRCS create_py_reader_op.cc DEPS py_reader)
+               create_double_buffer_reader_op.cc DEPS phi)
+reader_library(create_py_reader_op SRCS create_py_reader_op.cc DEPS phi)
 
-op_library(read_op DEPS py_reader buffered_reader)
+op_library(read_op DEPS phi)
 
 # Export local libraries to parent
 # set(READER_LIBRARY ${LOCAL_READER_LIBS} PARENT_SCOPE)
