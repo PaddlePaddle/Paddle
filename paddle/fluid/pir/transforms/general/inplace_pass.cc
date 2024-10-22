@@ -111,6 +111,8 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       auto persist_attr =
           value.attribute<pir::BoolAttribute>(kAttrIsPersistable);
       if (persist_attr && persist_attr.data()) {
+        VLOG(9) << "     -- input tensor is shared with a persistable tensor, "
+                   "can't do inplace";
         return false;
       }
     }
