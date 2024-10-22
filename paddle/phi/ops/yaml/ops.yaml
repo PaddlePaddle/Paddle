@@ -4133,7 +4133,7 @@
   optional : sequence_length
   intermediate : reserve
   view : (dropout_state_in -> dropout_state_out)
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : roi_align
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false)

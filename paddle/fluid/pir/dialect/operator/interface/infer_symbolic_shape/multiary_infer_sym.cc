@@ -3258,11 +3258,129 @@ bool RmsNormOpInferSymbolicShape(
   return true;
 }
 
-// bool RnnOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool RnnOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &pre_state_shape_or_data_list =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  const auto &sequence_length_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const auto &dropout_state_in_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+
+  const std::string &mode = op->attribute<pir::StrAttribute>("mode").AsString();
+  const bool &is_bidirec =
+      op->attribute<pir::BoolAttribute>("is_bidirec").data();
+  const int &hidden_size =
+      op->attribute<pir::Int32Attribute>("hidden_size").data();
+
+  const auto &x_shape = x_shape_or_data.shape();
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "The rank of Input in RNN  must be 3. But "
+                        "received Input's rank is %d.",
+                        x_shape.size()));
+
+  if (!sequence_length_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    const auto &sequence_length_shape = sequence_length_shape_or_data.shape();
+    infer_context->AddEqualCstr(x_shape[1], sequence_length_shape[0]);
+  }
+
+  PADDLE_ENFORCE_EQ(pre_state_shape_or_data_list[0].shape().size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "The rank of PreState in RNN  must be 3. But "
+                        "the received rank is %d.",
+                        pre_state_shape_or_data_list[0].shape().size()));
+  size_t i = 0;
+  for (; i < pre_state_shape_or_data_list.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        x_shape[1],
+        pre_state_shape_or_data_list[i].shape()[1],
+        common::errors::InvalidArgument(
+            "The second dimension size (representing for batch size) of "
+            "Input and PreState should be equal. But received %d and %d.",
+            x_shape[1],
+            pre_state_shape_or_data_list[i].shape()[1]));
+    PADDLE_ENFORCE_EQ(
+        pre_state_shape_or_data_list[0].shape(),
+        pre_state_shape_or_data_list[i].shape(),
+        common::errors::InvalidArgument(
+            "The dims of all tensors in PreState should be same. But "
+            "received PreState[0] is %s and PreState[%d] is %s.",
+            pre_state_shape_or_data_list[0].shape(),
+            i,
+            pre_state_shape_or_data_list[i].shape()));
+  }
+  size_t num_state = mode == "LSTM" ? 2 : 1;
+  PADDLE_ENFORCE_EQ(i,
+                    num_state,
+                    common::errors::InvalidArgument(
+                        "The number of tensors in PreState of %s should be %d, "
+                        "but received %d.",
+                        mode,
+                        2,
+                        i));
+  std::vector<symbol::DimExpr> out_shape = x_shape;
+  out_shape[2] = is_bidirec
+                     ? symbol::DimExpr(static_cast<int64_t>(hidden_size) * 2)
+                     : symbol::DimExpr(static_cast<int64_t>(hidden_size));
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  symbol::DimExpr x_numel = x_shape[0] * x_shape[1] * x_shape[2];
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({x_numel})});
+
+  int state_num = static_cast<int>(pre_state_shape_or_data_list.size());
+  symbol::TensorListShapeOrDataDimExprs state_shape_or_data_list;
+  for (int i = 0; i < state_num; ++i) {
+    state_shape_or_data_list.emplace_back(pre_state_shape_or_data_list[i]);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(2), symbol::ShapeOrDataDimExprs{state_shape_or_data_list});
+
+  int gate_num = 4;
+  if (mode == "RNN_RELU" || mode == "RNN_TANH") {
+    gate_num = 1;
+  } else if (mode == "GRU") {
+    gate_num = 3;
+  }
+  const int &num_layers =
+      op->attribute<pir::Int32Attribute>("num_layers").data();
+
+  int hidden_date_idx = num_layers - 1;
+  if (mode == "LSTM") {
+    hidden_date_idx += (gate_num + 2) * num_layers;
+  } else if (mode == "GRU") {
+    hidden_date_idx += (gate_num + 1) * num_layers;
+  } else {
+    hidden_date_idx += gate_num * num_layers;
+  }
+  symbol::DimExpr block_size =
+      symbol::DimExpr(static_cast<int64_t>(num_state)) * x_shape[0] *
+      x_shape[1] * symbol::DimExpr(hidden_size);
+  std::vector<symbol::DimExpr> reserve_shape = {symbol::DimExpr(hidden_size),
+                                                block_size};
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(reserve_shape)});
+  return true;
+}
+
+bool Rnn_OpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  return RnnOpInferSymbolicShape(op, infer_context);
+}
 
 // bool RoiPoolOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
