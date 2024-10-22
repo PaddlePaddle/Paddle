@@ -181,7 +181,7 @@ bool IsFakeValue(const pir::Value &value);
 std::vector<symbol::DimExpr> GetVecFromIntArray(
     const pir::Operation *op,
     pir::InferSymbolicShapeContext *infer_context,
-    const std::string &input_name,
+    const std::string &attr_name,
     const int &index);
 
 bool GetAxisFromOpInput(pir::Value in_value,
