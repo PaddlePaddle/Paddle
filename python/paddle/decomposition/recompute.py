@@ -806,6 +806,11 @@ def replace_mid_values_with_forward_subgraph(
         program, origin_ops, origin_subgraph_inputs, first_backward_op
     )
 
+    for origin_op in origin_ops:
+        origin_op.set_bool_attr("is_recompute_op", True)
+    for cloned_op in cloned_ops:
+        cloned_op.set_bool_attr("is_recompute_bw_op", True)
+
     # 3. replace mid values that backward need to hold with recompute subgraph's outputs
     cloned_subgraph_outputs = backward_utils.ValueSet()
     for origin_value in origin_subgraph_outputs:
@@ -844,7 +849,9 @@ def classify_value_node(program, grad_outputs, fwd_op_end_idx):
         required_bw_ops = required_bw_ops | find_child_ops(grad_output)
         required_bw_ops.add(grad_output.get_defining_op())
     for required_bw_op in required_bw_ops:
-        bw_op_outputs = required_bw_op.results()
+        bw_op_outputs = (
+            required_bw_op.results() if required_bw_op is not None else []
+        )
         required_bw_value_nodes = (
             required_bw_value_nodes | backward_utils.ValueSet(bw_op_outputs)
         )
