@@ -34,7 +34,6 @@ from paddle.distributed.auto_parallel.static.tuner.pir_rule_based_tuner import (
 class ToDistributedConfig:
     def __init__(self):
         self.input_spec = None
-        self.num_hidden_layers = None
 
 
 def record_program_ops_pre_hook(layer, inputs):
@@ -328,9 +327,6 @@ def to_distributed(model, dataloader, mesh, config):
     # # # #: shard model
     num_hidden_layers = len(matched_programs[DECODER_LAYER_NAME])
     print(f"num_hidden_layers by pattern matching is {num_hidden_layers}")
-    assert (
-        num_hidden_layers == config.num_hidden_layers
-    ), "num_hidden_layers by pattern matching is not compatible with configuration"
 
     GLOBAL_MESH = []
     if "pp" in mesh.dim_names:

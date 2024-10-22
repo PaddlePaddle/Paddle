@@ -92,7 +92,7 @@ input_seq_spec = paddle.static.InputSpec(
 )
 dist_config = ToDistributedConfig()
 dist_config.input_spec = [input_seq_spec]
-dist_config.num_hidden_layers = model_config.num_hidden_layers
+
 # # wrap model by using **to_distributed**
 dist_model, dist_loader = to_distributed(model, loader, mesh, dist_config)
 # dist_model = model
