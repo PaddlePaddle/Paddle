@@ -537,7 +537,7 @@ Tensor Tensor::contiguous() {
                             common::errors::InvalidArgument(
                                 "TensorImpl with nullptr is not supported"));
     if (!dense_tensor->meta().is_contiguous()) {
-      phi::DenseTensor *new_dense_tensor = nullptr;
+      auto new_dense_tensor = std::make_shared<phi::DenseTensor>();
       *new_dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
 
       return Tensor(std::shared_ptr<phi::TensorBase>(new_dense_tensor),
