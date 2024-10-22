@@ -55,7 +55,7 @@ def insert_fuse_all_reduce_ops(
     )
 
     # FIXME(zengjinle): here we assume that we use
-    # c_sync_calc_stream/c_sync_comm_stream to do sync.
+    # sync_calc_stream/sync_comm_stream to do sync.
     # But someone may use c_wait_compute/c_wait_comm instead.
     if not attrs["use_calc_stream"]:
         ring_id = attrs["ring_id"]
@@ -65,7 +65,7 @@ def insert_fuse_all_reduce_ops(
             prev_op_idx = op_idx - 1
             while (
                 prev_op_idx >= 0
-                and block.ops[prev_op_idx].type == "c_sync_calc_stream"
+                and block.ops[prev_op_idx].type == "sync_calc_stream"
             ):
                 new_op_indices.append(prev_op_idx)
                 prev_op_idx -= 1
@@ -75,7 +75,7 @@ def insert_fuse_all_reduce_ops(
                 n = len(block.ops)
                 while (
                     next_op_idx < n
-                    and block.ops[next_op_idx].type == "c_sync_comm_stream"
+                    and block.ops[next_op_idx].type == "sync_comm_stream"
                 ):
                     assert block.ops[next_op_idx].attr("ring_id") == ring_id
                     new_op_indices.append(next_op_idx)
@@ -115,9 +115,9 @@ def insert_fuse_all_reduce_ops(
     if not attrs["use_calc_stream"]:
         block._insert_op_without_sync(
             insert_idx,
-            type="c_sync_calc_stream",
-            inputs={"X": fused_var},
-            outputs={"Out": fused_var, op_role_key: attrs[op_role_key]},
+            type="sync_calc_stream",
+            inputs={"x": fused_var},
+            outputs={"out": fused_var, op_role_key: attrs[op_role_key]},
         )
         insert_idx += 1
 

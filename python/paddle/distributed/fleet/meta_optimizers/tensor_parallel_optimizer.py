@@ -91,9 +91,9 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         if not param:
             return  # no parameter on this device
         block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': param},
-            outputs={'Out': param},
+            type='sync_comm_stream',
+            inputs={'x': param},
+            outputs={'out': param},
             attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
         )
 
@@ -235,9 +235,9 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                         offset += 1
                         block._insert_op(
                             offset,
-                            type='c_sync_calc_stream',
-                            inputs={'X': grad},
-                            outputs={'Out': grad},
+                            type='sync_calc_stream',
+                            inputs={'x': grad},
+                            outputs={'out': grad},
                             attrs={OP_ROLE_KEY: OpRole.Backward},
                         )
                         offset += 1
@@ -260,7 +260,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
             if is_optimizer_op(op):
                 block._insert_op(
                     idx,
-                    type='c_sync_comm_stream',
+                    type='sync_comm_stream',
                     inputs={'X': grad},
                     outputs={'Out': grad},
                     attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Backward},

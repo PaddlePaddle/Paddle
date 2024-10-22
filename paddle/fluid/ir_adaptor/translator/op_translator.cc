@@ -3922,7 +3922,7 @@ struct SyncCommStreamOpTranscriber : public OpTranscriber {
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Op c_sync_comm_stream should have corresponding "
+          "Op sync_comm_stream should have corresponding "
           "OpInfo pd_op.sync_comm_stream_."));
     }
     return op_info;
@@ -4040,7 +4040,7 @@ OpTranslator::OpTranslator() {
   special_handlers["unsqueeze2_grad"] =
       WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
 
-  special_handlers["c_sync_comm_stream"] = SyncCommStreamOpTranscriber();
+  special_handlers["sync_comm_stream"] = SyncCommStreamOpTranscriber();
 }
 }  // namespace translator
 }  // namespace paddle

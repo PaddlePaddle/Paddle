@@ -86,7 +86,7 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
                 if op.type == "c_allreduce_sum":
                     start_allreduce_idx = i
                     break
-            # the magic number 1 below means skip the c_sync_calc_stream op
+            # the magic number 1 below means skip the sync_calc_stream op
             if avg:
                 assert start_allreduce_idx > 1
             else:

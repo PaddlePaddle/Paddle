@@ -106,9 +106,9 @@ class PipelineOptimizer(MetaOptimizerBase):
         if not param:
             return  # no parameter on this device
         block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': param},
-            outputs={'Out': param},
+            type='sync_comm_stream',
+            inputs={'x': param},
+            outputs={'Oout': param},
             attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
         )
 

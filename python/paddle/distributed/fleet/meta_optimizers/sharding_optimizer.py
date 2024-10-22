@@ -552,7 +552,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             # the gradient to meet the logic for gradient merge under pure dp.
             tmp_first_opt_idx = None
             for idx, op in enumerate(main_block.ops):
-                if is_optimizer_op(op) and op.type != 'c_sync_comm_stream':
+                if is_optimizer_op(op) and op.type != 'sync_comm_stream':
                     tmp_first_opt_idx = idx
                     break
             assert (
@@ -1026,7 +1026,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type in [
                 "c_allreduce_sum",
-                "c_sync_comm_stream",
+                "sync_comm_stream",
                 "c_calc_comm_stream",
                 "c_gen_nccl_id",
                 "c_gen_bkcl_id",

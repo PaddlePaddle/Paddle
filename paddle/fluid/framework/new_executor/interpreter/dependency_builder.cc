@@ -217,9 +217,9 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       // add depend:  first_read_fused_out_op -> first op that reads 'outputs'
 
       // special case for consecutive communication ops, for example,
-      // FusedOutput = c_sync_calc_stream(FusedOutput)
+      // FusedOutput = sync_calc_stream(FusedOutput)
       // FusedOutput= c_allreduce_sum(FusedOutput)
-      // FusedOutput = c_sync_comm_stream(FusedOutput)
+      // FusedOutput = sync_comm_stream(FusedOutput)
       // we should take the last one to add depend instead of
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
@@ -255,15 +255,15 @@ void DependencyBuilder::AddDependencyForCommunicationOp() {
   }
 
   // TODO(zhiqiu): there still some cases not handled
-  // add dependency for c_sync_comm_stream
+  // add dependency for sync_comm_stream
 
-  // in program, we can add only one c_sync_comm_stream to sync all
+  // in program, we can add only one sync_comm_stream to sync all
   // communication ops.
   // c_allreduce_sum(a)
   // c_allreduce_sum(b)
   // c_allreduce_sum(c)
-  // c_sync_comm_stream(a)
-  const std::string kSyncComm = "c_sync_comm_stream";
+  // sync_comm_stream(a)
+  const std::string kSyncComm = "sync_comm_stream";
   dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_->at(op_idx).OpBaseValid() &&
@@ -599,14 +599,14 @@ void PirDependencyBuilder::AddDependencyForCommunicationOp() {
   }
 
   // TODO(zhiqiu): there still some cases not handled
-  // add dependency for c_sync_comm_stream
+  // add dependency for sync_comm_stream
 
-  // in program, we can add only one c_sync_comm_stream to sync all
+  // in program, we can add only one sync_comm_stream to sync all
   // communication ops.
   // c_allreduce_sum(a)
   // c_allreduce_sum(b)
   // c_allreduce_sum(c)
-  // c_sync_comm_stream(a)
+  // sync_comm_stream(a)
   const std::string kSyncComm = dialect::SyncCommStreamOp::name();
   dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
@@ -1094,9 +1094,9 @@ void DependencyBuilderSimplify::AddDependencyForCoalesceTensorOp() {
       // add depend:  first_read_fused_out_op -> first op that reads 'outputs'
 
       // special case for consecutive communication ops, for example,
-      // FusedOutput = c_sync_calc_stream(FusedOutput)
+      // FusedOutput = sync_calc_stream(FusedOutput)
       // FusedOutput= c_allreduce_sum(FusedOutput)
-      // FusedOutput = c_sync_comm_stream(FusedOutput)
+      // FusedOutput = sync_comm_stream(FusedOutput)
       // we should take the last one to add depend instead of
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
@@ -1134,7 +1134,7 @@ void DependencyBuilderSimplify::AddDependencyForCommunicationOp() {
    }
   }
  */
-  const std::string kSyncComm = "c_sync_comm_stream";
+  const std::string kSyncComm = "sync_comm_stream";
   std::vector<size_t> com_op_vector;
   std::vector<size_t> sync_com_op_vector;
   for (auto op_idx : ops_list) {
@@ -1222,7 +1222,7 @@ void DependencyBuilderSimplify::AddDependencyForReadOp() {
 // for speed up com and calc parallel
 void DependencyBuilderSimplify::AddDependencyForBroadcastOp() {
   const std::string broadcast = "c_broadcast";
-  const std::string kSyncComm = "c_sync_comm_stream";
+  const std::string kSyncComm = "sync_comm_stream";
   std::vector<size_t> op_between_broadcast_and_sync;
   std::vector<size_t> op_broadcast;
   size_t index = 0;
@@ -1274,12 +1274,12 @@ void DependencyBuilderSimplify::SetSameStream() {
   if (last_pos > 0) {
     for (size_t i = last_pos + 1; i < op_num_; i++) {
       std::string op_name = _ops_ptr->at(i)->Type();
-      if (op_name == "c_sync_comm_stream") {
+      if (op_name == "sync_comm_stream") {
         for (auto it : _ops_ptr->at(i)->Inputs()) {
           for (auto var : it.second) {
             if (inputs.count(var) == 0) {
               is_sync_for_reduce = false;
-              VLOG(1) << var << " not in c_sync_comm_stream";
+              VLOG(1) << var << " not in sync_comm_stream";
               break;
             }
           }
@@ -1287,7 +1287,7 @@ void DependencyBuilderSimplify::SetSameStream() {
         if (is_sync_for_reduce) {
           del_c_sync_comm_list.insert(i);
           if (FLAGS_enable_dependency_builder_debug_info) {
-            VLOG(0) << " del op c_sync_comm_stream index is " << i;
+            VLOG(0) << " del op sync_comm_stream index is " << i;
           }
         }
         break;

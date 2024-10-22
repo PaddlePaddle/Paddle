@@ -1263,15 +1263,15 @@ class DownpourOptimizer(DistributedOptimizer):
         table_name = [name + "@GRAD" for name in table_name]
         need_remove_op_index = []
         block = loss.block.program.global_block()
-        collective_ops = ["c_sync_calc_stream", "c_allreduce_sum"]
+        collective_ops = ["sync_calc_stream", "all_reduce"]
         for ids, op in list(enumerate(block.ops)):
             if op.type in collective_ops:
-                if op.input("X")[0] in table_name:
+                if op.input("x")[0] in table_name:
                     need_remove_op_index.append(ids)
             if op.type == "lookup_table_grad":
                 need_remove_op_index.append(ids)
             try:
-                if op.output("Out")[0] in table_name:
+                if op.output("out")[0] in table_name:
                     need_remove_op_index.append(ids)
             except:
                 pass

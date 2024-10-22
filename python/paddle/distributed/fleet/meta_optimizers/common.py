@@ -134,9 +134,9 @@ class CollectiveHelper:
                 },
             )
             block.append_op(
-                type='c_sync_calc_stream',
-                inputs={'X': sync_var},
-                outputs={'Out': sync_var},
+                type='sync_calc_stream',
+                inputs={'x': sync_var},
+                outputs={'out': sync_var},
                 attrs={OP_ROLE_KEY: OpRole.Forward},
             )
 
@@ -236,8 +236,8 @@ class CollectiveHelper:
 
         for ring_id in range(self.nrings):
             block.append_op(
-                type='c_sync_comm_stream',
-                inputs={'X': param},
-                outputs={'Out': param},
+                type='sync_comm_stream',
+                inputs={'x': param},
+                outputs={'out': param},
                 attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
             )
