@@ -31,13 +31,13 @@ def is_collective_comm_op(op):
         "all_gather",
         "all_reduce",
     ]
-    reduce_tyep = [
+    reduce_type = [
         str(dist.ReduceOp.SUM),
         str(dist.ReduceOp.MIN),
         str(dist.ReduceOp.MAX),
         str(dist.ReduceOp.PROD),
     ]
-    if op.type == "all_reduce" and op.attr("reduce_tyep") in reduce_tyep:
+    if op.type == "all_reduce" and op.attr("reduce_type") in reduce_type:
         return True
     if op.type in comm_list:
         return True

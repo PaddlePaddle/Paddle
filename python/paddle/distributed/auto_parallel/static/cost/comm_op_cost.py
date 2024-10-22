@@ -82,6 +82,38 @@ class AllreduceSumOpCost(CommOpCost):
 
         return time
 
+    @property
+    def comm_count(self):
+        from ..reshard import get_var_with_recursion
+
+        if self._comm_count is None:
+            dtype = None
+            shape = None
+            if self.op is not None:
+                vars = self.op.block.vars
+                try:
+                    var_name = self.op.input("x")[0]
+                except:
+                    var_name = self.op.output("out")[0]
+                var = get_var_with_recursion(
+                    var_name, self.op.block, self.op.block.program
+                )
+                dtype = var.dtype
+                shape = var.shape
+            elif self.op_desc is not None:
+                dtype = self.op_desc["inputs"]["x"][0][0]
+                shape = self.op_desc["inputs"]["x"][0][1]
+
+            factor = None
+            if dtype == paddle.float32 or dtype == paddle.int32:
+                factor = 4
+            else:
+                raise ValueError(f"Unsupported comm dtype {dtype}")
+            comm_count = int(np.prod(shape)) * factor
+            self._comm_count = comm_count
+
+        return self._comm_count
+
 
 @register_op_cost
 class AllgatherOpCost(CommOpCost):
