@@ -114,6 +114,21 @@ class TestSumTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.sum
         self.api_args = {
+            "x": np.random.randn(2, 4, 6).astype(np.int32),
+            "axis": [1, 1],
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 4, 6]}
+        self.max_shape = {"x": [5, 4, 6]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestSum1TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.sum
+        self.api_args = {
             "x": np.random.randn(2, 4, 6).astype(np.float32),
             "axis": [1, 1],
         }
@@ -141,6 +156,22 @@ class TestAnyTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestAny1TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.any
+        self.api_args = {
+            "x": np.random.randn(2, 3, 2).astype(np.bool_),
+            "axis": [1, 1],
+            "keepdim": False,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 2]}
+        self.max_shape = {"x": [5, 3, 2]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 class TestAllTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.all
@@ -148,6 +179,22 @@ class TestAllTRTPattern(TensorRTBaseTest):
             "x": np.random.randn(2, 3, 2).astype(np.bool_),
             "axis": [1, 1],
             "keepdim": True,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 2]}
+        self.max_shape = {"x": [5, 3, 2]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestAll1TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.all
+        self.api_args = {
+            "x": np.random.randn(2, 3, 2).astype(np.bool_),
+            "axis": [1, 1],
+            "keepdim": False,
         }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 3, 2]}

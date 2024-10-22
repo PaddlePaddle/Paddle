@@ -470,6 +470,7 @@ def add_reduce_layer(network, paddle_op, inputs, op_type):
         axes=get_axes_for_reduce_op(axis),
         keep_dims=keepdim,
     )
+    layer.get_output(0).dtype = layer.get_input(0).dtype
     return layer.get_output(0)
 
 

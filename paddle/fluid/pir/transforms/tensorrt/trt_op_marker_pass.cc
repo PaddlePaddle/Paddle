@@ -1301,16 +1301,15 @@ class ReduceCommonOpPattern : public pir::OpRewritePattern<OpType> {
         op->template attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
+
     if (!op->HasAttribute("keepdim")) {
       VLOG(3) << "the max does not have attr keep_dim ";
       return false;
     }
 
-    if constexpr (std::is_same_v<OpType, paddle::dialect::MeanOp>) {
-      if (!op->HasAttribute("axis")) {
-        VLOG(3) << "The axis attribute does not exist";
-        return false;
-      }
+    if (!op->HasAttribute("axis")) {
+      VLOG(3) << "The axis attribute does not exist";
+      return false;
     }
 
     pir::Value x = op.operand_source(0);
