@@ -1370,9 +1370,7 @@ class DownpourOptimizer(DistributedOptimizer):
                     wait_port=False,
                 )
                 if i > 0:
-                    self._remove_collective_ops(
-                        start_program, "c_comm_init_all"
-                    )
+                    self._remove_collective_ops(start_program, "comm_init_all")
             for i in range(0, len(losses)):
                 loss = losses[i]
                 embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table(

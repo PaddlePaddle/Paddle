@@ -538,7 +538,7 @@ class SingleProcessMultiThread(GradAllReduce):
             self.nranks = 1
             print("begin to _transpile_startup_program for single-node")
             block = self.startup_program.global_block()
-            block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+            block.append_op(type='comm_init_all', attrs={'ring_id': 0})
 
     def _transpile_main_program(self):
         # not need loss scale and no dense param
@@ -756,7 +756,7 @@ class MultiThread(GradAllReduce):
                 )
                 block = self.startup_program.global_block()
                 block.append_op(
-                    type='c_comm_init_all',
+                    type='comm_init_all',
                     attrs={
                         'devices': list(
                             map(
@@ -769,7 +769,7 @@ class MultiThread(GradAllReduce):
             else:
                 print("begin to _transpile_startup_program for single-node")
                 block = self.startup_program.global_block()
-                block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+                block.append_op(type='comm_init_all', attrs={'ring_id': 0})
 
     def _transpile_main_program(self):
         self._insert_scale_loss_grad_ops()

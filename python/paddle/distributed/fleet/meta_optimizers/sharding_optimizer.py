@@ -2204,4 +2204,4 @@ class ThreadShardingOptimizer(ShardingOptimizer):
                 },
             )
         else:
-            block.append_op(type='c_comm_init_all', attrs={'ring_id': ring_id})
+            block.append_op(type='comm_init_all', attrs={'ring_id': ring_id})
