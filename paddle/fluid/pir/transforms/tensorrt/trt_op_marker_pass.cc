@@ -1475,6 +1475,52 @@ class TanhOpPattern : public pir::OpRewritePattern<paddle::dialect::TanhOp> {
   }
 };
 
+class FullLikeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FullLikeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::FullLikeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::FullLikeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    bool hasAttr = op->HasAttribute("dtype");
+    auto dtype =
+        op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
+#if IS_TRT_VERSION_LT(8400)
+    if (dtype == phi::DataType::BOOL ||
+        (!hasAttr && x_dtype.isa<pir::BoolType>())) {
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+      VLOG(3) << "the fill_any_like supports input of BOOL by trt8.4 above";
+      return true;
+    }
+#endif
+    if (hasAttr && dtype != phi::DataType::FLOAT32 &&
+        dtype != phi::DataType::FLOAT64 && dtype != phi::DataType::INT32 &&
+        dtype != phi::DataType::INT64) {
+      VLOG(3)
+          << "the fill_any_like only supports int32/int64/float32/float64 by"
+             "trt8.4 below";
+      return false;
+    }
+    if (!hasAttr) {
+      if (!x_dtype.isa<pir::Float32Type>() &&
+          !x_dtype.isa<pir::Float64Type>() && !x_dtype.isa<pir::Int32Type>() &&
+          !x_dtype.isa<pir::Int64Type>()) {
+        VLOG(3) << "the fill_any_like only supports "
+                   "int32/int64/float32/float64 by"
+                   "trt8.4 below";
+        return false;
+      }
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1552,6 +1598,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
     ps.Add(std::make_unique<NearestInterV2Pattern>(context));
     ps.Add(std::make_unique<TanhOpPattern>(context));
+    ps.Add(std::make_unique<FullLikeOpPattern>(context));
     return ps;
   }
 };

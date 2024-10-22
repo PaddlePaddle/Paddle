@@ -73,3 +73,15 @@ def arange_converter(network, paddle_op, inputs):
     fill_layer.set_input(2, step)
 
     return fill_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.full_like", trt_version="8.x")
+def full_like_converter(network, paddle_op, inputs):
+    input_val = inputs[0]
+    print(input_val)
+    shape = input_val.shape
+    value = paddle_op.attrs().get("value", 1.0)
+    full_layer = network.add_constant(
+        shape, np.full(shape, value, dtype=np.float32)
+    )
+    return full_layer.get_output(0)

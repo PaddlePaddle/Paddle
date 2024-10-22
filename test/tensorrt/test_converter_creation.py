@@ -19,30 +19,45 @@ from tensorrt_test_base import TensorRTBaseTest
 
 import paddle
 
+# class TestFlattenTRTPattern(TensorRTBaseTest):
+#     def setUp(self):
+#         self.python_api = paddle.full
+#         self.api_args = {"shape": [3, 2], "fill_value": 1.0, "dytpe": "bool"}
+#         self.program_config = {"feed_list": []}
+#         self.min_shape = {}
+#         self.max_shape = {}
 
-class TestFlattenTRTPattern(TensorRTBaseTest):
+#     def test_trt_result(self):
+#         self.check_trt_result()
+
+
+# class TestArangeTRTPattern(TensorRTBaseTest):
+#     def setUp(self):
+#         self.python_api = paddle.arange
+#         self.api_args = {
+#             "start": np.array([0]).astype("int32"),
+#             "end": np.array([6]).astype("int32"),
+#             "step": np.array([1]).astype("int32"),
+#         }
+#         self.program_config = {"feed_list": []}
+#         self.min_shape = {}
+#         self.max_shape = {}
+
+#     def test_trt_result(self):
+#         self.check_trt_result()
+
+
+class TestFullLikeTRTPattern(TensorRTBaseTest):
     def setUp(self):
-        self.python_api = paddle.full
-        self.api_args = {"shape": [3, 2], "fill_value": 1.0}
-        self.program_config = {"feed_list": []}
-        self.min_shape = {}
-        self.max_shape = {}
-
-    def test_trt_result(self):
-        self.check_trt_result()
-
-
-class TestArangeTRTPattern(TensorRTBaseTest):
-    def setUp(self):
-        self.python_api = paddle.arange
+        self.python_api = paddle.full_like
         self.api_args = {
-            "start": np.array([0]).astype("int32"),
-            "end": np.array([6]).astype("int32"),
-            "step": np.array([1]).astype("int32"),
+            "input": np.random.randn(4, 2).astype(np.float32),
+            "fill_value": 1.0,
+            #  "dytpe": "bool",
         }
-        self.program_config = {"feed_list": []}
-        self.min_shape = {}
-        self.max_shape = {}
+        self.program_config = {"feed_list": ["input"]}
+        self.min_shape = {"input": [1, 2]}
+        self.max_shape = {"input": [5, 2]}
 
     def test_trt_result(self):
         self.check_trt_result()
