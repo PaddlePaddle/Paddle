@@ -210,12 +210,40 @@ class TensorRTBaseTest(unittest.TestCase):
                         max_shape_data[feed_name] = self.api_args[feed_name]
                         continue
                     else:
-                        min_shape_data[feed_name] = np.random.randn(
-                            *self.min_shape[feed_name]
-                        ).astype(self.api_args[feed_name].dtype)
-                        max_shape_data[feed_name] = np.random.randn(
-                            *self.max_shape[feed_name]
-                        ).astype(self.api_args[feed_name].dtype)
+                        # This is a special case specific to pd_op.one_hot, where the input values must not be less than 0 and must not exceed the specified num_classes.
+                        if np.issubdtype(
+                            self.api_args[feed_name].dtype, np.integer
+                        ):
+                            if feed_name == 'x':
+                                num_classes = self.api_args.get(
+                                    'num_classes', 10
+                                )
+                                min_shape_data[feed_name] = np.random.randint(
+                                    0,
+                                    num_classes,
+                                    size=self.min_shape[feed_name],
+                                    dtype=self.api_args[feed_name].dtype,
+                                )
+                                max_shape_data[feed_name] = np.random.randint(
+                                    0,
+                                    num_classes,
+                                    size=self.max_shape[feed_name],
+                                    dtype=self.api_args[feed_name].dtype,
+                                )
+                            else:
+                                min_shape_data[feed_name] = self.api_args[
+                                    feed_name
+                                ]
+                                max_shape_data[feed_name] = self.api_args[
+                                    feed_name
+                                ]
+                        else:
+                            min_shape_data[feed_name] = np.random.randn(
+                                *self.min_shape[feed_name]
+                            ).astype(self.api_args[feed_name].dtype)
+                            max_shape_data[feed_name] = np.random.randn(
+                                *self.max_shape[feed_name]
+                            ).astype(self.api_args[feed_name].dtype)
 
             scope = paddle.static.global_scope()
             main_program = warmup_shape_infer(

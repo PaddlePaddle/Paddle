@@ -38,18 +38,48 @@ class ConverterOpRegistry:
         if version_range is None:
             return True
 
-        trt_major, trt_minor = map(int, trt_version.split('.')[:2])
+        # Extract major, minor, and patch version numbers
+        trt_major, trt_minor, trt_patch = map(int, trt_version.split('.'))
+
         if version_range.startswith('trt_version_ge='):
-            min_version = float(version_range.split('=')[1])
-            return float(trt_major) + trt_minor / 10 >= min_version
+            min_version = version_range.split('=')[1]
+            min_major, min_minor, min_patch = map(int, min_version.split('.'))
+            # Compare major, minor, and patch versions
+            if trt_major > min_major:
+                return True
+            elif trt_major == min_major and trt_minor > min_minor:
+                return True
+            elif (
+                trt_major == min_major
+                and trt_minor == min_minor
+                and trt_patch >= min_patch
+            ):
+                return True
+            else:
+                return False
+
         elif version_range.startswith('trt_version_le='):
-            max_version = float(version_range.split('=')[1])
-            return float(trt_major) + trt_minor / 10 <= max_version
+            max_version = version_range.split('=')[1]
+            max_major, max_minor, max_patch = map(int, max_version.split('.'))
+            # Compare major, minor, and patch versions
+            if trt_major < max_major:
+                return True
+            elif trt_major == max_major and trt_minor < max_minor:
+                return True
+            elif (
+                trt_major == max_major
+                and trt_minor == max_minor
+                and trt_patch <= max_patch
+            ):
+                return True
+            else:
+                return False
+
         elif 'x' in version_range:
             major_version = int(version_range.split('.')[0])
             return trt_major == major_version
-        else:
-            return False
+
+        return False
 
 
 converter_registry = ConverterOpRegistry()

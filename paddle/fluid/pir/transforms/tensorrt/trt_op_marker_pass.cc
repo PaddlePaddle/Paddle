@@ -1475,6 +1475,35 @@ class TanhOpPattern : public pir::OpRewritePattern<paddle::dialect::TanhOp> {
   }
 };
 
+class OneHotOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::OneHotOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::OneHotOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::OneHotOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op.attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8510)
+    VLOG(3) << "one_hot/one_hot_v2 is not supported when TensorRT<8.5.1";
+    return false;
+    pir::Value input = op.operand_source(0);
+    auto input_type = pir::GetDataTypeFromValue(input);
+    if (!input_type.isa<pir::Float32Type>() ||
+        !input_type.isa<pir::Int32Type>() ||
+        !input_type.isa<pir::Int64Type>()) {
+      VLOG(3) << "The type of one_hot/one_hot_v2 op only support "
+                 "int32,int64,float.";
+      return false;
+    }
+#endif
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1552,6 +1581,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
     ps.Add(std::make_unique<NearestInterV2Pattern>(context));
     ps.Add(std::make_unique<TanhOpPattern>(context));
+    ps.Add(std::make_unique<OneHotOpPattern>(context));
     return ps;
   }
 };
