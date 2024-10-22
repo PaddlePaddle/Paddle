@@ -685,8 +685,7 @@ static void RunInferDtypeFunc(
       if (ctx->HasInput(in_name)) {  // general inputs
         for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
           auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
-          vec_custom_dtype.emplace_back(
-              paddle::framework::TransToPhiDataType(dtype));
+          vec_custom_dtype.emplace_back(phi::TransToPhiDataType(dtype));
         }
       } else {  // optional inputs, `vec_custom_dtype` is empty
         PADDLE_ENFORCE(
@@ -701,7 +700,7 @@ static void RunInferDtypeFunc(
     } else {
       if (ctx->HasInput(in_name)) {  // general inputs
         auto dtype = ctx->GetInputDataType(in_name);
-        input_dtypes.emplace_back(paddle::framework::TransToPhiDataType(dtype));
+        input_dtypes.emplace_back(phi::TransToPhiDataType(dtype));
       } else {  // optional inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),

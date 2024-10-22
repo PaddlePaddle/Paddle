@@ -538,8 +538,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
     } else {
       VLOG(10) << "[while op]"
                << "skip backup input " << in_name << " type:"
-               << framework::TransToPhiDataType(
-                      framework::ToVarType(var->Type()));
+               << phi::TransToPhiDataType(framework::ToVarType(var->Type()));
     }
   }
 
