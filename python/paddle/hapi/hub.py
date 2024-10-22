@@ -359,8 +359,8 @@ def load_state_dict_from_url(
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.hub.hapi.load_state_dict_from_url('https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams', "/paddle/test_zty")#下载模型文件并加载
-            >>> paddle.hapi.hub.load_state_dict_from_url(url='http://127.0.0.1:9100/download/resnet18.zip', model_dir="/paddle/test_zty")#下载ZIP模型文件，解压并加载
+            >>> paddle.hub.load_state_dict_from_url(url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams', model_dir="/paddle/test_load_from_url")
+            >>> paddle.hub.load_state_dict_from_url(url='http://127.0.0.1:9100/download/resnet18.zip', model_dir="/paddle/test_file_is_zip")
     """
     if model_dir is None:
         hub_dir = get_dir()

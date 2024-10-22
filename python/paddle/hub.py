@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .hapi.hub import help, list, load
+from .hapi.hub import help, list, load, load_state_dict_from_url
 
-__all__ = ['list', 'help', 'load']
+__all__ = ['list', 'help', 'load', 'load_state_dict_from_url']

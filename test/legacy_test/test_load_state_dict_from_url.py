@@ -20,21 +20,20 @@ from paddle.vision.models import resnet18
 class TestLoadStateDictFromUrl(unittest.TestCase):
     def setUp(self):
         self.model = resnet18(pretrained=False)
-        self.weight_path = '/paddle/test_zty/test/resnet18.pdparams'
 
     def test_load_state_dict_from_url(self):
         # Compare using load_state_dict_from_url to download and load an uncompressed weight file and a compressed weight file(ZIP)
-        weight1 = paddle.hapi.hub.load_state_dict_from_url(
+        weight1 = paddle.hub.load_state_dict_from_url(
             url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams',
             model_dir="./test/test1",
         )
-        model1 = resnet18(pretrained=False)
+        model1 = self.model
         model1.set_state_dict(weight1)
-        weight2 = paddle.hapi.hub.load_state_dict_from_url(
+        weight2 = paddle.hub.load_state_dict_from_url(
             url='https://x2paddle.bj.bcebos.com/resnet18.zip',
             model_dir="./test/test2",
         )
-        model2 = resnet18(pretrained=False)
+        model2 = self.model
         model2.set_state_dict(weight2)
         are_parameters_equal = True
         for (name1, param1), (name2, param2) in zip(
@@ -46,11 +45,11 @@ class TestLoadStateDictFromUrl(unittest.TestCase):
         assert are_parameters_equal
 
         # Test whether the model loads properly when the model_dir is empty
-        weight3 = paddle.hapi.hub.load_state_dict_from_url(
+        weight3 = paddle.hub.load_state_dict_from_url(
             url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams',
             file_name="resnet18.pdparams",
         )
-        model3 = resnet18(pretrained=False)
+        model3 = self.model
         model3.set_state_dict(weight3)
         are_parameters_equal = True
         for (name1, param1), (name2, param2) in zip(
