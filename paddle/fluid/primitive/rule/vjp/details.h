@@ -2932,19 +2932,26 @@ void argsort_grad(const Tensor& indices,
                   bool stable,
                   Tensor* x_grad) {
   if (x_grad) {
+    auto indices_cast = ConverToMT<T>(indices);
+    auto x_cast = ConverToMT<T>(x);
+    auto out_grad_cast = ConverToMT<T>(out_grad);
+
     if (axis < 0) {
-      axis += x.dims().size();
+      axis += x_cast.dims().size();
     }
     Tensor zero_tensor;
     auto x_grad_tmp = Tensor();
-    if (has_dynamic_shape(x.shape())) {
-      zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
+    if (has_dynamic_shape(x_cast.shape())) {
+      zero_tensor =
+          backend::full_with_tensor<T>(shape<T>(x_cast), 0, x_cast.dtype());
     } else {
-      zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+      zero_tensor =
+          full<T>(common::vectorize(x_cast.dims()), 0, x_cast.dtype());
     }
-    x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+    x_grad_tmp =
+        put_along_axis<T>(zero_tensor, indices_cast, out_grad_cast, axis);
 
-    set_output<T>(x_grad_tmp, x_grad);
+    set_output<T>(ConverToOrig<T>(x_grad_tmp, x.dtype()), x_grad);
   }
 }
 
