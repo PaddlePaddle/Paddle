@@ -412,6 +412,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : greater_equal
   data_transform :
@@ -500,6 +501,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : less_equal
   data_transform :
