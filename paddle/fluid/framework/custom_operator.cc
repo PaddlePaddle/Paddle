@@ -162,8 +162,6 @@ static void RunKernelFunc(
       kernel_ctx.EmplaceBackAttr(ctx.Attr<int>(attr_name));
     } else if (attr_type_str == "float") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<float>(attr_name));
-    } else if (attr_type_str == "double") {
-      kernel_ctx.EmplaceBackAttr(ctx.Attr<double>(attr_name));
     } else if (attr_type_str == "int64_t") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<int64_t>(attr_name));
     } else if (attr_type_str == "std::string") {
