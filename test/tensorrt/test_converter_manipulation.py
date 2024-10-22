@@ -351,9 +351,9 @@ class TestStackCase2TRTPattern(TensorRTBaseTest):
         self.python_api = paddle.stack
         self.api_args = {
             "x": [
-                np.array([[1.0, 2.0]]).astype("float32"),
-                np.array([[3.0, 4.0]]).astype("float32"),
-                np.array([[5.0, 6.0]]).astype("float32"),
+                np.array([[1, 2]]).astype("int32"),
+                np.array([[3, 4]]).astype("int32"),
+                np.array([[5, 6]]).astype("int32"),
             ],
             "axis": -1,
         }
