@@ -52,6 +52,14 @@ class TestHybridParallel(TestMultipleAccelerators):
             'hybrid_parallel_tensor_fusion_with_group.py'
         )
 
+    def test_group_shard_with_color(self):
+        # test shard v2
+        os.environ["FLAGS_shard_split_param"] = "1"
+        os.environ["FLAGS_shard_param_with_color"] = "1"
+        self.run_mnist_2accelerators('hybrid_parallel_sharding_model.py')
+        # reset
+        os.environ["FLAGS_shard_param_with_color"] = "0"
+
 
 if __name__ == "__main__":
     unittest.main()
