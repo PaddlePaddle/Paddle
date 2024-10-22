@@ -1475,6 +1475,25 @@ class TanhOpPattern : public pir::OpRewritePattern<paddle::dialect::TanhOp> {
   }
 };
 
+class WherePattern : public pir::OpRewritePattern<paddle::dialect::WhereOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::WhereOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::WhereOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op.attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3) << "where is not supported when TensorRT < 8.4";
+      return false;
+#endif
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1552,6 +1571,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
     ps.Add(std::make_unique<NearestInterV2Pattern>(context));
     ps.Add(std::make_unique<TanhOpPattern>(context));
+    ps.Add(std::make_unique<WherePattern>(context));
     return ps;
   }
 };
