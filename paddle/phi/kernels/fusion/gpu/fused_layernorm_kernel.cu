@@ -264,7 +264,7 @@ struct DirectStore {
 
 template <typename T>
 inline __device__ void WelfordCombine(T val, T* mean, T* m2, T* count) {
-  // Use Welford Online algorithem to compute mean and variance
+  // Use Welford Online algorithm to compute mean and variance
   // For more details you can refer to:
   // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
   *count += 1;
@@ -1226,6 +1226,8 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
@@ -1237,6 +1239,8 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    phi::fusion::FusedLayerNormKernel,
                    float,
                    phi::dtype::float16) {
+  kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
@@ -1249,6 +1253,8 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    phi::fusion::FusedLayerNormKernel,
                    float,
                    phi::dtype::float16) {
+  kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);

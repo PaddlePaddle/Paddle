@@ -198,6 +198,8 @@ add_library(phi ${PHI_BUILD_TYPE} ${PHI_DUMMY_FILE})
 target_link_libraries(phi phi_core)
 if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(phi phi_gpu)
+  target_link_libraries(phi_gpu ${ROCM_HIPRTC_LIB})
+  target_link_libraries(phi_core ${ROCM_HIPRTC_LIB})
 endif()
 
 # Note(silverling): some functions in phi_core depend on phi_gpu,

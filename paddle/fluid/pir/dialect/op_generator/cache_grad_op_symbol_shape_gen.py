@@ -271,7 +271,7 @@ class CacheGradOpSymbolShapeCodeGen:
 
 def ParseArguments():
     parser = argparse.ArgumentParser(
-        description='Generate Cache GradOp Symbol Shape Inferface Files By Yaml'
+        description='Generate Cache GradOp Symbol Shape Interface Files By Yaml'
     )
     parser.add_argument('--op_yaml_files', type=str)
     parser.add_argument('--op_compat_yaml_file', type=str)

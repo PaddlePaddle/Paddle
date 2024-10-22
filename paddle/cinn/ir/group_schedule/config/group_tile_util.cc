@@ -34,7 +34,6 @@ bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
   // A tensor is downstream of reduce either if it is produced by a reduce, or
   // if it has data dependency on another tensor that is downstream of reduce.
   std::unordered_set<std::string> reduce_downstream_tensor_names;
-  int reduce_count = 0;
 
   const auto IsReduceDownstream = [&](const ir::Expr& expr_block) {
     for (auto& expr_load : ChildTensorLoads(expr_block)) {
@@ -90,9 +89,6 @@ bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
     bool is_reduce_downstream = IsReduceDownstream(expr_block);
     bool output_has_reduce_axis = CheckOutputHasReduceAxis(body, expr_block);
 
-    if (is_reduce) {
-      ++reduce_count;
-    }
     if (is_reduce_downstream || is_reduce) {
       AddReduceDownstream(expr_block);
     }
@@ -105,8 +101,7 @@ bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
       return false;
     }
   }
-
-  return reduce_count == 1;
+  return true;
 }
 
 }  // namespace ir

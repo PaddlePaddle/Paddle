@@ -445,7 +445,7 @@ void ConvCudnnGradKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(exhaustive_deterministic,
                     false,
                     common::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -853,7 +853,7 @@ void ConvCudnnGradGradKernel(
   PADDLE_ENFORCE_EQ(exhaustive_deterministic,
                     false,
                     common::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
   std::vector<int> paddings = paddings_t;
