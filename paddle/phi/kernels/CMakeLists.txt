@@ -242,7 +242,8 @@ if(WITH_ROCM)
     "gpu/put_along_axis_grad_kernel.cu"
     "gpu/put_along_axis_kernel.cu"
     "gpu/qr_kernel.cu"
-    "gpu/svd_kernel.cu")
+    "gpu/svd_kernel.cu"
+    "gpu/cuda_gemm_kernel.cu")
 endif()
 
 set(cc_search_pattern
