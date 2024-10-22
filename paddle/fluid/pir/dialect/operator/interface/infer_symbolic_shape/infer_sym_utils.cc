@@ -264,11 +264,11 @@ bool IsFakeValue(const pir::Value &value) {
 std::vector<symbol::DimExpr> GetVecFromIntArray(
     const pir::Operation *op,
     pir::InferSymbolicShapeContext *infer_context,
-    const std::string &input_name,
+    const std::string &attr_name,
     const int &index) {
-  if (op->HasAttribute(input_name)) {
+  if (op->HasAttribute(attr_name)) {
     std::vector<int> int_operand =
-        paddle::dialect::details::GetVectorAttr<int>(op, input_name);
+        paddle::dialect::details::GetVectorAttr<int>(op, attr_name);
     std::vector<symbol::DimExpr> result;
     for (const auto &i : int_operand) {
       result.emplace_back(symbol::DimExpr{i});
@@ -282,10 +282,10 @@ std::vector<symbol::DimExpr> GetVecFromIntArray(
                                        : shapeordata.shape();
     return result;
   } else {
-    PADDLE_THROW(::common::errors::InvalidArgument(
-        "Don't support get vector from int array, input name is %s"));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The IntArray is not from attribute or operand, please check input %s",
+        attr_name));
   }
-  return std::vector<symbol::DimExpr>{};
 }
 
 bool GetAxisFromOpInput(pir::Value in_value,
