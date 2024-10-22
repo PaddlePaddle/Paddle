@@ -259,6 +259,10 @@ def is_paddle_func(func, ignore_white_list=True):
     try:
         if isinstance(func, paddle.nn.Layer):
             func = func.forward
+        if isinstance(
+            func, paddle.jit.dy2static.program_translator.StaticFunction
+        ):
+            func = func.dygraph_function
         if isinstance(func, functools.partial):
             func = func.func
         if inspect.ismethod(func):
