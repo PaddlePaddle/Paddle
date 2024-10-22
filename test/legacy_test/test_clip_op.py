@@ -118,14 +118,6 @@ class TestCase5(TestClipOp):
         self.min = 0.5
 
 
-class TestCase6(TestClipOp):
-    def initTestCase(self):
-        self.dtype = np.float32
-        self.shape = (4, 8, 16)
-        self.max = paddle.to_tensor([0.5])
-        self.min = paddle.to_tensor([0.5])
-
-
 class TestFP16Case1(TestClipOp):
     def initTestCase(self):
         self.dtype = np.float16
