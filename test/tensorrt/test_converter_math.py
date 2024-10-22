@@ -95,12 +95,31 @@ class TestAddTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-class TestRemainderTRTPattern(TensorRTBaseTest):
+class TestRemainderFloatTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.remainder
         self.api_args = {
             "x": np.random.randn(2, 3).astype(np.float32),
-            "y": np.random.randn(2, 3).astype(np.float32),
+            "y": np.random.uniform(low=0.1, high=1, size=(2, 3)).astype(
+                np.float32
+            ),  # Ensure y is non-zero
+        }
+        self.program_config = {"feed_list": ["x", "y"]}
+        self.min_shape = {"x": [1, 3], "y": [1, 3]}
+        self.max_shape = {"x": [5, 3], "y": [5, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestRemainderIntTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.remainder
+        self.api_args = {
+            "x": np.random.randint(1, 10, size=(2, 3)).astype(np.int32),
+            "y": np.random.randint(1, 10, size=(2, 3)).astype(
+                np.int32
+            ),  # Ensure y is non-zero
         }
         self.program_config = {"feed_list": ["x", "y"]}
         self.min_shape = {"x": [1, 3], "y": [1, 3]}
