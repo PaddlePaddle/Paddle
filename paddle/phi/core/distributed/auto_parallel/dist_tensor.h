@@ -147,10 +147,9 @@ class DistTensor final
   /// \return The global dims of the dist tensor.
   const DDim& local_dims() const;
 
-  /// \brief Test whether the storage is ready.
-  ///   (For 0-size tensor, storage is always ready)
-  /// \return Whether the storage is ready.
-  bool ready() const override;
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const override;
 
   /// \brief Returns the global number of elements contained in tensor.
   /// \return The number of elements contained in tensor.

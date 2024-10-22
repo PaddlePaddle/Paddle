@@ -74,7 +74,7 @@ class IrSelectedRows
 
   bool valid() const noexcept override { return true; }
 
-  bool ready() const override { return true; }
+  bool has_allocation() const override { return true; }
 
   bool initialized() const override { return true; }
 

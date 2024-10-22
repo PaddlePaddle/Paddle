@@ -130,7 +130,7 @@ class VariableCompatTensor
 
   bool valid() const override { return IsInitialized(); }
 
-  bool ready() const override { return IsInitialized(); }
+  bool has_allocation() const override { return IsInitialized(); }
 
   bool initialized() const override { return IsInitialized(); }
 

@@ -131,9 +131,7 @@ class TEST_API DenseTensor : public TensorBase,
   /// \brief Test whether the storage is ready.
   ///   (For 0-size tensor, storage is always ready)
   /// \return Whether the storage is ready.
-  bool ready() const override {
-    return holder_ && (holder_->ptr() || numel() == 0);
-  }
+  bool has_allocation() const override { return holder_ != nullptr; }
 
   /// \brief Allocate memory with requested size from allocator.
   /// \return The mutable data pointer value of type T.

@@ -273,7 +273,7 @@ bool DistTensor::valid() const {
 
 bool DistTensor::defined() const { return value_->holder_ != nullptr; }
 
-bool DistTensor::ready() const {
+bool DistTensor::has_allocation() const {
   return value_->holder_ != nullptr && (value_->holder_->ptr() || numel() != 0);
 }
 

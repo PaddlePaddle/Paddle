@@ -179,10 +179,9 @@ class SelectedRowsImpl {
   /// \return Whether the metadata is valid.
   bool valid() const noexcept { return value_->valid(); }
 
-  /// \brief Test whether the storage is ready.
-  ///   (For 0-size tensor, storage is always ready)
-  /// \return Whether the storage is ready.
-  bool ready() const { return value_->ready(); }
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const { return value_->has_allocation(); }
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
