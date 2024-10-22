@@ -146,7 +146,8 @@ class FileReader : public ReaderBase {
 
 // The ReaderHolder is used as reader' unified wrapper,
 // making it easier to access different type reader in Variables.
-class ReaderHolder {
+class ReaderHolder : public phi::ExtendedTensor,
+                     public phi::TypeInfoTraits<phi::TensorBase, ReaderHolder> {
  public:
   template <typename T>
   void Reset(const std::shared_ptr<T>& reader) {
@@ -159,6 +160,10 @@ class ReaderHolder {
   }
 
   ~ReaderHolder() {}
+
+  /// \brief Returns the name of the class for type traits.
+  /// \return The name of the class.
+  static const char* name() { return "ReaderHolder"; }
 
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
