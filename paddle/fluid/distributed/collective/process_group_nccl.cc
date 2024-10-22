@@ -36,6 +36,7 @@ COMMON_DECLARE_bool(nccl_blocking_wait);
 COMMON_DECLARE_bool(use_stream_safe_cuda_allocator);
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(enable_async_trace);
+COMMON_DECLARE_bool(eager_communication_connection);
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
@@ -150,6 +151,9 @@ ProcessGroupNCCL::ProcessGroupNCCL(
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
             << nccl_comm_init_option_;
+  if (FLAGS_eager_communication_connection) {
+    EagerConnect();
+  }
 }
 ProcessGroupNCCL::~ProcessGroupNCCL() {
   LOG(INFO) << "ProcessGroupNCCL destruct ";
@@ -829,6 +833,59 @@ void ProcessGroupNCCL::SyncCalcStream(const Place& place,
   const auto* comm_ctx = place_to_comm_ctx_.at(place_key).get();
   calc_event.Record(calc_ctx);
   calc_event.Wait(platform::Place2DeviceType(place), comm_ctx);
+}
+
+void ProcessGroupNCCL::EagerConnect() {
+  const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
+  const auto& place = phi::GPUPlace(deviceId);
+  const auto key = GetKeyFromPlace(place);
+
+  platform::CUDADeviceGuard cuda_guard(place);
+  std::string store_key;
+  GetStoreKey(key, CommType::ALLREDUCE, &store_key);
+
+  auto it = place_to_comm_ctx_.find(key);
+  if (it == place_to_comm_ctx_.end()) {
+    CreateNCCLEnvCache(place, key, store_key, CommType::ALLREDUCE);
+  }
+}
+
+void ProcessGroupNCCL::EagerConnectRingExchange() {
+  std::vector<std::pair<int, int>> peers;
+  const auto& place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+
+  for (int rank = 0; rank < size_; rank++) {
+    auto peer_rank = rank + 1 >= size_ ? 0 : rank + 1;
+    peers.push_back(std::make_pair(rank, peer_rank));
+  }
+
+  for (auto& peer : peers) {
+    int f_rank = peer.first;
+    int s_rank = peer.second;
+
+    int peer_rank = 0;
+    int cur_rank = rank_;
+    if (rank_ == f_rank) {
+      peer_rank = s_rank;
+    } else if (rank_ == s_rank) {
+      peer_rank = f_rank;
+    } else {
+      continue;
+    }
+
+    int low_rank = cur_rank < peer_rank ? cur_rank : peer_rank;
+    int high_rank = cur_rank < peer_rank ? peer_rank : cur_rank;
+    std::string key =
+        std::to_string(low_rank) + "->" + std::to_string(high_rank);
+
+    auto p2p_rank = rank_ < peer_rank ? 0 : 1;
+    platform::CUDADeviceGuard cuda_guard(place);
+    std::string store_key;
+    GetStoreKey(key, CommType::SEND, &store_key);
+    if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+      CreateNCCLEnvCache(place, key, store_key, CommType::SEND, p2p_rank);
+    }
+  }
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(

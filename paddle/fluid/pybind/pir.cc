@@ -852,6 +852,12 @@ void BindOperation(py::module *m) {
              self.set_attribute(
                  attr_name, StrAttribute::get(pir::IrContext::Instance(), val));
            })
+      .def("set_int_attr",
+           [](Operation &self, std::string &attr_name, const int64_t &val) {
+             self.set_attribute(
+                 attr_name,
+                 pir::Int64Attribute::get(pir::IrContext::Instance(), val));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -2126,6 +2132,9 @@ void BindUtils(pybind11::module *m) {
          []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
          []() { ApiBuilder::Instance().ResetInsertionPointToEnd(); });
+  m->def("set_op_role",
+         [](int op_role) { ApiBuilder::Instance().SetOpRole(op_role); });
+  m->def("get_op_role", []() { return ApiBuilder::Instance().GetOpRole(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();

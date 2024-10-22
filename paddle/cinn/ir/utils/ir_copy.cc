@@ -474,7 +474,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     return IterSplit::Make(source, lower_factor, extent, scale);
   }
   Expr Visit(const ir::IterSum* op) override {
-    std::vector<Expr> args;
+    std::vector<IndexExpr> args;
     for (const auto& v : op->args) {
       args.push_back(Visit(&v));
     }

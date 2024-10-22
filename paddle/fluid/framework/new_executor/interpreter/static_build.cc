@@ -18,10 +18,10 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/operators/reader/buffered_reader.h"
+#include "paddle/phi/core/framework/reader.h"
+#include "paddle/phi/core/operators/reader/buffered_reader.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -187,8 +187,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
 
 inline bool IsExtendedTensor(const phi::TensorBase& tensor) {
   return framework::RawTensor::classof(&tensor) ||
-         framework::Strings::classof(&tensor) ||
-         framework::Vocab::classof(&tensor);
+         phi::Strings::classof(&tensor) || phi::Vocab::classof(&tensor);
 }
 
 bool TensorShouldBeFakeInitialized(const OperatorBase& op,
@@ -280,8 +279,8 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
       return var->template GetMutable<phi::SparseCooTensor>();
     } else if (var->template IsType<phi::TensorArray>()) {
       return var->template GetMutable<phi::TensorArray>();
-    } else if (var->template IsType<framework::Strings>()) {
-      return var->template GetMutable<framework::Strings>();
+    } else if (var->template IsType<phi::Strings>()) {
+      return var->template GetMutable<phi::Strings>();
     } else if (var->template IsType<paddle::framework::RawTensor>() ||
                !var->IsInitialized()) {
       return var->template GetMutable<paddle::framework::RawTensor>();

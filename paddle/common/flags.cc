@@ -1319,6 +1319,10 @@ PHI_DEFINE_EXPORTED_bool(
     "Default cuda is asynchronous device, set to True will"
     "force op run in synchronous mode.");
 
+PHI_DEFINE_EXPORTED_bool(eager_communication_connection,
+                         false,
+                         "enable eager to create nccl comm");
+
 /**
  * Autotune related FLAG
  * Name: FLAGS_use_autotune
@@ -1368,6 +1372,39 @@ PHI_DEFINE_EXPORTED_bool(enable_fuse_parallel_matmul_pass,
 PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
                          false,
                          "Whether enable fallback fusion ops in cinn.");
+
+/**
+ * CINN TransposeItesr transform fusion FLAG
+ * Name: FLAGS_enable_transpose_iters_in_fusion
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_transpose_iters_in_fusion,
+    true,
+    "Whether enable use transpose iters transform in cinn fusion.");
+
+/**
+ * CINN ReuseIters transform fusion FLAG
+ * Name: FLAGS_enable_reuse_iters_in_fusion
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_reuse_iters_in_fusion,
+    true,
+    "Whether enable use reuse iters transform in cinn fusion.");
+
+/**
+ * CINN AppendIters transform fusion FLAG
+ * Name: FLAGS_enable_append_iters_in_fusion
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_append_iters_in_fusion,
+    true,
+    "Whether enable use append iters transform in cinn fusion.");
 
 /**
  * Conv Search cache max number related FLAG

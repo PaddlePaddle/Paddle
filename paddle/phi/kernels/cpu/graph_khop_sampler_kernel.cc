@@ -371,7 +371,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
       src_merge.size(),
       num_sample_edges,
       common::errors::PreconditionNotMet(
-          "Number of sample edges dismatch, the sample kernel has error."));
+          "Number of sample edges mismatch, the sample kernel has error."));
 
   // 6. Reindex edges.
   std::unordered_map<T, T> node_map;

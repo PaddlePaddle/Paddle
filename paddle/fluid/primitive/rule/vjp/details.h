@@ -475,6 +475,20 @@ void scatter_grad(const Tensor& index,
   if (updates_grad) {
     Scalar tmp_zero = 0;
     auto tmp_updates_grad = gather<T>(out_grad, index, tmp_zero);
+
+    // NOTE: len(index) can be smaller than len(updates) when updates is not a
+    // scalar
+    auto updates_dims = common::vectorize(updates.dims());
+    auto index_dims = common::vectorize(index.dims());
+    if (updates_dims.size() > 0 && updates_dims[0] > index_dims[0]) {
+      // Pad zeros to the end of tmp_updates_grad to make its shape the same as
+      // updates.
+      decltype(updates_dims) padding_dims = updates_dims;
+      padding_dims[0] = updates_dims[0] - index_dims[0];
+      auto padding_zeros = full<T>(padding_dims, 0, updates.dtype());
+      tmp_updates_grad =
+          concat<T>({tmp_updates_grad, std::move(padding_zeros)}, 0);
+    }
     set_output<T>(tmp_updates_grad, updates_grad);
   }
 }
@@ -1282,9 +1296,14 @@ void gather_grad(const Tensor& x,
 
   // change axis to rank 0
   int axis_value = axis.to<int>();
+  int rank = x.dims().size();
+  if (axis_value < 0) {
+    axis_value += rank;
+  }
+
   tmp_perm.push_back(axis_value);
   // make other ranks
-  for (int i = 0; i < x.dims().size(); ++i) {
+  for (int i = 0; i < rank; ++i) {
     if (i != axis_value) {
       tmp_perm.push_back(i);
     }
@@ -1622,20 +1641,55 @@ void tile_grad(const Tensor& x,
                const IntArray& repeat_times,
                Tensor* x_grad) {
   if (x_grad) {
-    auto repeat_times_data = repeat_times.GetData();
-    auto out_grad_shape = common::vectorize<int>(out_grad.dims());
-    auto result = out_grad;
-    for (int i = 0; i < static_cast<int>(repeat_times_data.size()); i++) {
-      int size = out_grad_shape[i] / repeat_times_data[i];
-      std::vector<int> sections(repeat_times_data[i], size);
-      auto split_arr = split<T>(result, IntArray(sections), i);
-      result = full<T>(common::vectorize(split_arr[0].dims()), 0.0, x.dtype());
-      for (int j = 0; j < static_cast<int>(split_arr.size()); j++) {
-        result = split_arr[j] + result;
+    std::vector<int64_t> repeat_times_data = repeat_times.GetData();
+    std::vector<int64_t> out_grad_shape(out_grad.shape());
+    Tensor out_grad_tmp = out_grad;
+
+    if (repeat_times_data.size() != 0) {
+      while (true) {
+        std::vector<int64_t> expand_shape(out_grad_tmp.shape());
+
+        int num_reduce = 0;
+        // By definition, out_grad_shape.size() is guaranteed to be greater than
+        // or equal to repeat_times.size(). Paddle only supports up to 9
+        // dimensions.
+        while (repeat_times_data.size() != 0 && expand_shape.size() <= 8) {
+          // We construct the reduction from the backward direction, as the
+          // repeats are aligned with the output from right to left.
+          int64_t repeat = repeat_times_data.back();
+          int64_t orig_size = out_grad_shape.back() / repeat;
+          size_t out_grad_last_index = out_grad_shape.size() - 1;
+
+          // Reshape the corresponding dimension to be `repeat` multiplied by
+          // `orig_size`.
+          expand_shape[out_grad_last_index] = repeat;
+          expand_shape.insert(
+              expand_shape.begin() + out_grad_shape.size(), 1, orig_size);
+
+          repeat_times_data.pop_back();
+          out_grad_shape.pop_back();
+          ++num_reduce;
+        }
+
+        // Find the reduce_axes, which are determined from the forward
+        // direction. Since there can be some axes that haven't been reduced, we
+        // simply skip them this round.
+        int64_t axis = static_cast<int64_t>(out_grad_shape.size());
+        std::vector<int64_t> reduce_axes;
+        for (int i = 0; i < num_reduce; ++i) {
+          reduce_axes.push_back(axis);
+          axis += 2;
+        }
+        out_grad_tmp = reshape<T>(out_grad_tmp, expand_shape);
+        out_grad_tmp = sum<T>(out_grad_tmp, reduce_axes);
+
+        if (repeat_times_data.size() == 0) {
+          break;
+        }
       }
     }
-    result = reshape<T>(result, x.shape());
-    set_output<T>(result, x_grad);
+
+    set_output<T>(reshape<T>(out_grad_tmp, x.shape()), x_grad);
   }
 }
 
@@ -1685,7 +1739,7 @@ void topk_grad(const Tensor& x,
                const Tensor& indices,
                const Tensor& out_grad,
                const Scalar& k,
-               const int& axis,
+               int axis,
                const bool& largest,
                const bool& sorted,
                Tensor* x_grad) {
@@ -1695,6 +1749,12 @@ void topk_grad(const Tensor& x,
       by_pass<T>(out_grad, x_grad);
       return;
     }
+
+    // function `put_along_axis` requires a non-negative axis
+    if (axis < 0) {
+      axis += x.dims().size();
+    }
+
     Tensor zero_tensor;
     if (has_dynamic_shape(x.shape())) {
       zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
@@ -2200,9 +2260,11 @@ void group_norm_grad(const Tensor& x,
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
   std::vector<int64_t> x_dims = x.shape();
   int rank = x_dims.size();
-  if (rank < 3 || rank > 5) {
+  if (rank < 3) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Only support NCHW and NHWC format in rank {3, 4, 5}."));
+        "Only support NCHW and NHWC format in rank higher or equal to 3. "
+        "Current rank: %zu",
+        rank));
   }
   int N = x_dims[0];
   int C;
@@ -2433,12 +2495,14 @@ void put_along_axis_grad(const Tensor& x,
     if (include_self == false || reduce == "assign") {
       Tensor zero_tensor = full<T>(index.shape(), 0, out_grad.dtype());
       x_grad_tmp = put_along_axis<T>(out_grad, index, zero_tensor, axis);
+      set_output<T>(x_grad_tmp, x_grad);
     } else if (reduce == "multiply" || reduce == "mul") {
       Tensor zero_tensor_x = full<T>(x.shape(), 0, x.dtype());
       Tensor one_tensor_idx = full<T>(index.shape(), 1, x.dtype());
       Tensor mask =
           put_along_axis<T>(zero_tensor_x, index, one_tensor_idx, axis);
       x_grad_tmp = where<T>(mask > zero_tensor_x, out_grad * out / x, out_grad);
+      set_output<T>(x_grad_tmp, x_grad);
     } else if (reduce == "amin" || reduce == "amax") {
       Tensor zero_tensor = full<T>(x.shape(), 0, x.dtype());
       Tensor one_tensor = full<T>(x.shape(), 1, x.dtype());
@@ -2455,6 +2519,7 @@ void put_along_axis_grad(const Tensor& x,
         num = num + put_along_axis<T>(zero_tensor, sub_index, sub_count, axis);
       }
       x_grad_tmp = zero_result * out_grad / (num + 1);
+      set_output<T>(x_grad_tmp, x_grad);
     } else if (reduce == "mean") {
       Tensor zero_tensor_x = full<T>(x.shape(), 0, x.dtype());
 
@@ -2468,9 +2533,12 @@ void put_along_axis_grad(const Tensor& x,
       }
       x_grad_tmp =
           where<T>(num > zero_tensor_x, out_grad / (num + 1), out_grad);
+      set_output<T>(x_grad_tmp, x_grad);
+    } else if (reduce == "add") {
+      by_pass<T>(out_grad, x_grad);
     }
-    set_output<T>(x_grad_tmp, x_grad);
   }
+
   if (value_grad) {
     Tensor value_grad_tmp = full<T>(index.shape(), 0, x.dtype());
     if (reduce == "assign") {

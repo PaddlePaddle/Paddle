@@ -19,8 +19,8 @@
 #include <unordered_set>
 
 #include "paddle/common/errors.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 #if SOT_IS_SUPPORTED
 

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
+#include "paddle/phi/core/operators/reader/py_reader.h"
 
 namespace paddle {
 namespace operators {

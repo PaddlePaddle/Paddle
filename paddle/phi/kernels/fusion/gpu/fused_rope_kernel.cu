@@ -217,7 +217,7 @@ void FusedRopeKernel(const Context& dev_ctx,
             "The MQA or GQA mode is entered, when the number of heads of qkv "
             "is not exactly the same two by two. This mode requires "
             "num_heads of q to be divisible by k,v."
-            "But recieved num_heads of q is %d, num_heads of k,v is %d",
+            "But received num_heads of q is %d, num_heads of k,v is %d",
             inputs_num_heads[0],
             inputs_num_heads[num_inputs - 1]));
 
@@ -228,7 +228,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           common::errors::InvalidArgument(
               "The num_heads of k must be equal to the num_heads of v when v "
               "is not none."
-              "But recieved num_heads of k is %d, num_heads of v is %d",
+              "But received num_heads of k is %d, num_heads of v is %d",
               inputs_num_heads[1],
               inputs_num_heads[2]));
     }

@@ -63,19 +63,19 @@ bool InferSymbolicShapeElementWiseBinary(
         x_shape.shape().size(),
         1,
         common::errors::InvalidArgument("When compute data, the rank of x "
-                                        "should be 0 or 1, but now recevied %d",
+                                        "should be 0 or 1, but now received %d",
                                         x_shape.shape().size()));
     PADDLE_ENFORCE_LE(
         y_shape.shape().size(),
         1,
         common::errors::InvalidArgument("When compute data, the rank of y "
-                                        "should be 0 or 1, but now recevied %d",
+                                        "should be 0 or 1, but now received %d",
                                         y_shape.shape().size()));
     PADDLE_ENFORCE_EQ(x_shape.data()->size(),
                       y_shape.data()->size(),
                       common::errors::InvalidArgument(
                           "When compute data, the size of x and y should be "
-                          "equal, but now recevied %d and %d",
+                          "equal, but now received %d and %d",
                           x_shape.data()->size(),
                           y_shape.data()->size()));
     std::vector<symbol::DimExpr> out_data;
