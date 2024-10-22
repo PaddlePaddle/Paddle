@@ -852,6 +852,12 @@ void BindOperation(py::module *m) {
              self.set_attribute(
                  attr_name, StrAttribute::get(pir::IrContext::Instance(), val));
            })
+      .def("set_int_attr",
+           [](Operation &self, std::string &attr_name, const int64_t &val) {
+             self.set_attribute(
+                 attr_name,
+                 pir::Int64Attribute::get(pir::IrContext::Instance(), val));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -1856,7 +1862,9 @@ SplitedResult SplitForwardBackward(
                              backward_range);
 
   pir::Block &backward_block = *backward_program->block();
-  bool has_backward = (backward_range[1] > backward_range[0]);
+  bool has_backward = forward_inputs_grads.size() > 0 ||
+                      forward_params_grads.size() > 0 ||
+                      forward_outputs_grads.size() > 0;
 
   // forward program construct.
   VLOG(4) << "start create forward program.";

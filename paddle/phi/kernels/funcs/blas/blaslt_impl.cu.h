@@ -323,35 +323,6 @@ struct MatmulDescriptor {
     }
   }
 
-  std::string GetDescResultString(std::string prefix,
-                                  bool has_algo = true) const {
-    std::ostringstream out;
-    out << prefix << " \n";
-#define GET_DESC_DATA_STRING(src)                    \
-  do {                                               \
-    out << "  " << #src << " = [";                   \
-    int num = sizeof((*src)) / sizeof(src->data[0]); \
-    for (int i = 0; i < num; ++i) {                  \
-      if (i == 0) {                                  \
-        out << src->data[i];                         \
-      } else {                                       \
-        out << ", " << src->data[i];                 \
-      }                                              \
-    }                                                \
-    out << "]\n";                                    \
-  } while (0);
-
-    if (has_algo) {
-      GET_DESC_DATA_STRING(algo);
-    }
-    GET_DESC_DATA_STRING(x_desc);
-    GET_DESC_DATA_STRING(y_desc);
-    GET_DESC_DATA_STRING(out_desc);
-    GET_DESC_DATA_STRING(op_desc);
-#undef GET_DESC_DATA_STRING
-    return out.str();
-  }
-
   void ExchangeXYDesc(bool no_exchange) {}
 
  protected:
@@ -512,15 +483,14 @@ struct CublasLtBase {
                        workspace->ptr(),
                        workspace_size);
         MatmulDescT* best_desc = new MatmulDescT(*desc);
-        VLOG(6) << best_desc->GetDescResultString(
-            "[Searched CublasltDescriptor] ");
+        VLOG(6) << "[Searched CublasltDescriptor] ";
 
         auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
       }
     }
 
-    VLOG(7) << desc->GetDescResultString("[Impl CublasltDescriptor] ");
+    VLOG(7) << "[Impl CublasltDescriptor] ";
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmul(cublaslt_handle,
                                 desc->op_desc,
@@ -706,8 +676,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                            workspace /*output parameter*/,
                            workspace_size /*output parameter*/);
       MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
-      VLOG(6) << best_desc->GetDescResultString(
-          "[Searched CublasltDescriptor] ");
+      VLOG(6) << "[Searched CublasltDescriptor] ";
 
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
       cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
@@ -726,15 +695,14 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                        workspace->ptr(),
                        workspace_size);
         MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
-        VLOG(6) << best_desc->GetDescResultString(
-            "[Searched CublasltDescriptor] ");
+        VLOG(6) << "[Searched CublasltDescriptor] ";
 
         auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
       }
     }
 
-    VLOG(7) << desc->GetDescResultString("[Impl CublasltDescriptor] ");
+    VLOG(7) << "[Impl CublasltDescriptor] ";
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmul(cublaslt_handle,
                                 desc->op_desc,
@@ -1040,11 +1008,16 @@ struct DescriptorSetter {
       sub_key = planner->GenSubKey();
     }
 
-    auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-    if (matmul_cache.FindSubKey(sub_key)) {
+    bool has_cache = false;
+    if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
+      auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+      has_cache = matmul_cache.FindSubKey(sub_key);
+    }
+    if (has_cache) {
+      auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
       desc = *(reinterpret_cast<DescT*>(matmul_cache.GetSubKey(sub_key)));
       desc.template SetFusedEpiloguePtr<DYT>(planner);
-      VLOG(7) << desc.GetDescResultString("[Heap CublasltDescriptor] ");
+      VLOG(7) << "[Heap CublasltDescriptor] ";
     } else {
       desc.template Create<T, DXT, DYT, TransX, TransY>(M,
                                                         N,
@@ -1061,7 +1034,7 @@ struct DescriptorSetter {
       if (planner != nullptr) {
         desc.template SetFusedEpiloguePtr<DYT>(planner);
       }
-      VLOG(7) << desc.GetDescResultString("[Stack CublasltDescriptor] ", false);
+      VLOG(7) << "[Stack CublasltDescriptor] ";
     }
   }
 };

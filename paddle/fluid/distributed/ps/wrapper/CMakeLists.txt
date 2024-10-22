@@ -5,8 +5,7 @@ set_source_files_properties(fleet.cc PROPERTIES COMPILE_FLAGS
 cc_library(
   fleet
   SRCS fleet.cc
-  DEPS framework_proto
-       ps_framework_proto
+  DEPS ps_framework_proto
        ps_service
        variable_helper
        scope

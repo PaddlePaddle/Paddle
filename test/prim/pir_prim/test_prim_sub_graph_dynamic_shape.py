@@ -246,10 +246,6 @@ def softsign_net(x):
     return paddle.nn.functional.softsign(x)
 
 
-def floor_divide_net(x, y):
-    return paddle.floor_divide(x, y)
-
-
 def gelu_net(x):
     return paddle.nn.functional.gelu(x)
 
@@ -332,6 +328,14 @@ def unstack_net5(x):
 
 def unstack_net6(x):
     return paddle.unstack(x, axis=-1)
+
+
+def numel_net(x):
+    return paddle.numel(x)
+
+
+def swish_net(x):
+    return paddle.nn.functional.swish(x)
 
 
 def one_hot_net(x):
@@ -1324,28 +1328,6 @@ class TestPrimSoftsign(TestPrimBase):
         self.tol = 1e-6
 
 
-class TestPrimFloorDivide(TestPrimTwo):
-    def setUp(self):
-        np.random.seed(2024)
-        paddle.seed(2024)
-        self.shape_x = [300, 2048]
-        self.shape_y = [300, 2048]
-        self.dtype_x = int
-        self.dtype_y = int
-        self.init_x_shape = [None, None]
-        self.init_y_shape = [None, None]
-        self.x = np.random.uniform(
-            low=1.0, high=100.0, size=self.shape_x
-        ).astype(self.dtype_x)
-        self.y = np.random.uniform(
-            low=1.0, high=100.0, size=self.shape_x
-        ).astype(self.dtype_x)
-        self.net = floor_divide_net
-        self.necessary_ops = "pd_op.floor_divide"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
 class TestPrimGelu(TestPrimBase):
     def setUp(self):
         np.random.seed(2024)
@@ -1664,6 +1646,34 @@ class TestPrimUnstack6(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = unstack_net6
         self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimNumel(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [5, 10, 15]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = numel_net
+        self.necessary_ops = "pd_op.numel"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSwish(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = swish_net
+        self.necessary_ops = "pd_op.swish"
         self.enable_cinn = False
         self.tol = 1e-6
 

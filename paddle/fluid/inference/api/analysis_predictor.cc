@@ -100,7 +100,7 @@
 #endif
 
 #ifdef PADDLE_WITH_NVTX
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_CINN
@@ -115,6 +115,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include "paddle/fluid/pir/transforms/general/auto_mixed_precision_pass.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
@@ -834,6 +835,24 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       return pass_manager;
     };
 
+    if (config_.use_gpu() && config_.cinn_enabled()) {
+      if (!config_.custom_pass_only_) {
+        ::pir::PassManager fused_op_pm(::pir::IrContext::Instance(),
+                                       config_.pm_opt_level_);
+        const std::vector<std::string> FusedOpPasses{// Operator fusion pass
+                                                     "conv2d_bn_fuse_pass",
+                                                     "conv2d_add_act_fuse_pass",
+                                                     "conv2d_add_fuse_pass",
+                                                     "transfer_layout_pass"};
+
+        for (const auto &fused_op : FusedOpPasses) {
+          fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
+        }
+
+        fused_op_pm.Run(pir_program_.get());
+      }
+    }
+
     if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
       VLOG(4) << "[Prim] Decomp program in predictor begin.";
       DecompProgram decomp_object(pir_program_.get());
@@ -922,6 +941,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     // set attr
     for (const auto &pass : pass_pm.passes()) {
       pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
+      pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
       if (pass->name() == "matmul_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_fuse_pass") {
@@ -959,6 +979,28 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
                 common_subexpression_elimination_pass->name()) ==
       config_.deleted_passes_.end()) {
     basic_pass_pm.AddPass(std::move(common_subexpression_elimination_pass));
+  }
+  if (config_.enable_gpu_mixed_) {
+    auto auto_mixed_precision_pass = ::pir::CreateAutoMixedPrecisionPass();
+    if (std::find(config_.deleted_passes_.begin(),
+                  config_.deleted_passes_.end(),
+                  auto_mixed_precision_pass->name()) ==
+        config_.deleted_passes_.end()) {
+      auto_mixed_precision_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+      auto_mixed_precision_pass->Set("__mixed_precision_mode__",
+                                     new phi::DataType(paddle::ConvertPrecision(
+                                         config_.mixed_precision_mode_)));
+      auto_mixed_precision_pass->Set(
+          "__enable_low_precision_io__",
+          new bool(config_.enable_low_precision_io_));
+      auto_mixed_precision_pass->Set(
+          "__mixed_black_list__",
+          new std::unordered_set<std::string>(config_.mixed_black_list_));
+      auto_mixed_precision_pass->Set(
+          "__mixed_white_list__",
+          new std::unordered_set<std::string>(config_.mixed_white_list_));
+      basic_pass_pm.AddPass(std::move(auto_mixed_precision_pass));
+    }
   }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
@@ -2227,9 +2269,7 @@ void AnalysisPredictor::PrepareArgument() {
         pass_builder->AppendPass("simplify_with_basic_ops_pass");
         pass_builder->AppendPass("is_test_pass");
         pass_builder->AppendPass("constant_folding_pass");
-      }
-      pass_builder->AppendPass("auto_mixed_precision_pass");
-      if (!config_.new_ir_enabled()) {
+        pass_builder->AppendPass("auto_mixed_precision_pass");
         pass_builder->AppendPass("inplace_op_var_pass");
       }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "

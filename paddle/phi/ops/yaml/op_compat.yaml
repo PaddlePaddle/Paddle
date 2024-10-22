@@ -1249,6 +1249,12 @@
     out_scale : OutScale
     out_scales : OutScales
 
+- op : faster_tokenizer
+  inputs:
+    {vocab : Vocab, text : Text, text_pair : TextPair}
+  outputs:
+    {input_ids : InputIds, segment_ids : SegmentIds}
+
 - op : fc
   inputs :
     input : Input
@@ -3618,22 +3624,22 @@
   outputs:
     out : Out
   int_array:
-      sections :
-          data_type : int
-          support_tensor : true
+    sections :
+      data_type : int
+      support_tensor : true
   scalar :
-      axis :
-        data_type : int
-        support_tensor : true
+    axis :
+      data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : split_with_num
   scalar :
-      axis :
-        data_type : int
-        support_tensor : true
-        tensor_name : AxisTensor
+    axis :
+      data_type : int
+      support_tensor : true
+      tensor_name : AxisTensor
 
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)

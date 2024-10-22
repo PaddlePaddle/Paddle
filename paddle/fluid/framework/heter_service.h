@@ -23,9 +23,9 @@ limitations under the License. */
 #include <unordered_set>  // NOLINT
 #include <vector>
 
-#include "paddle/fluid/framework/heter_service.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/phi/core/framework/heter_service.pb.h"
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 #include "brpc/channel.h"
 #include "brpc/controller.h"

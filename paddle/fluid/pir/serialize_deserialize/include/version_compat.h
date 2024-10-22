@@ -39,7 +39,7 @@ class PatchBuilder {
   void IR_API BuildPatch(uint64_t pir_version,
                          uint64_t max_version,
                          const std::string& path = "");
-  /* If file_version != pir_vefrsion, set file_version for finding patch yamls.
+  /* If file_version != pir_version, set file_version for finding patch yamls.
    */
   void SetFileVersion(const uint64_t version) { file_version_ = version; }
   bool HasOpPatch(const std::string& name) const {

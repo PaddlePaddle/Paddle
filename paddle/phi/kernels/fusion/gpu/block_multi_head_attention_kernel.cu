@@ -313,6 +313,7 @@ void DispatchWithDtype(
     const float quant_min_bound,
     const float out_scale,
     const std::string& compute_dtype,
+    const float rope_theta,
     DenseTensor* fmha_out,
     DenseTensor* qkv_out,
     DenseTensor* key_cache_out,
@@ -543,7 +544,7 @@ void DispatchWithDtype(
       //            unpadding_v.numel(),
       //            "unpadding_v",
       //            unpadding_v.numel());
-      // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
+      // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requires
       // q,k,v,out all in 3-D [token_num, q_num_head, dim_head].
       auto fmha_shape = fmha_buf.dims();
       fmha_buf.Resize({token_num, q_num_head, dim_head});
@@ -754,6 +755,7 @@ void DispatchWithDtype(
             max_dec_len_this_time_data,
             rope_emb ? 1 : 0,
             1. / sqrt(dim_head),
+            rope_theta,
             /*compute_bias*/ false,
             use_neox_style,
             quant_round_type,
@@ -859,6 +861,7 @@ void BlockMultiheadAttentionKernel(
     const float quant_min_bound,
     const float out_scale,
     const std::string& compute_dtype,
+    const float rope_theta,
     DenseTensor* fmha_out,
     DenseTensor* qkv_out,
     DenseTensor* key_cache_out,
@@ -903,6 +906,7 @@ void BlockMultiheadAttentionKernel(
                                                       quant_min_bound,
                                                       out_scale,
                                                       compute_dtype,
+                                                      rope_theta,
                                                       fmha_out,
                                                       qkv_out,
                                                       key_cache_out,
@@ -945,6 +949,7 @@ void BlockMultiheadAttentionKernel(
                                                        quant_min_bound,
                                                        out_scale,
                                                        compute_dtype,
+                                                       rope_theta,
                                                        fmha_out,
                                                        qkv_out,
                                                        key_cache_out,
@@ -990,6 +995,7 @@ void BlockMultiheadAttentionKernel(
                                                       quant_min_bound,
                                                       out_scale,
                                                       compute_dtype,
+                                                      rope_theta,
                                                       fmha_out,
                                                       qkv_out,
                                                       key_cache_out,
@@ -1032,6 +1038,7 @@ void BlockMultiheadAttentionKernel(
                                                        quant_min_bound,
                                                        out_scale,
                                                        compute_dtype,
+                                                       rope_theta,
                                                        fmha_out,
                                                        qkv_out,
                                                        key_cache_out,
