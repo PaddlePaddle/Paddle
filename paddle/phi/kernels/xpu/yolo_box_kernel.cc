@@ -58,7 +58,7 @@ void YoloBoxKernel(const Context& dev_ctx,
   auto boxes_data = reinterpret_cast<XPUType*>(boxes->data<T>());
   auto scores_data = reinterpret_cast<XPUType*>(scores->data<T>());
 
-  std::vector<long int> anchors_int64;
+  std::vector<int64_t> anchors_int64;
   anchors_int64.resize(anchors.size());
   for (int i = 0; i < anchors.size(); ++i) {
     anchors_int64[i] = anchors[i];
