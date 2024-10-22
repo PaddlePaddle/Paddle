@@ -104,6 +104,12 @@ class TestRemainderFloatTRTPattern(TensorRTBaseTest):
                 np.float32
             ),  # Ensure y is non-zero
         }
+        self.dynamic_shape_data = {
+            "x": lambda shape: np.random.randn(*shape).astype(np.float32),
+            "y": lambda shape: np.random.uniform(
+                low=0.1, high=1, size=shape
+            ).astype(np.float32),
+        }
         self.program_config = {"feed_list": ["x", "y"]}
         self.min_shape = {"x": [1, 3], "y": [1, 3]}
         self.max_shape = {"x": [5, 3], "y": [5, 3]}
@@ -120,6 +126,14 @@ class TestRemainderIntTRTPattern(TensorRTBaseTest):
             "y": np.random.randint(1, 10, size=(2, 3)).astype(
                 np.int32
             ),  # Ensure y is non-zero
+        }
+        self.dynamic_shape_data = {
+            "x": lambda shape: np.random.randint(1, 10, size=shape).astype(
+                np.int32
+            ),
+            "y": lambda shape: np.random.randint(1, 10, size=shape).astype(
+                np.int32
+            ),
         }
         self.program_config = {"feed_list": ["x", "y"]}
         self.min_shape = {"x": [1, 3], "y": [1, 3]}

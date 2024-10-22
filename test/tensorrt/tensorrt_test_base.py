@@ -190,26 +190,17 @@ class TensorRTBaseTest(unittest.TestCase):
                         # not shape_tensor
                         for i in range(len(self.min_shape[feed_name])):
                             sub_feed_name = feed_name + str(i)
-                            if np.issubdtype(
-                                self.api_args[feed_name].dtype, np.integer
-                            ):
-                                min_shape_data[
-                                    sub_feed_name
-                                ] = np.random.randint(
-                                    1, 100, size=self.min_shape[feed_name]
-                                ).astype(
-                                    self.api_args[feed_name][
+                            if self.dynamic_shape_data:
+                                min_shape_data[sub_feed_name] = (
+                                    self.dynamic_shape_data[feed_name][
                                         sub_feed_name
-                                    ].dtype
+                                    ](self.min_shape[feed_name][i])
                                 )
-                                max_shape_data[feed_name] = np.random.randint(
-                                    1, 100, size=self.max_shape[feed_name]
-                                ).astype(
-                                    self.api_args[feed_name][
+                                max_shape_data[sub_feed_name] = (
+                                    self.dynamic_shape_data[feed_name][
                                         sub_feed_name
-                                    ].dtype
+                                    ](self.max_shape[feed_name][i])
                                 )
-
                             else:
                                 min_shape_data[sub_feed_name] = np.random.randn(
                                     *self.min_shape[feed_name][i]
@@ -235,15 +226,13 @@ class TensorRTBaseTest(unittest.TestCase):
                         max_shape_data[feed_name] = self.api_args[feed_name]
                         continue
                     else:
-                        if np.issubdtype(
-                            self.api_args[feed_name].dtype, np.integer
-                        ):
-                            min_shape_data[feed_name] = np.random.randint(
-                                1, 100, size=self.min_shape[feed_name]
-                            ).astype(self.api_args[feed_name].dtype)
-                            max_shape_data[feed_name] = np.random.randint(
-                                1, 100, size=self.max_shape[feed_name]
-                            ).astype(self.api_args[feed_name].dtype)
+                        if self.dynamic_shape_data:
+                            min_shape_data[feed_name] = self.dynamic_shape_data[
+                                feed_name
+                            ](self.min_shape[feed_name])
+                            max_shape_data[feed_name] = self.dynamic_shape_data[
+                                feed_name
+                            ](self.max_shape[feed_name])
                         else:
                             min_shape_data[feed_name] = np.random.randn(
                                 *self.min_shape[feed_name]
