@@ -92,7 +92,7 @@ class TestCost(unittest.TestCase):
         comm_context = CommContext(cluster)
         desc = {}
         desc["op"] = "all_reduce"
-        desc["inputs"] = {"x": [(paddle.float32, [100, 200])]}
+        desc["inputs"] = {"X": [(paddle.float32, [100, 200])]}
         desc["group_ranks"] = [0, 1]
         allreduce_cost = cost_model._g_op_cost_factory["all_reduce"](
             op_desc=desc, comm_context=CommContext(cluster)
