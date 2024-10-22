@@ -127,10 +127,12 @@ FusionItersSignature FusionItersManager::SingleDownstreamItersFusion(
     fused_signature.reduce_iter_nums = downstream.reduce_iter_nums;
   } else if (downstream_reduce_iters.empty()) {
     // Reduce x Trivial Fusion
-    const auto [shared_iters, _UNUSED] = SplitFirstWhetherInSecond(
-        downstream_non_reduce_iters, upstream_non_reduce_iters);
-    fused_signature.loop_iters =
-        ConcatVector(shared_iters, upstream_reduce_iters);
+    // TODO(huangjiyi): Support reshape iters fusion
+    // const auto [shared_iters, _UNUSED] = SplitFirstWhetherInSecond(
+    //     downstream_non_reduce_iters, upstream_non_reduce_iters);
+    // fused_signature.loop_iters =
+    //     ConcatVector(shared_iters, upstream_reduce_iters);
+    fused_signature.loop_iters = upstream.loop_iters;
     fused_signature.reduce_iter_nums = upstream.reduce_iter_nums;
   } else {
     // Reduce x Reduce Fusion
