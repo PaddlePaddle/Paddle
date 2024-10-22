@@ -3333,13 +3333,6 @@ bool RnnOpInferSymbolicShape(pir::Operation *op,
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
-  symbol::DimExpr x_numel = x_shape[0] * x_shape[1] * x_shape[2];
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({x_numel})});
-
   int state_num = static_cast<int>(pre_state_shape_or_data_list.size());
   symbol::TensorListShapeOrDataDimExprs state_shape_or_data_list;
   for (int i = 0; i < state_num; ++i) {
@@ -3374,6 +3367,18 @@ bool RnnOpInferSymbolicShape(pir::Operation *op,
       op->result(3),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(reserve_shape)});
+
+  symbol::DimExpr dropout_state_shape;
+  if (num_layers > 1) {
+    dropout_state_shape = block_size / symbol::DimExpr(num_layers - 1);
+  } else {
+    dropout_state_shape = infer_context->GetNextSymName();
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({dropout_state_shape})});
   return true;
 }
 
