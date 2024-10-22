@@ -3837,8 +3837,8 @@ def clip(
         max_ = paddle.expand(max, x.shape)
         min_ = paddle.expand(min, x.shape)
 
-        output_min = paddle.where(x < min_, x, min_)
-        output = paddle.where(output_min > max_, output_min, max_)
+        output_min = paddle.where(x < min_, min_, x)
+        output = paddle.where(output_min > max_, max_, output_min)
         return output
 
 @inplace_apis_in_dygraph_only
