@@ -443,9 +443,6 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
-from .sparse import (  # noqa: F401
-    is_coalesced,
-)
 from .stat import (  # noqa: F401
     mean,
     median,
@@ -845,7 +842,6 @@ tensor_method_func = [
     "combinations",
     'signbit',
     'log_normal_',
-    'is_coalesced',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
