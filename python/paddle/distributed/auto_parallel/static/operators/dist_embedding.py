@@ -248,7 +248,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             serial_op.input("W")[0]
         )[0]
         attrs = {
-            "reduce_type": int(dist.ReduceOp.SUM),
+            "reduce_type": dist.ReduceOp.SUM,
             "use_model_parallel": True,
         }
         var_names = serial_op.output("Out")
@@ -520,7 +520,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             outputs={'out': [Out_var]},
             attrs={
                 'ring_id': group.id,
-                'reduce_type': int(dist.ReduceOp.SUM),
+                'reduce_type': dist.ReduceOp.SUM,
                 'use_model_parallel': True,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },

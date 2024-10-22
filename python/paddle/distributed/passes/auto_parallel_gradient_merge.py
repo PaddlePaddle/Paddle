@@ -400,7 +400,7 @@ def _move_reduce_to_optimizer_ops_block(
 
             if op.type == "reduce_sum" or (
                 op.type == "all_reduce"
-                and op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                and op.attr("reduce_type") == dist.ReduceOp.SUM
             ):
                 scale_index = idx + 1
                 while scale_index < len(main_block.ops):

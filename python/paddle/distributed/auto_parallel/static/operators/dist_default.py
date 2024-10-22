@@ -73,7 +73,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
             outputs={'out': [var_name]},
             attrs={
                 'ring_id': sync_group.id,
-                'reduce_type': int(dist.ReduceOp.SUM),
+                'reduce_type': dist.ReduceOp.SUM,
                 OP_ROLE_KEY: OpRole.Backward,
             },
         )

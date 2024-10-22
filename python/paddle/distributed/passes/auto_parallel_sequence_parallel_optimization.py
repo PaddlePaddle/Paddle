@@ -86,7 +86,7 @@ class SequenceParallelOptimizationPass(PassBase):
             pre_op = block.ops[idx - 1]
             if not (
                 pre_op.type == "all_reduce"
-                and pre_op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                and pre_op.attr("reduce_type") == dist.ReduceOp.SUM
             ):
                 return False
             pre_output_name = pre_op.output_arg_names[0]

@@ -75,7 +75,7 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
                 inputs={'x': toutdata},
                 attrs={'ring_id': ring_id},
                 outputs={'out': toutdata},
-                attr={'reduce_type': int(dist.ReduceOp.SUM)},
+                attr={'reduce_type': dist.ReduceOp.SUM},
             )
 
             main_prog.global_block().append_op(

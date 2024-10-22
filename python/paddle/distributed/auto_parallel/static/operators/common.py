@@ -511,7 +511,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
     dist_op_context = dist_ctx.dist_op_context
     main_block = dist_op_context.work_block
 
-    allreduce_type = int(dist.ReduceOp.SUM)
+    allreduce_type = dist.ReduceOp.SUM
     need_scale = dist_ctx.gradient_scale
     scale_using_allreduce_avg = dist_ctx.gradient_scale_using_allreduce_avg
 
@@ -521,7 +521,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
         and scale_using_allreduce_avg
         and int(paddle.version.nccl()) > 21000
     ):
-        allreduce_type = int(dist.ReduceOp.AVG)
+        allreduce_type = dist.ReduceOp.AVG
         need_scale = False
 
     for group in groups:
@@ -677,8 +677,8 @@ def is_data_parallel_reduce_op(op):
     is_allreduce_op = op.type == "all_reduce" and op.desc.attr(
         "reduce_type"
     ) in [
-        int(dist.ReduceOp.SUM),
-        int(dist.ReduceOp.AVG),
+        dist.ReduceOp.SUM,
+        dist.ReduceOp.AVG,
     ]
     return (
         (is_allreduce_op or is_reduce_op)
@@ -690,7 +690,7 @@ def is_data_parallel_reduce_op(op):
 def is_amp_flag_sync_op(op):
     return (
         op.type == "all_reduce"
-        and op.attr("reduce_type") == str(dist.ReduceOp.MAX)
+        and op.attr("reduce_type") == dist.ReduceOp.MAX
         and op.desc.has_attr("op_namescope")
         and SyncMode.AmpFlagSync in op.desc.attr("op_namescope")
     )
@@ -699,7 +699,7 @@ def is_amp_flag_sync_op(op):
 def is_global_norm_sync_op(op):
     return (
         op.type == "all_reduce"
-        and op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+        and op.attr("reduce_type") == dist.ReduceOp.SUM
         and op.desc.has_attr("op_namescope")
         and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )

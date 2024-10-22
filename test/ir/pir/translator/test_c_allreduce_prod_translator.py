@@ -31,7 +31,7 @@ class TestCAllReduceProdOpTranslator(test_op_translator.TestOpTranslator):
         attrs = {
             'ring_id': 0,
             'use_model_parallel': False,
-            'reduce_type': int(dist.ReduceOp.PROD),
+            'reduce_type': dist.ReduceOp.PROD,
         }
         helper = LayerHelper(self.op_type)
         helper.append_op(

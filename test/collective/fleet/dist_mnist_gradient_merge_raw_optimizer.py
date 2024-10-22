@@ -84,9 +84,10 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
             gm_block = paddle.static.default_main_program().block(1)
             start_allreduce_idx = None
             for i, op in enumerate(gm_block.ops):
-                if op.type == "all_reduce" and op.desc.attr(
-                    "reduce_type"
-                ) == str(dist.ReduceOp.SUM):
+                if (
+                    op.type == "all_reduce"
+                    and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+                ):
                     start_allreduce_idx = i
                     break
             # the magic number 1 below means skip the c_sync_calc_stream op

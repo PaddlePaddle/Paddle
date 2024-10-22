@@ -542,9 +542,10 @@ class FusedLinearPromotionPass(PassBase):
                     origin_comm_op.input_arg_names[0],
                     origin_matmul_output_new_name,
                 )
-            if origin_comm_op.type == "all_reduce" and origin_comm_op.attr(
-                "reduce_type"
-            ) == str(dist.ReduceOp.SUM):
+            if (
+                origin_comm_op.type == "all_reduce"
+                and origin_comm_op.attr("reduce_type") == dist.ReduceOp.SUM
+            ):
                 new_comm_var_name = origin_comm_op.input_arg_names[0]
             else:
                 new_comm_var_name = unique_name.generate(

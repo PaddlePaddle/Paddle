@@ -257,7 +257,7 @@ class ClipHelper:
                 op.type == "c_reduce_sum"
                 or (
                     op.type == "c_reduce_sum"
-                    and op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                    and op.attr("reduce_type") == dist.ReduceOp.SUM
                 )
             ) and not is_data_parallel_reduce_op(op):
                 return False
@@ -483,7 +483,7 @@ class ClipGradByGlobalNormPass(PassBase):
                         outputs={'out': [input_var]},
                         attrs={
                             'ring_id': 0,
-                            'reduce_type': int(dist.ReduceOp.SUM),
+                            'reduce_type': dist.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )

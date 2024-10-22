@@ -143,9 +143,10 @@ class TestReshardPToRCrossMesh:
                 assert op_result_dist_attr.partial_status == {
                     0: paddle.distributed.ReduceType.kRedSum
                 }
-            elif op.name() == 'pd_op.all_reduce' and op.desc.attr(
-                "reduce_type"
-            ) == str(dist.ReduceOp.SUM):
+            elif (
+                op.name() == 'pd_op.all_reduce'
+                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+            ):
                 continue
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 1

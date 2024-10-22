@@ -171,7 +171,7 @@ def find_all_fuse_all_reduce_groups(block):
     def is_valid_allreduce_op(op):
         if (
             op.type == "all_reduce"
-            and op.attr("reduce_type") != str(dist.ReduceOp.SUM)
+            and op.attr("reduce_type") != dist.ReduceOp.SUM
         ) or op.attr("use_model_parallel"):
             return False
         in_var_name = op.input("X")[0]

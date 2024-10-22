@@ -32,10 +32,10 @@ def is_collective_comm_op(op):
         "all_reduce",
     ]
     reduce_type = [
-        str(dist.ReduceOp.SUM),
-        str(dist.ReduceOp.MIN),
-        str(dist.ReduceOp.MAX),
-        str(dist.ReduceOp.PROD),
+        dist.ReduceOp.SUM,
+        dist.ReduceOp.MIN,
+        dist.ReduceOp.MAX,
+        dist.ReduceOp.PROD,
     ]
     if op.type == "all_reduce" and op.attr("reduce_type") in reduce_type:
         return True

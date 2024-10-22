@@ -210,7 +210,7 @@ class DistributedReduceSumPrimitiveImpl0(DistributedOperatorImpl):
             outputs={'out': [var_name]},
             attrs={
                 'ring_id': sync_group.id,
-                'reduce_type': int(dist.ReduceOp.SUM),
+                'reduce_type': dist.ReduceOp.SUM,
                 OP_ROLE_KEY: OpRole.Forward,
             },
         )

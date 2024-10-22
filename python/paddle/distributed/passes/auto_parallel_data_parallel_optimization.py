@@ -281,10 +281,8 @@ class DataParallelOptimizationPass(PassBase):
         # comm wait calc to finish
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_data_parallel_reduce_op(op):
-                assert op.has_attr('use_calc_stream')
                 assert op.has_attr('ring_id')
 
-                op._set_attr('use_calc_stream', False)
                 ring_id = op.attr("ring_id")
                 block._insert_op_without_sync(
                     idx,
@@ -493,8 +491,8 @@ class DataParallelOptimizationPass(PassBase):
             assert allreduce_op.type == "all_reduce" and allreduce_op.attr(
                 "reduce_type"
             ) in [
-                str(dist.ReduceOp.AVG),
-                str(dist.ReduceOp.SUM),
+                dist.ReduceOp.AVG,
+                dist.ReduceOp.SUM,
             ], f"should found all_reduce avg or all_reduce sum op but found {allreduce_op}"
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
@@ -529,7 +527,7 @@ class DataParallelOptimizationPass(PassBase):
                 assert (block.ops[idx].type in remove_op_types) or (
                     block.ops[idx].type == "all_reduce"
                     and block.ops[idx].attr("reduce_type")
-                    in [str(dist.ReduceOp.AVG), str(dist.ReduceOp.SUM)]
+                    in [dist.ReduceOp.AVG, dist.ReduceOp.SUM]
                 ), f"Unexpected: try to remove op {block.ops[idx]}"
                 block._remove_op(idx, False)
 
@@ -653,7 +651,6 @@ class DataParallelOptimizationPass(PassBase):
 
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_data_parallel_reduce_op(op):
-                op._set_attr('use_calc_stream', True)
                 op.dist_attr.execution_stream = self.gradient_sync_stream
 
             if remove_cond(op):
@@ -749,9 +746,11 @@ class GradientsGroup:
         if len(self.gradients) == 1:
             # TODO Remove this is a temporary hack for Tensor Parallel. the logic
             # for find grad_op should be more general.
-            if self.ops[grad_op_idx].type == "all_reduce" and self.ops[
-                grad_op_idx
-            ].attr("reduce_type") == str(dist.ReduceOp.SUM):
+            if (
+                self.ops[grad_op_idx].type == "all_reduce"
+                and self.ops[grad_op_idx].attr("reduce_type")
+                == dist.ReduceOp.SUM
+            ):
                 grad_op_idx -= 1
 
             grad_op = self.ops[grad_op_idx]

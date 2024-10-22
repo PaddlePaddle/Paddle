@@ -445,7 +445,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             outputs={'out': kwargs['X@GRAD']},
             attrs={
                 'ring_id': group.id,
-                "reduce_type": int(dist.ReduceOp.SUM),
+                "reduce_type": dist.ReduceOp.SUM,
                 'use_model_parallel': True,
                 OP_ROLE_KEY: OpRole.Backward,
             },
@@ -646,7 +646,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         # calc comm op cost
         if has_x_grad:
             attrs = {
-                "reduce_type": int(dist.ReduceOp.SUM),
+                "reduce_type": dist.ReduceOp.SUM,
                 "use_model_parallel": True,
             }
             var_names = backward_op.output("X@GRAD")
@@ -949,7 +949,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             serial_op.input("Y")[0]
         )[-2]
         attrs = {
-            "reduce_type": int(dist.ReduceOp.SUM),
+            "reduce_type": dist.ReduceOp.SUM,
             "use_model_parallel": True,
         }
 
@@ -1106,7 +1106,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             outputs={'out': Out_var},
             attrs={
                 'ring_id': group.id,
-                "reduce_type": int(dist.ReduceOp.SUM),
+                "reduce_type": dist.ReduceOp.SUM,
                 'use_model_parallel': True,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
@@ -1343,7 +1343,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         # calc comm op cost
         if has_x_grad:
             attrs = {
-                "reduce_type": int(dist.ReduceOp.SUM),
+                "reduce_type": dist.ReduceOp.SUM,
                 "use_model_parallel": True,
             }
             var_names = backward_op.output("X@GRAD")
@@ -1643,7 +1643,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             serial_op.input("Y")[0]
         )[-2]
         attrs = {
-            'reduce_type': int(dist.ReduceOp.SUM),
+            'reduce_type': dist.ReduceOp.SUM,
             "use_model_parallel": True,
         }
 
@@ -1800,7 +1800,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             outputs={'out': Out_var},
             attrs={
                 'ring_id': group.id,
-                'reduce_type': int(dist.ReduceOp.SUM),
+                'reduce_type': dist.ReduceOp.SUM,
                 'use_model_parallel': True,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
@@ -2036,7 +2036,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         # calc comm op cost
         if has_x_grad:
             attrs = {
-                'reduce_type': int(dist.ReduceOp.SUM),
+                'reduce_type': dist.ReduceOp.SUM,
                 "use_model_parallel": True,
             }
             var_names = backward_op.output("X@GRAD")
@@ -2327,7 +2327,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             serial_op.input("Y")[0]
         )[-2]
         attrs = {
-            'reduce_type': int(dist.ReduceOp.SUM),
+            'reduce_type': dist.ReduceOp.SUM,
             "use_model_parallel": True,
         }
 
@@ -2472,7 +2472,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             outputs={'out': Out_var},
             attrs={
                 'ring_id': group.id,
-                'reduce_type': int(dist.ReduceOp.SUM),
+                'reduce_type': dist.ReduceOp.SUM,
                 'use_model_parallel': True,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },

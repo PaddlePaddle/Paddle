@@ -163,7 +163,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
             outputs={'out': inf_var_int32},
             attrs={
                 'ring_id': group.id,
-                'reduce_type': int(dist.ReduceOp.MAX),
+                'reduce_type': dist.ReduceOp.MAX,
                 OP_ROLE_KEY: OpRole.Optimize,
             },
         )

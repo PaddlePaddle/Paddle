@@ -411,7 +411,7 @@ class ShardingPass(PassBase):
                         attrs={
                             'ring_id': sharding_info.group.id,
                             'op_namescope': "/gradient_clip_model_parallelism",
-                            'reduce_type': int(dist.ReduceOp.SUM),
+                            'reduce_type': dist.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
@@ -423,7 +423,7 @@ class ShardingPass(PassBase):
                     #     attrs={
                     #         'ring_id': sharding_info.group.id,
                     #         'op_namescope': "/gradient_clip_model_parallelism",
-                    #         'reduce_type': int(dist.ReduceOp.SUM),
+                    #         'reduce_type': dist.ReduceOp.SUM,
                     #         OP_ROLE_KEY: OpRole.Optimize,
                     #     },
                     # )
@@ -553,7 +553,7 @@ class ShardingPass(PassBase):
                     if op.type == "c_reduce_sum"
                     or (
                         op.type == "all_reduce"
-                        and op.attr("reduce_type") == str(dist.ReduceOp.SUM)
+                        and op.attr("reduce_type") == dist.ReduceOp.SUM
                     )
                     else "c_reduce_avg"
                 )
@@ -1045,9 +1045,8 @@ class ShardingPass(PassBase):
                 ):
                     cur_group.is_in_local_shard = True
                     assert ops[i + 1].type == "all_reduce" and (
-                        ops[i + 1].attr("reduce_type") == str(dist.ReduceOp.SUM)
-                        or ops[i + 1].attr("reduce_type")
-                        == str(dist.ReduceOp.AVG)
+                        ops[i + 1].attr("reduce_type") == dist.ReduceOp.SUM
+                        or ops[i + 1].attr("reduce_type") == dist.ReduceOp.AVG
                     ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
                     assert (
                         ops[i + 1].output_arg_names[0] == grad_name
@@ -1249,8 +1248,8 @@ class ShardingPass(PassBase):
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
                 if op.type == "all_reduce" and (
-                    op.attr("reduce_type") == str(dist.ReduceOp.SUM)
-                    or op.attr("reduce_type") == str(dist.ReduceOp.AVG)
+                    op.attr("reduce_type") == dist.ReduceOp.SUM
+                    or op.attr("reduce_type") == dist.ReduceOp.AVG
                 ):
                     continue
                 stream_idx = reduce_op_count % self.grad_comm_stream_num
@@ -1305,8 +1304,8 @@ class ShardingPass(PassBase):
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
                     assert next_op.type == "all_reduce" and (
-                        next_op.attr("reduce_type") == str(dist.ReduceOp.SUM)
-                        or next_op.attr("reduce_type") == str(dist.ReduceOp.AVG)
+                        next_op.attr("reduce_type") == dist.ReduceOp.SUM
+                        or next_op.attr("reduce_type") == dist.ReduceOp.AVG
                     )
                     assert next_op.output("Out")[0] == reduce_varname
                     # FIXME hybrid sharding-dp support multi comm & stream in feature
