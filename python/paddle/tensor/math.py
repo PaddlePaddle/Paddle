@@ -3708,8 +3708,8 @@ def log10_(x: Tensor, name: str | None = None) -> Tensor:
 
 def clip(
     x: Tensor,
-    min: float | int | Tensor | None = None,
-    max: float | int | Tensor | None = None,
+    min: float | Tensor | None = None,
+    max: float | Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -3855,8 +3855,8 @@ def clip(
 @inplace_apis_in_dygraph_only
 def clip_(
     x: Tensor,
-    min: float | None = None,
-    max: float | None = None,
+    min: float | Tensor | None = None,
+    max: float | Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -3865,16 +3865,39 @@ def clip_(
     """
     fmin = float(np.finfo(np.float32).min)
     fmax = float(np.finfo(np.float32).max)
-    if isinstance(min, Variable):
-        min = min.item(0)
-    if isinstance(max, Variable):
-        max = max.item(0)
     min = fmin if min is None else min
     max = fmax if max is None else max
 
     if in_dynamic_mode():
-        return _C_ops.clip_(x, min, max)
+        if not isinstance(max, Tensor) and not isinstance(min, Tensor):
+            return _C_ops.clip_(x, min, max)
+        else:
+            if not isinstance(max, Tensor):
+                max = fill_constant([1], float, max)
+            else:
+                if max.shape == [0]:
+                    max = fill_constant([1], float, max)
+                elif max.shape not in [[], [1]] and max.shpae != x.shape[-len(max.shape):]:
+                    raise ValueError(
+                        f"The max dimension should be equal to the inner dimension of the x, but the max dimension is {max.shape} and the x dimension is {x.shape[-len(max.shape):]}."
+                    )
 
+            if not isinstance(min, Tensor):
+                min = fill_constant([1], float, min)
+            else:
+                if min.shape == [0]:
+                    min = fill_constant([1], float, min)
+                elif min.shape not in [[], [1]] and min.shpae != x.shape[-len(min.shape):]:
+                    raise ValueError(
+                        f"The min dimension should be equal to the inner dimension of the x, but the min dimension is {min.shape} and the x dimension is {x.shape[-len(min.shape):]}."
+                    )
+
+            max_expand = paddle.expand(max, x.shape) if max.shape != x.shape else max
+            min_expand = paddle.expand(min, x.shape) if min.shape != x.shape else min
+
+            paddle.where_(x < min_expand, min_expand, x)
+            paddle.where_(x > max_expand, max_expand, x)
+            
 
 def trace(
     x: Tensor,
