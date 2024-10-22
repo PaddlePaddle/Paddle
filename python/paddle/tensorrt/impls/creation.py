@@ -15,6 +15,7 @@
 import numpy as np
 import tensorrt as trt
 
+import paddle
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
     cast_tensor,
@@ -45,6 +46,28 @@ def full_converter(network, paddle_op, inputs):
         shape, np.full(shape, value, dtype=np.float32)
     )
     return full_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.assign", trt_version="8.x")
+@converter_registry.register("pd_op.assign_out_", trt_version="8.x")
+def assign_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    identity_layer = network.add_identity(input_tensor)
+    return identity_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.assign_value_", trt_version="8.x")
+def assign_value_converter(network, paddle_op, inputs):
+    attrs = paddle_op.attrs()
+    shape = attrs['shape']
+    dtype = attrs['dtype']
+    values = attrs['values']
+
+    if dtype == paddle.float32:
+        dtype = np.float32
+
+    constant_layer = network.add_constant(shape, np.array(values, dtype=dtype))
+    return constant_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.arange", trt_version="8.x")
