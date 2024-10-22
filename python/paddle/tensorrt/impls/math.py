@@ -19,6 +19,9 @@ from paddle.tensorrt.converter_utils import (
     add_elementwise_layer,
     broadcast,
     get_axes_for_reduce_op,
+    trt_floor_div,
+    trt_mul,
+    trt_sub,
 )
 from paddle.tensorrt.register import converter_registry
 
@@ -122,20 +125,15 @@ def remainder_converter(network, paddle_op, inputs):
         input_tensor.name,
         weight_tensor.name,
     )
+
     # Floor division
-    quotient = network.add_elementwise(
-        lhs_val, rhs_val, trt.ElementWiseOperation.FLOOR_DIV
-    ).get_output(0)
+    quotient = trt_floor_div(network, lhs_val, rhs_val)
 
     # Multiply rhs by the quotient
-    product = network.add_elementwise(
-        rhs_val, quotient, trt.ElementWiseOperation.PROD
-    ).get_output(0)
+    product = trt_mul(network, rhs_val, quotient)
 
     # Subtract the product from lhs to get the remainder
-    remainder = network.add_elementwise(
-        lhs_val, product, trt.ElementWiseOperation.SUB
-    ).get_output(0)
+    remainder = trt_sub(network, lhs_val, product)
 
     return remainder
 
