@@ -143,7 +143,8 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope,
-    const int64_t &place_hash_key) {
+    const int64_t &place_hash_key,
+    bool used_for_sot) {
   auto &cache = framework::InterpreterCoreInfoCache::Instance();
   if (cache.Size() > 256000u /* max_cached_size*/) {
     PADDLE_THROW(common::errors::Fatal(
@@ -153,6 +154,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
   execution_config.used_for_jit = true;
+  execution_config.used_for_sot = used_for_sot;
 
   std::shared_ptr<InterpreterCore> core = nullptr;
 

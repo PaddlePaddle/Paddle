@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -425,6 +426,80 @@ class TestGatherBF16Op(OpTest):
         self.axis_type = "int32"
 
 
+class TestGatherNegativeAxis(OpTest):
+    def setUp(self):
+        self.op_type = "gather"
+        self.python_api = paddle.gather
+        self.dtype = np.uint16
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(np.float32)
+        axis_np = np.array(self.axis).astype(self.axis_type)
+        index_np = np.array(self.index).astype(self.index_type)
+        self.inputs = {
+            'X': convert_float_to_uint16(xnp),
+            'Index': index_np,
+            'Axis': axis_np,
+        }
+        out = gather_numpy(self.inputs['X'], index_np, axis_np[0])
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            self.check_grad_with_place(
+                place, ['X'], 'Out', numeric_grad_delta=0.5
+            )
+
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (100, 3)
+        self.index = [0, 1, -2]
+        self.index_type = "int32"
+        self.axis = [-1]
+        self.axis_type = "int32"
+
+
+class TestOutOfRangeError(unittest.TestCase):
+    def test_dygraph_forwad_and_backward(self):
+        with dygraph_guard():
+            x = paddle.randn([100, 3]).cpu()
+            x.stop_gradient = False
+            y = paddle.gather(
+                x,
+                paddle.to_tensor([0, -2]).cpu(),
+                axis=-1,
+            )
+            grad_x = paddle.grad(y, x)
+
+    def test_dygraph_error(self):
+        with dygraph_guard():
+            # out of lower bound
+            with self.assertRaises(IndexError):
+                _ = paddle.gather(
+                    paddle.randn([100, 3]).cpu(),
+                    paddle.to_tensor([0, -4]).cpu(),
+                    axis=1,
+                )
+            # out of upper bound
+            with self.assertRaises(IndexError):
+                _ = paddle.gather(
+                    paddle.randn([100, 3]).cpu(),
+                    paddle.to_tensor([0, 3]).cpu(),
+                    axis=1,
+                )
+
+
 class TestCase6Complex64(TestCase6):
     def config_dtype(self):
         self.x_type = "complex64"
@@ -607,6 +682,32 @@ class TestGatherOp4Complex128(TestGatherOp4):
         self.check_grad(['X'], 'Out')
 
 
+class TestGatherOp5(TestGatherOp):
+    def config(self):
+        """
+        Test for negative axis
+        """
+        self.x_shape = (3, 100, 10)
+        self.config_dtype()
+        self.index = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        self.index_type = "int64"
+        self.axis = [-1]
+        self.axis_type = "int32"
+        self.attrs = {'overwrite': False}
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim=True,
+            check_prim_pir=True,
+        )
+
+
 class API_TestGather(unittest.TestCase):
 
     def test_out1(self):
@@ -686,7 +787,7 @@ class API_TestDygraphGather(unittest.TestCase):
             return
 
         x = np.random.rand(226862, 256).astype("float32")
-        index = np.random.randint(0, 22682, size=(8859027))
+        index = np.random.randint(-226862, 22682, size=(8859027))
 
         def test_dygraph():
             with base.dygraph.guard():
@@ -732,22 +833,22 @@ class TestGathertError(unittest.TestCase):
             def test_x_type():
                 paddle.gather(x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+            self.assertRaises((TypeError, ValueError), test_x_type)
 
             def test_index_type():
                 paddle.gather(x, index_float)
 
-            self.assertRaises(TypeError, test_index_type)
+            self.assertRaises((TypeError, ValueError), test_index_type)
 
             def test_axis_dtype():
                 paddle.gather(x, index, axis=1.11)
 
-            self.assertRaises(TypeError, test_axis_dtype)
+            self.assertRaises((TypeError, ValueError), test_axis_dtype)
 
             def test_axis_dtype1():
                 paddle.gather(x, index, axis=axis)
 
-            self.assertRaises(TypeError, test_axis_dtype1)
+            self.assertRaises((TypeError, ValueError), test_axis_dtype1)
 
     def test_error2(self):
         with paddle.static.program_guard(
@@ -763,12 +864,12 @@ class TestGathertError(unittest.TestCase):
             def test_x_type():
                 paddle.gather(x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+            self.assertRaises((TypeError, ValueError), test_x_type)
 
             def test_index_type():
                 paddle.gather(x, index_float)
 
-            self.assertRaises(TypeError, test_index_type)
+            self.assertRaises((TypeError, ValueError), test_index_type)
 
     def test_error3(self):
         with paddle.static.program_guard(
@@ -776,11 +877,7 @@ class TestGathertError(unittest.TestCase):
         ):
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int32', name='x')
-            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
             index = paddle.static.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.static.data(
-                shape=shape, dtype='float32', name='index_float'
-            )
 
             def test_axis_minsize():
                 paddle.gather(x, index, axis=-1)

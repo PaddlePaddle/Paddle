@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include <deque>
 #include <utility>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -47,13 +47,15 @@ class BlockingQueue {
     send_cv_.wait(
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
     if (killed_) {
-      VLOG(3)
-          << "WARNING:: Sending an element to a killed reader::BlockingQueue";
+      // VLOG(3)
+      //     << "WARNING:: Sending an element to a killed
+      //     reader::BlockingQueue";
       return false;
     }
     if (closed_) {
-      VLOG(5)
-          << "WARNING: Sending an element to a closed reader::BlockingQueue.";
+      // VLOG(5)
+      //     << "WARNING: Sending an element to a closed
+      //     reader::BlockingQueue.";
       return false;
     }
     PADDLE_ENFORCE_LT(
@@ -74,13 +76,15 @@ class BlockingQueue {
     send_cv_.wait(
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
     if (killed_) {
-      VLOG(3)
-          << "WARNING:: Sending an element to a killed reader::BlockingQueue";
+      // VLOG(3)
+      //     << "WARNING:: Sending an element to a killed
+      //     reader::BlockingQueue";
       return false;
     }
     if (closed_) {
-      VLOG(5)
-          << "WARNING: Sending an element to a closed reader::BlockingQueue.";
+      // VLOG(5)
+      //     << "WARNING: Sending an element to a closed
+      //     reader::BlockingQueue.";
       return false;
     }
     PADDLE_ENFORCE_LT(
@@ -118,7 +122,7 @@ class BlockingQueue {
                         common::errors::PermissionDenied(
                             "Blocking queue status error, if queue is empty "
                             "when pop data, it should be closed."));
-      VLOG(3) << "queue is closed! return nothing.";
+      // VLOG(3) << "queue is closed! return nothing.";
       return false;
     }
   }
@@ -126,7 +130,7 @@ class BlockingQueue {
   void ReOpen() {
     std::lock_guard<std::mutex> lock(mutex_);
     EnforceNotKilled();
-    VLOG(1) << "reopen queue";
+    // VLOG(1) << "reopen queue";
     closed_ = false;
     std::deque<T> new_deque;
     queue_.swap(new_deque);
@@ -136,7 +140,7 @@ class BlockingQueue {
 
   void Close() {
     std::lock_guard<std::mutex> lock(mutex_);
-    VLOG(1) << "close queue";
+    // VLOG(1) << "close queue";
     closed_ = true;
     send_cv_.notify_all();
     receive_cv_.notify_all();
@@ -159,7 +163,7 @@ class BlockingQueue {
 
   void Kill() {
     std::lock_guard<std::mutex> lock(mutex_);
-    VLOG(1) << "kill queue";
+    // VLOG(1) << "kill queue";
     closed_ = true;
     killed_ = true;
     send_cv_.notify_all();

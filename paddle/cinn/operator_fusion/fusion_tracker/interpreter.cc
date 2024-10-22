@@ -159,36 +159,6 @@ void RunItersTransformInstr(const std::shared_ptr<ItersTransformInstr>& instr,
   interpreter->scope[instr->target_] = new_pattern;
 }
 
-void RunAnchorTransformInstr(const std::shared_ptr<AnchorTransformInstr>& instr,
-                             FusionInterpreter* interpreter) {
-  PADDLE_ENFORCE_EQ(interpreter->scope[instr->target_]->fusion_ops.size(),
-                    1,
-                    ::common::errors::InvalidArgument(
-                        "Target op must have only one fusion_op."));
-  ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-
-  std::function<ir::Expr(ir::Expr)> do_transform =
-      [transform_route = instr->transform_route_](ir::Expr target) -> ir::Expr {
-    for (auto transform : transform_route) {
-      target = std::visit(ApplyTransform(target), transform);
-    }
-    return target;
-  };
-
-  auto candidate_exprs = std::visit(
-      FusibleOp2Expr(), interpreter->scope[instr->target_]->fusion_ops.front());
-  for (auto expr : candidate_exprs) {
-    auto transformed_expr = do_transform(expr);
-    if (cinn::hlir::framework::pir::trivial_fusion_detail::IsReduceBody(
-            transformed_expr)) {
-      new_pattern->fusion_ops.emplace_back(ReduceOp(transformed_expr));
-    } else {
-      new_pattern->fusion_ops.emplace_back(TrivialOp(transformed_expr));
-    }
-  }
-  interpreter->scope[instr->result_] = new_pattern;
-}
-
 void RunPaddingInstr(const std::shared_ptr<PaddingInstr>& instr,
                      FusionInterpreter* interpreter) {
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
@@ -244,10 +214,6 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
       case T_TmpTransform:
         RunTmpTransformInstr(
             dynamic_cast_instr_with_err<TmpTransformInstr>(instr), this);
-        break;
-      case T_AnchorTransform:
-        RunAnchorTransformInstr(
-            dynamic_cast_instr_with_err<AnchorTransformInstr>(instr), this);
         break;
       case T_Padding:
         RunPaddingInstr(dynamic_cast_instr_with_err<PaddingInstr>(instr), this);

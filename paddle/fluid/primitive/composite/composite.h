@@ -733,14 +733,6 @@ Tensor full_like_decomp(const Tensor& x,
 }
 
 template <typename T>
-Tensor floor_divide_decomp(const Tensor& x, const Tensor& y) {
-  auto x_cast = cast<T>(x, DataType::INT64);
-  auto y_cast = cast<T>(y, DataType::INT64);
-  auto res = x_cast / y_cast;
-  return cast<T>(res, x.dtype());
-}
-
-template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,
@@ -1125,9 +1117,11 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
         common::errors::Unimplemented("Only support NCHW and NHWC format."));
   }
   size_t rank = x.shape().size();
-  if (rank < 3 || rank > 5) {
+  if (rank < 3) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Only support NCHW and NHWC format in rank {3, 4, 5}."));
+        "Only support NCHW and NHWC format in rank higher or equal to 3. "
+        "Current rank: %zu",
+        rank));
   }
 
   auto org_dtype = x.dtype();

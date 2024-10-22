@@ -2774,9 +2774,13 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp`` (logabsdet).
 
-    Supports input of float, double.
+    Supports input of float, double, complex64, complex128.
 
-    Note that for matrices that have zero determinant, this returns ``(0, -inf)``.
+    Notes:
+        1. For matrices that have zero determinant, this returns ``(0, -inf)``.
+
+        2. For matrices with complex value, the :math:`abs(det)` is the modulus of the determinant,
+        and therefore :math:`sign = det / abs(det)`.
 
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
@@ -2786,7 +2790,8 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
 
     Returns:
         y (Tensor), A tensor containing the sign of the determinant and the natural logarithm
-        of the absolute value of determinant, respectively.
+        of the absolute value of determinant, respectively. The output shape is :math:`(2, *)`,
+        where math:`*` is one or more batch dimensions of the input `x`.
 
     Examples:
         .. code-block:: python
@@ -2804,7 +2809,12 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_or_pir_mode():
         return _C_ops.slogdet(x)
     else:
-        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
+        check_dtype(
+            x.dtype,
+            'Input',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'slogdet',
+        )
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (
