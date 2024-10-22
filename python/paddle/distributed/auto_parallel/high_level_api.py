@@ -34,6 +34,7 @@ from paddle.distributed.auto_parallel.static.tuner.pir_rule_based_tuner import (
 class ToDistributedConfig:
     def __init__(self):
         self.input_spec = None
+        self.sequence_parallel = False
 
 
 def record_program_ops_pre_hook(layer, inputs):
@@ -404,96 +405,103 @@ def to_distributed(model, dataloader, mesh, config):
             )
 
     # # # # step7: support sequence parallel
-    clear_used_patterns()
-    EMBEDDING_LAYER_NAME = "embedding"
-    ATTENTION_LAYER_NAME = "attention"
-    MLP_LAYER_NAME = "mlp"
-    RMS_NORM_LAYER_NAME = "rmsnorm"
-    used_patterns = [
-        EMBEDDING_LAYER_NAME,
-        ATTENTION_LAYER_NAME,
-        MLP_LAYER_NAME,
-        RMS_NORM_LAYER_NAME,
-    ]
-    register_used_patterns(used_patterns)
-    results = match_all_patterns(pir_program)
-    print(f"match patterns based on pir program is: {results}")
+    if config.sequence_parallel:
+        clear_used_patterns()
+        EMBEDDING_LAYER_NAME = "embedding"
+        ATTENTION_LAYER_NAME = "attention"
+        MLP_LAYER_NAME = "mlp"
+        RMS_NORM_LAYER_NAME = "rmsnorm"
+        used_patterns = [
+            EMBEDDING_LAYER_NAME,
+            ATTENTION_LAYER_NAME,
+            MLP_LAYER_NAME,
+            RMS_NORM_LAYER_NAME,
+        ]
+        register_used_patterns(used_patterns)
+        results = match_all_patterns(pir_program)
+        print(f"match patterns based on pir program is: {results}")
 
-    matched_layers = {}
-    for pattern_name, matched_all_patterns in results.items():
-        if pattern_name in used_patterns:
-            for matched_pattern in matched_all_patterns:
-                program_ops_id = []
-                for a, b in matched_pattern.items():
-                    program_ops_id.append(b)
-                if tuple(sorted(program_ops_id)) in ops_id_to_layer.keys():
-                    if pattern_name in matched_layers.keys():
-                        matched_layers[pattern_name].append(
-                            ops_id_to_layer[tuple(sorted(program_ops_id))]
+        matched_layers = {}
+        for pattern_name, matched_all_patterns in results.items():
+            if pattern_name in used_patterns:
+                for matched_pattern in matched_all_patterns:
+                    program_ops_id = []
+                    for a, b in matched_pattern.items():
+                        program_ops_id.append(b)
+                    if tuple(sorted(program_ops_id)) in ops_id_to_layer.keys():
+                        if pattern_name in matched_layers.keys():
+                            matched_layers[pattern_name].append(
+                                ops_id_to_layer[tuple(sorted(program_ops_id))]
+                            )
+                        else:
+                            matched_layers[pattern_name] = [
+                                ops_id_to_layer[tuple(sorted(program_ops_id))]
+                            ]
+        print(f"matched layers are: {matched_layers}")
+
+        # embedding: from [b/dp_degree, s, h] reshard+transpose to [s/mp_degree, b/dp_degree, h]
+        embedding_layer = matched_layers[EMBEDDING_LAYER_NAME][0]
+        embedding_layer_mesh = GLOBAL_MESH[0]
+        embedding_layer.__setattr__("current_mesh", embedding_layer_mesh)
+        post_hook_helper = embedding_layer.register_forward_post_hook(
+            transpose_reshard_embedding_layer_output
+        )
+        # breakpoint()
+
+        # attention: input from [s/mp_degree, b/dp_degree, h] to [b/dp_degree, s, h], output from [b/dp_degree, s, h] to [s/mp_degree, b/dp_degree, h]
+        attention_layers = matched_layers[ATTENTION_LAYER_NAME]
+        if attention_layers is not None:
+            if "pp" in mesh.dim_names:
+                num_attention_layers = len(attention_layers)
+                pp_degree = mesh.get_dim_size("pp")
+                num_blocks_per_stage = num_attention_layers // pp_degree
+                for i in range(num_attention_layers):
+                    pp_stage_id = get_layer_pp_info(
+                        mesh, num_attention_layers, i
+                    )
+                    current_mesh = GLOBAL_MESH[pp_stage_id]
+                    attention_layer = attention_layers[i]
+                    attention_layer.__setattr__("current_mesh", current_mesh)
+                    pre_hook_helper = attention_layer.register_forward_pre_hook(
+                        reshard_transpose_attention_layer_input
+                    )
+                    post_hook_helper = (
+                        attention_layer.register_forward_post_hook(
+                            transpose_reshard_attention_layer_output
                         )
-                    else:
-                        matched_layers[pattern_name] = [
-                            ops_id_to_layer[tuple(sorted(program_ops_id))]
-                        ]
-    print(f"matched layers are: {matched_layers}")
+                    )
 
-    # embedding: from [b/dp_degree, s, h] reshard+transpose to [s/mp_degree, b/dp_degree, h]
-    embedding_layer = matched_layers[EMBEDDING_LAYER_NAME][0]
-    embedding_layer_mesh = GLOBAL_MESH[0]
-    embedding_layer.__setattr__("current_mesh", embedding_layer_mesh)
-    post_hook_helper = embedding_layer.register_forward_post_hook(
-        transpose_reshard_embedding_layer_output
-    )
-    # breakpoint()
+        # mlp: input from [s/mp_degree, b/dp_degree, h] to [s, b/dp_degree, h], output from [s, b/dp_degree, h] to [s/mp_degree, b/dp_degree, h]
+        mlp_layers = matched_layers[MLP_LAYER_NAME]
+        if mlp_layers is not None:
+            if "pp" in mesh.dim_names:
+                num_mlp_layers = len(mlp_layers)
+                pp_degree = mesh.get_dim_size("pp")
+                num_blocks_per_stage = num_mlp_layers // pp_degree
+                for i in range(num_mlp_layers):
+                    pp_stage_id = get_layer_pp_info(mesh, num_mlp_layers, i)
+                    current_mesh = GLOBAL_MESH[pp_stage_id]
+                    mlp_layer = mlp_layers[i]
+                    mlp_layer.__setattr__("current_mesh", current_mesh)
+                    pre_hook_helper = mlp_layer.register_forward_pre_hook(
+                        reshard_transpose_mlp_layer_input
+                    )
+                    post_hook_helper = mlp_layer.register_forward_post_hook(
+                        transpose_reshard_mlp_layer_output
+                    )
 
-    # attention: input from [s/mp_degree, b/dp_degree, h] to [b/dp_degree, s, h], output from [b/dp_degree, s, h] to [s/mp_degree, b/dp_degree, h]
-    attention_layers = matched_layers[ATTENTION_LAYER_NAME]
-    if attention_layers is not None:
-        if "pp" in mesh.dim_names:
-            num_attention_layers = len(attention_layers)
-            pp_degree = mesh.get_dim_size("pp")
-            num_blocks_per_stage = num_attention_layers // pp_degree
-            for i in range(num_attention_layers):
-                pp_stage_id = get_layer_pp_info(mesh, num_attention_layers, i)
-                current_mesh = GLOBAL_MESH[pp_stage_id]
-                attention_layer = attention_layers[i]
-                attention_layer.__setattr__("current_mesh", current_mesh)
-                pre_hook_helper = attention_layer.register_forward_pre_hook(
-                    reshard_transpose_attention_layer_input
+        # rms norm: for the last rms norm (after decoder blocks), input from [s/mp_degree, b/dp_degree, h] to [b, s, h]
+        rms_norm_layers = matched_layers[RMS_NORM_LAYER_NAME]
+        if rms_norm_layers is not None:
+            if "pp" in mesh.dim_names:
+                last_rms_norm_layer = rms_norm_layers[-1]
+                current_mesh = GLOBAL_MESH[-1]
+                last_rms_norm_layer.__setattr__("current_mesh", current_mesh)
+                post_hook_helper = (
+                    last_rms_norm_layer.register_forward_post_hook(
+                        reshard_transpose_rms_norm_layer_output
+                    )
                 )
-                post_hook_helper = attention_layer.register_forward_post_hook(
-                    transpose_reshard_attention_layer_output
-                )
-
-    # mlp: input from [s/mp_degree, b/dp_degree, h] to [s, b/dp_degree, h], output from [s, b/dp_degree, h] to [s/mp_degree, b/dp_degree, h]
-    mlp_layers = matched_layers[MLP_LAYER_NAME]
-    if mlp_layers is not None:
-        if "pp" in mesh.dim_names:
-            num_mlp_layers = len(mlp_layers)
-            pp_degree = mesh.get_dim_size("pp")
-            num_blocks_per_stage = num_mlp_layers // pp_degree
-            for i in range(num_mlp_layers):
-                pp_stage_id = get_layer_pp_info(mesh, num_mlp_layers, i)
-                current_mesh = GLOBAL_MESH[pp_stage_id]
-                mlp_layer = mlp_layers[i]
-                mlp_layer.__setattr__("current_mesh", current_mesh)
-                pre_hook_helper = mlp_layer.register_forward_pre_hook(
-                    reshard_transpose_mlp_layer_input
-                )
-                post_hook_helper = mlp_layer.register_forward_post_hook(
-                    transpose_reshard_mlp_layer_output
-                )
-
-    # rms norm: for the last rms norm (after decoder blocks), input from [s/mp_degree, b/dp_degree, h] to [b, s, h]
-    rms_norm_layers = matched_layers[RMS_NORM_LAYER_NAME]
-    if rms_norm_layers is not None:
-        if "pp" in mesh.dim_names:
-            last_rms_norm_layer = rms_norm_layers[-1]
-            current_mesh = GLOBAL_MESH[-1]
-            last_rms_norm_layer.__setattr__("current_mesh", current_mesh)
-            post_hook_helper = last_rms_norm_layer.register_forward_post_hook(
-                reshard_transpose_rms_norm_layer_output
-            )
 
     # # # # step8: clean layer_op recorder hooks
     for layer in model.sublayers():
