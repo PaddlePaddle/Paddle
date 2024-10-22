@@ -42,7 +42,7 @@ from ..framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from .creation import _complex_to_real_dtype
+from .creation import _complex_to_real_dtype, fill_constant
 from .layer_function_generator import generate_layer_fn
 from .manipulation import cast, cast_
 from .ops import (  # noqa: F401
@@ -3708,8 +3708,8 @@ def log10_(x: Tensor, name: str | None = None) -> Tensor:
 
 def clip(
     x: Tensor,
-    min: float | int | Tensor | None = None,
-    max: float | int | Tensor | None = None,
+    min: float | Tensor | int | None = None,
+    max: float | Tensor | int | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -3763,81 +3763,83 @@ def clip(
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if isinstance(min, Variable):
-        if min.shape == [] or min.shape == [0] or min.shape == [1]:
-            min = min.item(0)
-        else:
-            min.stop_gradient = True
-            assert min.shape == x.shape[-len(min.shape):], (
-                "The dimension of the min parameter must be the same as that of x,"
-                f"received Input x's dimensional: {x.shape}.\n"
-            )
-
-    if isinstance(max, Variable):
-        if max.shape == [] or max.shape == [0] or max.shape == [1]:
-            max = max.item(0)
-        else:
-            max.stop_gradient = True
-            assert max.shape == x.shape[-len(max.shape):], (
-                "The dimension of the max parameter must be the same as that of x,"
-                f"received Input x's dimensional: {x.shape}.\n"
-            )
-
-    if in_dynamic_or_pir_mode():
-        min = min_ if min is None else min
-        max = max_ if max is None else max
-        return _C_ops.clip(x, min, max)
+    if max is None:
+        max = max_
     else:
-        if min is not None:
-            check_type(min, 'min', (float, int, Variable), 'clip')
-            if isinstance(min, Variable):
-                check_dtype(
+        check_type(max, 'max', (float, int, Variable), 'clip')
+    if min is None:
+        min = min_
+    else:
+        check_type(min, 'min', (float, int, Variable), 'clip')
+
+    if not isinstance(min, Variable) and not isinstance(max, Variable):
+        if in_dynamic_or_pir_mode():
+            return _C_ops.clip(x, min, max)
+        else:
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+                'clip',
+            )
+
+            inputs = {'X': x}
+            attrs = {'min': min, 'max': max}
+
+            helper = LayerHelper('clip', **locals())
+            output = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype('x')
+            )
+            helper.append_op(
+                type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs
+            )
+
+            return output
+    else:#是参数
+        if not isinstance(max, Variable):
+            max = fill_constant([1], x_dtype, max)
+        if not isinstance(min, Variable):
+            min = fill_constant([1], x_dtype, min)
+        
+        check_dtype(
                     min.dtype,
                     'min',
                     ['float16', 'float32', 'float64', 'int32', 'uint16'],
                     'clip',
                     '(When the type of min in clip is Variable.)',
                 )
-        if max is not None:
-            check_type(max, 'max', (float, int, Variable), 'clip')
-            if isinstance(max, Variable):
-                check_dtype(
+        check_dtype(
                     max.dtype,
                     'max',
                     ['float16', 'float32', 'float64', 'int32', 'uint16'],
                     'clip',
-                    '(When the type of max in clip is Variable.)',
+                    '(When the type of min in clip is Variable.)',
                 )
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            'clip',
-        )
+        
+        if max.shape is [0]:
+            raise ValueError(
+                f"if min is a tensor, function expect a not none vector, but got shape {max.shpae}"
+            )
+        if min.shape is [0]:
+            raise ValueError(
+                f"if min is a tensor, function expect a not none vector, but got shape {min.shpae}"
+            )
+        
+        if min.shape != x.shape[-len(min.shape):]:
+            raise ValueError(
+                f"if min is a tensor, function expect min's shape {min.shpae} is the same as x's shape {x.shape[-len(min.shape):]}"
+            )
+        if max.shape != x.shape[-len(max.shape):]:
+            raise ValueError(
+                f"if max is a tensor, function expect min's shape {max.shpae} is the same as x's shape {x.shape[-len(max.shape):]}"
+            )
 
-        inputs = {'X': x}
-        attrs = {'min': min_, 'max': max_}
+        max_ = paddle.expand(max, x.shape)
+        min_ = paddle.expand(min, x.shape)
 
-        if isinstance(min, Variable):
-            inputs['Min'] = min
-        elif min is not None:
-            attrs['min'] = min
-
-        if isinstance(max, Variable):
-            inputs['Max'] = max
-        elif max is not None:
-            attrs['max'] = max
-
-        helper = LayerHelper('clip', **locals())
-        output = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype('x')
-        )
-        helper.append_op(
-            type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs
-        )
-
+        output_min = paddle.where(x < min_, x, min_)
+        output = paddle.where(output_min > max_, output_min, max_)
         return output
-
 
 @inplace_apis_in_dygraph_only
 def clip_(
