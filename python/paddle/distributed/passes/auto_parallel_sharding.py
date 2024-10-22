@@ -1554,7 +1554,7 @@ def _insert_reduce_op(
     root_id,
     dist_context,
     reduce_type,
-    op_role,
+    op_role=OpRole.Backward,
 ):
     assert (
         root_id >= 0
@@ -1567,7 +1567,7 @@ def _insert_reduce_op(
         attrs={
             'ring_id': ring_id,
             'root_id': root_id,
-            'reduce_type': int(reduce_type),
+            'reduce_type': reduce_type,
             OP_ROLE_KEY: op_role,
         },
     )

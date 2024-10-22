@@ -564,7 +564,7 @@ def insert_fused_reduce_ops(
                 attrs={
                     'ring_id': ring_id,
                     'root_id': root_id,
-                    'reduce_type': int(dist.ReduceOp.SUM),
+                    'reduce_type': dist.ReduceOp.SUM,
                     OP_ROLE_KEY: op_role,
                 },
             )
@@ -636,7 +636,7 @@ def insert_reduce_ops(
             attrs={
                 'ring_id': ring_id,
                 'root_id': root_id,
-                'reduce_type': int(dist.ReduceOp.SUM),
+                'reduce_type': dist.ReduceOp.SUM,
                 OP_ROLE_KEY: op_role,
             },
         )
