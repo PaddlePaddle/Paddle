@@ -52,7 +52,7 @@ class TestAssignValueFloat32TRTPattern(TensorRTBaseTest):
         self.api_args = {
             "x": np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')
         }
-        self.program_config = {"feed_list": []}
+        self.program_config = {"feed_list": ["x"]}
         self.min_shape = {}
         self.max_shape = {}
 
@@ -66,7 +66,7 @@ class TestAssignValueInt32TRTPattern(TensorRTBaseTest):
         self.api_args = {
             "x": np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='int32')
         }
-        self.program_config = {"feed_list": []}
+        self.program_config = {"feed_list": ["x"]}
         self.min_shape = {}
         self.max_shape = {}
 
