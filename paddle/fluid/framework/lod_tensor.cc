@@ -256,10 +256,7 @@ void DeserializeFromStream(std::istream &is,
     // the 1st field, unit32_t version for DenseTensor
     uint32_t version = 0;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
-    PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
-                      true,
-                      common::errors::InvalidArgument(
-                          "Tensor version %u is not supported.", version));
+
     PADDLE_ENFORCE_EQ(
         version,
         0U,
@@ -287,10 +284,7 @@ void DeserializeFromStream(std::istream &is,
     // the 1st field, unit32_t version for DenseTensor
     uint32_t version = 0;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
-    PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
-                      true,
-                      common::errors::InvalidArgument(
-                          "Tensor version %u is not supported.", version));
+
     PADDLE_ENFORCE_EQ(
         version,
         0U,
