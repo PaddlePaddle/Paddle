@@ -21,6 +21,8 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/tensor_array.h"
 
