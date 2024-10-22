@@ -813,7 +813,7 @@ void SetReplicatedDistAttrForOutput(
   }
 }
 
-void CheckAndSBackfillGlobalShape(phi::distributed::DistTensor* out) {
+void CheckAndBackfillGlobalShape(phi::distributed::DistTensor* out) {
   if (out && out->defined()) {
     auto dist_dims = out->dims();
     auto local_dims = out->local_dims();

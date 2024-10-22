@@ -26,6 +26,10 @@ from api_gen import (
     source_include,
 )
 
+NEED_BACKFILL_LIST = [
+    'nonzero',
+]
+
 ######################
 # Code Gen Templates #
 ######################
@@ -467,10 +471,10 @@ SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
 
 
 SINGLE_CHECK_AND_BACKFILL_GLOBAL_SHAPE_TEMPLATE = """
-    CheckAndSBackfillGlobalShape({});"""
+    CheckAndBackfillGlobalShape({});"""
 VECTOR_CHECK_AND_BACKFILL_GLOBAL_SHAPE_TEMPLATE = """
     for (size_t i = 0; i < {name}.size(); ++i) {{
-        CheckAndSBackfillGlobalShape({name}[i]);
+        CheckAndBackfillGlobalShape({name}[i]);
     }}
 """
 
@@ -1884,6 +1888,9 @@ class DistForwardAPI(ForwardAPI):
 
     def generate_check_and_backfill_global_shape(self) -> str:
         check_and_backfill_global_shape_code = ""
+        if self.kernel['func'][0] not in NEED_BACKFILL_LIST:
+            return check_and_backfill_global_shape_code
+
         for i, out_name in enumerate(self.dist_output_args):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
                 check_and_backfill_global_shape_code += (
@@ -1925,8 +1932,8 @@ class DistForwardAPI(ForwardAPI):
         kernel_call_code = self.generate_kernel_call_code()
         fallback_code = self.generate_fallback_code()
         output_dist_attr_setting = self.generate_output_dist_attr_setting()
-        # In some cases like `nonzero`, the output shape is determined after kernel call.
-        # Therefore, we need to check and backfill global shape after kernel call.
+        # In op such as nonzero, the output shape is set to -1 by the infer_meta_fn. This shape is then determined
+        # within the kernel.Therefore, we need to inspect and backfill the global shape after the kernel call.
         check_and_backfill_global_shape_code = (
             self.generate_check_and_backfill_global_shape()
         )

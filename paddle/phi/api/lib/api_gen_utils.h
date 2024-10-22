@@ -188,7 +188,7 @@ void SetReplicatedDistAttrForOutput(
     phi::distributed::DistTensor* out,
     const phi::distributed::ProcessMesh& process_mesh);
 
-void CheckAndSBackfillGlobalShape(phi::distributed::DistTensor* out);
+void CheckAndBackfillGlobalShape(phi::distributed::DistTensor* out);
 
 }  // namespace experimental
 }  // namespace paddle
