@@ -36,6 +36,7 @@ class TensorRTBaseTest(unittest.TestCase):
         self.min_shape = None
         self.max_shape = None
         self.target_marker_op = ""
+        self.dynamic_shape_data = {}
 
     def create_fake_program(self):
         if self.python_api is None:
