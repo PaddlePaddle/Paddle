@@ -1685,10 +1685,28 @@ bool FusedAttentionOpInferSymbolicShape(
                         "The dimensions of x must be 3 (batch_size, seq_len, "
                         "dim_embed), but received dimensions of Input is [%d]",
                         x_shape.size()));
-  const std::vector<symbol::DimExpr> &qkv_weight_shape =
-      qkv_weight_shape_or_data.shape();
-  const std::vector<symbol::DimExpr> &cache_kv_shape =
-      cache_kv_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> qkv_weight_shape =
+      [&]() -> std::vector<symbol::DimExpr> {
+    if (qkv_weight_shape_or_data.isa<symbol::TensorListShapeOrDataDimExprs>()) {
+      const auto &qkv_weight_data_list =
+          qkv_weight_shape_or_data
+              .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+      return qkv_weight_data_list.at(0).shape();
+    } else {
+      return qkv_weight_shape_or_data.shape();
+    }
+  }();
+  const std::vector<symbol::DimExpr> cache_kv_shape =
+      [&]() -> std::vector<symbol::DimExpr> {
+    if (cache_kv_shape_or_data.isa<symbol::TensorListShapeOrDataDimExprs>()) {
+      const auto &cache_kv_data_list =
+          cache_kv_shape_or_data
+              .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+      return cache_kv_data_list.at(0).shape();
+    } else {
+      return cache_kv_shape_or_data.shape();
+    }
+  }();
 
   int num_heads_ = op->attribute<pir::Int32Attribute>("num_heads").data();
   symbol::DimExpr num_heads = symbol::DimExpr(num_heads_);
