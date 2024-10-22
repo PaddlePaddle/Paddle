@@ -2742,6 +2742,9 @@ PyDoc_STRVAR(tensor_is_coalesced__doc__,  // NOLINT
 Check whether the Tensor is a coalesced SparseCooTensor. If not it will return False.
 Any Tensor type among DenseTensor/SparseCooTensor/SparseCsrTensor are supported.
 
+Notes:
+    It will return always False for a newly created SparseCooTensor.
+
 Args:
     x (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
 
