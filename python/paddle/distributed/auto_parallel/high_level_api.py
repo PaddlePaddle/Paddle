@@ -231,8 +231,15 @@ def get_layer_pp_info(mesh, num_hidden_layers, layer_index):
 
 
 # mesh, config: input_spec
-def to_distributed(model, mesh, config):
+def to_distributed(model, dataloader, mesh, config):
     paddle.distributed.init_parallel_env()
+
+    # # shard dataloader
+    first_stage_mesh = mesh.get_mesh_with_dim("pp", 0)
+    last_stage_mesh = mesh.get_mesh_with_dim("pp", 1)
+    loader = dist.shard_dataloader(
+        dataloader, meshes=[first_stage_mesh, last_stage_mesh], shard_dims="dp"
+    )
 
     leaf_layers = []
     for layer in model.sublayers():
@@ -497,4 +504,4 @@ def to_distributed(model, mesh, config):
         for hook_helper in layer._op_recorder.hooks:
             hook_helper.remove()
 
-    return model
+    return model, loader

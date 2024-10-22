@@ -86,12 +86,6 @@ dataset = RandomDataset(input_seqs, labels, BATCH_SIZE * BATCH_NUM)
 loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE)
 opt = paddle.optimizer.SGD(learning_rate=0.1, parameters=model.parameters())
 
-# # shard dataloader
-first_stage_mesh = mesh.get_mesh_with_dim("pp", 0)
-last_stage_mesh = mesh.get_mesh_with_dim("pp", 1)
-dist_loader = dist.shard_dataloader(
-    loader, meshes=[first_stage_mesh, last_stage_mesh], shard_dims="dp"
-)
 # # config: input_spec
 input_seq_spec = paddle.static.InputSpec(
     [BATCH_SIZE, SEQ_LENGTH], 'float32', 'input_seq', True
@@ -100,7 +94,7 @@ dist_config = ToDistributedConfig()
 dist_config.input_spec = [input_seq_spec]
 dist_config.num_hidden_layers = model_config.num_hidden_layers
 # # wrap model by using **to_distributed**
-dist_model = to_distributed(model, mesh, dist_config)
+dist_model, dist_loader = to_distributed(model, loader, mesh, dist_config)
 # dist_model = model
 
 dist_model.train()
