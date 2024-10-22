@@ -20,6 +20,7 @@
 
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 
 namespace pir {
 
@@ -71,6 +72,16 @@ class IR_API PassRegistrar {
   explicit PassRegistrar(const char *pass_type) {
     PassRegistry::Instance().Insert(
         pass_type, []() { return std::make_unique<PassType>(); });
+  }
+  // make a new registrar to satisfy python pass
+  explicit PassRegistrar(const char *pass_type, 
+                         paddle::drr::DrrPatternContext &pattern_context,
+                         const char* name) {
+    PassRegistry::Instance().Insert(
+        pass_type, [&pattern_context, name]() {
+          return std::make_unique<PassType>(name, pattern_context);
+        }
+    );
   }
 };
 

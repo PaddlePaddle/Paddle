@@ -634,7 +634,7 @@ std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(
   if (drr_pattern->should_create_ctx_) {
     drr_pattern->operator()(&drr_context);
   } else {
-   drr_context = drr_pattern->get_python_drr_context();
+   drr_context = drr_pattern->GetPythonDrrContext();
   }
   return std::make_unique<DrrRewritePattern>(drr_pattern->name(),
                                              drr_context,

@@ -26,6 +26,7 @@ limitations under the License. */
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 // Cast paddle::variant for PyBind.
 // Copy from
 // https://github.com/pybind/pybind11/issues/576#issuecomment-269563199
@@ -132,6 +133,131 @@ struct paddle_variant_caster<V<Ts...>> {
 template <class... Args>
 struct type_caster<paddle::variant<Args...>>
     : paddle_variant_caster<paddle::variant<Args...>> {};
+
+using Attribute = std::variant<paddle::drr::NormalAttribute, paddle::drr::ComputeAttribute>;
+// caster for paddle::drr::Attribute
+template <> 
+struct type_caster<Attribute> {
+public:
+    PYBIND11_TYPE_CASTER(Attribute, _("Variant"));
+
+    // Conversion from Python to C++
+    bool load(handle src, bool) {
+        if (pybind11::isinstance<pybind11::str>(src)) {
+            std::string name = src.cast<std::string>();
+            paddle::drr::NormalAttribute normal_attr(name);
+            value = normal_attr;
+            return true;
+        } // ComputeAttribute
+        else if (pybind11::isinstance<pybind11::function>(src)) {
+            pybind11::function py_func = pybind11::cast<pybind11::function>(src);
+            paddle::drr::AttrComputeFunc compute_func = [py_func](const paddle::drr::MatchContext& ctx) -> std::any {
+                pybind11::object py_ctx = pybind11::cast(ctx);
+                pybind11::object py_result = py_func(py_ctx);
+                
+                if (py_result.is_none()) {
+                    return std::any();
+                }
+                if (pybind11::isinstance<pybind11::bool_>(py_result)) {
+                    return std::any(py_result.cast<bool>());
+                }
+                if (pybind11::isinstance<pybind11::int_>(py_result)) {
+                    try {
+                        return std::any(py_result.cast<int64_t>());
+                    } catch (const py::cast_error&) {
+                        return std::any(py_result.cast<int>());
+                    }
+                }
+                if (pybind11::isinstance<pybind11::float_>(py_result)) {
+                    return std::any(py_result.cast<double>());
+                }
+                if (pybind11::isinstance<pybind11::list>(py_result)) {
+                    // std::vector<int64_t>
+                    try {
+                        std::vector<int64_t> vec = py_result.cast<std::vector<int64_t>>();
+                        return std::any(vec);
+                    } catch (const py::cast_error&) {}
+                    // std::vector<float>
+                    try {
+                        std::vector<float> vec = py_result.cast<std::vector<float>>();
+                        return std::any(vec);
+                    } catch (const py::cast_error&) {}
+                    // std::vector<double>
+                    try {
+                        std::vector<double> vec = py_result.cast<std::vector<double>>();
+                        return std::any(vec);
+                    } catch (const py::cast_error&) {}
+                }
+                if (pybind11::isinstance<pybind11::str>(py_result)) {
+                    return std::any(py_result.cast<std::string>());
+                }
+                return std::any(py_result);
+            };
+
+            paddle::drr::ComputeAttribute compute_attr(compute_func);
+            value = compute_attr;
+            return true;
+        }
+        return false;
+    }
+
+    // Conversion from C++ to Python
+    static handle cast(const Attribute& src, return_value_policy /* policy */, handle /* parent */) {
+        if (std::holds_alternative<paddle::drr::NormalAttribute>(src)) {
+            const auto& normal_attr = std::get<paddle::drr::NormalAttribute>(src);
+            return pybind11::str(normal_attr.name()).release();
+        } else if (std::holds_alternative<paddle::drr::ComputeAttribute>(src)) {
+            const auto& compute_attr = std::get<paddle::drr::ComputeAttribute>(src);
+            const auto& func = compute_attr.attr_compute_func();
+
+            auto py_func = pybind11::cpp_function(
+                [func](pybind11::object py_ctx) -> pybind11::object {
+                    paddle::drr::MatchContext ctx = pybind11::cast<paddle::drr::MatchContext>(py_ctx);
+
+                    std::any result;
+                    try {
+                        result = func(ctx);
+                    } catch (const std::exception& e) {
+                        throw pybind11::value_error(e.what());
+                    }
+
+                    if (!result.has_value()) {
+                        return pybind11::none();
+                    }
+
+                    if (result.type() == typeid(bool)) {
+                        return pybind11::cast(std::any_cast<bool>(result));
+                    }
+                    if (result.type() == typeid(int)) {
+                        return pybind11::cast(std::any_cast<int>(result));
+                    }
+                    if (result.type() == typeid(int64_t)) {
+                        return py::cast(std::any_cast<int64_t>(result));
+                    }
+                    if (result.type() == typeid(double)) {
+                        return pybind11::cast(std::any_cast<double>(result));
+                    }
+                    if (result.type() == typeid(std::vector<int64_t>)) {
+                        return pybind11::cast(std::any_cast<int64_t>(result));
+                    }
+                    if (result.type() == typeid(std::vector<float>)) {
+                        return pybind11::cast(std::any_cast<float>(result));
+                    }
+                    if (result.type() == typeid(std::vector<double>)) {
+                        return pybind11::cast(std::any_cast<double>(result));
+                    }
+                    if (result.type() == typeid(std::string)) {
+                        return pybind11::cast(std::any_cast<std::string>(result));
+                    }
+                    throw std::runtime_error("Unsupported return type from ComputeAttribute function.");
+                },
+                "ComputeAttribute function"
+            );
+            return py_func.release();
+        }
+        return pybind11::none().release();
+    }
+};
 
 }  // namespace detail
 }  // namespace pybind11

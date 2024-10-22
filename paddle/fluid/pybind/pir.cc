@@ -49,7 +49,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
@@ -130,6 +130,7 @@ namespace name_analysis = pir::utils::name_analysis;
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
+
 
 namespace paddle {
 namespace pybind {
@@ -2419,12 +2420,13 @@ void BindPassManager(pybind11::module *m) {
       .def("register_pass",
            [](PassManager &self,
               const std::string &pass_name,
-              DrrPatternContext &pattern_ctx) {
-                auto auto_drr_pattern = AutoDrrPattern(pass_name, pattern_ctx, true);
-                using AutoFinalPass = AutoDrrPass<auto_drr_pattern>
+              paddle::drr::DrrPatternContext &pattern_ctx) {
+                using AutoFinalPass = paddle::drr::AutoDrrPass<paddle::drr::AutoDrrPattern>;
                 // == REGISTER_IR_PASS(pass_name, AutoDrrPass);
-                static ::pir::PassRegistrar<AutoFinalPass> auto_drr_pass_registrar(pass_name);
-                auto_drr_pass_registrar.Touch();
+                static ::pir::PassRegistrar<AutoFinalPass> auto_register_pass(pass_name.data(), pattern_ctx, pass_name.data());
+                auto_register_pass.Touch();
+                // keep reference
+                static ::pir::PassRegistrar<AutoFinalPass> &temp_registrar UNUSED = auto_register_pass;
               }
             )
       .def("passes",
@@ -2445,8 +2447,38 @@ void BindPassManager(pybind11::module *m) {
 }
 
 void BindDrrPatternContext(pybind11::module *m) {
+
+  // bind pir::Value
+  pybind11::class_<pir::Value, std::shared_ptr<pir::Value>> value(*m, "Value");
+
+  // bind NormalAttribute
+  pybind11::class_<drr::NormalAttribute> normal_attribute(*m, "NormalAttribute");
+
+  // bind ComputeAttribute
+  pybind11::class_<drr::ComputeAttribute> compute_attribute(*m, "ComputeAttribute");
+
+  // bind Tensor
+  pybind11::class_<drr::Tensor, std::shared_ptr<drr::Tensor>> tensor(*m, "Tensor",
+      R"DOC(
+          Represents a tensor in the DRR framework.
+      )DOC");
+
+  // bind Op
+  pybind11::class_<drr::Op, std::shared_ptr<drr::Op>> op(*m, "Op",
+    R"DOC(
+        Represents an operation in the DRR framework.
+    )DOC");
+    op
+      .def("__call__",
+             [](std::shared_ptr<drr::Op> self, std::shared_ptr<drr::Tensor> input_tensor, std::shared_ptr<drr::Tensor> output_tensor) {
+                (*(self))(*(input_tensor), *(output_tensor));
+             },
+             pybind11::arg("input_tensor"),
+             pybind11::arg("output_tensor"),
+             "Call the operation with an input tensor and return the output tensor.");
+
   // bind DrrPatternContext
-  pybind11::class_<DrrPatternContext, std::shared_ptr<DrrPatternContext>> drr_pattern_context(
+  pybind11::class_<drr::DrrPatternContext, std::shared_ptr<drr::DrrPatternContext>> drr_pattern_context(
       *m,
       "DrrPatternContext",
       R"DOC(
@@ -2455,9 +2487,9 @@ void BindDrrPatternContext(pybind11::module *m) {
   )DOC");
   drr_pattern_context
       .def(pybind11::init([]() {
-             return std::make_unique<DrrPatternContext>();
+             return std::make_shared<drr::DrrPatternContext>();
            }))
-      .def("SourcePattern", []() {return drr::SourcePattern})
+      .def("SourcePattern", &drr::DrrPatternContext::SourcePattern);
 
   // bind drr::SourcePattern
   pybind11::class_<drr::SourcePattern, std::shared_ptr<drr::SourcePattern>> source_pattern(
@@ -2467,33 +2499,102 @@ void BindDrrPatternContext(pybind11::module *m) {
       Represents a source pattern for matching in the DRR framework.
       
   )DOC");
+
   source_pattern
-      .def(pybind11::init([]() {
-              return std::make_unique<SourcePattern>();
-            }))
-      .def("ResultPattern", [](SourcePattern& self) { return self.ResultPattern() } )
+      .def("ResultPattern", &drr::SourcePattern::ResultPattern )
       .def("Op",
-           [](SourcePattern& self
-              const std::string& op_type
-              const std::unordered_map<std:string, Attribute>& attributes = {}) {
-                return self.Op(op_type, attributes);
-              })
+           [](std::shared_ptr<drr::SourcePattern> self,
+              const std::string& op_type,
+              const std::unordered_map<std::string, drr::Attribute>& attributes = {}) {
+                return self->Op(op_type, attributes);
+              },
+           pybind11::arg("op_type"),
+           pybind11::arg("attributes") = std::unordered_map<std::string, drr::Attribute>())
       .def("Tensor",
-           [](SourcePattern& self,
+           [](std::shared_ptr<drr::SourcePattern> self,
               const std::string& name) {
-                return self.Tensor(name);
-              })
+                return self->Tensor(name);
+              },
+           pybind11::arg("name"))
       .def("Attr",
-           [](SourcePattern& self,
+           [](std::shared_ptr<drr::SourcePattern> self,
               const std::string& attr_name) {
-                return self.Attr(attr_name);
-              })
+                return self->Attr(attr_name);
+              },
+           pybind11::arg("attr_name"))
       .def("AddConstraint",
-           [](SourcePattern& self,
-              const pyfunction& func) {
-                self.AddConstraint(func);
-              })
+           [](std::shared_ptr<drr::SourcePattern> self,
+              const pybind11::function& py_func) {
+                // wrap pyfunction -> cpp function
+                paddle::drr::ConstraintFunction cpp_func = [py_func](const paddle::drr::MatchContext& context) -> bool {
+                    try {
+                        pybind11::object py_context = pybind11::cast(context);
+                        pybind11::object result = py_func(py_context);
+                        return result.cast<bool>();
+                    } catch (const pybind11::error_already_set& e) {
+                        std::cerr << "Python error in AddConstraint callback: " << e.what() << std::endl;
+                        return false;
+                    }
+                };
+                self->AddConstraint(cpp_func);
+              });
   
+  // bind MatchContext
+  pybind11::class_<drr::MatchContext, std::shared_ptr<drr::MatchContext>> match_context(*m, "MatchContext",
+    R"DOC(
+        Represents the context of a match in the DRR framework.
+    )DOC");
+    match_context
+      .def("Tensor",
+             [](std::shared_ptr<drr::MatchContext> self,
+                std::string& tensor_name) -> pir::Value {
+                  return self->Tensor(tensor_name);
+                },
+             pybind11::arg("tensor_name"))
+        // Attr
+      .def("StrAttr",
+           [](std::shared_ptr<drr::MatchContext> self,
+              const std::string& value_name) {
+                return self->Attr<std::string>(value_name);
+              },
+           pybind11::arg("value_name"))
+      .def("BoolAttr",
+           [](std::shared_ptr<drr::MatchContext> self,
+              const std::string& value_name) {
+                return self->Attr<bool>(value_name);
+              },
+           pybind11::arg("value_name"))
+      .def("Int32Attr",
+           [](std::shared_ptr<drr::MatchContext> self,
+              const std::string& value_name) {
+                return self->Attr<int32_t>(value_name);
+              },
+           pybind11::arg("value_name"))
+      .def("Int64Attr",
+           [](std::shared_ptr<drr::MatchContext> self,
+              const std::string& value_name) {
+                return self->Attr<int64_t>(value_name);
+              },
+           pybind11::arg("value_name"))
+      .def("Float32Attr",
+           [](std::shared_ptr<drr::MatchContext> self,
+              const std::string& value_name) {
+                return self->Attr<float>(value_name);
+              },
+           pybind11::arg("value_name"))
+      .def("VectorInt64Attr",
+           [](std::shared_ptr<drr::MatchContext> self,
+              const std::string& value_name) {
+                return self->Attr<std::vector<int64_t>>(value_name);
+              },
+           pybind11::arg("value_name"))
+      .def("VectorFloatAttr",
+           [](std::shared_ptr<drr::MatchContext> self,
+              const std::string& value_name) {
+                return self->Attr<std::vector<int32_t>>(value_name);
+              },
+           pybind11::arg("value_name"));
+
   // bind drr::ResultPattern
   pybind11::class_<drr::ResultPattern, std::shared_ptr<drr::ResultPattern>> result_pattern(
       *m,
@@ -2502,62 +2603,75 @@ void BindDrrPatternContext(pybind11::module *m) {
       Represents a result pattern for matching in the DRR framework
       
   )DOC");
+
   result_pattern
-      .def(pybind11::init([]() {
-        return std::make_unique<ReusltPattern>();
-      }))
       .def("Op",
-           [](ReusltPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               const std::string& op_type,
-              const std::unordered_map<std:string, Attribute>& attributes = {}) {
-                return self.Op(op_type, attributes);
-              })
+              const std::unordered_map<std::string, drr::Attribute>& attributes = {}) {
+                return self->Op(op_type, attributes);
+              },
+           pybind11::arg("op_type"),
+           pybind11::arg("attributes") = std::unordered_map<std::string, drr::Attribute>())
       .def("Tensor",
-           [](ReusltPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               const std::string& name) {
-                return self.Tensor(name);
-              })
+                return self->Tensor(name);
+              },
+           pybind11::arg("name"))
       // Attr
       .def("StrAttr",
-           [](ResultPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               const std::string& value) {
-                return self.StrAttr(value);
-              })
+                return self->StrAttr(value);
+              },
+           pybind11::arg("value"))
       .def("BoolAttr",
-           [](ResultPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               bool value) {
-                return self.BoolAttr(value);
-              })
+                return self->BoolAttr(value);
+              },
+           pybind11::arg("value"))
       .def("Int32Attr",
-           [](ResultPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               int32_t value) {
-                return self.Int32Attr(value);
-              })
+                return self->Int32Attr(value);
+              },
+           pybind11::arg("value"))
       .def("Int64Attr",
-           [](ResultPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               int64_t value) {
-                return self.Int64Attr(value);
-              })
+                return self->Int64Attr(value);
+              },
+           pybind11::arg("value"))
       .def("Float32Attr",
-           [](ResultPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               float value) {
-                return self.Float32Attr(value);
-              })
+                return self->Float32Attr(value);
+              },
+           pybind11::arg("value"))
       .def("VectorInt64Attr",
-           [](ResultPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               const std::vector<int64_t>& value) {
-                return self.VectorInt64Attr(value);
-              })
+                return self->VectorInt64Attr(value);
+              },
+           pybind11::arg("value"))
       .def("VectorFloatAttr",
-           [](ResultPattern& self,
+           [](std::shared_ptr<drr::ResultPattern> self,
               const std::vector<float>& value) {
-                return self.VectorFloatAttr(value);
-              })
+                return self->VectorFloatAttr(value);
+              },
+           pybind11::arg("value"))
       .def("ComputeAttr",
-           [](ResultPattern& self,
-              pyfunc11 func) {
-                return self.ComputeAttr(func);
-              })
+           [](std::shared_ptr<drr::ResultPattern> self,
+              pybind11::function func) {
+                return self->ComputeAttr(func);
+              },
+           pybind11::arg("func"));
+
+  m->def("get_shape_from_value", [](const pir::Value& value) {
+    return pir::GetShapeFromValue(value);
+  });
 }
 
 void BindShapeOrDataDimExprs(pybind11::module *m) {
@@ -2694,7 +2808,7 @@ void BindPir(pybind11::module *module) {
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
   BindIrParser(&ir_module);
-  BindDrrPatternContext(&ir_module)
+  BindDrrPatternContext(&ir_module);
 }
 
 }  // namespace pybind

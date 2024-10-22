@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 
+#include "paddle/pir/include/pass/pass.h"
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
@@ -37,6 +38,11 @@ class DrrPatternBase : public std::enable_shared_from_this<DrrPatternBase> {
 
   virtual ~DrrPatternBase() = default;
 
+  // Define get_python_drr_context
+  virtual DrrPatternContext GetPythonDrrContext() const {
+    return DrrPatternContext();
+  };
+
   // Define the drr pattern.
   virtual void operator()(drr::DrrPatternContext* ctx) const = 0;
 
@@ -55,6 +61,44 @@ template <typename T, typename... Args>
 auto Create(pir::IrContext* ir_context, Args&&... args) {
   return T::Build(ir_context, std::make_shared<T>(std::forward<Args>(args)...));
 }
+
+class AutoDrrPattern : public DrrPatternBase {
+ private:
+  const std::string name_;
+  DrrPatternContext drr_pattern_context_;
+ public:
+  AutoDrrPattern(const char* name,
+                 DrrPatternContext& drr_pattern_context)
+    : name_(std::string(name)), drr_pattern_context_(drr_pattern_context) {
+      should_create_ctx_ = true;
+    }
+  std::string name() const override { return name_; }
+
+  virtual void operator()(drr::DrrPatternContext* ctx) const override{
+      return;
+  }
+
+  DrrPatternContext GetPythonDrrContext() const override {
+      return drr_pattern_context_;
+  }
+};
+
+template<typename AutoDrrPattern>
+class AutoDrrPass : public pir::PatternRewritePass {
+ public:
+  const char* name_;
+  DrrPatternContext pattern_context_;
+
+  AutoDrrPass(const char* name,
+              DrrPatternContext& pattern_context)
+      : pir::PatternRewritePass(name, 2), name_(name), pattern_context_(pattern_context) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add(paddle::drr::Create<AutoDrrPattern, const char*, DrrPatternContext&>(context, std::move(name_), pattern_context_));
+    return ps;
+  }
+};
 
 }  // namespace drr
 }  // namespace paddle
