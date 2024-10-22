@@ -2867,24 +2867,6 @@ void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
-template <typename T>
-void bmm_grad(const Tensor& x,
-              const Tensor& y,
-              const Tensor& out_grad,
-              Tensor* x_grad,
-              Tensor* y_grad) {
-  if (x_grad) {
-    // dx = bmm(dout, y.mT)
-    auto x_grad_tmp = bmm<T>(out_grad, transpose<T>(y, {0, 2, 1}));
-    set_output<T>(x_grad_tmp, x_grad);
-  }
-  if (y_grad) {
-    // dy = bmm(x.mT, dout)
-    auto y_grad_tmp = bmm<T>(transpose<T>(y, {0, 2, 1}), out_grad);
-    set_output<T>(y_grad_tmp, y_grad);
-  }
-}
-
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
