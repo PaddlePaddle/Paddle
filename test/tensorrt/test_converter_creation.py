@@ -60,6 +60,20 @@ class TestAssignValueFloat32TRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestAssignValueInt32TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.assign
+        self.api_args = {
+            "x": np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='int32')
+        }
+        self.program_config = {"feed_list": []}
+        self.min_shape = {}
+        self.max_shape = {}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 class TestArangeTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.arange
