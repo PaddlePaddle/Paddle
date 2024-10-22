@@ -706,10 +706,6 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
     }
   }
 
-  std::cout << "group_ops.front()... " << first_op->id() << " "
-            << first_op->name() << std::endl;
-  std::cout << "group_ops.back()... " << insert_point_op->id() << " "
-            << insert_point_op->name() << std::endl;
   auto begin = first_op->operator Block::ConstIterator();
   auto end = ++(insert_point_op->operator Block::ConstIterator());
   const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
