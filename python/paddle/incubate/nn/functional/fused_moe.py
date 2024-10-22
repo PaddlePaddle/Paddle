@@ -14,9 +14,7 @@
 
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import (
-    in_dynamic_mode,
-)
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def fused_moe(
@@ -73,7 +71,7 @@ def fused_moe(
             [10, 128, 1024]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         final_out = _C_ops.fused_moe(
             x,
             gate_weight,
