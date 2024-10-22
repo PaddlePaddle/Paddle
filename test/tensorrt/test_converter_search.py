@@ -54,5 +54,5 @@ class TestWhereTRTPatternCase1(TensorRTBaseTest):
         self.check_trt_result()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
