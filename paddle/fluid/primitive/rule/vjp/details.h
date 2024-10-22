@@ -2943,31 +2943,35 @@ void kthvalue_grad(const Tensor& x,
       axis += x.dims().size();
     }
 
+    const int64_t x_dim_size = x.dims().size();
     Tensor zero_tensor;
     Tensor x_grad_tmp;
     if (has_dynamic_shape(x.shape())) {
       zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
-      if (!keepdim) {
+
+      if (x_dim_size == 1 || keepdim) {
+        x_grad_tmp =
+            backend::put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+      } else {
         auto axis_ = std::vector<int64_t>(1, axis);
         auto out_grad_shape = get_unsqueeze_dims<T>(shape<T>(out_grad), axis_);
         auto out_grad_ = backend::reshape<T>(out_grad, out_grad_shape);
-        auto indices_shape = get_unsqueeze_dims(shape<T>(indices), axis_);
+        auto indices_shape = get_unsqueeze_dims<T>(shape<T>(indices), axis_);
         auto indices_ = backend::reshape<T>(indices, indices_shape);
-        x_grad_tmp = put_along_axis<T>(zero_tensor, indices_, out_grad_, axis);
-      } else {
-        x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+        x_grad_tmp =
+            backend::put_along_axis<T>(zero_tensor, indices_, out_grad_, axis);
       }
     } else {
       zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
-      if (!keepdim) {
+      if (x_dim_size == 1 || keepdim) {
+        x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+      } else {
         auto axis_ = std::vector<int64_t>(1, axis);
         auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
         auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
         auto indices_shape = get_unsqueeze_dims(indices, axis_);
         auto indices_ = reshape<T>(indices, indices_shape);
         x_grad_tmp = put_along_axis<T>(zero_tensor, indices_, out_grad_, axis);
-      } else {
-        x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
       }
     }
     set_output<T>(x_grad_tmp, x_grad);

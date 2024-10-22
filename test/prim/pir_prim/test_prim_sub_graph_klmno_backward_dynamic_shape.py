@@ -24,15 +24,15 @@ import paddle
 
 
 def kthvalue_net1(x):
-    return paddle.kthvalue(x, k=2)
+    return paddle.kthvalue(x, k=2)[0]
 
 
 def kthvalue_net2(x):
-    return paddle.kthvalue(x, k=1, axis=1)
+    return paddle.kthvalue(x, k=1, axis=1)[0]
 
 
 def kthvalue_net3(x):
-    return paddle.kthvalue(x, k=1, axis=1, keepdim=True)
+    return paddle.kthvalue(x, k=1, axis=1, keepdim=True)[0]
 
 
 def leaky_relu_net(x):
