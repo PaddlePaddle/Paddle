@@ -60,7 +60,7 @@ void YoloBoxKernel(const Context& dev_ctx,
 
   std::vector<int64_t> anchors_int64;
   anchors_int64.resize(anchors.size());
-  for (int i = 0; i < anchors.size(); ++i) {
+  for (size_t i = 0; i < anchors.size(); ++i) {
     anchors_int64[i] = anchors[i];
   }
 
