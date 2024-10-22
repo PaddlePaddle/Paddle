@@ -14,7 +14,6 @@
 
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 
 from ..completion import contains_spmd_rule, get_phi_spmd_rule
 from ..cost import (
@@ -89,9 +88,6 @@ def prim_operator_data_parallel_functor(ctx, src_op):
                 'root': 0,
                 OP_ROLE_KEY: OpRole.Forward,
             },
-        )
-        new_op.dist_attr.execution_stream = (
-            AutoParallelStreamType.CALC_STREAM.value
         )
 
         grad_var = main_block._var_recursive(var_name)
@@ -621,9 +617,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                 'root': 0,
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
-                        )
-                        new_op.dist_attr.execution_stream = (
-                            AutoParallelStreamType.CALC_STREAM.value
                         )
                         set_comm_op_dist_attr_for_program(
                             new_op,

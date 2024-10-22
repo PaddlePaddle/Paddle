@@ -499,9 +499,6 @@ class ShardingPass(PassBase):
                         OP_ROLE_KEY: OpRole.Optimize,
                     },
                 )
-                new_op.dist_attr.execution_stream = (
-                    AutoParallelStreamType.CALC_STREAM.value
-                )
                 new_op._set_attr(
                     'op_namescope', '/' + ParallelMode.DataParallel
                 )
@@ -855,9 +852,6 @@ class ShardingPass(PassBase):
                     'root': param_group.rank,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
-            )
-            new_op.dist_attr.execution_stream = (
-                AutoParallelStreamType.CALC_STREAM.value
             )
             self.op_to_stream_idx[new_op] = comm_stream_idx
             new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
@@ -1507,7 +1501,6 @@ def _insert_init_and_broadcast_op(
             OP_ROLE_KEY: op_role,
         },
     )
-    new_op.dist_attr.execution_stream = AutoParallelStreamType.CALC_STREAM.value
     new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op,

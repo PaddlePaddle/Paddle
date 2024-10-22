@@ -25,7 +25,14 @@ from get_gpt_model import FakeDataset, generate_model
 import paddle
 
 paddle.enable_static()
+from paddle import _legacy_C_ops
 from paddle.distributed.fleet import auto
+
+
+def dy_broadcast_helper(tensor):
+    tensor = paddle._C_ops.broadcast(tensor, 0, 1)
+    _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+    return tensor
 
 
 def apply_pass(use_recompute=False, no_recompute_segments=[]):
@@ -80,9 +87,7 @@ class TestRandomControl(unittest.TestCase):
             mask_tensor_local = paddle.to_tensor([np_mask.astype("float32")])
             if rank == 0:
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
-                mask_tensor_remote = paddle._C_ops.broadcast(
-                    mask_tensor_remote, 0, 1
-                )
+                mask_tensor_remote = dy_broadcast_helper(mask_tensor_remote)
                 if equal:
                     np.testing.assert_array_equal(
                         mask_tensor_remote.numpy(), mask_tensor_local.numpy()
@@ -93,7 +98,7 @@ class TestRandomControl(unittest.TestCase):
                         mask_tensor_local.numpy(),
                     )
             else:
-                paddle._C_ops.broadcast(mask_tensor_local, 0, 1)
+                dy_broadcast_helper(mask_tensor_local)
 
     def test_random_ctrl_vanilla(self):
         # mp2 recompute training

@@ -18,7 +18,6 @@ from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
     IdentityOpCost,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 from paddle.framework import core
 from paddle.utils import unique_name
 
@@ -566,9 +565,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                             'root': 0,
                             OP_ROLE_KEY: OpRole.Forward,
                         },
-                    )
-                    broadcast_op.dist_attr.execution_stream = (
-                        AutoParallelStreamType.CALC_STREAM.value
                     )
 
     @staticmethod
