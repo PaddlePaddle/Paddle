@@ -233,7 +233,7 @@ def make_hashable(x, error_msg=None):
 # NOTE(Aurelius84): Consider the following paddle inner API as common case to
 # apply @to_static code transformation as usual. Because they contains
 # user-defined layer, like paddle.distributed.auto_parallel.helper.ProxyLayer.
-AS_NOT_INNER_FUNC_LIST = {"paddle.nn.layer.container.Sequential"}
+AS_NOT_INNER_FUNC_LIST = {"paddle.nn.layer.container.Sequential.forward"}
 
 
 def as_not_paddle_func(path):
@@ -241,7 +241,7 @@ def as_not_paddle_func(path):
     Append API or class as ignored case for is_paddle_func, and they
     will be returned False while calling is_paddle_func(func).
     """
-    global INNER_FUNC_WHITE_LIST
+    global AS_NOT_INNER_FUNC_LIST
     AS_NOT_INNER_FUNC_LIST.add(path)
 
 
@@ -257,15 +257,15 @@ def is_paddle_func(func, ignore_white_list=True):
         return (module.__name__ + '.' + func_name) in AS_NOT_INNER_FUNC_LIST
 
     try:
+        if isinstance(func, paddle.nn.Layer):
+            func = func.forward
         if isinstance(func, functools.partial):
             func = func.func
-
-        func_name = getattr(func, '__name__', None)
         if inspect.ismethod(func):
-            func_name = func.__self__.__class__.__name__
             func = func.__func__
-        elif hasattr(func, '__class__'):  # for nn.Sequential
-            func_name = func.__class__.__name__
+        func_name = getattr(func, '__name__', None)
+        if inspect.ismethod(func) or inspect.isfunction(func):
+            func_name = func.__qualname__
 
         m = inspect.getmodule(func)
         flag = m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)

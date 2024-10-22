@@ -65,7 +65,7 @@ class ProxyLayer(Layer):
         # Consider ProxyLayer as not Paddle inner function because it contains
         # user-defined layer.
         as_not_paddle_func(
-            inspect.getmodule(ProxyLayer).__name__ + ".ProxyLayer"
+            inspect.getmodule(ProxyLayer).__name__ + ".ProxyLayer.forward"
         )
 
     @paddle.jit.not_to_static
