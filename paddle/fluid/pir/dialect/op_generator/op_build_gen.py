@@ -88,6 +88,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'CropInferMeta',
     'EigvalsInferMeta',
     'FractionalMaxPoolInferMeta',
+    'KthvalueInferMeta',
     'MaxPoolWithIndexInferMeta',
     'MaxPoolV2InferMeta',
     'MultinomialInferMeta',

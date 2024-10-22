@@ -143,7 +143,7 @@ void divide_grad(const Tensor& x,
     } else {
       set_output<T>(dy_res, dy);
     }
-  }  // indicate we will compute dy
+  }  // indicate we willshape<T>(put compute dy
   if (dx) {
     // dx = (1/y) * dout
     auto dx_res = out_grad / y;
@@ -2943,13 +2943,12 @@ void kthvalue_grad(const Tensor& x,
       axis += x.dims().size();
     }
 
-    const int64_t x_dim_size = x.dims().size();
     Tensor zero_tensor;
     Tensor x_grad_tmp;
     if (has_dynamic_shape(x.shape())) {
       zero_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
 
-      if (x_dim_size == 1 || keepdim) {
+      if (keepdim) {
         x_grad_tmp =
             backend::put_along_axis<T>(zero_tensor, indices, out_grad, axis);
       } else {
@@ -2963,7 +2962,7 @@ void kthvalue_grad(const Tensor& x,
       }
     } else {
       zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
-      if (x_dim_size == 1 || keepdim) {
+      if (keepdim) {
         x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
       } else {
         auto axis_ = std::vector<int64_t>(1, axis);
