@@ -78,6 +78,17 @@ if(WITH_NCCL OR WITH_RCCL)
                                                                     "120")
   endif()
 endif()
+if((WITH_ROCM) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_mp_model
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21205;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
   bash_test_modules(
     test_tcp_store
