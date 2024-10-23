@@ -948,7 +948,8 @@ void bmm_double_grad(const Tensor& x,
     // dx' = bmm(dout, ddy.mT)
     Tensor x_grad_tmp;
     if (grad_y_grad) {
-      x_grad_tmp = bmm<T>(grad_out, transpose<T>(grad_y_grad.get(), {0, 2, 1}));
+      x_grad_tmp =
+          matmul<T>(grad_out, transpose<T>(grad_y_grad.get(), {0, 2, 1}));
     } else {
       x_grad_tmp = full<T>(common::vectorize(x.dims()), 0, x.dtype());
     }
@@ -958,7 +959,8 @@ void bmm_double_grad(const Tensor& x,
     // dy' = bmm(ddx.mT, dout)
     Tensor y_grad_tmp;
     if (grad_x_grad) {
-      y_grad_tmp = bmm<T>(transpose<T>(grad_x_grad.get(), {0, 2, 1}), grad_out);
+      y_grad_tmp =
+          matmul<T>(transpose<T>(grad_x_grad.get(), {0, 2, 1}), grad_out);
     } else {
       y_grad_tmp = full<T>(common::vectorize(y.dims()), 0, y.dtype());
     }
@@ -969,11 +971,11 @@ void bmm_double_grad(const Tensor& x,
     Tensor grad_out_grad_tmp;
     if (grad_x_grad && grad_y_grad) {
       grad_out_grad_tmp =
-          bmm<T>(grad_x_grad.get(), y) + bmm<T>(x, grad_y_grad.get());
+          matmul<T>(grad_x_grad.get(), y) + matmul<T>(x, grad_y_grad.get());
     } else if (grad_x_grad) {
-      grad_out_grad_tmp = bmm<T>(grad_x_grad.get(), y);
+      grad_out_grad_tmp = matmul<T>(grad_x_grad.get(), y);
     } else if (grad_y_grad) {
-      grad_out_grad_tmp = bmm<T>(x, grad_y_grad.get());
+      grad_out_grad_tmp = matmul<T>(x, grad_y_grad.get());
     } else {
       grad_out_grad_tmp =
           full<T>(common::vectorize(grad_out.dims()), 0, grad_out.dtype());
