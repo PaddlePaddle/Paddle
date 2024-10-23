@@ -3352,7 +3352,7 @@ def set_(
                     f"Input (source) should be paddle.Tensor but received {type(source)}"
                 )
             if source.dtype not in [
-                paddle.paddle.bool,
+                paddle.bool,
                 paddle.float16,
                 paddle.bfloat16,
                 paddle.float32,
