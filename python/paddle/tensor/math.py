@@ -3708,8 +3708,8 @@ def log10_(x: Tensor, name: str | None = None) -> Tensor:
 
 def clip(
     x: Tensor,
-    min: float | Tensor | None = None,
-    max: float | Tensor | None = None,
+    min: float | None = None,
+    max: float | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -3895,8 +3895,8 @@ def clip_(
             max_expand = paddle.expand(max, x.shape) if max.shape != x.shape else max
             min_expand = paddle.expand(min, x.shape) if min.shape != x.shape else min
 
-            paddle.where_(x < min_expand, min_expand, x)
-            paddle.where_(x > max_expand, max_expand, x)
+            paddle.where_(x > min_expand, x, min_expand)
+            return paddle.where_(x < max_expand, x, max_expand)
             
 
 def trace(
