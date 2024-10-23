@@ -1413,10 +1413,7 @@ class StackOpPattern : public pir::OpRewritePattern<paddle::dialect::StackOp> {
     if (x_type.isa<pir::VectorType>()) {
       rank = x_type.dyn_cast<pir::VectorType>().size();
     } else {
-      auto x_shape = op.operand_source(0)
-                         .type()
-                         .dyn_cast<paddle::dialect::DenseTensorType>()
-                         .dims();
+      auto x_shape = pir::GetShapeFromValue(x);
       rank = x_shape.size();
     }
 
