@@ -24,14 +24,12 @@ class TestMaxTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.max
         self.api_args = {
-            "x": np.array([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]]).astype(
-                "float32"
-            ),
+            "x": np.random.randn(2, 4).astype(np.float32),
             "axis": [0, 1],
         }
         self.program_config = {"feed_list": ["x"]}
-        self.min_shape = {"x": [1, 4], "y": [1, 4]}
-        self.max_shape = {"x": [5, 4], "y": [5, 4]}
+        self.min_shape = {"x": [1, 4]}
+        self.max_shape = {"x": [5, 4]}
 
     def test_trt_result(self):
         self.check_trt_result()
@@ -92,6 +90,21 @@ class TestAddTRTPattern(TensorRTBaseTest):
         self.program_config = {"feed_list": ["x", "y"]}
         self.min_shape = {"x": [1, 3], "y": [1, 3]}
         self.max_shape = {"x": [5, 3], "y": [5, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestMinTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.min
+        self.api_args = {
+            "x": np.random.randn(2, 4).astype(np.float32),
+            "axis": [0, 1],
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 4]}
+        self.max_shape = {"x": [5, 4]}
 
     def test_trt_result(self):
         self.check_trt_result()

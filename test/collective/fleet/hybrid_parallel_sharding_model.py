@@ -31,6 +31,9 @@ from paddle.distributed.fleet.utils.mix_precision_utils import (
 )
 
 g_shard_split_param = int(os.environ.get("FLAGS_shard_split_param", 0))
+g_shard_param_with_color = int(
+    os.environ.get("FLAGS_shard_param_with_color", 0)
+)
 
 vocab_size = 20
 hidden_size = 10
@@ -174,6 +177,16 @@ class SimpleDPNet(paddle.nn.Layer):
             hidden_size,
             weight_attr=paddle.nn.initializer.Constant(value=0.5),
         )
+
+        if g_shard_param_with_color:
+            for p in self.linear1.parameters():
+                p.color = "linear1"
+
+            for p in self.linear2.parameters():
+                p.color = "linear2"
+
+            for p in self.linear3.parameters():
+                p.color = "linear3"
 
     def forward(self, x):
         x = self.embedding(x)

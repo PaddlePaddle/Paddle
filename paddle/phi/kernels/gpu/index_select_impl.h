@@ -31,11 +31,15 @@ __global__ void index_select_cuda_kernel(const T* input,
                                          int64_t N,
                                          int64_t stride,
                                          int64_t size,
-                                         int64_t delta) {
+                                         int64_t delta,
+                                         int64_t dim_size) {
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t pre_idx = idx / (stride * size);
     int64_t dim_idx = idx % (stride * size) / stride;
     IndexT src_dim_idx = index[dim_idx];
+    if (src_dim_idx < 0) {
+      src_dim_idx += dim_size;
+    }
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
     output[idx] = input[input_idx];

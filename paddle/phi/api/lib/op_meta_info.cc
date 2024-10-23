@@ -514,6 +514,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
       {"bool",
        "int",
        "float",
+       "double",
        "int64_t",
        "std::string",
        "std::vector<int>",
@@ -525,7 +526,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
     if (custom_attrs_type.find(attr_type_str) == custom_attrs_type.end()) {
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
-          "Supported data types include `bool`, `int`, `float`, "
+          "Supported data types include `bool`, `int`, `float`, `double`,  "
           "`int64_t`, `std::string`, `std::vector<int>`, "
           "`std::vector<float>`, `std::vector<int64_t>`, "
           "`std::vector<std::string>`, "

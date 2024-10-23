@@ -31,7 +31,9 @@
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -86,6 +88,34 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                   const std::string& op_name) {
   if (!input.type() || !output.type() || input.isa<pir::BlockArgument>()) {
     return false;
+  }
+
+  if (input.defining_op()->num_regions() > 0) {
+    auto cf_op = input.defining_op();
+    std::vector<pir::Value> related_values;
+    for (size_t i = 0; i < cf_op->num_operands(); i++) {
+      related_values.push_back(cf_op->operand_source(i));
+    }
+    for (size_t i = 0; i < cf_op->num_regions(); i++) {
+      auto& region = cf_op->region(i);
+      for (auto& block : region)
+        if (!block.empty() && block.back().isa<pir::YieldOp>()) {
+          auto& yield_op = block.back();
+          for (size_t i = 0; i < yield_op.num_operands(); i++) {
+            related_values.push_back(yield_op.operand_source(i));
+          }
+        }
+    }
+
+    for (auto& value : related_values) {
+      auto persist_attr =
+          value.attribute<pir::BoolAttribute>(kAttrIsPersistable);
+      if (persist_attr && persist_attr.data()) {
+        VLOG(9) << "     -- input tensor is shared with a persistable tensor, "
+                   "can't do inplace";
+        return false;
+      }
+    }
   }
 
   if (input.type().isa<TensorType>() && output.type().isa<TensorType>()) {
