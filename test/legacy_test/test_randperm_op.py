@@ -169,6 +169,7 @@ class TestRandpermOpError(unittest.TestCase):
 class TestRandpermAPI(unittest.TestCase):
 
     def test_out(self):
+        paddle.enable_static()
         n = 10
         place = (
             paddle.CUDAPlace(0)
