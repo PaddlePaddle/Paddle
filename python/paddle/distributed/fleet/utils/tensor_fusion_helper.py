@@ -406,6 +406,7 @@ class FusedCommBuffer:
         self._release_grads = release_grads
         self._use_reduce_avg = use_reduce_avg
         self._free_grads_in_comm = free_grads_in_comm
+        self._log_message_printed = False
 
         if self._free_grads_in_comm:
             assert (
@@ -552,6 +553,9 @@ class FusedCommBuffer:
             )
 
         grad_var = param.main_grad if self.use_main_grad else param.grad
+        assert (
+            grad_var is not None
+        ), f"The current parameter[{param.name}] has no gradient, its stop_grdient is {param.stop_gradient}"
         grad_var.stop_gradient = True
         grad_var.flatten_()
 
@@ -618,6 +622,8 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def sync_params(self, sync=True, param2task={}):
+        if not self.need_reduce_scale_sync():
+            return
         assert self._act == HOOK_ACTION.REDUCE_SCATTER
         full_buffer = self.param_storage
         group = self._comm_group
@@ -650,8 +656,23 @@ class FusedCommBuffer:
         )
         self._comm_grads()
 
+    def need_reduce_scale_sync(self):
+        stop_gradient_values = [param.stop_gradient for param in self.params]
+        if all(stop_gradient_values):
+            return False
+        else:
+            if any(stop_gradient_values) and not self._log_message_printed:
+                logger.info(
+                    "There is at least one parameter whose stop_gradient attribute is True"
+                )
+            self._log_message_printed = True
+            return True
+
     @imperative_base.no_grad
     def _comm_grads(self):
+        if not self.need_reduce_scale_sync():
+            return
+
         reduce_op = (
             paddle.distributed.ReduceOp.AVG
             if self._use_reduce_avg
@@ -713,13 +734,14 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def scale_grads(self):
-        assert self._task is not None, "Task is not initialized."
-        self._task.wait()
+        if self.need_reduce_scale_sync():
+            assert self._task is not None, "Task is not initialized."
+            self._task.wait()
 
-        # scale will be skiped when use reduce_avg comm operation
-        if self._scale_after_comm and not self._use_reduce_avg:
-            scale_factor = 1.0 / self._comm_group.nranks
-            self.grad_storage.scale_(scale_factor)
+            # scale will be skiped when use reduce_avg comm operation
+            if self._scale_after_comm and not self._use_reduce_avg:
+                scale_factor = 1.0 / self._comm_group.nranks
+                self.grad_storage.scale_(scale_factor)
 
         self._reset_params_checked_in()
 
