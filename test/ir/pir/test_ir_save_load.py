@@ -18,6 +18,8 @@ import unittest
 
 import paddle
 from paddle import base
+from paddle.vision.models import ResNet
+from paddle.vision.models.resnet import BottleneckBlock
 
 
 class TestSaveModuleWithCommonOp(unittest.TestCase):
@@ -365,6 +367,26 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
         self.check_block(
             main_program.global_block(), recover_program.global_block()
         )
+
+
+class TestJsonToPdmodel(unittest.TestCase):
+    def test_json_to_pdmodel(self):
+        paddle.disable_static()
+        net = ResNet(BottleneckBlock, 50)
+        net = paddle.jit.to_static(net, full_graph=True)
+        save_path = './save1'
+        save_model = './save2'
+        input_spec = [
+            paddle.static.InputSpec(shape=[1, 3, 224, 224], dtype='float32')
+        ]
+        paddle.jit.save(net, save_path, input_spec)
+
+        # load and save to pdmodel
+        with paddle.pir_utils.OldIrGuard():
+            input_spec = [
+                paddle.static.InputSpec(shape=[1, 3, 224, 224], dtype='float32')
+            ]
+        paddle.jit.json_to_pdmodel(net, input_spec, save_path, save_model)
 
 
 if __name__ == '__main__':
