@@ -40,7 +40,7 @@ class TestMoEUtils:
             x, self._mesh0, [dist.Shard(1), dist.Replicate()]
         )
         dist_y = dist.auto_parallel.moe_utils._dist_reshape(
-            dist_x, tgt_shape, self._mesh0, [dist.Shard(1), dist.Replicate()]
+            dist_x, [-1, w * 2], self._mesh0, [dist.Shard(1), dist.Replicate()]
         )
 
         splitted_np_x = np.split(np_x, 2, axis=1)

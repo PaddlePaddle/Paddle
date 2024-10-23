@@ -103,26 +103,6 @@ class _NdMeshAlltoAll(PyLayer):
         return out
 
 
-def _nd_mesh_alltoall_reshard(
-    dist_tensor: Tensor,
-    mesh: ProcessMesh,
-    placements: list[Placement],
-    dim: int,
-):
-    sub_mesh = get_1D_sub_process_mesh(mesh, dim)
-    out = dist.auto_parallel.api.dtensor_from_local(
-        dist_tensor._local_value(), sub_mesh, [dist_tensor.placements[dim]]
-    )
-    out.stop_gradient = dist_tensor.stop_gradient
-
-    out = dist.reshard(out, sub_mesh, [placements[dim]])
-    out = dist.auto_parallel.api.dtensor_from_local(
-        out._local_value(), mesh, placements
-    )
-    out.stop_gradient = dist_tensor.stop_gradient
-    return out
-
-
 def _cal_local_shape(global_shape, mesh, placements):
     local_shape = list(global_shape)
     for idx, placement in enumerate(placements):
