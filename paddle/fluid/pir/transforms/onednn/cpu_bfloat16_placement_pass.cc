@@ -140,6 +140,18 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         return false;
       }
     }
+
+    // Workaround for reshape when shape is unknown
+    if (op_name == "onednn_op.reshape_" || op_name == "onednn_op.reshape") {
+      bool is_from_tensor = false;
+      std::vector<int64_t> shape = paddle::dialect::ParseValueShape(
+          op->operand_source(1), &is_from_tensor);
+      int num_minus = 0;
+      for (auto i : shape) {
+        if (i == -1) num_minus++;
+      }
+      if (num_minus > 1 || (num_minus == 1 && shape.size() == 1)) return false;
+    }
     return true;
   }
 
