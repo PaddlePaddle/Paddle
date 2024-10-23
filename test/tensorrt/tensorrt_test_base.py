@@ -191,32 +191,16 @@ class TensorRTBaseTest(unittest.TestCase):
                         # not shape_tensor
                         for i in range(len(self.min_shape[feed_name])):
                             sub_feed_name = feed_name + str(i)
-                            if self.dynamic_shape_data:
-                                min_shape_data[sub_feed_name] = (
-                                    self.dynamic_shape_data[feed_name][
-                                        sub_feed_name
-                                    ](self.min_shape[feed_name][i])
-                                )
-                                max_shape_data[sub_feed_name] = (
-                                    self.dynamic_shape_data[feed_name][
-                                        sub_feed_name
-                                    ](self.max_shape[feed_name][i])
-                                )
-                            else:
-                                min_shape_data[sub_feed_name] = np.random.randn(
-                                    *self.min_shape[feed_name][i]
-                                ).astype(
-                                    self.api_args[feed_name][
-                                        sub_feed_name
-                                    ].dtype
-                                )
-                                max_shape_data[sub_feed_name] = np.random.randn(
-                                    *self.max_shape[feed_name][i]
-                                ).astype(
-                                    self.api_args[feed_name][
-                                        sub_feed_name
-                                    ].dtype
-                                )
+                            min_shape_data[sub_feed_name] = np.random.randn(
+                                *self.min_shape[feed_name][i]
+                            ).astype(
+                                self.api_args[feed_name][sub_feed_name].dtype
+                            )
+                            max_shape_data[sub_feed_name] = np.random.randn(
+                                *self.max_shape[feed_name][i]
+                            ).astype(
+                                self.api_args[feed_name][sub_feed_name].dtype
+                            )
                 else:
                     # shape_tensor is list
                     if (
