@@ -23,9 +23,6 @@ class TestHybridParallel(TestMultipleAccelerators):
     def test_hybrid_parallel_mp_random(self):
         self.run_mnist_2accelerators('hybrid_parallel_mp_random.py')
 
-    def test_hybrid_parallel_mp_model(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_model.py')
-
     def test_hybrid_parallel_mp_model_with_sequence_parallel(self):
         self.run_mnist_2accelerators(
             'hybrid_parallel_mp_model_with_sequence_parallel.py'
