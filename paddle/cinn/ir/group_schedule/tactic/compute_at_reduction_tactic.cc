@@ -270,7 +270,11 @@ bool IsSafeComputeAt(ir::IRSchedule* sch,
     if (!loops.empty()) {
       ir::ir_utils::CollectIRNodesWithoutTensor(
           loops[0], [&](const Expr* x) -> bool {
-            if (x->As<ir::ScheduleBlockRealize>()) {
+            if (x->As<ir::ScheduleBlockRealize>() &&
+                !(ir::IsReduceInitTensorName(
+                    x->As<ir::ScheduleBlockRealize>()
+                        ->schedule_block.As<ir::ScheduleBlock>()
+                        ->name))) {
               loop_sbrs.push_back(*x);
             }
             return false;
@@ -349,11 +353,6 @@ bool IsSafeComputeAt(ir::IRSchedule* sch,
         check_blocks.end(), affected_sbrs.begin(), affected_sbrs.end());
     for (const auto& block : check_blocks) {
       VLOG(8) << "Check dependency: " << block;
-      if (ir::IsReduceInitTensorName(
-              block.As<ir::ScheduleBlockRealize>()
-                  ->schedule_block.As<ir::ScheduleBlock>()
-                  ->name))
-        continue;
       if (src_id == block.As<ir::ScheduleBlockRealize>()
                         ->schedule_block.As<ir::ScheduleBlock>()
                         ->name)
