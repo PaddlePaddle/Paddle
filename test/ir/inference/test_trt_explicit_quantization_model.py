@@ -160,7 +160,9 @@ class TestExplicitQuantizationModel:
         with paddle.pir_utils.OldIrGuard():
             self.build_program()
             self.infer_program(trt_int8=False, collect_shape=True)
-            baseline_output = self.infer_program(trt_int8=False, collect_shape=False)
+            baseline_output = self.infer_program(
+                trt_int8=False, collect_shape=False
+            )
             self.infer_program(trt_int8=True, collect_shape=True)
             trt_output = self.infer_program(trt_int8=True, collect_shape=False)
             trt_predict = np.argmax(trt_output, axis=1)

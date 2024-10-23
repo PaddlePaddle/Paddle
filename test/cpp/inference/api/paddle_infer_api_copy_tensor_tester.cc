@@ -152,7 +152,7 @@ TEST(Tensor, copy_to_cpu_async_callback) {
     predictor->Run();
   }
   cudaDeviceSynchronize();
-  
+
   output_tensor->CopyToCpuAsync(
       out_data,
       [](void *cb_params) {
