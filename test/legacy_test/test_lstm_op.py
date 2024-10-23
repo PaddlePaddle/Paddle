@@ -17,6 +17,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+from paddle import _C_ops
+
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0
 EXP_MAX_INPUT = 40.0
@@ -150,6 +152,7 @@ class TestLstmOp(OpTest):
     def setUp(self):
         self.set_argument()
         self.op_type = 'lstm'
+        self.python_api = _C_ops.lstm
         T = sum(self.lod[0])
         N = len(self.lod[0])
 
@@ -204,7 +207,7 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8, check_dygraph=False)
+        self.check_output(atol=1e-8, check_dygraph=False, check_pir=True)
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
