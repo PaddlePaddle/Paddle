@@ -15,9 +15,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifdef PADDLE_WITH_XPU_XHPC
 #include "xblas/cublasLt.h"
-#endif
 
 namespace phi {
 namespace fusion {
@@ -79,7 +77,6 @@ void FcXPUKernelImpl(const Context& ctx,
   }
   int r = 0;
 
-#ifdef PADDLE_WITH_XPU_XHPC
   if (std::is_same<XPUTypeX, XPUTypeOut>::value &&
       std::is_same<XPUTypeW, XPUTypeOut>::value &&
       !std::is_same<XPUTypeW, int8_t>::value) {
@@ -111,7 +108,7 @@ void FcXPUKernelImpl(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_xpu");
     return;
   }
-#endif
+
   auto* scale_max_data = scale_max.get_ptr() == nullptr
                              ? nullptr
                              : scale_max.get_ptr()->data<float>();
