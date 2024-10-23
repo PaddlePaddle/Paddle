@@ -13,14 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/binary_infer_sym.h"
-#include <cstddef>
-#include <cstdint>
-#include <vector>
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 COMMON_DECLARE_bool(manually_trans_conv_filter);
 
