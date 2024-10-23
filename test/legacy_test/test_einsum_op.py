@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
+import paddle.distributed as dist
 from paddle.base import core
 
 
@@ -32,6 +33,7 @@ def einsum_wrapper(a, b):
 class TestEinsumBinary(OpTest):
     def setUp(self):
         paddle.enable_static()
+        self.check_auto_parallel = False
         self.op_type = "einsum"
         self.python_api = einsum_wrapper
         self.python_out_sig = ['Out']
@@ -89,7 +91,11 @@ class TestEinsumBinary(OpTest):
 
     def test_grad(self):
         if not self.disable:
-            self.check_grad([op[0] for op in self.operands], ["Out"])
+            self.check_grad(
+                [op[0] for op in self.operands],
+                ["Out"],
+                check_auto_parallel=self.check_auto_parallel,
+            )
 
 
 class TestEinsum1(TestEinsumBinary):
@@ -281,6 +287,20 @@ class TestEinsumWithDiagonal8(TestEinsumBinary):
         self.shapes = [(3, 5, 7, 3), (5, 7, 5, 7)]
         self.types = [np.float64, np.float64]
         self.equation = "ijki,jkjk->"
+
+
+class TestEinsumWithDiagonalAutoParallel_1(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(2, 3, 2), (2, 2, 3)]
+        self.types = [np.float64, np.float64]
+        self.equation = "ijk,ikl->ijl"
+        self.check_auto_parallel = True
+        self.placements = {
+            'Operands': [
+                ("x0", [dist.Shard(1), dist.Shard(2)]),
+                ("x1", [dist.Shard(2), dist.Shard(1)]),
+            ]
+        }
 
 
 class TestEinsumFP16Op(TestEinsumBinary):
