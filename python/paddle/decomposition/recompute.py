@@ -935,12 +935,24 @@ def is_dynamic_value_node(value_node):
         raise ValueError(f"value node not found in program: {value_node} ")
 
 
+def is_vector_value_node(value_node):
+    return value_node.type().as_vec_type() is not None
+
+
 def cal_value_node_size(value_node):
     # todo(wanghao107) hack for dynamic shape
+    if is_vector_value_node(value_node):
+        value_vec = value_node.type().as_vec_type().as_list()
+        sum_res = 0
+        for child_node in value_vec:
+            sum_res += cal_value_node_size(child_node)
+        return sum_res
     if is_dynamic_value_node(value_node):
-        return 1
+        value_node_shape = [i for i in value_node.shape if i != -1]
+    else:
+        value_node_shape = value_node.shape
     return (
-        functools.reduce(lambda x, y: x * y, value_node.shape, 1)
+        functools.reduce(lambda x, y: x * y, value_node_shape, 1)
         * _PADDLE_DTYPE_2_NBYTES[value_node.dtype]
     )
 
