@@ -635,7 +635,7 @@
   output : Tensor(out)
   infer_meta :
     func : PRecvInferMeta
-    param : [dynamic_shape, peer, out_shape, dtype]
+    param : [peer, dtype, out_shape, dynamic_shape]
   kernel :
     func : p_recv
     param : [peer, dtype, out_shape, dynamic_shape]

@@ -223,10 +223,10 @@ void RandintInferMeta(
   out->set_dtype(dtype);
 }
 
-void PRecvInferMeta(const bool dynamic_shape,
-                    const int peer,
-                    const std::vector<int>& out_shape,
+void PRecvInferMeta(const int peer,
                     DataType dtype,
+                    const std::vector<int>& out_shape,
+                    const bool dynamic_shape,
                     MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       peer,
@@ -248,7 +248,7 @@ void PRecvInferMeta(const bool dynamic_shape,
                             "The shape attribute for p_recv must be set "
                             "explicitly, but the %dth element is %d which "
                             "is less than 1. Or dynamic_shape should be "
-                            "set to True for both p_send and recv_v2.",
+                            "set to True for both p_send and p_recv.",
                             i,
                             out_shape[i]));
     }
