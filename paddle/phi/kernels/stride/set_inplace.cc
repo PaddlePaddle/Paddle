@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void SetInplaceKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& source,
