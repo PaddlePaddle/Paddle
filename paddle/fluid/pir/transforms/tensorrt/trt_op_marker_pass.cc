@@ -1497,7 +1497,7 @@ class FullLikeOpPattern
     if (dtype == phi::DataType::BOOL ||
         (!hasAttr && x_dtype.isa<pir::BoolType>())) {
       op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-      VLOG(3) << "the fill_any_like supports input of BOOL by trt8.4 above";
+      VLOG(3) << "the pd_op.full_like supports input of BOOL by trt8.4 above";
       return true;
     }
 #endif
@@ -1505,7 +1505,7 @@ class FullLikeOpPattern
         dtype != phi::DataType::FLOAT64 && dtype != phi::DataType::INT32 &&
         dtype != phi::DataType::INT64) {
       VLOG(3)
-          << "the fill_any_like only supports int32/int64/float32/float64 by"
+          << "the pd_op.full_like only supports int32/int64/float32/float64 by"
              "trt8.4 below";
       return false;
     }
@@ -1513,7 +1513,7 @@ class FullLikeOpPattern
       if (!x_dtype.isa<pir::Float32Type>() &&
           !x_dtype.isa<pir::Float64Type>() && !x_dtype.isa<pir::Int32Type>() &&
           !x_dtype.isa<pir::Int64Type>()) {
-        VLOG(3) << "the fill_any_like only supports "
+        VLOG(3) << "the pd_op.full_like only supports "
                    "int32/int64/float32/float64 by"
                    "trt8.4 below";
         return false;
