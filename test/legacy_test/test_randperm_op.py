@@ -222,6 +222,12 @@ class TestRandomValue(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
+        if (
+            "V100" not in paddle.device.cuda.get_device_name()
+            and "A100" not in paddle.device.cuda.get_device_name()
+        ):
+            return
+
         print("Test Fixed Random number on GPU------>")
         paddle.disable_static()
         paddle.set_device('gpu')
