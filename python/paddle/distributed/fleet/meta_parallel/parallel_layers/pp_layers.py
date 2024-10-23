@@ -45,6 +45,7 @@ import re
 from functools import partial
 
 import paddle
+import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
 from paddle.distributed.fleet.utils.log_util import layer_to_str, logger
@@ -563,12 +564,12 @@ class PipelineLayer(nn.Layer):
             else:
                 with paddle.framework.no_grad():
                     framework._dygraph_tracer().trace_op(
-                        type="c_allreduce_sum",
-                        inputs={'X': param._grad_ivar()},
-                        outputs={'Out': param._grad_ivar()},
+                        type="all_reduce",
+                        inputs={'x': param._grad_ivar()},
+                        outputs={'out': param._grad_ivar()},
                         attrs={
                             'ring_id': comm['group'].id,
-                            'use_calc_stream': True,
+                            'reduce_type': dist.ReduceOp.SUM,
                         },
                     )
 

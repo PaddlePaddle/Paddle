@@ -110,9 +110,9 @@ class SequenceParallelOptimizationPass(PassBase):
             split_op = block.ops[i]
             consumer_op = block.ops[i + 1]
 
-            allreduce_input_name = allreduce_op.input("X")[0]
+            allreduce_input_name = allreduce_op.input("x")[0]
             ring_id = int(allreduce_op.attr("ring_id"))
-            split_output_names = split_op.output("Out")
+            split_output_names = split_op.output("out")
             nranks = len(split_output_names)
             consumer_input_names = consumer_op.input_arg_names
             intersection = set(split_output_names).intersection(
