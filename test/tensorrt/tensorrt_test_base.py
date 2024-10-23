@@ -218,6 +218,12 @@ class TensorRTBaseTest(unittest.TestCase):
                             max_shape_data[feed_name] = self.dynamic_shape_data[
                                 feed_name
                             ](self.max_shape[feed_name])
+                            print(
+                                f"min_shape_data[{feed_name}] = {min_shape_data[feed_name]}"
+                            )
+                            print(
+                                f"max_shape_data[{feed_name}] = {max_shape_data[feed_name]}"
+                            )
                         else:
                             min_shape_data[feed_name] = np.random.randn(
                                 *self.min_shape[feed_name]
