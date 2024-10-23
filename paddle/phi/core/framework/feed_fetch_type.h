@@ -22,10 +22,7 @@
 
 namespace phi {
 using FeedType = phi::DenseTensor;
-using FetchType = paddle::variant<phi::DenseTensor,
-                                  phi::TensorArray,
-                                  phi::Vocab,
-                                  phi::SparseCooTensor>;
+using FetchType = paddle::variant<phi::DenseTensor, phi::TensorArray>;
 
 template <>
 struct PhiVectorType<FeedType> {
