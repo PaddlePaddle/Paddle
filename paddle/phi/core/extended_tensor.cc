@@ -49,7 +49,7 @@ bool ExtendedTensor::valid() const {
 
 bool ExtendedTensor::has_allocation() const {
   PADDLE_THROW(common::errors::Unavailable(
-      "ExtendedTensor does not support `ready` method."));
+      "ExtendedTensor does not support `has_allocation` method."));
 }
 
 bool ExtendedTensor::initialized() const {
