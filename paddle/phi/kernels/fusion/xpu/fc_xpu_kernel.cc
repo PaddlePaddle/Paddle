@@ -76,7 +76,7 @@ void FcXPUKernelImpl(const Context& ctx,
     act.hard_sigmoid_slope = act_alpha;
   }
   int r = 0;
-
+#ifdef PADDLE_WITH_XPU_XRE5
   if (std::is_same<XPUTypeX, XPUTypeOut>::value &&
       std::is_same<XPUTypeW, T_GEMM>::value &&
       !std::is_same<T_W, int8_t>::value) {
@@ -108,7 +108,7 @@ void FcXPUKernelImpl(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_xpu");
     return;
   }
-
+#endif
   auto* scale_max_data = scale_max.get_ptr() == nullptr
                              ? nullptr
                              : scale_max.get_ptr()->data<float>();
