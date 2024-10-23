@@ -147,7 +147,7 @@ COMPUTE_INTENSIVE_OPS: list[str] = [
     "pd_op.softmax",
     "pd_op.c_allreduce_sum_",
     "pd_op.c_broadcast_",
-    "pd_op.c_reduce_sum_",
+    "pd_op.reduce_",
 ]
 
 AGGRESSIVE_RECOMPUTATION = False

@@ -23,10 +23,10 @@
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/raw_tensor.h"
-#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/raw_tensor.h"
+#include "paddle/phi/core/vocab/string_array.h"
 #include "paddle/utils/test_macros.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>

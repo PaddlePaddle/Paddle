@@ -22,10 +22,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/memory.h"
