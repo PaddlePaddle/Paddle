@@ -122,15 +122,6 @@ static StmtPattern MergePatternImpl(
 }
 
 static StmtPattern MergePatternImpl(const TrivialPattern& first,
-                                    const AnchorPattern& second) {
-  return AnchorPattern(
-      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
-      second.anchor(),
-      second.anchor_state,
-      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
-}
-
-static StmtPattern MergePatternImpl(const TrivialPattern& first,
                                     const ItersPermutationPattern& second) {
   return ItersPermutationPattern(
       UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
@@ -184,78 +175,6 @@ static StmtPattern MergePatternImpl(const ReduceTreePattern& first,
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
-// Anchor Fusion
-static std::vector<ExprPromise> InitExprPromiseImpl(
-    const TrivialPattern& pattern, pir::Value anchor) {
-  return {ExprPromise(anchor, pattern.id())};
-}
-
-static std::vector<ExprPromise> InitExprPromiseImpl(
-    const ReducePattern& pattern, pir::Value anchor) {
-  return {ExprPromise(anchor, pattern.id())};
-}
-
-static std::vector<ExprPromise> InitExprPromiseImpl(
-    const ReduceTreePattern& pattern, pir::Value anchor) {
-  // TODO(@wuzhanfei) this is temporary
-  // now we do not support anchor fusion for reduce op,
-  // so, this is ok currently. but need to be redesigned later
-  return {ExprPromise(anchor, pattern.id())};
-}
-
-template <typename PATTERN>
-std::vector<ExprPromise> InitExprPromiseImpl(const PATTERN& pattern,
-                                             pir::Value anchor) {
-  PADDLE_THROW(::common::errors::Unimplemented(
-      "Can not Init ExprPromise with Unsupport Pattern."));
-}
-
-static std::vector<ExprPromise> InitExprPromise(const StmtPattern& pattern,
-                                                pir::Value anchor) {
-  return std::visit(
-      [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
-      pattern);
-}
-
-static StmtPattern MergePatternImpl(const AnchorPattern& source,
-                                    const AnchorPattern& dest) {
-  const auto& contents =
-      UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(dest));
-  return AnchorPattern(
-      contents,
-      source.anchor(),
-      AnchorState({}),
-      std::make_shared<FusionTracker>(source.tracker_, dest.tracker_));
-}
-
-static TrivialPattern RecoverAnchorPatternToTrivial(
-    const AnchorPattern& anchor_pattern) {
-  PADDLE_ENFORCE_EQ(anchor_pattern.anchor_state.promise.size(),
-                    1,
-                    ::common::errors::PreconditionNotMet(
-                        "Can only recover AnchorPattern whose anchor_state "
-                        "size is 1 (exact %d)",
-                        anchor_pattern.anchor_state.promise.size()));
-
-  return TrivialPattern(
-      anchor_pattern.ops(),
-      anchor_pattern.anchor().defining_op(),
-      std::make_shared<FusionTracker>(anchor_pattern.tracker_));
-}
-
-static AnchorState GetAnchorState(const AnchorPattern& pattern) {
-  return pattern.anchor_state;
-}
-
-static AnchorState ApplyAnchorTransformRoute(
-    const AnchorState& anchor_state, const AnchorTransformRoute& route) {
-  AnchorState result = anchor_state;
-  for (auto promise : result.promise) {
-    promise.update(route);
-  }
-  return result;
-}
-
 static std::vector<pir::Operation*> GetOutputOpsInPattern(
     const StmtPattern& pattern) {
   struct Visitor {
@@ -268,10 +187,6 @@ static std::vector<pir::Operation*> GetOutputOpsInPattern(
     std::vector<pir::Operation*> operator()(const UnsupportPattern& pattern) {
       PADDLE_THROW(::common::errors::Unimplemented(
           "Get output ops in UnsupportPattern is not implement!"));
-    }
-    std::vector<pir::Operation*> operator()(const AnchorPattern& pattern) {
-      PADDLE_THROW(::common::errors::Unimplemented(
-          "Can't get output ops in AnchorPattern Currently."));
     }
     std::vector<pir::Operation*> operator()(const ReduceTreePattern& pattern) {
       return this->operator()(pattern.GetRootPattern());
@@ -389,9 +304,6 @@ struct LoopValueDimsVisitor {
 
   std::vector<LoopValueDims> operator()(const UnsupportPattern& pattern) {
     PADDLE_ENFORCE(false, "Not support GetLoopRange.");
-  }
-  std::vector<LoopValueDims> operator()(const AnchorPattern& pattern) {
-    return {GetAllValueDimFromValue(pattern.anchor())};
   }
 
   std::vector<LoopValueDims> operator()(
@@ -545,19 +457,6 @@ struct LoopFrameworkVisitor {
         ::common::errors::Unimplemented("Unsupport for GetLoopRange."));
   }
 
-  MaybeLoopFramework operator()(const AnchorPattern& pattern) {
-    const auto& loops = GetDimExprsFromValue(pattern.anchor());
-    auto anchor_op = pattern.anchor().defining_op();
-    if (GetOpPatternKind(anchor_op) == hlir::framework::kReduction) {
-      const auto& reduce_axes = GetReduceAxisIdx(anchor_op);
-      const auto& reduce_loops = GatherVector(
-          GetDimExprsFromValue(anchor_op->operand(0).source()), reduce_axes);
-      return {ConcatVector(loops, reduce_loops),
-              CreateIsReduceVector(loops.size(), reduce_loops.size())};
-    }
-    return {loops, std::vector<bool>(loops.size(), false)};
-  }
-
   MaybeLoopFramework operator()(const ItersPermutationPattern& pattern) {
     const auto loop_dims = pattern.loop_dims();
     return {loop_dims.first, loop_dims.second};
@@ -643,13 +542,7 @@ static StmtPattern MergePattern(const StmtPattern& first,
       [&](const TrivialPattern& lhs, const ReduceTreePlusTrivialPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const TrivialPattern& lhs, const AnchorPattern& rhs) {
-        return MergePatternImpl(lhs, rhs);
-      },
       [&](const TrivialPattern& lhs, const ItersPermutationPattern& rhs) {
-        return MergePatternImpl(lhs, rhs);
-      },
-      [&](const AnchorPattern& lhs, const AnchorPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
       [&](const HorizontalFusionPattern& lhs,

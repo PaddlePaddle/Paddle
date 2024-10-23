@@ -42,7 +42,7 @@ class DescTensor : public phi::ExtendedTensor,
   int64_t numel() const override { return product(dims()); }
 
   DataType dtype() const override {
-    return paddle::framework::TransToPhiDataType(desc_ptr_->GetDataType());
+    return phi::TransToPhiDataType(desc_ptr_->GetDataType());
   }
 
   framework::VarDesc* get_ptr() { return desc_ptr_; }

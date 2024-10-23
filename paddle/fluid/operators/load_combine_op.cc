@@ -81,14 +81,3 @@ namespace ops = paddle::operators;  // NOLINT
 REGISTER_OPERATOR(load_combine,
                   ops::LoadCombineOp,
                   ops::LoadCombineOpProtoMaker);
-
-PD_REGISTER_STRUCT_KERNEL(load_combine,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::LoadCombineOpKernel,
-                          float,
-                          double,
-                          phi::dtype::bfloat16,
-                          int,
-                          int8_t,
-                          int64_t) {}

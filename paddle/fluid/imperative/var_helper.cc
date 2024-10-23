@@ -20,12 +20,12 @@
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/selected_rows.h"
 namespace paddle {
 namespace imperative {

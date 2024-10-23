@@ -28,7 +28,7 @@ namespace funcs {
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices,
                                       T* output,
-                                      size_t output_count,
+                                      int64_t output_count,
                                       size_t index_size,
                                       size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
@@ -37,13 +37,17 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
     IndexT scatter_i = indices[indices_i];
 
     PADDLE_ENFORCE(
-        scatter_i >= 0 && scatter_i < output_count,
+        scatter_i >= -output_count && scatter_i < output_count,
         "The index is out of bounds, "
         "please check whether the dimensions of index and "
         "input meet the requirements. It should "
-        "be less than [%d] and greater or equal to 0, but received [%d]",
+        "be less than [%ld] and greater or equal to [%ld], but received [%d]",
         output_count,
+        -output_count,
         scatter_i);
+    if (scatter_i < 0) {
+      scatter_i += output_count;
+    }
 
     int64_t out_i = scatter_i * slice_size + slice_i;
     *(output + out_i) = static_cast<T>(0);
@@ -54,7 +58,7 @@ template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params,
                                   const IndexT* indices,
                                   T* output,
-                                  size_t output_count,
+                                  int64_t output_count,
                                   size_t index_size,
                                   size_t slice_size,
                                   bool overwrite) {
@@ -64,13 +68,17 @@ __global__ void ScatterCUDAKernel(const T* params,
     IndexT scatter_i = indices[indices_i];
 
     PADDLE_ENFORCE(
-        scatter_i >= 0 && scatter_i < output_count,
+        scatter_i >= -output_count && scatter_i < output_count,
         "The index is out of bounds, "
         "please check whether the dimensions of index and "
         "input meet the requirements. It should "
-        "be less than [%d] and greater or equal to 0, but received [%d]",
+        "be less than [%d] and greater or equal to [%d], but received [%d]",
         output_count,
+        -output_count,
         scatter_i);
+    if (scatter_i < 0) {
+      scatter_i += output_count;
+    }
 
     int64_t out_i = scatter_i * slice_size + slice_i;
     if (overwrite) {
@@ -96,15 +104,18 @@ __global__ void ScatterNdCUDAKernel(const T* update,
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = indices[indices_i * end_size + j];
-
       PADDLE_ENFORCE(
-          index_value >= 0 && index_value < output_dims[j],
+          index_value >= -output_dims[j] && index_value < output_dims[j],
           "The index is out of bounds, "
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
-          "be less than [%d] and greater or equal to 0, but received [%d]",
+          "be less than [%d] and greater or equal to [%d], but received [%d]",
           output_dims[j],
+          -output_dims[j],
           index_value);
+      if (index_value < 0) {
+        index_value += output_dims[j];
+      }
 
       gather_i += (index_value * temp);
       temp *= output_dims[j];

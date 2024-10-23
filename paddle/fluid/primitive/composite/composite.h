@@ -1117,9 +1117,11 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
         common::errors::Unimplemented("Only support NCHW and NHWC format."));
   }
   size_t rank = x.shape().size();
-  if (rank < 3 || rank > 5) {
+  if (rank < 3) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Only support NCHW and NHWC format in rank {3, 4, 5}."));
+        "Only support NCHW and NHWC format in rank higher or equal to 3. "
+        "Current rank: %zu",
+        rank));
   }
 
   auto org_dtype = x.dtype();

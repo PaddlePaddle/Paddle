@@ -83,6 +83,7 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
             values = paddle._C_ops.builtin_split(copy_value)
             value_grad = []
             backward_ops_ = []
+            backward_ops_.append(values[0].get_defining_op())
             for v in values:
                 grad = paddle.full_like(
                     v,

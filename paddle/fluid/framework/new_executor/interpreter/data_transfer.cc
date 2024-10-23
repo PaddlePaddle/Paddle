@@ -597,7 +597,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                     std::make_unique<phi::KernelKey>(
                         def_backend,
                         expected_kernel_key.data_layout_,
-                        framework::TransToPhiDataType(
+                        phi::TransToPhiDataType(
                             expected_kernel_key.data_type_));
 
                 VLOG(6) << "argument " << var_name

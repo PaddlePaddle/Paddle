@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/reader.h"
+#include "paddle/phi/core/framework/reader.h"
 
 namespace paddle {
 namespace framework {

@@ -578,9 +578,11 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.
   std::map<size_t, std::string> idx2feeds_;
+  std::map<std::string, std::vector<int64_t>> feed_name2shapes_;
   std::vector<framework::OpDesc *> fetches_;
   std::vector<pir::Operation *> pir_fetches_;
   std::map<size_t, std::string> idx2fetches_;
+  std::map<std::string, std::vector<int64_t>> fetch_name2shapes_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 

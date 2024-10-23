@@ -326,6 +326,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(bool);
   PD_SPECIALIZE_ComputeCallHelper(int);
   PD_SPECIALIZE_ComputeCallHelper(float);
+  PD_SPECIALIZE_ComputeCallHelper(double);
   PD_SPECIALIZE_ComputeCallHelper(int64_t);
   PD_SPECIALIZE_ComputeCallHelper(const std::string&);
   PD_SPECIALIZE_ComputeCallHelper(const std::vector<int>&);
@@ -337,6 +338,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   // - paddle::blank, std::vector<bool> and std::vector<double>
   //   are not used in op
   // - BlockDesc* and std::vector<BlockDesc*> are used in framework
+  // NOTE(beinggod): Now we need to support double.
 
   // NOTE(chenweihang): Used to be compatible with the 2.0.1 released
   // interface, and will be deprecated in the future
@@ -615,6 +617,9 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::vector<int>);
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::vector<float>);
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::vector<std::string>);
+
+  // NOTE(beinggod): extent attribute for custom op
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(double);
 
   // end: base template
   template <typename T>

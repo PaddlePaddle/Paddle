@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "ThreadPool.h"
-#include "paddle/fluid/framework/reader.h"
+#include "paddle/phi/core/framework/reader.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_resource_pool.h"
