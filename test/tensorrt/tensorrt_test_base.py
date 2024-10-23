@@ -212,7 +212,6 @@ class TensorRTBaseTest(unittest.TestCase):
                         continue
                     else:
                         if self.dynamic_shape_data:
-                            print("覆盖的232行")
                             min_shape_data[feed_name] = self.dynamic_shape_data[
                                 feed_name
                             ](self.min_shape[feed_name])
