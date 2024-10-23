@@ -23,7 +23,7 @@ import paddle
 class TestFlattenTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.full
-        self.api_args = {"shape": [3, 2], "fill_value": 2.5, "dytpe": "int32"}
+        self.api_args = {"shape": [3, 2], "fill_value": 1.0}
         self.program_config = {"feed_list": []}
         self.min_shape = {}
         self.max_shape = {}
