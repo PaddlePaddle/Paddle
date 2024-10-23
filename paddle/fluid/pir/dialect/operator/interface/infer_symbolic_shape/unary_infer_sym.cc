@@ -1121,14 +1121,7 @@ bool FrameOpInferSymbolicShape(pir::Operation *op,
     start_axis = 0;
     end_axis = x_rank - 2;
   }
-  bool contain_unknow_dim;
-  for (size_t i = 0; i < x_shape.size(); i++) {
-    if (x_shape[i].isa<int64_t>()) {
-      contain_unknow_dim = true;
-      break;
-    }
-  }
-  if (x_shape_or_data.data().has_value() || contain_unknow_dim) {
+  if (seq_length.isa<int64_t>()) {
     PADDLE_ENFORCE_LE(frame_length,
                       seq_length.dyn_cast<int64_t>(),
                       common::errors::InvalidArgument(
@@ -1146,8 +1139,7 @@ bool FrameOpInferSymbolicShape(pir::Operation *op,
   if (!seq_length.isa<int64_t>()) {
     n_frames = infer_context->GetNextSymName();
   } else {
-    n_frames = symbol::DimExpr(
-        (seq_length.dyn_cast<int64_t>() - frame_length) / hop_length + 1);
+    n_frames = symbol::DimExpr((seq_length - frame_length) / hop_length + 1);
   }
   if (axis == 0) {
     out_shape.insert(out_shape.begin(), symbol::DimExpr(frame_length));

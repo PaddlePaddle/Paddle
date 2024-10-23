@@ -1500,26 +1500,13 @@ bool PruneGateByCapacityOpInferSymbolicShape(
   const auto &expert_count_shape = expert_count_shape_or_data.shape();
   int64_t n_expert = op->attribute<pir::Int64Attribute>("n_expert").data();
   int64_t n_worker = op->attribute<pir::Int64Attribute>("n_worker").data();
-  int64_t expert_count_num_ele = 1;
+  symbol::DimExpr expert_count_num_ele = 1;
   for (const auto &i : expert_count_shape) {
-    if (i.isa<int64_t>()) {
-      expert_count_num_ele *= i.Get<int64_t>();
-    } else {
-      PADDLE_THROW(::common::errors::InvalidArgument(
-          "The shape of expert_count must be known."));
-    }
+    expert_count_num_ele = expert_count_num_ele * i;
   }
-  PADDLE_ENFORCE_EQ(
-      expert_count_num_ele,
-      n_expert * n_worker,
-      common::errors::Unavailable(
-          "The number of elements for expert_count is ( %ld ) incorrect. "
-          "Because the number of expert_count must equal the "
-          "product of n_worker ( %ld ) and n_expert ( %ld ). "
-          "Please input appropriate expert_count again!",
-          expert_count_num_ele,
-          n_worker,
-          n_expert));
+
+  infer_context->AddEqualCstr(expert_count_num_ele,
+                              symbol::DimExpr(n_expert * n_worker));
   const auto &gate_idx_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   infer_context->SetShapeOrDataForValue(
