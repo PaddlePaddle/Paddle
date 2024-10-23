@@ -562,7 +562,7 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
     const auto &OnlyUsedBySplitOrSlice = [&]() -> bool {
       for (auto it = op.out().use_begin(); it != op.out().use_end();) {
         const pir::Operation *downstream_op = (it++)->owner();
-        if (!downstream_op->isa<::pir::SliceOp>() ||
+        if (!downstream_op->isa<::pir::SliceOp>() &&
             !downstream_op->isa<::pir::SplitOp>()) {
           return false;
         }
