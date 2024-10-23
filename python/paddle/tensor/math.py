@@ -3706,6 +3706,22 @@ def log10_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.log10_(x)
 
 
+def check_clip_tensor(c_x, value, re_value, value_type, name):
+    if value is None:
+        value = fill_constant([1], value_type, re_value)
+    else:
+        if isinstance(value, Tensor):
+            if value.shape == [0]:
+                value = fill_constant([1], value_type, re_value)
+            elif value.shape not in [[], [1]] and value.shpae != c_x.shape[-len(value.shape):]:
+                raise ValueError(
+                    f"The {name} dimension should be equal to the inner dimension of the x, but the {name} dimension is {value.shape} and the x dimension is {c_x.shape[-len(value.shape):]}."
+                )
+        else:
+            value = fill_constant([1], value_type, value)
+    return value
+
+
 def clip(
     x: Tensor,
     min: float | None = None,
@@ -3764,20 +3780,6 @@ def clip(
         max_ = float(np.finfo(np.float32).max)
 
     if isinstance(min, Tensor) or isinstance(max, Tensor):
-        def check_clip_tensor(c_x, value, re_value, value_type, name):
-            if value is None:
-                value = fill_constant([1], value_type, re_value)
-            else:
-                if isinstance(value, Tensor):
-                    if value.shape == [0]:
-                        value = fill_constant([1], value_type, re_value)
-                    elif value.shape not in [[], [1]] and value.shpae != c_x.shape[-len(value.shape):]:
-                        raise ValueError(
-                            f"The {name} dimension should be equal to the inner dimension of the x, but the {name} dimension is {value.shape} and the x dimension is {c_x.shape[-len(value.shape):]}."
-                        )
-                else:
-                    value = fill_constant([1], value_type, value)
-            return value
         min_n = check_clip_tensor(x, min, min_, x_dtype, 'min')
         max_n = check_clip_tensor(x, max, max_, x_dtype, 'max')
 
@@ -3872,25 +3874,8 @@ def clip_(
         if not isinstance(max, Tensor) and not isinstance(min, Tensor):
             return _C_ops.clip_(x, min, max)
         else:
-            if not isinstance(max, Tensor):
-                max = fill_constant([1], float, max)
-            else:
-                if max.shape == [0]:
-                    max = fill_constant([1], float, max)
-                elif max.shape not in [[], [1]] and max.shpae != x.shape[-len(max.shape):]:
-                    raise ValueError(
-                        f"The max dimension should be equal to the inner dimension of the x, but the max dimension is {max.shape} and the x dimension is {x.shape[-len(max.shape):]}."
-                    )
-
-            if not isinstance(min, Tensor):
-                min = fill_constant([1], float, min)
-            else:
-                if min.shape == [0]:
-                    min = fill_constant([1], float, min)
-                elif min.shape not in [[], [1]] and min.shpae != x.shape[-len(min.shape):]:
-                    raise ValueError(
-                        f"The min dimension should be equal to the inner dimension of the x, but the min dimension is {min.shape} and the x dimension is {x.shape[-len(min.shape):]}."
-                    )
+            max = check_clip_tensor(x, max, fmin, x.dtype, 'max')
+            min = check_clip_tensor(x, min, fmin, x.dtype, 'min')
 
             max_expand = paddle.expand(max, x.shape) if max.shape != x.shape else max
             min_expand = paddle.expand(min, x.shape) if min.shape != x.shape else min

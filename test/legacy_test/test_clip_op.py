@@ -504,10 +504,108 @@ class TestClipTensor(unittest.TestCase):
             np.testing.assert_allclose(res_np, res[0], rtol=1e-05)
         paddle.disable_static()
 
+        data = np.random.random(data_shape).astype('float32')
+        min_data = np.random.random(data_shape[-2:]).astype('float32')
+        max_data = np.random.random(data_shape[-3:]).astype('float32')
+        out_np = np.clip(data, min_data, max_data)
+        data = paddle.to_tensor(data)
+        min_data = paddle.to_tensor(min_data)
+        max_data = paddle.to_tensor(max_data)
+        out = paddle.clip(data, min_data, max_data)
+        np.testing.assert_allclose(
+            out.numpy(), out_np, rtol=1e-05
+        )
+    
+    def test_tensor_none_clip(self):
+        paddle.enable_static()
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('float32')
+        min_data = np.random.random(data_shape[-2:]).astype('float32')
+        place = (
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        exe = base.Executor(place)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            images = paddle.static.data(
+                name='image', shape=data_shape, dtype='float32'
+            )
+            min = paddle.static.data(name='min', shape=data_shape[-2:], dtype='float32')
+            max = paddle.static.data(name='max', shape=data_shape[-3:], dtype='float32')
+            out = paddle.clip(images, min, max)
+            res = exe.run(feed={"image": data, 'min': min_data}, fetch_list=[out])
+            res_np = np.clip(data, min_data)
+            np.testing.assert_allclose(res_np, res[0], rtol=1e-05)
+        
+        paddle.disable_static()
+
+        data = np.random.random(data_shape).astype('float32')
+        min_data = np.random.random(data_shape[-2:]).astype('float32')
+        out_np = np.clip(data, min_data)
+        data = paddle.to_tensor(data)
+        min_data = paddle.to_tensor(min_data)
+        out = paddle.clip(data, min_data)
+        np.testing.assert_allclose(
+            out.numpy(), out_np, rtol=1e-05
+        )
+
+    def test_tensor_noshape_clip(self):
+        paddle.enable_static()
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('float32')
+        min_data = np.random.random(data_shape[-2:]).astype('float32')
+        max_data = np.random.random([]).astype('float32')
+        place = (
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        exe = base.Executor(place)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            images = paddle.static.data(
+                name='image', shape=data_shape, dtype='float32'
+            )
+            min = paddle.static.data(name='min', shape=data_shape[-2:], dtype='float32')
+            max = paddle.static.data(name='max', shape=[], dtype='float32')
+            out = paddle.clip(images, min, max)
+            res = exe.run(feed={"image": data, 'min': min_data, 'max': max_data}, fetch_list=[out])
+            res_np = np.clip(data, min_data)
+            np.testing.assert_allclose(res_np, res[0], rtol=1e-05)
+        paddle.disable_static()
+        data = np.random.random(data_shape).astype('float32')
+        min_data = np.random.random(data_shape[-2:]).astype('float32')
+        out_np = np.clip(data, min_data)
+        data = paddle.to_tensor(data)
+        min_data = paddle.to_tensor(min_data)
+        max_data = paddle.to_tensor([])
+        out = paddle.clip(data, min_data, max_data)
+        np.testing.assert_allclose(
+            out.numpy(), out_np, rtol=1e-05
+        )
+
+    def test_shapeerror_clip(self):
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('float32')
+        data = paddle.to_tensor(data)
+        with self.assertRaises(ValueError):
+            paddle.clip(data, min=paddle.to_tensor([2]))
+
 
 class TestInplaceClipAPI(TestClipAPI):
     def _executed_api(self, x, min=None, max=None):
         return x.clip_(min, max)
+    
+    def test_tensor_clip_(self):
+        data_shape = [1, 9, 9, 4]
+        data = paddle.to_tensor(np.random.random(data_shape).astype('float32'))
+        min = paddle.to_tensor(np.random.random(data_shape[-2:]).astype('float32'))
+        max = paddle.to_tensor(np.random.random(data_shape[-2:]).astype('float32'))
+        data.clip_(min, max)
 
 
 if __name__ == '__main__':
