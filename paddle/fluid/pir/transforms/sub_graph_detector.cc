@@ -683,9 +683,31 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
                                 const std::vector<pir::Value>& outputs) {
   // Regard last op as insert position if there are no downstream ops between in
   // group_ops.
+  pir::Operation* first_op = group_ops.front();
   pir::Operation* insert_point_op = group_ops.back();
-  auto begin = group_ops.front()->operator Block::ConstIterator();
-  auto end = ++(group_ops.back()->operator Block::ConstIterator());
+  auto order_info =
+      [&]() -> std::unordered_map<const pir::Operation*, int64_t> {
+    std::unordered_map<const pir::Operation*, int64_t> map;
+    // initialize the position index with block size by default.
+    auto block = insert_point_op->GetParent();
+    int64_t order = 0;
+    for (auto& op : *block) {
+      map[&op] = order++;
+    }
+    return map;
+  }();
+
+  for (auto* op : group_ops) {
+    if (order_info.at(op) > order_info.at(insert_point_op)) {
+      insert_point_op = op;
+    }
+    if (order_info.at(op) < order_info.at(first_op)) {
+      first_op = op;
+    }
+  }
+
+  auto begin = first_op->operator Block::ConstIterator();
+  auto end = ++(insert_point_op->operator Block::ConstIterator());
   const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
                                                    outputs.end());
   const std::unordered_set<const pir::Operation*> group_ops_set(

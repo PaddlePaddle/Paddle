@@ -37,6 +37,11 @@ pir::Value builtin_combine(const std::vector<pir::Value>& x) {
   return combine_op.out();
 }
 
+std::vector<pir::Value> builtin_split(const pir::Value& x) {
+  auto split_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(x);
+  return split_op.outputs();
+}
+
 std::vector<pir::Value> add_n_grad(const std::vector<pir::Value>& inputs,
                                    const pir::Value& out_grad) {
   std::vector<pir::Value> inputs_grad;

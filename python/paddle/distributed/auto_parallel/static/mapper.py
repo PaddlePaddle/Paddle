@@ -29,7 +29,6 @@ def is_collective_comm_op(op):
     comm_list = [
         "c_broadcast",
         "all_gather",
-        "all_reduce",
     ]
     reduce_type = [
         dist.ReduceOp.SUM,
@@ -37,12 +36,8 @@ def is_collective_comm_op(op):
         dist.ReduceOp.MAX,
         dist.ReduceOp.PROD,
     ]
-    if op.type == "all_reduce" and op.attr("reduce_type") in reduce_type:
+    if (op.type == "all_reduce" or op.type == "reduce") and op.attr("reduce_type") in reduce_type:
         return True
-    if op.type in comm_list:
-        return True
-    else:
-        return False
 
 
 def is_p2p_comm_op(op):
@@ -110,6 +105,11 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
         else:
             comm_volume = None
     elif "c_reduce" in comm_op_type:
+        if comm_op.attr("root_id") == src_rank:
+            comm_volume = None
+        else:
+            comm_volume = tensor_bytes
+    elif "reduce" == comm_op_type:
         if comm_op.attr("root_id") == src_rank:
             comm_volume = None
         else:

@@ -253,13 +253,10 @@ class ClipHelper:
                 return False
 
         for op in self.block.ops:
-            if (
-                op.type == "c_reduce_sum"
-                or (
-                    op.type == "c_reduce_sum"
-                    and op.attr("reduce_type") == dist.ReduceOp.SUM
-                )
-            ) and not is_data_parallel_reduce_op(op):
+            if (op.type == "reduce" or op.type == "all_reduce")
+                    and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+                and not is_data_parallel_reduce_op(op)
+            ):
                 return False
             if op.type in ["send_v2", "recv_v2"]:
                 return False

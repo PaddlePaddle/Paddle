@@ -118,8 +118,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
 
     for idx, op in enumerate(block.ops):
         # sharding use both allreduce and reduce to sync grad
-        if op.type == "c_reduce_sum" or (
-            op.type == "all_reduce"
+        if （op.type == "reduce" or op.type == "all_reduce"）
             and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
         ):
             if not op.all_attrs()["use_calc_stream"]:
@@ -159,8 +158,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 ):
                     dp_grads_status[var_name] = 1
         # check sharding allreduce and  reduce but skip megatron allreduce
-        elif op.type == "c_reduce_sum" or (
-            op.type == "all_reduce"
+        elif (op.type == "reduce" or op.type == "all_reduce")
             and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
         ):
             if not op.all_attrs()["use_calc_stream"]:
@@ -168,7 +166,8 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 ring_id = op.desc.attr("ring_id")
                 if ring_id == sharding_ring_id:
                     assert (
-                        op.type == "c_reduce_sum"
+                        op.type == "reduce"
+                        and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
                     ), "Grad in Sharding group should be reduce rather than allreduce"
                     if var_name in vars_status:
                         _status = vars_status[var_name]
@@ -557,13 +556,13 @@ def insert_fused_reduce_ops(
         for fused_var in fused_vars:
             block._insert_op_without_sync(
                 insert_idx + insert_num,
-                type='c_reduce_sum',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
+                type='reduce',
+                inputs={'x': fused_var},
+                outputs={'out': fused_var},
                 attrs={
                     'ring_id': ring_id,
                     'root_id': root_id,
-                    'use_calc_stream': use_calc_stream,
+                    'reduce_type': dist.ReduceOp.SUM,
                     OP_ROLE_KEY: op_role,
                 },
             )
@@ -629,13 +628,13 @@ def insert_reduce_ops(
             grad_in_this_device.append(var)
         block._insert_op_without_sync(
             insert_idx,
-            type='c_reduce_sum',
-            inputs={'X': var},
-            outputs={'Out': var},
+            type='reduce',
+            inputs={'x': var},
+            outputs={'out': var},
             attrs={
                 'ring_id': ring_id,
                 'root_id': root_id,
-                'use_calc_stream': use_calc_stream,
+                'reduce_type': dist.ReduceOp.SUM,
                 OP_ROLE_KEY: op_role,
             },
         )

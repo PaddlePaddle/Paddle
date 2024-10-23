@@ -23,12 +23,12 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/os_info.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
@@ -108,6 +108,15 @@ void RecordLowPrecisionOp(const InstructionBase* instr_node) {
           op_name, kernel_key.dtype());
     }
   }
+}
+
+bool UseTraceRun(const ExecutionConfig& execution_config,
+                 size_t onednn_op_num,
+                 size_t sync_op_num) {
+  return FLAGS_enable_pir_in_executor_trace_run || onednn_op_num ||
+         execution_config.used_for_inference || execution_config.used_for_sot ||
+         ((execution_config.used_for_jit || execution_config.used_for_cinn) &&
+          (sync_op_num == 0));
 }
 
 PirInterpreter::PirInterpreter(const phi::Place& place,
@@ -1330,7 +1339,8 @@ void PirInterpreter::CalculateLastLiveOps() {
         // skip no_need_buffer input vars
         if ((ins.count(item.first) &&
              instr->NoNeedBuffer().count(item.first)) ||
-            instr->Name() == "builtin_combine_instruction") {
+            instr->Name() == "builtin_combine_instruction" ||
+            instr->Name() == "pd_op.shadow_feed_tensors") {
           continue;
         }
         gc_check_vars.insert(var_id);
@@ -1343,8 +1353,10 @@ void PirInterpreter::CalculateLastLiveOps() {
           value_exe_info_->GetNameById(static_cast<int>(var_id)));
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          common::errors::NotFound("Var(id=%d) should not be nullptr.",
-                                   static_cast<int>(var_id)));
+          common::errors::NotFound(
+              "Var(id=%d,%s) should not be nullptr.",
+              static_cast<int>(var_id),
+              value_exe_info_->GetNameById(static_cast<int>(var_id))));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
@@ -1496,10 +1508,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     PreAnalysis();
     VLOG(4) << "Done PreAnalysis";
 
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
-        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-         (sync_op_num_ == 0))) {
+    if (UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_)) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
@@ -1511,10 +1520,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
-        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-         (sync_op_num_ == 0))) {
+    if (UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_)) {
       TraceRunImpl();
     } else {
       MultiThreadRunImpl();
@@ -1581,10 +1587,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
-        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-         (sync_op_num_ == 0))) {
+    if (UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_)) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
@@ -1596,10 +1599,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
-        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-         (sync_op_num_ == 0))) {
+    if (UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_)) {
       TraceRunImpl();
     } else {
       MultiThreadRunImpl();

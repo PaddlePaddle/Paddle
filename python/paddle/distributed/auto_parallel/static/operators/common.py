@@ -670,18 +670,14 @@ def is_data_parallel_scale_op(op):
 
 
 def is_data_parallel_reduce_op(op):
-    is_reduce_op = op.type in [
-        "c_reduce_sum",
-        "c_reduce_avg",
-    ]
-    is_allreduce_op = op.type == "all_reduce" and op.desc.attr(
+    is_reduce_op = (op.type == "all_reduce" or op.type == "reduce") and op.desc.attr(
         "reduce_type"
     ) in [
         dist.ReduceOp.SUM,
         dist.ReduceOp.AVG,
     ]
     return (
-        (is_allreduce_op or is_reduce_op)
+        is_reduce_op
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )

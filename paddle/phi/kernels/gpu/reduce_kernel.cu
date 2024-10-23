@@ -270,6 +270,11 @@ void ReduceKernel(const Context& dev_ctx,
     case ReduceType::kRedProd:
       red_type = ncclProd;
       break;
+#if NCCL_VERSION_CODE >= 21000
+    case ReduceType::kRedAvg:
+      red_type = ncclAvg;
+      break;
+#endif
   }
   comm_ctx->Reduce(out, x, red_type, root, stream);
 #else
