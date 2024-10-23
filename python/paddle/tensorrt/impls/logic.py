@@ -28,8 +28,10 @@ def logic_converter(network, paddle_op, inputs):
         layer_output = add_elementwise_layer(
             network, paddle_op, inputs, trt.ElementWiseOperation.GREATER
         )
-    else:
+    elif paddle_op.name() == "pd_op.less_than":
         layer_output = add_elementwise_layer(
             network, paddle_op, inputs, trt.ElementWiseOperation.LESS
         )
+    else:
+        raise ValueError(f"Unexpected paddle_op: {paddle_op.name()}")
     return trt_cast(network, layer_output, inputs[0].dtype)

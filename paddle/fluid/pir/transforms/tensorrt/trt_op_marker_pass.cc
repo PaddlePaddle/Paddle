@@ -948,7 +948,7 @@ class GreaterThanOpPattern
       return false;
     }
 #if IS_TRT_VERSION_LT(8400)
-    VLOG(3) << "GreaterThanOp is not supported when TensorRT < 8.4";
+    VLOG(3) << "pd_op.greater_than op is not supported when TensorRT < 8.4";
     return false;
 #else
     pir::Value x = op.operand_source(0);
@@ -956,7 +956,7 @@ class GreaterThanOpPattern
     auto x_dtype = pir::GetDataTypeFromValue(x);
     auto y_dtype = pir::GetDataTypeFromValue(y);
     if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
-      VLOG(3) << "Greater_than op do not support bool datatype";
+      VLOG(3) << "pd_op.greater_than op do not support bool datatype";
       return false;
     }
 #endif
@@ -976,7 +976,7 @@ class LessThanOpPattern
       return false;
     }
 #if IS_TRT_VERSION_LT(8400)
-    VLOG(3) << "LessThanOp is not supported when TensorRT < 8.4";
+    VLOG(3) << "pd_op.less_than op is not supported when TensorRT < 8.4";
     return false;
 #else
     pir::Value x = op.operand_source(0);
@@ -984,7 +984,7 @@ class LessThanOpPattern
     auto x_dtype = pir::GetDataTypeFromValue(x);
     auto y_dtype = pir::GetDataTypeFromValue(y);
     if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
-      VLOG(3) << "Less_than op do not support bool datatype";
+      VLOG(3) << "pd_op.less_than op do not support bool datatype";
       return false;
     }
 #endif
