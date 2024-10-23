@@ -3346,6 +3346,30 @@ def set_(
             source = paddle.empty([0], dtype=x.dtype)
             shape = [0]
             stride = [0]
+        else:
+            if not isinstance(source, (Variable, core.eager.Tensor)):
+                raise ValueError(
+                    f"Input (source) should be paddle.Tensor but received {type(source)}"
+                )
+            if source.dtype not in [
+                paddle.paddle.bool,
+                paddle.float16,
+                paddle.bfloat16,
+                paddle.float32,
+                paddle.float64,
+                paddle.int8,
+                paddle.int16,
+                paddle.int32,
+                paddle.int64,
+                paddle.uint8,
+                paddle.complex64,
+                paddle.complex128,
+            ]:
+                raise ValueError(
+                    "dtype of Input (source) must be any of [bool, float16, bfloat16, float32, "
+                    "float64, int8, int16, int32, int64, uint8, complex64, complex128, bfloat16], "
+                    f"but received {source.dtype}"
+                )
         if stride is None:
             if shape is None:
                 stride = source.strides

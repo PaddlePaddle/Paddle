@@ -2198,6 +2198,10 @@ class TestDygraphInplaceSet(unittest.TestCase):
     "core is not compiled with CUDA and not support the float16",
 )
 class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
+    def setUp(self):
+        self.init_data()
+        self.places = [paddle.CUDAPlace(0)]
+
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [7, 20, 2])
         self.new_x_np = np.random.uniform(-5, 5, [6, 3])
@@ -2224,6 +2228,10 @@ class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
+    def setUp(self):
+        self.init_data()
+        self.places = [paddle.CUDAPlace(0)]
+
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [7, 20, 2])
         self.new_x_np = np.random.uniform(-5, 5, [6, 3])
