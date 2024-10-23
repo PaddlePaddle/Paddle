@@ -175,14 +175,14 @@ class TestSparseIsCoalescedAPI7(TestSparseIsCoalescedAPI):
         self.dtype = "complex64"
         coo_tenosr = paddle.sparse.sparse_coo_tensor(
             coo_indices, coo_values, dtype=self.dtype
-        )
+        ).coalesce()
         csr_crows = [0, 2, 3, 5]
         csr_cols = [1, 3, 2, 0, 1]
         csr_values = paddle.to_tensor([1, 2, 3, 4, 5])
         csr_shape = [3, 4]
         csr_tensor = paddle.sparse.sparse_csr_tensor(
             csr_crows, csr_cols, csr_values, csr_shape, dtype=self.dtype
-        ).coalesce()
+        )
         other_tensor = paddle.to_tensor([1, 2, 3, 4], dtype=self.dtype)
         self.tensors = [coo_tenosr, csr_tensor, other_tensor]
         self.expected_result = [True, False, False]
@@ -400,5 +400,4 @@ class TestSparseIsCoalescedAPIStaticFP16(TestSparseIsCoalescedAPIStatic):
 
 
 if __name__ == "__main__":
-    paddle.disable_static()
     unittest.main()
