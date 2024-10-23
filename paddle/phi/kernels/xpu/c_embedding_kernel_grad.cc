@@ -28,6 +28,10 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           int64_t start_index,
                           DenseTensor* w_grad) {
+  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+    dev_ctx.Wait();
+  }
+
   w_grad->Resize(w.dims());
   dev_ctx.template Alloc(w_grad, w.dtype());
   T* table_grad_data = static_cast<T*>(w_grad->data());
