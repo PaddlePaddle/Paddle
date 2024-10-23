@@ -429,7 +429,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
+      self->ResetHolderWithType(holder, phi::TransToPhiDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -456,7 +456,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
+      self->ResetHolderWithType(holder, phi::TransToPhiDataType(type));
     } else {
       // IPU does not store Tensor data, Tensor will be created on CPU
       if (!self->initialized()) {
@@ -658,8 +658,7 @@ void SetUVATensorFromPyArrayImpl(
   std::shared_ptr<memory::allocation::Allocation> holder =
       std::make_shared<memory::allocation::Allocation>(
           cuda_device_pointer, need_allocate_size, phi::GPUPlace(device_id));
-  self_tensor->ResetHolderWithType(holder,
-                                   framework::TransToPhiDataType(data_type));
+  self_tensor->ResetHolderWithType(holder, phi::TransToPhiDataType(data_type));
 #endif
 }
 

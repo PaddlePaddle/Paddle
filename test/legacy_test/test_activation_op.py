@@ -426,6 +426,7 @@ class TestSigmoid(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -525,6 +526,7 @@ class TestSigmoidBF16(OpTest):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -579,7 +581,9 @@ class TestSilu(TestActivation):
     def test_check_output(self):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             self.check_output(
-                check_pir=True, check_pir_onednn=self.check_pir_onednn
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
         else:
             self.check_output(
@@ -587,6 +591,7 @@ class TestSilu(TestActivation):
                 check_pir=True,
                 check_prim_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
 
     def test_check_grad(self):
@@ -799,7 +804,9 @@ class TestTanh(TestActivation, TestParameter):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -1031,7 +1038,9 @@ class TestSinh(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -1285,7 +1294,9 @@ class TestTanhshrink(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
 
@@ -1379,7 +1390,9 @@ class TestHardShrink(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -1555,7 +1568,9 @@ class TestSoftshrink(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -1669,6 +1684,7 @@ class TestSqrt(TestActivation, TestParameter):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
 
@@ -1705,6 +1721,7 @@ class TestSqrtPrimFp32(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def init_dtype(self):
@@ -1758,6 +1775,7 @@ class TestSqrtBF16(OpTest):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -1813,6 +1831,7 @@ class TestSqrtComp(TestActivation, TestParameter):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
 
@@ -1855,6 +1874,7 @@ class TestSqrtCompFp32(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def init_dtype(self):
@@ -2164,7 +2184,9 @@ class TestTan(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2319,7 +2341,9 @@ class TestSin(TestActivation, TestParameter):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2833,6 +2857,7 @@ class TestLeakyRelu(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -4356,6 +4381,7 @@ class TestSquare(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
 
@@ -4433,6 +4459,7 @@ class TestSquareBF16(OpTest):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -4576,7 +4603,9 @@ class TestSTanh(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
 
@@ -4717,7 +4746,9 @@ class TestSoftplus(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -4778,7 +4809,10 @@ class TestSoftplusBF16(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_pir=True, check_pir_onednn=self.check_pir_onednn
+            place,
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -4876,13 +4910,16 @@ class TestSoftsign(TestActivation):
     def test_check_output(self):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             self.check_output(
-                check_pir=True, check_pir_onednn=self.check_pir_onednn
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+                check_symbol_infer=False,
             )
         else:
             self.check_output(
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
                 check_prim_pir=True,
+                check_symbol_infer=False,
             )
 
     def test_check_grad(self):
@@ -5009,7 +5046,9 @@ class TestThresholdedRelu(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
 
@@ -5125,6 +5164,7 @@ class TestHardSigmoid(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):

@@ -132,8 +132,7 @@ void InitTensorHolder(Scope* scope,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<phi::DenseTensor>();
-  tensor->mutable_data(
-      place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
+  tensor->mutable_data(place, phi::TransToPhiDataType(proto::VarType::FP32), 1);
 }
 
 void PreparePass(std::unique_ptr<ir::Graph>* graph,
