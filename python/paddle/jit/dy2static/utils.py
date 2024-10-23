@@ -257,24 +257,33 @@ def is_paddle_func(func, ignore_white_list=True):
         return (module.__name__ + '.' + func_name) in AS_NOT_INNER_FUNC_LIST
 
     try:
+        print(f"---- func 1 {func}", flush=True)
         if isinstance(func, paddle.nn.Layer):
             func = func.forward
+        print(f"---- func 2 {func}", flush=True)
         if isinstance(
             func, paddle.jit.dy2static.program_translator.StaticFunction
         ):
             func = func.dygraph_function
+        print(f"---- func 3 {func}", flush=True)
         if isinstance(func, functools.partial):
             func = func.func
+        print(f"---- func 4 {func}", flush=True)
         if inspect.ismethod(func):
             func = func.__func__
+        print(f"---- func 5 {func}", flush=True)
         func_name = getattr(func, '__name__', None)
         if inspect.ismethod(func) or inspect.isfunction(func):
             func_name = func.__qualname__
 
+        print(f"---- func 6 {func}", flush=True)
         m = inspect.getmodule(func)
+        print(f"---- module 7 {m}", flush=True)
         flag = m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+        print(f"---- flag 8 {flag}", flush=True)
         if ignore_white_list:
             flag = flag and not in_white_list(m, func_name)
+        print(f"---- in_white_list 9 {in_white_list(m, func_name)}", flush=True)
 
         return flag
     except Exception:
