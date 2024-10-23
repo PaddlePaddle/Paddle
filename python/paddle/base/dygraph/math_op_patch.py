@@ -189,6 +189,17 @@ def monkey_patch_math_tensor():
         out = _C_ops.transpose(var, perm)
         return out
 
+    @property
+    def _mT_(var: Tensor) -> Tensor:
+        if len(var.shape) < 2:
+            raise ValueError(
+                f"Tensor.ndim({var.ndim}) is required to be greater than or equal to 2."
+            )
+        perm = list(range(len(var.shape)))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+        out = _C_ops.transpose(var, perm)
+        return out
+
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
@@ -203,6 +214,7 @@ def monkey_patch_math_tensor():
         ('ndim', _ndim),
         ('size', _size_),
         ('T', _T_),
+        ('mT', _mT_),
         # for logical compare
         ('__array_ufunc__', None),
     ]
