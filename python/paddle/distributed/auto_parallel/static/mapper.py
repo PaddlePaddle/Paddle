@@ -118,14 +118,11 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
             comm_volume = None
         else:
             comm_volume = tensor_bytes
-<<<<<<< HEAD
     elif "reduce" == comm_op_type:
         if comm_op.attr("root_id") == src_rank:
             comm_volume = None
         else:
             comm_volume = tensor_bytes
-=======
->>>>>>> Clear annotations
     elif "p_send" in comm_op_type:
         if comm_op.attr("peer") == tgt_rank:
             comm_volume = tensor_bytes
