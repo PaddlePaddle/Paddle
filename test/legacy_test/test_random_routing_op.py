@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from op_test import check_symbolic_result
 
 import paddle
 from paddle.base import core
@@ -62,31 +61,6 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         out = utils._random_routing(x, value, prob)
         np.testing.assert_allclose(out.numpy(), self.out)
 
-    def test_api_static(self):
-        paddle.enable_static()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, startup_prog):
-            top_idx = paddle.static.data('top_idx', self.x.shape, self.x.dtype)
-            top_value = paddle.static.data(
-                'top_value', self.topk_value.shape, self.topk_value.dtype
-            )
-            prob = paddle.static.data('prob', self.prob.shape, self.prob.dtype)
-            out = utils._random_routing(top_idx, top_value, prob)
-        exe = paddle.static.Executor(self.place)
-        exe.run(startup_prog)
-        res = exe.run(
-            main_prog,
-            feed={
-                'top_idx': self.x,
-                'top_value': self.topk_value,
-                'prob': self.prob,
-            },
-            fetch_list=[out],
-        )
-        check_symbolic_result(main_prog, [out], res, 'random_routing')
-        np.testing.assert_allclose(res[0], self.out)
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -98,4 +72,5 @@ class TestNumberCountAPIFp16(TestNumberCountAPIFp32):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

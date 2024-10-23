@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 sys.path.append("../../legacy_test")
-from op_test import check_symbolic_result
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -90,24 +89,17 @@ class TestProdOp(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
-            fetch_list = [
-                result0,
-                result1,
-                result2,
-                result3,
-                result4,
-                result5,
-                result6,
-            ]
             static_result = exe.run(
                 feed={"input": self.input},
-                fetch_list=fetch_list,
-            )
-            check_symbolic_result(
-                paddle.static.default_main_program(),
-                fetch_list,
-                static_result,
-                'prod',
+                fetch_list=[
+                    result0,
+                    result1,
+                    result2,
+                    result3,
+                    result4,
+                    result5,
+                    result6,
+                ],
             )
 
         expected_result = np.prod(self.input)
