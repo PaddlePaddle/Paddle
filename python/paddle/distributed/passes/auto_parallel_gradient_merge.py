@@ -401,9 +401,9 @@ def _move_reduce_to_optimizer_ops_block(
             reduce_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
             removed_op_idx.append(idx)
 
-            if (op.type == "reduce" or op.type == "all_reduce")
-                and op.attr("reduce_type") == dist.ReduceOp.SUM
-            ):
+            if (op.type == "reduce" or op.type == "all_reduce") and op.attr(
+                "reduce_type"
+            ) == dist.ReduceOp.SUM:
                 scale_index = idx + 1
                 while scale_index < len(main_block.ops):
                     if is_data_parallel_scale_op(main_block.ops[scale_index]):
