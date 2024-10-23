@@ -18,6 +18,7 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
     cast_tensor,
+    trt_cast,
     trt_floor_div,
     trt_max,
     trt_reduce_to_scalar,
@@ -77,11 +78,53 @@ def arange_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.full_like", trt_version="8.x")
 def full_like_converter(network, paddle_op, inputs):
-    input_val = inputs[0]
-    print(input_val)
-    shape = input_val.shape
+    shape = tuple(paddle_op.operands()[0].source().shape)
+    ndims = len(shape)
     value = paddle_op.attrs().get("value", 1.0)
-    full_layer = network.add_constant(
-        shape, np.full(shape, value, dtype=np.float32)
+    out_dtype = int(paddle_op.attrs().get("dtype", None))
+    # Reference paddle/phi/common/data_type.h enum DataType
+    if out_dtype == 1:
+        out_dtype = trt.bool
+    elif out_dtype == 7:
+        out_dtype = trt.int32
+    elif out_dtype == 9:
+        out_dtype = trt.int32
+    elif out_dtype == 10:
+        out_dtype = trt.float32
+    elif out_dtype == 11:
+        out_dtype = trt.float32
+    elif out_dtype == 15:
+        out_dtype = trt.float16
+    else:
+        raise RuntimeError(
+            f"cast converter currently doesn't support dtype: {out_dtype}"
+        )
+
+    value_tensor = network.add_constant(
+        (1,), np.array([value], dtype=np.float32)
+    ).get_output(0)
+    value_tensor = trt_cast(network, value_tensor, out_dtype)
+
+    shuffle_layer = network.add_shuffle(value_tensor)
+    shuffle_layer.reshape_dims = (1,) * ndims
+
+    start_vec = np.zeros((ndims,), dtype=np.int32)
+    start_tensor = network.add_constant((ndims,), start_vec).get_output(0)
+    shape_tensor = network.add_shape(inputs[0]).get_output(0)
+    stride_tensor = network.add_constant(
+        (ndims,), np.ones((ndims,), dtype=np.int32)
+    ).get_output(0)
+
+    slice_layer = network.add_slice(
+        shuffle_layer.get_output(0),
+        start_vec,
+        [1] * ndims,
+        np.ones((ndims,), dtype=np.int32),
     )
-    return full_layer.get_output(0)
+    slice_layer.mode = trt.SliceMode.FILL
+    slice_layer.set_input(1, start_tensor)
+    slice_layer.set_input(2, shape_tensor)
+    slice_layer.set_input(3, stride_tensor)
+    fill_constant = network.add_input("value", dtype=out_dtype, shape=())
+    slice_layer.set_input(4, fill_constant)
+    return slice_layer.get_output(0)

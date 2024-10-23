@@ -22,7 +22,7 @@ import paddle
 # class TestFlattenTRTPattern(TensorRTBaseTest):
 #     def setUp(self):
 #         self.python_api = paddle.full
-#         self.api_args = {"shape": [3, 2], "fill_value": 1.0, "dytpe": "bool"}
+#         self.api_args = {"shape": [3, 2], "fill_value": 2.5, "dytpe": "int32"}
 #         self.program_config = {"feed_list": []}
 #         self.min_shape = {}
 #         self.max_shape = {}
@@ -47,13 +47,27 @@ import paddle
 #         self.check_trt_result()
 
 
-class TestFullLikeTRTPattern(TensorRTBaseTest):
+class TestFullLikeFloatTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.full_like
         self.api_args = {
-            "input": np.random.randn(4, 2).astype(np.float32),
-            "fill_value": 1.0,
-            #  "dytpe": "bool",
+            "input": np.random.randn(3, 2).astype(np.float32),
+            "fill_value": 5,
+        }
+        self.program_config = {"feed_list": ["input"]}
+        self.min_shape = {"input": [1, 2]}
+        self.max_shape = {"input": [5, 2]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestFullLikeIntTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.full_like
+        self.api_args = {
+            "input": np.random.randn(3, 2).astype(np.int32),
+            "fill_value": 5,
         }
         self.program_config = {"feed_list": ["input"]}
         self.min_shape = {"input": [1, 2]}
