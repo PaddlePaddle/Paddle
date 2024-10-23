@@ -67,29 +67,32 @@ void CPUGather(const phi::CPUContext& ctx UNUSED,
   int64_t slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
   // input size
-  int64_t input_size = src_dims[0] * slice_size;
+  // int64_t input_size = src_dims[0] * slice_size;
+  int64_t index_dim_size = src_dims[0];
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
   for (int64_t i = 0; i < index_size; ++i) {
-    IndexT index_ = p_index[i];
     PADDLE_ENFORCE_LT(p_index[i],
-                      input_size,
+                      index_dim_size,
                       common::errors::OutOfRange(
                           "The element of Index must be less than the size of "
                           "input dim size of axis which is %d, but received "
                           "index element which is %d in the %d index.",
-                          input_size,
+                          index_dim_size,
                           p_index[i],
                           i));
-    PADDLE_ENFORCE_GE(p_index[i],
-                      0,
-                      common::errors::OutOfRange(
-                          "The element of Index must be greater than or equal "
-                          "to 0, but received index element which is %d in the "
-                          "%d index.",
-                          p_index[i],
-                          i));
+    PADDLE_ENFORCE_GE(
+        p_index[i],
+        -index_dim_size,
+        common::errors::OutOfRange(
+            "The element of Index must be greater than or equal "
+            "to %d, but received index element which is %d in the "
+            "%d index.",
+            -index_dim_size,
+            p_index[i],
+            i));
+    IndexT index_ = (p_index[i] < 0 ? p_index[i] + index_dim_size : p_index[i]);
     memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
 }
@@ -132,9 +135,13 @@ void CPUGatherNd(const phi::CPUContext& ctx UNUSED,
               "Input(index[-1)] has wrong value, it is [%d]", index_value));
       PADDLE_ENFORCE_GE(
           index_value,
-          0,
+          -input_dims[j],
           common::errors::InvalidArgument(
-              "The value of Input(index) must be no less than 0"));
+              "The value of Input(index) must be no less than [%d]",
+              -input_dims[j]));
+      if (index_value < 0) {
+        index_value += input_dims[j];
+      }
 
       index_ += (index_value * temp);
       temp *= input_dims[j];
@@ -170,14 +177,16 @@ void GatherV2Function(const phi::CPUContext& ctx,
                           input_index_dim_size,
                           index_data[i],
                           i));
-    PADDLE_ENFORCE_GE(index_data[i],
-                      0,
-                      common::errors::OutOfRange(
-                          "The element of Index must be greater than or equal "
-                          "to 0, but received index element which is %d in the "
-                          "%d index.",
-                          index_data[i],
-                          i));
+    PADDLE_ENFORCE_GE(
+        index_data[i],
+        -input_index_dim_size,
+        common::errors::OutOfRange(
+            "The element of Index must be greater than or equal "
+            "to %d, but received index element which is %d in the "
+            "%d index.",
+            -input_index_dim_size,
+            index_data[i],
+            i));
   }
 
   int64_t inner_dim_size = 1;
@@ -203,8 +212,11 @@ void GatherV2Function(const phi::CPUContext& ctx,
   int out_index = 0;
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < index_size; j++) {
+      const int64_t index_data_j =
+          (index_data[j] < 0 ? index_data[j] + input_index_dim_size
+                             : index_data[j]);
       for (int64_t k = 0; k < outer_dim_size; k++) {
-        int64_t index = k + index_data[j] * outer_dim_size +
+        int64_t index = k + index_data_j * outer_dim_size +
                         (i * input_size / inner_dim_size);
         out_data[out_index] = input_data[index];
         out_index++;
@@ -252,8 +264,11 @@ void GatherV2GradFunction(const phi::CPUContext& ctx,
 
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < input_index_dim_size; j++) {
+      const int64_t index_data_j =
+          (index_data[j] < 0 ? index_data[j] + input_index_dim_size
+                             : index_data[j]);
       for (int64_t k = 0; k < outer_dim_size; k++) {
-        int64_t index = k + index_data[j] * outer_dim_size +
+        int64_t index = k + index_data_j * outer_dim_size +
                         i * outer_dim_size * out_index_dim_size;
         out_data[index] += input_data[j * outer_dim_size + k];
       }

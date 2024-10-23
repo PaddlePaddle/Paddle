@@ -27,10 +27,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/phi/common/port.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/vocab/string_array.h"
 
 namespace paddle {

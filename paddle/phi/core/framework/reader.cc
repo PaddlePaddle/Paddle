@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/reader.h"
-
+#include "paddle/phi/core/framework/reader.h"
 #include <deque>
+#include "glog/logging.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void ReaderBase::ReadNext(phi::TensorArray *out) {
   std::lock_guard<std::mutex> lock(mu_);
@@ -78,5 +77,4 @@ DecoratedReader::~DecoratedReader() {
   VLOG(1) << "~DecoratedReader";
   reader_->Shutdown();
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

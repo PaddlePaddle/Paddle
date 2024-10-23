@@ -307,11 +307,12 @@ void IndexSelect(const Context& context,
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_vec[i],
-        0,
+        -input_dim[dim],
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
             "value.",
+            -input_dim[dim],
             input_dim[dim],
             index_vec[i]));
     PADDLE_ENFORCE_LT(
@@ -319,8 +320,9 @@ void IndexSelect(const Context& context,
         input_dim[dim],
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
             "value.",
+            -input_dim[dim],
             input_dim[dim],
             index_vec[i]));
   }
@@ -331,6 +333,9 @@ void IndexSelect(const Context& context,
 
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_vec[j];
+      if (index_value < 0) {
+        index_value += input_dim[dim];
+      }
       for (auto k = 0; k < slice_size; k++) {
         out_vec[output_start_offset + j * slice_size + k] =
             input_vec[input_start_offset + index_value * slice_size + k];

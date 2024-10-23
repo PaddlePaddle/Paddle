@@ -17,5 +17,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/slogdeterminant_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    slogdet, CPU, ALL_LAYOUT, phi::SlogDeterminantKernel, float, double) {}
+PD_REGISTER_KERNEL(slogdet,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SlogDeterminantKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

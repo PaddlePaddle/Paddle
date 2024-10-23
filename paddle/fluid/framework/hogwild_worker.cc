@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -786,8 +787,10 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
     op_names_.push_back(op_name);
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
     // change to device stream
-    if (op_name == "c_broadcast" || op_name == "c_reduce_sum" ||
-        op_name == "c_allreduce_sum") {
+    if (op_name == "c_broadcast" || op_name == "c_allreduce_sum" ||
+        (op_name == "reduce" &&
+         op_desc->GetAttrIfExists<int>("reduce_type") ==
+             static_cast<int>(phi::ReduceType::kRedSum))) {
       ops_[op_index]->SetAttr("use_calc_stream", true);
     }
     op_index++;
