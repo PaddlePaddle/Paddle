@@ -548,9 +548,9 @@ class ShardingPass(PassBase):
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
             if _is_param_grad_allreduce_op(op, main_block):
-                if (op.type == "reduce" or op.type == "all_reduce") 
-                    and op.attr("reduce_type") == dist.ReduceOp.SUM
-                ):
+                if (op.type == "reduce" or op.type == "all_reduce") and op.attr(
+                    "reduce_type"
+                ) == dist.ReduceOp.SUM:
                     reduce_op_type = "reduce"
                     reduce_type = dist.ReduceOp.SUM
                 else:

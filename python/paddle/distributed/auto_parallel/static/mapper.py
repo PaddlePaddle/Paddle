@@ -36,7 +36,9 @@ def is_collective_comm_op(op):
         dist.ReduceOp.MAX,
         dist.ReduceOp.PROD,
     ]
-    if (op.type == "all_reduce" or op.type == "reduce") and op.attr("reduce_type") in reduce_type:
+    if (op.type == "all_reduce" or op.type == "reduce") and op.attr(
+        "reduce_type"
+    ) in reduce_type:
         return True
 
 
