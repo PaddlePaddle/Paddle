@@ -149,7 +149,6 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                 ->GetDevContext());
         dev_ctx->SetCommContext(comm_context);
         if (op_name.compare(paddle::dialect::ReduceScatterOp::name()) == 0 ||
-            op_name.compare(paddle::dialect::Broadcast_Op::name()) == 0 ||
             op_name.compare(paddle::dialect::BroadcastOp::name()) == 0 ||
             op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
           if (phi::is_gpu_place(place) && execution_stream == kDefaultStream) {
