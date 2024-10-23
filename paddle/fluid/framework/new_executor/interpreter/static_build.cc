@@ -186,8 +186,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
 }
 
 inline bool IsExtendedTensor(const phi::TensorBase& tensor) {
-  return framework::RawTensor::classof(&tensor) ||
-         phi::Strings::classof(&tensor) || phi::Vocab::classof(&tensor);
+  return phi::RawTensor::classof(&tensor) || phi::Strings::classof(&tensor) ||
+         phi::Vocab::classof(&tensor);
 }
 
 bool TensorShouldBeFakeInitialized(const OperatorBase& op,
@@ -281,9 +281,11 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
       return var->template GetMutable<phi::TensorArray>();
     } else if (var->template IsType<phi::Strings>()) {
       return var->template GetMutable<phi::Strings>();
-    } else if (var->template IsType<paddle::framework::RawTensor>() ||
+    } else if (var->template IsType<phi::Vocab>()) {
+      return var->template GetMutable<phi::Vocab>();
+    } else if (var->template IsType<phi::RawTensor>() ||
                !var->IsInitialized()) {
-      return var->template GetMutable<paddle::framework::RawTensor>();
+      return var->template GetMutable<phi::RawTensor>();
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type when get tensor.",
