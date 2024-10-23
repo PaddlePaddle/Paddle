@@ -76,7 +76,6 @@ void FetchV2Kernel(const Context &dev_ctx,
   if (!src_item.initialized()) {
     return;
   }
-  auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
   bool check_place =
       src_item.place().GetType() == phi::AllocationType::CPU ||
       src_item.place().GetType() == phi::AllocationType::GPUPINNED ||
@@ -85,6 +84,9 @@ void FetchV2Kernel(const Context &dev_ctx,
                     true,
                     errors::InvalidArgument("Tensor's place of input(X) must "
                                             "be CPUPlace or CUDAPinnedPlace."));
+  phi::DenseTensor tmp = src_item;
+  fetch_list->at(col) = tmp;
+  auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
   if (deepcopy) {
     DeepCopy(dev_ctx, src_item, "", dst_item);
   } else {
