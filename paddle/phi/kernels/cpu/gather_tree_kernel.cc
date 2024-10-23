@@ -54,10 +54,18 @@ void GatherTreeKernel(const Context &dev_ctx,
             parent,
             beam_size,
             phi::errors::InvalidArgument(
-                "The parents must be less than beam size, but received"
+                "The parents must be less than beam size, but received "
                 "parents %d is greater than or equal to beam size %d. ",
                 parent,
                 beam_size));
+
+        PADDLE_ENFORCE_GE(
+            parent,
+            0,
+            phi::errors::InvalidArgument(
+                "The parents must be greater than or equal to 0, but received "
+                "parents %d is less than 0. ",
+                parent));
 
         idx = step * batch_size * beam_size + batch * beam_size;
         out_data[idx + beam] = ids_data[idx + parent];
