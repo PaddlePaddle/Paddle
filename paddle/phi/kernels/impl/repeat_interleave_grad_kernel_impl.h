@@ -40,7 +40,6 @@ template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
                                               const IndexT* index,
-                                              int64_t nums,
                                               int64_t N,
                                               int64_t stride,
                                               int64_t size,
@@ -74,12 +73,9 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     const DenseTensor& out_grad,
     int dim,
     DenseTensor* x_grad) {
-  auto place = ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
-
   auto input_dim = x_grad->dims();
   if (dim < 0) {
-    dim += input_dim.size();
+    dim += static_cast<int>(input_dim.size());
   }
 
   DenseTensor index;
@@ -136,7 +132,6 @@ void RepeatInterleaveWithTensorIndexGradKernel(
            stream>>>(out_grad_data,
                      in_grad_data,
                      index_data,
-                     index_nums,
                      out_nums,
                      stride,
                      size,
@@ -154,7 +149,6 @@ void RepeatInterleaveWithTensorIndexGradKernel(
            stream>>>(out_grad_data,
                      in_grad_data,
                      index_data,
-                     index_nums,
                      out_nums,
                      stride,
                      size,
@@ -170,9 +164,6 @@ void RepeatInterleaveGradKernel(const Context& ctx,
                                 int repeats,
                                 int dim,
                                 DenseTensor* x_grad) {
-  auto place = ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
-
   auto input_dim = x_grad->dims();
   if (dim < 0) {
     dim += input_dim.size();
@@ -213,7 +204,6 @@ void RepeatInterleaveGradKernel(const Context& ctx,
          stream>>>(out_grad_data,
                    in_grad_data,
                    index_data,
-                   index_nums,
                    out_nums,
                    stride,
                    size,

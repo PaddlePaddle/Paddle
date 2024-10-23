@@ -39,8 +39,6 @@ class PatternGraph {
   void ReduceTree_Trivial_Fusion();
   void LiftToItersPermutationPattern();
   void ItersPermutationFusion();
-  void LiftToAnchorPattern();
-  void AnchorPatternFusion();
   void SplitRecomputePattern();
   std::vector<PatternNodePtr> ReturnFusionResults();
 

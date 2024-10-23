@@ -21,8 +21,7 @@
 #include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
-using FeedType =
-    paddle::variant<phi::DenseTensor, phi::Strings, phi::SparseCooTensor>;
+using FeedType = phi::DenseTensor;
 using FetchType = paddle::variant<phi::DenseTensor,
                                   phi::TensorArray,
                                   phi::Vocab,
