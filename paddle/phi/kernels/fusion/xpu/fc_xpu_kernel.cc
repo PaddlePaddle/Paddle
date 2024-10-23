@@ -80,7 +80,9 @@ void FcXPUKernelImpl(const Context& ctx,
   int r = 0;
 
 #ifdef PADDLE_WITH_XPU_XHPC
-  if (std::is_same<XPUTypeX, XPUTypeOut>::value) {
+  if (std::is_same<XPUTypeX, XPUTypeOut>::value &&
+      std::is_same<XPUTypeW, XPUTypeOut>::value &&
+      !std::is_same<XPUTypeW, int8_t>::value) {
     r = baidu::xpu::xblas::
         fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX, TW. TY TGEMM
             ctx.x_context(),                                // ctx
@@ -106,34 +108,10 @@ void FcXPUKernelImpl(const Context& ctx,
             nullptr,                                        // scale_w
             0,                                              // scale_x_mode
             0);                                             // scale_w_mode
-  } else {
-    auto* scale_max_data = scale_max.get_ptr() == nullptr
-                               ? nullptr
-                               : scale_max.get_ptr()->data<float>();
-    r = xpu::
-        fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
-            ctx.x_context(),                                // ctx
-            x_data,                                         // x
-            w_data,                                         // w
-            out_data,                                       // y
-            m,                                              // m
-            n,                                              // n
-            k,                                              // k
-            transpose_x,                                    // x_trans
-            true,                                           // w_trans
-            x_max_data,                                     // x_maxptr
-            w_max_data,                                     // w_maxptr
-            out_max_data,                                   // y_maxptr
-            transpose_x ? m : k,                            // ldx
-            k,                                              // ldw
-            n,                                              // ldy
-            alpha,                                          // alpha
-            beta,                                           // beta
-            bias_data,                                      // bias
-            act,
-            scale_max_data);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_xpu");
+    return;
   }
-#else
+#endif
   auto* scale_max_data = scale_max.get_ptr() == nullptr
                              ? nullptr
                              : scale_max.get_ptr()->data<float>();
@@ -158,7 +136,6 @@ void FcXPUKernelImpl(const Context& ctx,
       bias_data,                                               // bias
       act,
       scale_max_data);
-#endif
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_xpu");
 }
