@@ -78,7 +78,7 @@ void FcXPUKernelImpl(const Context& ctx,
   int r = 0;
 
   if (std::is_same<XPUTypeX, XPUTypeOut>::value &&
-      std::is_same<XPUTypeW, XPUTypeOut>::value &&
+      std::is_same<XPUTypeW, T_GEMM>::value &&
       !std::is_same<T_W, int8_t>::value) {
     r = baidu::xpu::xblas::
         fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX, TW. TY TGEMM
