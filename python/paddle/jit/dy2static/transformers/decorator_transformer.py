@@ -127,7 +127,7 @@ class DecoratorTransformer(BaseTransformer):
             decorator_list=[],
             returns=None,
             type_comment=None,
-            type_param=[],
+            type_params=[],
         )
 
         args = [arg.id for arg in node.args.args]
