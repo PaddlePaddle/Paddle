@@ -21,6 +21,24 @@ from paddle import base
 from paddle.base import core
 
 
+def check_symbolic_result(program, fetch_vars, outs, op_type):
+    if paddle.base.libpaddle.pir.all_ops_defined_symbol_infer(program):
+        shape_analysis = (
+            paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(program)
+        )
+        for i, var in enumerate(fetch_vars):
+            if var.is_dense_tensor_type() or var.is_selected_row_type():
+                shape_or_data = shape_analysis.get_shape_or_data_for_var(var)
+                expect_shape = outs[i].shape
+                expect_data = []
+                if not shape_or_data.is_equal(expect_shape, expect_data):
+                    raise AssertionError(
+                        f"The shape or data of Operator {op_type}'s result is different from expected."
+                    )
+    else:
+        pass
+
+
 class LinalgLstsqTestCase(unittest.TestCase):
     def setUp(self):
         self.devices = ["cpu"]
@@ -96,9 +114,11 @@ class LinalgLstsqTestCase(unittest.TestCase):
         for dev in self.devices:
             paddle.set_device(dev)
             place = base.CPUPlace() if dev == "cpu" else base.CUDAPlace(0)
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            main_prog, startup_prog = (
+                paddle.static.Program(),
+                paddle.static.Program(),
+            )
+            with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name="x",
                     shape=self._input_shape_1,
@@ -117,6 +137,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
                     feed={"x": self._input_data_1, "y": self._input_data_2},
                     fetch_list=[results],
                 )
+                check_symbolic_result(main_prog, [results], fetches, 'lstsq')
                 self._result_solution = fetches[0]
                 self._result_residuals = fetches[1]
                 self._result_rank = fetches[2]

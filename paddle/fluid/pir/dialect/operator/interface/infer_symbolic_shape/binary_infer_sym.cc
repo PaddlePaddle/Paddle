@@ -13,9 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/binary_infer_sym.h"
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 COMMON_DECLARE_bool(manually_trans_conv_filter);
 
@@ -1218,12 +1223,72 @@ bool KronOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool LstsqOpInferSymbolicShape(pir::Operation *op,
-//                                pir::InferSymbolicShapeContext *infer_context)
-//                                {
-//   // pass
-//   return true;
-// }
+bool LstsqOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  size_t x_rank = x_shape.size();
+  size_t y_rank = y_shape.size();
+
+  const symbol::DimExpr &m = x_shape[x_rank - 2];
+  const symbol::DimExpr &n = x_shape[x_rank - 1];
+  const symbol::DimExpr &nrhs = y_shape[y_rank - 1];
+  PADDLE_ENFORCE(
+      (x_rank >= 2 && y_rank >= 2 && x_rank == y_rank),
+      common::errors::InvalidArgument(
+          "Expects input tensor x and y to have the same dimension, "
+          "and the rank of input tensor x and y should be greater "
+          "than or equal to 2, but received the rank of input tensor "
+          "x is %d, the rank of input tensor y is %d",
+          x_rank,
+          y_rank));
+  std::vector<symbol::DimExpr> batch_dims_vec;
+  for (size_t i = 0; i < x_rank - 2; i++) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+    batch_dims_vec.emplace_back(x_shape[i]);
+  }
+  infer_context->AddEqualCstr(m, y_shape[y_rank - 2]);
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(batch_dims_vec)});
+
+  std::vector<symbol::DimExpr> residuals_shape{};
+  if (m.isa<int64_t>() && n.isa<int64_t>()) {
+    int64_t m_value = m.Get<std::int64_t>();
+    int64_t n_value = n.Get<std::int64_t>();
+    if (m_value > n_value) {
+      batch_dims_vec.emplace_back(nrhs);
+      residuals_shape = batch_dims_vec;
+      batch_dims_vec.pop_back();
+    } else {
+      residuals_shape.emplace_back(0);
+    }
+  }
+  if (paddle::dialect::details::IsFakeValue(op->operand_source(1))) {
+    infer_context->SetSymbolForValueByStaticShape(op->result(1));
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(residuals_shape)});
+  }
+  symbol::DimExprBuilder builder;
+  batch_dims_vec.emplace_back(builder.Min(m, n));
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(batch_dims_vec)});
+  batch_dims_vec[x_rank - 2] = n;
+  batch_dims_vec.emplace_back(nrhs);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(batch_dims_vec)});
+  return true;
+}
 
 bool LuUnpackOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
