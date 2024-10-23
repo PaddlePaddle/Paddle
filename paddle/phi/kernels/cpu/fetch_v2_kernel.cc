@@ -16,7 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fetch_v2_impl.h"
 
-PD_REGISTER_KERNEL(fetch_v3,
+PD_REGISTER_KERNEL(fetch_v2,
                    CPU,
                    ALL_LAYOUT,
                    phi::FetchV2Kernel,

@@ -24,7 +24,7 @@ KernelSignature FetchV2OpArgumentMapping(const ArgumentMappingContext& ctx) {
         "fetch_v2_array", {"X"}, {"col", "deepcopy"}, {"Out"});
   }
 
-  return KernelSignature("fetch_v3", {"X"}, {"col", "deepcopy"}, {"Out"});
+  return KernelSignature("fetch_v2", {"X"}, {"col", "deepcopy"}, {"Out"});
 }
 
 }  // namespace phi

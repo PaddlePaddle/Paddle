@@ -67,7 +67,7 @@ void FetchV2Kernel(const Context &dev_ctx,
                         "operator 'Fetch') of current fetching variable to be "
                         "no less than 0. But received column index = %d.",
                         col));
-  auto *fetch_list = reinterpret_cast<phi::FetchList *>(out);
+  auto *fetch_list = out;
   if (static_cast<size_t>(col) >= fetch_list->size()) {
     fetch_list->resize(col + 1);
   }
@@ -98,7 +98,7 @@ void FetchV2ArrayKernel(const Context &dev_ctx,
                         const TensorArray &x,
                         int col,
                         bool deepcopy,
-                        phi::ExtendedTensor *out) {
+                        phi::FetchList *out) {
   PADDLE_ENFORCE_GE(col,
                     0,
                     errors::InvalidArgument(
@@ -106,7 +106,7 @@ void FetchV2ArrayKernel(const Context &dev_ctx,
                         "operator 'Fetch') of current fetching variable to be"
                         " no less than 0. But received column index = % d.",
                         col));
-  auto *fetch_list = reinterpret_cast<phi::FetchList *>(out);
+  auto *fetch_list = out;
   if (static_cast<size_t>(col) >= fetch_list->size()) {
     fetch_list->resize(col + 1);
   }
