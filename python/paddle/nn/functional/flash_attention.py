@@ -1158,7 +1158,7 @@ def flashmask_attention(
               indicating bidirectional attention. The values represent the start and end row indices of the
               left lower triangular mask and the start and end row indices of the right upper triangular mask in the dense mask. The values startend_row_indices[..., 0:4] in startend_row_indices indicate that elements in the lower left triangle of the attention score matrix starting from the startend_row_indices[..., 0]-th row downwards (inclusive) but above the startend_row_indices[..., 1] row (exclusive) will be masked, and elements in the upper right triangle starting from the startend_row_indices[..., 2]-th row downwards (inclusive) but above the startend_row_indices[..., 3] row (exclusive) will be masked.
 
-        dropout (float):  - The dropout ratio. Default is 0.0.
+        dropout (float): The dropout ratio. Default is 0.0.
         causal (bool): Whether to enable causal mode. Default is False.
         window_size (int|tuple, optional): Indicates the window size of sliding window local attention.
             If causal mode is enabled, Query at position i will only attend to keys between [i - window_size, i] or [i - window_size[0], i].
