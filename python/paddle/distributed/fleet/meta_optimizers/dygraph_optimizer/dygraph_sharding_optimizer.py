@@ -810,7 +810,8 @@ class DygraphShardingOptimizerV2:
 
         if self.sd_release_grads and not self.pp_overlap:
             for comm_buffer in self._comm_buffer_list:
-                comm_buffer._clear_grad_storage()
+                if comm_buffer.need_reduce_scale_sync():
+                    comm_buffer._clear_grad_storage()
 
     def filter_parameters(self, parameter_list, hcg):
         parameter_list = [
@@ -834,8 +835,9 @@ class DygraphShardingOptimizerV2:
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
                 if self.sd_release_grads and comm_buffer.grad_storage is None:
-                    for param in comm_buffer.params:
-                        comm_buffer._copy_grad_to_buffer(param)
+                    if comm_buffer.need_reduce_scale_sync():
+                        for param in comm_buffer.params:
+                            comm_buffer._copy_grad_to_buffer(param)
 
             if g_sharding_v2_check_zero_padding:
                 self._check_padding_zero()
