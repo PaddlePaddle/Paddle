@@ -1129,21 +1129,21 @@ def flashmask_attention(
         - ``d`` denotes the size of the last dimension of these tensors.
         - ``M`` represents the column-wise sparse mask introduced by FlashMask.
 
-    Args
+    Args:
         query (Tensor):  The query tensor in the attention module.
-          A 4-D tensor with shape [batch_size, q_seq_len, num_heads, head_dim].
-          The dtype can be float16 or bfloat16.
+            A 4-D tensor with shape [batch_size, q_seq_len, num_heads, head_dim].
+            The dtype can be float16 or bfloat16.
         key (Tensor): The key tensor in the attention module.
-          A 4-D tensor with shape [batch_size, k_seq_len, k_num_heads, head_dim].
-          The dtype can be float16 or bfloat16.
+            A 4-D tensor with shape [batch_size, k_seq_len, k_num_heads, head_dim].
+            The dtype can be float16 or bfloat16.
         value (Tensor): The value tensor in the attention module.
-          A 4-D tensor with shape [batch_size, k_seq_len, k_num_heads, head_dim].
-          The dtype can be float16 or bfloat16.
+            A 4-D tensor with shape [batch_size, k_seq_len, k_num_heads, head_dim].
+            The dtype can be float16 or bfloat16.
         startend_row_indices(Tensor):
-          A column-wise sparse attention mask row indices tensor.
-          A 4-D tensor with shape [batch_size, k_num_heads, k_seq_len, {1, 2, 4}].
-          The dtype must be int32. k_num_heads can be 1 or the same as key's num_heads. When num_heads is 1, it will be broadcast to match key's num_heads.
-          Depending on the value of the causal parameter, startend_row_indices can take different shapes and meanings.
+            A column-wise sparse attention mask row indices tensor.
+            A 4-D tensor with shape [batch_size, k_num_heads, k_seq_len, {1, 2, 4}].
+            The dtype must be int32. k_num_heads can be 1 or the same as key's num_heads. When num_heads is 1, it will be broadcast to match key's num_heads.
+            Depending on the value of the causal parameter, startend_row_indices can take different shapes and meanings.
 
             - When `causal=True` and the shape is [batch_size, k_num_heads, k_seq_len, 1],
               indicating unidirectional attention. The value represents the starting row index of the left
@@ -1161,15 +1161,15 @@ def flashmask_attention(
         dropout (float):  - The dropout ratio. Default is 0.0.
         causal (bool): Whether to enable causal mode. Default is False.
         window_size (int|tuple, optional): Indicates the window size of sliding window local attention.
-          If causal mode is enabled, Query at position i will only attend to keys between [i - window_size, i] or [i - window_size[0], i].
-          If causal mode is disabled, Query at position i will only attend to keys between [i - window_size, i + window_size] or [i - window_size[0], i + window_size[1]].
+            If causal mode is enabled, Query at position i will only attend to keys between [i - window_size, i] or [i - window_size[0], i].
+            If causal mode is disabled, Query at position i will only attend to keys between [i - window_size, i + window_size] or [i - window_size[0], i + window_size[1]].
         return_softmax_lse (bool): Whether to return the log-sum-exp of the softmax. Default is False.
         return_seed_offset (bool): Whether to return the random seed offset. Default is False.
         fixed_seed_of fset(Tensor, optional): With fixed seed, offset for dropout mask.
         rng_name (str): The name to select Generator.
         training (bool): Whether the module is in training mode. Default is True.
         name (str, optional): Name of the operation. Default is None. Normally, users do not need to set this property.
-          For more information, refer to :ref:`api_guide_Name` .
+            For more information, refer to :ref:`api_guide_Name` .
 
     Returns
         Tensor. The computed attention result with the same shape as the input `query`.
