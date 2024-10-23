@@ -60,6 +60,7 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
@@ -2072,8 +2073,11 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
     for (size_t i = 0; i < pir_fetches_.size(); ++i) {
       auto const &name = idx2fetches_[i];
       auto &t = framework::GetVariableTensor(*scope, name);
+      phi::DenseTensor t_copy;
+      t_copy.Resize(t.dims());
+      paddle::framework::TensorCopySync(t, t.place(), &t_copy);
       (*outputs)[i] =
-          paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
+          paddle::Tensor(std::make_shared<phi::DenseTensor>(t_copy), name);
     }
     return true;
   }
@@ -2081,7 +2085,11 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
   for (size_t i = 0; i < fetches_.size(); ++i) {
     auto const &name = idx2fetches_[i];
     auto &t = framework::GetVariableTensor(*scope, name);
-    (*outputs)[i] = paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
+    phi::DenseTensor t_copy;
+    t_copy.Resize(t.dims());
+    paddle::framework::TensorCopySync(t, t.place(), &t_copy);
+    (*outputs)[i] =
+        paddle::Tensor(std::make_shared<phi::DenseTensor>(t_copy), name);
   }
   return true;
 }
