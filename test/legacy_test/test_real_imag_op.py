@@ -88,9 +88,6 @@ class TestImagOp(TestRealOp):
             self.grad_out
         )
 
-    def test_check_output(self):
-        self.check_output(check_pir=True, check_symbol_infer=False)
-
 
 class TestRealAPI(unittest.TestCase):
     def setUp(self):
