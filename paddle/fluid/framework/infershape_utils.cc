@@ -262,7 +262,7 @@ phi::DataType CompatMetaTensor::dtype() const {
     }
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return paddle::framework::TransToPhiDataType(var->GetDataType());
+    return phi::TransToPhiDataType(var->GetDataType());
   }
 }
 
@@ -813,7 +813,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   PADDLE_GET_CONST(std::vector<int>, attr));
               break;
             case phi::AttributeType::DATA_TYPE: {
-              auto data_type = paddle::framework::TransToPhiDataType(
+              auto data_type = phi::TransToPhiDataType(
                   static_cast<framework::proto::VarType::Type>(
                       PADDLE_GET_CONST(int, attr)));
               infer_meta_context.EmplaceBackAttr(data_type);
