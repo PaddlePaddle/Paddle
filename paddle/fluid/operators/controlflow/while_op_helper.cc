@@ -262,8 +262,7 @@ void TransferVariablePlace(const framework::Scope *scope,
   }
   if (var->Type() != framework::proto::VarType::LOD_TENSOR) {
     VLOG(10) << "[TransferVariablePlace]" << var_name << " type changed:"
-             << framework::TransToPhiDataType(
-                    framework::ToVarType(var->Type()));
+             << phi::TransToPhiDataType(framework::ToVarType(var->Type()));
     return;
   }
   phi::DenseTensor *t = var->GetMutable<phi::DenseTensor>();

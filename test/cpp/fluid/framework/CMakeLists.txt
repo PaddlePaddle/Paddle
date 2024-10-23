@@ -231,7 +231,7 @@ cc_test(
 cc_test(
   infershape_utils_test
   SRCS infershape_utils_test.cc
-  DEPS infershape_utils phi common)
+  DEPS operator phi)
 
 if(WITH_TESTING AND TEST selected_rows_utils_test)
   set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)

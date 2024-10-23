@@ -504,8 +504,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
   target->Resize(new_dim);
   target->set_layout(new_layout);
   target->set_lod(new_lod);
-  target->mutable_data(dst_place,
-                       paddle::framework::TransToPhiDataType(new_type));
+  target->mutable_data(dst_place, phi::TransToPhiDataType(new_type));
 
   int begin = 0;
   for (auto *src : lod_tensors) {

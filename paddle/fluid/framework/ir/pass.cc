@@ -69,6 +69,7 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "delete_elementwise_mul_op_pass",
     "generate_sequence_xpu_fuse_pass",
     "group_norm_silu_xpu_fuse_pass",
+    "layer_norm_relu_xpu_fuse_pass",
     "embedding_with_eltwise_add_xpu_fuse_pass",
     "multi_encoder_xpu_fuse_pass",
     "multi_encoder_xpu_adaptive_seqlen_fuse_pass",

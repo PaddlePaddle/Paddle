@@ -34,7 +34,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "test/cpp/inference/api/config_printer.h"
 #include "test/cpp/inference/test_helper.h"
 
@@ -1065,7 +1065,7 @@ std::string LoDTensorSummary(const phi::DenseTensor &tensor) {
   return ss.str();
 }
 
-static bool CompareLoD(const framework::LoD &a, const framework::LoD &b) {
+static bool CompareLoD(const phi::LoD &a, const phi::LoD &b) {
   if (a.size() != b.size()) {
     LOG(ERROR) << string::Sprintf(
         "lod size not match %d != %d", a.size(), b.size());

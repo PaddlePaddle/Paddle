@@ -556,7 +556,7 @@ def get_paddle_extra_install_requirements():
             "V11": (
                 "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cudnn-cu11==8.9.6.50; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -1023,6 +1023,8 @@ if '${WITH_XPU}' == 'ON':
     package_data['paddle.libs'] += ['${XPU_XBLAS_LIB_NAME}']
     shutil.copy('${XPU_XFA_LIB}', libs_path)
     package_data['paddle.libs'] += ['${XPU_XFA_LIB_NAME}']
+    shutil.copy('${XPU_XPUDNN_LIB}', libs_path)
+    package_data['paddle.libs'] += ['${XPU_XPUDNN_LIB_NAME}']
 
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
@@ -1125,6 +1127,7 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pir/include', recursive=True)) +  # pir init headers
     # init headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/drr/include')) +  # drr init headers
+    list(find_files('*.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape'))+
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/ir')) +  # operator init headers
     list(find_files('general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/utils'))+
     list(find_files('interface.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/serialize_deserialize/include'))+
@@ -1135,7 +1138,7 @@ headers = (
     list(find_files('utils.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
     list(find_files('op_compat_info.h','@PADDLE_SOURCE_DIR@/paddle/fluid/ir_adaptor/translator/'))+
     list(find_files('op_yaml_info_parser.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/'))+
-    list(find_files('vjp.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/"'))+
+    list(find_files('vjp.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/'))+
     list(find_files('infer_symbolic_shape.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/'))+
     #pir headers
     list(find_files('lexer.h','@PADDLE_SOURCE_DIR@/paddle/pir/src/core/parser/'))+

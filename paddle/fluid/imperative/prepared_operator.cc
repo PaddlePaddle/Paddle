@@ -23,17 +23,17 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
 #endif
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/core/platform/onednn_op_list.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(benchmark);

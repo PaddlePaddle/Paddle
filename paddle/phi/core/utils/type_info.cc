@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/framework/feed_fetch_type.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -26,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/utils/type_info.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
 
@@ -50,6 +53,10 @@ template class TypeInfoTraits<phi::TensorBase, SparseCsrTensor>;
 template class TypeInfoTraits<phi::TensorBase, StringTensor>;
 template class TypeInfoTraits<phi::TensorBase, TensorArray>;
 template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
+template class TypeInfoTraits<phi::TensorBase, Vocab>;
+template class TypeInfoTraits<phi::TensorBase, Strings>;
+template class TypeInfoTraits<phi::TensorBase, RawTensor>;
+template class TypeInfoTraits<phi::TensorBase, FeedList>;
 
 template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
 template class TypeInfoTraits<phi::DeviceContext, CustomContext>;

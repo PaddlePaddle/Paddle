@@ -2024,7 +2024,7 @@ void GatherInferMeta(const MetaTensor& x,
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
-  if (axis_v < 0) axis_v += input_dim.size();
+  if (axis_v < 0) axis_v += static_cast<int>(input_dim.size());
 
   PADDLE_ENFORCE_GE(
       axis_v,

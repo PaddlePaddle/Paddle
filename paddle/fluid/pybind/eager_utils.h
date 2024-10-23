@@ -25,7 +25,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -40,6 +39,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/vocab/string_array.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
@@ -76,6 +76,7 @@ int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 size_t CastPyArg2AttrSize_t(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
+double CastPyArg2AttrDouble(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos);
@@ -112,7 +113,7 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
-paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos);
+phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos);
 std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
                                                   ssize_t arg_pos);
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
@@ -158,7 +159,7 @@ PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
-PyObject* ToPyObject(const paddle::framework::Vocab& value);
+PyObject* ToPyObject(const phi::Vocab& value);
 
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
 PyObject* ToPyObject(const pir::Value& value);

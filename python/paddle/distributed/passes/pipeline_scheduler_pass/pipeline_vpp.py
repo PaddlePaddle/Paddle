@@ -14,6 +14,7 @@
 
 import logging
 
+import paddle.distributed as dist
 from paddle.base import core
 from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
@@ -24,6 +25,7 @@ from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
 from ..pass_utils import (
     _pir_program_for_vpp,
+    _pir_split_matmul_grad_to_matmul,
     _program_for_vpp,
     _program_for_vpp_split_bwk,
     split_matmul_grad_to_matmul,
@@ -180,6 +182,21 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                     block, matmul_grad_id, dist_context=dist_context
                 )
 
+    def _pir_split_matmul_grad_ops_to_matmul(self, program):
+        for block in program.blocks:
+            matmul_grad_op_idx = []
+            ops = block.ops
+            for i, op_i in enumerate(ops):
+                if (
+                    op_i.name() == "pd_op.matmul_grad"
+                    and not op_i.has_attr("trans_x")
+                    and not op_i.has_attr("trans_y")
+                ):
+                    matmul_grad_op_idx.append(i)
+
+            for matmul_grad_id in reversed(matmul_grad_op_idx):
+                _pir_split_matmul_grad_to_matmul(block, matmul_grad_id)
+
     def _move_sharding_comm_to_backward(
         self, types, sub_programs, global_grads
     ):
@@ -194,7 +211,10 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                     global_grad_to_comm_op[op_input_names[0]] = [op]
                     remove_op_ids.append(idx)
 
-                if op.type in ["c_allreduce_sum", "c_reduce_sum"]:
+                if op.type == "c_allreduce_sum" or (
+                    op.type == "reduce"
+                    and op.desc.attr('reduce_type') == dist.ReduceOp.SUM
+                ):
                     scale_index = idx + 1
                     if scale_index < len(len(ops)):
                         if is_data_parallel_scale_op(ops[scale_index]):
@@ -313,13 +333,22 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
     def _partial_pir_programs(self, program):
         num_model_chunks = self.get_attr("vpp_degree")
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        split_backward = self.get_attr("split_backward", False)
+        accumulate_steps = self.get_attr("num_micro_batches")
+        num_stages = self.get_attr("pp_degree")
+
+        if accumulate_steps != num_stages:
+            split_backward = False
 
         assert (
             not enable_send_recv_overlap
         ), "PIR does not support VPP with enable_send_recv_overlap yet."
 
+        if split_backward:
+            self._pir_split_matmul_grad_ops_to_matmul(program)
+
         types, sub_program_list = _pir_program_for_vpp(
-            program, num_model_chunks, enable_send_recv_overlap
+            program, num_model_chunks, split_backward, enable_send_recv_overlap
         )
 
         for i in range(len(types)):

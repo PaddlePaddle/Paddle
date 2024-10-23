@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/string_array.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
 class DenseTensor;
@@ -35,11 +35,6 @@ void SetVariable(Scope* scope,
 
 void SetFeedVariable(Scope* scope,
                      const phi::DenseTensor& input,
-                     const std::string& var_name,
-                     size_t index);
-
-void SetFeedVariable(Scope* scope,
-                     const std::vector<std::string>& input,
                      const std::string& var_name,
                      size_t index);
 

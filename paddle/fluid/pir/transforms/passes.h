@@ -46,6 +46,7 @@ USE_PIR_PASS(delete_weight_dequant_linear_op_pass);
 USE_PIR_PASS(delete_quant_dequant_linear_op_pass);
 USE_PIR_PASS(transfer_layout_pass);
 USE_PIR_PASS(fused_rotary_position_embedding_pass);
+USE_PIR_PASS(auto_mixed_precision_pass);
 USE_PIR_PASS(horizontal_fuse_pass);
 USE_PIR_PASS(auto_layout_simplify_pass);
 USE_PIR_PASS(auto_layout_pass);

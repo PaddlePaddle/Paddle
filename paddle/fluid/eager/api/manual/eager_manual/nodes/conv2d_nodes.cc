@@ -19,10 +19,10 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"

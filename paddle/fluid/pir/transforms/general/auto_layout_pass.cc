@@ -39,7 +39,7 @@ namespace {
 
 class AutoLayoutPass : public pir::Pass {
  public:
-  AutoLayoutPass() : pir::Pass("auto_layout_pass", 3) {}
+  AutoLayoutPass() : pir::Pass("auto_layout_pass", 2) {}
   void Run(pir::Operation* op) override {
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
@@ -138,8 +138,10 @@ class AutoLayoutPass : public pir::Pass {
       if (op->HasTrait<pir::ImmutableLayoutTrait>()) continue;
       if (op->operands().size() == 0) continue;
 
-      // NHWC ops branch, Only support conv2d now, it will add white list later.
-      if (op->isa<paddle::dialect::Conv2dOp>()) {
+      // NHWC ops branch, Only support conv2d and fused_conv2d_add_act now, it
+      // will add white list later.
+      if (op->isa<paddle::dialect::Conv2dOp>() ||
+          op->isa<paddle::dialect::FusedConv2dAddActOp>()) {
         if (op->HasAttribute("data_format") &&
             op->attribute<pir::StrAttribute>("data_format").AsString() ==
                 "NCHW") {
@@ -160,14 +162,8 @@ class AutoLayoutPass : public pir::Pass {
   // Skip the operand which is not dense tensor or not 4-D tensor, they don't
   // need transpose.
   bool JudgeValue(const pir::Value& value) {
-    if (!value) {
-      PADDLE_THROW(common::errors::Fatal(
-          "value is null, please check the input tensor."));
-    }
-    if (!value.type()) {
-      PADDLE_THROW(common::errors::Fatal(
-          "value type is null, please check the input tensor type."));
-    }
+    if (!value) return false;
+    if (!value.type()) return false;
     if (auto type = value.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
       return type.dims().size() == 4;
     }
@@ -204,7 +200,6 @@ class AutoLayoutPass : public pir::Pass {
                            pir::Builder& builder) {  // NOLINT
     builder.SetInsertionPointAfter(op);
     for (auto& result : op->results()) {
-      if (result.use_empty()) continue;
       if (!JudgeValue(result)) continue;
       auto transpose_op =
           builder.Build<paddle::dialect::TransposeOp>(result, NHWC2NCHW_);
