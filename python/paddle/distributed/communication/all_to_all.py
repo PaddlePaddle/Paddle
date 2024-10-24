@@ -24,8 +24,8 @@ if TYPE_CHECKING:
 
 
 def alltoall(
-    in_tensor_list: list[Tensor],
     out_tensor_list: list[Tensor],
+    in_tensor_list: list[Tensor],
     group: Group | None = None,
     sync_op: bool = True,
 ) -> task:

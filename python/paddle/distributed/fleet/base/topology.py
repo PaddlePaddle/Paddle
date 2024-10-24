@@ -223,7 +223,7 @@ class HybridCommunicateGroup:
 
         env_name = "FLAGS_eager_communication_connection"
         if paddle.get_flags(env_name)[env_name]:
-            if self._pp_comm_group is not None:
+            if self._pp_comm_group.nranks > 1:
                 self._pp_comm_group.process_group.eager_connect_ring_exchange()
 
         # create comm group for data parallel
