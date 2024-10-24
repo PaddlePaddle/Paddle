@@ -261,11 +261,11 @@ bool IsFakeValue(const pir::Value &value) {
   return value.impl() == nullptr || value.type() == pir::Type();
 }
 
-std::vector<symbol::DimExpr> GetVecFromIntArray(
+std::vector<symbol::DimExpr> GetIntArrayFromAttrOrOperand(
     const pir::Operation *op,
     pir::InferSymbolicShapeContext *infer_context,
     const std::string &attr_name,
-    const int &index) {
+    const int &operand_source_index) {
   if (op->HasAttribute(attr_name)) {
     std::vector<int> int_operand =
         paddle::dialect::details::GetVectorAttr<int>(op, attr_name);
@@ -274,12 +274,11 @@ std::vector<symbol::DimExpr> GetVecFromIntArray(
       result.emplace_back(symbol::DimExpr{i});
     }
     return result;
-  } else if (op->operand_source(index)) {
-    const auto &shapeordata =
-        infer_context->GetShapeOrDataForValue(op->operand_source(index));
+  } else if (op->operand_source(operand_source_index)) {
+    const auto &shapeordata = infer_context->GetShapeOrDataForValue(
+        op->operand_source(operand_source_index));
     const std::vector<symbol::DimExpr> &result =
-        shapeordata.data().has_value() ? shapeordata.data().value()
-                                       : shapeordata.shape();
+        GetOrCreateExprVecFromData(shapeordata, infer_context);
     return result;
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(

@@ -631,7 +631,8 @@ bool Conv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   //  if ( op->attributes().find("output_size") !=  op->attributes().end()) {
   std::vector<symbol::DimExpr> output_size =
-      details::GetVecFromIntArray(op, infer_context, "output_size", 2);
+      details::GetIntArrayFromAttrOrOperand(
+          op, infer_context, "output_size", 2);
   return ConvTransposeFunction(op, infer_context, output_size);
 }
 

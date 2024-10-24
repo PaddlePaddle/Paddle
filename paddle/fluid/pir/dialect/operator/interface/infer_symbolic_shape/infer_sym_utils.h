@@ -178,7 +178,7 @@ std::vector<symbol::DimExpr> GetSymShapeForInputValue(
 
 bool IsFakeValue(const pir::Value &value);
 
-std::vector<symbol::DimExpr> GetVecFromIntArray(
+std::vector<symbol::DimExpr> GetIntArrayFromAttrOrOperand(
     const pir::Operation *op,
     pir::InferSymbolicShapeContext *infer_context,
     const std::string &attr_name,
