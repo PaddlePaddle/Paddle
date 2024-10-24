@@ -744,6 +744,14 @@ struct SqrtFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct SqrtFunctor<ComplexType<T>> : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.sqrt();
+  }
+};
+
+template <typename T>
 struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
             typename X,
@@ -752,6 +760,23 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
     dx.device(d) = static_cast<T>(0.5) * dout / out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct SqrtGradFunctor<ComplexType<T>> : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        static_cast<ComplexType<T>>(0.5) * dout / out.unaryExpr(Conj<T>());
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3038,6 +3063,44 @@ struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct SqrtGradGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* dX,
+                  const DenseTensor* ddX,
+                  DenseTensor* dOut,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<ComplexType<T>>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SqrtGradGrad"));
+    auto out = EigenVector<ComplexType<T>>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "SqrtGradGrad"));
+
+    // ddy = 0.5 * ddx / y, dy = -1 * dx * ddx / conj(y)
+    if (dOut) {
+      auto dx = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "SqrtGradGrad"));
+      auto dout = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SqrtGradGrad"));
+      dout.device(*d) =
+          dx * ddx * static_cast<ComplexType<T>>(-1) / out.unaryExpr(Conj<T>());
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SqrtGradGrad"));
+      ddout.device(*d) =
+          ddx * static_cast<ComplexType<T>>(0.5) / out.unaryExpr(Conj<T>());
+    }
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
 struct RsqrtGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev,
@@ -4037,12 +4100,37 @@ struct CudaSqrtFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaSqrtFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // sqrt(x) = sqrt(x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_x) const {
+    return sqrt(arg_x);
+  }
+};
+
+template <typename T>
 struct CudaSqrtGradFunctor : public BaseActivationFunctor<T> {
   T one_half = static_cast<T>(0.5f);
 
   // dx = dout * 0.5 / out
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
     return one_half * dout / out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaSqrtGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> one_half = static_cast<ComplexType<T>>(0.5f);
+  // dx = dout * 0.5 / conj(out)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> out) const {
+    return one_half * dout / conj(out);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
