@@ -80,7 +80,8 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     value = full_scalar<T>(value_, sum_x.dtype());
   }
 
-  Tensor res = sum_x / value;
+  Tensor res = sum_x / backend::full_with_tensor<T>(
+                           shape<T>(sum_x), value, sum_x.dtype());
 
   return ConverToOrig<T>(res, x.dtype());
 }
