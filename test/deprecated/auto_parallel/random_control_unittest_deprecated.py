@@ -30,10 +30,9 @@ from paddle.distributed.fleet import auto
 
 
 def dy_broadcast_helper(tensor):
-    _legacy_C_ops.c_broadcast(
-        tensor, tensor, 'root', 1, 'use_calc_stream', True, 'ring_id', 0
-    )
+    tensor = paddle._C_ops.broadcast(tensor, 0, 1)
     _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+    return tensor
 
 
 def apply_pass(use_recompute=False, no_recompute_segments=[]):
@@ -88,7 +87,7 @@ class TestRandomControl(unittest.TestCase):
             mask_tensor_local = paddle.to_tensor([np_mask.astype("float32")])
             if rank == 0:
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
-                dy_broadcast_helper(mask_tensor_remote)
+                mask_tensor_remote = dy_broadcast_helper(mask_tensor_remote)
                 if equal:
                     np.testing.assert_array_equal(
                         mask_tensor_remote.numpy(), mask_tensor_local.numpy()

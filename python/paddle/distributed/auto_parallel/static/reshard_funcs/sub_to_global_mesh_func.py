@@ -89,8 +89,8 @@ class SubToGlobalMeshFunction(ReshardFunction):
             )
 
         group = new_process_group(sorted(dst_mesh.process_ids))
-        broadcast_value = paddle._C_ops.c_broadcast(
-            tmp_value, group.id, root_rank, True
+        broadcast_value = paddle._C_ops.broadcast(
+            tmp_value, group.id, root_rank
         )
         broadcast_value.set_type(dst_type)
 

@@ -203,7 +203,7 @@ def check_initialization_for_mppp(dist_startup_prog, rank_id):
         need_check_params = ["linear_1.b_0", "linear_2.b_0"]
     broadcast_varnames = []
     for op in dist_startup_prog.global_block().ops:
-        if op.type == "c_broadcast":
+        if op.type == "broadcast":
             broadcast_varnames.append(op.output_arg_names[0])
 
     return need_check_params == broadcast_varnames
