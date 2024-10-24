@@ -43,7 +43,7 @@ __global__ void VectorizedIndexKernel(T *out,
         out + data_offset, &result[0], BLOCK_NUM_X * VecSize);
   }
   size_t num = numel - data_offset;
-  if (static_cast<int>(num) > 0) {
+  if (static_cast<size_t>(num) > 0) {
     kps::InitWithDataIndex<size_t, VecSize, 1>(&args[0], data_offset);
     kps::ElementwiseUnary<size_t, T, VecSize, 1, Functor>(
         &result[0], &args[0], func);
@@ -53,7 +53,7 @@ __global__ void VectorizedIndexKernel(T *out,
 
 template <typename T, typename Functor>
 void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
-  int numel = out->numel();
+  size_t numel = out->numel();
   T *out_data = dev_ctx.template Alloc<T>(out);
   if (numel <= 0) return;
   int vec_size = phi::GetVectorizedSize(out_data);
