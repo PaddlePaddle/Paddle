@@ -31,6 +31,14 @@ def add_net(x, y):
     return x + y
 
 
+def argsort_net1(x):
+    return paddle.argsort(x, axis=-1)
+
+
+def argsort_net2(x):
+    return paddle.argsort(x, axis=1, descending=True)
+
+
 def batch_norm_net1(x, y, z):
     var = paddle.ones([40], dtype="float32")
     mean = paddle.zeros([40], dtype='float32')
@@ -273,6 +281,32 @@ class TestPrimAddWithGrad10(TestPrimTwoWithGrad):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = add_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimArgsortWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.argsort_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = argsort_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimArgsortWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.argsort_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = argsort_net2
         self.enable_cinn = False
         self.tol = 1e-6
 
