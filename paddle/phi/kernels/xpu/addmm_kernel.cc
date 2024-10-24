@@ -16,11 +16,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "xblas/cublasLt.h"
-
-#ifndef PADDLE_WITH_XPU_XRE5
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
-#endif
+#include "xblas/cublasLt.h"
 
 namespace xblas = baidu::xpu::xblas;
 
@@ -91,72 +88,16 @@ void AddmmKernel(const Context& dev_ctx,
                                       out_dims_vec);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
     }
-#ifdef PADDLE_WITH_XPU_XRE5
   } else {
-    xblas::FcFusionTensor<const XPUType> t_input{
-        input_ptr,
-        nullptr,
-        input.dims()[0],
-        input.dims()[1],
-        input.dims()[1],
-        false,
-    };
-    xblas::FcFusionTensor<const XPUType> t_x{
-        x_ptr,
-        nullptr,
-        x.dims()[0],
-        x.dims()[1],
-        x.dims()[1],
-        false,
-    };
-    xblas::FcFusionTensor<const XPUType> t_y{
-        y_ptr,
-        nullptr,
-        y.dims()[0],
-        y.dims()[1],
-        y.dims()[1],
-        false,
-    };
-    xblas::FcFusionTensor<XPUType> t_out{
-        out_ptr,
-        nullptr,
-        out->dims()[0],
-        out->dims()[1],
-        out->dims()[1],
-        false,
-    };
-    xblas::FcFusionDesc<float, float, XPUType> desc{
-        alpha,
-        beta,
-    };
-    xblas::FcFusionEpilogue<float, float> epilogue{
-        xdnn::Activation_t::LINEAR,
-        nullptr,
-        nullptr,
-        nullptr,
-        0,
-        0,
-        nullptr,
-    };
-    r = xblas::fc_fusion<XPUType,
-                         XPUType,
-                         XPUType,
-                         XPUType,
-                         float,
-                         float,
-                         XPUType,
-                         float,
-                         float>(
-        dev_ctx.x_context(), t_x, t_y, t_input, t_out, desc, epilogue);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
-#else
-  } else {
+#ifndef PADDLE_WITH_XPU_XRE5
     Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+    input_ptr = nullptr;
+#endif
     XpuFcInfo fc_info;
     GetFCInfo(x_dims, y_dims, false, false, &fc_info);
-    MatMulXPUFunction<XPUType>(
-        dev_ctx.x_context(), x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
-#endif
+    xpu::Context* xpu_ctx = dev_ctx.x_context();
+    MatMulXPUFunction<XPUType, XPUType>(
+        xpu_ctx, x_ptr, y_ptr, input_ptr, out_ptr, fc_info, alpha, beta);
   }
 }
 }  // namespace phi

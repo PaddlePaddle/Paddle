@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/bmm_kernel.h"
-#include "paddle/phi/kernels/xpu/bmm_xpu_utils.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
+
 namespace phi {
+
 template <typename T, typename Context>
 void BmmKernel(const Context& dev_ctx,
                const DenseTensor& x,
@@ -25,8 +29,6 @@ void BmmKernel(const Context& dev_ctx,
   if (x.numel() == 0 || y.numel() == 0) {
     return;
   }
-  bool trans_x = false;
-  bool trans_y = false;
 
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -62,19 +64,14 @@ void BmmKernel(const Context& dev_ctx,
           x_dims[2],
           y_dims[1]));
 
+  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
+  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
+  XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
+  XpuFcInfo fc_info;
+  GetFCInfo(x_dims, y_dims, false, false, &fc_info);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
-  int fc_calc_type = FCCalcType<XPUType>();
-  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
-    MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, xpu_ctx);
-  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
-    MatMulXPUFunction<T, float>(x, y, out, trans_x, trans_y, xpu_ctx);
-  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    MatMulXPUFunction<T, int_with_ll_t>(x, y, out, trans_x, trans_y, xpu_ctx);
-  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT16) {
-    MatMulXPUFunction<T, float16>(x, y, out, trans_x, trans_y, xpu_ctx);
-  } else {
-    MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, xpu_ctx);
-  }
+  MatMulXPUFunction<XPUType, XPUType>(
+      xpu_ctx, x_ptr, y_ptr, nullptr, out_ptr, fc_info, 1.0);
 }
 }  // namespace phi
 
