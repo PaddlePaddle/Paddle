@@ -2476,11 +2476,7 @@ All parameter, weight, gradient are variables in Paddle.
            const std::string &var_name,
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
-          if (data_is_lod_tensor(var)) {  // NOLINT
-            return py::cast(PADDLE_GET(phi::DenseTensor, var));
-          } else {
-            return py::cast(PADDLE_GET(phi::TensorArray, var));
-          }
+          return py::cast(PADDLE_GET(phi::DenseTensor, var));
         });
   m.def("get_variable_tensor", framework::GetVariableTensor);
 
@@ -2592,20 +2588,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](FetchList &self) -> py::list {
             py::list res(self.size());
             for (size_t i = 0; i < self.size(); ++i) {
-              if (data_is_lod_tensor(self[i])) {
-                auto &data = PADDLE_GET(phi::DenseTensor, self[i]);
-                res[i] = py::cast(std::move(data));
-              } else if (data_is_sparse_coo_tensor(self[i])) {
-                auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
-                res[i] = py::cast(std::move(data));
-              } else {
-                auto &data = PADDLE_GET(phi::TensorArray, self[i]);
-                py::list tmp(data.size());
-                for (size_t j = 0; j < data.size(); ++j) {
-                  tmp[j] = py::cast(std::move(data[j]));
-                }
-                res[i] = std::move(tmp);
-              }
+              auto &data = PADDLE_GET(phi::DenseTensor, self[i]);
+              res[i] = py::cast(std::move(data));
             }
             self.clear();
             return res;
@@ -2620,18 +2604,6 @@ All parameter, weight, gradient are variables in Paddle.
             lod_tensor.ShareDataWith(t);
             lod_tensor.set_lod(t.lod());
           },
-          py::arg("var"))
-
-      .def(
-          "append",
-          [](FetchList &self, const phi::TensorArray &t) {
-            self.emplace_back();
-            auto &lod_tensor_array = PADDLE_GET(phi::TensorArray, self.back());
-            for (size_t i = 0; i < t.size(); ++i) {
-              lod_tensor_array[i].ShareDataWith(t[i]);
-              lod_tensor_array[i].set_lod(t[i].lod());
-            }
-          },
           py::arg("var"));
 
   py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
@@ -2644,17 +2616,8 @@ All parameter, weight, gradient are variables in Paddle.
             for (size_t i = 0; i < self.size(); ++i) {
               py::list tmp(self[i].size());
               for (size_t j = 0; j < self[i].size(); ++j) {
-                if (data_is_lod_tensor(self[i][j])) {
-                  auto &var = PADDLE_GET(phi::DenseTensor, self[i][j]);
-                  tmp[j] = py::cast(std::move(var));
-                } else {
-                  auto &var = PADDLE_GET(phi::TensorArray, self[i][j]);
-                  py::list tmp_array(var.size());
-                  for (size_t k = 0; k < var.size(); ++k) {
-                    tmp_array[k] = std::move(var[k]);
-                  }
-                  tmp[j] = std::move(tmp_array);
-                }
+                auto &var = PADDLE_GET(phi::DenseTensor, self[i][j]);
+                tmp[j] = py::cast(std::move(var));
               }
               res[i] = std::move(tmp);
               self[i].clear();
