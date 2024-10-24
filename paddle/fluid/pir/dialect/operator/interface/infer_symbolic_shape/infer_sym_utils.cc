@@ -261,6 +261,32 @@ bool IsFakeValue(const pir::Value &value) {
   return value.impl() == nullptr || value.type() == pir::Type();
 }
 
+std::vector<symbol::DimExpr> GetIntArrayFromAttrOrOperand(
+    const pir::Operation *op,
+    pir::InferSymbolicShapeContext *infer_context,
+    const std::string &attr_name,
+    const int &operand_source_index) {
+  if (op->HasAttribute(attr_name)) {
+    std::vector<int> int_operand =
+        paddle::dialect::details::GetVectorAttr<int>(op, attr_name);
+    std::vector<symbol::DimExpr> result;
+    for (const auto &i : int_operand) {
+      result.emplace_back(symbol::DimExpr{i});
+    }
+    return result;
+  } else if (op->operand_source(operand_source_index)) {
+    const auto &shapeordata = infer_context->GetShapeOrDataForValue(
+        op->operand_source(operand_source_index));
+    const std::vector<symbol::DimExpr> &result =
+        GetOrCreateExprVecFromData(shapeordata, infer_context);
+    return result;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The IntArray is not from attribute or operand, please check input %s",
+        attr_name));
+  }
+}
+
 bool GetAxisFromOpInput(pir::Value in_value,
                         pir::InferSymbolicShapeContext *infer_context,
                         std::vector<int64_t> *axis) {

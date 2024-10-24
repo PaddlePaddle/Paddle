@@ -630,23 +630,10 @@ bool Conv3dTransposeOpInferSymbolicShape(
 bool Conv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   //  if ( op->attributes().find("output_size") !=  op->attributes().end()) {
-  if (op->HasAttribute("output_size")) {
-    std::vector<int> out_size =
-        paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
-    std::vector<symbol::DimExpr> output_size;
-    for (const auto &i : out_size) {
-      output_size.emplace_back(symbol::DimExpr{i});
-    }
-    return ConvTransposeFunction(op, infer_context, output_size);
-  } else {
-    const auto &output_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(2));
-    const std::vector<symbol::DimExpr> &output_size =
-        output_shape_or_data.data().has_value()
-            ? output_shape_or_data.data().value()
-            : output_shape_or_data.shape();
-    return ConvTransposeFunction(op, infer_context, output_size);
-  }
+  std::vector<symbol::DimExpr> output_size =
+      details::GetIntArrayFromAttrOrOperand(
+          op, infer_context, "output_size", 2);
+  return ConvTransposeFunction(op, infer_context, output_size);
 }
 
 bool Conv2dTransposeBiasOpInferSymbolicShape(

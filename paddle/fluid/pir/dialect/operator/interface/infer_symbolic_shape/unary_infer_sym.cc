@@ -765,31 +765,15 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-  std::vector<symbol::DimExpr> offsets;
-  std::vector<symbol::DimExpr> in_shape;
+
+  // GetIntArrayFromAttrOrOperand is used to get vector from IntArray[].
+  // Sometimes from attribute and other from operand Enter name and index of
+  // IntArray[]
+  std::vector<symbol::DimExpr> offsets =
+      details::GetIntArrayFromAttrOrOperand(op, infer_context, "offsets", 2);
+  std::vector<symbol::DimExpr> in_shape =
+      details::GetIntArrayFromAttrOrOperand(op, infer_context, "shape", 1);
   std::vector<symbol::DimExpr> out_dims;
-
-  if (op->HasAttribute("offsets")) {
-    std::vector<int64_t> offsets_ =
-        paddle::dialect::details::GetVectorAttr<int64_t>(op, "offsets");
-    for (const auto &i : offsets_) offsets.emplace_back(symbol::DimExpr{i});
-  } else {
-    const auto &offsets_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(2));
-    offsets = details::GetOrCreateExprVecFromData(offsets_shape_or_data,
-                                                  infer_context);
-  }
-
-  if (op->HasAttribute("shape")) {
-    std::vector<int64_t> shape_ =
-        paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
-    for (const auto &i : shape_) in_shape.emplace_back(symbol::DimExpr{i});
-  } else {
-    const auto &in_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    in_shape =
-        details::GetOrCreateExprVecFromData(in_shape_or_data, infer_context);
-  }
 
   PADDLE_ENFORCE_EQ(in_shape.size(),
                     x_shape.size(),
