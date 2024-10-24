@@ -805,6 +805,88 @@ class TestWhereDygraphAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
 
+class TestWhereDygraphAPIBroadcast(unittest.TestCase):
+    def test_broadcast_scalar(self):
+        with base.dygraph.guard():
+            x_i = np.random.randn(4, 5, 6).astype('float64')
+            y_i = -1.0
+            cond_i = np.random.randn(1, 1, 6).astype('bool')
+            x = paddle.to_tensor(x_i)
+            y = paddle.to_tensor(y_i)
+            cond = paddle.to_tensor(cond_i)
+            out = paddle.where(cond, x, y)
+            np.testing.assert_array_equal(
+                out.numpy(), np.where(cond_i, x_i, y_i)
+            )
+
+    def test_broadcast_to_x(self):
+        with base.dygraph.guard():
+            x_i = np.random.randn(4, 5, 6).astype('float64')
+            y_i = np.random.randn(1, 5, 6).astype('float64')
+            cond_i = np.random.randn(1, 1, 6).astype('bool')
+            x = paddle.to_tensor(x_i)
+            y = paddle.to_tensor(y_i)
+            cond = paddle.to_tensor(cond_i)
+            out = paddle.where(cond, x, y)
+            np.testing.assert_array_equal(
+                out.numpy(), np.where(cond_i, x_i, y_i)
+            )
+
+    def test_broadcast_to_y(self):
+        with base.dygraph.guard():
+            x_i = np.random.randn(1, 5, 6).astype('float64')
+            y_i = np.random.randn(4, 5, 6).astype('float64')
+            cond_i = np.random.randn(1, 1, 6).astype('bool')
+            x = paddle.to_tensor(x_i)
+            y = paddle.to_tensor(y_i)
+            cond = paddle.to_tensor(cond_i)
+            out = paddle.where(cond, x, y)
+            np.testing.assert_array_equal(
+                out.numpy(), np.where(cond_i, x_i, y_i)
+            )
+
+    def test_broadcast_to_cond(self):
+        with base.dygraph.guard():
+            x_i = np.random.randn(1, 1, 6).astype('float64')
+            y_i = np.random.randn(1, 5, 1).astype('float64')
+            cond_i = np.random.randn(4, 5, 6).astype('bool')
+            x = paddle.to_tensor(x_i)
+            y = paddle.to_tensor(y_i)
+            cond = paddle.to_tensor(cond_i)
+            out = paddle.where(cond, x, y)
+            np.testing.assert_array_equal(
+                out.numpy(), np.where(cond_i, x_i, y_i)
+            )
+
+    def test_can_not_broadcast(self):
+        with base.dygraph.guard():
+            x_i = np.random.randn(1, 1, 6).astype('float64')
+            y_i = np.random.randn(1, 5, 3).astype('float64')
+            cond_i = np.random.randn(4, 5, 6).astype('bool')
+            x = paddle.to_tensor(x_i)
+            y = paddle.to_tensor(y_i)
+            cond = paddle.to_tensor(cond_i)
+
+            with self.assertRaises(ValueError):
+                _ = paddle.where(cond, x, y)
+
+
+class TestWhereDygraphAPIDtypePromotion(unittest.TestCase):
+    def test_dtype_auto_promotion_float(self):
+        with base.dygraph.guard():
+            x_i = np.random.randn(4, 5, 6).astype('float32')
+            y_i = np.random.randn(4, 5, 6).astype('float64')
+            cond_i = np.random.randn(4, 5, 6).astype('bool')
+            x = paddle.to_tensor(x_i)
+            y = paddle.to_tensor(y_i)
+            cond = paddle.to_tensor(cond_i)
+            out = paddle.where(cond, x, y)
+            self.assertEqual(out.dtype, y.dtype)
+            np.testing.assert_array_equal(
+                out.numpy(), np.where(cond_i, x_i, y_i)
+            )
+
+
 class TestWhereOpError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(
