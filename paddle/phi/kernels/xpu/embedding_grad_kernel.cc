@@ -36,7 +36,8 @@ void EmbeddingGradKernel(const Context& ctx,
   auto d_output_t = &out_grad;
   auto d_table_t = weight_grad;
 
-  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") &&
+      std::string(std::getenv("XPU_CDNN_CLUSTER_PARALLEL")) == "1") {
     ctx.Wait();
   }
 
