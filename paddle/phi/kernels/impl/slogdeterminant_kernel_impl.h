@@ -132,8 +132,8 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       input_dim_size,
       2,
-      errors::InvalidArgument(
-          "the input matrix dimension size should greater than 2."));
+      errors::InvalidArgument("the input matrix dimension size should greater "
+                              "than or equal to 2."));
   PADDLE_ENFORCE_EQ(
       input_dim[input_dim_size - 1],
       input_dim[input_dim_size - 2],
