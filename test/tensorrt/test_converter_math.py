@@ -110,5 +110,47 @@ class TestMinTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestFloorDivideFloatTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.floor_divide
+        self.api_args = {
+            "x": np.random.randn(2, 3).astype(np.float32),
+            "y": np.random.randn(2, 3).astype(np.float32),
+        }
+        self.program_config = {"feed_list": ["x", "y"]}
+        self.min_shape = {"x": [1, 3], "y": [1, 3]}
+        self.max_shape = {"x": [5, 3], "y": [5, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestFloorDivideIntTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.floor_divide
+        self.api_args = {
+            "x": np.random.randint(
+                low=1, high=100, size=(2, 3), dtype=np.int32
+            ),
+            "y": np.random.randint(
+                low=1, high=100, size=(2, 3), dtype=np.int32
+            ),
+        }
+        self.dynamic_shape_data = {
+            "x": lambda shape: np.random.randint(
+                1, 100, size=shape, dtype=np.int32
+            ),
+            "y": lambda shape: np.random.randint(
+                1, 100, size=shape, dtype=np.int32
+            ),
+        }
+        self.program_config = {"feed_list": ["x", "y"]}
+        self.min_shape = {"x": [1, 3], "y": [1, 3]}
+        self.max_shape = {"x": [5, 3], "y": [5, 3]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 if __name__ == '__main__':
     unittest.main()
