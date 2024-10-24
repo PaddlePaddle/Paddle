@@ -429,6 +429,7 @@ from .search import (  # noqa: F401
     argmax,
     argmin,
     argsort,
+    beam_search_softmax,
     bucketize,
     index_sample,
     index_select,
