@@ -1993,7 +1993,9 @@ class TestAbs_ZeroDim(TestAbs):
 class TestCeil(TestActivation):
     def setUp(self):
         self.op_type = "ceil"
+        self.self.prim_op_type = "prim"
         self.python_api = paddle.ceil
+        self.public_python_api = paddle.ceil
         self.init_dtype()
         self.init_shape()
 
@@ -2016,6 +2018,22 @@ class TestCeil(TestActivation):
     # The same reason with TestFloor
     def test_check_grad(self):
         pass
+
+    # def test_check_grad_for_prim(self):
+    #     # the gradient on floor, ceil, round is undefined.
+    #     # we return zero as gradient, but the numpy return nan.
+    #     # for prim, we compare result with eager python api,
+    #     # so, we use only_prim flag to express we only test prim.
+    #     if core.is_compiled_with_cuda():
+    #         self.check_grad_with_place(
+    #             paddle.CUDAPlace(0),
+    #             ['X'],
+    #             'Out',
+    #             check_prim=True,
+    #             only_check_prim=True,
+    #             check_pir=True,
+    #             check_prim_pir=True,
+    #         )
 
 
 class TestCeil_ZeroDim(TestCeil):
@@ -5590,7 +5608,14 @@ create_test_act_fp16_class(
     check_pir=True,
     check_prim_pir=True,
 )
-create_test_act_fp16_class(TestCeil, grad_check=False, check_pir=True)
+create_test_act_fp16_class(
+    TestCeil,
+    check_prim=True,
+    grad_check=False,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
+)
 create_test_act_fp16_class(
     TestFloor,
     check_prim=True,
@@ -5766,7 +5791,13 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestAbs, check_prim=True, check_pir=True, check_prim_pir=True
 )
-create_test_act_bf16_class(TestCeil, grad_check=False, check_pir=True)
+create_test_act_bf16_class(
+    TestCeil,
+    grad_check=False,
+    check_prim=True,
+    check_pir=True,
+    check_prim_pir=True,
+)
 create_test_act_bf16_class(
     TestFloor,
     grad_check=False,
