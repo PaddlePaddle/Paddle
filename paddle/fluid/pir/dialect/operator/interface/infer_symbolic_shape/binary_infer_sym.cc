@@ -1672,6 +1672,28 @@ bool PriorBoxOpInferSymbolicShape(
   return true;
 }
 
+bool PruneGateByCapacityOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &expert_count_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &expert_count_shape = expert_count_shape_or_data.shape();
+  int64_t n_expert = op->attribute<pir::Int64Attribute>("n_expert").data();
+  int64_t n_worker = op->attribute<pir::Int64Attribute>("n_worker").data();
+  symbol::DimExpr expert_count_num_ele = 1;
+  for (const auto &i : expert_count_shape) {
+    expert_count_num_ele = expert_count_num_ele * i;
+  }
+
+  infer_context->AddEqualCstr(expert_count_num_ele,
+                              symbol::DimExpr(n_expert * n_worker));
+  const auto &gate_idx_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(gate_idx_shape_or_data.shape())});
+  return true;
+}
 // bool PullBoxSparseOpInferSymbolicShape(pir::Operation *op,
 //                                        pir::InferSymbolicShapeContext
 //                                        *infer_context) {

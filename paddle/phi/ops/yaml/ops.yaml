@@ -2104,6 +2104,7 @@
   kernel :
     func : frame
   backward : frame_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : frobenius_norm
   args : (Tensor x, IntArray axis,  bool keep_dim,  bool reduce_all)
@@ -3836,6 +3837,7 @@
   kernel :
     func : prune_gate_by_capacity
     data_type : gate_idx
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : psroi_pool

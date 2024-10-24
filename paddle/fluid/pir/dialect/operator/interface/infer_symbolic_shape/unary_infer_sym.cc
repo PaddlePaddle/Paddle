@@ -1080,6 +1080,81 @@ bool FakeChannelWiseQuantizeDequantizeAbsMaxOpInferSymbolicShape(
   return true;
 }
 
+bool FrameOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+  size_t x_rank = x_shape.size();
+  PADDLE_ENFORCE_GE(x_rank,
+                    1,
+                    common::errors::InvalidArgument(
+                        "Input(X) of FrameOp should be a tensor which contains "
+                        "at least 1 dimension, but got rank %s.",
+                        x_rank));
+  int hop_length = op->attribute<pir::Int32Attribute>("hop_length").data();
+  int frame_length = op->attribute<pir::Int32Attribute>("frame_length").data();
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  PADDLE_ENFORCE_GT(hop_length,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Attribute(hop_length) of FrameOp should be greater "
+                        "than 0, but got %s.",
+                        hop_length));
+  PADDLE_ENFORCE_EQ(
+      (axis == 0 || axis == -1),
+      true,
+      common::errors::InvalidArgument(
+          "Attribute(axis) of FrameOp should 0 or -1, but got %s.", axis));
+  std::vector<symbol::DimExpr> out_shape;
+  symbol::DimExpr seq_length;
+  symbol::DimExpr n_frames = 0;
+  int start_axis = 0;
+  int end_axis = 0;
+
+  if (axis == 0) {
+    seq_length = x_shape[0];
+    start_axis = 1;
+    end_axis = x_rank - 1;
+  } else {
+    seq_length = x_shape[x_rank - 1];
+    start_axis = 0;
+    end_axis = x_rank - 2;
+  }
+  if (seq_length.isa<int64_t>()) {
+    PADDLE_ENFORCE_LE(frame_length,
+                      seq_length.dyn_cast<int64_t>(),
+                      common::errors::InvalidArgument(
+                          "Attribute(frame_length) of FrameOp should be less "
+                          "equal than sequence length, but got (%s) > (%s).",
+                          frame_length,
+                          seq_length.dyn_cast<int64_t>()));
+  }
+
+  // It won't go into for loop when x_rank == 1U.
+  for (int i = start_axis; i <= end_axis; i++) {
+    out_shape.push_back(x_shape[i]);
+  }
+
+  if (!seq_length.isa<int64_t>()) {
+    n_frames = infer_context->GetNextSymName();
+  } else {
+    n_frames = symbol::DimExpr((seq_length - frame_length) / hop_length + 1);
+  }
+  if (axis == 0) {
+    out_shape.insert(out_shape.begin(), symbol::DimExpr(frame_length));
+    out_shape.insert(out_shape.begin(), n_frames);
+  } else {
+    out_shape.push_back(symbol::DimExpr(frame_length));
+    out_shape.push_back(n_frames);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
+
 bool EigOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
