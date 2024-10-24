@@ -27,8 +27,9 @@ from .process_group import get_process_group
 
 def is_collective_comm_op(op):
     comm_list = [
-        "c_broadcast",
         "all_gather",
+        "all_reduce",
+        "broadcast",
     ]
     reduce_type = [
         dist.ReduceOp.SUM,
@@ -101,7 +102,7 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
         comm_volume = 2 * tensor_bytes
     elif "all_gather" in comm_op_type:
         comm_volume = tensor_bytes
-    elif "c_broadcast" in comm_op_type:
+    elif "broadcast" in comm_op_type:
         if comm_op.attr("root") == src_rank:
             comm_volume = tensor_bytes
         else:
