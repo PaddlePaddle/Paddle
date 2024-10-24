@@ -36,6 +36,7 @@ void FusedAdamKernel(
     const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
+    const paddle::optional<std::vector<const DenseTensor*>>& moments2_max,
     const std::vector<const DenseTensor*>& beta1_pows,
     const std::vector<const DenseTensor*>& beta2_pows,
     const paddle::optional<std::vector<const DenseTensor*>>& master_params,
@@ -48,9 +49,11 @@ void FusedAdamKernel(
     bool use_adamw,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,
     std::vector<DenseTensor*> params_out,
     std::vector<DenseTensor*> moments1_out,
     std::vector<DenseTensor*> moments2_out,
+    std::vector<DenseTensor*> moments2_max_out,
     std::vector<DenseTensor*> beta1_pows_out,
     std::vector<DenseTensor*> beta2_pows_out,
     std::vector<DenseTensor*> master_params_out) {
@@ -79,6 +82,17 @@ void FusedAdamKernel(
                         "is %d, the size of Input(params) is %d.",
                         moments2.size(),
                         params_num));
+  if (amsgrad) {
+    PADDLE_ENFORCE_EQ(
+        params_num,
+        moments2_max.get().size(),
+        errors::InvalidArgument(
+            "The size of Input(moments2 max) must be equal to "
+            "Input(params), but got the size of Input(moments2 max) "
+            "is %d, the size of Input(params) is %d.",
+            moments2_max.get().size(),
+            params_num));
+  }
   PADDLE_ENFORCE_EQ(params_num,
                     beta1_pows.size(),
                     errors::InvalidArgument(
@@ -98,6 +112,8 @@ void FusedAdamKernel(
 
   for (size_t idx = 0; idx < params_num; idx++) {
     auto master_params_tmp = TensorPtrToOptionalTensor(master_params, idx);
+    auto moments2_max_tmp = TensorPtrToOptionalTensor(moments2_max, idx);
+
     if (!use_adamw) {
       AdamDenseKernel<T, Context>(
           dev_ctx,
@@ -106,6 +122,7 @@ void FusedAdamKernel(
           learning_rate,
           *moments1[idx],
           *moments2[idx],
+          moments2_max_tmp,
           *beta1_pows[idx],
           *beta2_pows[idx],
           master_params_tmp,
@@ -117,9 +134,11 @@ void FusedAdamKernel(
           1000,
           multi_precision,
           use_global_beta_pow,
+          amsgrad,
           params_out[idx],
           moments1_out[idx],
           moments2_out[idx],
+          amsgrad ? moments2_max_out[idx] : nullptr,
           beta1_pows_out[idx],
           beta2_pows_out[idx],
           master_params_out.empty() ? nullptr : master_params_out[idx]);
@@ -131,6 +150,7 @@ void FusedAdamKernel(
           learning_rate,
           *moments1[idx],
           *moments2[idx],
+          moments2_max_tmp,
           *beta1_pows[idx],
           *beta2_pows[idx],
           master_params_tmp,
@@ -145,9 +165,11 @@ void FusedAdamKernel(
           1000,
           multi_precision,
           use_global_beta_pow,
+          amsgrad,
           params_out[idx],
           moments1_out[idx],
           moments2_out[idx],
+          amsgrad ? moments2_max_out[idx] : nullptr,
           beta1_pows_out[idx],
           beta2_pows_out[idx],
           master_params_out.empty() ? nullptr : master_params_out[idx]);
@@ -164,4 +186,5 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(5).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(6).SetDataType(phi::DataType::UNDEFINED);
 }

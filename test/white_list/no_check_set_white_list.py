@@ -40,4 +40,7 @@ no_check_set_white_list = [
     'rrelu',
     'layer_norm',
     'max_pool2d_v2',
+    'adam',  # AMSGrad variant no check moment2 max output
+    'adamw',  # AMSGrad variant no check moment2 max output
+    'fused_adam',  # AMSGrad variant no check moments2 max output
 ]

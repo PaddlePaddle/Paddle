@@ -26,14 +26,14 @@ namespace gen {
 
 class AdamWJitCode : public JitCode {
  public:
-  explicit AdamWJitCode(const int& attr,
+  explicit AdamWJitCode(const adamw_attr_t& attr,
                         size_t code_size = 256 * 1024,
                         void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr) {
     this->genCode();
   }
 
-  DECLARE_JIT_CODE(AdamJitCode);
+  DECLARE_JIT_CODE(AdamWJitCode);
   void genCode() override;
   void loadArgs();
   void setTailOpmask();
@@ -44,8 +44,8 @@ class AdamWJitCode : public JitCode {
   reg64_t reg_grad_ptr{abi_param2};
   reg64_t reg_mom1_ptr{abi_param3};
   reg64_t reg_mom2_ptr{abi_param4};
-  reg64_t reg_param_ptr{abi_param5};
-  reg64_t reg_mom1_out_ptr{abi_param6};
+  reg64_t reg_mom2_max_ptr{abi_param5};
+  reg64_t reg_param_ptr{abi_param6};
 
   xmm_t xmm_beta1 = xmm_t(0);
   xmm_t xmm_beta2 = xmm_t(1);
@@ -69,9 +69,12 @@ class AdamWJitCode : public JitCode {
   ymm_t ymm_one_sub_beta2 = ymm_t(8);
   ymm_t ymm_one = ymm_t(9);
 
-  reg64_t reg_mom2_out_ptr{r10};
-  reg64_t reg_param_out_ptr{r11};
-  reg64_t reg_numel_without_tail{r12};
+  reg64_t reg_mom1_out_ptr{r10};
+  reg64_t reg_mom2_out_ptr{r11};
+  reg64_t reg_mom2_max_out_ptr{r12};
+  reg64_t reg_param_out_ptr{r13};
+  reg64_t reg_amsgrad{r14};
+  reg64_t reg_numel_without_tail{r15};
   reg64_t reg_offset{rax};
 };
 

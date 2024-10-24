@@ -334,19 +334,23 @@ class TestDistMPTraining(unittest.TestCase):
             sharded_accumulators = {
                 'embedding_0.w_0_beta2_pow_acc_0',
                 'linear_1.b_0_moment2_0',
+                'linear_1.b_0_moment2_max_0',
                 'linear_0.b_0_beta1_pow_acc_0',
                 'linear_0.b_0_beta2_pow_acc_0',
                 'linear_1.b_0_moment1_0',
                 'linear_2.b_0_beta2_pow_acc_0',
                 'linear_2.b_0_moment2_0',
+                'linear_2.b_0_moment2_max_0',
                 'embedding_0.w_0_moment1_0',
                 'embedding_0.w_0_beta1_pow_acc_0',
                 'linear_0.b_0_moment2_0',
+                'linear_0.b_0_moment2_max_0',
                 'linear_2.b_0_moment1_0',
                 'linear_0.b_0_moment1_0',
                 'linear_1.b_0_beta2_pow_acc_0',
                 'linear_1.b_0_beta1_pow_acc_0',
                 'embedding_0.w_0_moment2_0',
+                'embedding_0.w_0_moment2_max_0',
                 'linear_2.b_0_beta1_pow_acc_0',
             }
             self.sharding_model(
