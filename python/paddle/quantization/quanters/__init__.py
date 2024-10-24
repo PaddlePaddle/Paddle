@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .abs_max import FakeQuanterWithAbsMaxObserver
+from .lsq import fake_lsq_quant_dequant
 
-__all__ = ["FakeQuanterWithAbsMaxObserver"]
+__all__ = ["FakeQuanterWithAbsMaxObserver", "fake_lsq_quant_dequant"]

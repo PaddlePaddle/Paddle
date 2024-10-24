@@ -714,4 +714,11 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const int32_t group_size,
                                MetaTensor* out);
 
+void FakeQuantizeLSQInferMeta(const MetaTensor& x,
+                              const MetaTensor& scale,
+                              float lsq_factor,
+                              int bit_length,
+                              int round_type,
+                              MetaTensor* out);
+
 }  // namespace phi

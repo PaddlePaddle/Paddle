@@ -99,6 +99,42 @@ __global__ void ClipAndQuantKernel(const T *in,
 }
 
 template <typename T>
+__global__ void QuantizeDequantizeLSQKernel(const T *in,
+                                            const T *scale,
+                                            const float lsq_factor,
+                                            const int bin_cnt,
+                                            const int round_type,
+                                            const int n,
+                                            T *out) {
+  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int tid = threadIdx.x;
+
+  using ComputeDataType = typename QuantizeDataType<T>::type;
+
+  ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
+  ComputeDataType inv_s = inverse(s);
+  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
+  ComputeDataType max_bound = bin_cnt_t;
+  ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+  for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
+    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
+    if (round_type == 0) {
+      x = inv_s * x;
+      x = roundWithTiesToEven(x);
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out[i] = static_cast<T>(x * s);
+    } else {
+      ComputeDataType s_real = s * bin_cnt_t;
+      ComputeDataType v = x > s_real ? s_real : x;
+      v = v < -s_real ? -s_real : v;
+      v = inv_s * v;
+      out[i] = static_cast<T>(round(v) * s);
+    }
+  }
+}
+
+template <typename T>
 __global__ void FindMovingAverageAbsMaxKernel(const T *in_state,
                                               const T *in_accum,
                                               const T *cur_scale,
@@ -673,6 +709,26 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
       in_data, scale_data, bin_cnt, round_type, num, out_data);
 }
 
+template <typename Context, typename T>
+void FakeQuantizeDequantizeLSQFunctor<Context, T>::operator()(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const DenseTensor &scale,
+    const float lsq_factor,
+    const int bin_cnt,
+    const int round_type,
+    DenseTensor *out) {
+  int num = x.numel();
+  int block = 1024;
+  int grid = (block - 1 + num) / block;
+
+  const T *in_data = x.data<T>();
+  const T *scale_data = scale.data<T>();
+  T *out_data = dev_ctx.template Alloc<T>(out);
+  QuantizeDequantizeLSQKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+      in_data, scale_data, lsq_factor, bin_cnt, round_type, num, out_data);
+}
+
 template class FindAbsMaxFunctor<GPUContext, float16>;
 template class FindAbsMaxFunctor<GPUContext, float>;
 template class ClipAndFakeQuantFunctor<GPUContext, float16>;
@@ -688,6 +744,9 @@ template class FindRangeAbsMaxFunctor<GPUContext, float16>;
 template class FindRangeAbsMaxFunctor<GPUContext, float>;
 template class ClipAndFakeQuantDequantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantDequantFunctor<GPUContext, float>;
+template class FakeQuantizeDequantizeLSQFunctor<GPUContext, float16>;
+template class FakeQuantizeDequantizeLSQFunctor<GPUContext, float>;
+template class FakeQuantizeDequantizeLSQFunctor<GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

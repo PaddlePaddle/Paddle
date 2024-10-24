@@ -4162,6 +4162,41 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   out->set_dtype(out_dtype);
 }
 
+void FakeQuantizeLSQInferMeta(const MetaTensor& x,
+                              const MetaTensor& scale,
+                              float lsq_factor,
+                              int bit_length,
+                              int round_type,
+                              MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  PADDLE_ENFORCE_EQ(round_type == 0 || round_type == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'round_type' should be 0 or 1, 0 rounding to "
+                        "nearest ties to even and 1 is rounding to nearest "
+                        "ties away from zero.but the received is %d",
+                        round_type));
+
+  auto scale_dims = scale.dims();
+  int scale_size = scale_dims.size();
+  PADDLE_ENFORCE_EQ(
+      scale_size == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "'scale size' should be 1 for tensorwise LSQ quant, but "
+          "the received is %d",
+          scale_size));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
