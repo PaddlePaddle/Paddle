@@ -2436,6 +2436,50 @@ bool LinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
+bool LlmInt8LinearOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<symbol::DimExpr> &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<symbol::DimExpr> &weight_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const std::vector<symbol::DimExpr> &weight_scale_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+  size_t x_rank = x_shape.size();
+
+  PADDLE_ENFORCE_EQ(weight_shape.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "The input(weight) must be a 2D Tensor."));
+  infer_context->AddEqualCstr(weight_shape[0], x_shape[x_rank - 1]);
+  if (weight_shape[0].isa<int64_t>()) {
+    int64_t w_shape_0 = weight_shape[0].Get<int64_t>();
+    PADDLE_ENFORCE_EQ(
+        w_shape_0 % 16,
+        0,
+        common::errors::InvalidArgument(
+            "The first dimension of input must be divisible by 16, but got[%d]",
+            w_shape_0));
+  }
+  if (weight_shape[1].isa<int64_t>()) {
+    int64_t w_shape_1 = weight_shape[1].Get<int64_t>();
+    PADDLE_ENFORCE_EQ(
+        w_shape_1 % 16,
+        0,
+        common::errors::InvalidArgument("The second dimension of input must be "
+                                        "divisible by 16, but got[%d]",
+                                        w_shape_1));
+  }
+
+  infer_context->AddEqualCstr(weight_scale_shape[0], weight_shape[0]);
+  std::vector<symbol::DimExpr> out_shape = x_shape;
+  out_shape[x_rank - 1] = weight_shape[0];
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
+
 bool LogspaceOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return LinspaceOpInferSymbolicShape(op, infer_context);
