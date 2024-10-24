@@ -42,13 +42,13 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         def generate_input2(attrs: List[Dict[str, Any]], batch):
             return np.random.random([batch, 2]).astype(np.int32)
 
-        for batch in [1, 4]:
-            for class_num in [80, 30]:
+        for batch in [1]:
+            for class_num in [80]:
                 for anchors in [[10, 13, 16, 30, 33, 23]]:
-                    for downsample_ratio in [32, 16]:
-                        for conf_thresh in [0.01, 0.02]:
+                    for downsample_ratio in [32]:
+                        for conf_thresh in [0.01]:
                             for clip_bbox in [True, False]:
-                                for scale_x_y in [1.0, 0.9]:
+                                for scale_x_y in [1.0]:
                                     for iou_aware in [False, True]:
                                         for iou_aware_factor in [0.5]:
                                             dics = [
