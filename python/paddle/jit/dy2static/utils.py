@@ -303,6 +303,7 @@ def wrap_as_closure(tree: gast.AST, closure_vars: list[str]) -> gast.AST:
                 )
             ],
             value=value,
+            type_comment=None,
         )
 
     def create_wrppper_fn_def_node(name, body) -> gast.FunctionDef:
@@ -321,6 +322,7 @@ def wrap_as_closure(tree: gast.AST, closure_vars: list[str]) -> gast.AST:
             decorator_list=[],
             returns=None,
             type_comment=None,
+            type_params=[],
         )
 
     if not isinstance(tree, gast.Module):
