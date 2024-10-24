@@ -1200,8 +1200,6 @@ class _ExecutorCache:
                     value.block.program, value, fetch_var_name + str(i), i
                 )
 
-        new_exe = _StandaloneExecutor(place, plan, scope)
-
         data_op_infos = []
         global_block = program.global_block()
         for op in global_block.ops:
@@ -1228,6 +1226,9 @@ class _ExecutorCache:
 
         if in_cinn_mode():
             apply_cinn_pass(program)
+
+        new_exe = _StandaloneExecutor(place, plan, scope)
+
         return program, new_exe, data_op_infos
 
 
