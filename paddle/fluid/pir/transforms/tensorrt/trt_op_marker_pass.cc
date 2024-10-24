@@ -1400,6 +1400,43 @@ class NearestInterV2Pattern
   }
 };
 
+class StackOpPattern : public pir::OpRewritePattern<paddle::dialect::StackOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::StackOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::StackOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+
+    pir::Value x = op.operand_source(0);
+    int rank;
+    auto x_type = x.type();
+    if (x_type.isa<pir::VectorType>()) {
+      rank = x_type.dyn_cast<pir::VectorType>().size();
+    } else {
+      auto x_shape = pir::GetShapeFromValue(x);
+      rank = x_shape.size();
+    }
+
+    int axis;
+    if (op->HasAttribute("axis")) {
+      axis = op->attribute<pir::Int32Attribute>("axis").data();
+    } else {
+      axis = -1;
+    }
+    if (axis > rank || axis < -(rank + 1)) {
+      VLOG(3) << "Invalid axis value: " << axis
+              << ". Axis should be in range [-" << (rank + 1) << ", " << rank
+              << "], where rank is " << rank << ".";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 // Add ReduceCommonOpPattern base class to simplify code
 template <typename OpType>
 class ReduceCommonOpPattern : public pir::OpRewritePattern<OpType> {
@@ -1557,6 +1594,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MinOpPattern>(context));
     ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
     ps.Add(std::make_unique<NearestInterV2Pattern>(context));
+    ps.Add(std::make_unique<StackOpPattern>(context));
     ps.Add(std::make_unique<TanhOpPattern>(context));
     return ps;
   }

@@ -654,3 +654,50 @@ def split_converter(network, paddle_op, inputs):
             ).get_output(0)
 
     return outputs
+
+
+@converter_registry.register("pd_op.stack", trt_version="8.x")
+def stack_converter(network, paddle_op, inputs):
+    input_tensors = inputs[0]
+    input_num = len(input_tensors)
+
+    inputs = []
+    for i in range(input_num):
+        inputs.append(input_tensors[i])
+
+    input_rank = len(input_tensors[0].shape)
+
+    output_rank = input_rank + 1
+    axis = paddle_op.attrs().get("axis")
+    if axis < 0:
+        axis += output_rank
+
+    shape_tensor = network.add_shape(input_tensors[0]).get_output(0)
+    shape_tensor_vec = []
+    for i in range(output_rank):
+        if i < axis:
+            shape_tensor_vec.append(
+                get_shape_tensor_element(network, shape_tensor, i)
+            )
+        elif i > axis:
+            shape_tensor_vec.append(
+                get_shape_tensor_element(network, shape_tensor, i - 1)
+            )
+        else:
+            shape_tensor_vec.append(add_1D_constant_layer(network, 1))
+
+    after_shape_tensor = network.add_concatenation(shape_tensor_vec).get_output(
+        0
+    )
+
+    for i in range(input_num):
+        shuffle_layer = network.add_shuffle(inputs[i])
+        shuffle_layer.set_input(1, after_shape_tensor)
+        reshaped_tensor = shuffle_layer.get_output(0)
+        inputs[i] = reshaped_tensor
+
+    concat_layer = network.add_concatenation(inputs)
+    concat_layer.axis = axis
+    output_tensor = concat_layer.get_output(0)
+
+    return output_tensor
