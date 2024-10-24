@@ -2929,6 +2929,12 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs(input_shape)});
     infer_context->SetShapeOrDataForValue(op->result(3), out_shape_or_data);
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(input_shape)});
+    infer_context->SetShapeOrDataForValue(op->result(3), out_shape_or_data);
   }
   return true;
 }
