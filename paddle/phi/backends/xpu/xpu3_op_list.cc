@@ -56,6 +56,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT64})},
       {"arg_max",
        XPUKernelSet({phi::DataType::INT32,
+                     phi::DataType::INT64,
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16})},
       {"arg_min",
