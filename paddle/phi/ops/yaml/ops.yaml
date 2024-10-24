@@ -4386,6 +4386,16 @@
   backward: sequence_pool_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : set
+  args : (Tensor x, Tensor source, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0)
+  output : Tensor (out)
+  infer_meta :
+    func : SetInferMeta
+    param : [x, dims, stride]
+  kernel :
+    func : set
+  inplace : (x -> out)
+
 - op : set_value_with_tensor
   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
