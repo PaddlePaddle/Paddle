@@ -108,43 +108,15 @@ class FusedWeightOnlyLinearWithBiasPattern
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
 
-    if (algo_ == "weight_only_int4") {
-      // TODO(liuyuanle): When the operator weight_quantize supports
-      // weight_only_int4 on gpu version, delete the memory copy.
-      const auto &memcpy_d2h =
-          res.Op(paddle::dialect::MemcpyD2hOp::name(),
-                 {{"dst_place_type", res.Int32Attr(0 /*cpu*/)}});
-      res.Tensor("w_cpu") = memcpy_d2h(res.Tensor("w"));
-      const auto &weight_quantize =
-          res.Op(paddle::dialect::WeightQuantizeOp::name(),
-                 {{"algo", res.StrAttr(algo_)},
-                  {"arch", res.Int32Attr(sm_version_)},
-                  {"group_size", res.Int32Attr(-1)}});
-      weight_quantize({&res.Tensor("w_cpu")},
-                      {&res.Tensor("quanted_weight_tensor_cpu"),
-                       &res.Tensor("weight_scale_tensor_cpu")});
+    const auto &weight_quantize =
+        res.Op(paddle::dialect::WeightQuantizeOp::name(),
+               {{"algo", res.StrAttr(algo_)},
+                {"arch", res.Int32Attr(sm_version_)},
+                {"group_size", res.Int32Attr(-1)}});
 
-      const auto &memcpy_h2d_1 =
-          res.Op(paddle::dialect::MemcpyH2dOp::name(),
-                 {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
-      res.Tensor("quanted_weight_tensor") =
-          memcpy_h2d_1(res.Tensor("quanted_weight_tensor_cpu"));
-      const auto &memcpy_h2d_2 =
-          res.Op(paddle::dialect::MemcpyH2dOp::name(),
-                 {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
-      res.Tensor("weight_scale_tensor") =
-          memcpy_h2d_2(res.Tensor("weight_scale_tensor_cpu"));
-    } else {
-      const auto &weight_quantize =
-          res.Op(paddle::dialect::WeightQuantizeOp::name(),
-                 {{"algo", res.StrAttr(algo_)},
-                  {"arch", res.Int32Attr(sm_version_)},
-                  {"group_size", res.Int32Attr(-1)}});
-
-      weight_quantize({&res.Tensor("w")},
-                      {&res.Tensor("quanted_weight_tensor"),
-                       &res.Tensor("weight_scale_tensor")});
-    }
+    weight_quantize({&res.Tensor("w")},
+                    {&res.Tensor("quanted_weight_tensor"),
+                     &res.Tensor("weight_scale_tensor")});
 
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
@@ -219,43 +191,15 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
 
-    if (algo_ == "weight_only_int4") {
-      // TODO(liuyuanle): When the operator weight_quantize supports
-      // weight_only_int4 on gpu version, delete the memory copy.
-      const auto &memcpy_d2h =
-          res.Op(paddle::dialect::MemcpyD2hOp::name(),
-                 {{"dst_place_type", res.Int32Attr(0 /*cpu*/)}});
-      res.Tensor("w_cpu") = memcpy_d2h(res.Tensor("w"));
-      const auto &weight_quantize =
-          res.Op(paddle::dialect::WeightQuantizeOp::name(),
-                 {{"algo", res.StrAttr(algo_)},
-                  {"arch", res.Int32Attr(sm_version_)},
-                  {"group_size", res.Int32Attr(-1)}});
-      weight_quantize({&res.Tensor("w_cpu")},
-                      {&res.Tensor("quanted_weight_tensor_cpu"),
-                       &res.Tensor("weight_scale_tensor_cpu")});
+    const auto &weight_quantize =
+        res.Op(paddle::dialect::WeightQuantizeOp::name(),
+               {{"algo", res.StrAttr(algo_)},
+                {"arch", res.Int32Attr(sm_version_)},
+                {"group_size", res.Int32Attr(-1)}});
+    weight_quantize({&res.Tensor("w")},
+                    {&res.Tensor("quanted_weight_tensor"),
+                     &res.Tensor("weight_scale_tensor")});
 
-      const auto &memcpy_h2d_1 =
-          res.Op(paddle::dialect::MemcpyH2dOp::name(),
-                 {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
-      res.Tensor("quanted_weight_tensor") =
-          memcpy_h2d_1(res.Tensor("quanted_weight_tensor_cpu"));
-      const auto &memcpy_h2d_2 =
-          res.Op(paddle::dialect::MemcpyH2dOp::name(),
-                 {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
-      res.Tensor("weight_scale_tensor") =
-          memcpy_h2d_2(res.Tensor("weight_scale_tensor_cpu"));
-    } else {
-      const auto &weight_quantize =
-          res.Op(paddle::dialect::WeightQuantizeOp::name(),
-                 {{"algo", res.StrAttr(algo_)},
-                  {"arch", res.Int32Attr(sm_version_)},
-                  {"group_size", res.Int32Attr(-1)}});
-
-      weight_quantize({&res.Tensor("w")},
-                      {&res.Tensor("quanted_weight_tensor"),
-                       &res.Tensor("weight_scale_tensor")});
-    }
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
                {{"weight_dtype",

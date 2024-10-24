@@ -141,9 +141,6 @@ class TestFusedWeightOnlyLinearPass_WithBias(PassTest):
                             self.get_valid_op_map(dtype, w_shape)
                             yield [main_prog, start_prog], False
 
-    def test_check_output(self):
-        self.check_pass_correct(1e-3, 1e-3)
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
@@ -228,9 +225,6 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
                         self.get_valid_op_map(dtype, w_shape)
                         yield [main_prog, start_prog], False
 
-    def test_check_output(self):
-        self.check_pass_correct(1e-3, 1e-3)
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
@@ -250,6 +244,9 @@ class TestFusedWeightOnlyLinearPass_Weight_Only_Int8(
             }
         ]
 
+    def test_check_output(self):
+        self.check_pass_correct(1e-3, 1e-3)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
@@ -268,6 +265,53 @@ class TestFusedWeightOnlyLinearPass_Weight_Only_Int8_WithBias(
                 }
             }
         ]
+
+    def test_check_output(self):
+        self.check_pass_correct(1e-3, 1e-3)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "weight_only_linear requires CUDA >= 11.2",
+)
+class TestFusedWeightOnlyLinearPass_Weight_Only_Int4(
+    TestFusedWeightOnlyLinearPass_NoBias
+):
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.pass_attr_list = [
+            {
+                'fused_weight_only_linear_pass': {
+                    "weight_only_algo": "weight_only_int4"
+                }
+            }
+        ]
+
+    def test_check_output(self):
+        self.check_pass_correct(1e-3, 1e-3)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "weight_only_linear requires CUDA >= 11.2",
+)
+class TestFusedWeightOnlyLinearPass_Weight_Only_Int4_WithBias(
+    TestFusedWeightOnlyLinearPass_WithBias
+):
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.pass_attr_list = [
+            {
+                'fused_weight_only_linear_pass': {
+                    "weight_only_algo": "weight_only_int4",
+                }
+            }
+        ]
+
+    def test_check_output(self):
+        self.check_pass_correct(1e-3, 1e-3)
 
 
 if __name__ == "__main__":
