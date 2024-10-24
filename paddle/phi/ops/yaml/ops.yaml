@@ -277,7 +277,7 @@
   kernel :
     func : argmax
     data_type : x
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : argmin

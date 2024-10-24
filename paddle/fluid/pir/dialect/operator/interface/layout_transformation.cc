@@ -353,6 +353,34 @@ void RewriteByLayoutImpl<ConcatOp>(pir::Operation* op,
 }
 
 template <>
+void RewriteByLayoutImpl<ArgmaxOp>(pir::Operation* op,
+                                   common::DataLayout new_layout) {
+  auto concrete_op = op->dyn_cast<ArgmaxOp>();
+  auto axis = concrete_op.axis();
+  if (!axis || !(axis.defining_op()->isa<FullOp>())) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Argmax's axis must be processed when rewirte by layout."));
+  }
+
+  auto axis_op = axis.defining_op()->dyn_cast<FullOp>();
+  int axis_value =
+      axis_op.attribute("value").dyn_cast<ScalarAttribute>().data().to<int>();
+
+  PADDLE_ENFORCE_EQ(
+      axis_value,
+      1,
+      common::errors::InvalidArgument(
+          "Argmax's axis was expected as 1, but got %d", axis_value));
+  axis.defining_op()->set_attribute(
+      "value",
+      ScalarAttribute::get(pir::IrContext::Instance(), phi::Scalar(3)));
+
+  // infer new meta for argmax
+  std::cout << "RewriteByInfermeta axis:" << std::endl;
+  RewriteByInfermeta<ArgmaxOp>(op, new_layout);
+}
+
+template <>
 void RewriteByLayoutImpl<pir::CombineOp>(pir::Operation* op,
                                          common::DataLayout new_layout) {
   auto concrete_op = op->dyn_cast<pir::CombineOp>();
