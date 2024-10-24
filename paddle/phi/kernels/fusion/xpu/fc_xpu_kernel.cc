@@ -15,6 +15,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "xblas/cublasLt.h"
 
 namespace phi {
 namespace fusion {
@@ -56,9 +57,7 @@ void FcXPUKernelImpl(const Context& ctx,
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   auto* out_data =
       reinterpret_cast<XPUTypeOut*>(ctx.template Alloc<T_OUT>(out));
-  auto* scale_max_data = scale_max.get_ptr() == nullptr
-                             ? nullptr
-                             : scale_max.get_ptr()->data<float>();
+
   float* out_max_data = nullptr;
   // when T_OUT is float and TGEMM is int8_t, out_max_data should better set to
   // nullptr for better performance
@@ -76,28 +75,64 @@ void FcXPUKernelImpl(const Context& ctx,
   } else if (act_type == xpu::Activation_t::HARD_SIGMOID) {
     act.hard_sigmoid_slope = act_alpha;
   }
-  int r =
-      xpu::fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
-          ctx.x_context(),                                     // ctx
-          x_data,                                              // x
-          w_data,                                              // w
-          out_data,                                            // y
-          m,                                                   // m
-          n,                                                   // n
-          k,                                                   // k
-          transpose_x,                                         // x_trans
-          true,                                                // w_trans
-          x_max_data,                                          // x_maxptr
-          w_max_data,                                          // w_maxptr
-          out_max_data,                                        // y_maxptr
-          transpose_x ? m : k,                                 // ldx
-          k,                                                   // ldw
-          n,                                                   // ldy
-          alpha,                                               // alpha
-          beta,                                                // beta
-          bias_data,                                           // bias
-          act,                                                 // act
-          scale_max_data);                                     // scale
+  int r = 0;
+#ifdef PADDLE_WITH_XPU_XRE5
+  if (std::is_same<XPUTypeX, XPUTypeOut>::value &&
+      std::is_same<XPUTypeW, T_GEMM>::value &&
+      !std::is_same<T_W, int8_t>::value) {
+    r = baidu::xpu::xblas::
+        fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX, TW. TY TGEMM
+            ctx.x_context(),                                // ctx
+            x_data,                                         // x
+            w_data,                                         // w
+            out_data,                                       // y
+            m,                                              // m
+            n,                                              // n
+            k,                                              // k
+            transpose_x,                                    // x_trans
+            true,                                           // w_trans
+            x_max_data,                                     // x_maxptr
+            w_max_data,                                     // w_maxptr
+            out_max_data,                                   // y_maxptr
+            transpose_x ? m : k,                            // ldx
+            k,                                              // ldw
+            n,                                              // ldy
+            alpha,                                          // alpha
+            beta,                                           // beta
+            bias_data,                                      // bias
+            act,                                            // act
+            nullptr,                                        // scale_x
+            nullptr,                                        // scale_w
+            0,                                              // scale_x_mode
+            0);                                             // scale_w_mode
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_xpu");
+    return;
+  }
+#endif
+  auto* scale_max_data = scale_max.get_ptr() == nullptr
+                             ? nullptr
+                             : scale_max.get_ptr()->data<float>();
+  r = xpu::fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
+      ctx.x_context(),                                         // ctx
+      x_data,                                                  // x
+      w_data,                                                  // w
+      out_data,                                                // y
+      m,                                                       // m
+      n,                                                       // n
+      k,                                                       // k
+      transpose_x,                                             // x_trans
+      true,                                                    // w_trans
+      x_max_data,                                              // x_maxptr
+      w_max_data,                                              // w_maxptr
+      out_max_data,                                            // y_maxptr
+      transpose_x ? m : k,                                     // ldx
+      k,                                                       // ldw
+      n,                                                       // ldy
+      alpha,                                                   // alpha
+      beta,                                                    // beta
+      bias_data,                                               // bias
+      act,
+      scale_max_data);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_xpu");
 }
