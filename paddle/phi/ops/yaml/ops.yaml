@@ -4089,7 +4089,7 @@
     func : repeat_interleave_with_tensor_index
     data_type : x
   backward: repeat_interleave_with_tensor_index_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reshape
   args : (Tensor x, IntArray shape)
@@ -4603,7 +4603,7 @@
     func : solve
     data_type : x
   backward : solve_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sparse_attention
   args: (Tensor q, Tensor k, Tensor v, Tensor offset, Tensor columns, Tensor key_padding_mask,
