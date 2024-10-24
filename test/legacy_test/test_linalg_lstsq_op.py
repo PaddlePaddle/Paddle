@@ -138,7 +138,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
                     fetch_list=[results],
                 )
                 fetch_list = exe._check_fetch_list([results])
-                check_symbolic_result(main_prog, [results], fetch_list, 'lstsq')
+                check_symbolic_result(main_prog, fetch_list, fetches, 'lstsq')
                 self._result_solution = fetches[0]
                 self._result_residuals = fetches[1]
                 self._result_rank = fetches[2]
