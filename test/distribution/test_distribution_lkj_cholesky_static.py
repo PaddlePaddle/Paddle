@@ -44,6 +44,15 @@ paddle.seed(2024)
                 min=0,
             ),
         ),
+        (
+            'one-dim2',
+            parameterize.xrand(
+                (1,),
+                dtype='float64',
+                max=1.0,
+                min=0,
+            ),
+        ),
     ],
 )
 class TestLKJCholeskyShape(unittest.TestCase):
