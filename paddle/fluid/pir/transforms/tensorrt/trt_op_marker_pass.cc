@@ -76,6 +76,9 @@ DEFINE_GENERAL_PATTERN(Sigmoid, paddle::dialect::SigmoidOp)
 DEFINE_GENERAL_PATTERN(Sqrt, paddle::dialect::SqrtOp)
 DEFINE_GENERAL_PATTERN(Hardsigmoid, paddle::dialect::HardsigmoidOp)
 DEFINE_GENERAL_PATTERN(Hardswish, paddle::dialect::HardswishOp)
+DEFINE_GENERAL_PATTERN(Assign, paddle::dialect::AssignOp)
+DEFINE_GENERAL_PATTERN(AssignValue_, paddle::dialect::AssignValue_Op)
+DEFINE_GENERAL_PATTERN(AssignOut, paddle::dialect::AssignOut_Op)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -1510,6 +1513,9 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Sqrt)
     ADD_PATTERN(Hardsigmoid)
     ADD_PATTERN(Hardswish)
+    ADD_PATTERN(AssignOut)
+    ADD_PATTERN(Assign)
+    ADD_PATTERN(AssignValue_)
 #if IS_TRT_VERSION_GE(8600)
     ADD_PATTERN(Layer_norm)
 #endif

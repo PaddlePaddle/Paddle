@@ -133,7 +133,8 @@ def copy_decorator_attrs(original_func, decorated_obj):
 
     decorated_obj.__name__ = original_func.__name__
     decorated_obj._decorator_name = decorator_name
-    decorated_obj.__wrapped__ = original_func
+    if not inspect.ismethod(original_func):
+        decorated_obj.__wrapped__ = original_func
     decorated_obj.__doc__ = original_func.__doc__
     if hasattr(original_func, "__module__"):
         decorated_obj.__module__ = original_func.__module__
@@ -1271,7 +1272,7 @@ def save(
                 )
                 concrete_program = static_function.concrete_program
 
-                if static_function._class_instance is None:
+                if static_function.class_instance is None:
                     warnings.warn(
                         f'`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {layer} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                     )
@@ -1281,9 +1282,9 @@ def save(
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
-            if static_func._class_instance:
+            if static_func.class_instance:
                 dygraph_state_dict = (
-                    static_func._class_instance.to_static_state_dict()
+                    static_func.class_instance.to_static_state_dict()
                 )
 
         if dygraph_state_dict:
@@ -1778,9 +1779,9 @@ def set_dynamic_shape(variable, shape_list):
 
 def get_ast_static_function(function):
     if isinstance(function, SymbolicStaticFunction):
-        if function._class_instance:
+        if function.class_instance:
             dygraph_function = types.MethodType(
-                function._dygraph_function, function._class_instance
+                function._dygraph_function, function.class_instance
             )
         else:
             dygraph_function = function._dygraph_function

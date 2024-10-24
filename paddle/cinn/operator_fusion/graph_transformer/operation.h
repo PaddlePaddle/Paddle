@@ -40,7 +40,6 @@ struct MergeTrivialPatternOperation {
               downstream->stmt_pattern()) ||
           std::holds_alternative<ReduceTreePlusTrivialPattern>(
               downstream->stmt_pattern()) ||
-          std::holds_alternative<AnchorPattern>(downstream->stmt_pattern()) ||
           std::holds_alternative<ItersPermutationPattern>(
               downstream->stmt_pattern());
 
@@ -114,6 +113,22 @@ struct MergeReduceTreeAndTrivialOperation {
     merged_node->set_fusion_iters(
         graph->iters_fusion_policy()->SingleDownstreamItersFusion(node,
                                                                   downstream));
+    // TODO(huangjiyi): Support relationship analysis for defferent iters, for
+    // example the input iters and output iters of reshape op.
+    auto sig = merged_node->fusion_iters();
+    const auto upstream_iters = node->fusion_iters();
+    const auto reduce_iters = SliceVector(upstream_iters.loop_iters,
+                                          -upstream_iters.reduce_iter_nums,
+                                          upstream_iters.loop_iters.size());
+    auto trivial_iters = downstream->fusion_iters().loop_iters;
+    if (!fake_reduce_iter_idx.empty()) {
+      trivial_iters = GatherVector(
+          trivial_iters,
+          ExcludeIndex(trivial_iters.size(), fake_reduce_iter_idx));
+    }
+    sig.loop_iters = ConcatVector(trivial_iters, reduce_iters);
+    merged_node->set_fusion_iters(sig);
+
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
@@ -233,106 +248,6 @@ struct FuseItersPermutatioOperation {
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
     VLOG(4) << "Merged: \n" << merged_node->DebugStr();
-    return merged_node;
-  }
-};
-
-struct LiftToAnchorPatternOperation {
-  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
-    auto origin_name = node->id();
-    std::vector<pir::Operation*> ops = GetOpsInPattern(node->stmt_pattern());
-    // TODO(@wuzhanfei) move sink_op into pattern (currently, part of pattern
-    // type has sink and the others not) then, update logic here
-    PADDLE_ENFORCE_EQ(
-        node->sink_op()->num_results(),
-        1,
-        ::common::errors::PreconditionNotMet(
-            "Op with multi output value can not lift to AnchorPattern"));
-    pir::Value anchor = node->sink_op()->result(0);
-    node->set_stmt_pattern(AnchorPattern(
-        ops,
-        anchor,
-        AnchorState(InitExprPromise(node->stmt_pattern(), anchor)),
-        std::make_shared<FusionTracker>(
-            GetFusionTracker(node->stmt_pattern()))));
-    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
-    VLOG(4) << "LiftToAnchorPatternOperation: remain tracker: "
-            << GetFusionTracker(node->stmt_pattern())->DebugStr();
-    return node;
-  }
-};
-
-struct FuseUpstreamAnchorOperation {
-  PatternNodePtr operator()(PatternGraph* graph,
-                            const PatternNodePtr& upstream,
-                            const PatternNodePtr& downstream) {
-    auto optional_transform_route =
-        graph->policy_manager()
-            .template GetPolicy<AnchorSearchPolicy>()
-            ->FindUpstreamAnchorTransformRoute(upstream, downstream);
-    PADDLE_ENFORCE_NE(
-        optional_transform_route,
-        std::nullopt,
-        ::common::errors::PreconditionNotMet("Transform Route Not Found"));
-
-    auto transform_route = optional_transform_route.value();
-
-    const auto merge_pattern_fn = [transform_route](
-                                      const StmtPattern& source,
-                                      const StmtPattern& destination) {
-      auto new_anchor_pattern =
-          std::get<AnchorPattern>(MergePattern(source, destination));
-      auto transformed_anchor_state = ApplyAnchorTransformRoute(
-          GetAnchorState(std::get<AnchorPattern>(destination)),
-          transform_route);
-      new_anchor_pattern.anchor_state.update(
-          GetAnchorState(std::get<AnchorPattern>(source)));
-      new_anchor_pattern.anchor_state.update(transformed_anchor_state);
-      return new_anchor_pattern;
-    };
-
-    auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
-    graph->RemoveNode(upstream);
-    graph->RemoveNode(downstream);
-    merged_node->UpdateTracker();
-    return merged_node;
-  }
-};
-
-struct FuseDownstreamAnchorOperation {
-  PatternNodePtr operator()(PatternGraph* graph,
-                            const PatternNodePtr& upstream,
-                            const PatternNodePtr& downstream) {
-    auto optional_transform_route =
-        graph->policy_manager()
-            .template GetPolicy<AnchorSearchPolicy>()
-            ->FindDownstreamAnchorTransformRoute(upstream, downstream);
-
-    PADDLE_ENFORCE_NE(
-        optional_transform_route,
-        std::nullopt,
-        ::common::errors::PreconditionNotMet("Transform Route Not Found"));
-
-    auto transform_route = optional_transform_route.value();
-
-    const auto merge_pattern_fn = [transform_route](
-                                      const StmtPattern& destination,
-                                      const StmtPattern& source) {
-      auto new_anchor_pattern =
-          std::get<AnchorPattern>(MergePattern(source, destination));
-      auto transformed_anchor_state = ApplyAnchorTransformRoute(
-          GetAnchorState(std::get<AnchorPattern>(destination)),
-          transform_route);
-      new_anchor_pattern.anchor_state.update(
-          GetAnchorState(std::get<AnchorPattern>(source)));
-      new_anchor_pattern.anchor_state.update(transformed_anchor_state);
-      return new_anchor_pattern;
-    };
-
-    auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
-    graph->RemoveNode(upstream);
-    graph->RemoveNode(downstream);
-    merged_node->UpdateTracker();
     return merged_node;
   }
 };

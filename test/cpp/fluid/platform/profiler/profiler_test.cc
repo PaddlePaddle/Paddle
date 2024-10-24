@@ -24,10 +24,10 @@
 #include <hip/hip_runtime.h>
 #endif
 #include "paddle/fluid/platform/profiler/event_python.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 TEST(ProfilerTest, TestHostTracer) {
   using paddle::platform::Profiler;

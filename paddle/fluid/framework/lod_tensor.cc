@@ -256,10 +256,7 @@ void DeserializeFromStream(std::istream &is,
     // the 1st field, unit32_t version for DenseTensor
     uint32_t version = 0;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
-    PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
-                      true,
-                      common::errors::InvalidArgument(
-                          "Tensor version %u is not supported.", version));
+
     PADDLE_ENFORCE_EQ(
         version,
         0U,
@@ -287,10 +284,7 @@ void DeserializeFromStream(std::istream &is,
     // the 1st field, unit32_t version for DenseTensor
     uint32_t version = 0;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
-    PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
-                      true,
-                      common::errors::InvalidArgument(
-                          "Tensor version %u is not supported.", version));
+
     PADDLE_ENFORCE_EQ(
         version,
         0U,
@@ -504,8 +498,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
   target->Resize(new_dim);
   target->set_layout(new_layout);
   target->set_lod(new_lod);
-  target->mutable_data(dst_place,
-                       paddle::framework::TransToPhiDataType(new_type));
+  target->mutable_data(dst_place, phi::TransToPhiDataType(new_type));
 
   int begin = 0;
   for (auto *src : lod_tensors) {

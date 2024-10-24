@@ -128,6 +128,7 @@ def create_function_def_node(nodes, name, input_args, return_name_ids):
         decorator_list=[],
         returns=None,
         type_comment=None,
+        type_params=[],
     )
     return func_def_node
 
@@ -137,7 +138,11 @@ def create_assign_node(name, node):
     Creates a `gast.Assign` node by given name_id as target and node as value.
     """
     targets = generate_name_node(name, ctx=gast.Store())
-    assign_node = gast.Assign(targets=[targets], value=node)
+    assign_node = gast.Assign(
+        targets=[targets],
+        value=node,
+        type_comment=None,
+    )
     return targets, assign_node
 
 

@@ -499,6 +499,13 @@ class PADDLE_API Tensor final {
   bool defined() const;
 
   /**
+   * @brief Determine whether Tensor has allocation
+   *
+   * @return bool
+   */
+  bool has_allocation() const;
+
+  /**
    * @brief Determine whether Tensor is initialized.
    *
    * @return bool

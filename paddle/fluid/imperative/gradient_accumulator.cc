@@ -672,13 +672,11 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name()
                 << " is set as: " << var->Var().Get<phi::DenseTensor>().dims();
         tensor->Resize(var->Var().Get<phi::DenseTensor>().dims());
-        tensor->mutable_data(place,
-                             framework::TransToPhiDataType(var->DataType()));
+        tensor->mutable_data(place, phi::TransToPhiDataType(var->DataType()));
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       } else {
         auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
-        tensor->mutable_data(place,
-                             framework::TransToPhiDataType(var->DataType()));
+        tensor->mutable_data(place, phi::TransToPhiDataType(var->DataType()));
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }
@@ -812,13 +810,11 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name()
                 << " is set as: " << var->Var().Get<phi::DenseTensor>().dims();
         tensor->Resize(var->Var().Get<phi::DenseTensor>().dims());
-        tensor->mutable_data(place,
-                             framework::TransToPhiDataType(var->DataType()));
+        tensor->mutable_data(place, phi::TransToPhiDataType(var->DataType()));
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       } else {
         auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
-        tensor->mutable_data(place,
-                             framework::TransToPhiDataType(var->DataType()));
+        tensor->mutable_data(place, phi::TransToPhiDataType(var->DataType()));
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }

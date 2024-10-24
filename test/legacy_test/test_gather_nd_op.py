@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -433,7 +434,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         else:
             target_dtype = "float32"
         xnp = np.random.rand(*shape).astype(target_dtype)
-        index = np.vstack([np.random.randint(0, s, size=2) for s in shape]).T
+        index = np.vstack([np.random.randint(-s, s, size=2) for s in shape]).T
         output = xnp[tuple(index.T)]
         if self.dtype == np.uint16:
             xnp = convert_float_to_uint16(xnp)
@@ -504,7 +505,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         else:
             target_dtype = "float32"
         xnp = np.random.rand(*shape).astype(target_dtype)
-        index = np.vstack([np.random.randint(0, s, size=200) for s in shape]).T
+        index = np.vstack([np.random.randint(-s, s, size=200) for s in shape]).T
         index_re = index.reshape([20, 5, 2, 5])
         output = xnp[tuple(index.T)].reshape([20, 5, 2])
         if self.dtype == np.uint16:
@@ -563,29 +564,34 @@ class TestGatherNdOpWithHighRankDiffBF16(TestGatherNdOpWithHighRankDiff):
 class TestGatherNdOpAPI(unittest.TestCase):
 
     def test_case1(self):
-        x1 = paddle.static.data(
-            name='x1', shape=[-1, 30, 40, 50, 60], dtype='float32'
-        )
-        index1 = paddle.static.data(
-            name='index1', shape=[-1, 2, 4], dtype='int32'
-        )
-        output1 = paddle.gather_nd(x1, index1)
+        with static_guard():
+            x1 = paddle.static.data(
+                name='x1', shape=[-1, 30, 40, 50, 60], dtype='float32'
+            )
+            index1 = paddle.static.data(
+                name='index1', shape=[-1, 2, 4], dtype='int32'
+            )
+            output1 = paddle.gather_nd(x1, index1)
 
     def test_case2(self):
-        x2 = paddle.static.data(
-            name='x2', shape=[-1, 30, 40, 50], dtype='float32'
-        )
-        index2 = paddle.static.data(
-            name='index2', shape=[-1, 2, 2], dtype='int64'
-        )
-        output2 = paddle.gather_nd(x2, index2)
+        with static_guard():
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 30, 40, 50], dtype='float32'
+            )
+            index2 = paddle.static.data(
+                name='index2', shape=[-1, 2, 2], dtype='int64'
+            )
+            output2 = paddle.gather_nd(x2, index2)
 
     def test_case3(self):
-        x3 = paddle.static.data(name='x3', shape=[-1, 3, 4, 5], dtype='float32')
-        index3 = paddle.static.data(
-            name='index3', shape=[-1, 2, 1], dtype='int32'
-        )
-        output3 = paddle.gather_nd(x3, index3, name="gather_nd_layer")
+        with static_guard():
+            x3 = paddle.static.data(
+                name='x3', shape=[-1, 3, 4, 5], dtype='float32'
+            )
+            index3 = paddle.static.data(
+                name='index3', shape=[-1, 2, 1], dtype='int32'
+            )
+            output3 = paddle.gather_nd(x3, index3, name="gather_nd_layer")
 
 
 # Test Raise Index Error
@@ -593,18 +599,19 @@ class TestGatherNdOpRaise(unittest.TestCase):
 
     def test_check_raise(self):
         def check_raise_is_test():
-            try:
-                x = paddle.static.data(
-                    name='x', shape=[-1, 3, 4, 5], dtype='float32'
-                )
-                index = paddle.static.data(
-                    name='index', shape=[-1, 2, 10], dtype='int32'
-                )
-                output = paddle.gather_nd(x, index)
-            except Exception as e:
-                t = "Input(Index).shape[-1] should be no greater than Input(X).rank"
-                if t in str(e):
-                    raise IndexError
+            with static_guard():
+                try:
+                    x = paddle.static.data(
+                        name='x', shape=[-1, 3, 4, 5], dtype='float32'
+                    )
+                    index = paddle.static.data(
+                        name='index', shape=[-1, 2, 10], dtype='int32'
+                    )
+                    output = paddle.gather_nd(x, index)
+                except Exception as e:
+                    t = "Input(Index).shape[-1] should be no greater than Input(X).rank"
+                    if t in str(e):
+                        raise IndexError
 
         self.assertRaises(IndexError, check_raise_is_test)
 
@@ -612,39 +619,45 @@ class TestGatherNdOpRaise(unittest.TestCase):
 class TestGatherNdError(unittest.TestCase):
 
     def test_error1(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            shape = [8, 9, 6]
-            x = paddle.static.data(shape=shape, dtype='float32', name='x')
-            index = paddle.static.data(shape=shape, dtype='bool', name='index')
-            np_x = np.random.random(shape).astype('float32')
-            np_index = np.array(np.random.randint(2, size=shape, dtype=bool))
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                shape = [8, 9, 6]
+                x = paddle.static.data(shape=shape, dtype='float32', name='x')
+                index = paddle.static.data(
+                    shape=shape, dtype='bool', name='index'
+                )
+                np_x = np.random.random(shape).astype('float32')
+                np_index = np.array(
+                    np.random.randint(2, size=shape, dtype=bool)
+                )
 
-            def test_x_type():
-                paddle.gather_nd(np_x, index)
+                def test_x_type():
+                    paddle.gather_nd(np_x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+                self.assertRaises(TypeError, test_x_type)
 
-            def test_index_type():
-                paddle.gather_nd(x, np_index)
+                def test_index_type():
+                    paddle.gather_nd(x, np_index)
 
-            self.assertRaises(TypeError, test_index_type)
+                self.assertRaises(TypeError, test_index_type)
 
     def test_error2(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            shape = [8, 9, 6]
-            x = paddle.static.data(shape=shape, dtype='float32', name='x')
-            index_float = paddle.static.data(
-                shape=shape, dtype='float32', name='index_float'
-            )
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                shape = [8, 9, 6]
+                x = paddle.static.data(shape=shape, dtype='float32', name='x')
+                index_float = paddle.static.data(
+                    shape=shape, dtype='float32', name='index_float'
+                )
 
-            def test_index_dtype():
-                paddle.gather_nd(x, index_float)
+                def test_index_dtype():
+                    paddle.gather_nd(x, index_float)
 
-            self.assertRaises(TypeError, test_index_dtype)
+                self.assertRaises(TypeError, test_index_dtype)
 
 
 class TestGatherNdAPI2(unittest.TestCase):

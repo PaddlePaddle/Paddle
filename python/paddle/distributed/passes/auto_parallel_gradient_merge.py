@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 import paddle
+import paddle.distributed as dist
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
@@ -400,7 +401,10 @@ def _move_reduce_to_optimizer_ops_block(
             reduce_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
             removed_op_idx.append(idx)
 
-            if op.type in ["c_allreduce_sum", "c_reduce_sum"]:
+            if op.type == "c_allreduce_sum" or (
+                op.type == "reduce"
+                and op.attr("reduce_type") == dist.ReduceOp.SUM
+            ):
                 scale_index = idx + 1
                 while scale_index < len(main_block.ops):
                     if is_data_parallel_scale_op(main_block.ops[scale_index]):
