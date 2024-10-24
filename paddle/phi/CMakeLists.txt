@@ -51,8 +51,6 @@ set(PHI_DEPS
     cblas
     utf8proc
     common)
-    # static_prim_api
-    # primitive_backend_static_experimental)
 
 list(
   APPEND
