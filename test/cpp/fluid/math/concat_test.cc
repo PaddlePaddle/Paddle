@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/kernels/concat_tensor_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 /**
@@ -451,6 +452,125 @@ void ConcatCase4(DeviceContext* context) {
   }
 }
 
+/**
+ * case 5:
+ *   ConcatTensorTest
+ */
+template <typename DeviceContext, typename Place>
+void ConcatCase5(DeviceContext* context) {
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor input1_cpu;
+  phi::DenseTensor input2_cpu;
+  phi::DenseTensor output1;
+  phi::DenseTensor output2;
+  phi::DenseTensor concated_out;
+
+  auto dim1 = common::make_ddim({2, 2});
+  auto dim2 = common::make_ddim({2, 2});
+  auto dim_out = common::make_ddim({2, 4});
+
+  input1.mutable_data<int>(dim1, Place());
+  input2.mutable_data<int>(dim2, Place());
+  output1.mutable_data<int>(dim1, Place());
+  output2.mutable_data<int>(dim2, Place());
+  concated_out.mutable_data<int>(dim_out, Place());
+
+  if (phi::is_gpu_place(Place())) {
+    input1_cpu.mutable_data<int>(dim1, phi::CPUPlace());
+    input2_cpu.mutable_data<int>(dim2, phi::CPUPlace());
+    int* input1_cpu_ptr = input1_cpu.data<int>();
+    int* input2_cpu_ptr = input2_cpu.data<int>();
+    for (int i = 0; i < 4; ++i) {
+      input1_cpu_ptr[i] = i + 1;
+      input2_cpu_ptr[i] = i + 1 + 4;
+    }
+    paddle::framework::TensorCopySync(input1_cpu, Place(), &input1);
+    paddle::framework::TensorCopySync(input1_cpu, Place(), &input1);
+  } else {
+    int* input1_ptr = input1.data<int>();
+    int* input2_ptr = input2.data<int>();
+
+    for (int i = 0; i < 4; ++i) {
+      input1_ptr[i] = i + 1;
+      input2_ptr[i] = i + 1 + 4;
+    }
+  }
+
+  std::vector<const phi::DenseTensor*> input;
+  input.push_back(&input1);
+  input.push_back(&input2);
+
+  std::vector<phi::DenseTensor*> output;
+  output.push_back(&output1);
+  output.push_back(&output2);
+
+  phi::ConcatTensorKernel<int, DeviceContext>(
+      *context, input, output, &concated_out);
+
+  /**
+   * concated_out =
+   *  [[1,2,5,6],
+   *   [3,4,7,8]]
+   * output[0] =
+   *  [[1,2],
+   *    [5,6]]
+   * output[1] =
+   *  [[3,4],
+   *   [7,8]]
+   **/
+
+  PADDLE_ENFORCE_EQ(output[1]->data<int>(),
+                    output[0]->data<int>() + 4,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "splited_out[0] and splited_out[1] should logically be "
+                        "stored side by side."));
+
+  PADDLE_ENFORCE_EQ(
+      output[0]->dims(),
+      common::make_ddim({2, 2}),
+      paddle::platform::errors::PreconditionNotMet(
+          "output[0] and output[1]'s dims should be the same as input"));
+
+  PADDLE_ENFORCE_EQ(
+      output[1]->dims(),
+      common::make_ddim({2, 2}),
+      paddle::platform::errors::PreconditionNotMet(
+          "output[0] and output[1]'s dims should be the same as input"));
+
+  std::vector<const phi::DenseTensor*> second_input;
+  second_input.push_back(output[0]);
+  second_input.push_back(output[1]);
+
+  phi::DenseTensor tmp1;
+  phi::DenseTensor tmp2;
+  tmp1.mutable_data<int>(dim1, Place());
+  tmp2.mutable_data<int>(dim2, Place());
+
+  std::vector<phi::DenseTensor*> tmp;
+  tmp.push_back(&tmp1);
+  tmp.push_back(&tmp2);
+
+  phi::DenseTensor concated_out2;
+  concated_out2.mutable_data<int>(dim_out, Place());
+
+  phi::ConcatTensorKernel<int, DeviceContext>(
+      *context, second_input, tmp, &concated_out2);
+
+  PADDLE_ENFORCE_EQ(concated_out2.data<int>(),
+                    output[0]->data<int>(),
+                    paddle::platform::errors::PreconditionNotMet(
+                        "If the input tensors are already stored side by side "
+                        "in memory, then the ConcatTensorKernel will not "
+                        "reallocate memory for the concatenation."));
+
+  PADDLE_ENFORCE_EQ(concated_out2.dims(),
+                    common::make_ddim({2, 4}),
+                    paddle::platform::errors::PreconditionNotMet(
+                        "For the same inputs, multiple executions of the "
+                        "ConcatTensorKernel should produce the same results."));
+}
+
 template <typename DeviceContext, typename Place>
 void TestConcatMain() {
   DeviceContext* context = new DeviceContext(Place());
@@ -459,6 +579,13 @@ void TestConcatMain() {
   ConcatCase2<DeviceContext, Place>(context);
   ConcatCase3<DeviceContext, Place>(context);
   ConcatCase4<DeviceContext, Place>(context);
+
+  phi::CPUPlace cpu_place;
+  phi::CPUContext ctx(cpu_place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
+  ConcatCase5<phi::CPUContext, phi::CPUPlace>(&ctx);
 
   delete context;
 }
@@ -476,6 +603,7 @@ void TestConcatMain<phi::GPUContext, phi::GPUPlace>() {
   ConcatCase2<phi::GPUContext, phi::GPUPlace>(context);
   ConcatCase3<phi::GPUContext, phi::GPUPlace>(context);
   ConcatCase4<phi::GPUContext, phi::GPUPlace>(context);
+  ConcatCase5<phi::GPUContext, phi::GPUPlace>(context);
 
   delete context;
 }
