@@ -837,19 +837,23 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
     if (config_.use_gpu() && config_.cinn_enabled()) {
       if (!config_.custom_pass_only_) {
-        ::pir::PassManager fused_op_pm(::pir::IrContext::Instance(),
-                                       config_.pm_opt_level_);
-        const std::vector<std::string> FusedOpPasses{// Operator fusion pass
-                                                     "conv2d_bn_fuse_pass",
-                                                     "conv2d_add_act_fuse_pass",
-                                                     "conv2d_add_fuse_pass",
-                                                     "transfer_layout_pass"};
-
-        for (const auto &fused_op : FusedOpPasses) {
-          fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
+        ::pir::PassManager pm(::pir::IrContext::Instance(),
+                              config_.pm_opt_level_);
+        for (auto &&pass : BeforeCINNPasses) {
+          pm.AddPass(pir::PassRegistry::Instance().Get(pass));
         }
-
-        fused_op_pm.Run(pir_program_.get());
+        // Author(liujinnan): Temporary version, after `auto_layout_pass`
+        // replaces `transfer_layout_pass` the branch will be deleted, and put
+        // `auto_layout_pass` and `auto_layout_simplify_pass` into
+        // `BeforeCINNPasses` directly.
+        if (config_.autolayout_enabled()) {
+          pm.AddPass(pir::PassRegistry::Instance().Get("auto_layout_pass"));
+          pm.AddPass(
+              pir::PassRegistry::Instance().Get("auto_layout_simplify_pass"));
+        } else {
+          pm.AddPass(pir::PassRegistry::Instance().Get("transfer_layout_pass"));
+        }
+        pm.Run(pir_program_.get());
       }
     }
 
@@ -879,7 +883,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     if (config_.use_gpu()) {
       // gpu
       if (!config_.custom_pass_only_) {
-        for (const auto &gpu_pass : kPirGpuPasses) {
+        for (const auto &gpu_pass : ShouldRunPass(kPirGpuPasses, config_)) {
           if (std::find(config_.deleted_passes_.begin(),
                         config_.deleted_passes_.end(),
                         gpu_pass) == config_.deleted_passes_.end()) {
@@ -2264,7 +2268,9 @@ void AnalysisPredictor::PrepareArgument() {
         }
       } else if (config_.use_gpu()) {
         pass_builder->ClearPasses();
-        for (const auto &pass : kGpuLowerPrecisionPasses) {
+
+        for (const auto &pass :
+             ShouldRunPass(kGpuLowerPrecisionPasses, config_)) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }

@@ -42,7 +42,13 @@ COMMON_DECLARE_bool(use_cinn);
 #endif
 
 COMMON_DECLARE_bool(enable_pir_api);
+COMMON_DECLARE_bool(enable_auto_layout_pass);
 namespace paddle {
+
+bool AnalysisConfig::autolayout_enabled() const {
+  bool is_enabled = FLAGS_enable_auto_layout_pass;
+  return is_enabled;
+}
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
 
