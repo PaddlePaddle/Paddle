@@ -23,4 +23,6 @@ class PADDLE_API InitPhi {
   InitPhi();
 };
 
+void InitOperants();
+
 }  // namespace paddle

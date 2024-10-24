@@ -125,4 +125,10 @@ endif()
 cc_test(
   init_phi_test
   SRCS init_phi_test.cc
-  DEPS phi common init_phi)
+  DEPS phi
+       common
+       init_phi
+       op_dialect
+       op_dialect_vjp
+       static_prim_api
+       primitive_backend_static_experimental)
