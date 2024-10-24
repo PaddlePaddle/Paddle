@@ -91,5 +91,35 @@ class TestAssignOutTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestFullLikeFloatTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.full_like
+        self.api_args = {
+            "input": np.random.randn(3, 2).astype(np.float32),
+            "fill_value": 5,
+        }
+        self.program_config = {"feed_list": ["input"]}
+        self.min_shape = {"input": [1, 2]}
+        self.max_shape = {"input": [5, 2]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestFullLikeIntTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.full_like
+        self.api_args = {
+            "input": np.random.randn(3, 2).astype(np.int32),
+            "fill_value": 5,
+        }
+        self.program_config = {"feed_list": ["input"]}
+        self.min_shape = {"input": [1, 2]}
+        self.max_shape = {"input": [5, 2]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 if __name__ == "__main__":
     unittest.main()
