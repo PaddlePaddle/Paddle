@@ -1801,3 +1801,19 @@ def get_ast_static_function(function):
             )
             return ast_static_function
     return function
+
+
+def json_to_pdmodel(net, input_spec, load_path, save_path):
+    net1 = paddle.jit.load(load_path)
+    state_dict = {}
+    for val in net1.state_dict().values():
+        name = val.name[: val.name.rfind('_')]
+        state_dict[name] = val
+
+    name_state_dict = {}
+    for name, var in net.to_static_state_dict().items():
+        name_state_dict[name] = state_dict[var.name]
+
+    net.set_state_dict(name_state_dict)
+    with paddle.pir_utils.OldIrGuard():
+        paddle.jit.save(net, save_path, input_spec)
