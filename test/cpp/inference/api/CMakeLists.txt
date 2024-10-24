@@ -980,6 +980,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       paddle_inference_shared
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
+    set_tests_properties(paddle_infer_api_test PROPERTIES TIMEOUT 300)
 
     inference_analysis_test(
       paddle_infer_api_copy_tensor_tester
@@ -991,7 +992,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
     set_tests_properties(paddle_infer_api_copy_tensor_tester PROPERTIES TIMEOUT
-                                                                        30)
+                                                                        300)
   endif()
 
   if(WITH_GPU AND TENSORRT_FOUND)

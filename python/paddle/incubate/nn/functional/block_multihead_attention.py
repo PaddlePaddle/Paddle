@@ -21,7 +21,6 @@ from typing_extensions import TypeAlias
 from paddle import _C_ops
 from paddle.framework import (
     LayerHelper,
-    in_dynamic_mode,
     in_dynamic_or_pir_mode,
 )
 
@@ -451,7 +450,7 @@ def block_multihead_attention_xpu(
     compute_dtype: str = "default",
     rope_theta: float = 10000.0,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.block_multihead_attention_xpu(
             qkv,
             key_cache,
