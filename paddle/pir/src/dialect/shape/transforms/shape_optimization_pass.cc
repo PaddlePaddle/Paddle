@@ -16,6 +16,7 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_printer.h"
