@@ -1623,14 +1623,42 @@ void slice_grad(const Tensor& input,
       reshape_out_grad = out_grad;
     }
 
-    if (decrease_size > 0 &&
-        (decrease_size != static_cast<size_t>(in_dims.size()))) {
-      auto out_tmp =
-          pad<T>(reshape<T>(reshape_out_grad, origin_out_shape), paddings, 0.0);
-      set_output<T>(out_tmp, input_grad);
+    // If axes.size() is 1, we can attempt to use concatenation instead of
+    // padding.
+    if (axes.size() == 1) {
+      const int64_t axis = axes[0];
+      const std::vector<int64_t> input_shape = input.shape();
+      if (decrease_size > 0 &&
+          (decrease_size != static_cast<size_t>(in_dims.size()))) {
+        reshape_out_grad = reshape<T>(reshape_out_grad, origin_out_shape);
+      }
+
+      std::vector<Tensor> concat_tensors;
+      // if concat axis has a shape of 0, concatenation may lead to errors.
+      if (paddings[2 * axis] != 0) {
+        std::vector<int64_t> left_shape(input_shape);
+        left_shape[axis] = paddings[2 * axis];
+        concat_tensors.push_back(full<T>(left_shape, 0.0, out_grad.dtype()));
+      }
+      concat_tensors.push_back(reshape_out_grad);
+
+      if (paddings[2 * axis + 1] != 0) {
+        std::vector<int64_t> right_shape(input_shape);
+        right_shape[axis] = paddings[2 * axis + 1];
+        concat_tensors.push_back(full<T>(right_shape, 0.0, out_grad.dtype()));
+      }
+
+      set_output<T>(concat<T>(concat_tensors, axis), input_grad);
     } else {
-      auto out_tmp = pad<T>(reshape_out_grad, paddings, 0.0);
-      set_output<T>(out_tmp, input_grad);
+      if (decrease_size > 0 &&
+          (decrease_size != static_cast<size_t>(in_dims.size()))) {
+        auto out_tmp = pad<T>(
+            reshape<T>(reshape_out_grad, origin_out_shape), paddings, 0.0);
+        set_output<T>(out_tmp, input_grad);
+      } else {
+        auto out_tmp = pad<T>(reshape_out_grad, paddings, 0.0);
+        set_output<T>(out_tmp, input_grad);
+      }
     }
   }
 }

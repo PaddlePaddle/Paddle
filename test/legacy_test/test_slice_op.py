@@ -101,6 +101,46 @@ class TestCase2(TestSliceOp):
         self.out = self.input[-3:3, 0:100, :, 2:-1]
 
 
+class TestCase3(TestSliceOp):
+    def config(self):
+        self.input = np.random.random([4, 4, 5, 6]).astype("float64")
+        self.starts = [-3]
+        self.ends = [3]
+        self.axes = [0]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[-3:3, :, :, :]
+
+
+class TestCase4(TestSliceOp):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [0]
+        self.ends = [4]
+        self.axes = [1]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[:, :, :, :]
+
+
+class TestCase5(TestSliceOp):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [0]
+        self.ends = [2]
+        self.axes = [1]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[:, 0:2, :, :]
+
+
+class TestCase6(TestSliceOp):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [2]
+        self.ends = [4]
+        self.axes = [1]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[:, 2:4, :, :]
+
+
 class TestSliceZerosShapeTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
