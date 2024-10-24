@@ -3710,7 +3710,7 @@ def check_clip_tensor(c_x, value, re_value, value_type, name):
     if value is None:
         value = fill_constant([1], value_type, re_value)
     else:
-        if isinstance(value, Tensor):
+        if isinstance(value, paddle.Tensor):
             if value.shape == [0]:
                 value = fill_constant([1], value_type, re_value)
             elif value.shape not in [[], [1]] and value.shpae != c_x.shape[-len(value.shape):]:
@@ -3779,7 +3779,7 @@ def clip(
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if isinstance(min, Tensor) or isinstance(max, Tensor):
+    if isinstance(min, paddle.Tensor) or isinstance(max, paddle.Tensor):
         min_n = check_clip_tensor(x, min, min_, x_dtype, 'min')
         max_n = check_clip_tensor(x, max, max_, x_dtype, 'max')
 
@@ -3871,7 +3871,7 @@ def clip_(
     max = fmax if max is None else max
 
     if in_dynamic_mode():
-        if not isinstance(max, Tensor) and not isinstance(min, Tensor):
+        if not isinstance(max, paddle.Tensor) and not isinstance(min, paddle.Tensor):
             return _C_ops.clip_(x, min, max)
         else:
             max = check_clip_tensor(x, max, fmin, x.dtype, 'max')
