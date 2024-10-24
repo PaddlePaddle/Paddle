@@ -484,6 +484,8 @@ void OptimizeExprGPU(Expr *expr) {
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);
 
+  //  std::cerr << "final expr \n" << *expr << std::endl;
+
   VLOG(4) << "After Optimize Expr: \n" << *expr;
 }
 

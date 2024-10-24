@@ -22,6 +22,7 @@
 #include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
 #include "paddle/cinn/optim/extern_call_process.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
+#include "paddle/cinn/optim/for_cse_optimize.h"
 #include "paddle/cinn/optim/if_fusion.h"
 #include "paddle/cinn/optim/insert_debug_log_callee.h"
 #include "paddle/cinn/optim/ir_simplify.h"
@@ -115,6 +116,10 @@ Expr Optimize(Expr e,
     LOG(WARNING) << "Turn on runtime debug information output";
     InsertDebugLogCallee(&copied);
   }
+
+  std::cerr << "final expr " << copied << std::endl;
+
+  ForCSEOptimize(&copied);
   return copied;
 }
 
@@ -133,6 +138,7 @@ ir::Module Optimize(const ir::Module& module, const Target& target) {
   LowerIntrin(&copied, target);
   VLOG(10) << "After LowerIntrin:" << copied.as_module_ref();
 
+  // std::cerr << "T! \n" << copied << std::endl;
   return copied.as_module_ref();
 }
 
