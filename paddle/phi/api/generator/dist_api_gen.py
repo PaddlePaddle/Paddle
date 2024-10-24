@@ -26,6 +26,10 @@ from api_gen import (
     source_include,
 )
 
+NEED_BACKFILL_LIST = [
+    'nonzero',
+]
+
 ######################
 # Code Gen Templates #
 ######################
@@ -60,7 +64,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 10. Fallback{}
     }}\n
     // 11. Set Output Dist Attr For Default Impl{}\n
-    // 12. Return
+    // 12. Check And Update Unknown GlobalShape if needed{}\n
+    // 13. Return
     {}
   }}
 """
@@ -461,6 +466,15 @@ SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
 SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
     for (size_t i = 0; i < {name}.size(); ++i) {{
         SetReplicatedDistAttrForOutput({name}[i], current_process_mesh);
+    }}
+"""
+
+
+SINGLE_CHECK_AND_UPDATE_UNKNOWN_GLOBAL_SHAPE_TEMPLATE = """
+    CheckAndUpdateUnknownGlobalShape({});"""
+VECTOR_CHECK_AND_UPDATE_UNKNOWN_GLOBAL_SHAPE_TEMPLATE = """
+    for (size_t i = 0; i < {name}.size(); ++i) {{
+        CheckAndUpdateUnknownGlobalShape({name}[i]);
     }}
 """
 
@@ -1872,6 +1886,22 @@ class DistForwardAPI(ForwardAPI):
 
         return set_out_dist_attr_code
 
+    def generate_check_and_update_unknown_global_shape_code(self) -> str:
+        check_and_update_unknown_global_shape_code = ""
+        if self.kernel['func'][0] not in NEED_BACKFILL_LIST:
+            return check_and_update_unknown_global_shape_code
+
+        for i, out_name in enumerate(self.dist_output_args):
+            if self.outputs['types'][i] == 'std::vector<Tensor>':
+                check_and_update_unknown_global_shape_code += VECTOR_CHECK_AND_UPDATE_UNKNOWN_GLOBAL_SHAPE_TEMPLATE.format(
+                    name=out_name
+                )
+            else:
+                check_and_update_unknown_global_shape_code += SINGLE_CHECK_AND_UPDATE_UNKNOWN_GLOBAL_SHAPE_TEMPLATE.format(
+                    out_name
+                )
+        return check_and_update_unknown_global_shape_code
+
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
@@ -1898,6 +1928,11 @@ class DistForwardAPI(ForwardAPI):
         kernel_call_code = self.generate_kernel_call_code()
         fallback_code = self.generate_fallback_code()
         output_dist_attr_setting = self.generate_output_dist_attr_setting()
+        # In op such as nonzero, the output shape is set to -1 by the infer_meta_fn. This shape is then determined
+        # within the kernel.Therefore, we need to inspect and backfill the global shape after the kernel call.
+        check_and_update_unknown_global_shape_code = (
+            self.generate_check_and_update_unknown_global_shape_code()
+        )
         return_code = self.generate_return_code()
 
         return MAIN_DIST_BRANCH_TEMPLATE.format(
@@ -1912,6 +1947,7 @@ class DistForwardAPI(ForwardAPI):
             kernel_call_code,
             fallback_code,
             output_dist_attr_setting,
+            check_and_update_unknown_global_shape_code,
             return_code,
         )
 
