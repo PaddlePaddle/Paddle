@@ -29,6 +29,7 @@ void NormKernel(const Context& ctx,
                 bool is_test,
                 DenseTensor* out,
                 DenseTensor* norm) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(out);
   ctx.template Alloc<T>(norm);
 
@@ -59,16 +60,22 @@ void NormKernel(const Context& ctx,
     xshape[i] = static_cast<int>(x_dims[i]);
   }
 
-  int r = xpu::l2_norm<T>(ctx.x_context(),
-                          x.data<T>(),
-                          out->data<T>(),
-                          norm->data<T>(),
-                          xshape,
-                          axis,
-                          epsilon);
+  int r = xpu::l2_norm(ctx.x_context(),
+                       reinterpret_cast<const XPUType*>(x.data<T>()),
+                       reinterpret_cast<XPUType*>(out->data<T>()),
+                       reinterpret_cast<XPUType*>(norm->data<T>()),
+                       xshape,
+                       axis,
+                       epsilon);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "l2_norm");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(norm, XPU, ALL_LAYOUT, phi::NormKernel, float) {}
+PD_REGISTER_KERNEL(norm,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::NormKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

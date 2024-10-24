@@ -39,6 +39,13 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
     act = xpu::Activation_t::RELU;
   } else if (activation == "gelu") {
     act = xpu::Activation_t::GELU;
+  } else if (activation == "none") {
+    // pass
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "activation of fused_gemm_epilogue should be one of {none, relu, "
+        "gelu}, but received %s",
+        activation));
   }
 
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
@@ -73,7 +80,7 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
           "FusedGemm do not support batched fc now, but got batch size %d.",
           batch_size));
   MatMulXPUFunction<XPUType>(
-      xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f, false, act);
+      xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f, 0.f, false, act);
 }
 
 }  // namespace fusion

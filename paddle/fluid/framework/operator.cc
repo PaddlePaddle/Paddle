@@ -25,36 +25,36 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/ops_signature/signatures.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/raw_tensor.h"
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
-#include "paddle/fluid/platform/onednn_op_list.h"
+#include "paddle/phi/core/platform/onednn_op_list.h"
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1389,15 +1389,18 @@ bool OperatorWithKernel::SupportXPU() const {
       return false;
     } else {
       auto& op_kernels = kernel_iter->second;
-      return std::any_of(op_kernels.begin(),
-                         op_kernels.end(),
-                         [this](OpKernelMap::const_reference kern_pair) {
-                           return phi::is_xpu_place(kern_pair.first.place_) &&
-                                  paddle::platform::is_xpu_support_op(
-                                      type_,
-                                      framework::TransToPhiDataType(
-                                          kern_pair.first.data_type_));
-                         });
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [this](OpKernelMap::const_reference kern_pair) {
+            bool is_xpu_support1 = phi::backends::xpu::is_xpu_support_op(
+                type_, phi::TransToPhiDataType(kern_pair.first.data_type_));
+            bool is_xpu_support2 = phi::backends::xpu::is_xpu_support_op(
+                phi::TransToPhiKernelName(type_),
+                phi::TransToPhiDataType(kern_pair.first.data_type_));
+            return phi::is_xpu_place(kern_pair.first.place_) &&
+                   (is_xpu_support1 || is_xpu_support2);
+          });
     }
   }
 #else
@@ -1548,7 +1551,7 @@ bool OperatorWithKernel::SupportsKernelType(
   if (phi::is_xpu_place(kernel_type.place_)) {
     return kernel_iter != kernels.end() &&
            paddle::platform::is_xpu_support_op(
-               type_, framework::TransToPhiDataType(kernel_type.data_type_));
+               type_, phi::TransToPhiDataType(kernel_type.data_type_));
   }
 #endif
 
@@ -1557,7 +1560,7 @@ bool OperatorWithKernel::SupportsKernelType(
     bool use_xpu_kp_kernel_rt =
         FLAGS_run_kp_kernel &&
         paddle::platform::is_xpu_kp_support_op(
-            type_, framework::TransToPhiDataType(kernel_type.data_type_));
+            type_, phi::TransToPhiDataType(kernel_type.data_type_));
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_in_xpu_kpwhite_list(type_);
     bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
@@ -1568,7 +1571,7 @@ bool OperatorWithKernel::SupportsKernelType(
     }
     return kernel_iter != kernels.end() &&
            paddle::platform::is_xpu_support_op(
-               type_, framework::TransToPhiDataType(kernel_type.data_type_));
+               type_, phi::TransToPhiDataType(kernel_type.data_type_));
   }
 #endif
 
@@ -1700,8 +1703,7 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
           if (!(HasSameTensorType<phi::DenseTensor>(phi_output, var_output) ||
                 HasSameTensorType<phi::SparseCooTensor>(phi_output,
                                                         var_output) ||
-                HasSameTensorType<framework::Strings>(phi_output,
-                                                      var_output))) {
+                HasSameTensorType<phi::Strings>(phi_output, var_output))) {
             need_prepare_phi_data_ = true;
           }
           phi_tensor_index++;
@@ -1799,7 +1801,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
             paddle::platform::is_xpu_kp_support_op(
-                type_, framework::TransToPhiDataType(kernel_type_->data_type_));
+                type_, phi::TransToPhiDataType(kernel_type_->data_type_));
         bool use_xpu_kp_kernel_debug =
             paddle::platform::is_in_xpu_kpwhite_list(type_);
         if (use_xpu_kp_kernel_rt) {
@@ -1883,7 +1885,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
             paddle::platform::is_xpu_kp_support_op(
-                type_, framework::TransToPhiDataType(kernel_type_->data_type_));
+                type_, phi::TransToPhiDataType(kernel_type_->data_type_));
         bool use_xpu_kp_kernel_debug =
             paddle::platform::is_in_xpu_kpwhite_list(type_);
         if (use_xpu_kp_kernel_rt) {
@@ -1925,13 +1927,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     bool is_xpu_unsupport =
         phi::is_xpu_place(kernel_type_->place_) &&
         !paddle::platform::is_xpu_support_op(
-            type_, framework::TransToPhiDataType(kernel_type_->data_type_));
+            type_, phi::TransToPhiDataType(kernel_type_->data_type_));
 #endif
 #ifdef PADDLE_WITH_XPU_KP
     bool use_xpu_kp_kernel_rt =
         phi::is_xpu_place(kernel_type_->place_) && FLAGS_run_kp_kernel &&
         paddle::platform::is_xpu_kp_support_op(
-            type_, framework::TransToPhiDataType(kernel_type_->data_type_));
+            type_, phi::TransToPhiDataType(kernel_type_->data_type_));
     bool use_xpu_kp_kernel_debug =
         phi::is_xpu_place(kernel_type_->place_) &&
         paddle::platform::is_in_xpu_kpwhite_list(type_);
@@ -2359,8 +2361,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   if (phi::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||
        !paddle::platform::is_xpu_support_op(
-           type_,
-           framework::TransToPhiDataType(expected_kernel_key.data_type_)))) {
+           type_, phi::TransToPhiDataType(expected_kernel_key.data_type_)))) {
     VLOG(3) << "fluid missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
@@ -2374,8 +2375,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     bool use_xpu_kp_kernel_rt =
         FLAGS_run_kp_kernel &&
         paddle::platform::is_xpu_kp_support_op(
-            type_,
-            framework::TransToPhiDataType(expected_kernel_key.data_type_));
+            type_, phi::TransToPhiDataType(expected_kernel_key.data_type_));
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_in_xpu_kpwhite_list(type_);
     if (use_xpu_kp_kernel_rt) {
@@ -2404,7 +2404,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       }
     }
     bool is_xpu_unsupport = (!paddle::platform::is_xpu_support_op(
-        type_, framework::TransToPhiDataType(expected_kernel_key.data_type_)));
+        type_, phi::TransToPhiDataType(expected_kernel_key.data_type_)));
     if (!is_xpu_kp_support &&
         (kernel_iter == kernels.end() || is_xpu_unsupport)) {
       VLOG(3) << "fluid missing XPU kernel: " << type_
@@ -3250,8 +3250,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
         need_prepare_phi_data_ = true;
         tensor_in = &(var->Get<phi::TensorArray>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
-      } else if (var->IsType<framework::Vocab>()) {
-        tensor_in = &(var->Get<framework::Vocab>());
+      } else if (var->IsType<phi::Vocab>()) {
+        tensor_in = &(var->Get<phi::Vocab>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<phi::Strings>()) {
+        tensor_in = &(var->Get<phi::Strings>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::FeedList>()) {
         tensor_in = &(var->Get<framework::FeedList>());
@@ -3304,12 +3307,15 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input phi::TensorArray size is 0, the output
           // phi::TensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<framework::Strings>()) {
-          tensor_out = var->template GetMutable<framework::Strings>();
+        } else if (var->template IsType<phi::Strings>()) {
+          tensor_out = var->template GetMutable<phi::Strings>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::RawTensor>() ||
+        } else if (var->template IsType<phi::Vocab>()) {
+          tensor_out = var->template GetMutable<phi::Vocab>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::RawTensor>() ||
                    !var->IsInitialized()) {
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
+          tensor_out = var->template GetMutable<phi::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
@@ -3528,7 +3534,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 PADDLE_GET_CONST(std::vector<bool>, attr_iter->second));
             break;
           case phi::AttributeType::DATA_TYPE: {
-            auto data_type = framework::TransToPhiDataType(
+            auto data_type = phi::TransToPhiDataType(
                 static_cast<framework::proto::VarType::Type>(
                     PADDLE_GET_CONST(int, attr_iter->second)));
             phi_kernel_context->EmplaceBackAttr(data_type);

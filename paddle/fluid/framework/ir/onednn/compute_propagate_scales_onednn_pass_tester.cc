@@ -108,9 +108,8 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     } else if (var_name == "wh") {
       tensor_size = wh.size();
     }
-    tensor->mutable_data(place,
-                         framework::TransToPhiDataType(proto::VarType::FP32),
-                         tensor_size);
+    tensor->mutable_data(
+        place, phi::TransToPhiDataType(proto::VarType::FP32), tensor_size);
   }
 
   void PrepareGraph(ir::Graph* graph,

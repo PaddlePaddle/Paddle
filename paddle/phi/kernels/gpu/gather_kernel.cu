@@ -29,6 +29,9 @@ void GatherKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   const auto& index_type = index.dtype();
   auto axis_v = axis.to<int>();
+  if (axis_v < 0) {
+    axis_v += static_cast<int>(x.dims().size());
+  }
   if (axis_v != 0) {
     if (index_type == phi::DataType::INT32) {
       phi::funcs::GatherV2CUDAFunction<T, int32_t>(

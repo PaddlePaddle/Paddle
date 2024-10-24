@@ -12,4 +12,5 @@ endforeach()
 
 if(WIN32)
   set_tests_properties(test_sot_resnet50_backward PROPERTIES TIMEOUT 420)
+  set_tests_properties(test_sot_resnet PROPERTIES TIMEOUT 200)
 endif()

@@ -20,10 +20,11 @@ from dataclasses import dataclass
 import paddle
 from paddle import pir
 from paddle.autograd.backward_utils import ValueDict
-from paddle.base.framework import auto_complete_op_role
+from paddle.base.framework import pir_op_role_guard
 from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.passes.pass_base import PassContext, new_pass
+from paddle.distributed.passes.pass_utils import infer_chunk_id
 
 from .mix_to_dist_pass import dist_skip_op_list
 from .process_group import get_process_group
@@ -64,7 +65,7 @@ def reshard_single_value(program, op, operand, attr):
     if prev_var.is_dist() and prev_var.dist_attr() != attr:
         operand_attr = attr.as_tensor_dist_attr()
         paddle.pir.set_insertion_point(op)
-        with auto_complete_op_role(program, op.op_role):
+        with pir_op_role_guard(op.op_role):
             # fold reshard
             if prev_var.get_defining_op().name() == 'dist_op.reshard':
                 prev_reshard = prev_var.get_defining_op()
@@ -100,7 +101,7 @@ def reshard_combine_value(program, op, operand, attr):
         )
 
     paddle.pir.set_insertion_point(op)
-    with auto_complete_op_role(program, op.op_role):
+    with pir_op_role_guard(op.op_role):
         combine_value = paddle._C_ops.builtin_combine(reshard_vars)
     return combine_value
 
@@ -135,7 +136,7 @@ def apply_partition_pass(program):
 
             # reshard input
             paddle.pir.set_insertion_point(op)
-            with auto_complete_op_role(program, ref_op_role):
+            with pir_op_role_guard(ref_op_role):
                 reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
                 operand.set_source(reshard_var)
 
@@ -150,7 +151,7 @@ def apply_partition_pass(program):
             old_dist_attr = result.dist_attr()
             result.update_dist_attr(result_attr)
 
-            with auto_complete_op_role(program, ref_op_role):
+            with pir_op_role_guard(ref_op_role):
                 prev_op = prev_var.get_defining_op()
 
                 # reshard output to assign out input
@@ -161,7 +162,7 @@ def apply_partition_pass(program):
                 assign_out.get_defining_op().dist_attr = (
                     copy_op_attr_with_new_member(
                         assign_out.get_defining_op().dist_attr,
-                        new_chunk_id=prev_op.dist_attr.chunk_id,
+                        new_chunk_id=op.dist_attr.chunk_id,
                     )
                 )
 
@@ -170,7 +171,7 @@ def apply_partition_pass(program):
 
             reshard_var_2 = reshard_var_1
             if old_dist_attr != reshard_var_1.dist_attr():
-                with auto_complete_op_role(program, ref_op_role):
+                with pir_op_role_guard(ref_op_role):
                     reshard_var_2 = paddle._C_ops.reshard_v2(
                         result, old_dist_attr
                     )
@@ -200,7 +201,7 @@ def apply_partition_pass(program):
                 var.update_dist_attr(attr.as_tensor_dist_attr())
 
                 # insert reshard
-                with auto_complete_op_role(program, op.op_role):
+                with pir_op_role_guard(op.op_role):
                     reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
                     var.replace_all_uses_with(reshard_var)
                     reshard_var.get_defining_op().operand(0).set_source(var)
@@ -265,7 +266,7 @@ class ReshardPasses:
                 paddle.pir.set_insertion_point(op)
                 ref_op_role = op.op_role
 
-                with auto_complete_op_role(dist_program, ref_op_role):
+                with pir_op_role_guard(ref_op_role):
                     out_value = reshard_func.reshard(
                         src_dist_attr,
                         dst_dist_attr,
@@ -540,6 +541,12 @@ def remove_unuseful_comm_op_pass(program):
             if op.operand_source(0).has_one_use():
                 op.result(0).replace_all_uses_with(op.operand_source(0))
                 op.erase()
+        if (
+            op.name() == "pd_op.cast"
+            and op.result(0).dtype == op.operand_source(0).dtype
+        ):
+            op.result(0).replace_all_uses_with(op.operand_source(0))
+            op.erase()
 
 
 # In sequence_parallel, we need to transpose hidden_states
@@ -628,6 +635,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
         pipeline_strategy.pp_degree
     )
     pass_attr["vpp_degree"] = pipeline_strategy.vpp_degree
+    pass_attr["split_backward"] = pipeline_strategy.split_backward
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
@@ -811,7 +819,7 @@ def _set_process_mesh_and_chunk_id(op, process_mesh, chunk_id, set_mesh):
     )
 
 
-def complete_chunk_id(dist_program, pipeline_strategy):
+def complete_chunk_id(dist_program, startup_program, pipeline_strategy):
     if not pipeline_strategy.enable:
         return
 
@@ -975,6 +983,14 @@ def complete_chunk_id(dist_program, pipeline_strategy):
     # Step6: add reshard op between pipeline chunks
     apply_partition_pass(dist_program)
 
+    for op in startup_program.global_block().ops:
+        if op.name() == "builtin.set_parameter":
+            param_name = op.str_attr("parameter_name")
+            startup_param = op.operand_source(0)
+            param = dist_program.get_parameter_value_by_name(param_name)
+            if param.dist_attr():
+                startup_param.update_dist_attr(param.dist_attr())
+
 
 def check_chunk_id(dist_program):
     all_ops = dist_program.global_block().ops
@@ -993,21 +1009,22 @@ def check_chunk_id(dist_program):
                     all_used_ops = op.result(0).all_used_ops()
                     for used_op in all_used_ops:
                         if used_op.dist_attr.chunk_id != -1:
-                            op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
-                                op.dist_attr.process_mesh,
-                                op.dist_attr.operands(),
-                                op.dist_attr.results(),
-                                used_op.dist_attr.chunk_id,
+                            op.dist_attr = copy_op_attr_with_new_member(
+                                op.dist_attr,
+                                new_chunk_id=used_op.dist_attr.chunk_id,
                             )
                             break
-                    if op.dist_attr.chunk_id == -1:
-                        raise ValueError(
-                            f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
-                        )
+
                 else:
-                    raise ValueError(
-                        f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                    op_chunk_id = infer_chunk_id(idx, all_ops)
+                    op.dist_attr = copy_op_attr_with_new_member(
+                        op.dist_attr, new_chunk_id=op_chunk_id
                     )
+
+            if op.dist_attr.chunk_id == -1:
+                raise ValueError(
+                    f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                )
 
 
 def check_order(op_list, order):
@@ -1434,30 +1451,45 @@ def fuse_attention_ffn_qkv_pass(
                             dy_param.local_shape[-1] // dy_param.local_head_dims
                         )
                     concated_dy_param_index.append(param_index)
-                # Fuse params and init pir program fusion params.
-                with paddle.base.dygraph.guard():
-                    if len(dy_param_list) == 3:
-                        is_qkv = True
-                        num_heads = dy_param_list[0].local_num_head
-                        num_key_value_heads = dy_param_list[1].local_num_head
-                    else:
-                        is_qkv = False
-                        num_heads = None
-                        num_key_value_heads = None
-                    concated_param = fuse_param_func(
-                        [obj._local_value() for obj in concated_dy_param_list],
-                        is_qkv=is_qkv,
-                        num_heads=num_heads,
-                        num_key_value_heads=num_key_value_heads,
-                    )
 
-                pir_scope_param = (
-                    paddle.static.global_scope().var(pir_param).get_tensor()
-                )
-                pir_scope_param._share_data_with(concated_param.get_tensor())
-                # Pop and relase original params from concrete_program
-                for param in concated_dy_param_list:
-                    param.get_tensor()._clear()
+                dy_param_init = True
+                for p in concated_dy_param_list:
+                    if not p._local_value()._is_initialized():
+                        dy_param_init = False
+                        break
+
+                if dy_param_init:
+                    # Fuse params and init pir program fusion params.
+                    with paddle.base.dygraph.guard():
+                        if len(dy_param_list) == 3:
+                            is_qkv = True
+                            num_heads = dy_param_list[0].local_num_head
+                            num_key_value_heads = dy_param_list[
+                                1
+                            ].local_num_head
+                        else:
+                            is_qkv = False
+                            num_heads = None
+                            num_key_value_heads = None
+                        concated_param = fuse_param_func(
+                            [
+                                obj._local_value()
+                                for obj in concated_dy_param_list
+                            ],
+                            is_qkv=is_qkv,
+                            num_heads=num_heads,
+                            num_key_value_heads=num_key_value_heads,
+                        )
+
+                    pir_scope_param = (
+                        paddle.static.global_scope().var(pir_param).get_tensor()
+                    )
+                    pir_scope_param._share_data_with(
+                        concated_param.get_tensor()
+                    )
+                    # Pop and relase original params from concrete_program
+                    for param in concated_dy_param_list:
+                        param.get_tensor()._clear()
     concated_dy_param_index.sort(reverse=True)
     for index in concated_dy_param_index:
         concrete_program.parameters[0].pop(index)

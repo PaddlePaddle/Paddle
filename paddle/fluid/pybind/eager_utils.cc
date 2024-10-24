@@ -270,6 +270,18 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
+double CastPyArg2AttrDouble(PyObject* obj, ssize_t arg_pos) {
+  if (PyObject_CheckFloat(obj)) {
+    return PyObject_ToDouble(obj);
+  } else {
+    PADDLE_THROW(common::errors::InvalidType(
+        "argument (position %d) must be "
+        "float, but got %s",
+        arg_pos + 1,
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+  }
+}
+
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckStr(obj)) {
     Py_ssize_t size = 0;
@@ -884,9 +896,9 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   return dtype;
 }
 
-paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
+phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
   if (PyDict_Check(obj)) {
-    paddle::framework::Vocab vocab;
+    phi::Vocab vocab;
     vocab = ::pybind11::handle(obj)
                 .cast<std::unordered_map<std::wstring, std::int32_t>>();
     return vocab;
@@ -1260,7 +1272,7 @@ PyObject* ToPyObject(
   return dict;
 }
 
-PyObject* ToPyObject(const paddle::framework::Vocab& value) {
+PyObject* ToPyObject(const phi::Vocab& value) {
   PyObject* dict = PyDict_New();
   for (const auto& map_iter : value) {
     // Convert Key
@@ -1949,14 +1961,12 @@ paddle::Tensor CreateTensorFromVarDesc(
       std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
       dense_tensor = std::make_shared<phi::DenseTensor>(
           allocation_ptr,
-          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                               ddims));
+          phi::DenseTensorMeta(phi::TransToPhiDataType(dtype), ddims));
     } else {
       // TODO(dev): we need enhance check for ddims.
       dense_tensor = std::make_shared<phi::DenseTensor>(
           std::make_shared<phi::Allocation>(),
-          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                               ddims));
+          phi::DenseTensorMeta(phi::TransToPhiDataType(dtype), ddims));
     }
     tensor.set_impl(dense_tensor);
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
@@ -2532,7 +2542,7 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   }
   if (PyObject_TypeCheck(obj, g_vartype_pytype)) {
     framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
-    return framework::TransToPhiDataType(type);
+    return phi::TransToPhiDataType(type);
   }
   return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
 }

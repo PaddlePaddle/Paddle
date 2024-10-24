@@ -1274,7 +1274,9 @@ def dropout(
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if in_dynamic_or_pir_mode() and p == 1.0:
+            if in_dynamic_mode() and p == 1.0:
+                return paddle.scale(x, scale=0.0)
+            elif in_pir_mode() and isinstance(p, (float, int)) and p == 1.0:
                 return paddle.scale(x, scale=0.0)
 
             scale_input = (

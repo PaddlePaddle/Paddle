@@ -82,10 +82,6 @@ add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
 
-#ddim lib
-proto_library(framework_proto SRCS framework.proto)
-proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
-
 proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(
   op_def_api
@@ -105,20 +101,10 @@ foreach(OP_DEF_FILE ${OP_DEF_FILES})
 endforeach()
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt "{\"\",\"\"}};\n}")
 
-proto_library(heter_service_proto SRCS heter_service.proto)
-proto_library(data_feed_proto SRCS data_feed.proto)
-proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
-              data_feed_proto)
-
-cc_library(
-  string_array
-  SRCS string_array.cc
-  DEPS utf8proc phi common)
-
 cc_library(
   data_type
   SRCS data_type.cc
-  DEPS framework_proto)
+  DEPS phi)
 
 cc_library(
   tensor
@@ -128,7 +114,7 @@ cc_library(
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS phi common tensor framework_proto version)
+  DEPS phi common tensor version)
 
 cc_library(
   garbage_collector
@@ -136,14 +122,9 @@ cc_library(
   DEPS device_context phi common glog)
 
 cc_library(
-  reader
-  SRCS reader.cc
-  DEPS lod_tensor phi common)
-
-cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope phi common)
+  DEPS scope phi common)
 
 # every source file that includes "dnnl.h" must depends on onednn
 # or, the first one should depends on onednn
@@ -173,7 +154,7 @@ cc_library(
 cc_library(
   device_worker
   SRCS device_worker.cc
-  DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
+  DEPS lod_tensor scope ${BRPC_DEPS})
 cc_library(
   scope_pool
   SRCS scope_pool.cc
@@ -226,7 +207,6 @@ cc_library(
   data_transform
   SRCS data_transform.cc
   DEPS tensor
-       framework_proto
        selected_rows_utils
        data_device_transform
        data_type_transform
@@ -237,21 +217,21 @@ cc_library(
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto phi common)
+  DEPS phi common)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
-  DEPS framework_proto)
+  DEPS phi)
 
 cc_library(
   op_version_registry
   SRCS op_version_registry.cc
-  DEPS op_version_proto framework_proto)
+  DEPS op_version_proto phi)
 
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute ops_extra_info glog auto_parallel_proto)
+  DEPS phi attribute ops_extra_info glog auto_parallel_proto)
 cc_library(
   no_need_buffer_vars_inference
   SRCS no_need_buffer_vars_inference.cc
@@ -259,7 +239,7 @@ cc_library(
 cc_library(
   op_info
   SRCS op_info.cc
-  DEPS attribute framework_proto no_need_buffer_vars_inference)
+  DEPS attribute phi no_need_buffer_vars_inference)
 cc_library(
   shape_inference
   SRCS shape_inference.cc
@@ -272,16 +252,6 @@ if(WITH_ONEDNN)
 endif()
 
 cc_library(
-  transfer_scope_cache
-  SRCS transfer_scope_cache.cc
-  DEPS scope framework_proto device_context)
-
-cc_library(
-  unused_var_check
-  SRCS unused_var_check.cc
-  DEPS glog no_need_buffer_vars_inference)
-
-cc_library(
   op_kernel_type
   SRCS op_kernel_type.cc
   DEPS device_context phi common)
@@ -290,13 +260,7 @@ if(WITH_XPU)
   cc_library(
     phi_utils
     SRCS phi_utils.cc
-    DEPS lod_tensor
-         selected_rows_utils
-         phi
-         common
-         var_type_traits
-         op_info
-         xpu_op_list)
+    DEPS lod_tensor selected_rows_utils phi common var_type_traits op_info)
 else()
   cc_library(
     phi_utils
@@ -307,26 +271,20 @@ endif()
 if(WITH_XPU)
   cc_library(
     operator
-    SRCS operator.cc
-    DEPS xpu_op_list
-         op_info
+    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
+         infershape_utils.cc
+    DEPS op_info
          proto_desc
-         device_context
          tensor
          scope
          glog
-         trainer_desc_proto
-         data_feed_proto
          shape_inference
          data_transform
          lod_tensor
-         transfer_scope_cache
          op_kernel_type
          op_call_stack
-         unused_var_check
          detail_op_handle
          phi_utils
-         infershape_utils
          phi
          common
          op_compat_infos
@@ -334,25 +292,20 @@ if(WITH_XPU)
 else()
   cc_library(
     operator
-    SRCS operator.cc
+    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
+         infershape_utils.cc
     DEPS op_info
          proto_desc
-         device_context
          tensor
          scope
          glog
-         trainer_desc_proto
-         data_feed_proto
          shape_inference
          data_transform
          lod_tensor
-         transfer_scope_cache
          op_kernel_type
          op_call_stack
-         unused_var_check
          detail_op_handle
          phi_utils
-         infershape_utils
          phi
          common
          op_compat_infos
@@ -511,9 +464,8 @@ cc_library(
 
 set(NAIVE_EXECUTOR_DEPS
     op_registry
-    device_context
     scope
-    framework_proto
+    phi
     glog
     lod_rank_table
     feed_fetch_method
@@ -524,10 +476,6 @@ set(NAIVE_EXECUTOR_DEPS
 
 if(TENSORRT_FOUND)
   set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} tensorrt_engine_op)
-endif()
-
-if(WITH_NVTX AND NOT WIN32)
-  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} cuda_profiler)
 endif()
 
 cc_library(
@@ -574,10 +522,7 @@ if(WITH_DISTRIBUTE)
            data_set.cc
       DEPS fleet_wrapper
            op_registry
-           device_context
            scope
-           framework_proto
-           trainer_desc_proto
            glog
            framework_io
            heter_wrapper
@@ -588,12 +533,9 @@ if(WITH_DISTRIBUTE)
            lod_rank_table
            feed_fetch_method
            feed_hook
-           collective_helper
            ${GLOB_DISTRIBUTE_DEPS}
            graph_to_program_pass
            variable_helper
-           data_feed_proto
-           heter_service_proto
            ${BRPC_DEP})
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -647,12 +589,7 @@ if(WITH_DISTRIBUTE)
            device_worker_factory.cc
            data_set.cc
       DEPS op_registry
-           device_context
            scope
-           framework_proto
-           data_feed_proto
-           heter_service_proto
-           trainer_desc_proto
            glog
            index_sampler
            index_wrapper
@@ -668,7 +605,6 @@ if(WITH_DISTRIBUTE)
            feed_hook
            graph_to_program_pass
            variable_helper
-           heter_service_proto
            fleet
            heter_server
            ${${EXTERNAL_BRPC_DEPS}}
@@ -721,12 +657,7 @@ if(WITH_DISTRIBUTE)
            device_worker_factory.cc
            data_set.cc
       DEPS op_registry
-           device_context
            scope
-           framework_proto
-           data_feed_proto
-           heter_service_proto
-           trainer_desc_proto
            glog
            lod_rank_table
            framework_io
@@ -779,12 +710,7 @@ elseif(WITH_PSLIB)
          device_worker_factory.cc
          data_set.cc
     DEPS op_registry
-         device_context
          scope
-         framework_proto
-         data_feed_proto
-         heter_service_proto
-         trainer_desc_proto
          glog
          lod_rank_table
          framework_io
@@ -824,12 +750,7 @@ else()
          device_worker_factory.cc
          data_set.cc
     DEPS op_registry
-         device_context
          scope
-         framework_proto
-         data_feed_proto
-         heter_service_proto
-         trainer_desc_proto
          glog
          lod_rank_table
          framework_io
@@ -866,11 +787,11 @@ cc_library(
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto auto_parallel_proto proto_desc)
+  DEPS phi auto_parallel_proto proto_desc)
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS phi common device_context)
+  DEPS phi)
 
 cc_library(
   dlpack_tensor
@@ -881,19 +802,6 @@ cc_library(
   op_compatible_info
   SRCS op_compatible_info.cc
   DEPS string_helper proto_desc)
-
-cc_library(
-  infershape_utils
-  SRCS infershape_utils.cc
-  DEPS lod_tensor
-       selected_rows_utils
-       attribute
-       var_type_traits
-       phi
-       common
-       phi_utils
-       op_info
-       shape_inference)
 
 # Get the current working branch
 execute_process(
@@ -919,7 +827,6 @@ cc_library(
   SRCS custom_operator.cc
   DEPS tensor
        attribute
-       framework_proto
        op_registry
        operator
        string_helper
@@ -943,7 +850,6 @@ set(FLUID_FRAMEWORK_MODULES
     proto_desc
     lod_tensor
     executor
-    data_feed_proto
     layer
     phi
     common

@@ -58,11 +58,11 @@ class SubToGlobalMeshFunction(ReshardFunction):
 
         cur_rank = paddle.distributed.get_rank()
 
-        group_ranks = sorted(dst_mesh.process_ids)
-        comm_group = new_process_group(group_ranks)
-
-        if cur_rank == root_rank:
+        if cur_rank in src_mesh.process_ids:
             # the root rank will broadcast the src_value to other ranks
+            chunk_id = -1
+            if src_value.get_defining_op().dist_attr:
+                chunk_id = src_value.get_defining_op().dist_attr.chunk_id
             tmp_value = paddle._C_ops.share_data_(src_value)
             value_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
                 src_value.type(), src_value.dist_attr()
@@ -70,7 +70,7 @@ class SubToGlobalMeshFunction(ReshardFunction):
             tmp_value.set_type(value_type)
             op = tmp_value.get_defining_op()
             op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
-                src_mesh, [src_dist_attr], [src_dist_attr]
+                src_mesh, [src_dist_attr], [src_dist_attr], chunk_id
             )
         else:
             # create the buffer on other ranks for receving the data

@@ -57,6 +57,10 @@ def tensor_method_property(a: paddle.Tensor, b: paddle.Tensor):
     )
 
 
+def tensor_method_property_mT(a: paddle.Tensor):
+    return a.mT
+
+
 def middle_tensor_name(a: paddle.Tensor, b: paddle.Tensor):
     c = a + b
     return c.name
@@ -89,6 +93,12 @@ class TestTensorMethod(TestCaseBase):
         x = paddle.rand([42, 24])
         y = paddle.rand([42, 24])
         self.assert_results(middle_tensor_name, x, y)
+
+    def test_tensor_method_property_mT(self):
+        x = paddle.rand([42, 24, 2, 2, 3, 2], dtype='float64')
+        y = paddle.rand([42, 24, 2, 3, 3, 2], dtype='float32')
+        self.assert_results(tensor_method_property_mT, x)
+        self.assert_results(tensor_method_property_mT, y)
 
 
 if __name__ == "__main__":

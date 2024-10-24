@@ -2024,7 +2024,7 @@ void GatherInferMeta(const MetaTensor& x,
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
-  if (axis_v < 0) axis_v += input_dim.size();
+  if (axis_v < 0) axis_v += static_cast<int>(input_dim.size());
 
   PADDLE_ENFORCE_GE(
       axis_v,
@@ -2804,7 +2804,7 @@ void LookupTableInferMeta(const MetaTensor& w,
   PADDLE_ENFORCE_EQ(
       table_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: The dimensions of the 'lookup table' must be 2. "
           "But received lookup table's dimensions = %d, "
           "lookup table's shape = [%s].",
@@ -2813,7 +2813,7 @@ void LookupTableInferMeta(const MetaTensor& w,
   PADDLE_ENFORCE_EQ(
       ids_dims[ids_rank - 1],
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
           "But received Ids's last dimensions = %d, Ids's shape = [%s].",
           ids_dims[ids_rank - 1],

@@ -19,10 +19,10 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
@@ -80,6 +80,13 @@ Conv2dGradNodeFinal::operator()(
       (out_metas[1].empty() || out_metas[1][0].IsStopGradient())
           ? nullptr
           : &returns[1][0];
+
+  // Set DistAttr of Out Tensor for semi-auto parallel
+  if (IsRunAutoParallel()) {
+    egr::EagerUtils::SetGradOutputDistAttr(
+        out_metas, {0, 1}, api_output_0, api_output_1);
+  }
+
   // Runtime check if we need next grad
   bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
 

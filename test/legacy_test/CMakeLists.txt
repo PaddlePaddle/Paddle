@@ -15,11 +15,6 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
-###### start ######
-list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
-###### end ######
-
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 list(REMOVE_ITEM TEST_OPS test_householder_product)
 list(REMOVE_ITEM TEST_OPS test_conv2d_op_depthwise_conv)
@@ -102,6 +97,13 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
   list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
+endif()
+
+if(WITH_ROCM)
+  add_test(NAME test_hygon_llama_ops
+           COMMAND bash
+                   ${CMAKE_CURRENT_SOURCE_DIR}/hygon_dcu/test_hygon_llama_op.sh)
+  set_tests_properties(test_hygon_llama_ops PROPERTIES TIMEOUT 600)
 endif()
 
 if(NOT WITH_NCCL)

@@ -212,16 +212,18 @@ class GlobalThreadLocal(threading.local):
         self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
-        tmp_flags = os.environ.get("FLAGS_enable_pir_api")
-        if tmp_flags is not None:
-            if (
-                tmp_flags == "0"
-                or tmp_flags == 0
-                or tmp_flags == "False"
-                or not tmp_flags
-            ):
-                tmp_flags = False
-            set_flags({"FLAGS_enable_pir_api": bool(tmp_flags)})
+        env_pir_enabled = os.environ.get("FLAGS_enable_pir_api")
+
+        if env_pir_enabled is not None:
+            pir_enabled = env_pir_enabled.lower() not in [
+                'n',
+                'no',
+                'f',
+                'false',
+                'off',
+                '0',
+            ]
+            set_flags({"FLAGS_enable_pir_api": pir_enabled})
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]
@@ -3152,7 +3154,6 @@ class Operator:
     OP_WITHOUT_KERNEL_SET = {
         "feed",
         "fetch",
-        "recurrent",
         "go",
         "conditional_block",
         "pylayer",
@@ -3161,7 +3162,6 @@ class Operator:
         "recv",
         "listen_and_serv",
         "fl_listen_and_serv",
-        "ncclInit",
         "select",
         "checkpoint_notify",
         "gen_bkcl_id",
@@ -3171,9 +3171,6 @@ class Operator:
         "c_comm_init",
         "c_sync_calc_stream",
         "c_sync_comm_stream",
-        "queue_generator",
-        "dequeue",
-        "enqueue",
         "heter_listen_and_serv",
         "c_wait_comm",
         "c_wait_compute",
@@ -4685,8 +4682,6 @@ class Block:
                 "conditional_block_grad",
                 "pylayer",
                 "pylayer_grad",
-                "recurrent",
-                "recurrent_grad",
                 "while",
                 "while_grad",
             }
@@ -8466,3 +8461,19 @@ def auto_complete_op_role(program, op_role):
         if paddle.framework.in_pir_mode() and is_dist_block(block):
             always_forward_ops = ["pd_op.data", "builtin.parameter"]
             set_op_roles(block, op_role, always_forward_ops)
+
+
+# set op when op_role when it is add by apibuilder
+# pir_op_role_guard could not distinguish "always_forward_ops", therefore if
+# there would be always_forward_ops in your region, you should use "auto_complete_op_role"
+@signature_safe_contextmanager
+def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
+
+    if paddle.framework.in_pir_mode():
+        original_op_rope = pir.get_op_role()
+        pir.set_op_role(op_role)
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode():
+            pir.set_op_role(original_op_rope)

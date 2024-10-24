@@ -5,6 +5,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_ir_dist_attr MODULES test_ir_dist_attr ENVS
                   FLAGS_enable_pir_api=1)
   py_test_modules(test_static_pir_program MODULES test_static_pir_program)
+  py_test_modules(test_op_role MODULES test_op_role)
+  set_tests_properties(test_op_role PROPERTIES ENVIRONMENT
+                                               "FLAGS_enable_pir_api=1")
   py_test_modules(test_pir_elementwise_spmd MODULES test_elementwise_spmd_rule
                   ENVS FLAGS_enable_pir_api=1)
   py_test_modules(test_pir_relu_spmd MODULES test_relu_spmd_rule ENVS
@@ -21,6 +24,14 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     test_semi_auto_parallel_dist_to_static_pir_decomp MODULES
     test_semi_auto_parallel_dist_to_static_pir_decomp ENVS
     FLAGS_enable_pir_api=1 FLAGS_dist_prim_all=1)
+  py_test_modules(
+    test_auto_parallel_c_embedding_pass MODULES
+    test_auto_parallel_c_embedding_pass ENVS FLAGS_enable_pir_api=1
+    FLAGS_dist_prim_all=1)
+  py_test_modules(
+    test_auto_parallel_replace_with_parallel_cross_entropy_pass MODULES
+    test_auto_parallel_replace_with_parallel_cross_entropy_pass ENVS
+    FLAGS_enable_pir_api=1 FLAGS_dist_prim_all=1)
   py_test_modules(test_reshard MODULES test_reshard ENVS FLAGS_enable_pir_api=1)
   py_test_modules(test_learning_rate MODULES test_learning_rate ENVS
                   FLAGS_enable_pir_api=1)
@@ -32,6 +43,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   set_tests_properties(test_semi_auto_parallel_dist_to_static_pir_decomp
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
+  set_tests_properties(test_auto_parallel_c_embedding_pass
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
+  set_tests_properties(
+    test_auto_parallel_replace_with_parallel_cross_entropy_pass
+    PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
   py_test_modules(
     test_eliminate_transpose_pass MODULES test_eliminate_transpose_pass ENVS
     FLAGS_enable_pir_in_executor=1)

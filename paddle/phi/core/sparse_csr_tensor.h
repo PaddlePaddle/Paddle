@@ -130,6 +130,10 @@ class SparseCsrTensor : public TensorBase,
   /// \return Whether the non_zero_elements_ metadata is valid.
   bool valid() const noexcept override { return non_zero_elements_.valid(); }
 
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const override { return values().has_allocation(); }
+
   /// \brief Test whether the non_zero_elements_ storage is allocated.
   /// In special cases, when nnz=0, non_zero_elements_ will not need to be
   /// initialized, but it is necessary to return true here, otherwise the

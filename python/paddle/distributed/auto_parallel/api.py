@@ -31,6 +31,7 @@ from paddle.base.framework import (
     EagerParamBase,
     Variable,
     default_main_program,
+    in_dygraph_mode,
     in_pir_mode,
     use_pir_api,
 )
@@ -50,6 +51,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
     fuse_param_func,
     get_dist_attr,
+    split_mesh,
     split_param_func,
     to_list,
 )
@@ -405,29 +407,6 @@ class _moe_global_mesh_tensor(PyLayer):
                 )
                 out[-1].get_tensor()._unsafe_set_skip_check_mesh(True)
             return out
-
-
-def split_mesh(global_mesh: dist.ProcessMesh, sub_mesh_dim: int):
-    mesh_shape = global_mesh.shape
-    mesh_ndim = len(mesh_shape)
-    if sub_mesh_dim >= mesh_ndim or (
-        sub_mesh_dim < 0 and -sub_mesh_dim > mesh_ndim
-    ):
-        raise ValueError(
-            f"The sub_mesh_dim should between (-{mesh_ndim}, {mesh_ndim}]"
-        )
-    if sub_mesh_dim < 0:
-        sub_mesh_dim += mesh_ndim
-
-    process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
-    splitted_process_ids = np.split(
-        process_ids, mesh_shape[sub_mesh_dim], axis=sub_mesh_dim
-    )
-    sub_mesh_list = []
-    for sub_process_ids in splitted_process_ids:
-        sub_mesh_list.append(dist.ProcessMesh(sub_process_ids))
-
-    return sub_mesh_list
 
 
 def _get_sub_meshes_and_local_placements(
@@ -1000,7 +979,7 @@ def get_placement_with_sharding(param, sharding_mesh_axis):
 
 
 class _ShardOptimizer(Optimizer):
-    def __init__(self, optimizer, shard_fn=None):
+    def __init__(self, optimizer, shard_fn=None, gradient_accumulation_steps=1):
         assert (
             optimizer is not None
         ), "The argument `optimizer` cannot be empty."
@@ -1025,6 +1004,7 @@ class _ShardOptimizer(Optimizer):
         self._shard_fn = shard_fn
         self._sharding_mesh_axis = None
         self._sharding_degree = None
+        self.gradient_accumulation_steps = gradient_accumulation_steps
 
         if isinstance(
             self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
@@ -1246,6 +1226,21 @@ class _ShardOptimizer(Optimizer):
         return self._inner_opt.state_dict()
 
     def _append_optimize_op(self, block, param_and_grad):
+        if (
+            in_auto_parallel_align_mode()  # In align mode, we use enable_delay_scale_loss by default
+            and in_dygraph_mode()
+            and param_and_grad[1].is_dist()
+        ):
+            placements = param_and_grad[1].placements
+            meshs = param_and_grad[1].process_mesh
+            grad = param_and_grad[1]
+
+            for i in range(len(placements) - 1, -1, -1):
+                if isinstance(placements[i], dist.Partial):
+                    placements[i] = dist.Replicate()
+                    grad = dist.reshard(grad, meshs, placements)
+            grad /= self.gradient_accumulation_steps
+            param_and_grad = (param_and_grad[0], grad)
         return self._inner_opt._append_optimize_op(block, param_and_grad)
 
     def __getattr__(self, item):
@@ -1596,6 +1591,7 @@ class ShardingStage3(_ShardingStageBase):
 def shard_optimizer(
     optimizer: Optimizer,
     shard_fn: Callable[[str, Tensor, Tensor], Tensor] | None = None,
+    gradient_accumulation_steps: int = 1,
 ) -> _ShardOptimizer:
     """
 
@@ -1640,7 +1636,7 @@ def shard_optimizer(
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
 
     """
-    return _ShardOptimizer(optimizer, shard_fn)
+    return _ShardOptimizer(optimizer, shard_fn, gradient_accumulation_steps)
 
 
 def shard_scaler(scaler: GradScaler) -> GradScaler:

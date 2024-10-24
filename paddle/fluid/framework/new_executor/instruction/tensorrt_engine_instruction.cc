@@ -15,11 +15,11 @@
 #include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
 namespace paddle {
@@ -466,8 +466,8 @@ void TensorRTEngineInstruction::BindInputTensor(
   PADDLE_ENFORCE_GE(
       bind_index,
       0,
-      phi::errors::InvalidArgument("Cannot find input name %s in TRT engine",
-                                   input_name.c_str()));
+      common::errors::InvalidArgument("Cannot find input name %s in TRT engine",
+                                      input_name.c_str()));
 #else
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(input_name.c_str()) +
@@ -640,8 +640,8 @@ void TensorRTEngineInstruction::BindOutputTensor(
   PADDLE_ENFORCE_GE(
       bind_index,
       0,
-      phi::errors::InvalidArgument("Cannot find input name %s in TRT engine",
-                                   output_name.c_str()));
+      common::errors::InvalidArgument("Cannot find input name %s in TRT engine",
+                                      output_name.c_str()));
 #else
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(output_name.c_str()) +

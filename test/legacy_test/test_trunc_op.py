@@ -26,7 +26,9 @@ paddle.enable_static()
 class TestTruncOp(OpTest):
     def setUp(self):
         self.op_type = "trunc"
+        self.prim_op_type = "prim"
         self.python_api = paddle.trunc
+        self.public_python_api = paddle.trunc
         self.init_dtype_type()
         np.random.seed(2021)
         self.inputs = {'X': np.random.random((20, 20)).astype(self.dtype)}
@@ -36,10 +38,18 @@ class TestTruncOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(
+            check_pir=True, check_prim_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            numeric_grad_delta=1e-5,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestFloatTruncOp(TestTruncOp):
@@ -114,7 +124,9 @@ class TestTruncBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)

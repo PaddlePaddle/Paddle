@@ -1319,6 +1319,10 @@ PHI_DEFINE_EXPORTED_bool(
     "Default cuda is asynchronous device, set to True will"
     "force op run in synchronous mode.");
 
+PHI_DEFINE_EXPORTED_bool(eager_communication_connection,
+                         false,
+                         "enable eager to create nccl comm");
+
 /**
  * Autotune related FLAG
  * Name: FLAGS_use_autotune
@@ -1370,6 +1374,39 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
                          "Whether enable fallback fusion ops in cinn.");
 
 /**
+ * CINN TransposeItesr transform fusion FLAG
+ * Name: FLAGS_enable_transpose_iters_in_fusion
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_transpose_iters_in_fusion,
+    true,
+    "Whether enable use transpose iters transform in cinn fusion.");
+
+/**
+ * CINN ReuseIters transform fusion FLAG
+ * Name: FLAGS_enable_reuse_iters_in_fusion
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_reuse_iters_in_fusion,
+    true,
+    "Whether enable use reuse iters transform in cinn fusion.");
+
+/**
+ * CINN AppendIters transform fusion FLAG
+ * Name: FLAGS_enable_append_iters_in_fusion
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_append_iters_in_fusion,
+    true,
+    "Whether enable use append iters transform in cinn fusion.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1393,6 +1430,18 @@ PHI_DEFINE_EXPORTED_bool(
     einsum_opt,
     false,
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
+
+/**
+ * Performance related FLAG
+ * Name: enable_auto_layout_pass
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, using AutoLayoutPass and AutuLayoutSimplifyPass by default
+ */
+PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass,
+                         false,
+                         "Whether enable auto_layout_pass.");
 
 /**
  * JitLayer related FLAG
@@ -1957,3 +2006,7 @@ PHI_DEFINE_EXPORTED_bool(fused_multi_transformer_op_use_mbfmha,
 PHI_DEFINE_EXPORTED_int64(multi_block_attention_min_partition_size,
                           1024,
                           "The minimum partition size for flash decoding");
+
+PHI_DEFINE_EXPORTED_bool(save_cf_stack_op,
+                         false,
+                         "Save cf stack op for higher-order derivatives.");

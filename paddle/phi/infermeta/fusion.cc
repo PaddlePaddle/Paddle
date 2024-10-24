@@ -131,10 +131,22 @@ void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void LayerNormalizeReluXPUInferMeta(const MetaTensor& x,
+                                    const MetaTensor& scale,
+                                    const MetaTensor& bias,
+                                    int begin_norm_axis,
+                                    float epsilon,
+                                    MetaTensor* out) {
+  out->set_dims(x.dims());
+  //   y->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 void FusedMultiTransformerInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scales,
-    const std::vector<const MetaTensor*>& ln_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& ln_biases,
     const std::vector<const MetaTensor*>& qkv_weights,
     const paddle::optional<std::vector<const MetaTensor*>>& qkv_biases,
     const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
@@ -147,7 +159,7 @@ void FusedMultiTransformerInferMeta(
     const std::vector<const MetaTensor*>& out_linear_weights,
     const paddle::optional<std::vector<const MetaTensor*>>& out_linear_biases,
     const std::vector<const MetaTensor*>& ffn_ln_scales,
-    const std::vector<const MetaTensor*>& ffn_ln_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn_ln_biases,
     const std::vector<const MetaTensor*>& ffn1_weights,
     const paddle::optional<std::vector<const MetaTensor*>>& ffn1_biases,
     const std::vector<const MetaTensor*>& ffn2_weights,
@@ -284,6 +296,7 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const float quant_min_bound,
                                       const float out_scale,
                                       const std::string& compute_dtype,
+                                      const float rope_theta,
                                       MetaTensor* fmha_out,
                                       MetaTensor* qkv_out,
                                       MetaTensor* key_cache_out,
@@ -429,6 +442,7 @@ void BlockMultiheadAttentionInferXPUMeta(
     const float quant_min_bound,
     const float out_scale,
     const std::string& compute_dtype,
+    const float rope_theta,
     MetaTensor* fmha_out,
     MetaTensor* qkv_out,
     MetaTensor* key_cache_out,
@@ -468,6 +482,7 @@ void BlockMultiheadAttentionInferXPUMeta(
                                    quant_min_bound,
                                    out_scale,
                                    compute_dtype,
+                                   rope_theta,
                                    fmha_out,
                                    qkv_out,
                                    key_cache_out,
@@ -1940,8 +1955,11 @@ void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
     x_grad->set_dims(x_dims);
     x_grad->set_dtype(x.dtype());
   }
-  y_grad->set_dims(y_dims);
-  y_grad->set_dtype(y.dtype());
+
+  if (y_grad) {
+    y_grad->set_dims(y_dims);
+    y_grad->set_dtype(y.dtype());
+  }
 
   if (bias_grad) {
     int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];

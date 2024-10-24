@@ -35,6 +35,7 @@ from paddle.pir import Value, fake_value, is_fake_value
 from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
+    auto_layout_is_enabled,
     backend_guard,
     cinn_is_enabled,
     cse_is_enabled,
@@ -591,7 +592,7 @@ class PartialProgramLayer:
         """
         in_vars = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
-        attrs = self._prepare_attributes()
+        attrs = self._prepare_attributes(in_sot_mode=False)
         _legacy_C_ops.pir_run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
@@ -610,7 +611,7 @@ class PartialProgramLayer:
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
         out_vars = self._prepare_outputs()
-        attrs = self._prepare_attributes()
+        attrs = self._prepare_attributes(in_sot_mode=True)
         _legacy_C_ops.pir_run_program(
             self._valid_vars(inputs),
             self._valid_vars(self._params),
@@ -673,6 +674,7 @@ class PartialProgramLayer:
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
+
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program, program_name_attr):
@@ -697,6 +699,11 @@ class PartialProgramLayer:
 
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runnable_program.clone()
+            if auto_layout_is_enabled():
+                pm = paddle.pir.PassManager(2)
+                pm.add_pass("auto_layout_pass", {})
+                pm.add_pass("auto_layout_simplify_pass", {})
+                pm.run(infer_program.program)
             for hooker in self._hookers:
                 hooker.after_infer(infer_program)
             infer_program.apply_pir_program_pass(pass_fn)
@@ -705,6 +712,12 @@ class PartialProgramLayer:
             train_program: RunnableProgram = (
                 self.origin_runnable_program.clone()
             )
+            # Author(liujinnan): auto_layout_pass should be applied to the original_program, before append backward. So we put it here.
+            if auto_layout_is_enabled():
+                pm = paddle.pir.PassManager(2)
+                pm.add_pass("auto_layout_pass", {})
+                pm.add_pass("auto_layout_simplify_pass", {})
+                pm.run(train_program.program)
             train_program = self._append_backward_desc(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
@@ -1048,7 +1061,7 @@ class PartialProgramLayer:
             (backward_start_op_index, backward_end_op_index),
         )
 
-    def _prepare_attributes(self):
+    def _prepare_attributes(self, in_sot_mode=False):
         attrs = [
             'forward_program',
             self.program.forward_program,
@@ -1058,6 +1071,8 @@ class PartialProgramLayer:
             not self.training,
             'program_id',
             self.program_id,
+            'in_sot_mode',
+            in_sot_mode,
         ]
         for key, val in self.program.program_attr.items():
             attrs.append(key)

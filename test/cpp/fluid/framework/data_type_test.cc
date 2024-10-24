@@ -28,7 +28,7 @@ TEST(DataType, float16) {
 
   phi::DenseTensor tensor;
   CPUPlace cpu;
-  tensor.mutable_data(cpu, f::TransToPhiDataType(dtype));
+  tensor.mutable_data(cpu, phi::TransToPhiDataType(dtype));
 
   // test fp16 tensor
   EXPECT_EQ(f::TransToProtoVarType(tensor.dtype()),
@@ -50,7 +50,7 @@ TEST(DataType, bfloat16) {
 
   phi::DenseTensor tensor;
   CPUPlace cpu;
-  tensor.mutable_data(cpu, f::TransToPhiDataType(dtype));
+  tensor.mutable_data(cpu, phi::TransToPhiDataType(dtype));
 
   // test bf16 tensor
   EXPECT_EQ(f::TransToProtoVarType(tensor.dtype()),

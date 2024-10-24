@@ -26,6 +26,7 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     create_shaped_type,
     fake_value,
     get_current_insertion_point,
+    get_op_role,
     is_fake_value,
     parse_program,
     register_dist_dialect,
@@ -35,6 +36,7 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     set_insertion_point,
     set_insertion_point_after,
     set_insertion_point_to_block_end,
+    set_op_role,
     translate_to_pir,
     translate_to_pir_with_param_map,
 )
