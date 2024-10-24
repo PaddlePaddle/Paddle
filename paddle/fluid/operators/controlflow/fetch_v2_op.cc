@@ -94,11 +94,6 @@ class FetchV2Op : public framework::OperatorWithKernel {
       if (!src_item.IsInitialized()) {
         return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
-    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
-      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
-      }
     } else {
       auto &src_item = fetch_var->Get<phi::TensorArray>();
       if (src_item.empty() || !src_item[0].IsInitialized()) {
@@ -146,51 +141,25 @@ class FetchV2Kernel {
 
     bool deepcopy = ctx.Attr<bool>("deepcopy");
 
-    if (fetch_var->IsType<phi::DenseTensor>()) {
-      auto &src_item = fetch_var->Get<phi::DenseTensor>();
-      if (!src_item.IsInitialized()) {
-        return;
-      }
-      auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
-      bool check_place =
-          src_item.place().GetType() == phi::AllocationType::CPU ||
-          src_item.place().GetType() == phi::AllocationType::GPUPINNED ||
-          src_item.place().GetType() == phi::AllocationType::CUSTOM;
-      PADDLE_ENFORCE_EQ(
-          check_place,
-          true,
-          common::errors::InvalidArgument("Tensor's place of input(X) must "
-                                          "be CPUPlace or CUDAPinnedPlace."));
-      if (deepcopy) {
-        DeepCopy(src_item, fetch_var_name, dst_item);
-      } else {
-        dst_item->ShareDataWith(src_item);
-        dst_item->set_lod(src_item.lod());
-      }
-    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
-      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
-        return;
-      }
-      fetch_list->at(col) = src_item;
+    auto &src_item = fetch_var->Get<phi::DenseTensor>();
+    if (!src_item.IsInitialized()) {
+      return;
+    }
+    auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
+    bool check_place =
+        src_item.place().GetType() == phi::AllocationType::CPU ||
+        src_item.place().GetType() == phi::AllocationType::GPUPINNED ||
+        src_item.place().GetType() == phi::AllocationType::CUSTOM;
+    PADDLE_ENFORCE_EQ(
+        check_place,
+        true,
+        common::errors::InvalidArgument("Tensor's place of input(X) must "
+                                        "be CPUPlace or CUDAPinnedPlace."));
+    if (deepcopy) {
+      DeepCopy(src_item, fetch_var_name, dst_item);
     } else {
-      auto &src_item = fetch_var->Get<phi::TensorArray>();
-      phi::TensorArray tmp(src_item.size());
-      fetch_list->at(col) = tmp;
-      auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
-      for (size_t i = 0; i < src_item.size(); ++i) {
-        PADDLE_ENFORCE_EQ(
-            src_item[i].place().GetType() == phi::AllocationType::CPU,
-            true,
-            common::errors::InvalidArgument(
-                "Tensor's place of input(X) must be CPUPlace."));
-        if (deepcopy) {
-          DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);
-        } else {
-          dst_item[i].ShareDataWith(src_item[i]);
-          dst_item[i].set_lod(src_item[i].lod());
-        }
-      }
+      dst_item->ShareDataWith(src_item);
+      dst_item->set_lod(src_item.lod());
     }
   }
 };
