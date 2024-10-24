@@ -36,6 +36,7 @@ class TensorRTBaseTest(unittest.TestCase):
         self.min_shape = None
         self.max_shape = None
         self.target_marker_op = ""
+        self.dynamic_shape_data = {}
 
     def create_fake_program(self):
         if self.python_api is None:
@@ -210,12 +211,20 @@ class TensorRTBaseTest(unittest.TestCase):
                         max_shape_data[feed_name] = self.api_args[feed_name]
                         continue
                     else:
-                        min_shape_data[feed_name] = np.random.randn(
-                            *self.min_shape[feed_name]
-                        ).astype(self.api_args[feed_name].dtype)
-                        max_shape_data[feed_name] = np.random.randn(
-                            *self.max_shape[feed_name]
-                        ).astype(self.api_args[feed_name].dtype)
+                        if self.dynamic_shape_data:
+                            min_shape_data[feed_name] = self.dynamic_shape_data[
+                                feed_name
+                            ](self.min_shape[feed_name])
+                            max_shape_data[feed_name] = self.dynamic_shape_data[
+                                feed_name
+                            ](self.max_shape[feed_name])
+                        else:
+                            min_shape_data[feed_name] = np.random.randn(
+                                *self.min_shape[feed_name]
+                            ).astype(self.api_args[feed_name].dtype)
+                            max_shape_data[feed_name] = np.random.randn(
+                                *self.max_shape[feed_name]
+                            ).astype(self.api_args[feed_name].dtype)
 
             scope = paddle.static.global_scope()
             main_program = warmup_shape_infer(
