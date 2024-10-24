@@ -370,23 +370,30 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
 
 
 class TestJsonToPdmodel(unittest.TestCase):
-    def test_json_to_pdmodel(self):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
         paddle.disable_static()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_json_to_pdmodel(self):
         net = ResNet(BottleneckBlock, 50)
         net = paddle.jit.to_static(net, full_graph=True)
-        save_path = './save1'
-        save_model = './save2'
+        save_json = os.path.join(self.temp_dir.name, 'save1')
+        save_model = os.path.join(self.temp_dir.name, 'save2')
         input_spec = [
             paddle.static.InputSpec(shape=[1, 3, 224, 224], dtype='float32')
         ]
-        paddle.jit.save(net, save_path, input_spec)
+        paddle.jit.save(net, save_json, input_spec)
 
         # load and save to pdmodel
         with paddle.pir_utils.OldIrGuard():
             input_spec = [
                 paddle.static.InputSpec(shape=[1, 3, 224, 224], dtype='float32')
             ]
-        paddle.jit.json_to_pdmodel(net, input_spec, save_path, save_model)
+        paddle.jit.json_to_pdmodel(net, input_spec, save_json, save_model)
+        self.assertTrue(os.path.exists(save_model + '.pdmodel'))
 
 
 if __name__ == '__main__':
