@@ -967,7 +967,7 @@ def _pir_get_backward_op_type(all_ops, op_idx):
             return False
 
         for i in range(8):
-            if all_ops[op_idx - i].name() != ops_pattern[i]:
+            if all_ops[op_idx - i].name() != ops_pattern[7 - i]:
                 return False
         return True
 
