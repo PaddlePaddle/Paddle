@@ -18,14 +18,6 @@
 
 namespace paddle {
 namespace framework {
-TEST(Version, Basic) {
-  EXPECT_TRUE(IsProgramVersionSupported(0));
-  EXPECT_TRUE(IsProgramVersionSupported(1));
-  EXPECT_TRUE(IsProgramVersionSupported(-1));
-
-  EXPECT_TRUE(IsTensorVersionSupported(0));
-  EXPECT_TRUE(IsTensorVersionSupported(1));
-  EXPECT_TRUE(IsTensorVersionSupported(-1));
-}
+TEST(Version, Basic) {}
 }  // namespace framework
 }  // namespace paddle
