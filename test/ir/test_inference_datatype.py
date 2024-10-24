@@ -65,7 +65,7 @@ class TestDoubleOnGPU(unittest.TestCase):
         config = Config(
             os.path.join(
                 self.temp_dir.name,
-                'test_inference_datatype_model/inference.pdmodel',
+                'test_inference_datatype_model/inference.json',
             ),
             os.path.join(
                 self.temp_dir.name,

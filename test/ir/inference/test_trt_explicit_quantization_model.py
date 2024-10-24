@@ -118,12 +118,12 @@ class TestExplicitQuantizationModel:
             path_prefix, [image], [out], exe, program=quant_val_prog
         )
 
-    def infer_program(self, trt_int8=False):
+    def infer_program(self, trt_int8=False, collect_shape=False):
         config = Config(
             os.path.join(self.path, 'inference.pdmodel'),
             os.path.join(self.path, 'inference.pdiparams'),
         )
-        config.enable_use_gpu(256, 0, PrecisionType.Half)
+        config.enable_use_gpu(256, 0, PrecisionType.Float32)
         config.enable_memory_optim()
         if trt_int8:
             precision_mode = PrecisionType.Int8
@@ -139,11 +139,11 @@ class TestExplicitQuantizationModel:
         )
         if trt_int8:
             config.enable_tensorrt_explicit_quantization()
-        config.set_trt_dynamic_shape_info(
-            {"image": (1, 1, 28, 28)},
-            {"image": (128, 1, 28, 28)},
-            {"image": (64, 1, 28, 28)},
-        )
+        shape_path = self.path + ".shape.txt"
+        if collect_shape:
+            config.collect_shape_range_info(shape_path)
+        else:
+            config.enable_tuned_tensorrt_dynamic_shape(shape_path)
         config.disable_glog_info()
         predictor = create_predictor(config)
         input_names = predictor.get_input_names()
@@ -159,8 +159,12 @@ class TestExplicitQuantizationModel:
     def test_model(self):
         with paddle.pir_utils.OldIrGuard():
             self.build_program()
-            baseline_output = self.infer_program(trt_int8=False)
-            trt_output = self.infer_program(trt_int8=True)
+            self.infer_program(trt_int8=False, collect_shape=True)
+            baseline_output = self.infer_program(
+                trt_int8=False, collect_shape=False
+            )
+            self.infer_program(trt_int8=True, collect_shape=True)
+            trt_output = self.infer_program(trt_int8=True, collect_shape=False)
             trt_predict = np.argmax(trt_output, axis=1)
             baseline_predict = np.argmax(baseline_output, axis=1)
             same = (trt_predict == baseline_predict).sum() / len(trt_predict)

@@ -28,12 +28,7 @@ list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_onednn_multi_gru_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
      "test_onednn_reshape_transpose_matmul_fuse_pass")
-list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_forbid_dynamic_op_api")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_save_optimized_model_pass")
-list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-     "test_trt_explicit_quantization_mobilenet")
-list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-     "test_trt_explicit_quantization_resnet")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
      "test_trt_remove_amp_strategy_op_pass")
 

@@ -25,6 +25,7 @@ TEST(Predictor, use_gpu) {
   UpdateDllFlag("conv_workspace_size_limit", "4000");
   std::string model_dir = FLAGS_infer_model + "/model";
   Config config;
+  config.EnableNewIR(false);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableUseGpu(100, 0);
 
@@ -63,6 +64,7 @@ TEST(PredictorPool, basic) {
   UpdateDllFlag("conv_workspace_size_limit", "4000");
   std::string model_dir = FLAGS_infer_model + "/model";
   Config config;
+  config.EnableNewIR(false);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableUseGpu(100, 0);
 

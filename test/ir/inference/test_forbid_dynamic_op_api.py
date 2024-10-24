@@ -93,7 +93,7 @@ class TestTRTOptimizationLevel(unittest.TestCase):
 
     def init_predictor(self):
         config = Config(
-            self.model_prefix + '.pdmodel', self.model_prefix + '.pdiparams'
+            self.model_prefix + '.json', self.model_prefix + '.pdiparams'
         )
         config.enable_use_gpu(256, 0, PrecisionType.Half)
         config.enable_tensorrt_engine(

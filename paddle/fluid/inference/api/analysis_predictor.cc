@@ -386,10 +386,6 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
   }
-  if (FLAGS_enable_pir_api) {
-    config_.EnableNewExecutor(true);
-    config_.EnableNewIR(true);
-  }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
     if (config_.new_ir_enabled()) {
@@ -447,13 +443,8 @@ bool AnalysisPredictor::Init(
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
   if (load_pir_model_) {
-    PADDLE_ENFORCE_EQ(
-        FLAGS_enable_pir_api || (config_.use_pir_ && config_.use_new_executor_),
-        true,
-        common::errors::InvalidArgument(
-            "Models with a .json suffix can only run in PIR mode. Please set "
-            "export FLAGS_enable_pir_api=True or "
-            "config.EnableNewExecutor(true)) and config.EnableNewIR(true)"));
+    config_.use_pir_ = true;
+    config_.use_new_executor_ = true;
   }
 
   // Use Optimized model to inference

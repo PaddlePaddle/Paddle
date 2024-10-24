@@ -91,7 +91,7 @@ class TestRemoveStrategyOpBase:
         )
         config.enable_use_gpu(256, 0, PrecisionType.Half)
         config.enable_memory_optim()
-        config.disable_glog_info()
+        # config.disable_glog_info()
         if use_trt:
             config.enable_tensorrt_engine(
                 workspace_size=1 << 30,
@@ -192,8 +192,8 @@ class TestRemoveStrategyOpAMP(TestRemoveStrategyOpBase, unittest.TestCase):
 
 
 @unittest.skipIf(
-    paddle.inference.get_trt_compile_version() < (8, 5, 1),
-    "Quantization axis is consistent with Paddle after TRT 8.5.2.",
+    paddle.inference.get_trt_compile_version() < (8, 6, 1),
+    "Quantization axis is consistent with Paddle after TRT 8.6.1.",
 )
 class TestRemoveStrategyOpAMPQAT(TestRemoveStrategyOpBase, unittest.TestCase):
     def build_program(self):

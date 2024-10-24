@@ -22,6 +22,7 @@ namespace inference {
 
 TEST(quant_int8, yolov3_resnet50) {
   AnalysisConfig config;
+  config.EnableNewIR(false);
   config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
   config.EnableTensorRtEngine(

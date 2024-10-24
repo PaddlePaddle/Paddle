@@ -80,7 +80,7 @@ class TestSaveOptimizedModelPassWithGPU(
     def init_predictor(self, save_optimized_model: bool):
         if save_optimized_model is True:
             config = Config(
-                os.path.join(self.temp_dir.name, 'alexnet/inference.pdmodel'),
+                os.path.join(self.temp_dir.name, 'alexnet/inference.json'),
                 os.path.join(self.temp_dir.name, 'alexnet/inference.pdiparams'),
             )
             config.enable_use_gpu(256, 0, PrecisionType.Half)
@@ -92,7 +92,7 @@ class TestSaveOptimizedModelPassWithGPU(
             config.enable_save_optim_model(True)
         else:
             config = Config(
-                os.path.join(self.temp_dir.name, 'alexnet/_optimized.pdmodel'),
+                os.path.join(self.temp_dir.name, 'alexnet/_optimized.json'),
                 os.path.join(
                     self.temp_dir.name, 'alexnet/_optimized.pdiparams'
                 ),
@@ -186,7 +186,7 @@ class TestSaveOptimizedModelPassWithTRT(
     def init_predictor(self, save_optimized_model: bool):
         if save_optimized_model is True:
             config = Config(
-                os.path.join(self.temp_dir.name, 'alexnet/inference.pdmodel'),
+                os.path.join(self.temp_dir.name, 'alexnet/inference.json'),
                 os.path.join(self.temp_dir.name, 'alexnet/inference.pdiparams'),
             )
             config.enable_use_gpu(256, 0)
@@ -212,7 +212,7 @@ class TestSaveOptimizedModelPassWithTRT(
             config.enable_save_optim_model(True)
         else:
             config = Config(
-                os.path.join(self.temp_dir.name, 'alexnet/_optimized.pdmodel'),
+                os.path.join(self.temp_dir.name, 'alexnet/_optimized.json'),
                 os.path.join(
                     self.temp_dir.name, 'alexnet/_optimized.pdiparams'
                 ),
