@@ -248,7 +248,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     // get weight tensor
     auto* weight_tensor = scope->GetVar(weight_dequantize_linear_op_x->Name())
                               ->GetMutable<phi::DenseTensor>();
-    int8_t* quantized_weight_data = weight_tensor->data<int8_t>();
+    float* quantized_weight_data = weight_tensor->data<float>();
 
     auto w_dims = weight_tensor->dims();
 
@@ -280,8 +280,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
 
       //  float(weight) * scale
       for (int i = 0; i < weight_tensor->numel(); i++) {
-        weight_data_tmp[i] =
-            static_cast<float>(quantized_weight_data[i]) * weight_scale[0];
+        weight_data_tmp[i] = quantized_weight_data[i] * weight_scale[0];
       }
     } else if (quant_axis == 0) {  // per_channel quant_dequant: conv2d,
                                    // depthwise_conv2d, fused_conv2d_add_act
