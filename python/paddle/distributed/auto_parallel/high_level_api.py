@@ -177,7 +177,7 @@ def reshard_all_inputs(layer, inputs):
 def reshard_all_outputs(layer, inputs, outputs):
     if hasattr(layer, "next_mesh"):
         next_mesh = layer.__getattr__("next_mesh")
-        print(f"outputs are {outputs}")
+        # print(f"outputs are {outputs}")
         if type(outputs) is tuple:
             new_outputs = []
             for output in outputs:
