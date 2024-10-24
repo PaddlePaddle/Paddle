@@ -1770,6 +1770,7 @@
     param : [num_rows, num_columns, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : fake_channel_wise_dequantize_max_abs
