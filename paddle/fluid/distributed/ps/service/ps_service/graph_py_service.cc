@@ -20,7 +20,7 @@
 #include "iomanip"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 namespace paddle::distributed {
 std::vector<std::string> GraphPyService::split(const std::string& str,
                                                const char pattern) {

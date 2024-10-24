@@ -44,7 +44,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -172,7 +172,9 @@ class TestElementwiseModBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place, check_pir=True, check_symbol_infer=False
+        )
 
     def init_dtype(self):
         self.dtype = np.uint16

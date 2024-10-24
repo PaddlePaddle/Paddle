@@ -58,7 +58,7 @@ class TestCollectiveReduceAPI(TestDistBase):
                         need_envs={"USE_COMM_CONTEXT": "1"},
                     )
 
-    def test_reduce_nccl_with_new_comm(self):
+    def test_reduce_nccl_with_new_comm_pir(self):
         dtypes_to_test = [
             "float16",
             "float32",
@@ -78,6 +78,9 @@ class TestCollectiveReduceAPI(TestDistBase):
                         "nccl",
                         dtype=dtype,
                         reduce_type=red_type,
+                        need_envs={
+                            "FLAGS_enable_pir_in_executor": "1",
+                        },
                     )
 
     def test_reduce_bkcl(self):

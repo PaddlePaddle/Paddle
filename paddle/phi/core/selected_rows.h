@@ -160,6 +160,10 @@ class SelectedRows : public TensorBase,
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return impl_->valid(); }
 
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const override { return impl_->has_allocation(); }
+
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
   bool initialized() const override { return impl_->initialized(); }

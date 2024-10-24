@@ -596,7 +596,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
                 PADDLE_GET_CONST(std::vector<int>, attr));
             break;
           case phi::AttributeType::DATA_TYPE: {
-            auto data_type = framework::TransToPhiDataType(
+            auto data_type = phi::TransToPhiDataType(
                 static_cast<framework::proto::VarType::Type>(
                     PADDLE_GET_CONST(int, attr)));
             kernel_ctx->EmplaceBackAttr(data_type);

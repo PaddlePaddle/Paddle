@@ -45,13 +45,13 @@
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/backends/custom/custom_device_op_list.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
-
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
@@ -191,6 +191,24 @@ static bool NeedFallBackCpu(const pir::Operation* op,
               .AsString() == "cpu") {
     return true;
   }
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (phi::backends::custom_device::is_in_custom_black_list(
+          phi::TransToFluidOpName(kernel))) {
+    phi::KernelKey copy_key = kernel_key;
+    copy_key.set_backend(phi::Backend::CPU);
+    if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key)) {
+      return true;
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Can not fallback %s from custom_device to CPU, no CPU kernel found "
+          "for kernel key = %s.",
+          kernel,
+          copy_key));
+    }
+  }
+#endif
+
   if (UnchangeOutputOps.count(op->name()) || kernel == "" ||
       phi::KernelFactory::Instance().HasKernel(kernel, kernel_key)) {
     return false;
@@ -3057,16 +3075,7 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
         }
       }
 
-      pir::Value shadow_source = it->operand_source(0);
-      if (!shadow_source.type().isa<AllocatedDenseTensorType>()) {
-        continue;
-      }
-      auto var_src_place =
-          shadow_source.type()
-              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-
-      if (shadow_value.use_count() >= 1 &&
-          phi::is_cpu_place(var_src_place.place())) {
+      if (shadow_value.use_count() >= 1) {
         bool all_use_is_scalar = true;
         for (auto use_it = shadow_value.use_begin();
              use_it != shadow_value.use_end();
