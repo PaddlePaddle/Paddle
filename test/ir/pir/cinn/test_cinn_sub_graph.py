@@ -72,6 +72,18 @@ class CINNSoftmaxSubGraphNet(paddle.nn.Layer):
         return out
 
 
+class CINNSliceSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.fn = paddle.nn.functional.softmax
+
+    def forward(self, x, d1, d2, d3, d4):
+        t1 = x[:, d1 * d2 : d1 * d2 + d3 * d4]
+        out = t1.reshape([t1.shape[0], d3, d4])
+
+        return out
+
+
 class CINNLayerNormSubGraphNet(paddle.nn.Layer):
     def __init__(self, hidden_size):
         super().__init__()
@@ -174,6 +186,38 @@ class TestCinnSoftmax(TestCinnSubGraphBase):
         dy_out, dy_grad = self.train(use_cinn=False)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
         np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
+
+
+class TestCinnSlice(TestCinnSubGraphBase):
+    def train(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSliceSubGraphNet()
+
+        input_spec = [
+            paddle.static.InputSpec(
+                shape=[-1, -1], dtype='float32', name='in_x'
+            ),
+            paddle.static.InputSpec(shape=[1], dtype='int64', name='d1'),
+            paddle.static.InputSpec(shape=[1], dtype='int64', name='d2'),
+            paddle.static.InputSpec(shape=[1], dtype='int64', name='d3'),
+            paddle.static.InputSpec(shape=[1], dtype='int64', name='42'),
+        ]
+
+        self.x = paddle.uniform([16, 256], dtype="float64", min=-0.5, max=0.5)
+        self.d1 = paddle.full([1], fill_value=4, dtype="int64")
+        self.d2 = paddle.full([1], fill_value=16, dtype="int64")
+        self.d3 = paddle.full([1], fill_value=4, dtype="int64")
+        self.d4 = paddle.full([1], fill_value=4, dtype="int64")
+
+        net = utils.apply_to_static(net, use_cinn, input_spec=input_spec)
+        out = net(self.x, self.d1, self.d2, self.d3, self.d4)
+
+        return out
+
+    def test_forward(self):
+        cinn_out = self.train(use_cinn=True)
+        dy_out = self.train(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 class TestCinnSmallSoftmax(TestCinnSoftmax):

@@ -2931,9 +2931,12 @@ bool ReshapeOpInferSymbolicShape(
     return false;
   };
 
+  const auto &original_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &input_numel =
+      GetProduct(original_shape, [](const auto &) { return true; });
+
   const std::vector<symbol::DimExpr> out_dims = [&] {
-    const auto &original_shape =
-        infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
     ExprVec target_shape = paddle::dialect::details::GetOrCreateExprVecFromData(
         shape_dim_expr, infer_context);
 
@@ -2945,8 +2948,7 @@ bool ReshapeOpInferSymbolicShape(
     }
 
     // replace '-1' with infered shape
-    const auto &numel =
-        GetProduct(original_shape, [](const auto &) { return true; });
+
     const auto &product_exclude_minus_one =
         GetProduct(target_shape, IsPositiveInteger);
     const auto &input_dims = target_shape;
@@ -2956,7 +2958,7 @@ bool ReshapeOpInferSymbolicShape(
     for (size_t i = 0; i < input_dims.size(); ++i) {
       auto out_dim_expr = IsNotMinusOne(input_dims.at(i))
                               ? input_dims.at(i)
-                              : (numel / product_exclude_minus_one);
+                              : (input_numel / product_exclude_minus_one);
       out_dims.emplace_back(out_dim_expr);
     }
     return out_dims;
@@ -2969,6 +2971,11 @@ bool ReshapeOpInferSymbolicShape(
     }
     return symbol::TensorShapeOrDataDimExprs(out_dims);
   }();
+
+  const auto &output_numel =
+      GetProduct(out_dims, [](const auto &) { return true; });
+
+  infer_context->AddEqualCstr(input_numel, output_numel);
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
