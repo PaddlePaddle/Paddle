@@ -1350,6 +1350,7 @@ def flashmask_attention(
     .. code-block:: python
 
         >>> import paddle
+        >>> import numpy as np
         >>> def flashmask_to_densemask(startend_row_indices, dtype, causal=True):
         ...     if startend_row_indices is None:
         ...         return None
