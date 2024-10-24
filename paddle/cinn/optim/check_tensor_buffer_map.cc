@@ -87,6 +87,7 @@ struct TensorBufferMapChecker : public ir::IRVisitorRequireReImpl<void> {
   VisitImpl(IntrinsicOp);
   VisitImpl(_BufferRange_);
   VisitImpl(_Dim_);
+  VisitImpl(StructElement);
 
  private:
   bool error_flag_;
@@ -285,6 +286,9 @@ void TensorBufferMapChecker::Visit(const ir::_LoweredFunc_ *x) {
 void TensorBufferMapChecker::Visit(const ir::Let *x) {
   TensorBufferMapChecker::Visit(x->symbol);
   if (x->body.defined()) TensorBufferMapChecker::Visit(x->body);
+}
+void TensorBufferMapChecker::Visit(const ir::StructElement *x) {
+  TensorBufferMapChecker::Visit(x->value);
 }
 void TensorBufferMapChecker::Visit(const ir::Reduce *x) {
   if (x->init.defined()) TensorBufferMapChecker::Visit(x->init);

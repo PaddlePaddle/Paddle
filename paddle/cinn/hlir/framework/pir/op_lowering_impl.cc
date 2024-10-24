@@ -41,6 +41,7 @@
 #include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/optim/vectorize_for_trans.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -387,6 +388,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     // 4.Apply low level pass
     if (i != func_bodies.size() - 1) {
       func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
+      optim::VectorizeForTrans(&(func->body));
       optim::RearrangeLoadInstruction(&(func->body));
     } else {
       func = optim::Optimize(Expr(func), common::DefaultHostTarget(), false)
