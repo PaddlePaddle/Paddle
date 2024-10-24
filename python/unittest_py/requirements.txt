@@ -1,6 +1,5 @@
 PyGithub
 coverage==5.5
-pycrypto ; platform_system != "Windows"
 mock
 gymnasium>=1.0.0a1
 pygame==2.5.2

@@ -80,13 +80,12 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         param = ctx.grads_params[var_name]
         startup_block = dist_op_context.startup_block
         new_op = startup_block.append_op(
-            type='c_broadcast',
-            inputs={'X': [param]},
-            outputs={'Out': [param]},
+            type='broadcast',
+            inputs={'x': [param]},
+            outputs={'out': [param]},
             attrs={
                 'ring_id': sync_group.id,
                 'root': 0,
-                'use_calc_stream': True,
                 OP_ROLE_KEY: OpRole.Forward,
             },
         )
@@ -610,13 +609,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         sync_group = new_process_group(group_ranks)
 
                         new_op = startup_block.append_op(
-                            type='c_broadcast',
-                            inputs={'X': param},
-                            outputs={'Out': param},
+                            type='broadcast',
+                            inputs={'x': param},
+                            outputs={'out': param},
                             attrs={
                                 'ring_id': sync_group.id,
                                 'root': 0,
-                                'use_calc_stream': True,
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
                         )

@@ -94,17 +94,6 @@
     func: beam_search_decode
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : broadcast
-  args : (Tensor x, int ring_id = 0, int root = 0)
-  output : Tensor(out)
-  infer_meta :
-    func : DistBroadcastInferMeta
-    param: [x]
-  kernel :
-    func : broadcast
-    param: [x, root]
-  traits : paddle::dialect::ForwardOnlyTrait
-
 - op : comm_init_all
   args : (int[] devices={}, int ring_id=0)
   output :

@@ -64,9 +64,10 @@ class ProxyLayer(Layer):
 
         # Consider ProxyLayer as not Paddle inner function because it contains
         # user-defined layer.
-        as_not_paddle_func(
-            inspect.getmodule(ProxyLayer).__name__ + ".ProxyLayer"
-        )
+        for fn_name in ["_train", "_eval", "_predict"]:
+            as_not_paddle_func(
+                f"{inspect.getmodule(ProxyLayer).__name__}.ProxyLayer.{fn_name}"
+            )
 
     @paddle.jit.not_to_static
     def append_loss_to_shadow_output(self, mode):

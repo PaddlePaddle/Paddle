@@ -331,10 +331,10 @@ static void FillConstantLike(const VariableWrapper &ref_var,
   if (ref_var.ForwardDataType() !=
       static_cast<framework::proto::VarType::Type>(-1)) {
     dst_tensor->mutable_data(
-        place, framework::TransToPhiDataType(ref_var.ForwardDataType()));
+        place, phi::TransToPhiDataType(ref_var.ForwardDataType()));
   } else {
     dst_tensor->mutable_data(place,
-                             framework::TransToPhiDataType(ref_var.DataType()));
+                             phi::TransToPhiDataType(ref_var.DataType()));
   }
   phi::funcs::set_constant(*dev_ctx, dst_tensor, value);
 }

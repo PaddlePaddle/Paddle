@@ -186,7 +186,7 @@ def check_send_recv_result(dist_main_prog, rank_id):
 def check_initialization_for_dpmppp(dist_startup_prog):
     broadcast_varnames = []
     for op in dist_startup_prog.global_block().ops:
-        if op.type == "c_broadcast":
+        if op.type == "broadcast":
             broadcast_varnames.append(op.output_arg_names[0])
     result = len(broadcast_varnames) > 0
     return result
