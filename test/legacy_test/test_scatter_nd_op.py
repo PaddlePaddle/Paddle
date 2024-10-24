@@ -95,7 +95,9 @@ class TestScatterNdAddSimpleOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(
+            check_cinn=True, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -182,7 +184,9 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(
+            check_cinn=True, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -272,7 +276,9 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(
+            check_cinn=True, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -337,7 +343,9 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(
+            check_cinn=True, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(

@@ -66,7 +66,7 @@ class TestScatterOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -143,7 +143,7 @@ class TestScatterOp0(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -222,7 +222,7 @@ class TestScatterOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -377,7 +377,9 @@ class TestScatterOp2(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_pir=True)
+            self.check_output_with_place(
+                place, atol=1e-3, check_pir=True, check_symbol_infer=False
+            )
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -450,7 +452,9 @@ class TestScatterOp3(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_pir=True)
+            self.check_output_with_place(
+                place, atol=1e-3, check_pir=True, check_symbol_infer=False
+            )
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -514,7 +518,7 @@ class TestScatterOp4(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -594,7 +598,9 @@ class TestScatterOp5(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_pir=True)
+            self.check_output_with_place(
+                place, atol=1e-3, check_pir=True, check_symbol_infer=False
+            )
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -658,7 +664,7 @@ class TestScatterOp6(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(

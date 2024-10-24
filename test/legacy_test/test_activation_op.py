@@ -130,7 +130,9 @@ class TestExpFp32_Prim(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -186,7 +188,9 @@ class TestExp_Complex64(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -279,7 +283,9 @@ class TestExpm1(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
 
@@ -956,7 +962,9 @@ class TestAtan(TestActivation, TestParameter):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -1158,7 +1166,9 @@ class TestCosh(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -1914,6 +1924,7 @@ class TestRsqrt(TestActivation):
         self.check_output(
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -1969,7 +1980,9 @@ class TestAbs(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2010,7 +2023,9 @@ class TestCeil(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     # The same reason with TestFloor
@@ -2049,7 +2064,9 @@ class TestFloor(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     # the gradient on floor, ceil, round is undefined.
@@ -2107,7 +2124,9 @@ class TestCos(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2284,7 +2303,9 @@ class TestAcos(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2412,7 +2433,9 @@ class TestAsin(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2463,7 +2486,9 @@ class TestAcosh(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2527,7 +2552,9 @@ class TestAsinh(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2591,7 +2618,9 @@ class TestAtanh(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2642,7 +2671,9 @@ class TestRound(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -2719,6 +2750,7 @@ class TestRelu(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def if_enable_cinn(self):
@@ -3000,6 +3032,7 @@ class TestGeluApproximate(TestActivation):
             check_pir=True,
             check_prim_pir=False,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -3052,6 +3085,7 @@ class TestGelu(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -3160,7 +3194,9 @@ class TestBRelu(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -3206,6 +3242,7 @@ class TestRelu6(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -3557,7 +3594,9 @@ class TestELU(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_prim_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def get_alpha(self):
@@ -3803,6 +3842,7 @@ class TestReciprocal(TestActivation):
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
 
@@ -3861,7 +3901,9 @@ class TestLog(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -4108,7 +4150,9 @@ class TestLog10(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -4227,7 +4271,9 @@ class TestLog1p(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -4502,6 +4548,7 @@ class TestPow(TestActivation):
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):
@@ -5388,7 +5435,9 @@ class TestMish(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):

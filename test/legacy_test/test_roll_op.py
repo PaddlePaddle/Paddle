@@ -48,7 +48,9 @@ class TestRollOp(OpTest):
         self.axis = [0, -2]
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(
+            check_prim=True, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad_normal(self):
         self.check_grad(

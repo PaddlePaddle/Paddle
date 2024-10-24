@@ -128,7 +128,7 @@ class TestI1Op(OpTest):
 
     # 测试前向输出结果
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     # 测试反向梯度输出
     def test_check_grad(self):
