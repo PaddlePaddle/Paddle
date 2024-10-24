@@ -293,6 +293,7 @@
   kernel :
     func : bmm_grad
     data_type : out_grad
+  backward : bmm_double_grad
 
 - backward_op : broadcast_tensors_grad
   forward : broadcast_tensors (Tensor[] input) -> Tensor[](out)
@@ -3594,6 +3595,16 @@
   kernel :
     func : yolo_loss_grad
   optional : gt_score
+
+- backward_op: bmm_double_grad
+  forward: bmm_grad (Tensor x, Tensor y, Tensor grad_out) -> Tensor(grad_x), Tensor(grad_y)
+  args: (Tensor x, Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad)
+  output: Tensor(x_grad), Tensor(y_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, y, grad_out]
+  composite: bmm_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, x_grad, y_grad, grad_out_grad)
+  optional: grad_x_grad, grad_y_grad
 
 - backward_op: disable_check_model_nan_inf_grad
   forward: disable_check_model_nan_inf (Tensor x, int flag=0) -> Tensor(out)

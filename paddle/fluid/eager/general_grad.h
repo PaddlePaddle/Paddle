@@ -66,7 +66,7 @@ class GeneralGrad {
 
         PADDLE_ENFORCE_NOT_NULL(
             target_node,
-            common::errors::Fatal("There is no grad op for %s:[%d] or it's"
+            common::errors::Fatal("There is no grad op for %s:[%d] or it's "
                                   "stop_gradient=True.",
                                   msg,
                                   i));
