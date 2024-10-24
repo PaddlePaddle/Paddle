@@ -17,7 +17,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import paddle
-import paddle.distributed as dist
 from paddle import _C_ops, _legacy_C_ops
 from paddle.autograd import PyLayer
 from paddle.base.data_feeder import check_dtype, check_variable_and_dtype
