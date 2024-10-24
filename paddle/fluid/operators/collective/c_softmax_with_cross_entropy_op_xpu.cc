@@ -152,18 +152,13 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     dev_ctx.template Alloc(loss, logits->dtype());
 
     const auto& logits_dims = logits->dims();
-
     const int axis = logits_dims.size() - 1;
     const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
     const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
-    framework::TensorCopy(
-        *logits, ctx.GetPlace(), ctx.device_context(), &logits_2d);
-    framework::TensorCopy(
-        *softmax, ctx.GetPlace(), ctx.device_context(), &softmax_2d);
-    logits_2d.Resize({N, D});
-    softmax_2d.Resize({N, D});
+    logits_2d.ShareDataWith(*logits).Resize({N, D});
+    softmax_2d.ShareDataWith(*softmax).Resize({N, D});
 
     int ret = -1;
     // step 1, obtain logit_max
@@ -324,12 +319,6 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     // 将label和ignore_index相同的那些loss，置为0
     FixLossAccordingToIgnoreIndex<T>(
         ctx, labels, &predicted_logits, loss, N, ignore_index);
-
-    phi::memory_utils::Copy(ctx.GetPlace(),
-                            softmax->data(),
-                            ctx.GetPlace(),
-                            softmax_2d.data(),
-                            N * D * sizeof(T));
   }
 };
 
@@ -398,12 +387,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
-    framework::TensorCopy(
-        *logits, ctx.GetPlace(), ctx.device_context(), &logits_2d);
-    framework::TensorCopy(
-        *softmax, ctx.GetPlace(), ctx.device_context(), &softmax_2d);
-    logits_2d.Resize({N, D});
-    softmax_2d.Resize({N, D});
+    logits_2d.ShareDataWith(*logits).Resize({N, D});
+    softmax_2d.ShareDataWith(*softmax).Resize({N, D});
 
     int ret = -1;
     // step 1, obtain logit_max
@@ -593,12 +578,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     // 将label和ignore_index相同的那些loss，置为0
     FixLossAccordingToIgnoreIndex<T>(
         ctx, labels, &predicted_logits, loss, N, ignore_index);
-
-    phi::memory_utils::Copy(ctx.GetPlace(),
-                            softmax->data(),
-                            ctx.GetPlace(),
-                            softmax_2d.data(),
-                            N * D * sizeof(T));
   }
 };
 
