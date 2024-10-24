@@ -110,7 +110,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21214;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21214;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;ROCBLAS_ATOMICS_MOD=0"
   )
   set_tests_properties(test_dygraph_sharding_stage3_for_eager PROPERTIES TIMEOUT
                                                                          "350")
@@ -614,8 +614,7 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   py_test_modules(
-    test_dygraph_recompute MODULES test_dygraph_recompute
-    ENVS
+    test_dygraph_recompute MODULES test_dygraph_recompute ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if(WITH_NCCL OR WITH_RCCL)
