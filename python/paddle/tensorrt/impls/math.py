@@ -18,7 +18,11 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     add_elementwise_layer,
     broadcast,
+    cast_tensor,
+    fill_constant_layer,
     get_axes_for_reduce_op,
+    trt_expend,
+    trt_max,
 )
 from paddle.tensorrt.register import converter_registry
 
@@ -118,6 +122,51 @@ def multiply_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.PROD
     )
+
+
+@converter_registry.register("pd_op.clip", trt_version="8.x")
+def clip_converter(network, paddle_op, inputs):
+    def _get_constant_or_expand_tensor(
+        op, constant_inputs, input_shape_tensor, rank
+    ):
+        if op.name() == "pd_op.full":
+            value = op.attrs()["value"]
+            return fill_constant_layer(
+                network, input_shape_tensor, rank, value, input_tensor.dtype
+            )
+        else:
+            expanded_tensor = trt_expend(
+                network, constant_inputs, 1, input_shape_tensor, rank
+            )
+            if expanded_tensor.dtype != input_tensor.dtype:
+                expanded_tensor = cast_tensor(
+                    network, expanded_tensor, input_tensor.dtype
+                )
+            return expanded_tensor
+
+    input_tensor = inputs[0]
+    input_shape = paddle_op.operands()[0].source().shape
+    rank = len(input_shape)
+    input_shape_tensor = network.add_shape(input_tensor).get_output(0)
+
+    # handle min operation
+    min_op = paddle_op.operands()[1].source().get_defining_op()
+    alpha_t = _get_constant_or_expand_tensor(
+        min_op, inputs[1], input_shape_tensor, rank
+    )
+
+    # handle max operation
+    max_op = paddle_op.operands()[2].source().get_defining_op()
+    beta_t = _get_constant_or_expand_tensor(
+        max_op, inputs[2], input_shape_tensor, rank
+    )
+
+    # run the clip operation
+    lower_clip = trt_max(network, input_tensor, alpha_t)
+    layer = network.add_elementwise(
+        lower_clip, beta_t, trt.ElementWiseOperation.MIN
+    )
+    return layer.get_output(0)
 
 
 @converter_registry.register("pd_op.min", trt_version="8.x")

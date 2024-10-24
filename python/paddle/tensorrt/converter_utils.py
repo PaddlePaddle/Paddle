@@ -162,12 +162,60 @@ def add_elementwise_layer(network, paddle_op, inputs, op_type):
 
 
 # Create and add 1D constant layer
-def add_1D_constant_layer(network, data, dtype=np.int32):
+def add_1D_constant_layer(network, data, np_dtype=np.int32, scalar=False):
     if not isinstance(data, list):
         data = [data]
-    constant_data = np.array(data, dtype=dtype)
-    constant_layer = network.add_constant(constant_data.shape, constant_data)
+    constant_data = np.array(data, dtype=np_dtype)
+    constant_data_shape = [] if scalar else constant_data.shape
+    constant_layer = network.add_constant(constant_data_shape, constant_data)
     return constant_layer.get_output(0)
+
+
+# Create an constant layer with shape_tensor and value
+def fill_constant_layer(network, shape_tensor, tensor_rank, data, trt_dtype):
+    fill_layer = network.add_fill(
+        trt.Dims([tensor_rank]), trt.FillOperation.LINSPACE
+    )
+    np_dtype = map_trt_dtype(trt_dtype)
+    fill_layer.set_input(0, shape_tensor)
+    fill_layer.set_input(
+        1, add_1D_constant_layer(network, data, np_dtype, scalar=True)
+    )
+    beta = [0] * tensor_rank
+    fill_layer.set_input(
+        2, add_1D_constant_layer(network, beta, np_dtype, scalar=False)
+    )
+    return fill_layer.get_output(0)
+
+
+def trt_expend(network, input, rank, shape_tensor, shape_rank):
+    if rank < shape_rank:
+        one_rank_tensor = add_1D_constant_layer(
+            network, [1] * (shape_rank - rank)
+        )
+        in_shape_tensor = trt_shape(network, input)
+        itensors = [one_rank_tensor, in_shape_tensor]
+        input_shape_tensor = trt_concat(network, itensors)
+    else:
+        input_shape_tensor = trt_shape(network, input)
+
+    new_input_tensor = trt_reshape(network, input, input_shape_tensor, "", True)
+
+    start = [0] * shape_rank
+    starts_tensor = add_1D_constant_layer(network, start)
+    one_tensor = add_1D_constant_layer(network, 1)
+    sizes_tensor = trt_max(network, input_shape_tensor, shape_tensor)
+    input_sub_tensor = trt_sub(network, input_shape_tensor, one_tensor)
+    strides_tensor = trt_min(network, one_tensor, input_sub_tensor)
+
+    slice_layer = network.add_slice(
+        new_input_tensor, start, [0] * len(start), [0] * len(start)
+    )
+    slice_layer.set_input(1, starts_tensor)
+    slice_layer.set_input(2, sizes_tensor)
+    slice_layer.set_input(3, strides_tensor)
+
+    return slice_layer.get_output(0)
 
 
 # Concat not make rank changed
@@ -323,6 +371,21 @@ def build_size_tensor(
     ).get_output(0)
 
     return size_tensor
+
+
+# convert trt_dtype to numpy dtype
+def map_trt_dtype(trt_dtype):
+    dtype_map = {
+        trt.DataType.FLOAT: np.float32,
+        trt.DataType.HALF: np.float16,
+        trt.DataType.INT32: np.int32,
+        trt.DataType.INT8: np.int8,
+        trt.DataType.BOOL: np.bool,
+    }
+    if trt_dtype in dtype_map:
+        return dtype_map[trt_dtype]
+    else:
+        raise TypeError(f"Unsupported trt_dtype: {trt_dtype}")
 
 
 # Reduce the given tensor in the TensorRT network to a scalar

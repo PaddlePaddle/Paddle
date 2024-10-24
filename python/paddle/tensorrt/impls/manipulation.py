@@ -26,12 +26,12 @@ from paddle.tensorrt.converter_utils import (
     get_shape_tensor_element,
     has_dynamic_shape,
     trt_concat,
+    trt_expend,
     trt_floor_div,
     trt_less,
     trt_max,
     trt_min,
     trt_mul,
-    trt_reshape,
     trt_shape,
     trt_sub,
     trt_sum,
@@ -223,36 +223,6 @@ def squeeze_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-def get_expand_output(network, input, rank, shape_tensor, shape_rank):
-    if rank < shape_rank:
-        one_rank_tensor = add_1D_constant_layer(
-            network, [1] * (shape_rank - rank)
-        )
-        in_shape_tensor = trt_shape(network, input)
-        itensors = [one_rank_tensor, in_shape_tensor]
-        input_shape_tensor = trt_concat(network, itensors)
-    else:
-        input_shape_tensor = trt_shape(network, input)
-
-    new_input_tensor = trt_reshape(network, input, input_shape_tensor, "", True)
-
-    start = [0] * shape_rank
-    starts_tensor = add_1D_constant_layer(network, start)
-    one_tensor = add_1D_constant_layer(network, 1)
-    sizes_tensor = trt_max(network, input_shape_tensor, shape_tensor)
-    input_sub_tensor = trt_sub(network, input_shape_tensor, one_tensor)
-    strides_tensor = trt_min(network, one_tensor, input_sub_tensor)
-
-    slice_layer = network.add_slice(
-        new_input_tensor, start, [0] * len(start), [0] * len(start)
-    )
-    slice_layer.set_input(1, starts_tensor)
-    slice_layer.set_input(2, sizes_tensor)
-    slice_layer.set_input(3, strides_tensor)
-
-    return slice_layer.get_output(0)
-
-
 @converter_registry.register("pd_op.expand", trt_version="8.x")
 def expand_converter(network, paddle_op, inputs):
     input = inputs[0]
@@ -272,7 +242,7 @@ def expand_converter(network, paddle_op, inputs):
     else:
         shape_tensor = inputs[1]
         shape_rank = shape_tensor.shape[0]
-    return get_expand_output(network, input, rank, shape_tensor, shape_rank)
+    return trt_expend(network, input, rank, shape_tensor, shape_rank)
 
 
 @converter_registry.register("pd_op.expand_as", trt_version="8.x")
@@ -290,7 +260,7 @@ def expand_as_converter(network, paddle_op, inputs):
         shape = paddle_op.attrs().get("target_shape")
         shape_tensor = add_1D_constant_layer(network, shape)
         shape_rank = len(shape)
-    return get_expand_output(network, input, rank, shape_tensor, shape_rank)
+    return trt_expend(network, input, rank, shape_tensor, shape_rank)
 
 
 @converter_registry.register("pd_op.cast", trt_version="8.x")

@@ -32,6 +32,10 @@ class ConverterOpRegistry:
         for version_range, func in self._registry[op_name]:
             if self._version_match(trt_version, version_range):
                 return func
+            else:
+                raise ValueError(
+                    f"Requested TensorRT version : {trt_version} does not match the range of pip installed tensorrt versions : {version_range}"
+                )
         return self._registry.get(op_name)
 
     def _version_match(self, trt_version, version_range):
