@@ -825,6 +825,18 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(x_T.shape, [7, 9, 6, 3])
         np.testing.assert_array_equal(x_T.numpy(), x_np.T)
 
+        x_np = np.random.randn(3, 6, 9, 7)
+        x = paddle.to_tensor(x_np)
+        x_mT = x.mT
+        self.assertTrue(x_mT.shape, [3, 6, 7, 9])
+        np.testing.assert_array_equal(
+            x_mT.numpy(), x_np.transpose([0, 1, 3, 2])
+        )
+
+        x_np = np.random.randn(3)
+        x = paddle.to_tensor(x_np)
+        self.assertRaises(ValueError, getattr, x, "mT")
+
         self.assertTrue(inspect.ismethod(a.dot))
         self.assertTrue(inspect.ismethod(a.logsumexp))
         self.assertTrue(inspect.ismethod(a.multiplex))

@@ -4583,12 +4583,12 @@ class Block:
                 init_ops = []
                 for op in block.ops:
                     if var.name in op.output_arg_names:
-                        # In startup_program, "c_broadcast" and "c_sync_comm_stream"
+                        # In startup_program, "broadcast" and "c_sync_comm_stream"
                         # are treated as initialization ops that cause error.
-                        # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
+                        # Think of "broadcast" and "c_sync_comm_stream" as a special case here.
                         # NOTE: "coalesce_tensor" is a special case for rnn with cudnn support
                         if op.type in [
-                            "c_broadcast",
+                            "broadcast",
                             "c_sync_comm_stream",
                             "coalesce_tensor",
                         ]:
@@ -8461,3 +8461,19 @@ def auto_complete_op_role(program, op_role):
         if paddle.framework.in_pir_mode() and is_dist_block(block):
             always_forward_ops = ["pd_op.data", "builtin.parameter"]
             set_op_roles(block, op_role, always_forward_ops)
+
+
+# set op when op_role when it is add by apibuilder
+# pir_op_role_guard could not distinguish "always_forward_ops", therefore if
+# there would be always_forward_ops in your region, you should use "auto_complete_op_role"
+@signature_safe_contextmanager
+def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
+
+    if paddle.framework.in_pir_mode():
+        original_op_rope = pir.get_op_role()
+        pir.set_op_role(op_role)
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode():
+            pir.set_op_role(original_op_rope)

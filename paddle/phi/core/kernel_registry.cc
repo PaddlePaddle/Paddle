@@ -19,6 +19,7 @@
 
 #include "paddle/phi/core/custom_kernel.h"
 #include "paddle/phi/core/kernel_utils.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
 
@@ -90,7 +91,26 @@ void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
                             arg_type);
     } else if (arg_type ==
                std::type_index(typeid(
+                   const paddle::optional<ExtendedTensor>&))) {  // NOLINT
+      args_def->AppendInput(default_key.backend(),
+                            default_tensor_layout,
+                            default_key.dtype(),
+                            arg_type);
+    } else if (arg_type ==
+               std::type_index(typeid(
                    const std::vector<const ExtendedTensor*>&))) {  // NOLINT
+      args_def->AppendInput(default_key.backend(),
+                            default_tensor_layout,
+                            default_key.dtype(),
+                            arg_type);
+    } else if (arg_type ==
+               std::type_index(typeid(const phi::FeedList&))) {  // NOLINT
+      args_def->AppendInput(default_key.backend(),
+                            default_tensor_layout,
+                            default_key.dtype(),
+                            arg_type);
+    } else if (arg_type == std::type_index(typeid(
+                               const paddle::optional<Strings>&))) {  // NOLINT
       args_def->AppendInput(default_key.backend(),
                             default_tensor_layout,
                             default_key.dtype(),
@@ -198,8 +218,11 @@ void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
                              default_tensor_layout,
                              default_key.dtype(),
                              arg_type);
-    } else if (arg_type ==
-               std::type_index(typeid(ExtendedTensor*))) {  // NOLINT
+    } else if (arg_type == std::type_index(typeid(ExtendedTensor*)) ||
+               arg_type ==
+                   std::type_index(typeid(std::vector<ExtendedTensor*>)) ||
+               arg_type ==
+                   std::type_index(typeid(std::vector<Vocab*>))) {  // NOLINT
       args_def->AppendOutput(default_key.backend(),
                              default_tensor_layout,
                              default_key.dtype(),

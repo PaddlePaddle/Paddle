@@ -156,9 +156,13 @@ void gather_grad(const Tensor& x,
 
   // change axis to rank 0
   int axis_value = axis.to<int>();
+  int rank = x.dims().size();
+  if (axis_value < 0) {
+    axis_value += rank;
+  }
   tmp_perm.push_back(axis_value);
   // make other ranks
-  for (int i = 0; i < x.dims().size(); ++i) {
+  for (int i = 0; i < rank; ++i) {
     if (i != axis_value) {
       tmp_perm.push_back(i);
     }
@@ -1451,6 +1455,20 @@ void scatter_grad(const Tensor& index,
   if (updates_grad) {
     Scalar tmp_zero = 0;
     auto tmp_updates_grad = gather<T>(out_grad, index, tmp_zero);
+
+    // NOTE: len(index) can be smaller than len(updates) when updates is not a
+    // scalar
+    auto updates_dims = common::vectorize(updates.dims());
+    auto index_dims = common::vectorize(index.dims());
+    if (updates_dims.size() > 0 && updates_dims[0] > index_dims[0]) {
+      // Pad zeros to the end of tmp_updates_grad to make its shape the same as
+      // updates.
+      decltype(updates_dims) padding_dims = updates_dims;
+      padding_dims[0] = updates_dims[0] - index_dims[0];
+      auto padding_zeros = full<T>(padding_dims, 0, updates.dtype());
+      tmp_updates_grad =
+          concat<T>({tmp_updates_grad, std::move(padding_zeros)}, 0);
+    }
     set_output<T>(tmp_updates_grad, updates_grad);
   }
 }

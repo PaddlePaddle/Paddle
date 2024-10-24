@@ -24,13 +24,11 @@ set(standalone_executor_deps
     program_translator
     op_dialect_vjp
     global_utils
-    buffered_reader
     framework_io
     garbage_collector
     executor_gc_helper
     phi
-    common
-    framework_proto)
+    common)
 
 if(WITH_CINN)
   set(standalone_executor_deps
@@ -53,7 +51,7 @@ cc_library(
   SRCS ${standalone_executor_srcs}
   DEPS ${standalone_executor_deps})
 
-add_dependencies(standalone_executor xxhash framework_proto)
+add_dependencies(standalone_executor xxhash)
 
 if(WITH_ONEDNN)
   add_dependencies(standalone_executor onednn)

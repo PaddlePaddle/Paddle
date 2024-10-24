@@ -29,6 +29,7 @@ struct ExecutionConfig {
   bool used_for_cinn{false};
   bool used_for_control_flow_op{false};
   bool used_for_jit{false};
+  bool used_for_sot{false};
   bool used_for_inference{false};
 
   size_t device_num_threads{0};

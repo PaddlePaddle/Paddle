@@ -20,12 +20,12 @@
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/selected_rows.h"
 namespace paddle {
 namespace imperative {
@@ -60,9 +60,9 @@ void InitializeVariable(paddle::framework::Variable *var,
   } else if (var_type == paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
     var->GetMutable<phi::TensorArray>();
   } else if (var_type == paddle::framework::proto::VarType::STRINGS) {
-    var->GetMutable<paddle::framework::Strings>();
+    var->GetMutable<phi::Strings>();
   } else if (var_type == paddle::framework::proto::VarType::VOCAB) {
-    var->GetMutable<paddle::framework::Vocab>();
+    var->GetMutable<phi::Vocab>();
   } else if (var_type == paddle::framework::proto::VarType::PLACE_LIST) {
     var->GetMutable<phi::PlaceList>();
   } else if (var_type == paddle::framework::proto::VarType::READER) {

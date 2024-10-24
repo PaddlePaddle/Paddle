@@ -97,7 +97,7 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
   }
   return phi::KernelKey(backend,
                         kernel_type.data_layout_,
-                        framework::TransToPhiDataType(kernel_type.data_type_));
+                        phi::TransToPhiDataType(kernel_type.data_type_));
 }
 
 phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,

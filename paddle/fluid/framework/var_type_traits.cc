@@ -16,9 +16,9 @@
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/phi/core/framework/reader.h"
+#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
 #ifdef PADDLE_WITH_CUDA
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -41,7 +41,7 @@
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
-#include "paddle/fluid/framework/raw_tensor.h"
+#include "paddle/phi/core/raw_tensor.h"
 
 namespace paddle {
 namespace framework {

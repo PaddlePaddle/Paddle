@@ -542,6 +542,17 @@ class TestEagerTensor(unittest.TestCase):
                 np.array(selected_rows.get_tensor()),
             )
 
+    def test_deep_copy_0size_tensor(self):
+        x = paddle.to_tensor(np.array([]))
+        x_copy = copy.deepcopy(x)
+        self.assertEqual(x_copy.stop_gradient, x.stop_gradient)
+        self.assertEqual(x_copy.persistable, x.persistable)
+        self.assertEqual(x_copy.type, x.type)
+        self.assertEqual(x_copy.dtype, x.dtype)
+        self.assertEqual(x_copy.shape, x.shape)
+        self.assertEqual(str(x_copy.place), str(x.place))
+        np.testing.assert_array_equal(x.numpy(), x_copy.numpy())
+
     # test some patched methods
     def test_set_value(self):
         var = paddle.to_tensor(self.array)
@@ -1279,6 +1290,67 @@ class TestEagerTensor(unittest.TestCase):
 
                     self.assertIn("version", interface)
                     self.assertEqual(interface["version"], 2)
+
+    def test_tensor__format__(self):
+        # test for floating point scalar
+        for width in range(0, 5):
+            paddle_scalar = paddle.randn([])
+            numpy_scalar = paddle_scalar.numpy()
+            format_spec = f".{width}f"
+            self.assertEqual(
+                paddle_scalar.__format__(format_spec),
+                numpy_scalar.__format__(format_spec),
+            )
+            format_spec = f".{width}e"
+            self.assertEqual(
+                paddle_scalar.__format__(format_spec),
+                numpy_scalar.__format__(format_spec),
+            )
+            format_spec = f".{width}g"
+            self.assertEqual(
+                paddle_scalar.__format__(format_spec),
+                numpy_scalar.__format__(format_spec),
+            )
+
+            format_spec = "{:.{}f}"
+            self.assertEqual(
+                format_spec.format(paddle_scalar, width),
+                format_spec.format(numpy_scalar, width),
+            )
+
+        # test for integer scalar
+        for width in range(0, 5):
+            paddle_scalar = paddle.uniform([], min=-100, max=100).to("int64")
+            numpy_scalar = paddle_scalar.numpy()
+            format_spec = f"{width}d"
+            self.assertEqual(
+                paddle_scalar.__format__(format_spec),
+                numpy_scalar.__format__(format_spec),
+            )
+            format_spec = f"{width}o"
+            self.assertEqual(
+                paddle_scalar.__format__(format_spec),
+                numpy_scalar.__format__(format_spec),
+            )
+            format_spec = f"{width}x"
+            self.assertEqual(
+                paddle_scalar.__format__(format_spec),
+                numpy_scalar.__format__(format_spec),
+            )
+
+            format_spec = "{:{}d}"
+            self.assertEqual(
+                format_spec.format(paddle_scalar, width),
+                format_spec.format(numpy_scalar, width),
+            )
+
+        # test for tensor that ndim > 0, expected to raise TypeError
+        paddle_scalar = paddle.uniform([1], min=-100, max=100)
+        self.assertRaises(TypeError, paddle_scalar.__format__, ".3f")
+
+        # test for float scalar but format_spec is 'd', expected to raise ValueError
+        paddle_scalar = paddle.uniform([], min=-100, max=100)
+        self.assertRaises(ValueError, paddle_scalar.__format__, "3d")
 
 
 class TestEagerTensorSetitem(unittest.TestCase):

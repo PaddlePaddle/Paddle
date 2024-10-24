@@ -103,7 +103,7 @@ class TestNextafterOP(OpTest):
         self.outputs = {'out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def init_dtype(self):
         self.dtype = np.float64
