@@ -1400,6 +1400,48 @@ class NearestInterV2Pattern
   }
 };
 
+class GridSampleOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GridSampleOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GridSampleOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GridSampleOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8510)
+    VLOG(3) << "grid_sample is not supported when TensorRT < 8.5.1";
+    return false;
+#else
+    if (!op->HasAttribute("mode") || !op->HasAttribute("padding_mode") ||
+        !op->HasAttribute("align_corners")) {
+      VLOG(3)
+          << "grid_sample need attributes: mode, padding_mode, align_corners";
+      return false;
+    }
+    auto x_shape = op.operand_source(0)
+                       .type()
+                       .dyn_cast<paddle::dialect::DenseTensorType>()
+                       .dims();
+
+    auto grid_shape = op.operand_source(1)
+                          .type()
+                          .dyn_cast<paddle::dialect::DenseTensorType>()
+                          .dims();
+
+    if (x_shape.size() != 4 || grid_shape.size() != 4) {
+      VLOG(3) << "The input and grid tensors must be shape tensors of rank 4 "
+                 "when using TRT GridSample layer.";
+      return false;
+    }
+#endif
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 // Add ReduceCommonOpPattern base class to simplify code
 template <typename OpType>
 class ReduceCommonOpPattern : public pir::OpRewritePattern<OpType> {
@@ -1557,6 +1599,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MinOpPattern>(context));
     ps.Add(std::make_unique<BilinearInterpV2Pattern>(context));
     ps.Add(std::make_unique<NearestInterV2Pattern>(context));
+    ps.Add(std::make_unique<GridSampleOpPattern>(context));
     ps.Add(std::make_unique<TanhOpPattern>(context));
     return ps;
   }
