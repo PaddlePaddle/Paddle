@@ -2825,7 +2825,7 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
 
     Returns:
         Tensor: A Tensor holds the inverse of x. The shape and data type
-                        is the same as x.
+        is the same as x.
 
     Examples:
         .. code-block:: python
