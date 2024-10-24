@@ -785,17 +785,11 @@ class CommOpCost(OpCost):
             shape = None
             if self.op is not None:
                 vars = self.op.block.vars
-                # NOTE: The tensor communicated input_name is "X" or "x" in default. Otherwise, this function should be overridden
+                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overridden
                 try:
-                    try:
-                        var_name = self.op.input("X")[0]
-                    except:
-                        var_name = self.op.input("x")[0]
+                    var_name = self.op.input("X")[0]
                 except:
-                    try:
-                        var_name = self.op.output("Out")[0]
-                    except:
-                        var_name = self.op.output("out")[0]
+                    var_name = self.op.output("Out")[0]
                 var = get_var_with_recursion(
                     var_name, self.op.block, self.op.block.program
                 )
