@@ -272,7 +272,7 @@ def to_distributed(model, dataloader, mesh, config):
         model.forward, input_spec=config.input_spec, full_graph=True
     )
     pir_program = static_func.concrete_program.main_program
-    print(f"convert to pir program: {pir_program}")
+    # print(f"convert to pir program: {pir_program}")
     # breakpoint()
 
     # record pir_program ops_to_ids
@@ -299,7 +299,7 @@ def to_distributed(model, dataloader, mesh, config):
     DECODER_LAYER_NAME = 'decoder_layer'
     register_used_patterns(DECODER_LAYER_NAME)
     results = match_all_patterns(pir_program)
-    print(f"match patterns based on pir program is: {results}")
+    # print(f"match patterns based on pir program is: {results}")
     # breakpoint()
 
     # # # # step5: mark pir programs ops dist infos
@@ -311,9 +311,9 @@ def to_distributed(model, dataloader, mesh, config):
             pattern_ops_dist_infos is not None
         ), f"{pattern_name} does not contain ops_dist_infos, cannot reshard, please check"
         # print(f"{pattern_name} op dist infos are {pattern_ops_dist_infos}")
-        print(
-            f"matched patterns are {matched_patterns}"
-        )  # [dict{pattern_node_id : graph_node_id, ..., ...}, dict, dict]
+        # print(
+        #     f"matched patterns are {matched_patterns}"
+        # )  # [dict{pattern_node_id : graph_node_id, ..., ...}, dict, dict]
         processed_patterns = []
         for matched_pattern in matched_patterns:
             # convert pattern_ops_dist_infos to program_ops_dist_infos
@@ -330,11 +330,11 @@ def to_distributed(model, dataloader, mesh, config):
             processed_patterns.append(program_ops_dist_infos)
 
         matched_programs[pattern_name] = processed_patterns
-        print(f"matched program and ops dist infos are {matched_programs}")
+        # print(f"matched program and ops dist infos are {matched_programs}")
 
     # # # #: shard model
     num_hidden_layers = len(matched_programs[DECODER_LAYER_NAME])
-    print(f"num_hidden_layers by pattern matching is {num_hidden_layers}")
+    # print(f"num_hidden_layers by pattern matching is {num_hidden_layers}")
 
     # # # # step6: tensor parallel
     for pattern_name, processed_patterns in matched_programs.items():
@@ -348,24 +348,22 @@ def to_distributed(model, dataloader, mesh, config):
                 local_mesh = mesh.get_mesh_with_dim("pp", pp_stage_id)
 
             for program_ops_id, dist_infos in processed_pattern.items():
-                if program_ops_id not in ops_id_to_layer.keys():
-                    print(
-                        f"program_ops: {program_ops_id} is not corresponding to a dynamic layer"
+                assert (
+                    program_ops_id in ops_id_to_layer.keys()
+                ), f"program_ops: {program_ops_id} is not corresponding to a dynamic layer"
+                dynamic_layer = ops_id_to_layer[program_ops_id]
+                # shard layers
+                # print(f"sharding info is {dist_infos.print_dist_infos()}")
+                mesh_num_dims = len(local_mesh.shape)
+                # breakpoint()
+                sharding_info = dist_infos.get_dist_info(mesh_num_dims)
+                dynamic_layer.weight = dist.shard_tensor(
+                    dynamic_layer.weight, local_mesh, sharding_info[0]
+                )
+                if dynamic_layer.bias is not None:
+                    dynamic_layer.bias = dist.shard_tensor(
+                        dynamic_layer.bias, local_mesh, sharding_info[1]
                     )
-                else:
-                    dynamic_layer = ops_id_to_layer[program_ops_id]
-                    # shard layers
-                    # print(f"sharding info is {dist_infos.print_dist_infos()}")
-                    mesh_num_dims = len(local_mesh.shape)
-                    # breakpoint()
-                    sharding_info = dist_infos.get_dist_info(mesh_num_dims)
-                    dynamic_layer.weight = dist.shard_tensor(
-                        dynamic_layer.weight, local_mesh, sharding_info[0]
-                    )
-                    if dynamic_layer.bias is not None:
-                        dynamic_layer.bias = dist.shard_tensor(
-                            dynamic_layer.bias, local_mesh, sharding_info[1]
-                        )
 
     # # # # step6: pipeline parallel
     if with_pp:
@@ -380,7 +378,7 @@ def to_distributed(model, dataloader, mesh, config):
                         decoder_layers.append(
                             ops_id_to_layer[tuple(sorted(program_ops_id))]
                         )
-        print(f"matched decoder layers are: {decoder_layers}")
+        # print(f"matched decoder layers are: {decoder_layers}")
 
         if decoder_layers is not None:
             num_decoder_blocks = len(decoder_layers)
@@ -414,7 +412,7 @@ def to_distributed(model, dataloader, mesh, config):
         ]
         register_used_patterns(used_patterns)
         results = match_all_patterns(pir_program)
-        print(f"match patterns based on pir program is: {results}")
+        # print(f"match patterns based on pir program is: {results}")
 
         matched_layers = {}
         for pattern_name, matched_all_patterns in results.items():
@@ -432,7 +430,7 @@ def to_distributed(model, dataloader, mesh, config):
                             matched_layers[pattern_name] = [
                                 ops_id_to_layer[tuple(sorted(program_ops_id))]
                             ]
-        print(f"matched layers are: {matched_layers}")
+        # print(f"matched layers are: {matched_layers}")
 
         # init mesh
         GLOBAL_MESH = []

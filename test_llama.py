@@ -74,8 +74,8 @@ mesh = dist.ProcessMesh(
 )
 
 model_config, model = llama_init()
-print(f"llama config is {model_config}")
-print(f"llama model is {model}")
+# print(f"llama config is {model_config}")
+# print(f"llama model is {model}")
 input_seqs = np.random.randint(
     low=0, high=1024, size=(BATCH_SIZE * BATCH_NUM, SEQ_LENGTH)
 ).astype("int64")
@@ -101,9 +101,9 @@ dist_model, dist_loader = to_distributed(model, loader, mesh, dist_config)
 dist_model.train()
 for batch_id, (input_seq, label) in enumerate(dist_loader()):
     # dynamic
-    print(f"input_seq is {input_seq}, labels is {label}")
+    # print(f"input_seq is {input_seq}, labels is {label}")
     (loss, logits) = dist_model(input_ids=input_seq, labels=label)
-    print(f"batch: {batch_id}, loss is {loss}")
+    # print(f"batch: {batch_id}, loss is {loss}")
     loss.backward()
     opt.step()
     opt.clear_grad()

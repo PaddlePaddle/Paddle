@@ -91,12 +91,6 @@ class DistInfos:
         ], "mesh dims must be 1 or 2, for [dp], [mp] or [dp, mp]"
         return self.dist_infos[mesh_num_dims]
 
-    def print_dist_infos(self):
-        for mesh_num_dims, dist_infos in self.dist_infos.items():
-            print(
-                f"If mesh has {mesh_num_dims} dims, dist infos are {dist_infos}"
-            )
-
 
 class MpDistInfos(DistInfos):
     def __init__(self, mp_type=None):
@@ -157,7 +151,7 @@ class PIREmbeddingPattern(PIRBasePattern):
             out = paddle.nn.functional.embedding(x, weight)
 
         self.pir_program = main_program
-        print(f"in embedding, program is {self.pir_program}")
+        # print(f"in embedding, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -202,7 +196,7 @@ class PIRRMSNormPattern(PIRBasePattern):
                 out = x * weight
 
         self.pir_program = main_program
-        print(f"in RMSNorm, program is {self.pir_program}")
+        # print(f"in RMSNorm, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -239,7 +233,7 @@ class PIRRotateHalfPattern(PIRBasePattern):
             out = paddle.concat([-x2, x1], axis=-1)
 
         self.pir_program = main_program
-        print(f"in RotateHalfPattern, program is {self.pir_program}")
+        # print(f"in RotateHalfPattern, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -302,7 +296,7 @@ class PIRApplyRotaryPosEmbPattern(PIRBasePattern):
             k_embed = (k * cos) + (self.rotate_half(k) * sin)
 
         self.pir_program = main_program
-        print(f"in ApplyRotaryPosEmbPattern, program is {self.pir_program}")
+        # print(f"in ApplyRotaryPosEmbPattern, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -362,7 +356,7 @@ class PIRQKVReshapePattern(PIRBasePattern):
             v = v.reshape(shape=target_kv_shape)
 
         self.pir_program = main_program
-        print(f"in QKVReshape, program is {self.pir_program}")
+        # print(f"in QKVReshape, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -447,7 +441,7 @@ class PIRQKVRopePattern(PIRBasePattern):
             q_embed = (q * cos) + (self.rotate_half(q) * sin)
             k_embed = (k * cos) + (self.rotate_half(k) * sin)
         self.pir_program = main_program
-        print(f"in QKVRopePattern, program is {self.pir_program}")
+        # print(f"in QKVRopePattern, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -504,7 +498,7 @@ class PIRScaleDotProductPattern(PIRBasePattern):
             outputs = self.scale_dot_product_attention(q, k, v, attention_mask)
 
         self.pir_program = main_program
-        print(f"in ScaleDotProductPattern, program is {self.pir_program}")
+        # print(f"in ScaleDotProductPattern, program is {self.pir_program}")
         paddle.disable_static()
         # # todo: how to design an efficient distributed infos for each pattern
         self.ops_dist_infos = None
@@ -641,7 +635,7 @@ class PIRAttentionPattern(PIRBasePattern):
             output = paddle.matmul(tmp, out_weight)
 
         self.pir_program = main_program
-        print(f"in AttentionPattern, program is {self.pir_program}")
+        # print(f"in AttentionPattern, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -746,7 +740,7 @@ class PIRMLPPattern(PIRBasePattern):
             out = paddle.matmul(tmp, down_weight)
 
         self.pir_program = main_program
-        print(f"in MLPPattern, program is {self.pir_program}")
+        # print(f"in MLPPattern, program is {self.pir_program}")
         paddle.disable_static()
 
         up_linear_dist_infos = MpDistInfos("column")
@@ -861,7 +855,7 @@ class PIRDecoderLayerPattern(PIRBasePattern):
             hidden_states = residual + hidden_states
 
         self.pir_program = main_program
-        print(f"in Decoder_layer_pattern, program is {self.pir_program}")
+        # print(f"in Decoder_layer_pattern, program is {self.pir_program}")
         paddle.disable_static()
 
         qkv_linear_dist_infos = MpDistInfos("column")
@@ -1053,7 +1047,7 @@ class PIRQKVReshapePattern_2(PIRBasePattern):
             v = v.reshape(shape=target_kv_shape)
 
         self.pir_program = main_program
-        print(f"in QKVReshape2, program is {self.pir_program}")
+        # print(f"in QKVReshape2, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -1104,7 +1098,7 @@ class PIRCoreAttnPattern(PIRBasePattern):
             outputs = self.core_attn(q, k, v, attention_mask)
 
         self.pir_program = main_program
-        print(f"in CoreAttnPattern, program is {self.pir_program}")
+        # print(f"in CoreAttnPattern, program is {self.pir_program}")
         paddle.disable_static()
         # # todo: how to design an efficient distributed infos for each pattern
         self.ops_dist_infos = None
@@ -1213,7 +1207,7 @@ class PIRAttentio2nPattern(PIRBasePattern):
             output = paddle.add(out_tmp, out_bias)
 
         self.pir_program = main_program
-        print(f"in AttentionPattern2, program is {self.pir_program}")
+        # print(f"in AttentionPattern2, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -1302,7 +1296,7 @@ class PIRFFNPattern(PIRBasePattern):
             out = paddle.add(tmp_4, b2)
 
         self.pir_program = main_program
-        print(f"in FFNPattern, program is {self.pir_program}")
+        # print(f"in FFNPattern, program is {self.pir_program}")
         paddle.disable_static()
 
         # # todo: how to design an efficient distributed infos for each pattern
@@ -1470,7 +1464,7 @@ def match_pattern(pattern, pir_program):
 
 
 def match_all_patterns(pir_program):
-    print(f"used patterns is: {_USED_PATTERNS}")
+    # print(f"used patterns is: {_USED_PATTERNS}")
     matched_results = {}
     matched_ids = set()
     for pattern_name in _PIR_PATTERNS:
