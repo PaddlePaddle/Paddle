@@ -265,7 +265,7 @@ class Pipeline1F1BPass(PipelinePassBase):
             "gelu": 180,
             "dropout": 160,
             "c_identity": 0,
-            "recv_v2": 0,
+            "p_recv": 0,
         }
 
         op_type = op.type

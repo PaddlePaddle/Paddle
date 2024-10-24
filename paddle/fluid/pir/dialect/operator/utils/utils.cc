@@ -39,8 +39,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     CBroadcast_Op::name(),
     CBroadcastOp::name(),
     DistributedPushSparseOp::name(),
-    SendV2Op::name(),
-    RecvV2Op::name(),
     CAllreduceProd_Op::name(),
     CAllreduceSumOp::name(),
     CAllreduceSum_Op::name(),

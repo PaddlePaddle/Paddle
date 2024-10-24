@@ -128,6 +128,7 @@ void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                               dtype,
                               all_process_ids,
                               send_id,
+                              {} /*out_shape*/,
                               true /*dynamic_shape*/,
                               GetMutableTensor(out));
   }

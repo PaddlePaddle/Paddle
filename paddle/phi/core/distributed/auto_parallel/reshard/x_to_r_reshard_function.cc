@@ -83,6 +83,7 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                     dtype,
                                     all_process_ids,
                                     all_process_ids[i],
+                                    {} /*out_shape*/,
                                     dynamic_shape,
                                     &rank_to_result[all_process_ids[i]]);
         }

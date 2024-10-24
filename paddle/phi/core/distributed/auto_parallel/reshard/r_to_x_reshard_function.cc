@@ -90,6 +90,7 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                               dtype,
                               all_process_ids,
                               root_rank,
+                              {} /*out_shape*/,
                               dynamic_shape,
                               &result_value);
   }
