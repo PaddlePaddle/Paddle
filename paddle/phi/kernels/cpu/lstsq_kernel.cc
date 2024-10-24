@@ -60,7 +60,7 @@ void LstsqKernel(const Context& dev_ctx,
   int max_solu_stride = std::max(y_stride, ori_solu_stride);
   int min_solu_stride = std::min(y_stride, ori_solu_stride);
 
-  // lapack is a column-major storge, transpose make the input to
+  // lapack is a column-major storage, transpose make the input to
   // have a continuous memory layout
   int info = 0;
   int m = static_cast<int>(x_dims[dim_size - 2]);
@@ -204,7 +204,7 @@ void LstsqKernel(const Context& dev_ctx,
     rwork_data = dev_ctx.template Alloc<ValueType>(rwork);
   }
 
-  // "iwork" workspace array is relavant only for "gelsd" driver
+  // "iwork" workspace array is relevant only for "gelsd" driver
   DenseTensor* iwork = new DenseTensor();
   int* iwork_data = nullptr;
   if (driver == LapackDriverType::Gelsd) {

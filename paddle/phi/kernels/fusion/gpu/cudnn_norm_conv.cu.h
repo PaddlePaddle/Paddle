@@ -49,7 +49,7 @@ struct NormConvolutionArgs {
         ctx.GetComputeCapability(),
         90,
         common::errors::PreconditionNotMet(
-            "Expect compute compatiblity to be less than 90, but got %d. "
+            "Expect compute compatibility to be less than 90, but got %d. "
             "CUDNN FusedOps is no longer available on H100 and later "
             "devices.",
             ctx.GetComputeCapability()));
@@ -99,11 +99,11 @@ struct NormConvolutionArgs {
         true,
         common::errors::InvalidArgument(
             "Current test is only supported in the platforms with "
-            "compatiblity greater than or equal to 70 and the kernel size "
+            "compatibility greater than or equal to 70 and the kernel size "
             "must be equal to 1 or 3. When the kernel size is 1, "
-            "the stride must be 1 if the compatiblity is equal to 70. "
+            "the stride must be 1 if the compatibility is equal to 70. "
             "Besides, the dilation and group must be equal to 1. But received "
-            "compatiblity is %d, kernel size is %d, stride is %d, "
+            "compatibility is %d, kernel size is %d, stride is %d, "
             "dilation is %d, group is %d",
             ctx.GetComputeCapability(),
             filter_shape[1],

@@ -326,7 +326,7 @@ class ParameterDict(Layer):
     ParameterDict can be indexed like a regular Python dictionary, but Parameters it contains are properly registered.
 
     Parameters:
-        values (iterable, optional): a mapping (dictionary) of (string : Any) or an iterable of key-value pairs of type (string, Any)
+        parameters (iterable, optional): a mapping (dictionary) of (string : Any) or an iterable of key-value pairs of type (string, Any)
 
     Examples:
         .. code-block:: python

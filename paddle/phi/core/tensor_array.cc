@@ -21,6 +21,21 @@ TensorArray::TensorArray(const std::vector<DenseTensor>& vec) {
   tensors_ = vec;
 }
 
+/// \brief Test whether the holder is created.
+/// \return Whether the holder is created.
+bool TensorArray::has_allocation() const {
+  if (tensors_.empty()) {
+    return false;
+  }
+
+  for (auto const& tensor : tensors_) {
+    if (!tensor.has_allocation()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /// \brief Test whether the tensor's storage in TensorArray is allocated.
 /// return Whether all tensors in TensorArray is allocated.
 bool TensorArray::initialized() const {

@@ -74,7 +74,7 @@ void MainWord2Vec(const ::paddle::PaddlePlace& place) {
   config.use_xpu = ::paddle::xpu_place_used(place);
 
   phi::DenseTensor first_word, second_word, third_word, fourth_word;
-  framework::LoD lod{{0, 1}};
+  phi::LoD lod{{0, 1}};
   int64_t dict_size = 2073;  // The size of dictionary
 
   SetupLoDTensor(&first_word, lod, static_cast<int64_t>(0), dict_size - 1);
@@ -178,7 +178,7 @@ void MainThreadsWord2Vec(const ::paddle::PaddlePlace& place) {
     // each job has 4 words
     jobs[i].resize(4);
     for (size_t j = 0; j < 4; ++j) {
-      framework::LoD lod{{0, 1}};
+      phi::LoD lod{{0, 1}};
       int64_t dict_size = 2073;  // The size of dictionary
       SetupLoDTensor(&jobs[i][j], lod, static_cast<int64_t>(0), dict_size - 1);
       paddle_tensor_feeds[i].push_back(LodTensorToPaddleTensor(&jobs[i][j]));

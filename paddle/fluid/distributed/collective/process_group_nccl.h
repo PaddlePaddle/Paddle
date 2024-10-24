@@ -181,6 +181,9 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   const bool GetNCCLCommInitOption() { return nccl_comm_init_option_; }
 
+  phi::distributed::NCCLCommContext* GetOrCreateCommContext(
+      const Place& place, CommType comm_type = CommType::UNKNOWN);
+
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
@@ -238,6 +241,10 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   virtual void EndCoalescing(
       std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>>
           tasks_opt = std::nullopt);
+
+  void EagerConnect();
+
+  void EagerConnectRingExchange();
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;
