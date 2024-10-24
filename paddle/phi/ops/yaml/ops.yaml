@@ -3162,6 +3162,7 @@
     data_type : x
   optional : residuals
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lu
   args : (Tensor x, bool pivot = true)
