@@ -3713,7 +3713,10 @@ def check_clip_tensor(c_x, value, re_value, value_type, name):
         if isinstance(value, paddle.Tensor):
             if value.shape == [0]:
                 value = fill_constant([1], value_type, re_value)
-            elif value.shape not in [[], [1]] and value.shpae != c_x.shape[-len(value.shape):]:
+            elif (
+                value.shape not in [[], [1]]
+                and value.shpae != c_x.shape[-len(value.shape) :]
+            ):
                 raise ValueError(
                     f"The {name} dimension should be equal to the inner dimension of the x, but the {name} dimension is {value.shape} and the x dimension is {c_x.shape[-len(value.shape):]}."
                 )
@@ -3783,8 +3786,12 @@ def clip(
         min_n = check_clip_tensor(x, min, min_, x_dtype, 'min')
         max_n = check_clip_tensor(x, max, max_, x_dtype, 'max')
 
-        min_n = paddle.expand(min_n, x.shape) if min_n.shape != x.shape else min_n
-        max_n = paddle.expand(max_n, x.shape) if max_n.shape != x.shape else max_n
+        min_n = (
+            paddle.expand(min_n, x.shape) if min_n.shape != x.shape else min_n
+        )
+        max_n = (
+            paddle.expand(max_n, x.shape) if max_n.shape != x.shape else max_n
+        )
 
         output_min = paddle.where(x < min_n, min_n, x)
         output = paddle.where(output_min > max_n, max_n, output_min)
@@ -3848,7 +3855,10 @@ def clip(
                 dtype=helper.input_dtype('x')
             )
             helper.append_op(
-                type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs
+                type='clip',
+                inputs=inputs,
+                outputs={'Out': [output]},
+                attrs=attrs
             )
 
             return output
@@ -3871,18 +3881,24 @@ def clip_(
     max = fmax if max is None else max
 
     if in_dynamic_mode():
-        if not isinstance(max, paddle.Tensor) and not isinstance(min, paddle.Tensor):
+        if not isinstance(max, paddle.Tensor) and not isinstance(
+            min, paddle.Tensor
+        ):
             return _C_ops.clip_(x, min, max)
         else:
             max = check_clip_tensor(x, max, fmin, x.dtype, 'max')
             min = check_clip_tensor(x, min, fmin, x.dtype, 'min')
 
-            max_expand = paddle.expand(max, x.shape) if max.shape != x.shape else max
-            min_expand = paddle.expand(min, x.shape) if min.shape != x.shape else min
+            max_expand = (
+                paddle.expand(max, x.shape) if max.shape != x.shape else max
+            )
+            min_expand = (
+                paddle.expand(min, x.shape) if min.shape != x.shape else min
+            )
 
             paddle.where_(x > min_expand, x, min_expand)
             return paddle.where_(x < max_expand, x, max_expand)
-            
+
 
 def trace(
     x: Tensor,
