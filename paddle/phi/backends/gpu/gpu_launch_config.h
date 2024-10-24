@@ -33,6 +33,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_utils.h"
 
 // CUDA performs better when thread_per_block is between [64, 512]
 #define PREDEFINED_BLOCK_SIZE 512
@@ -93,6 +94,11 @@ struct GpuLaunchConfig {
 
   size_t GetBlockSize() const {
     return thread_per_block.x * thread_per_block.y * thread_per_block.z;
+  }
+
+  bool IsEmpty() const {
+    return IsEmptyKernelDim(block_per_grid) ||
+           IsEmptyKernelDim(thread_per_block);
   }
 
   int compute_capability = 0;

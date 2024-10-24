@@ -462,6 +462,8 @@ void LaunchBroadcastKernel(
   const auto &numel = classifier.numel;
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
+  if (gpu_config.IsEmpty()) return;
+
   auto stream = ctx.stream();
   auto threads = gpu_config.GetBlockSize();
   auto blocks = gpu_config.block_per_grid;

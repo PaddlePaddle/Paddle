@@ -754,6 +754,7 @@ void LaunchElementwiseKernel(const KPDevice &ctx,
 #else
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
+  if (gpu_config.IsEmpty()) return;
   int64_t main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) *
                         VecSize * gpu_config.GetBlockSize();
   auto stream = ctx.stream();

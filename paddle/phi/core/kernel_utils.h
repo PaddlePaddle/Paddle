@@ -407,4 +407,17 @@ inline bool recompute_reduce_all(const DenseTensor& x,
   }
 }
 
+template <typename T>
+bool IsEmptyKernelDim(const T& dim) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if constexpr (std::is_same<T, dim3>::value) {
+    return dim.x <= 0 || dim.y <= 0 || dim.z <= 0;
+  } else {
+#endif
+    return dim <= 0;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  }
+#endif
+}
+
 }  // namespace phi
