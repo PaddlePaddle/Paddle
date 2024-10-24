@@ -123,7 +123,7 @@ class DygraphShardingOptimizer:
 
         if (
             paddle.is_compiled_with_xpu()
-            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL", "0") != "1"
         ):
             assert (
                 not self.comm_overlap
@@ -327,7 +327,7 @@ class DygraphShardingOptimizer:
         # sync here to guarantee cdnn_cluster parallel correct.
         if (
             paddle.is_compiled_with_xpu()
-            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL", "0") != "1"
         ):
             paddle.device.synchronize()
 
@@ -675,7 +675,7 @@ class DygraphShardingOptimizerV2:
 
         if (
             paddle.is_compiled_with_xpu()
-            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL", "0") != "1"
         ):
             assert (
                 not self.comm_overlap
@@ -815,7 +815,7 @@ class DygraphShardingOptimizerV2:
         # sync here to guarantee cdnn_cluster parallel correct.
         if (
             paddle.is_compiled_with_xpu()
-            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL", "0") != "1"
         ):
             paddle.device.synchronize()
 

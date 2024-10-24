@@ -178,7 +178,8 @@ struct XPUContext::Impl {
 
     context_ = xpu::create_context();
 
-    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr &&
+    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") &&
+        std::string(std::getenv("XPU_CDNN_CLUSTER_PARALLEL")) == "1" &&
         !is_comm_context) {
       XPUStream s;
       xpu_stream_create(&s);
@@ -320,7 +321,8 @@ static int64_t get_l3_size(int i) {
 }
 
 XPUContext::XPUContext() : DeviceContext() {
-  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") &&
+      std::string(std::getenv("XPU_CDNN_CLUSTER_PARALLEL")) == "1") {
     int default_num_stream = 2;
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {
       default_num_stream =
@@ -342,7 +344,8 @@ XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
     // for communication context init, with gm_size=1 and l3_size=1
     impls_.push_back(std::make_unique<Impl>(place));
     impls_[0]->Init(0, 0, true);
-  } else if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+  } else if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") &&
+             std::string(std::getenv("XPU_CDNN_CLUSTER_PARALLEL")) == "1") {
     int default_num_stream = 4;
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {
       default_num_stream =

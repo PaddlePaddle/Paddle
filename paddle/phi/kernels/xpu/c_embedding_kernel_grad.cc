@@ -28,7 +28,8 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           int64_t start_index,
                           DenseTensor* w_grad) {
-  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") &&
+      std::string(std::getenv("XPU_CDNN_CLUSTER_PARALLEL")) == "1") {
     dev_ctx.Wait();
   }
 
