@@ -20,7 +20,7 @@ import numpy as np
 from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 
 import paddle
-from paddle import base, nn
+from paddle import base, distributed as dist, nn
 from paddle.autograd import PyLayer
 from paddle.static import InputSpec
 
@@ -542,6 +542,8 @@ class TestGradScalerStateDict(unittest.TestCase):
 
                 img = paddle.to_tensor(dy_x_data)
                 label = paddle.to_tensor(y_data)
+                img = img.to(device=f"gpu:{dist.get_rank()}")
+                label = label.to(device=f"gpu:{dist.get_rank()}")
             label.stop_gradient = True
 
             with paddle.amp.auto_cast(enable=enable_amp):
@@ -844,6 +846,8 @@ class TestPureFp16SaveLoad(unittest.TestCase):
 
                 img = paddle.to_tensor(dy_x_data)
                 label = paddle.to_tensor(y_data)
+                img = img.to(device=f"gpu:{dist.get_rank()}")
+                label = label.to(device=f"gpu:{dist.get_rank()}")
             label.stop_gradient = True
 
             with paddle.amp.auto_cast(enable=enable_amp, level='O2'):
@@ -1131,6 +1135,8 @@ class TestResnet2(unittest.TestCase):
 
                 img = paddle.to_tensor(dy_x_data)
                 label = paddle.to_tensor(y_data)
+                img = img.to(device=f"gpu:{dist.get_rank()}")
+                label = label.to(device=f"gpu:{dist.get_rank()}")
             label.stop_gradient = True
 
             with paddle.amp.auto_cast(enable=enable_amp, level=level):

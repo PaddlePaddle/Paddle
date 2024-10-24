@@ -30,7 +30,9 @@ const std::string& TransToPhiKernelName(const std::string& fluid_op_name);
 const std::string& TransToFluidOpName(const std::string& phi_kernel_name);
 
 TEST_API Backend TransToPhiBackend(const phi::Place& place);
-phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id = true);
+phi::Place TransToPhiPlace(const Backend& backend,
+                           bool set_device_id = true,
+                           const int8_t& device_id = -1);
 
 #ifdef PADDLE_WITH_DNNL
 dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype);

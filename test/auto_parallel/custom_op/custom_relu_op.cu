@@ -42,7 +42,7 @@ __global__ void relu_cuda_backward_kernel(const data_t* dy,
 
 std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
   CHECK_GPU_INPUT(x);
-  auto out = paddle::empty_like(x);
+  auto out = paddle::empty_like(x, x.dtype(), x.place());
 
   PADDLE_ENFORCE_EQ(
       x.place() == paddle::DefaultGPUPlace(),
@@ -67,7 +67,7 @@ std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
   CHECK_GPU_INPUT(x);
   CHECK_GPU_INPUT(out);
   CHECK_GPU_INPUT(grad_out);
-  auto grad_x = paddle::empty_like(x);
+  auto grad_x = paddle::empty_like(x, x.dtype(), x.place());
 
   PADDLE_ENFORCE_EQ(
       x.place() == paddle::DefaultGPUPlace(),

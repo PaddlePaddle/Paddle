@@ -18,6 +18,7 @@ import numpy as np
 from dygraph_group_sharded_stage2 import MLP, RandomDataset, optimizer_setting
 
 import paddle
+from paddle import distributed as dist
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
@@ -71,11 +72,15 @@ def train_mlp(model, offload=False, test=False):
         num_workers=0,
     )
 
+    model.to(device=f"gpu:{dist.get_rank()}")
+
     for eop in range(epoch):
         model.train()
 
         for batch_id, data in enumerate(train_loader()):
             img, label = data
+            img = img.to(device=f"gpu:{dist.get_rank()}")
+            label = label.to(device=f"gpu:{dist.get_rank()}")
             label.stop_gradient = True
             img.stop_gradient = True
 
