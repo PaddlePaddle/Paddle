@@ -2870,13 +2870,74 @@ bool SpectralNormOpInferSymbolicShape(
 
   return true;
 }
-// bool LstmOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext
-//                               *infer_context)
-//                               {
-//   // pass
-//   return true;
-// }
+bool LstmOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &weight_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+  const symbol::ShapeOrDataDimExprs &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+  const auto &bias_shape = bias_shape_or_data.shape();
+  bool use_peepholes =
+      op->attribute<pir::BoolAttribute>("use_peepholes").data();
+  bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
+  PADDLE_ENFORCE_EQ(
+      input_shape.size(),
+      2,
+      common::errors::InvalidArgument(
+          "Input(X)'s rank must be 2, but received %d.", input_shape.size()));
+  if (op->operand_source(1)) {
+    const auto &h0_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+    const auto &c0_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+    size_t dims = h0_shape.size();
+    for (size_t i = 0; i < dims; i++) {
+      infer_context->AddEqualCstr(h0_shape[i], c0_shape[i]);
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      weight_shape.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The rank of Input(Weight) should be 2, but received %d.",
+          weight_shape.size()));
+  symbol::DimExpr frame_size = input_shape[1] / symbol::DimExpr(4);
+  infer_context->AddEqualCstr(weight_shape[0], frame_size);
+  infer_context->AddEqualCstr(weight_shape[1], frame_size * symbol::DimExpr(4));
+  PADDLE_ENFORCE_EQ(bias_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(Bias) should be 2, but received %d.",
+                        bias_shape.size()));
+  infer_context->AddEqualCstr(bias_shape[0], symbol::DimExpr{1});
+  if (use_peepholes) {
+    infer_context->AddEqualCstr(bias_shape[1], frame_size * symbol::DimExpr{7});
+  } else {
+    infer_context->AddEqualCstr(bias_shape[1], frame_size * symbol::DimExpr{4});
+  }
+  std::vector<symbol::DimExpr> out_shape = {input_shape[0], frame_size};
+  symbol::ShapeOrDataDimExprs out_shape_or_data =
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), out_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(1), out_shape_or_data);
+  if (!is_test) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(input_shape)});
+    infer_context->SetShapeOrDataForValue(op->result(3), out_shape_or_data);
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(input_shape)});
+    infer_context->SetShapeOrDataForValue(op->result(3), out_shape_or_data);
+  }
+  return true;
+}
 
 // bool MergedAdamOpInferSymbolicShape(pir::Operation *op,
 //                                     pir::InferSymbolicShapeContext
